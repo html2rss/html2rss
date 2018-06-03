@@ -1,5 +1,7 @@
 # Html2rss
 
+[![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
+
 Request and convert an HTML document to an RSS feed via a config object.
 The config contains the URL to scrape and the selectors needed to extract
 the required information. This gem provides some extractors (e.g. extract
