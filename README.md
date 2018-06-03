@@ -1,8 +1,8 @@
 # Html2rss
 
-Requests and convert an HTML document to an RSS feed via a config object.
+Request and convert an HTML document to an RSS feed via a config object.
 The config contains the URL to scrape and the selectors needed to extract
-the required information. This gem provides some extractors (e.g. extract 
+the required information. This gem provides some extractors (e.g. extract
 the information from an HTML attribute).
 
 Please always check the website's Terms of Service before if its allowed to

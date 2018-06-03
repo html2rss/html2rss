@@ -5,7 +5,7 @@ require 'yaml'
 
 module Html2rss
   def self.feed_from_yaml_config(file, name)
-    config = Config.new(YAML.load(File.open(file))['feeds'].freeze, name)
+    config = Config.new(YAML.load(File.open(file)).freeze, name)
     feed(config)
   end
 
