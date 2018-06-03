@@ -3,12 +3,24 @@ RSpec.describe Html2rss do
     expect(Html2rss::VERSION).not_to be nil
   end
 
-  describe '.feed' do
-    let(:config_file) { File.join(['spec', 'config.test.yml']) }
-    let(:name) { 'nuxt-releases' }
-    let(:yaml_config) { YAML.load(File.open(config_file)) }
-    let(:config) { Html2rss::Config.new(yaml_config, name) }
+  let(:config_file) { File.join(['spec', 'config.test.yml']) }
+  let(:name) { 'nuxt-releases' }
+  let(:yaml_config) { YAML.load(File.open(config_file)) }
+  let(:config) { Html2rss::Config.new(yaml_config, name) }
 
+  describe '.feed_from_yaml_config' do
+    subject {
+      VCR.use_cassette('nuxt-releases') {
+        Html2rss.feed_from_yaml_config(config_file, name)
+      }
+    }
+
+    it 'returns a RSS:Rss instance' do
+      expect(subject).to be_a_kind_of(RSS::Rss)
+    end
+  end
+
+  describe '.feed' do
     let(:feed_return) { VCR.use_cassette('nuxt-releases') { Html2rss.feed(config) } }
     let(:xml) { Nokogiri::XML(feed_return.to_s) }
 
