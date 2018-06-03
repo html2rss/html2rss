@@ -26,13 +26,20 @@ Or install it yourself as:
 
     $ gem install html2rss
 
-## Usage example with a YAML file
+## Usage
+
+## Usage with a YAML file
 
 Create a YAML config file. Find an example at `rspec/config.test.yml`.
 
 `Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')` returns
 
 an `RSS:Rss` object.
+
+## Usage in a web application
+
+Find a minimal Sintra app which exposes your feeds to HTTP endpoints here:
+[gildesmarais/html2rss-web](https://github.com/gildesmarais/html2rss-web)
 
 ## Development
 
