@@ -1,4 +1,7 @@
 require 'bundler/setup'
+require 'simplecov'
+SimpleCov.start
+
 require 'vcr'
 require 'html2rss'
 
