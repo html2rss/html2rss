@@ -30,7 +30,7 @@ Or install it yourself as:
 
 ## Usage with a YAML file
 
-Create a YAML config file. Find an example at `rspec/config.test.yml`.
+Create a YAML config file. Find an example at [`rspec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
 
 `Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')` returns
 
