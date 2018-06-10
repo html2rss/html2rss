@@ -1,9 +1,7 @@
-require 'sanitize'
-
 module Html2rss
   module ItemExtractor
     TEXT = proc { |xml, options| xml.css(options['selector'])&.text }
-    ATTRIBUTE = proc { |xml, options| xml.css(options['selector']).attr(options['attribute']) }
+    ATTRIBUTE = proc { |xml, options| xml.css(options['selector']).attr(options['attribute']).to_s }
 
     HREF = proc { |xml, options|
       uri = URI(options['channel']['url'])
@@ -11,15 +9,6 @@ module Html2rss
       uri
     }
 
-    HTML = proc { |xml, options|
-      html = xml.css(options['selector']).to_s
-
-      Sanitize.fragment(html, Sanitize::Config.merge(
-                                Sanitize::Config::RELAXED,
-                                add_attributes: {
-                                  'a' => { 'rel' => 'nofollow noopener noreferrer' }
-                                }
-      ))
-    }
+    HTML = proc { |xml, options| xml.css(options['selector']).to_s }
   end
 end

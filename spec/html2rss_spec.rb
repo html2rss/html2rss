@@ -93,7 +93,7 @@ RSpec.describe Html2rss do
         expect(subject.css('guid').text).to be_a(String)
       end
 
-      context 'description [HTML extractor]' do
+      context 'description' do
         let(:description) { subject.css('description').text }
         it 'has a description' do
           expect(description).to be_a(String)
