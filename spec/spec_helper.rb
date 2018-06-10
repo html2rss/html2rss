@@ -13,8 +13,8 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 
-  VCR.configure do |config|
-    config.cassette_library_dir = 'spec/fixtures/vcr_cassettes'
-    config.hook_into :faraday
+  VCR.configure do |vcr_config|
+    vcr_config.cassette_library_dir = 'spec/fixtures/vcr_cassettes'
+    vcr_config.hook_into :faraday
   end
 end

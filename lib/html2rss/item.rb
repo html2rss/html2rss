@@ -34,9 +34,9 @@ module Html2rss
     def self.from_url(url, config)
       connection = Faraday.new(url: url, headers: config.headers)
       page = Nokogiri::HTML(connection.get.body)
-      page.css(config.selector('items')).map { |xml_item|
+      page.css(config.selector('items')).map do |xml_item|
         new xml_item, config
-      }
+      end
     end
 
     private
