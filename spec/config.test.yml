@@ -15,6 +15,12 @@ feeds:
         selector: '.release'
       title:
         selector: '.release-title > a'
+        post_process:
+          name: 'template'
+          string: '%s (%s)'
+          methods:
+            - self
+            - author
       author:
         selector: '.avatar'
         extractor: 'attribute'
@@ -22,15 +28,18 @@ feeds:
       link:
         selector: '.release-title > a'
         extractor: 'href'
-        post_process: 'parse_uri'
+        post_process:
+          name: 'parse_uri'
       description:
         selector: '.markdown-body'
         extractor: 'html'
-        post_process: 'sanitize_html'
+        post_process:
+          name: 'sanitize_html'
       # categories:
       #   selector: '.Label'
       updated:
         selector: 'relative-time'
         extractor: 'attribute'
         attribute: 'datetime'
-        post_process: 'parse_time'
+        post_process:
+          name: 'parse_time'

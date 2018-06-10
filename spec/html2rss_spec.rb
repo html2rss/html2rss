@@ -73,8 +73,14 @@ RSpec.describe Html2rss do
     context 'rss items' do
       subject { xml.css('channel > item').first }
 
-      it 'has a title' do
-        expect(subject.css('title').text).to be_a(String)
+      context 'title' do
+        it 'is a String' do
+          expect(subject.css('title').text).to be_a(String)
+        end
+
+        it 'is formatted' do
+          expect(subject.css('title').text).to eq 'v1.4.0 (@Atinux)'
+        end
       end
 
       it 'has a link' do
