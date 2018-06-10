@@ -9,11 +9,11 @@ RSpec.describe Html2rss do
   let(:config) { Html2rss::Config.new(yaml_config, name) }
 
   describe '.feed_from_yaml_config' do
-    subject {
-      VCR.use_cassette('nuxt-releases') {
+    subject do
+      VCR.use_cassette('nuxt-releases') do
         Html2rss.feed_from_yaml_config(config_file, name)
-      }
-    }
+      end
+    end
 
     it 'returns a RSS:Rss instance' do
       expect(subject).to be_a_kind_of(RSS::Rss)
@@ -93,7 +93,7 @@ RSpec.describe Html2rss do
         expect(subject.css('guid').text).to be_a(String)
       end
 
-      context 'description [HTML extractor]' do
+      context 'description' do
         let(:description) { subject.css('description').text }
         it 'has a description' do
           expect(description).to be_a(String)
@@ -109,7 +109,10 @@ RSpec.describe Html2rss do
 
     context "item's guid" do
       it 'stays the same string for each run' do
-        first_guid = VCR.use_cassette('nuxt-releases-second-run') { Html2rss.feed(config) }.items.first.guid.content
+        first_guid = VCR.use_cassette('nuxt-releases-second-run') do
+          Html2rss.feed(config)
+        end.items.first.guid.content
+
         expect(feed_return.items.first.guid.content)
           .to be == first_guid
       end

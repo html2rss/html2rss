@@ -22,12 +22,15 @@ feeds:
       link:
         selector: '.release-title > a'
         extractor: 'href'
+        post_process: 'parse_uri'
       description:
         selector: '.markdown-body'
         extractor: 'html'
+        post_process: 'sanitize_html'
       # categories:
       #   selector: '.Label'
       updated:
         selector: 'relative-time'
         extractor: 'attribute'
         attribute: 'datetime'
+        post_process: 'parse_time'

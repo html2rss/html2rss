@@ -1,0 +1,46 @@
+AllCops:
+  TargetRubyVersion: 2.4
+  DisplayCopNames: true
+
+Metrics/LineLength:
+  Max: 110
+
+Metrics/BlockLength:
+  Exclude:
+    - "**/*_spec.rb"
+    - html2rss.gemspec
+
+Metrics/ModuleLength:
+  Exclude:
+    - "**/*_spec.rb"
+
+Documentation:
+  Enabled: false
+
+Style/BlockDelimiters:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
+
+Style/AsciiComments:
+  Enabled: false
+
+Style/BracesAroundHashParameters:
+  Description: 'Enforce braces style around hash parameters.'
+  Enabled: true
+
+Style/HashSyntax:
+  Description: >-
+                 Prefer Ruby 1.9 hash syntax { a: 1, b: 2 } over 1.8 syntax
+                 { :a => 1, :b => 2 }.
+  StyleGuide: 'https://github.com/bbatsov/ruby-style-guide#hash-literals'
+  Enabled: true
+
+Layout/SpaceInsideParens:
+  Description: 'No spaces after ( or before ).'
+  StyleGuide: 'https://github.com/bbatsov/ruby-style-guide#no-spaces-braces'
+  Enabled: true

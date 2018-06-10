@@ -2,6 +2,7 @@ require 'faraday'
 require 'open-uri'
 require 'nokogiri'
 require_relative 'item_extractor'
+require_relative 'attribute_post_processors'
 
 module Html2rss
   class Item
@@ -24,26 +25,26 @@ module Html2rss
       proc = ItemExtractor.const_get extractor.upcase.to_sym
       value = proc.call(xml, attribute_config)
 
-      post_process(method_name, value)
-    end
+      post_process_options = attribute_config.fetch('post_process', false)
+      value = post_process(value, post_process_options) if post_process_options
 
-    def post_process(method_name, value)
-      case method_name
-      when :link
-        URI(value)
-      when :updated
-        Time.parse(value).to_s
-      else
-        value
-      end
+      value
     end
 
     def self.from_url(url, config)
       connection = Faraday.new(url: url, headers: config.headers)
       page = Nokogiri::HTML(connection.get.body)
-      page.css(config.selector('items')).map { |xml_item|
+      page.css(config.selector('items')).map do |xml_item|
         new xml_item, config
-      }
+      end
+    end
+
+    private
+
+    def post_process(value, options)
+      Html2rss::AttributePostProcessors.get_processor(options)
+                                       .new(value, options, self)
+                                       .get
     end
   end
 end
