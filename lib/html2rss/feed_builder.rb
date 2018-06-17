@@ -35,7 +35,7 @@ module Html2rss
     end
 
     def add_item_to_items(feed_item, items)
-      raise 'item is invalid' unless feed_item.valid?
+      return unless feed_item.valid?
 
       items.new_item do |rss_item|
         feed_item.available_attributes.each do |attribute_name|
