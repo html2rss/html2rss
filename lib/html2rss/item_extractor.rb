@@ -17,5 +17,7 @@ module Html2rss
     }
 
     HTML = proc { |xml, options| xml.css(options['selector']).to_s }
+    STATIC = proc { |_xml, options| options['static'] }
+    CURRENT_TIME = proc { |_xml, _options| Time.new }
   end
 end
