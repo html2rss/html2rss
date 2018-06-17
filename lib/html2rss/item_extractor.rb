@@ -1,6 +1,6 @@
 module Html2rss
   module ItemExtractor
-    TEXT = proc { |xml, options| xml.css(options['selector'])&.text }
+    TEXT = proc { |xml, options| xml.css(options['selector'])&.text.strip }
     ATTRIBUTE = proc { |xml, options| xml.css(options['selector']).attr(options['attribute']).to_s }
 
     HREF = proc { |xml, options|
