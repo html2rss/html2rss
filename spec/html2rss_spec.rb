@@ -40,7 +40,7 @@ RSpec.describe Html2rss do
 
     context 'rss channel' do
       it 'sets a title' do
-        expect(subject.css('channel > title').text).to be_a(String)
+        expect(subject.css('channel > title').text).to eq 'Nuxt.js Github Releases'
       end
 
       it 'sets the link' do
@@ -54,7 +54,7 @@ RSpec.describe Html2rss do
       end
 
       it 'sets a description' do
-        expect(subject.css('channel > description').text).to be_a(String)
+        expect(subject.css('channel > description').text).to eq 'An example config.'
       end
 
       it 'sets a ttl' do
@@ -62,7 +62,7 @@ RSpec.describe Html2rss do
       end
 
       it 'sets a generator' do
-        expect(subject.css('channel > generator').text).to be_a(String)
+        expect(subject.css('channel > generator').text).to start_with('html2rss')
       end
 
       it 'has items' do
@@ -74,21 +74,17 @@ RSpec.describe Html2rss do
       subject { xml.css('channel > item').first }
 
       context 'title' do
-        it 'is a String' do
-          expect(subject.css('title').text).to be_a(String)
-        end
-
         it 'is formatted' do
           expect(subject.css('title').text).to eq 'v1.4.0 (@Atinux)'
         end
       end
 
       it 'has a link' do
-        expect(subject.css('link').text).to be_a(String)
+        expect(subject.css('link').text).to start_with('https')
       end
 
       it 'has an author' do
-        expect(subject.css('author').text).to be_a(String)
+        expect(subject.css('author').text).to eq '@Atinux'
       end
 
       it 'has a pubDate' do
