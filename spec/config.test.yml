@@ -35,8 +35,6 @@ feeds:
         extractor: 'html'
         post_process:
           name: 'sanitize_html'
-      # categories:
-      #   selector: '.Label'
       updated:
         selector: 'relative-time'
         extractor: 'attribute'

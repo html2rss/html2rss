@@ -41,6 +41,11 @@ an `RSS:Rss` object.
 Find a minimal Sintra app which exposes your feeds to HTTP endpoints here:
 [gildesmarais/html2rss-web](https://github.com/gildesmarais/html2rss-web)
 
+### Tips and tricks
+
+- Check that the channel url does not redirect to a mobile page
+- fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems quite efficient
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
