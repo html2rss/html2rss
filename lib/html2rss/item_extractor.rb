@@ -4,8 +4,15 @@ module Html2rss
     ATTRIBUTE = proc { |xml, options| xml.css(options['selector']).attr(options['attribute']).to_s }
 
     HREF = proc { |xml, options|
-      uri = URI(options['channel']['url'])
-      uri.path = xml.css(options['selector']).attr('href')
+      href = xml.css(options['selector']).attr('href').to_s
+
+      if href.start_with?('http')
+        uri = URI(href)
+      else
+        uri = URI(options['channel']['url'])
+        uri.path = href
+      end
+
       uri
     }
 
