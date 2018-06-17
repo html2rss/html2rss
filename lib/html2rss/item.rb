@@ -31,6 +31,16 @@ module Html2rss
       value
     end
 
+    def available_attributes
+      # category enclosure pubDate source
+      @available_attributes ||= (%w(title link description author comments) & @config.attribute_names)
+    end
+
+    def valid?
+      return false if [title.to_s, description.to_s].join('') == ''
+      true
+    end
+
     def self.from_url(url, config)
       connection = Faraday.new(url: url, headers: config.headers)
       page = Nokogiri::HTML(connection.get.body)

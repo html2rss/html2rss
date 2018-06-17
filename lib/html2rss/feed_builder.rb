@@ -31,12 +31,14 @@ module Html2rss
     end
 
     def feed_items
-      Item.from_url config.url, config
+      @feed_items ||= Item.from_url config.url, config
     end
 
     def add_item_to_items(feed_item, items)
+      raise 'item is invalid' unless feed_item.valid?
+
       items.new_item do |rss_item|
-        config.attribute_names.each do |attribute_name|
+        feed_item.available_attributes.each do |attribute_name|
           rss_item.send("#{attribute_name}=".to_sym, feed_item.send(attribute_name))
 
           rss_item.guid.content = Digest::SHA1.hexdigest(feed_item.title)
