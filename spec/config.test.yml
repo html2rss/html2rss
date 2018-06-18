@@ -26,6 +26,9 @@ feeds:
         selector: '.avatar'
         extractor: 'attribute'
         attribute: 'alt'
+        post_process:
+          name: substring
+          start: 1
       link:
         selector: '.release-title > a'
         extractor: 'href'
