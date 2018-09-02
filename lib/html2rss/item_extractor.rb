@@ -5,12 +5,14 @@ module Html2rss
 
     HREF = proc { |xml, options|
       href = xml.css(options['selector']).attr('href').to_s
+      path, query = href.split('?')
 
       if href.start_with?('http')
         uri = URI(href)
       else
         uri = URI(options['channel']['url'])
-        uri.path = href
+        uri.path = path
+        uri.query = query
       end
 
       uri
