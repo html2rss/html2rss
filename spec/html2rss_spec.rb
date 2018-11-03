@@ -75,7 +75,7 @@ RSpec.describe Html2rss do
 
       context 'title' do
         it 'is formatted' do
-          expect(subject.css('title').text).to eq 'v1.4.0 (Atinux)'
+          expect(subject.css('title').text).to eq 'v1.4.4 (Atinux)'
         end
       end
 

@@ -15,7 +15,7 @@ feeds:
       items:
         selector: '.release'
       title:
-        selector: '.release-title > a'
+        selector: '.release-header .text-normal a'
         post_process:
           name: 'template'
           string: '%s (%s)'
@@ -30,7 +30,7 @@ feeds:
           name: substring
           start: 1
       link:
-        selector: '.release-title > a'
+        selector: '.release-header a'
         extractor: 'href'
         post_process:
           name: 'parse_uri'
