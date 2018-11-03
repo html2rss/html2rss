@@ -11,9 +11,12 @@ module Html2rss
         Sanitize.fragment(@value, Sanitize::Config.merge(
                                     Sanitize::Config::RELAXED,
                                     add_attributes: {
-                                      'a' => { 'rel' => 'nofollow noopener noreferrer' }
+                                      'a' => {
+                                        'rel' => 'nofollow noopener noreferrer',
+                                        'target' => '_blank'
+                                      }
                                     }
-        ))
+                                  ))
       end
     end
   end
