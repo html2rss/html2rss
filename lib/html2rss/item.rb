@@ -33,11 +33,12 @@ module Html2rss
 
     def available_attributes
       # category enclosure pubDate source
-      @available_attributes ||= (%w(title link description author comments) & @config.attribute_names)
+      @available_attributes ||= (%w[title link description author comments] & @config.attribute_names)
     end
 
     def valid?
       return false if [title.to_s, description.to_s].join('') == ''
+
       true
     end
 

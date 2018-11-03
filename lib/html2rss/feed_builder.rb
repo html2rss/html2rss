@@ -22,7 +22,7 @@ module Html2rss
     private
 
     def add_channel_to_maker(maker)
-      [:language, :author, :title, :description, :link, :ttl].each do |attribute_name|
+      %i[language author title description link ttl].each do |attribute_name|
         maker.channel.send("#{attribute_name}=".to_sym, config.send(attribute_name))
       end
 
