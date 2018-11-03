@@ -18,7 +18,7 @@ GEM
     json (2.1.0)
     mini_portile2 (2.3.0)
     multipart-post (2.0.0)
-    nokogiri (1.8.2)
+    nokogiri (1.8.5)
       mini_portile2 (~> 2.3.0)
     nokogumbo (1.5.0)
       nokogiri
@@ -58,4 +58,4 @@ DEPENDENCIES
   vcr (~> 4.0)
 
 BUNDLED WITH
-   1.16.2
+   1.16.6
