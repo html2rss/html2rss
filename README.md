@@ -1,4 +1,4 @@
-# Html2rss
+# html2rss
 
 [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 
