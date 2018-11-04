@@ -4,6 +4,7 @@
 
 _Generate RSS feeds by scraping websites by providing a config._
 
+## 0.1.0 ( Sun Nov 04 2018 )
 
 
 ## Bugfixes
@@ -11,6 +12,8 @@ _Generate RSS feeds by scraping websites by providing a config._
   ([ace289e9](git@github.com:gildesmarais/html2rss/commit/ace289e911b69cb92433cac6f1ca0403715d8286))
   - only set supported attributes on rss item
   ([dae0d8e7](git@github.com:gildesmarais/html2rss/commit/dae0d8e75541e810275e789a23971a61e60a2154))
+  - gem's version and readme-typos
+  ([eab39d98](git@github.com:gildesmarais/html2rss/commit/eab39d981efda19d4ed66d7427d240b083eb2ae4))
 
   - **config**
     - feed generation fails
@@ -30,6 +33,10 @@ _Generate RSS feeds by scraping websites by providing a config._
   ([e1bedaec](git@github.com:gildesmarais/html2rss/commit/e1bedaecc91e874fe24e96000612abb9cd11e9fe))
   - do not fail on invalid item, just skip it
   ([3b83d715](git@github.com:gildesmarais/html2rss/commit/3b83d715619abbc33b124de1945d17cb0dc7edb0))
+
+  - **html2rss**
+    - add initial version of the html2rss gem
+  ([219cac84](git@github.com:gildesmarais/html2rss/commit/219cac849460eae3262108d886c60b9b08385a3d))
 
   - **item_extractor**
     - text strips strings
@@ -78,11 +85,15 @@ _Generate RSS feeds by scraping websites by providing a config._
 ## Test
   - don't be so lazy when matching strings
   ([6a0eb627](git@github.com:gildesmarais/html2rss/commit/6a0eb62765523a1405fd269466b2fc57794eac7a))
+  - add spec for Html2rss.feed_from_yaml_config
+  ([cf4ce7d8](git@github.com:gildesmarais/html2rss/commit/cf4ce7d877c2bbbe5ebbc5012dbba7603e8ca82e))
 
 
 
 
 ## Chore
+  - release 0.1.0
+  ([0bf614f6](git@github.com:gildesmarais/html2rss/commit/0bf614f6b97ed2d7e2b8b0bbd77752db0778e9cf))
   - upgrade sanitze gem to version 5.0.0
   ([8c4bf3a4](git@github.com:gildesmarais/html2rss/commit/8c4bf3a44885758e395568ec452a7cffdb9a0389))
   - rubocop autocorrect
@@ -95,10 +106,20 @@ _Generate RSS feeds by scraping websites by providing a config._
   ([46e5a283](git@github.com:gildesmarais/html2rss/commit/46e5a2832d1f2fe1353dcc2a8d82a9786f15f6bd))
   - add simplecov
   ([b4e1144b](git@github.com:gildesmarais/html2rss/commit/b4e1144b7f8f90126e528cc4a4ec048113d93634))
+  - allow pushing to rubygems.org
+  ([7af804fd](git@github.com:gildesmarais/html2rss/commit/7af804fd9fbc4f0d39ffb28b05c274552cec7f34))
 
   - **changelog**
     - add generation with git-changelog
   ([07ad5a51](git@github.com:gildesmarais/html2rss/commit/07ad5a513f0951ee988426abda4b8c233411ead7))
+
+  - **ci**
+    - add travis
+  ([5467d841](git@github.com:gildesmarais/html2rss/commit/5467d8414eb8a07dfb302ab40cf211d65bb0032c))
+
+  - **dependencies**
+    - do not use open-ended version of byebug
+  ([fa850aec](git@github.com:gildesmarais/html2rss/commit/fa850aecb7f80b0bf6fccb43256c3d0057c42c25))
 
   - **travis**
     - use cache for bundler
