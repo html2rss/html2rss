@@ -1,8 +1,6 @@
 ![html2rss logo](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)
 
-# html2rss
-
-[![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
+# html2rss [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 
 Request and convert an HTML document to an RSS feed via a config object.
 The config contains the URL to scrape and the selectors needed to extract
@@ -55,6 +53,11 @@ After checking out the repo, run `bin/setup` to install dependencies. Then, run 
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/gildesmarais/html2rss.
+
+## Changelog generation
+
+The `CHANGELOG.md` can be generated automatically.
+Install [git-changelog](https://www.npmjs.com/package/git-changelog) globally and run `git-changelog` afterwards.
 
 ## License
 

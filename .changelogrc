@@ -1,0 +1,19 @@
+{
+  "app_name": "html2rss",
+  "logo": "https://github.com/gildesmarais/html2rss/raw/master/support/logo.png",
+  "intro": "Generate RSS feeds by scraping websites by providing a config.",
+  "debug": "true",
+  "template": "support/changelog.md",
+  "sections": [
+    { "title": "Bugfixes",             "grep": "^fix" },
+    { "title": "Features",             "grep": "^feat" },
+    { "title": "Documentation",        "grep": "^docs" },
+    { "title": "Breaking changes",     "grep": "BREAKING" },
+    { "title": "Refactorings",         "grep": "^refactor" },
+    { "title": "Code style",           "grep": "^style" },
+    { "title": "Test",                 "grep": "^spec" },
+    { "title": "Chore",                "grep": "^chore" },
+    { "title": "Branches merged",      "grep": "^Merge branch" },
+    { "title": "Pull requests merged", "grep": "^Merge pull request" }
+  ]
+}
