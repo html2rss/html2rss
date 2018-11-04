@@ -4,7 +4,8 @@ language: ruby
 before_install:
   - gem update --system
   - gem install bundler
-bundler_args: --jobs=3 --retry=3
+
+bundler_args: "--jobs=3 --retry=3"
 
 rvm:
   - 2.3.8
@@ -13,3 +14,10 @@ rvm:
 
 script:
   - bundle exec rspec
+
+deploy:
+  provider: rubygems
+  api_key:
+    secure: bM3Yl8iWdB1Amra3Bm6bIH/mTwHcRhZrX8etFFbJANxIbkhzUOyTKcDMYiWUVM/mBzzv0NOuRejrDR6R0v7E2udrKcLQFCBtv7HqPAXIlkEEyxZy+M1kTqcPzP872E+ZKTn93vCzbiXBLYoMmqgCzqvcO87IBYNzTURHkfFjaYJJdVyZ5EVtbpXf4FhBvuQf9LTk/ocClgwYeuqd+45lO7qHoPatsvbY0vCOfKaiwkdOkBt+hjc56awcYSc9CXn0DCatebPQmQmdrqFd8fKgyCatWS3n+8TPmvzVfNJe44wg3oNfHbWruP85I2LE9ei1iG+iGQIF60fMhGgMJ4EM3REXDE5Mg+GA5uJcgH9Poirut3Ih65jtAzYNGohlmEmc7ysKc0dmG1O3ndwrHjh5KePrOAGDaW6QKG+m5ebIZ+mgrEA+ZVU1mjDM8FlbSKAayoPloslZdllSv7miwGzh6xrHWGQSCURZAkygFh+Kd+Kg1eVlEs+n6aObod82mEOfBPvWPacOrE2fY4B0ocFOKotZBCZSD0ZIixlyslRTnmcJfpRNlYLsQ56oy5uPNUccPQ86NSmmE+qbRdPCLQCKLPm2iYBgOa5iQrfHR/fUgcO0skAZiW4o9QflDgIFS/G+BE6FMHIvjkKA6Ae4KbqGzlF5pGFdo6p4MhlvubwjsVI=
+  on:
+    tags: true
