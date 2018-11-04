@@ -61,6 +61,8 @@ _Generate RSS feeds by scraping websites by providing a config._
 
 
 ## Documentation
+  - create the changelog
+  ([5c561db5](git@github.com:gildesmarais/html2rss/commit/5c561db51d4e0b8592b1c82812ab5cdbe9320b70))
   - add tips and tricks
   ([ea978240](git@github.com:gildesmarais/html2rss/commit/ea9782408107f3637a4c9665396f511fc07be19b))
   - update readme
