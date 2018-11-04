@@ -42,14 +42,14 @@ RSpec.describe Html2rss do
         expect(xml.css('channel > title').text).to eq 'Nuxt.js Github Releases'
       end
 
-      it 'sets the link' do
-        expect(xml.css('channel > link').text).to be_a(String)
-      end
+      describe 'channel.link' do
+        it 'sets it to the feed-configs channel url' do
+          expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
+        end
 
-      it 'sets a URI::HTTP parsable link' do
-        expect(
-          URI(xml.css('channel > link').text)
-        ).to be_a(URI::HTTP)
+        it 'is parseable by URI::HTTP' do
+          expect(URI(xml.css('channel > link').text)).to be_a(URI::HTTP)
+        end
       end
 
       it 'sets a description' do

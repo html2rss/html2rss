@@ -30,7 +30,7 @@ feeds:
           name: substring
           start: 1
       link:
-        selector: '.release-header a'
+        selector: '.release-header .text-normal a'
         extractor: 'href'
         post_process:
           name: 'parse_uri'
