@@ -1,3 +1,5 @@
+![html2rss logo](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)
+
 # html2rss
 
 [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
