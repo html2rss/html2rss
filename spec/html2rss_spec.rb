@@ -84,12 +84,19 @@ RSpec.describe Html2rss do
         expect(item.css('author').text).to eq 'Atinux'
       end
 
-      it 'has a pubDate' do
-        expect(item.css('pubDate').text).to be_a(String)
-      end
-
       it 'has a guid' do
         expect(item.css('guid').text).to be_a(String)
+      end
+
+      describe 'item.pubDate' do
+        it 'has a pubDate' do
+          expect(item.css('pubDate').text).not_to eq ''
+        end
+
+        it 'is in rfc822 format' do
+          pub_date = item.css('pubDate').text
+          expect(Time.parse(pub_date).rfc822.to_s).to eq pub_date
+        end
       end
 
       describe 'item.description' do

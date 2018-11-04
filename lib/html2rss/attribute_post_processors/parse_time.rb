@@ -6,7 +6,7 @@ module Html2rss
       end
 
       def get
-        Time.parse(@value).rfc822.to_s
+        Time.parse(@value).rfc822
       end
     end
   end
