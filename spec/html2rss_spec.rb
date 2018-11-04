@@ -60,8 +60,16 @@ RSpec.describe Html2rss do
         expect(xml.css('channel > ttl').text.to_i).to be > 0
       end
 
-      it 'sets a generator' do
-        expect(xml.css('channel > generator').text).to start_with('html2rss')
+      describe '.generator' do
+        subject(:generator) { xml.css('channel > generator').text }
+
+        it 'stars with html2rss' do
+          expect(generator).to start_with('html2rss')
+        end
+
+        it 'includes the version number' do
+          expect(generator).to include(Html2rss::VERSION)
+        end
       end
 
       it 'has items' do
@@ -77,7 +85,7 @@ RSpec.describe Html2rss do
       end
 
       it 'has a link' do
-        expect(item.css('link').text).to start_with('https')
+        expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v1.4.4'
       end
 
       it 'has an author' do
@@ -118,16 +126,16 @@ RSpec.describe Html2rss do
           end
         end
       end
-    end
 
-    describe 'item.guid' do
-      it 'stays the same string for each run' do
-        first_guid = VCR.use_cassette('nuxt-releases-second-run') do
-          described_class.feed(config)
-        end.items.first.guid.content
+      describe 'item.guid' do
+        it 'stays the same string for each run' do
+          first_guid = VCR.use_cassette('nuxt-releases-second-run') do
+            described_class.feed(config)
+          end.items.first.guid.content
 
-        expect(feed_return.items.first.guid.content)
-          .to be == first_guid
+          expect(feed_return.items.first.guid.content)
+            .to be == first_guid
+        end
       end
     end
   end
