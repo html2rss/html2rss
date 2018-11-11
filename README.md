@@ -56,8 +56,7 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/gildes
 
 ## Changelog generation
 
-The `CHANGELOG.md` can be generated automatically.
-Install [git-changelog](https://www.npmjs.com/package/git-changelog) globally and run `git-changelog` afterwards.
+The `CHANGELOG.md` can be generated automatically with [`standard-changelog`](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/standard-changelog).
 
 ## License
 
