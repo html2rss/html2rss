@@ -41,6 +41,10 @@ module Html2rss
       feed_config.dig('selectors').fetch(name, {}).merge('channel' => channel_config)
     end
 
+    def categories
+      feed_config.dig('selectors').fetch('categories', [])
+    end
+
     def selector(name)
       feed_config.dig('selectors', name, 'selector')
     end

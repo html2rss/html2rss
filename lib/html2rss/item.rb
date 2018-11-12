@@ -32,14 +32,19 @@ module Html2rss
     end
 
     def available_attributes
-      # TODO: support optional attributes, e.g. category, enclosure, source
-      @available_attributes ||= (%w[title link description author comments updated] & @config.attribute_names)
+      # TODO: support optional attributes, e.g. enclosure, source
+      @available_attributes ||= (%w[title link description author comments updated] &
+        @config.attribute_names) - ['categories']
     end
 
     def valid?
       return false if [title.to_s, description.to_s].join('') == ''
 
       true
+    end
+
+    def categories
+      config.categories.map(&method(:method_missing)).uniq.keep_if { |category| category.to_s != '' }
     end
 
     def self.from_url(url, config)
