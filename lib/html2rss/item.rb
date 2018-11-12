@@ -32,7 +32,6 @@ module Html2rss
     end
 
     def available_attributes
-      # TODO: support optional attributes, e.g. enclosure, source
       @available_attributes ||= (%w[title link description author comments updated] &
         @config.attribute_names) - ['categories']
     end
