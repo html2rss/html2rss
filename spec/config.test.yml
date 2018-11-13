@@ -45,3 +45,5 @@ feeds:
         attribute: 'datetime'
         post_process:
           name: 'parse_time'
+      categories:
+        - author

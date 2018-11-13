@@ -40,9 +40,13 @@ module Html2rss
       items.new_item do |rss_item|
         feed_item.available_attributes.each do |attribute_name|
           rss_item.send("#{attribute_name}=".to_sym, feed_item.send(attribute_name))
-
-          rss_item.guid.content = Digest::SHA1.hexdigest(feed_item.title)
         end
+
+        feed_item.categories.each do |category|
+          rss_item.categories.new_category.content = category
+        end
+
+        rss_item.guid.content = Digest::SHA1.hexdigest(feed_item.title)
       end
     end
   end
