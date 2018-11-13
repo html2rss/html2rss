@@ -107,6 +107,14 @@ RSpec.describe Html2rss do
         end
       end
 
+      describe 'item.category' do
+        subject(:categories) { item.css('category').map(&:text) }
+
+        it 'sets the author as category' do
+          expect(categories).to include 'Atinux'
+        end
+      end
+
       describe 'item.description' do
         let(:description) { item.css('description').text }
 
