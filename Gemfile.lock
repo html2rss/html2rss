@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html2rss (0.1.0)
+    html2rss (0.2.0)
       faraday (~> 0.15)
       nokogiri (~> 1.8)
       sanitize (~> 5.0)

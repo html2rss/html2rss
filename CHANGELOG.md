@@ -1,3 +1,12 @@
+# [0.2.0](https://github.com/gildesmarais/html2rss/compare/v0.1.0...v0.2.0) (2018-11-13)
+
+
+### Features
+
+* **category:** support item categories ([#10](https://github.com/gildesmarais/html2rss/issues/10)) ([4572bcb](https://github.com/gildesmarais/html2rss/commit/4572bcb)), closes [#2](https://github.com/gildesmarais/html2rss/issues/2)
+
+
+
 # [0.1.0](https://github.com/gildesmarais/html2rss/compare/v0.0.1...v0.1.0) (2018-11-04)
 
 
