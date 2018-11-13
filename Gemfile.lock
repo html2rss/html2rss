@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html2rss (0.0.1)
+    html2rss (0.1.0)
       faraday (~> 0.15)
       nokogiri (~> 1.8)
       sanitize (~> 5.0)
@@ -20,7 +20,7 @@ GEM
     multipart-post (2.0.0)
     nokogiri (1.8.5)
       mini_portile2 (~> 2.3.0)
-    nokogumbo (2.0.0)
+    nokogumbo (2.0.1)
       nokogiri (~> 1.8, >= 1.8.4)
     rspec (3.8.0)
       rspec-core (~> 3.8.0)
