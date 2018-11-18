@@ -144,6 +144,10 @@ RSpec.describe Html2rss do
           expect(feed_return.items.first.guid.content)
             .to be == first_guid
         end
+
+        it 'sets isPermaLink attribute to false' do
+          expect(feed_return.items.first.guid.isPermaLink).to be false
+        end
       end
     end
   end

@@ -47,6 +47,7 @@ module Html2rss
         end
 
         rss_item.guid.content = Digest::SHA1.hexdigest(feed_item.title)
+        rss_item.guid.isPermaLink = false
       end
     end
   end
