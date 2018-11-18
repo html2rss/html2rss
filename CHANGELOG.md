@@ -1,3 +1,12 @@
+# [0.2.1](https://github.com/gildesmarais/html2rss/compare/v0.2.0...v0.2.1) (2018-11-18)
+
+
+### Bug Fixes
+
+* generates invalid feeds ([00309e7](https://github.com/gildesmarais/html2rss/commit/00309e7))
+
+
+
 # [0.2.0](https://github.com/gildesmarais/html2rss/compare/v0.1.0...v0.2.0) (2018-11-13)
 
 
