@@ -1,4 +1,5 @@
 require 'faraday'
+require 'faraday_middleware'
 require 'open-uri'
 require 'nokogiri'
 require_relative 'item_extractor'
@@ -47,7 +48,11 @@ module Html2rss
     end
 
     def self.from_url(url, config)
-      connection = Faraday.new(url: url, headers: config.headers)
+      connection = Faraday.new(url: url, headers: config.headers) { |faraday|
+        faraday.use FaradayMiddleware::FollowRedirects
+        faraday.adapter Faraday.default_adapter
+      }
+
       page = Nokogiri::HTML(connection.get.body)
       page.css(config.selector('items')).map do |xml_item|
         new xml_item, config
