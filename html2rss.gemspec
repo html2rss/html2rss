@@ -29,6 +29,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'faraday', '~> 0.15'
+  spec.add_dependency 'faraday_middleware', '~> 0.13'
   spec.add_dependency 'nokogiri', '>= 1.10'
   spec.add_dependency 'sanitize', '~> 5.0'
   spec.add_development_dependency 'bundler', '~> 1.16'

@@ -81,15 +81,15 @@ RSpec.describe Html2rss do
       subject(:item) { xml.css('channel > item').first }
 
       it 'formats item.title' do
-        expect(item.css('title').text).to eq 'v1.4.4 (Atinux)'
+        expect(item.css('title').text).to eq 'v2.4.2 (manniL)'
       end
 
       it 'has a link' do
-        expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v1.4.4'
+        expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v2.4.2'
       end
 
       it 'has an author' do
-        expect(item.css('author').text).to eq 'Atinux'
+        expect(item.css('author').text).to eq 'manniL'
       end
 
       it 'has a guid' do
@@ -111,7 +111,7 @@ RSpec.describe Html2rss do
         subject(:categories) { item.css('category').map(&:text) }
 
         it 'sets the author as category' do
-          expect(categories).to include 'Atinux'
+          expect(categories).to include 'manniL'
         end
       end
 
