@@ -11,7 +11,7 @@ module Html2rss
         uri = URI(href)
       else
         uri = URI(options['channel']['url'])
-        uri.path = path.start_with?('/') ? path : "/#{path}"
+        uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
         uri.query = query
       end
 
