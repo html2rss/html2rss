@@ -1,6 +1,6 @@
 ![html2rss logo](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)
 
-# html2rss [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
+# html2rss [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss) [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](https://badge.fury.io/rb/html2rss)
 
 Request and convert an HTML document to an RSS feed via a config object.
 The config contains the URL to scrape and the selectors needed to extract
