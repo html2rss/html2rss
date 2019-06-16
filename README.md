@@ -2,33 +2,22 @@
 
 # html2rss [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss) [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](https://badge.fury.io/rb/html2rss)
 
-Request and convert an HTML document to an RSS feed via a config object.
-The config contains the URL to scrape and the selectors needed to extract
-the required information. This gem provides some extractors (e.g. extract
-the information from an HTML attribute).
+Request HTML from an URL and transform it to a Ruby RSS object.
 
-Please always check the website's Terms of Service before if its allowed to
-scrape their content!
+**Are you searching for a ready to use "website to RSS" solution?**
+[Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
+
+Each website needs a html2rss config which contains the URL to scrape and
+CSS selectors to extract the required information (like title, URL, ...).
+This gem provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractor.rb) (e.g. extract the information from an HTML attribute)
+and [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information retrieval even easier.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add this line to your application's Gemfile: `gem 'html2rss'`
+And then execute: `bundle`
 
-```ruby
-gem 'html2rss'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install html2rss
-
-## Usage
-
-## Usage with a YAML file
+## Usage with a YAML config file
 
 Create a YAML config file. Find an example at [`rspec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
 
@@ -36,15 +25,7 @@ Create a YAML config file. Find an example at [`rspec/config.test.yml`](https://
 
 an `RSS:Rss` object.
 
-## Usage in a web application
-
-Find a minimal Sintra app which exposes your feeds to HTTP endpoints here:
-[gildesmarais/html2rss-web](https://github.com/gildesmarais/html2rss-web)
-
-### Tips and tricks
-
-- Check that the channel url does not redirect to a mobile page
-- fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems quite efficient
+**Too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
 
 ## Development
 
@@ -54,10 +35,15 @@ After checking out the repo, run `bin/setup` to install dependencies. Then, run 
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/gildesmarais/html2rss.
 
-## Changelog generation
+## Releasing a new version
+
+1. increase version in `lib/version.rb`
+2. `bundle`
+3. commit the changes
+4. `git tag v....`
+5. `git push; git push --tags`
+6. update the changelog, commit and push
+
+### Changelog generation
 
 The `CHANGELOG.md` can be generated automatically with [`standard-changelog`](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/standard-changelog).
-
-## License
-
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
