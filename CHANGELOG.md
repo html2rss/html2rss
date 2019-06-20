@@ -1,3 +1,17 @@
+# [](https://github.com/gildesmarais/html2rss/compare/v0.3.0...v) (2019-06-20)
+
+
+
+# [0.3.0](https://github.com/gildesmarais/html2rss/compare/v0.2.2...v0.3.0) (2019-06-20)
+
+
+### Features
+
+* add rubocop and update development deps ([#13](https://github.com/gildesmarais/html2rss/issues/13)) ([6e06329](https://github.com/gildesmarais/html2rss/commit/6e06329))
+* change Config constructor arguments ([#14](https://github.com/gildesmarais/html2rss/issues/14)) ([21f8746](https://github.com/gildesmarais/html2rss/commit/21f8746))
+
+
+
 # [0.2.1](https://github.com/gildesmarais/html2rss/compare/v0.2.0...v0.2.1) (2018-11-18)
 
 
