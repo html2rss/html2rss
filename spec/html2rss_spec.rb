@@ -1,8 +1,10 @@
 RSpec.describe Html2rss do
-  let(:config) { Html2rss::Config.new(yaml_config, name) }
-  let(:name) { 'nuxt-releases' }
   let(:config_file) { File.join(['spec', 'config.test.yml']) }
   let(:yaml_config) { YAML.safe_load(File.open(config_file)) }
+  let(:name) { 'nuxt-releases' }
+  let(:feed_config) { yaml_config['feeds'][name] }
+  let(:global_config) { yaml_config.reject { |k| k == 'feeds' } }
+  let(:config) { Html2rss::Config.new(feed_config, global_config) }
 
   it 'has a version number' do
     expect(Html2rss::VERSION).not_to be nil
