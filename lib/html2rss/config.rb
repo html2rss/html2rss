@@ -1,11 +1,11 @@
 module Html2rss
   class Config
-    attr_reader :feed_config, :channel_config
+    attr_reader :feed_config, :channel_config, :global_config
 
-    def initialize(config, name)
-      @config = config
-      @feed_config = @config['feeds'][name.to_s]
-      @channel_config = @feed_config['channel']
+    def initialize(feed_config, global_config = {})
+      @global_config = global_config
+      @feed_config = feed_config
+      @channel_config = feed_config.fetch('channel', {})
     end
 
     def author
@@ -34,7 +34,7 @@ module Html2rss
     alias link url
 
     def headers
-      @config.fetch('headers', {})
+      global_config.fetch('headers', {})
     end
 
     def options(name)

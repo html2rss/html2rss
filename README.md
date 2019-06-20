@@ -2,12 +2,12 @@
 
 # html2rss [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss) [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](https://badge.fury.io/rb/html2rss)
 
-Request HTML from an URL and transform it to a Ruby RSS object.
+Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 
 **Are you searching for a ready to use "website to RSS" solution?**
 [Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
 
-Each website needs a html2rss config which contains the URL to scrape and
+Each website needs a feed config which contains the URL to scrape and
 CSS selectors to extract the required information (like title, URL, ...).
 This gem provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractor.rb) (e.g. extract the information from an HTML attribute)
 and [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information retrieval even easier.
