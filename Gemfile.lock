@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html2rss (0.2.2)
+    html2rss (0.3.0)
       faraday (~> 0.15)
       faraday_middleware (~> 0.13)
       nokogiri (>= 1.10)
