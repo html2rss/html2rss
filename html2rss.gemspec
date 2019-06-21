@@ -8,9 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Gil Desmarais']
   spec.email         = ['html2rss@desmarais.de']
 
-  spec.summary       = 'Generate RSS feeds by scraping websites by providing a config.'
-  spec.description   = 'Create your config object, include the url to scrape,
-                        some selectors and get a RSS2 feed in return.'
+  spec.summary       = 'Returns an RSS::Rss object by scraping a URL.'
+  spec.description   = 'Give the URL to scrape and some CSS selectors. Get a RSS::Rss instance in return.'
   spec.homepage      = 'https://github.com/gildesmarais/html2rss'
   spec.license       = 'MIT'
 
@@ -30,7 +29,8 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'faraday', '~> 0.15'
   spec.add_dependency 'faraday_middleware', '~> 0.13'
-  spec.add_dependency 'nokogiri', '>= 1.10'
+  spec.add_dependency 'hashie', '~> 3.6'
+  spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
   spec.add_dependency 'sanitize', '~> 5.0'
   spec.add_development_dependency 'bundler', '~> 1.16'
   spec.add_development_dependency 'byebug'
