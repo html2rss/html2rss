@@ -38,9 +38,7 @@ module Html2rss
     end
 
     def valid?
-      return false if [title.to_s, description.to_s].join('') == ''
-
-      true
+      [title.to_s, description.to_s].join('') != ''
     end
 
     def categories

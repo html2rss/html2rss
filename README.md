@@ -17,6 +17,19 @@ and [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/h
 Add this line to your application's Gemfile: `gem 'html2rss'`
 And then execute: `bundle`
 
+```ruby
+rss = Html2rss.feed(
+  channel: { name: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com' },
+  selectors: {
+    items: { selector: '#hot-network-questions > ul > li' },
+    title: { selector: 'a' },
+    link: { selector: 'a', extractor: 'href' }
+  }
+)
+
+puts rss.to_s
+```
+
 ## Usage with a YAML config file
 
 Create a YAML config file. Find an example at [`rspec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).

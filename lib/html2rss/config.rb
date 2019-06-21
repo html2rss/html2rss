@@ -1,11 +1,18 @@
+require 'hashie'
+
 module Html2rss
   class Config
     attr_reader :feed_config, :channel_config, :global_config
 
+    class IndifferentAccessHash < Hash
+      include Hashie::Extensions::MergeInitializer
+      include Hashie::Extensions::IndifferentAccess
+    end
+
     def initialize(feed_config, global_config = {})
-      @global_config = global_config
-      @feed_config = feed_config
-      @channel_config = feed_config.fetch('channel', {})
+      @global_config = IndifferentAccessHash.new global_config
+      @feed_config = IndifferentAccessHash.new feed_config
+      @channel_config = IndifferentAccessHash.new @feed_config.fetch('channel', {})
     end
 
     def author
@@ -13,7 +20,7 @@ module Html2rss
     end
 
     def ttl
-      (channel_config.fetch 'ttl').to_i || nil
+      channel_config.fetch 'ttl', 3600
     end
 
     def title
