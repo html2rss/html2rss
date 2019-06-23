@@ -1,5 +1,10 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.3.0...v) (2019-06-20)
+# [0.3.1](https://github.com/gildesmarais/html2rss/compare/v0.3.0...v0.3.1) (2019-06-23)
 
+
+### Features
+
+* handle string and symbol keys in config hashes ([#15](https://github.com/gildesmarais/html2rss/issues/15)) ([93ad824](https://github.com/gildesmarais/html2rss/commit/93ad824))
+* support attributes without selector, fallback to root element then ([#16](https://github.com/gildesmarais/html2rss/issues/16)) ([d99ae3d](https://github.com/gildesmarais/html2rss/commit/d99ae3d))
 
 
 # [0.3.0](https://github.com/gildesmarais/html2rss/compare/v0.2.2...v0.3.0) (2019-06-20)
