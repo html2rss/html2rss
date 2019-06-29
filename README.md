@@ -19,7 +19,7 @@ And then execute: `bundle`
 
 ```ruby
 rss = Html2rss.feed(
-  channel: { name: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com' },
+  channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
   selectors: {
     items: { selector: '#hot-network-questions > ul > li' },
     title: { selector: 'a' },
