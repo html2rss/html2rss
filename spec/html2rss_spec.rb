@@ -83,7 +83,7 @@ RSpec.describe Html2rss do
       subject(:item) { xml.css('channel > item').first }
 
       it 'formats item.title' do
-        expect(item.css('title').text).to eq 'v2.4.2 (manniL)'
+        expect(item.css('title').text).to eq 'v2.4.2 (manni)'
       end
 
       it 'has a link' do
@@ -91,7 +91,7 @@ RSpec.describe Html2rss do
       end
 
       it 'has an author' do
-        expect(item.css('author').text).to eq 'manniL'
+        expect(item.css('author').text).to eq 'manni'
       end
 
       it 'has a guid' do
@@ -113,7 +113,7 @@ RSpec.describe Html2rss do
         subject(:categories) { item.css('category').map(&:text) }
 
         it 'sets the author as category' do
-          expect(categories).to include 'manniL'
+          expect(categories).to include 'manni'
         end
       end
 
