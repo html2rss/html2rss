@@ -14,8 +14,8 @@ and chainable [post processors](https://github.com/gildesmarais/html2rss/tree/ma
 
 ## Installation
 
-Add this line to your application's Gemfile: `gem 'html2rss'`
-And then execute: `bundle`
+Add this line to your application's Gemfile: `gem 'html2rss'`  
+Then execute: `bundle`
 
 ```ruby
 rss = Html2rss.feed(
