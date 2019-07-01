@@ -27,8 +27,11 @@ feeds:
         extractor: 'attribute'
         attribute: 'alt'
         post_process:
-          name: substring
-          start: 1
+          - name: substring
+            start: 1
+          - name: substring
+            start: 0
+            end: -2
       link:
         selector: '.release-header .text-normal a'
         extractor: 'href'

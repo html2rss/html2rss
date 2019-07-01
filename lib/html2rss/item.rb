@@ -26,10 +26,7 @@ module Html2rss
       proc = ItemExtractor.const_get extractor.upcase.to_sym
       value = proc.call(xml, attribute_config)
 
-      post_process_options = attribute_config.fetch('post_process', false)
-      value = post_process(value, post_process_options) if post_process_options
-
-      value
+      post_process(value, attribute_config.fetch('post_process', false))
     end
 
     def available_attributes
@@ -59,10 +56,18 @@ module Html2rss
 
     private
 
-    def post_process(value, options)
-      Html2rss::AttributePostProcessors.get_processor(options)
+    def post_process(value, post_process_options = [])
+      return value unless post_process_options
+
+      post_process_options = [post_process_options] unless post_process_options.is_a?(Array)
+
+      post_process_options.each do |options|
+        value = AttributePostProcessors.get_processor(options)
                                        .new(value, options, self)
                                        .get
+      end
+
+      value
     end
   end
 end
