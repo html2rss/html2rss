@@ -3,10 +3,8 @@ require_relative 'item'
 
 module Html2rss
   class FeedBuilder
-    attr_reader :config
-
-    def initialize(feed_config)
-      @config = feed_config
+    def initialize(config)
+      @config = config
     end
 
     def rss
@@ -20,6 +18,8 @@ module Html2rss
     end
 
     private
+
+    attr_reader :config
 
     def add_channel_to_maker(maker)
       %i[language author title description link ttl].each do |attribute_name|

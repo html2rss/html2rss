@@ -50,6 +50,7 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/gildes
 
 ## Releasing a new version
 
+0. `git pull`
 1. increase version in `lib/version.rb`
 2. `bundle`
 3. commit the changes

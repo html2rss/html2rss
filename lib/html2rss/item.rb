@@ -2,13 +2,11 @@ require 'faraday'
 require 'faraday_middleware'
 require 'open-uri'
 require 'nokogiri'
-require_relative 'item_extractor'
+require_relative 'item_extractors'
 require_relative 'attribute_post_processors'
 
 module Html2rss
   class Item
-    attr_reader :xml, :config
-
     def initialize(xml, config)
       @xml = xml
       @config = config
@@ -22,9 +20,8 @@ module Html2rss
       attribute_config = config.options(method_name.to_s)
       return super unless attribute_config
 
-      extractor = attribute_config['extractor'] || 'text'
-      proc = ItemExtractor.const_get extractor.upcase.to_sym
-      value = proc.call(xml, attribute_config)
+      extractor = ItemExtractors.get_extractor(attribute_config.fetch('extractor', ItemExtractors::DEFAULT))
+      value = extractor.new(xml, attribute_config).get
 
       post_process(value, attribute_config.fetch('post_process', false))
     end
@@ -42,6 +39,8 @@ module Html2rss
       config.categories.map(&method(:method_missing)).uniq.keep_if { |category| category.to_s != '' }
     end
 
+    ##
+    # Returns an array of Item.
     def self.from_url(url, config)
       connection = Faraday.new(url: url, headers: config.headers) { |faraday|
         faraday.use FaradayMiddleware::FollowRedirects
@@ -56,7 +55,9 @@ module Html2rss
 
     private
 
-    def post_process(value, post_process_options = [])
+    attr_reader :xml, :config
+
+    def post_process(value, post_process_options)
       return value unless post_process_options
 
       post_process_options = [post_process_options] unless post_process_options.is_a?(Array)
