@@ -15,6 +15,7 @@ module Html2rss
   #
   #    feed = Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')
   #    # => #<RSS::Rss:0x00007fb2f6331228
+  # @return [RSS:Rss]
   def self.feed_from_yaml_config(file, name)
     # rubocop:disable Security/YAMLLoad
     yaml = YAML.load(File.open(file))
@@ -43,6 +44,7 @@ module Html2rss
   #      }
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
+  # @return [RSS:Rss]
   def self.feed(config)
     config = Config.new(config) unless config.is_a?(Config)
 

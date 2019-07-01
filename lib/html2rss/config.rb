@@ -1,5 +1,3 @@
-require 'hashie'
-
 module Html2rss
   class Config
     def initialize(feed_config, global_config = {})

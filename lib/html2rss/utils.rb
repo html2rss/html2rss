@@ -1,3 +1,5 @@
+require 'hashie'
+
 module Html2rss
   module Utils
     class IndifferentAccessHash < Hash
