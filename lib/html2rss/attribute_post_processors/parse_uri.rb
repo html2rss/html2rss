@@ -5,6 +5,8 @@ module Html2rss
         @value = value
       end
 
+      ##
+      # @return [String]
       def get
         URI(@value).to_s
       end

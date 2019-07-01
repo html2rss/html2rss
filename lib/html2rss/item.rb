@@ -12,6 +12,8 @@ module Html2rss
       @config = config
     end
 
+    private_class_method :new
+
     def respond_to_missing?(method_name, _include_private = false)
       config.attribute_names.include?(method_name) || super
     end
@@ -35,12 +37,14 @@ module Html2rss
       [title.to_s, description.to_s].join('') != ''
     end
 
+    ##
+    # @return [Array]
     def categories
       config.categories.map(&method(:method_missing)).uniq.keep_if { |category| category.to_s != '' }
     end
 
     ##
-    # Returns an array of Item.
+    # @return [Array]
     def self.from_url(url, config)
       connection = Faraday.new(url: url, headers: config.headers) { |faraday|
         faraday.use FaradayMiddleware::FollowRedirects
@@ -63,7 +67,7 @@ module Html2rss
       post_process_options = [post_process_options] unless post_process_options.is_a?(Array)
 
       post_process_options.each do |options|
-        value = AttributePostProcessors.get_processor(options)
+        value = AttributePostProcessors.get_processor(options['name'])
                                        .new(value, options, self)
                                        .get
       end

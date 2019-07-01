@@ -3,7 +3,7 @@ module Html2rss
     ##
     # Returns the value of the attribute.
     #
-    # Imagine this +time+ HTML element with the +datetime+ attribute:
+    # Imagine this +time+ HTML element with a +datetime+ attribute:
     #
     #     <time datetime="2019-07-01">...</time>
     #
@@ -27,6 +27,8 @@ module Html2rss
         @element = ItemExtractors.element(xml, options)
       end
 
+      ##
+      # @return [String]
       def get
         @element.attr(@options['attribute']).to_s
       end

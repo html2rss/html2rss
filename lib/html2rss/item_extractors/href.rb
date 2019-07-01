@@ -5,7 +5,7 @@ module Html2rss
     # It always returns absolute URLs. If the extracted +href+ value is a
     # relative URL, it prepends the channel's URL.
     #
-    # Imagine this +a+ HTML element with the +href+ attribute:
+    # Imagine this +a+ HTML element with a +href+ attribute:
     #
     #     <a href="/posts/latest-findings">...</a>
     #
@@ -26,6 +26,7 @@ module Html2rss
         @element = ItemExtractors.element(xml, options)
       end
 
+      # @return [URI::HTTPS, URI::HTTP]
       def get
         href = @element.attr('href').to_s
         path, query = href.split('?')

@@ -67,6 +67,7 @@ GEM
     simplecov-html (0.10.2)
     unicode-display_width (1.6.0)
     vcr (5.0.0)
+    yard (0.9.20)
 
 PLATFORMS
   ruby
@@ -80,6 +81,7 @@ DEPENDENCIES
   rubocop-performance
   simplecov
   vcr
+  yard
 
 BUNDLED WITH
    1.17.2

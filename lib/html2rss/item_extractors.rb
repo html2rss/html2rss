@@ -16,6 +16,8 @@ module Html2rss
       Object.const_get(class_name)
     end
 
+    ##
+    # @return [Nokogiri::XML::Element]
     def self.element(xml, options)
       options['selector'] ? xml.css(options['selector']) : xml
     end

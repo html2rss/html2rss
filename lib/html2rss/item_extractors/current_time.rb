@@ -11,6 +11,8 @@ module Html2rss
     class CurrentTime
       def initialize(_xml, _options); end
 
+      ##
+      # @return [Time]
       def get
         Time.new
       end

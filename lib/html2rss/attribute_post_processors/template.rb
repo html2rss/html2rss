@@ -9,6 +9,9 @@ module Html2rss
         @item = item
       end
 
+      ##
+      # - uses {http://ruby-doc.org/core-2.6.3/String.html#method-i-25 String#%}
+      # @return [String]
       def get
         string % methods
       end

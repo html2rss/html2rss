@@ -1,6 +1,7 @@
 require 'html2rss/config'
 require 'html2rss/feed_builder'
 require 'html2rss/version'
+require 'html2rss/utils'
 require 'yaml'
 
 module Html2rss

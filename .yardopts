@@ -1,0 +1,5 @@
+--readme README.md
+--charset utf-8
+--no-private
+--exclude /coverage
+--exclude /support

@@ -6,6 +6,8 @@ module Html2rss
         @options = options
       end
 
+      ##
+      # @return [String]
       def get
         ending = @options.fetch('end', @value.length).to_i
         @value[@options['start'].to_i..ending]

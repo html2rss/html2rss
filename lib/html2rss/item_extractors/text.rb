@@ -22,6 +22,8 @@ module Html2rss
         @element = ItemExtractors.element(xml, options)
       end
 
+      ##
+      # @return [String]
       def get
         @element&.text&.strip&.split&.join(' ')
       end

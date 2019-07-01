@@ -7,6 +7,8 @@ module Html2rss
       @config = config
     end
 
+    ##
+    # @return [RSS:Rss]
     def rss
       RSS::Maker.make('2.0') do |maker|
         add_channel_to_maker(maker)
