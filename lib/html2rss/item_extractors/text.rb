@@ -25,7 +25,7 @@ module Html2rss
       ##
       # @return [String]
       def get
-        @element&.text&.strip&.split&.join(' ')
+        @element.text.to_s.strip.split.join(' ')
       end
     end
   end

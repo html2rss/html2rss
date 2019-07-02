@@ -6,10 +6,13 @@ require_relative 'item_extractors/static'
 require_relative 'item_extractors/text'
 
 module Html2rss
+  ##
+  # Provides a namespace for item extractors.
   module ItemExtractors
     DEFAULT = 'text'.freeze
 
     def self.get_extractor(name)
+      name ||= DEFAULT
       camel_cased_name = name.split('_').map(&:capitalize).join
       class_name = ['Html2rss', 'ItemExtractors', camel_cased_name].join('::')
 
@@ -19,7 +22,8 @@ module Html2rss
     ##
     # @return [Nokogiri::XML::Element]
     def self.element(xml, options)
-      options['selector'] ? xml.css(options['selector']) : xml
+      selector = options['selector']
+      selector ? xml.css(selector) : xml
     end
   end
 end

@@ -22,7 +22,7 @@ module Html2rss
       attribute_config = config.options(method_name.to_s)
       return super unless attribute_config
 
-      extractor = ItemExtractors.get_extractor(attribute_config.fetch('extractor', ItemExtractors::DEFAULT))
+      extractor = ItemExtractors.get_extractor(attribute_config['extractor'])
       value = extractor.new(xml, attribute_config).get
 
       post_process(value, attribute_config.fetch('post_process', false))

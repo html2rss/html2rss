@@ -23,24 +23,31 @@ module Html2rss
     class Href
       def initialize(xml, options)
         @options = options
-        @element = ItemExtractors.element(xml, options)
+        element = ItemExtractors.element(xml, options)
+        @href = element.attr('href').to_s
       end
 
       # @return [URI::HTTPS, URI::HTTP]
       def get
-        href = @element.attr('href').to_s
+        href.start_with?('http') ? absolute_url : build_absolute_url_from_relative
+      end
+
+      private
+
+      def absolute_url
+        URI(href)
+      end
+
+      def build_absolute_url_from_relative
         path, query = href.split('?')
 
-        if href.start_with?('http')
-          uri = URI(href)
-        else
-          uri = URI(@options['channel']['url'])
+        URI(@options['channel']['url']).tap { |uri|
           uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
           uri.query = query
-        end
-
-        uri
+        }
       end
+
+      attr_reader :href
     end
   end
 end

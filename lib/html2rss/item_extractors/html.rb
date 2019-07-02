@@ -27,7 +27,7 @@ module Html2rss
       ##
       # @return [String]
       def get
-        @element&.to_s
+        @element.to_s
       end
     end
   end

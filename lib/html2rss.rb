@@ -22,7 +22,7 @@ module Html2rss
     # rubocop:enable Security/YAMLLoad
 
     feed_config = yaml['feeds'][name]
-    global_config = yaml.reject { |k| k == 'feeds' }
+    global_config = yaml.reject { |key| key == 'feeds' }
 
     config = Config.new(feed_config, global_config)
     feed(config)

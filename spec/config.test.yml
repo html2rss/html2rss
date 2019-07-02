@@ -48,5 +48,8 @@ feeds:
         attribute: 'datetime'
         post_process:
           name: 'parse_time'
+      version:
+        selector: '.v-align-top .css-truncate-target'
       categories:
         - author
+        - version

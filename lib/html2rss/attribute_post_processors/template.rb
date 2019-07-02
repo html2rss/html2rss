@@ -55,7 +55,7 @@ module Html2rss
           if method == 'self'
             @value
           else
-            @item.public_send(method.to_sym)&.to_s
+            @item.public_send(method.to_sym)
           end
         }
       end
