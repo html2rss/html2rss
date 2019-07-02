@@ -1,7 +1,7 @@
 module Html2rss
   module AttributePostProcessors
     ##
-    # Return the rfc822 representation of a time.
+    # Returns the {https://www.w3.org/Protocols/rfc822/ RFC822} representation of a time.
     #
     # Imagine this HTML structure:
     #

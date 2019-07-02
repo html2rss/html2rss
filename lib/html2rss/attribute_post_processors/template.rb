@@ -2,35 +2,35 @@ require 'sanitize'
 
 module Html2rss
   module AttributePostProcessors
+    ## Returns a formatted String according to the string pattern.
+    #
+    # If +self+ is given as a method, the extracted value will be used.
+    #
+    # Imagine this HTML:
+    #    <li>
+    #      <h1>Product</h1>
+    #      <span class="price">23,42€</span>
+    #    </li>
+    #
+    # YAML usage example:
+    #
+    #    selectors:
+    #      items:
+    #        selector: 'li'
+    #      price:
+    #       selector: '.price'
+    #      title:
+    #        selector: h1
+    #        post_process:
+    #         name: template
+    #         string: '%s (%s)'
+    #         methods:
+    #           - self
+    #           - price
+    #
+    # Would return:
+    #    'Product (23,42€)'
     class Template
-      # Returns a formatted String according to the string pattern.
-      #
-      # If +self+ is given as a method, the extracted value will be used.
-      #
-      # Imagine this HTML:
-      #    <li>
-      #      <h1>Product</h1>
-      #      <span class="price">23,42€</span>
-      #    </li>
-      #
-      # YAML usage example:
-      #
-      #    selectors:
-      #      items:
-      #        selector: 'li'
-      #      price:
-      #       selector: '.price'
-      #      title:
-      #        selector: h1
-      #        post_process:
-      #         name: template
-      #         string: '%s (%s)'
-      #         methods:
-      #           - self
-      #           - price
-      #
-      # Would return:
-      #    'Product (23,42€)'
       def initialize(value, options, item)
         @value = value
         @options = options

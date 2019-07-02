@@ -46,12 +46,7 @@ module Html2rss
     ##
     # @return [Array]
     def self.from_url(url, config)
-      connection = Faraday.new(url: url, headers: config.headers) { |faraday|
-        faraday.use FaradayMiddleware::FollowRedirects
-        faraday.adapter Faraday.default_adapter
-      }
-
-      page = Nokogiri::HTML(connection.get.body)
+      page = Nokogiri::HTML(get_body_from_url(url, config.headers))
       page.css(config.selector('items')).map do |xml_item|
         new xml_item, config
       end
@@ -59,14 +54,20 @@ module Html2rss
 
     private
 
+    def self.get_body_from_url(url, headers)
+      Faraday.new(url: url, headers: headers) { |faraday|
+        faraday.use FaradayMiddleware::FollowRedirects
+        faraday.adapter Faraday.default_adapter
+      }.get.body
+    end
+    private_class_method :get_body_from_url
+
     attr_reader :xml, :config
 
     def post_process(value, post_process_options)
       return value unless post_process_options
 
-      post_process_options = [post_process_options] unless post_process_options.is_a?(Array)
-
-      post_process_options.each do |options|
+      [post_process_options].flatten.each do |options|
         value = AttributePostProcessors.get_processor(options['name'])
                                        .new(value, options, self)
                                        .get

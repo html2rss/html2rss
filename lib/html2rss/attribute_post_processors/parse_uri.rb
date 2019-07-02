@@ -1,7 +1,7 @@
 module Html2rss
   module AttributePostProcessors
     ##
-    # Return the URI as String.
+    # Returns the URI as String.
     #
     # Imagine this HTML structure:
     #
