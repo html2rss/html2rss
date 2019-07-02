@@ -19,7 +19,8 @@ module Html2rss
     #    "Tue, 02 Jul 2019 00:00:00 +0200"
     #
     # It uses {https://ruby-doc.org/stdlib-2.5.3/libdoc/time/rdoc/Time.html#method-c-parse Time.parse}.
-    # As of now it ignores time zones.
+    # As of now it ignores time zones and always falls back to your system's
+    # time zone.
     class ParseTime
       def initialize(value, _options, _item)
         @value = value.to_s
