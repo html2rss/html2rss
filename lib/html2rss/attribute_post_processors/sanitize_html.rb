@@ -22,7 +22,7 @@ module Html2rss
                                         'target' => '_blank'
                                       }
                                     }
-                                  ))
+                                  )).to_s.split.join(' ')
       end
     end
   end

@@ -2,7 +2,7 @@ module Html2rss
   module AttributePostProcessors
     class ParseTime
       def initialize(value, _options, _item)
-        @value = value
+        @value = value.to_s
       end
 
       ##
