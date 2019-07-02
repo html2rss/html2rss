@@ -1,5 +1,25 @@
 module Html2rss
   module AttributePostProcessors
+    ##
+    # Return the rfc822 representation of a time.
+    #
+    # Imagine this HTML structure:
+    #
+    #     <p>Published on <span>2019-07-02</span></p>
+    #
+    # YAML usage example:
+    #
+    #    selectors:
+    #      description:
+    #        selector: span
+    #        post_process:
+    #          name: 'parse_time'
+    #
+    # Would return:
+    #    "Tue, 02 Jul 2019 00:00:00 +0200"
+    #
+    # It uses {https://ruby-doc.org/stdlib-2.5.3/libdoc/time/rdoc/Time.html#method-c-parse Time.parse}.
+    # As of now it ignores time zones.
     class ParseTime
       def initialize(value, _options, _item)
         @value = value.to_s

@@ -3,6 +3,28 @@ require 'sanitize'
 module Html2rss
   module AttributePostProcessors
     class SanitizeHtml
+      ##
+      # Returns sanitized HTML code.
+      #
+      # Imagine this HTML structure:
+      #
+      #     <section>
+      #       Lorem <b>ipsum</b> dolor...
+      #       <iframe src="https://evil.corp/miner"></iframe>
+      #       <script>alert();</script>
+      #     </section>
+      #
+      # YAML usage example:
+      #
+      #    selectors:
+      #      description:
+      #        selector: section
+      #        extractor: html
+      #        post_process:
+      #          name: sanitize_html
+      #
+      # Would return:
+      #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
       def initialize(value, _options, _item)
         @value = value
       end

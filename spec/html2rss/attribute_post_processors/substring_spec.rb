@@ -1,6 +1,6 @@
 RSpec.describe Html2rss::AttributePostProcessors::Substring do
   context 'with end' do
-    subject { described_class.new('foobarbaz', { 'start' => 3, 'end' => 5 }, nil).get }
+    subject { described_class.new('Foo bar and baz', { 'start' => 4, 'end' => 6 }, nil).get }
     it { is_expected.to eq 'bar' }
   end
 
