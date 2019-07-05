@@ -29,7 +29,7 @@ module Html2rss
       ##
       # @return [String] rfc822 formatted time
       def get
-        Time.parse(@value).rfc822
+        Time.parse(@value).utc.rfc822
       end
     end
   end
