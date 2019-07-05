@@ -3,12 +3,12 @@ require_relative 'item'
 
 module Html2rss
   class FeedBuilder
-    attr_reader :config
-
-    def initialize(feed_config)
-      @config = feed_config
+    def initialize(config)
+      @config = config
     end
 
+    ##
+    # @return [RSS:Rss]
     def rss
       RSS::Maker.make('2.0') do |maker|
         add_channel_to_maker(maker)
@@ -21,9 +21,11 @@ module Html2rss
 
     private
 
+    attr_reader :config
+
     def add_channel_to_maker(maker)
       %i[language author title description link ttl].each do |attribute_name|
-        maker.channel.send("#{attribute_name}=".to_sym, config.send(attribute_name))
+        maker.channel.public_send("#{attribute_name}=".to_sym, config.public_send(attribute_name))
       end
 
       maker.channel.generator = "html2rss V. #{::Html2rss::VERSION}"
@@ -39,7 +41,7 @@ module Html2rss
 
       items.new_item do |rss_item|
         feed_item.available_attributes.each do |attribute_name|
-          rss_item.send("#{attribute_name}=".to_sym, feed_item.send(attribute_name))
+          rss_item.public_send("#{attribute_name}=".to_sym, feed_item.public_send(attribute_name))
         end
 
         feed_item.categories.each do |category|

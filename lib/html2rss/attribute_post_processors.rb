@@ -5,10 +5,12 @@ require_relative 'attribute_post_processors/substring'
 require_relative 'attribute_post_processors/template'
 
 module Html2rss
+  ##
+  # Provides a namespace for attribute post processors.
   module AttributePostProcessors
-    def self.get_processor(options)
-      camel_cased_option = options['name'].split('_').collect(&:capitalize).join
-      class_name = ['Html2rss', 'AttributePostProcessors', camel_cased_option].join('::')
+    def self.get_processor(name)
+      camel_cased_name = name.split('_').map(&:capitalize).join
+      class_name = ['Html2rss', 'AttributePostProcessors', camel_cased_name].join('::')
 
       Object.const_get(class_name)
     end

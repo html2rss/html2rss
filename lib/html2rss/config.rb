@@ -1,18 +1,9 @@
-require 'hashie'
-
 module Html2rss
   class Config
-    attr_reader :feed_config, :channel_config, :global_config
-
-    class IndifferentAccessHash < Hash
-      include Hashie::Extensions::MergeInitializer
-      include Hashie::Extensions::IndifferentAccess
-    end
-
     def initialize(feed_config, global_config = {})
-      @global_config = IndifferentAccessHash.new global_config
-      @feed_config = IndifferentAccessHash.new feed_config
-      @channel_config = IndifferentAccessHash.new @feed_config.fetch('channel', {})
+      @global_config = Utils::IndifferentAccessHash.new global_config
+      @feed_config = Utils::IndifferentAccessHash.new feed_config
+      @channel_config = Utils::IndifferentAccessHash.new @feed_config.fetch('channel', {})
     end
 
     def author
@@ -61,5 +52,9 @@ module Html2rss
       attribute_names.delete('items')
       attribute_names
     end
+
+    private
+
+    attr_reader :feed_config, :channel_config, :global_config
   end
 end
