@@ -3,7 +3,6 @@ require 'simplecov'
 SimpleCov.start
 
 require 'vcr'
-require 'timecop'
 require 'html2rss'
 
 RSpec.configure do |config|
