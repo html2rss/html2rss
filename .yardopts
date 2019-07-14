@@ -3,3 +3,4 @@
 --no-private
 --exclude /coverage
 --exclude /support
+--output-dir docs/
