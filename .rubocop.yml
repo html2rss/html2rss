@@ -1,5 +1,6 @@
 require:
   - rubocop-performance
+  - rubocop-rspec
 
 AllCops:
   TargetRubyVersion: 2.4
@@ -49,3 +50,7 @@ Performance/ChainArrayAllocation:
 
 Performance/OpenStruct:
   Enabled: true
+
+RSpec/NestedGroups:
+  Exclude:
+    - spec/html2rss_spec.rb

@@ -27,16 +27,21 @@ RSpec.describe Html2rss do
 
     let(:feed_return) { VCR.use_cassette('nuxt-releases') { described_class.feed(config) } }
 
+    before do
+      allow(Faraday).to receive(:new)
+        .with(hash_including(headers: yaml_config['headers']))
+        .and_call_original
+    end
+
     it 'returns a RSS::Rss instance' do
       expect(feed_return).to be_a_kind_of(RSS::Rss)
     end
 
     it 'sets the request headers' do
-      expect(Faraday).to receive(:new)
-        .with(hash_including(headers: yaml_config['headers']))
-        .and_call_original
-
       VCR.use_cassette('nuxt-releases') { described_class.feed(config) }
+
+      expect(Faraday).to have_received(:new)
+        .with(hash_including(headers: yaml_config['headers']))
     end
 
     describe 'feed.channel' do
