@@ -40,7 +40,10 @@ module Html2rss
     ##
     # @return [Array]
     def categories
-      config.categories.map(&method(:method_missing)).uniq.keep_if { |category| category.to_s != '' }
+      categories = config.categories
+      categories.map!(&method(:method_missing))
+      categories.uniq!
+      categories.keep_if { |category| category.to_s != '' }
     end
 
     ##
@@ -55,10 +58,10 @@ module Html2rss
     private
 
     def self.get_body_from_url(url, headers)
-      Faraday.new(url: url, headers: headers) { |faraday|
+      Faraday.new(url: url, headers: headers) do |faraday|
         faraday.use FaradayMiddleware::FollowRedirects
         faraday.adapter Faraday.default_adapter
-      }.get.body
+      end.get.body
     end
     private_class_method :get_body_from_url
 

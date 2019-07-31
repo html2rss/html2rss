@@ -51,13 +51,9 @@ module Html2rss
       end
 
       def methods
-        @methods ||= @options['methods'].map { |method|
-          if method == 'self'
-            @value
-          else
-            @item.public_send(method.to_sym)
-          end
-        }
+        @methods ||= @options['methods'].map do |method|
+          method == 'self' ? @value : @item.public_send(method.to_sym)
+        end
       end
     end
   end
