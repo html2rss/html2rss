@@ -41,10 +41,10 @@ module Html2rss
       def build_absolute_url_from_relative
         path, query = href.split('?')
 
-        URI(@options['channel']['url']).tap { |uri|
+        URI(@options['channel']['url']).tap do |uri|
           uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
           uri.query = query
-        }
+        end
       end
 
       attr_reader :href
