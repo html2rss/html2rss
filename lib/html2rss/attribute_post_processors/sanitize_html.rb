@@ -42,6 +42,9 @@ module Html2rss
                                       'a' => {
                                         'rel' => 'nofollow noopener noreferrer',
                                         'target' => '_blank'
+                                      },
+                                      'img' => {
+                                        'referrer-policy' => 'no-referrer'
                                       }
                                     }
                                   )).to_s.split.join(' ')
