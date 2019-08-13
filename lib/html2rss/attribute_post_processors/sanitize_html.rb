@@ -7,7 +7,7 @@ module Html2rss
     # Adds
     #
     # - rel="nofollow noopener noreferrer" to a elements
-    # - referrer-policy='no-referrer' to img element
+    # - referrer-policy='no-referrer' to img elements
     #
     # Imagine this HTML structure:
     #
