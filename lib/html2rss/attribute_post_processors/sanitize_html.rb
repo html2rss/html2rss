@@ -4,6 +4,10 @@ module Html2rss
   module AttributePostProcessors
     ##
     # Returns sanitized HTML code as String.
+    # Adds
+    #
+    # - rel="nofollow noopener noreferrer" to a elements
+    # - referrer-policy='no-referrer' to img element
     #
     # Imagine this HTML structure:
     #
