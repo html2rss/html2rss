@@ -34,26 +34,6 @@ module Html2rss
         @channel_url = env[:config].url
       end
 
-      URL_ELEMENTS_WITH_ATTRIBUTE = {
-        'a' => :href,
-        'img' => :src
-      }.freeze
-
-      def transformer
-        lambda do |env|
-          return unless URL_ELEMENTS_WITH_ATTRIBUTE.key?(env[:node_name])
-
-          url_attribute = URL_ELEMENTS_WITH_ATTRIBUTE[env[:node_name]]
-          url = env[:node][url_attribute]
-
-          return if URI(url).absolute?
-
-          absolute_url = Html2rss::ItemExtractors::Href.build_absolute_url_from_relative(url, @channel_url)
-
-          env[:node][url_attribute] = absolute_url
-        end
-      end
-
       ##
       # - uses the {https://github.com/rgrove/sanitize sanitize gem}
       # - uses the config {https://github.com/rgrove/sanitize#sanitizeconfigrelaxed Sanitize::Config::RELAXED}
@@ -75,8 +55,30 @@ module Html2rss
                                         'referrer-policy' => 'no-referrer'
                                       }
                                     },
-                                    transformers: [transformer]
+                                    transformers: [transform_urls_to_absolute_ones]
                                   )).to_s.split.join(' ')
+      end
+
+      private
+
+      URL_ELEMENTS_WITH_URL_ATTRIBUTE = {
+        'a' => :href,
+        'img' => :src
+      }.freeze
+
+      def transform_urls_to_absolute_ones
+        lambda do |env|
+          return unless URL_ELEMENTS_WITH_URL_ATTRIBUTE.key?(env[:node_name])
+
+          url_attribute = URL_ELEMENTS_WITH_URL_ATTRIBUTE[env[:node_name]]
+          url = env[:node][url_attribute]
+
+          return if URI(url).absolute?
+
+          absolute_url = Html2rss::Utils.build_absolute_url_from_relative(url, @channel_url)
+
+          env[:node][url_attribute] = absolute_url
+        end
       end
     end
   end
