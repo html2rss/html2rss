@@ -31,10 +31,10 @@ module Html2rss
     # Would return:
     #    'Product (23,42€)'
     class Template
-      def initialize(value, options, item)
+      def initialize(value, env)
         @value = value
-        @options = options
-        @item = item
+        @options = env[:options]
+        @item = env[:item]
       end
 
       ##

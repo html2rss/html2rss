@@ -1,5 +1,5 @@
 RSpec.describe Html2rss::AttributePostProcessors::Template do
-  subject { described_class.new('Hi', options, item).get }
+  subject { described_class.new('Hi', options: options, item: item).get }
 
   let(:options) { { 'string' => '%s! %s is %s!', 'methods' => %w[self name autor] } }
 

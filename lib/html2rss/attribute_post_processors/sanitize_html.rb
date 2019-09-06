@@ -29,8 +29,29 @@ module Html2rss
     # Would return:
     #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
     class SanitizeHtml
-      def initialize(value, _options, _item)
+      def initialize(value, env)
         @value = value
+        @channel_url = env[:config].url
+      end
+
+      URL_ELEMENTS_WITH_ATTRIBUTE = {
+        'a' => :href,
+        'img' => :src
+      }.freeze
+
+      def transformer
+        lambda do |env|
+          return unless URL_ELEMENTS_WITH_ATTRIBUTE.key?(env[:node_name])
+
+          url_attribute = URL_ELEMENTS_WITH_ATTRIBUTE[env[:node_name]]
+          url = env[:node][url_attribute]
+
+          return if URI(url).absolute?
+
+          absolute_url = Html2rss::ItemExtractors::Href.build_absolute_url_from_relative(url, @channel_url)
+
+          env[:node][url_attribute] = absolute_url
+        end
       end
 
       ##
@@ -53,7 +74,8 @@ module Html2rss
                                       'img' => {
                                         'referrer-policy' => 'no-referrer'
                                       }
-                                    }
+                                    },
+                                    transformers: [transformer]
                                   )).to_s.split.join(' ')
       end
     end

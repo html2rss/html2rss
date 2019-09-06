@@ -29,22 +29,26 @@ module Html2rss
 
       # @return [URI::HTTPS, URI::HTTP]
       def get
-        href.start_with?('http') ? absolute_url : build_absolute_url_from_relative
+        uri.absolute? ? uri : build_absolute_url_from_relative
+      end
+
+      def self.build_absolute_url_from_relative(url, channel_url)
+        path, query = url.split('?')
+
+        URI(channel_url).tap do |uri|
+          uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
+          uri.query = query
+        end
       end
 
       private
 
-      def absolute_url
+      def uri
         URI(href)
       end
 
       def build_absolute_url_from_relative
-        path, query = href.split('?')
-
-        URI(@options['channel']['url']).tap do |uri|
-          uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
-          uri.query = query
-        end
+        self.class.build_absolute_url_from_relative(href, @options['channel']['url'])
       end
 
       attr_reader :href

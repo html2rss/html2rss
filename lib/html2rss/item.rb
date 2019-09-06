@@ -72,7 +72,7 @@ module Html2rss
 
       [post_process_options].flatten.each do |options|
         value = AttributePostProcessors.get_processor(options['name'])
-                                       .new(value, options, self)
+                                       .new(value, options: options, item: self, config: @config)
                                        .get
       end
 
