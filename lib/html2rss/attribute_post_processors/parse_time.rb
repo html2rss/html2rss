@@ -21,7 +21,7 @@ module Html2rss
     # It uses {https://ruby-doc.org/stdlib-2.5.3/libdoc/time/rdoc/Time.html#method-c-parse Time.parse}.
     # As of now it ignores time zones and always falls back to the UTC time zone.
     class ParseTime
-      def initialize(value, _options, _item)
+      def initialize(value, _env)
         @value = value.to_s
       end
 

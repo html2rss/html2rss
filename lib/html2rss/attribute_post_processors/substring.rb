@@ -20,9 +20,9 @@ module Html2rss
     # Would return:
     #    'bar'
     class Substring
-      def initialize(value, options, _item)
+      def initialize(value, env)
         @value = value
-        @options = options
+        @options = env[:options]
       end
 
       ##

@@ -29,25 +29,8 @@ module Html2rss
 
       # @return [URI::HTTPS, URI::HTTP]
       def get
-        href.start_with?('http') ? absolute_url : build_absolute_url_from_relative
+        Html2rss::Utils.build_absolute_url_from_relative(@href, @options['channel']['url'])
       end
-
-      private
-
-      def absolute_url
-        URI(href)
-      end
-
-      def build_absolute_url_from_relative
-        path, query = href.split('?')
-
-        URI(@options['channel']['url']).tap do |uri|
-          uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
-          uri.query = query
-        end
-      end
-
-      attr_reader :href
     end
   end
 end
