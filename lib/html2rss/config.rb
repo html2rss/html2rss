@@ -31,6 +31,10 @@ module Html2rss
     end
     alias link url
 
+    def time_zone
+      channel_config.fetch 'time_zone', 'UTC'
+    end
+
     def headers
       global_config.fetch('headers', {})
     end

@@ -1,3 +1,6 @@
+require 'active_support'
+require 'active_support/core_ext/time'
+
 module Html2rss
   module AttributePostProcessors
     ##
@@ -21,18 +24,15 @@ module Html2rss
     # It uses {https://ruby-doc.org/stdlib-2.5.3/libdoc/time/rdoc/Time.html#method-c-parse Time.parse}.
     # As of now it ignores time zones and always falls back to the UTC time zone.
     class ParseTime
-      def initialize(value, _env)
+      def initialize(value, env)
         @value = value.to_s
+        @time_zone = env[:config].time_zone
       end
 
       ##
       # @return [String] rfc822 formatted time
       def get
-        prev_tz = ENV['TZ']
-        ENV['TZ'] = 'UTC'
-        Time.parse(@value).rfc822
-      ensure
-        ENV['TZ'] = prev_tz
+        Time.use_zone(@time_zone) { Time.parse(@value).rfc822 }
       end
     end
   end
