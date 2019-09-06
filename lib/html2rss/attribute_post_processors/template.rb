@@ -52,7 +52,7 @@ module Html2rss
 
       def methods
         @methods ||= @options['methods'].map do |method|
-          method == 'self' ? @value : @item.public_send(method.to_sym)
+          method == 'self' ? @value.to_s : @item.public_send(method.to_sym).to_s
         end
       end
     end
