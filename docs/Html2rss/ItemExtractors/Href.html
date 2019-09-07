@@ -297,7 +297,7 @@ selectors:
       <pre class="code"><span class="info file"># File 'lib/html2rss/item_extractors/href.rb', line 31</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get'>get</span>
-  <span class='id identifier rubyid_href'>href</span><span class='period'>.</span><span class='id identifier rubyid_start_with?'>start_with?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>http</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span> <span class='op'>?</span> <span class='id identifier rubyid_absolute_url'>absolute_url</span> <span class='op'>:</span> <span class='id identifier rubyid_build_absolute_url_from_relative'>build_absolute_url_from_relative</span>
+  <span class='const'><span class='object_link'><a href="../../Html2rss.html" title="Html2rss (module)">Html2rss</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="../Utils.html" title="Html2rss::Utils (module)">Utils</a></span></span><span class='period'>.</span><span class='id identifier rubyid_build_absolute_url_from_relative'><span class='object_link'><a href="../Utils.html#build_absolute_url_from_relative-class_method" title="Html2rss::Utils.build_absolute_url_from_relative (method)">build_absolute_url_from_relative</a></span></span><span class='lparen'>(</span><span class='ivar'>@href</span><span class='comma'>,</span> <span class='ivar'>@options</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>channel</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>url</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -309,9 +309,9 @@ selectors:
 </div>
 
       <div id="footer">
-  Generated on Sun Jul 14 19:35:05 2019 by
+  Generated on Sat Sep  7 20:16:09 2019 by
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
-  0.9.20 (ruby-2.6.3).
+  0.9.20 (ruby-2.6.4).
 </div>
 
     </div>

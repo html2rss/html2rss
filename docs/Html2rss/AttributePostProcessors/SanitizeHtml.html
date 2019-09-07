@@ -102,7 +102,12 @@
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
     
-<p>Returns sanitized HTML code as String.</p>
+<p>Returns sanitized HTML code as String. Adds</p>
+<ul><li>
+<p>rel=“nofollow noopener noreferrer” to a elements</p>
+</li><li>
+<p>referrer-policy=&#39;no-referrer&#39; to img elements</p>
+</li></ul>
 
 <p>Imagine this HTML structure:</p>
 
@@ -177,7 +182,7 @@
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(value, _options, _item)  &#x21d2; SanitizeHtml </a>
+      <a href="#initialize-instance_method" title="#initialize (instance method)">#<strong>initialize</strong>(value, env)  &#x21d2; SanitizeHtml </a>
     
 
     
@@ -209,7 +214,7 @@
     <div class="method_details first">
   <h3 class="signature first" id="initialize-instance_method">
   
-    #<strong>initialize</strong>(value, _options, _item)  &#x21d2; <tt><span class='object_link'><a href="" title="Html2rss::AttributePostProcessors::SanitizeHtml (class)">SanitizeHtml</a></span></tt> 
+    #<strong>initialize</strong>(value, env)  &#x21d2; <tt><span class='object_link'><a href="" title="Html2rss::AttributePostProcessors::SanitizeHtml (class)">SanitizeHtml</a></span></tt> 
   
 
   
@@ -232,15 +237,17 @@
       <pre class="lines">
 
 
-28
-29
-30</pre>
+32
+33
+34
+35</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/html2rss/attribute_post_processors/sanitize_html.rb', line 28</span>
+      <pre class="code"><span class="info file"># File 'lib/html2rss/attribute_post_processors/sanitize_html.rb', line 32</span>
 
-<span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='comma'>,</span> <span class='id identifier rubyid__options'>_options</span><span class='comma'>,</span> <span class='id identifier rubyid__item'>_item</span><span class='rparen'>)</span>
+<span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_value'>value</span><span class='comma'>,</span> <span class='id identifier rubyid_env'>env</span><span class='rparen'>)</span>
   <span class='ivar'>@value</span> <span class='op'>=</span> <span class='id identifier rubyid_value'>value</span>
+  <span class='ivar'>@channel_url</span> <span class='op'>=</span> <span class='id identifier rubyid_env'>env</span><span class='lbracket'>[</span><span class='symbol'>:config</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_url'>url</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -300,30 +307,44 @@
       <pre class="lines">
 
 
-38
-39
-40
-41
-42
 43
 44
 45
 46
 47
-48</pre>
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/html2rss/attribute_post_processors/sanitize_html.rb', line 38</span>
+      <pre class="code"><span class="info file"># File 'lib/html2rss/attribute_post_processors/sanitize_html.rb', line 43</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_get'>get</span>
   <span class='const'>Sanitize</span><span class='period'>.</span><span class='id identifier rubyid_fragment'>fragment</span><span class='lparen'>(</span><span class='ivar'>@value</span><span class='comma'>,</span> <span class='const'>Sanitize</span><span class='op'>::</span><span class='const'>Config</span><span class='period'>.</span><span class='id identifier rubyid_merge'>merge</span><span class='lparen'>(</span>
                               <span class='const'>Sanitize</span><span class='op'>::</span><span class='const'>Config</span><span class='op'>::</span><span class='const'>RELAXED</span><span class='comma'>,</span>
+                              <span class='label'>attributes:</span> <span class='lbrace'>{</span>
+                                <span class='label'>all:</span> <span class='qwords_beg'>%w[</span><span class='tstring_content'>dir</span><span class='words_sep'> </span><span class='tstring_content'>lang</span><span class='words_sep'> </span><span class='tstring_content'>alt</span><span class='words_sep'> </span><span class='tstring_content'>title</span><span class='words_sep'> </span><span class='tstring_content'>translate</span><span class='tstring_end'>]</span></span>
+                              <span class='rbrace'>}</span><span class='comma'>,</span>
                               <span class='label'>add_attributes:</span> <span class='lbrace'>{</span>
                                 <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>a</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span>
                                   <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>rel</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>nofollow noopener noreferrer</span><span class='tstring_end'>&#39;</span></span><span class='comma'>,</span>
                                   <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>target</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_blank</span><span class='tstring_end'>&#39;</span></span>
+                                <span class='rbrace'>}</span><span class='comma'>,</span>
+                                <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>img</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='lbrace'>{</span>
+                                  <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>referrer-policy</span><span class='tstring_end'>&#39;</span></span> <span class='op'>=&gt;</span> <span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>no-referrer</span><span class='tstring_end'>&#39;</span></span>
                                 <span class='rbrace'>}</span>
-                              <span class='rbrace'>}</span>
+                              <span class='rbrace'>}</span><span class='comma'>,</span>
+                              <span class='label'>transformers:</span> <span class='lbracket'>[</span><span class='id identifier rubyid_transform_urls_to_absolute_ones'>transform_urls_to_absolute_ones</span><span class='rbracket'>]</span>
                             <span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_to_s'>to_s</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'> </span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -336,9 +357,9 @@
 </div>
 
       <div id="footer">
-  Generated on Sun Jul 14 19:35:06 2019 by
+  Generated on Sat Sep  7 20:16:10 2019 by
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
-  0.9.20 (ruby-2.6.3).
+  0.9.20 (ruby-2.6.4).
 </div>
 
     </div>
