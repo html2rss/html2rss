@@ -1,10 +1,47 @@
-# [0.3.1](https://github.com/gildesmarais/html2rss/compare/v0.3.0...v0.3.1) (2019-06-23)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.4.0...v) (2019-09-07)
+
+
+
+# [0.4.0](https://github.com/gildesmarais/html2rss/compare/v0.3.3...v0.4.0) (2019-09-07)
+
+
+### Bug Fixes
+
+* **template:** breaks when any method returns nil ([#32](https://github.com/gildesmarais/html2rss/issues/32)) ([0709958](https://github.com/gildesmarais/html2rss/commit/0709958))
+
+
+### Features
+
+* **parse_time:** support setting of a time_zone ([#31](https://github.com/gildesmarais/html2rss/issues/31)) ([cecbe5e](https://github.com/gildesmarais/html2rss/commit/cecbe5e)), closes [#19](https://github.com/gildesmarais/html2rss/issues/19)
+* **postprocessor:** add referrer-policy on img tag in sanitze html ([#24](https://github.com/gildesmarais/html2rss/issues/24)) ([a3b1d18](https://github.com/gildesmarais/html2rss/commit/a3b1d18))
+* **rubocop:** add rubocop-rspec and (auto-)fix issues ([#22](https://github.com/gildesmarais/html2rss/issues/22)) ([dd539f6](https://github.com/gildesmarais/html2rss/commit/dd539f6))
+* **rubocop:** enable more performance cops and relax config ([#21](https://github.com/gildesmarais/html2rss/issues/21)) ([67132bb](https://github.com/gildesmarais/html2rss/commit/67132bb))
+* **sanitize_html:** rewrite relative urls to absolute in a and img elements ([#30](https://github.com/gildesmarais/html2rss/issues/30)) ([caf4e80](https://github.com/gildesmarais/html2rss/commit/caf4e80))
+* **sanitze_html:** strip more attributes ([#28](https://github.com/gildesmarais/html2rss/issues/28)) ([9daa42e](https://github.com/gildesmarais/html2rss/commit/9daa42e)), closes [#26](https://github.com/gildesmarais/html2rss/issues/26)
+
+
+
+## [0.3.3](https://github.com/gildesmarais/html2rss/compare/v0.3.2...v0.3.3) (2019-07-01)
+
+
+
+## [0.3.2](https://github.com/gildesmarais/html2rss/compare/v0.3.1...v0.3.2) (2019-07-01)
+
+
+### Features
+
+* enable usage of multiple post processors ([#17](https://github.com/gildesmarais/html2rss/issues/17)) ([8a9f7b4](https://github.com/gildesmarais/html2rss/commit/8a9f7b4))
+
+
+
+## [0.3.1](https://github.com/gildesmarais/html2rss/compare/v0.3.0...v0.3.1) (2019-06-23)
 
 
 ### Features
 
 * handle string and symbol keys in config hashes ([#15](https://github.com/gildesmarais/html2rss/issues/15)) ([93ad824](https://github.com/gildesmarais/html2rss/commit/93ad824))
 * support attributes without selector, fallback to root element then ([#16](https://github.com/gildesmarais/html2rss/issues/16)) ([d99ae3d](https://github.com/gildesmarais/html2rss/commit/d99ae3d))
+
 
 
 # [0.3.0](https://github.com/gildesmarais/html2rss/compare/v0.2.2...v0.3.0) (2019-06-20)
@@ -17,7 +54,7 @@
 
 
 
-# [0.2.1](https://github.com/gildesmarais/html2rss/compare/v0.2.0...v0.2.1) (2018-11-18)
+## [0.2.2](https://github.com/gildesmarais/html2rss/compare/v0.2.0...v0.2.2) (2019-01-31)
 
 
 ### Bug Fixes
