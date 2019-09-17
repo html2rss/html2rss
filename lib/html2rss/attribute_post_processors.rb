@@ -1,3 +1,4 @@
+require_relative 'attribute_post_processors/html_to_markdown'
 require_relative 'attribute_post_processors/parse_time'
 require_relative 'attribute_post_processors/parse_uri'
 require_relative 'attribute_post_processors/sanitize_html'
