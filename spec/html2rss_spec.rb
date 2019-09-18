@@ -1,5 +1,6 @@
 RSpec.describe Html2rss do
   let(:config_file) { File.join(['spec', 'config.test.yml']) }
+  let(:config_json_file) { File.join(['spec', 'config.json.test.yml']) }
   let(:yaml_config) { YAML.safe_load(File.open(config_file)) }
   let(:name) { 'nuxt-releases' }
   let(:feed_config) { yaml_config['feeds'][name] }
@@ -11,14 +12,28 @@ RSpec.describe Html2rss do
   end
 
   describe '.feed_from_yaml_config' do
-    subject(:feed) do
-      VCR.use_cassette('nuxt-releases') do
-        described_class.feed_from_yaml_config(config_file, name)
+    context 'with html response' do
+      subject(:feed) do
+        VCR.use_cassette('nuxt-releases') do
+          described_class.feed_from_yaml_config(config_file, name)
+        end
+      end
+
+      it 'returns a RSS:Rss instance' do
+        expect(feed).to be_a_kind_of(RSS::Rss)
       end
     end
 
-    it 'returns a RSS:Rss instance' do
-      expect(feed).to be_a_kind_of(RSS::Rss)
+    context 'with json response' do
+      subject(:feed) do
+        VCR.use_cassette('config.json') do
+          described_class.feed_from_yaml_config(config_json_file, 'json')
+        end
+      end
+
+      it 'returns a RSS:Rss instance' do
+        expect(feed).to be_a_kind_of(RSS::Rss)
+      end
     end
   end
 

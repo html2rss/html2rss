@@ -1,4 +1,8 @@
+require 'active_support/core_ext/hash'
+require 'builder'
 require 'hashie'
+require 'json'
+require 'nokogiri'
 
 module Html2rss
   module Utils
@@ -19,6 +23,10 @@ module Html2rss
         uri.query = url.query
         uri.fragment = url.fragment if url.fragment
       end
+    end
+
+    def self.hash_to_xml(hash)
+      hash.to_xml(root: :html, skip_instruct: true, skip_types: true)
     end
   end
 end

@@ -35,6 +35,10 @@ module Html2rss
       channel_config.fetch 'time_zone', 'UTC'
     end
 
+    def json?
+      channel_config.fetch 'json', false
+    end
+
     def headers
       global_config.fetch('headers', {})
     end
