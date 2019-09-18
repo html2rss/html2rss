@@ -1,4 +1,13 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.4.1...v) (2019-09-18)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.5.0...v) (2019-09-18)
+
+
+
+# [0.5.0](https://github.com/gildesmarais/html2rss/compare/v0.4.1...v0.5.0) (2019-09-18)
+
+
+### Features
+
+* support JSON ([#37](https://github.com/gildesmarais/html2rss/issues/37)) ([d258f73](https://github.com/gildesmarais/html2rss/commit/d258f73))
 
 
 
