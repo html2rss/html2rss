@@ -70,9 +70,9 @@ will be converted to:
 </root>
 ```
 
-Your items selector would be `'data > datum'`, the item's link selector would be `url`.
+Your items selector would be `data > datum`, the item's link selector would be `url`.
 
-Under the hood it uses ActiveSupport's [Hash.to_xml](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
+Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
 
 ## Development
 
