@@ -26,7 +26,7 @@ module Html2rss
     end
 
     def self.hash_to_xml(hash)
-      hash.to_xml(root: :root)
+      hash.to_xml(root: :html, skip_instruct: true, skip_types: true)
     end
   end
 end

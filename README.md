@@ -59,15 +59,14 @@ Example:
 will be converted to:
 
 ```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<root>
-  <data type="array">
+<html>
+  <data>
     <datum>
       <title>Headline</title>
       <url>https://example.com</url>
     </datum>
   </data>
-</root>
+</html>
 ```
 
 Your items selector would be `data > datum`, the item's link selector would be `url`.
