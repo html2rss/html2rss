@@ -18,6 +18,9 @@ Metrics/ModuleLength:
   Exclude:
     - "**/*_spec.rb"
 
+Metrics/MethodLength:
+  Max: 15
+
 Documentation:
   Enabled: false
 

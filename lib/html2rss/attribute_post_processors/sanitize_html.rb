@@ -43,9 +43,7 @@ module Html2rss
       def get
         Sanitize.fragment(@value, Sanitize::Config.merge(
                                     Sanitize::Config::RELAXED,
-                                    attributes: {
-                                      all: %w[dir lang alt title translate]
-                                    },
+                                    attributes: { all: %w[dir lang alt title translate] },
                                     add_attributes: {
                                       'a' => {
                                         'rel' => 'nofollow noopener noreferrer',

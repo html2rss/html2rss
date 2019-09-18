@@ -11,4 +11,12 @@ RSpec.describe Html2rss::Utils do
       end
     end
   end
+
+  describe '.hash_to_xml' do
+    let(:hash) { { 'foo' => [{ 'BAR' => :baz, boing: [1, 2, 3] }] } }
+
+    it 'converts the hash to xml' do
+      expect(described_class.hash_to_xml(hash)).to include '<BAR type="symbol">baz</BAR>'
+    end
+  end
 end

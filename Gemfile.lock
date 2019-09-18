@@ -3,6 +3,7 @@ PATH
   specs:
     html2rss (0.4.1)
       activesupport (~> 5.0)
+      builder
       faraday (~> 0.15)
       faraday_middleware (~> 0.13)
       hashie (~> 3.6)
@@ -19,6 +20,7 @@ GEM
       minitest (~> 5.1)
       tzinfo (~> 1.1)
     ast (2.4.0)
+    builder (3.2.3)
     byebug (11.0.1)
     concurrent-ruby (1.1.5)
     crass (1.0.4)

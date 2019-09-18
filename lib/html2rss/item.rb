@@ -49,19 +49,22 @@ module Html2rss
     ##
     # @return [Array]
     def self.from_url(url, config)
-      page = Nokogiri::HTML(get_body_from_url(url, config.headers))
-      page.css(config.selector('items')).map do |xml_item|
+      body = get_body_from_url(url, config)
+
+      Nokogiri::HTML(body).css(config.selector('items')).map do |xml_item|
         new xml_item, config
       end
     end
 
     private
 
-    def self.get_body_from_url(url, headers)
-      Faraday.new(url: url, headers: headers) do |faraday|
+    def self.get_body_from_url(url, config)
+      body = Faraday.new(url: url, headers: config.headers) do |faraday|
         faraday.use FaradayMiddleware::FollowRedirects
         faraday.adapter Faraday.default_adapter
       end.get.body
+
+      config.json? ? Html2rss::Utils.hash_to_xml(JSON.parse(body)) : body
     end
     private_class_method :get_body_from_url
 

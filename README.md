@@ -1,4 +1,4 @@
-![html2rss logo](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)  
+![html2rss logo](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)
 
 [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
@@ -9,7 +9,7 @@ Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 **Are you searching for a ready to use "website to RSS" solution?**
 [Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
 
-Each website needs a *feed config* which contains the URL to scrape and
+Each website needs a _feed config_ which contains the URL to scrape and
 CSS selectors to extract the required information (like title, URL, ...).
 This gem provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractors) (e.g. extract the information from an HTML attribute)
 and chainable [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information retrieval even easier.
@@ -41,6 +41,38 @@ Create a YAML config file. Find an example at [`rspec/config.test.yml`](https://
 an `RSS:Rss` object.
 
 **Too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
+
+## Scraping JSON
+
+Since 0.5.0 it is possible to scrape and process JSON.
+
+Adding `json: true` to the channel config will convert the JSON response to XML.
+
+Example:
+
+```json
+{
+  "data": [{ "title": "Headline", "url": "https://example.com" }]
+}
+```
+
+will be converted to:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <data type="array">
+    <datum>
+      <title>Headline</title>
+      <url>https://example.com</url>
+    </datum>
+  </data>
+</root>
+```
+
+Your items selector would be `'data > datum'`, the item's link selector would be `url`.
+
+Under the hood it uses ActiveSupport's [Hash.to_xml](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
 
 ## Development
 
