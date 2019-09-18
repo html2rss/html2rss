@@ -1,10 +1,8 @@
-<div align="center">
-  ![html2rss](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)
-  <br>
-  [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
-  [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
-  [RubyDoc](https://www.rubydoc.info/gems/html2rss)
-</div>
+![html2rss logo](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)  
+
+[![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
+[![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
+[API docs on RubyDoc.info](https://www.rubydoc.info/gems/html2rss)
 
 Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 
