@@ -14,11 +14,10 @@ module Html2rss
 
       return url if url.absolute?
 
-      path, query = url.to_s.split('?')
-
       URI(channel_url).tap do |uri|
-        uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
-        uri.query = query
+        uri.path = url.path.to_s.start_with?('/') ? url.path : "/#{url.path}"
+        uri.query = url.query
+        uri.fragment = url.fragment if url.fragment
       end
     end
   end
