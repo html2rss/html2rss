@@ -79,7 +79,7 @@
   <dl>
     <dt>Defined in:</dt>
     <dd>lib/html2rss/attribute_post_processors.rb<span class="defines">,<br />
-  lib/html2rss/attribute_post_processors/template.rb,<br /> lib/html2rss/attribute_post_processors/parse_uri.rb,<br /> lib/html2rss/attribute_post_processors/substring.rb,<br /> lib/html2rss/attribute_post_processors/parse_time.rb,<br /> lib/html2rss/attribute_post_processors/sanitize_html.rb</span>
+  lib/html2rss/attribute_post_processors/template.rb,<br /> lib/html2rss/attribute_post_processors/parse_uri.rb,<br /> lib/html2rss/attribute_post_processors/substring.rb,<br /> lib/html2rss/attribute_post_processors/parse_time.rb,<br /> lib/html2rss/attribute_post_processors/sanitize_html.rb,<br /> lib/html2rss/attribute_post_processors/html_to_markdown.rb</span>
 </dd>
   </dl>
   
@@ -102,7 +102,7 @@
     
   
     
-      <strong class="classes">Classes:</strong> <span class='object_link'><a href="AttributePostProcessors/ParseTime.html" title="Html2rss::AttributePostProcessors::ParseTime (class)">ParseTime</a></span>, <span class='object_link'><a href="AttributePostProcessors/ParseUri.html" title="Html2rss::AttributePostProcessors::ParseUri (class)">ParseUri</a></span>, <span class='object_link'><a href="AttributePostProcessors/SanitizeHtml.html" title="Html2rss::AttributePostProcessors::SanitizeHtml (class)">SanitizeHtml</a></span>, <span class='object_link'><a href="AttributePostProcessors/Substring.html" title="Html2rss::AttributePostProcessors::Substring (class)">Substring</a></span>, <span class='object_link'><a href="AttributePostProcessors/Template.html" title="Html2rss::AttributePostProcessors::Template (class)">Template</a></span>
+      <strong class="classes">Classes:</strong> <span class='object_link'><a href="AttributePostProcessors/HtmlToMarkdown.html" title="Html2rss::AttributePostProcessors::HtmlToMarkdown (class)">HtmlToMarkdown</a></span>, <span class='object_link'><a href="AttributePostProcessors/ParseTime.html" title="Html2rss::AttributePostProcessors::ParseTime (class)">ParseTime</a></span>, <span class='object_link'><a href="AttributePostProcessors/ParseUri.html" title="Html2rss::AttributePostProcessors::ParseUri (class)">ParseUri</a></span>, <span class='object_link'><a href="AttributePostProcessors/SanitizeHtml.html" title="Html2rss::AttributePostProcessors::SanitizeHtml (class)">SanitizeHtml</a></span>, <span class='object_link'><a href="AttributePostProcessors/Substring.html" title="Html2rss::AttributePostProcessors::Substring (class)">Substring</a></span>, <span class='object_link'><a href="AttributePostProcessors/Template.html" title="Html2rss::AttributePostProcessors::Template (class)">Template</a></span>
     
   
 </p>
@@ -167,15 +167,15 @@
       <pre class="lines">
 
 
-11
 12
 13
 14
 15
-16</pre>
+16
+17</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/html2rss/attribute_post_processors.rb', line 11</span>
+      <pre class="code"><span class="info file"># File 'lib/html2rss/attribute_post_processors.rb', line 12</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id identifier rubyid_get_processor'>get_processor</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_camel_cased_name'>camel_cased_name</span> <span class='op'>=</span> <span class='id identifier rubyid_name'>name</span><span class='period'>.</span><span class='id identifier rubyid_split'>split</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>_</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='symbol'>:capitalize</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_join'>join</span>
@@ -193,9 +193,9 @@
 </div>
 
       <div id="footer">
-  Generated on Sat Sep  7 20:16:09 2019 by
+  Generated on Wed Sep 18 12:52:16 2019 by
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
-  0.9.20 (ruby-2.6.4).
+  0.9.20 (ruby-2.6.3).
 </div>
 
     </div>
