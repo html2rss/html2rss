@@ -1,4 +1,18 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.4.0...v) (2019-09-07)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.4.1...v) (2019-09-18)
+
+
+
+## [0.4.1](https://github.com/gildesmarais/html2rss/compare/v0.4.0...v0.4.1) (2019-09-18)
+
+
+### Bug Fixes
+
+* building absolute url fails when a fragment is present ([#35](https://github.com/gildesmarais/html2rss/issues/35)) ([c1b6dc7](https://github.com/gildesmarais/html2rss/commit/c1b6dc7))
+
+
+### Features
+
+* **postprocessors:** add html to markdown ([#34](https://github.com/gildesmarais/html2rss/issues/34)) ([6a4a462](https://github.com/gildesmarais/html2rss/commit/6a4a462))
 
 
 
