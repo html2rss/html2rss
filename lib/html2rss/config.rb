@@ -43,12 +43,16 @@ module Html2rss
       global_config.fetch('headers', {})
     end
 
-    def options(name)
+    def attribute_options(name)
       feed_config.dig('selectors').fetch(name, {}).merge('channel' => channel_config)
     end
 
+    def attribute?(name)
+      attribute_names.include?(name.to_s)
+    end
+
     def categories
-      feed_config.dig('selectors').fetch('categories', [])
+      feed_config.dig('selectors').fetch('categories', []).map(&:to_sym)
     end
 
     def selector(name)
@@ -56,9 +60,9 @@ module Html2rss
     end
 
     def attribute_names
-      attribute_names = feed_config.fetch('selectors', {}).keys.map(&:to_s)
-      attribute_names.delete('items')
-      attribute_names
+      @attribute_names ||= feed_config.fetch('selectors', {}).keys.map(&:to_s).tap do |attrs|
+        attrs.delete('items')
+      end
     end
 
     private
