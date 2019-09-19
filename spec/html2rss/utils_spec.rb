@@ -14,9 +14,8 @@ RSpec.describe Html2rss::Utils do
 
   describe '.hash_to_xml' do
     let(:hash) { { 'data' => [{ 'title' => 'Headline', 'url' => 'https://example.com' }] } }
-
-    it 'converts the hash to xml' do
-      xml = <<~XML
+    let(:xml) {
+      <<~XML
         <html>
           <data>
             <datum>
@@ -26,7 +25,9 @@ RSpec.describe Html2rss::Utils do
           </data>
         </html>
       XML
+    }
 
+    it 'converts the hash to xml' do
       expect(described_class.hash_to_xml(hash)).to eq xml
     end
   end
