@@ -83,14 +83,12 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/gildes
 
 ## Releasing a new version
 
-0. `git pull`
-1. increase version in `lib/version.rb`
-2. `bundle`
-3. commit the changes
-4. `git tag v....`
-5. `git push; git push --tags`
-6. update the changelog, commit and push
-
-### Changelog generation
-
-The `CHANGELOG.md` can be generated automatically with [`standard-changelog`](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/standard-changelog).
+1. `git pull`
+2. increase version in `lib/html2rss/version.rb`
+3. `bundle`
+4. commit the changes
+5. `git tag v....`
+6. [`standard-changelog -f`](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/standard-changelog)
+7. `git add CHANGELOG.md && git commit --amend`
+8. `git tag v.... -f`
+9. `git push && git push --tags`

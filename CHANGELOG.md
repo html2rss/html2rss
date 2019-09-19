@@ -1,4 +1,13 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.5.0...v) (2019-09-18)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.5.1...v) (2019-09-19)
+
+
+
+## [0.5.1](https://github.com/gildesmarais/html2rss/compare/v0.5.0...v0.5.1) (2019-09-19)
+
+
+### Bug Fixes
+
+* rss contains additional categories ([#39](https://github.com/gildesmarais/html2rss/issues/39)) ([ed164ef](https://github.com/gildesmarais/html2rss/commit/ed164ef))
 
 
 
