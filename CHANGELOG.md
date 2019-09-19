@@ -1,4 +1,8 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.5.1...v) (2019-09-19)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.5.2...v) (2019-09-19)
+
+
+
+## [0.5.2](https://github.com/gildesmarais/html2rss/compare/v0.5.1...v0.5.2) (2019-09-19)
 
 
 

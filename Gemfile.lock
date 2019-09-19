@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html2rss (0.5.0)
+    html2rss (0.5.2)
       activesupport (~> 5.0)
       builder
       faraday (~> 0.15)
