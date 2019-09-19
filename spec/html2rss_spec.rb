@@ -130,10 +130,10 @@ RSpec.describe Html2rss do
       end
 
       describe 'item.category' do
-        subject(:categories) { item.css('category').map(&:text) }
+        subject(:categories) { item.css('category').to_s }
 
         it 'sets the author as category' do
-          expect(categories).to include 'manni'
+          expect(categories).to include '<category>manni</category>'
         end
       end
 

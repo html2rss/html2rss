@@ -15,17 +15,18 @@ module Html2rss
     private_class_method :new
 
     def respond_to_missing?(method_name, _include_private = false)
-      config.attribute_names.include?(method_name) || super
+      config.attribute?(method_name) || super
     end
 
     def method_missing(method_name, *_args)
-      attribute_config = config.options(method_name.to_s)
-      return super unless attribute_config
+      return super unless respond_to_missing?(method_name)
 
-      extractor = ItemExtractors.get_extractor(attribute_config['extractor'])
-      value = extractor.new(xml, attribute_config).get
+      attribute_options = config.attribute_options(method_name)
 
-      post_process(value, attribute_config.fetch('post_process', false))
+      extractor = ItemExtractors.get_extractor(attribute_options['extractor'])
+      value = extractor.new(xml, attribute_options).get
+
+      post_process(value, attribute_options.fetch('post_process', false))
     end
 
     def available_attributes
@@ -33,8 +34,12 @@ module Html2rss
         @config.attribute_names) - ['categories']
     end
 
+    ##
+    # At least a title or a description is required to be a valid RSS 2.0 item.
     def valid?
-      [title.to_s, description.to_s].join('') != ''
+      title = self.title if config.attribute?(:title)
+      description = self.description if config.attribute?(:description)
+      [title, description].join != ''
     end
 
     ##
