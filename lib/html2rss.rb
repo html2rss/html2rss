@@ -4,6 +4,9 @@ require 'html2rss/version'
 require 'html2rss/utils'
 require 'yaml'
 
+##
+# The Html2rss namespace.
+# Request HTML from an URL and transform it to a RSS 2.0 object.
 module Html2rss
   ##
   # Returns a RSS object which is generated from the provided file.

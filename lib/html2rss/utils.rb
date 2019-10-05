@@ -5,6 +5,8 @@ require 'json'
 require 'nokogiri'
 
 module Html2rss
+  ##
+  # The collecting tank for utility methods.
   module Utils
     ##
     # A Hash with indifferent access, build with {https://github.com/intridea/hashie Hashie}.
