@@ -1,0 +1,54 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://httpbin.org/headers
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - html2rss-request
+      X-Something:
+      - Foobar
+      Authorization:
+      - Token deadbea7
+      Cookie:
+      - monster=MeWantCookie
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      access-control-allow-credentials:
+      - 'true'
+      access-control-allow-origin:
+      - "*"
+      content-type:
+      - application/json
+      date:
+      - Sat, 05 Oct 2019 11:41:31 GMT
+      referrer-policy:
+      - no-referrer-when-downgrade
+      server:
+      - nginx
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+      content-length:
+      - '211'
+      connection:
+      - Close
+    body:
+      encoding: ASCII-8BIT
+      string: "{\n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\":
+        \"gzip;q=1.0,deflate;q=0.6,identity;q=0.3\", \n    \"Authorization\": \"Token
+        deadbea7\", \n    \"Cookie\": \"monster=MeWantCookie\", \n    \"Host\": \"httpbin.org\",
+        \n    \"User-Agent\": \"html2rss-request\", \n    \"X-Something\": \"Foobar\"\n
+        \ }\n}\n"
+    http_version: 
+  recorded_at: Sat, 05 Oct 2019 11:41:31 GMT
+recorded_with: VCR 5.0.0

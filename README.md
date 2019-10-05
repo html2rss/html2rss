@@ -48,7 +48,17 @@ Since 0.5.0 it is possible to scrape and process JSON.
 
 Adding `json: true` to the channel config will convert the JSON response to XML.
 
-Example:
+Feed config:
+
+```yaml
+channel:
+  url: https://example.com
+  title: "Example with JSON"
+  json: true
+# ...
+```
+
+Imagine this HTTP response:
 
 ```json
 {
@@ -72,6 +82,25 @@ will be converted to:
 Your items selector would be `data > datum`, the item's link selector would be `url`.
 
 Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
+
+## Set any HTTP header in the request
+
+You can add any HTTP headers to the request to the channel URL.
+You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
+
+```yaml
+channel:
+  url: https://example.com
+  title: "Example with http headers"
+  headers:
+    "User-Agent": "html2rss-request"
+    "X-Something": "Foobar"
+    "Authorization": "Token deadbea7"
+    "Cookie": "monster=MeWantCookie"
+# ...
+```
+
+The headers provided by the channel will be merged into the global headers.
 
 ## Development
 
