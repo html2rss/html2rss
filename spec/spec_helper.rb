@@ -1,6 +1,9 @@
 require 'bundler/setup'
 require 'simplecov'
-SimpleCov.start
+
+SimpleCov.start do
+  add_filter 'spec/'
+end
 
 require 'vcr'
 require 'html2rss'
