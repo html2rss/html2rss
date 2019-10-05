@@ -2,6 +2,13 @@ require 'rss'
 require_relative 'item'
 
 module Html2rss
+  ##
+  # The purpose is to build the feed, consisting of
+  #
+  # - the 'channel' and
+  # - the 'item'
+  #
+  # parts.
   class FeedBuilder
     def initialize(config)
       @config = config

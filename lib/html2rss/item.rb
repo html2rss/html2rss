@@ -6,6 +6,9 @@ require_relative 'item_extractors'
 require_relative 'attribute_post_processors'
 
 module Html2rss
+  ##
+  # Takes the selected Nokogiri::HTML and responds to accessors names
+  # defined in the feed config.
   class Item
     def initialize(xml, config)
       @xml = xml

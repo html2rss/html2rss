@@ -1,4 +1,7 @@
 module Html2rss
+  ##
+  # The Config class abstracts from the config data structure and
+  # provides default values.
   class Config
     def initialize(feed_config, global_config = {})
       @global_config = Utils::IndifferentAccessHash.new global_config

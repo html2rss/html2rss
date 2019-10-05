@@ -22,7 +22,7 @@ Metrics/MethodLength:
   Max: 15
 
 Documentation:
-  Enabled: false
+  Enabled: true
 
 Style/BlockDelimiters:
   Enabled: true
