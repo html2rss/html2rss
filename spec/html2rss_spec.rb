@@ -173,4 +173,40 @@ RSpec.describe Html2rss do
       end
     end
   end
+
+  context 'with config having channel headers and json: true' do
+    subject(:categories) do
+      VCR.use_cassette('httpbin-headers') {
+        described_class.feed(feed_config)
+      }.items.first.categories.map(&:content)
+    end
+
+    let(:feed_config) do
+      {
+        channel: {
+          url: 'https://httpbin.org/headers',
+          title: 'httpbin headers',
+          json: true,
+          headers: {
+            'User-Agent': 'html2rss-request',
+            'X-Something': 'Foobar',
+            'Authorization': 'Token deadbea7',
+            'Cookie': 'monster=MeWantCookie'
+          }
+        },
+        selectors: {
+          items: { selector: 'html' },
+          title: { selector: 'host' },
+          something: { selector: 'x-something' },
+          authorization: { selector: 'authorization' },
+          cookie: { selector: 'cookie' },
+          categories: %i[title something authorization cookie]
+        }
+      }
+    end
+
+    it 'has the headers' do
+      expect(categories).to include('httpbin.org', 'Foobar', 'Token deadbea7', 'monster=MeWantCookie')
+    end
+  end
 end

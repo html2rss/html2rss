@@ -40,7 +40,7 @@ module Html2rss
     end
 
     def headers
-      global_config.fetch('headers', {})
+      global_config.fetch('headers', {}).merge(channel_config.fetch('headers', {}))
     end
 
     def attribute_options(name)
