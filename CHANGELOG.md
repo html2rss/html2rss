@@ -1,4 +1,20 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.5.2...v) (2019-09-19)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.6.0...v) (2019-10-05)
+
+
+
+# [0.6.0](https://github.com/gildesmarais/html2rss/compare/v0.5.2...v0.6.0) (2019-10-05)
+
+
+### Bug Fixes
+
+* **specs:** simplecov does not exclude files from spec/ ([#44](https://github.com/gildesmarais/html2rss/issues/44)) ([b0ca780](https://github.com/gildesmarais/html2rss/commit/b0ca780))
+
+
+### Features
+
+* **ci:** run rubocop on ci ([#40](https://github.com/gildesmarais/html2rss/issues/40)) ([f4ec8d1](https://github.com/gildesmarais/html2rss/commit/f4ec8d1))
+* memoize ItemExtractor lookups ([#45](https://github.com/gildesmarais/html2rss/issues/45)) ([e88321c](https://github.com/gildesmarais/html2rss/commit/e88321c))
+* support setting of request headers in feed config ([#41](https://github.com/gildesmarais/html2rss/issues/41)) ([a7aca11](https://github.com/gildesmarais/html2rss/commit/a7aca11)), closes [#38](https://github.com/gildesmarais/html2rss/issues/38)
 
 
 
