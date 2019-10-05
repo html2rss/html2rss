@@ -12,11 +12,12 @@ module Html2rss
     DEFAULT = 'text'.freeze
 
     def self.get_extractor(name)
-      name ||= DEFAULT
-      camel_cased_name = name.split('_').map(&:capitalize).join
-      class_name = ['Html2rss', 'ItemExtractors', camel_cased_name].join('::')
+      @extractors = Hash.new do |hash, key|
+        camel_cased_name = key.split('_').map(&:capitalize).join
+        class_name = ['Html2rss', 'ItemExtractors', camel_cased_name].join('::')
 
-      Object.const_get(class_name)
+        hash[key] = Object.const_get(class_name)
+      end[name || DEFAULT]
     end
 
     ##
