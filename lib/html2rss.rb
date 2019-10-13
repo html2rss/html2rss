@@ -21,9 +21,7 @@ module Html2rss
   #    # => #<RSS::Rss:0x00007fb2f6331228
   # @return [RSS:Rss]
   def self.feed_from_yaml_config(file, name)
-    # rubocop:disable Security/YAMLLoad
-    yaml = YAML.load(File.open(file))
-    # rubocop:enable Security/YAMLLoad
+    yaml = YAML.safe_load(File.read(file), aliases: true)
 
     feed_config = yaml['feeds'][name]
     global_config = yaml.reject { |key| key == 'feeds' }
