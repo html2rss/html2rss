@@ -2,13 +2,16 @@ module Html2rss
   ##
   # Provides a namespace for item extractors.
   module ItemExtractors
-    DEFAULT = 'text'.freeze
+    DEFAULT = 'Text'.freeze
 
     def self.get_extractor(name)
-      camel_cased_name = (name || DEFAULT).split('_').map(&:capitalize).join
-      class_name = ['Html2rss', 'ItemExtractors', camel_cased_name].join('::')
+      @get_extractor ||= Hash.new do |extractors, key|
+        camel_cased_name = (key || DEFAULT).split('_').map(&:capitalize).join
+        class_name = ['Html2rss', 'ItemExtractors', camel_cased_name].join('::')
+        extractors[key] = Object.const_get(class_name)
+      end
 
-      Object.const_get(class_name)
+      @get_extractor[name]
     end
 
     ##
