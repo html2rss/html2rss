@@ -21,9 +21,6 @@ Metrics/ModuleLength:
 Metrics/MethodLength:
   Max: 15
 
-Documentation:
-  Enabled: true
-
 Style/BlockDelimiters:
   Enabled: true
   Exclude:
