@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Give the URL to scrape and some CSS selectors. Get a RSS::Rss instance in return.'
   spec.homepage      = 'https://github.com/gildesmarais/html2rss'
   spec.license       = 'MIT'
-  spec.required_ruby_version = '>= 2.4.0'
+  spec.required_ruby_version = '>= 2.4.4'
 
   if spec.respond_to?(:metadata)
     spec.metadata['allowed_push_host'] = 'https://rubygems.org'
@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
   spec.add_dependency 'reverse_markdown', '~> 1.3'
   spec.add_dependency 'sanitize', '~> 5.0'
+  spec.add_dependency 'zeitwerk'
   spec.add_development_dependency 'bundler', '~> 1.16'
   spec.add_development_dependency 'byebug'
   spec.add_development_dependency 'rspec', '~> 3.0'
