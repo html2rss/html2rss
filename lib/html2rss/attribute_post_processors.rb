@@ -1,19 +1,15 @@
-require_relative 'attribute_post_processors/html_to_markdown'
-require_relative 'attribute_post_processors/parse_time'
-require_relative 'attribute_post_processors/parse_uri'
-require_relative 'attribute_post_processors/sanitize_html'
-require_relative 'attribute_post_processors/substring'
-require_relative 'attribute_post_processors/template'
-
 module Html2rss
   ##
   # Provides a namespace for attribute post processors.
   module AttributePostProcessors
     def self.get_processor(name)
-      camel_cased_name = name.split('_').map(&:capitalize).join
-      class_name = ['Html2rss', 'AttributePostProcessors', camel_cased_name].join('::')
+      @get_processor ||= Hash.new do |processors, key|
+        camel_cased_name = key.split('_').map(&:capitalize).join
+        class_name = ['Html2rss', 'AttributePostProcessors', camel_cased_name].join('::')
+        processors[key] = Object.const_get(class_name)
+      end
 
-      Object.const_get(class_name)
+      @get_processor[name]
     end
   end
 end

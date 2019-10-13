@@ -1,5 +1,4 @@
 require 'rss'
-require_relative 'item'
 
 module Html2rss
   ##

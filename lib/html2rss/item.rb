@@ -1,9 +1,6 @@
 require 'faraday'
 require 'faraday_middleware'
-require 'open-uri'
 require 'nokogiri'
-require_relative 'item_extractors'
-require_relative 'attribute_post_processors'
 
 module Html2rss
   ##
