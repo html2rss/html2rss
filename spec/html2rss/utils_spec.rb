@@ -16,14 +16,14 @@ RSpec.describe Html2rss::Utils do
     let(:hash) { { 'data' => [{ 'title' => 'Headline', 'url' => 'https://example.com' }] } }
     let(:xml) {
       <<~XML
-        <html>
+        <hash>
           <data>
             <datum>
               <title>Headline</title>
               <url>https://example.com</url>
             </datum>
           </data>
-        </html>
+        </hash>
       XML
     }
 
