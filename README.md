@@ -20,14 +20,18 @@ Add this line to your application's Gemfile: `gem 'html2rss'`
 Then execute: `bundle`
 
 ```ruby
-rss = Html2rss.feed(
-  channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
-  selectors: {
-    items: { selector: '#hot-network-questions > ul > li' },
-    title: { selector: 'a' },
-    link: { selector: 'a', extractor: 'href' }
-  }
-)
+rss =
+  Html2rss.feed(
+    channel: {
+      title: 'StackOverflow: Hot Network Questions',
+      url: 'https://stackoverflow.com/questions'
+    },
+    selectors: {
+      items: { selector: '#hot-network-questions > ul > li' },
+      title: { selector: 'a' },
+      link: { selector: 'a', extractor: 'href' }
+    }
+  )
 
 puts rss.to_s
 ```
@@ -69,14 +73,14 @@ Imagine this HTTP response:
 will be converted to:
 
 ```xml
-<html>
+<hash>
   <data>
     <datum>
       <title>Headline</title>
       <url>https://example.com</url>
     </datum>
   </data>
-</html>
+</hash>
 ```
 
 Your items selector would be `data > datum`, the item's link selector would be `url`.
