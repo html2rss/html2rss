@@ -195,7 +195,7 @@ RSpec.describe Html2rss do
           }
         },
         selectors: {
-          items: { selector: 'html' },
+          items: { selector: 'hash' },
           title: { selector: 'host' },
           something: { selector: 'x-something' },
           authorization: { selector: 'authorization' },
