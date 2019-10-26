@@ -1,7 +1,7 @@
 RSpec.describe Html2rss::AttributePostProcessors::SanitizeHtml do
   subject { described_class.new(html, config: config).get }
 
-  let(:config) {
+  let(:config) do
     Html2rss::Config.new(
       channel: { title: 'Example: questions', url: 'https://example.com/questions' },
       selectors: {
@@ -10,9 +10,9 @@ RSpec.describe Html2rss::AttributePostProcessors::SanitizeHtml do
         link: { selector: 'a', extractor: 'href' }
       }
     )
-  }
+  end
 
-  let(:html) {
+  let(:html) do
     <<~HTML
       <html lang="en">
         <body>
@@ -29,20 +29,22 @@ RSpec.describe Html2rss::AttributePostProcessors::SanitizeHtml do
         </body>
       </html>
     HTML
-  }
+  end
 
-  let(:sanitzed_html) {
+  let(:sanitzed_html) do
     [
-      "Breaking news: I'm a deprecated tag",
-      '<div>',
+      "Breaking news: I'm a deprecated tag ",
+      '<div> ',
+      '<a href="https://example.com/lol.gif" rel="nofollow noopener noreferrer" target="_blank">',
       '<img src="https://example.com/lol.gif" alt="An animal looking cute" referrer-policy="no-referrer">',
-      '<a href="http://example.com" title="foo" rel="nofollow noopener noreferrer"',
-      'target="_blank">example.com</a>',
-      '<a href="https://example.com/article-123" rel="nofollow noopener noreferrer" target="_blank">Click',
-      'here!</a>',
+      '</a> ',
+      '<a href="http://example.com" title="foo" rel="nofollow noopener noreferrer" target="_blank">',
+      'example.com</a> ',
+      '<a href="https://example.com/article-123" rel="nofollow noopener noreferrer" target="_blank">',
+      'Click here!</a> ',
       '</div>'
-    ].join(' ')
-  }
+    ].join
+  end
 
   it { is_expected.to eq sanitzed_html }
 end
