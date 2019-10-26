@@ -22,10 +22,7 @@ Then execute: `bundle`
 ```ruby
 rss =
   Html2rss.feed(
-    channel: {
-      title: 'StackOverflow: Hot Network Questions',
-      url: 'https://stackoverflow.com/questions'
-    },
+    channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
     selectors: {
       items: { selector: '#hot-network-questions > ul > li' },
       title: { selector: 'a' },
@@ -62,7 +59,11 @@ channel:
 # ...
 ```
 
-Imagine this HTTP response:
+Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
+
+### Conversion of JSON objects
+
+This JSON object:
 
 ```json
 {
@@ -83,9 +84,28 @@ will be converted to:
 </hash>
 ```
 
-Your items selector would be `data > datum`, the item's link selector would be `url`.
+Your items selector would be `data > datum`, the item's `link` selector would be `url`.
 
-Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
+### Conversion of JSON arrays
+
+This JSON array:
+
+```json
+[{ "title": "Headline", "url": "https://example.com" }]
+```
+
+will be converted to:
+
+```xml
+<objects>
+  <object>
+    <title>Headline</title>
+    <url>https://example.com</url>
+  </object>
+</objects>
+```
+
+Your items selector would be `objects > object`, the item's `link` selector would be `url`.
 
 ## Set any HTTP header in the request
 
