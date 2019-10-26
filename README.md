@@ -20,14 +20,15 @@ Add this line to your application's Gemfile: `gem 'html2rss'`
 Then execute: `bundle`
 
 ```ruby
-rss = Html2rss.feed(
-  channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
-  selectors: {
-    items: { selector: '#hot-network-questions > ul > li' },
-    title: { selector: 'a' },
-    link: { selector: 'a', extractor: 'href' }
-  }
-)
+rss =
+  Html2rss.feed(
+    channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
+    selectors: {
+      items: { selector: '#hot-network-questions > ul > li' },
+      title: { selector: 'a' },
+      link: { selector: 'a', extractor: 'href' }
+    }
+  )
 
 puts rss.to_s
 ```
@@ -58,7 +59,11 @@ channel:
 # ...
 ```
 
-Imagine this HTTP response:
+Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
+
+### Conversion of JSON objects
+
+This JSON object:
 
 ```json
 {
@@ -69,19 +74,38 @@ Imagine this HTTP response:
 will be converted to:
 
 ```xml
-<html>
+<hash>
   <data>
     <datum>
       <title>Headline</title>
       <url>https://example.com</url>
     </datum>
   </data>
-</html>
+</hash>
 ```
 
-Your items selector would be `data > datum`, the item's link selector would be `url`.
+Your items selector would be `data > datum`, the item's `link` selector would be `url`.
 
-Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
+### Conversion of JSON arrays
+
+This JSON array:
+
+```json
+[{ "title": "Headline", "url": "https://example.com" }]
+```
+
+will be converted to:
+
+```xml
+<objects>
+  <object>
+    <title>Headline</title>
+    <url>https://example.com</url>
+  </object>
+</objects>
+```
+
+Your items selector would be `objects > object`, the item's `link` selector would be `url`.
 
 ## Set any HTTP header in the request
 
