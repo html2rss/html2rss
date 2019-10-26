@@ -33,8 +33,8 @@ RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
 
   let(:markdown) {
     [
-      "# Very interesting\n Breaking news: I'm a deprecated tag \n  ",
-      '![An animal looking cute](https://example.com/lol.gif) ',
+      "# Very interesting\n Breaking news: I'm a deprecated tag \n ",
+      '[![An animal looking cute](https://example.com/lol.gif)](https://example.com/lol.gif) ',
       '[example.com](http://example.com "foo") ',
       "[Click here!](https://example.com/article-123) \n"
     ].join
