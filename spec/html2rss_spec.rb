@@ -137,6 +137,16 @@ RSpec.describe Html2rss do
         end
       end
 
+      describe 'item.enclosure' do
+        subject(:enclosure) { item.css('enclosure') }
+
+        it 'sets the enclosure', :aggregate_failures do
+          expect(enclosure.attr('url').value).to start_with('https://'), 'url'
+          expect(enclosure.attr('type').value).to eq('application/octet-stream'), 'type'
+          expect(enclosure.attr('length').value).to eq('0'), 'length'
+        end
+      end
+
       describe 'item.description' do
         let(:description) { item.css('description').text }
 

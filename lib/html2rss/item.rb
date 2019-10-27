@@ -51,11 +51,11 @@ module Html2rss
       categories.keep_if { |category| category.to_s != '' }
     end
 
-    def enclosure
-      url = method_missing(:enclosure)
-      return if url.to_s == ''
+    def enclosure_url
+      enclosure = method_missing(:enclosure)
+      return if enclosure.to_s == ''
 
-      Html2rss::Utils.build_absolute_url_from_relative(url, config.url).to_s
+      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url).to_s
     end
 
     ##

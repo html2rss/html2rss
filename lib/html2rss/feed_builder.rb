@@ -47,7 +47,7 @@ module Html2rss
       end
 
       feed_item.categories.each { |category| rss_item.categories.new_category.content = category }
-      add_enclosure_from_url(feed_item.enclosure, rss_item)
+      add_enclosure_from_url(feed_item.enclosure_url, rss_item) if config.attribute?(:enclosure)
 
       add_guid(feed_item, rss_item)
     end
@@ -55,7 +55,11 @@ module Html2rss
     def add_enclosure_from_url(url, rss_item)
       content_type = MIME::Types.type_for(File.extname(url).delete('.'))
 
-      rss_item.enclosure.type = content_type ? content_type.first.to_s : 'application/octet-stream'
+      rss_item.enclosure.type = if content_type && content_type.first
+                                  content_type.first.to_s
+                                else
+                                  'application/octet-stream'
+                                end
       rss_item.enclosure.length = 0
       rss_item.enclosure.url = url
     end
