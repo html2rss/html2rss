@@ -17,7 +17,7 @@ module Html2rss
     #         replacement: baz
     #
     # Would return:
-    #    'Foo bar bar'
+    #    'Foo bar baz'
     #
     # `pattern` can be a Regexp or a String.
     # `replacement` can be a String or a Hash.
