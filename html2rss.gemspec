@@ -38,6 +38,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
   spec.add_dependency 'reverse_markdown', '~> 1.3'
   spec.add_dependency 'sanitize', '~> 5.0'
+  spec.add_dependency 'to_regexp'
   spec.add_dependency 'zeitwerk'
   spec.add_development_dependency 'bundler', '~> 1.16'
   spec.add_development_dependency 'byebug'
