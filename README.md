@@ -66,11 +66,11 @@ selectors:
 
 </details>
 
-## Adding a enclosure to items
+## Adding an enclosure to each item
 
-enclosure can be 'anything', e.g. a image, audio or video file.
+An enclosure can be 'anything', e.g. a image, audio or video file.
 
-The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's url.
+The config's `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's url as a base.
 
 Since html2rss does no further inspection of the enclosure, the support of this tag comes with trade-offs:
 
