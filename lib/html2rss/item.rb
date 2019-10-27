@@ -31,7 +31,7 @@ module Html2rss
 
     def available_attributes
       @available_attributes ||= (%w[title link description author comments updated] &
-        @config.attribute_names) - %w[categories enclosures]
+        @config.attribute_names) - %w[categories enclosure]
     end
 
     ##
@@ -51,15 +51,11 @@ module Html2rss
       categories.keep_if { |category| category.to_s != '' }
     end
 
-    def enclosures
-      enclosures = config.enclosures.map do |enclosure|
-        url = method_missing(enclosure)
-        next if url.to_s == ''
+    def enclosure
+      url = method_missing(:enclosure)
+      return if url.to_s == ''
 
-        Html2rss::Utils.build_absolute_url_from_relative(url, config.url).to_s
-      end
-      enclosures.compact!
-      enclosures
+      Html2rss::Utils.build_absolute_url_from_relative(url, config.url).to_s
     end
 
     ##

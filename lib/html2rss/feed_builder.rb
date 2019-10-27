@@ -47,7 +47,7 @@ module Html2rss
       end
 
       feed_item.categories.each { |category| rss_item.categories.new_category.content = category }
-      feed_item.enclosures.each { |url| add_enclosure_from_url(url, rss_item) }
+      add_enclosure_from_url(feed_item.enclosure, rss_item)
 
       add_guid(feed_item, rss_item)
     end
