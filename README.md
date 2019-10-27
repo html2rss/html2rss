@@ -50,46 +50,50 @@ selectors will become a category on the item.
 <details>
   <summary>See a YAML config example</summary>
 
-  ```yml
-  channel:
-    # ... omitted
-  selectors:
-    #... omitted
-    genre:
-      selector: '.genre'
-    branch:
-      selector: '.branch'
-    categories:
-      - genre
-      - branch
-  ```
+```yml
+channel:
+# ... omitted
+selectors:
+  #... omitted
+  genre:
+    selector: '.genre'
+  branch:
+    selector: '.branch'
+  categories:
+    - genre
+    - branch
+```
+
 </details>
 
-## Adding media enclosures to items
+## Adding a enclosure to items
 
-The `enclosure` selector needs to return a URL of the content to enclose. The content can be 'anything', e.g. a image, audio or video file. If the extracted URL is relative, it will be converted to an absolute one using the channel's url.
+enclosure can be 'anything', e.g. a image, audio or video file.
 
-Since html2rss does no further inspection of the enclosure, it comes with trade-offs:
+The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's url.
+
+Since html2rss does no further inspection of the enclosure, the support of this tag comes with trade-offs:
 
 1. The content-type is guessed from the file extension of the URL.
 2. If the content-type guessing fails, it will default to `application/octet-stream`.
-3. The content-length will be undetermined and thus stated as `0` bytes.
+3. The content-length will always be undetermined and thus stated as `0` bytes.
 
 Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item-enclosure) for further information on enclosing content.
 
 <details>
   <summary>See a YAML config example</summary>
 
-  ```yml
-    channel:
-      # ... omitted
-    selectors:
-      #... omitted
-    enclosure:
-      selector: 'img'
-      extractor: 'attribute'
-      attribute: 'src'
-  ```
+```yml
+channel:
+# ... omitted
+selectors:
+  #... omitted
+enclosure:
+  selector: 'img'
+  extractor: 'attribute'
+  attribute: 'src'
+```
+
 </details>
 
 ## Scraping JSON
@@ -101,13 +105,14 @@ Adding `json: true` to the channel config will convert the JSON response to XML.
 <details>
   <summary>See a YAML feed config example</summary>
 
-  ```yaml
-  channel:
-    url: https://example.com
-    title: "Example with JSON"
-    json: true
-  # ...
-  ```
+```yaml
+channel:
+  url: https://example.com
+  title: 'Example with JSON'
+  json: true
+# ...
+```
+
 </details>
 
 Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
