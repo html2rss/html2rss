@@ -1,4 +1,5 @@
 require 'rss'
+require 'mime/types'
 
 module Html2rss
   ##
@@ -19,9 +20,7 @@ module Html2rss
       RSS::Maker.make('2.0') do |maker|
         add_channel(maker)
 
-        feed_items.map do |feed_item|
-          add_item(feed_item, maker.items.new_item)
-        end
+        feed_items.map { |feed_item| add_item(feed_item, maker.items.new_item) }
       end
     end
 
@@ -47,10 +46,21 @@ module Html2rss
         rss_item.public_send("#{attribute_name}=".to_sym, feed_item.public_send(attribute_name))
       end
 
-      feed_item.categories.each do |category|
-        rss_item.categories.new_category.content = category
-      end
+      feed_item.categories.each { |category| rss_item.categories.new_category.content = category }
+      feed_item.enclosures.each { |url| add_enclosure_from_url(url, rss_item) }
 
+      add_guid(feed_item, rss_item)
+    end
+
+    def add_enclosure_from_url(url, rss_item)
+      content_type = MIME::Types.type_for(File.extname(url).delete('.'))
+
+      rss_item.enclosure.type = content_type ? content_type.first.to_s : 'application/octet-stream'
+      rss_item.enclosure.length = 0
+      rss_item.enclosure.url = url
+    end
+
+    def add_guid(feed_item, rss_item)
       rss_item.guid.content = Digest::SHA1.hexdigest(feed_item.title)
       rss_item.guid.isPermaLink = false
     end

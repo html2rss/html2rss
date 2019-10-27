@@ -35,17 +35,49 @@ puts rss.to_s
 
 ## Usage with a YAML config file
 
-Create a YAML config file. Find an example at [`rspec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+Create a YAML config file. Find an example at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
 
-`Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')` returns
-
-an `RSS:Rss` object.
+`Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')`  
+returns an `RSS:Rss` object.
 
 **Too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
 
+## Assigning categories to an item
+
+The `categories` selector takes an array of selector names. The value of those
+selectors will become a category on the item.
+
+<details>
+  <summary>See this YAML config example</summary>
+
+  ```yml
+  selectors:
+    #... items, title and link selectors omitted
+    genre:
+      selector: '.genre'
+    branch:
+      selector: '.branch'
+    categories:
+      - genre
+      - branch
+  ```
+</details>
+
+## Adding media enclosures to items
+
+The `enclosures` selector takes an array of selector names. Those selectors need to return a URL of the content to enclose.
+
+Since html2rss does no further inspection of the enclosure, it comes with trade-offs:
+
+1. The content-type is guessed from the file extension of the URL.
+2. If the content-type guessing fails, it will default to `application/octet-stream`.
+3. The content-length will undetermined, and thus stated as `0` bytes.
+
+Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item-enclosure) for further information on enclosing content.
+
 ## Scraping JSON
 
-Since 0.5.0 it is possible to scrape and process JSON.
+Since 0.5.0 it's possible to scrape and process JSON.
 
 Adding `json: true` to the channel config will convert the JSON response to XML.
 

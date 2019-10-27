@@ -58,6 +58,10 @@ module Html2rss
       feed_config.dig('selectors').fetch('categories', []).map(&:to_sym)
     end
 
+    def enclosures
+      feed_config.dig('selectors').fetch('enclosures', []).map(&:to_sym)
+    end
+
     def selector(name)
       feed_config.dig('selectors', name, 'selector')
     end
