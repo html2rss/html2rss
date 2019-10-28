@@ -52,9 +52,9 @@ selectors will become a category on the item.
 
 ```yml
 channel:
-# ... omitted
+  # ... omitted
 selectors:
-  #... omitted
+  # ... omitted
   genre:
     selector: '.genre'
   branch:
@@ -85,13 +85,13 @@ Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item
 
 ```yml
 channel:
-# ... omitted
+  # ... omitted
 selectors:
-  #... omitted
-enclosure:
-  selector: 'img'
-  extractor: 'attribute'
-  attribute: 'src'
+  # ... omitted
+  enclosure:
+    selector: 'img'
+    extractor: 'attribute'
+    attribute: 'src'
 ```
 
 </details>
