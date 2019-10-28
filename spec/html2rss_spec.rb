@@ -34,6 +34,15 @@ RSpec.describe Html2rss do
       it 'returns a RSS:Rss instance' do
         expect(feed).to be_a_kind_of(RSS::Rss)
       end
+
+      context 'with returned rss feed' do
+        subject(:xml) { Nokogiri::XML(feed.to_s) }
+
+        it 'has the description derived from markdown' do
+          expect(xml.css('item > description').first.text)
+            .to eq '<h1>GOLDFINCH, THE</h1> <p>MPAA rating: R</p>'
+        end
+      end
     end
   end
 
