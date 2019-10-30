@@ -39,13 +39,6 @@ rss =
 puts rss.to_s
 ```
 
-## Usage with a YAML config file
-
-Create a YAML config file. Find an example at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
-
-`Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')`  
-returns an `RSS:Rss` object.
-
 **Too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
 
 ## Assigning categories to an item
@@ -193,6 +186,14 @@ selectors:
 ```
 
 The headers provided by the channel will be merged into the global headers.
+
+
+## Usage with a YAML config file
+
+Create a YAML config file. Find an example at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+
+`Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')`  
+returns an `RSS:Rss` object.
 
 ## Development
 
