@@ -20,6 +20,7 @@ module Html2rss
     # It also:
     #
     # - wraps all <img> tags, whose direct parent is not an <a>, into an <a>
+    #   linking to the <img>'s `src`.
     #
     # YAML usage example:
     #

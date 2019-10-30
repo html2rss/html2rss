@@ -10,7 +10,7 @@ Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 **Are you searching for a ready to use "website to RSS" solution?**
 [Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
 
-Each website needs a _feed config_ which contains the URL to scrape and
+The _feed config_s contains the URL to scrape and
 CSS selectors to extract the required information (like title, URL, ...).
 This gem provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractors) (e.g. extract the information from an HTML attribute)
 and chainable [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information retrieval even easier.
@@ -25,11 +25,14 @@ require 'html2rss'
 
 rss =
   Html2rss.feed(
-    channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
+    channel: {
+      title: 'StackOverflow: Hot Network Questions',
+      url:   'https://stackoverflow.com/questions'
+    },
     selectors: {
       items: { selector: '#hot-network-questions > ul > li' },
       title: { selector: 'a' },
-      link: { selector: 'a', extractor: 'href' }
+      link:  { selector: 'a', extractor: 'href' }
     }
   )
 
@@ -55,13 +58,13 @@ selectors will become a category on the item.
 
 ```yml
 channel:
-  # ... omitted
+  # ... omitted
 selectors:
   # ... omitted
   genre:
-    selector: '.genre'
+    selector: ".genre"
   branch:
-    selector: '.branch'
+    selector: ".branch"
   categories:
     - genre
     - branch
@@ -88,13 +91,13 @@ Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item
 
 ```yml
 channel:
-  # ... omitted
+  # ... omitted
 selectors:
   # ... omitted
   enclosure:
-    selector: 'img'
-    extractor: 'attribute'
-    attribute: 'src'
+    selector: "img"
+    extractor: "attribute"
+    attribute: "src"
 ```
 
 </details>
@@ -103,7 +106,7 @@ selectors:
 
 Since 0.5.0 it's possible to scrape and process JSON.
 
-Adding `json: true` to the channel config will convert the JSON response to XML.
+Adding `json: true` to the channel config will convert the JSON response to XML. Under the hood it utilizes [ActiveSupport's `Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) for the JSON to XML conversion.
 
 <details>
   <summary>See a YAML feed config example</summary>
@@ -111,16 +114,16 @@ Adding `json: true` to the channel config will convert the JSON response to XML.
 ```yaml
 channel:
   url: https://example.com
-  title: 'Example with JSON'
+  title: "Example with JSON"
   json: true
-# ...
+selectors:
+  # ... omitted
 ```
 
 </details>
 
-Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
-
-### Conversion of JSON objects
+<details>
+  <summary>See example: conversion of JSON objects</summary>
 
 This JSON object:
 
@@ -145,7 +148,10 @@ will be converted to:
 
 Your items selector would be `data > datum`, the item's `link` selector would be `url`.
 
-### Conversion of JSON arrays
+</details>
+
+<details>
+  <summary>See example: conversion of JSON arrays</summary>
 
 This JSON array:
 
@@ -166,6 +172,8 @@ will be converted to:
 
 Your items selector would be `objects > object`, the item's `link` selector would be `url`.
 
+</details>
+
 ## Set any HTTP header in the request
 
 You can add any HTTP headers to the request to the channel URL.
@@ -180,7 +188,8 @@ channel:
     "X-Something": "Foobar"
     "Authorization": "Token deadbea7"
     "Cookie": "monster=MeWantCookie"
-# ...
+selectors:
+  # ...
 ```
 
 The headers provided by the channel will be merged into the global headers.
