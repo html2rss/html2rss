@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
+[![Coverage Status](https://coveralls.io/repos/github/gildesmarais/html2rss/badge.svg?branch=master)](https://coveralls.io/github/gildesmarais/html2rss?branch=master)
 [API docs on RubyDoc.info](https://www.rubydoc.info/gems/html2rss)
 
 Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
@@ -20,6 +21,8 @@ Add this line to your application's Gemfile: `gem 'html2rss'`
 Then execute: `bundle`
 
 ```ruby
+require 'html2rss'
+
 rss =
   Html2rss.feed(
     channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
