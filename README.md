@@ -19,6 +19,11 @@ and chain-able [post processors](https://github.com/gildesmarais/html2rss/tree/m
 
 Add this line to your application's Gemfile: `gem 'html2rss'`  
 Then execute: `bundle`
+In your code, `require 'html2rss'`.
+
+## Building a feed config
+
+Consists of `channel` and `selectors` objects. Here's a minimal example:
 
 ```ruby
 require 'html2rss'
@@ -36,10 +41,53 @@ rss =
     }
   )
 
-puts rss.to_s
+puts rss
 ```
 
-**Too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
+**Looks too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
+
+### The `channel` object
+
+| attribute |          | type    | remark                  |
+| --------- | -------- | ------- | ----------------------- |
+| `title`   | required | String  |                         |
+| `url`     | required | String  |                         |
+| `ttl`     | optional | Integer | time to live in minutes |
+| `headers` | optional | Object  | See notes below.        |
+
+### The `selectors` object
+
+You must provide an `items` selector object which returns items.
+
+To build a
+[valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item)
+each item has to have at least a `title` or a `description`.
+
+Your `selectors` object can contain arbitrary selector objects, but only these
+will make it into the feed in their tag:
+
+| RSS 2.0 tag   | html2rss selector name | remark                              |
+| ------------- | ---------------------- | ----------------------------------- |
+| `title`       | `title`                |                                     |
+| `description` | `description`          | HTML is supported.                  |
+| `link`        | `link`                 | A URL.                              |
+| `author`      | `author`               |                                     |
+| `category`    | `category`             | See notes below.                    |
+| `enclosure`   | `enclosure`            | See notes below.                    |
+| `pubDate`     | `update`               | Needs to be an instance of `Time`.  |
+| `guid`        | `guid`                 | Will be generated from the `title`. |
+| `comments`    | `comments`             | A URL.                              |
+| `source`      | `source`               | not yet supported.                  |
+
+### A selectors object
+
+Your selector objects can have these attributes:
+
+| name           | value                                                     |
+| -------------- | --------------------------------------------------------- |
+| `selector`     | the CSS selector to the content                           |
+| `extractor`    | defaults to `'text'`                                      |
+| `post_process` | an object or an array, see notes on post processors below |
 
 ## Assigning categories to an item
 
@@ -53,10 +101,12 @@ selectors will become a category on the item.
 Html2rss.feed(
   channel: {},
   selectors: {
-    # ... omitted
-    genre: { selector: '.genre' },
+    genre: {
+      # ... omitted
+      selector: '.genre'
+    },
     branch: { selector: '.branch' },
-    categories: [:genre, :branch]
+    categories: %i[genre branch]
   }
 )
 ```
@@ -82,7 +132,7 @@ selectors:
 
 </details>
 
-## Using post processors
+### Using post processors
 
 Sometimes the desired information is hard to extract or not in the format you'd
 like it to be in.
@@ -90,7 +140,7 @@ For this case there are plenty of [post processors available](https://github.com
 
 [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
-### Chaining post processors
+#### Chaining post processors
 
 Pass an array to `post_process` to chain the post processors.
 
@@ -122,7 +172,7 @@ Note the use of `|` for a multi-line String in YAML.
 
 </details>
 
-## Adding an enclosure to an item
+### Adding an enclosure to an item
 
 An enclosure can be 'anything', e.g. a image, audio or video file.
 
@@ -166,7 +216,7 @@ selectors:
 
 </details>
 
-## Scraping JSON
+### Scraping JSON
 
 Although this gem is called **html\***2rss\*, it's possible to scrape and process JSON.
 
@@ -257,7 +307,7 @@ Find further information in [ActiveSupport's `Array.to_xml` documentation](https
 
 </details>
 
-## Set any HTTP header in the request
+### Set any HTTP header in the request
 
 You can add any HTTP headers to the request to the channel URL.
 You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
