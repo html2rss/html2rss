@@ -83,7 +83,7 @@ will make it into the RSS feed:
 | `pubDate`     | `update`         | Needs to be an instance of `Time`.  |
 | `guid`        | `guid`           | Will be generated from the `title`. |
 | `comments`    | `comments`       | A URL.                              |
-| `source`      | `source`         | Not yet supported.                  |
+| `source`      | ~~source~~       | Not yet supported.                  |
 
 ### The `selector` hash
 
@@ -444,15 +444,15 @@ This file will contain your global config and feed configs.
 Example:
 
 ```yml
-  headers:
-    'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
-  feeds:
-    myfeed:
-      channel:
-      selectors:
-    myotherfeed:
-      channel:
-      selectors:
+headers:
+  'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
+feeds:
+  myfeed:
+    channel:
+    selectors:
+  myotherfeed:
+    channel:
+    selectors:
 ```
 
 Your feed configs go below `feeds`. Everything else is part of the global config.
