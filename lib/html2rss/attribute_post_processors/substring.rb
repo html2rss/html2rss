@@ -2,8 +2,14 @@ module Html2rss
   module AttributePostProcessors
     ## Returns a defined part of a String.
     #
+    # Both parameters must be an Integer and they can be negative.
     # The +end+ parameter can be omitted, in that case it will not cut the
     # String at the end.
+    #
+    # A Regexp or a MatchString is not supported.
+    #
+    # See the [`String#[]`](https://ruby-doc.org/core/String.html#method-i-5B-5D)
+    # documentation for more information.
     #
     # Imagine this HTML:
     #    <h1>Foo bar and baz<h1>
@@ -13,9 +19,9 @@ module Html2rss
     #      title:
     #        selector: h1
     #        post_process:
-    #         name: substring
-    #         start: 4
-    #         end: 6
+    #          name: substring
+    #          start: 4
+    #          end: 6
     #
     # Would return:
     #    'bar'

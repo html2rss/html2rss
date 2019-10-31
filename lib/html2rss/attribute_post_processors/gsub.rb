@@ -12,15 +12,17 @@ module Html2rss
     #      title:
     #        selector: h1
     #        post_process:
-    #         name: gsub
-    #         pattern: boo
-    #         replacement: baz
+    #          name: gsub
+    #          pattern: boo
+    #          replacement: baz
     #
     # Would return:
     #    'Foo bar and baz'
     #
     # `pattern` can be a Regexp or a String.
+    #
     # `replacement` can be a String or a Hash.
+    #
     # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
     class Gsub
       def initialize(value, env)

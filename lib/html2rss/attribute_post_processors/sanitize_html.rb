@@ -4,10 +4,16 @@ module Html2rss
   module AttributePostProcessors
     ##
     # Returns sanitized HTML code as String.
-    # Adds
     #
-    # - rel="nofollow noopener noreferrer" to a elements
-    # - referrer-policy='no-referrer' to img elements
+    # It adds:
+    #
+    # - `rel="nofollow noopener noreferrer"` to <a> tags
+    # - `referrer-policy='no-referrer'` to <img> tags
+    #
+    # It also:
+    #
+    # - wraps all <img> tags, whose direct parent is not an <a>, into an <a>
+    #   linking to the <img>'s `src`.
     #
     # Imagine this HTML structure:
     #
@@ -17,15 +23,11 @@ module Html2rss
     #       <script>alert();</script>
     #     </section>
     #
-    # It also:
-    #
-    # - wraps all <img> tags, whose direct parent is not an <a>, into an <a>
-    #
     # YAML usage example:
     #
     #    selectors:
     #      description:
-    #        selector: section
+    #        selector: '.section'
     #        extractor: html
     #        post_process:
     #          name: sanitize_html

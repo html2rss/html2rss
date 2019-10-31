@@ -3,29 +3,41 @@
 [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
 [![Coverage Status](https://coveralls.io/repos/github/gildesmarais/html2rss/badge.svg?branch=master)](https://coveralls.io/github/gildesmarais/html2rss?branch=master)
-[API docs on RubyDoc.info](https://www.rubydoc.info/gems/html2rss)
+[![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss)
 
 Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 
 **Are you searching for a ready to use "website to RSS" solution?**
 [Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
 
-Each website needs a _feed config_ which contains the URL to scrape and
-CSS selectors to extract the required information (like title, URL, ...).
-This gem provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractors) (e.g. extract the information from an HTML attribute)
-and chainable [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information retrieval even easier.
+The _feed config_ contains the URL to scrape and
+CSS selectors to extract the desired information (like title, URL, ...).  
+This gem further provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractors) (e.g. extract the information from an HTML attribute)
+and chain-able [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information extraction, processing and sanitizing a breeze.
 
 ## Installation
 
-Add this line to your application's Gemfile: `gem 'html2rss'`  
-Then execute: `bundle`
+|                                                |                      |
+| ---------------------------------------------: | -------------------- |
+| Add this line to your application's `Gemfile`: | `gem 'html2rss'`     |
+|                                  Then execute: | `bundle`             |
+|                                  In your code: | `require 'html2rss'` |
+
+## Building a feed config
+
+A feed config consists of a `channel` and a `selectors` Hash.
+The contents of both hashes are explained below.  
+Have a look at this minimal example first:
 
 ```ruby
 require 'html2rss'
 
 rss =
   Html2rss.feed(
-    channel: { title: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com/questions' },
+    channel: {
+      title: 'StackOverflow: Hot Network Questions',
+      url: 'https://stackoverflow.com/questions'
+    },
     selectors: {
       items: { selector: '#hot-network-questions > ul > li' },
       title: { selector: 'a' },
@@ -33,17 +45,169 @@ rss =
     }
   )
 
-puts rss.to_s
+puts rss
 ```
 
-## Usage with a YAML config file
+**Looks too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
 
-Create a YAML config file. Find an example at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+### The `channel`
 
-`Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')`  
-returns an `RSS:Rss` object.
+| attribute     |          | type    | remark                  |
+| ------------- | -------- | ------- | ----------------------- |
+| `title`       | required | String  |                         |
+| `url`         | required | String  |                         |
+| `ttl`         | optional | Integer | time to live in minutes |
+| `description` | options  | String  |                         |
+| `headers`     | optional | Object  | See notes below.        |
 
-**Too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
+### The `selectors`
+
+You must provide an `items` selector hash which contains the CSS selector
+which returns the items.
+
+To build a
+[valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item)
+each item has to have at least a `title` or a `description`.
+
+Your `selectors` hash can contain arbitrary selector attribute names, but only these
+will make it into the RSS feed:
+
+| RSS 2.0 tag   | name in html2rss | remark                              |
+| ------------- | ---------------- | ----------------------------------- |
+| `title`       | `title`          |                                     |
+| `description` | `description`    | Supports HTML.                      |
+| `link`        | `link`           | A URL.                              |
+| `author`      | `author`         |                                     |
+| `category`    | `category`       | See notes below.                    |
+| `enclosure`   | `enclosure`      | See notes below.                    |
+| `pubDate`     | `update`         | Needs to be an instance of `Time`.  |
+| `guid`        | `guid`           | Will be generated from the `title`. |
+| `comments`    | `comments`       | A URL.                              |
+| `source`      | ~~source~~       | Not yet supported.                  |
+
+### The `selector` hash
+
+Your selector hash can have these attributes:
+
+| name           | value                                                    |
+| -------------- | -------------------------------------------------------- |
+| `selector`     | The CSS selector to select the tag with the information. |
+| `extractor`    | Name of the extractor. See notes below.                  |
+| `post_process` | An object or array. See notes below.                     |
+
+## Using extractors
+
+Extractors help with extracting the information from your item, e.g. from HTML attributes.
+
+- The default extractor is `text`, which returns the inner text of the selected HTML tag.
+- The `html` extractor returns the outer HTML of the selected HTML tag.
+- The `href` extractor returns a URL from an `<a>` tag's `href` attribute and corrects relative links to absolute ones.
+- The `attribute` extractor returns the value of the attribute in the selected HTML tag.
+- The `static` extractor returns the configured static value (it doesn't extract anything).
+- [See file list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {}, selectors: { link: { selector: 'a', extractor: 'href' } }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  link:
+    selector: 'a'
+    extractor: 'href'
+```
+
+</details>
+
+Extractors can require additional attributes on the selector hash.  
+👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+
+## Using post processors
+
+The extracted information can be manipulated with post processors.
+
+⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
+
+- [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    description: {
+      selector: '.content', post_process: { name: 'sanitize_html' }
+    }
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  description:
+    selector: '.content'
+    post_process:
+      - name: sanitize_html
+```
+
+</details>
+
+👉 [Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
+
+### Chaining post processors
+
+Pass an array to `post_process` to chain the post processors.
+
+<details>
+  <summary>YAML example: build the description from a template String (in Markdown) and convert that Markdown to HTML</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  price:
+    selector: '.price'
+  description:
+    selector: '.section'
+    post_process:
+      - name: template
+        string: |
+          # %s
+
+          Price: %s
+        methods:
+          - self
+          - price
+      - name: markdown_to_html
+```
+
+Note the use of `|` for a multi-line String in YAML.
+
+</details>
 
 ## Assigning categories to an item
 
@@ -51,17 +215,36 @@ The `categories` selector takes an array of selector names. The value of those
 selectors will become a category on the item.
 
 <details>
-  <summary>See a YAML config example</summary>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    genre: {
+      # ... omitted
+      selector: '.genre'
+    },
+    branch: { selector: '.branch' },
+    categories: %i[genre branch]
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
 
 ```yml
 channel:
-  # ... omitted
+  # ... omitted
 selectors:
   # ... omitted
   genre:
-    selector: '.genre'
+    selector: ".genre"
   branch:
-    selector: '.branch'
+    selector: ".branch"
   categories:
     - genre
     - branch
@@ -69,13 +252,13 @@ selectors:
 
 </details>
 
-## Adding an enclosure to each item
+## Adding an enclosure to an item
 
 An enclosure can be 'anything', e.g. a image, audio or video file.
 
-The config's `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's url as a base.
+The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's URL as base.
 
-Since html2rss does no further inspection of the enclosure, the support of this tag comes with trade-offs:
+Since html2rss does no further inspection of the enclosure, its support comes with trade-offs:
 
 1. The content-type is guessed from the file extension of the URL.
 2. If the content-type guessing fails, it will default to `application/octet-stream`.
@@ -84,26 +267,55 @@ Since html2rss does no further inspection of the enclosure, the support of this 
 Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item-enclosure) for further information on enclosing content.
 
 <details>
-  <summary>See a YAML config example</summary>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    enclosure: { selector: 'img', extractor: 'attribute', attribute: 'src' }
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
 
 ```yml
 channel:
-  # ... omitted
+  # ... omitted
 selectors:
-  # ... omitted
+  # ... omitted
   enclosure:
-    selector: 'img'
-    extractor: 'attribute'
-    attribute: 'src'
+    selector: "img"
+    extractor: "attribute"
+    attribute: "src"
 ```
 
 </details>
 
 ## Scraping JSON
 
-Since 0.5.0 it's possible to scrape and process JSON.
+Although this gem is called **html**​*2rss*, it's possible to scrape and process JSON.
 
 Adding `json: true` to the channel config will convert the JSON response to XML.
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+feed =
+  Html2rss.feed(
+    channel: {
+      url: 'https://example.com', title: 'Example with JSON', json: true
+    },
+    selectors: {} # ... omitted
+  )
+```
+
+</details>
 
 <details>
   <summary>See a YAML feed config example</summary>
@@ -111,16 +323,16 @@ Adding `json: true` to the channel config will convert the JSON response to XML.
 ```yaml
 channel:
   url: https://example.com
-  title: 'Example with JSON'
+  title: "Example with JSON"
   json: true
-# ...
+selectors:
+  # ... omitted
 ```
 
 </details>
 
-Under the hood it uses ActiveSupport's [`Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) core extension for the JSON to XML conversion.
-
-### Conversion of JSON objects
+<details>
+  <summary>See example of a converted JSON object</summary>
 
 This JSON object:
 
@@ -145,7 +357,12 @@ will be converted to:
 
 Your items selector would be `data > datum`, the item's `link` selector would be `url`.
 
-### Conversion of JSON arrays
+Find further information in [ActiveSupport's `Hash.to_xml` documentation](https://apidock.com/rails/Hash/to_xml).
+
+</details>
+
+<details>
+  <summary>See example of a converted JSON array</summary>
 
 This JSON array:
 
@@ -166,10 +383,37 @@ will be converted to:
 
 Your items selector would be `objects > object`, the item's `link` selector would be `url`.
 
+Find further information in [ActiveSupport's `Array.to_xml` documentation](https://apidock.com/rails/Array/to_xml).
+
+</details>
+
 ## Set any HTTP header in the request
 
 You can add any HTTP headers to the request to the channel URL.
-You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
+Use this to e.g. have Cookie or Authorization information sent or to spoof the User-Agent.
+
+<details>
+  <summary>See a Ruby example</summary>
+  
+  ```ruby
+  Html2rss.feed(
+    channel: {
+      url: 'https://example.com',
+      title: "Example with http headers"
+      headers: {
+        "User-Agent" => "html2rss-request",
+        "X-Something" => "Foobar",
+        "Authorization" => "Token deadbea7",
+        "Cookie" => "monster=MeWantCookie"
+      }
+    },
+    selectors: {}
+  )
+  ```
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
 
 ```yaml
 channel:
@@ -180,20 +424,63 @@ channel:
     "X-Something": "Foobar"
     "Authorization": "Token deadbea7"
     "Cookie": "monster=MeWantCookie"
-# ...
+selectors:
+  # ...
 ```
+
+</details>
 
 The headers provided by the channel will be merged into the global headers.
 
+## Usage with a YAML config file
+
+This step is not required to work with this gem. However, if you're using
+[`html2rss-web`](https://github.com/gildesmarais/html2rss-web)
+and want to create your private feed configs, keep on reading!
+
+First, create your YAML file, e.g. called `config.yml`.
+This file will contain your global config and feed configs.
+
+Example:
+
+```yml
+headers:
+  'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
+feeds:
+  myfeed:
+    channel:
+    selectors:
+  myotherfeed:
+    channel:
+    selectors:
+```
+
+Your feed configs go below `feeds`. Everything else is part of the global config.
+
+Build your feeds like this:
+
+```ruby
+require 'html2rss'
+
+myfeed = Html2rss.feed_from_yaml_config('config.yml', 'myfeed')
+myotherfeed = Html2rss.feed_from_yaml_config('config.yml', 'myotherfeed')
+```
+
+Find a full example of a `config.yml` at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+
+## Gotchas and tips & tricks
+
+- Check that the channel URL does not redirect to a mobile page with a different markup structure.
+- Do not rely on your web browser's developer console. html2rss does not execute JavaScript.
+- Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
+
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repository, run `bin/setup` to install dependencies. Then, run `bundle exec rspec` to run the tests.
+You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/gildesmarais/html2rss.
-
-## Releasing a new version
+<details>
+  <summary>Releasing a new version</summary>
 
 1. `git pull`
 2. increase version in `lib/html2rss/version.rb`
@@ -204,3 +491,9 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/gildes
 7. `git add CHANGELOG.md && git commit --amend`
 8. `git tag v.... -f`
 9. `git push && git push --tags`
+
+</details>
+
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/gildesmarais/html2rss.
