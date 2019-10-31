@@ -17,10 +17,11 @@ and chain-able [post processors](https://github.com/gildesmarais/html2rss/tree/m
 
 ## Installation
 
+|                                                |                      |
 | ---------------------------------------------: | -------------------- |
 | Add this line to your application's `Gemfile`: | `gem 'html2rss'`     |
-| Then execute:                                  | `bundle`             |
-| In your code:                                  | `require 'html2rss'` |
+|                                  Then execute: | `bundle`             |
+|                                  In your code: | `require 'html2rss'` |
 
 ## Building a feed config
 
