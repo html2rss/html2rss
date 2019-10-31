@@ -89,6 +89,9 @@ Your selector objects can have these attributes:
 | `extractor`    | Defaults to the `'text'` extractor.                    |
 | `post_process` | A object or array, see notes on post processors below. |
 
+[See list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).  
+[See list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+
 ## Assigning categories to an item
 
 The `categories` selector takes an array of selector names. The value of those
