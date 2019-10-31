@@ -10,10 +10,10 @@ Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 **Are you searching for a ready to use "website to RSS" solution?**
 [Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
 
-The _feed config_s contains the URL to scrape and
-CSS selectors to extract the required information (like title, URL, ...).
-This gem provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractors) (e.g. extract the information from an HTML attribute)
-and chainable [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information retrieval even easier.
+The *feed config*s contains the URL to scrape and
+CSS selectors to extract the required information (like title, URL, ...).  
+This gem further provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractors) (e.g. extract the information from an HTML attribute)
+and chain-able [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information extraction, processing and sanitizing a breeze.
 
 ## Installation
 
@@ -46,6 +46,7 @@ puts rss.to_s
 The `categories` selector takes an array of selector names. The value of those
 selectors will become a category on the item.
 
+<!-- TODO: add ruby example -->
 <details>
   <summary>See a YAML config example</summary>
 
@@ -79,6 +80,8 @@ Since html2rss does no further inspection of the enclosure, the support of this 
 
 Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item-enclosure) for further information on enclosing content.
 
+<!-- TODO: add ruby example -->
+
 <details>
   <summary>See a YAML config example</summary>
 
@@ -100,6 +103,8 @@ selectors:
 Since 0.5.0 it's possible to scrape and process JSON.
 
 Adding `json: true` to the channel config will convert the JSON response to XML. Under the hood it utilizes [ActiveSupport's `Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) for the JSON to XML conversion.
+
+<!-- TODO: add ruby example -->
 
 <details>
   <summary>See a YAML feed config example</summary>
@@ -172,6 +177,8 @@ Your items selector would be `objects > object`, the item's `link` selector woul
 You can add any HTTP headers to the request to the channel URL.
 You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
 
+<!-- TODO: add ruby example -->
+<!-- TODO: add detail/summary yaml example -->
 ```yaml
 channel:
   url: https://example.com
@@ -187,13 +194,41 @@ selectors:
 
 The headers provided by the channel will be merged into the global headers.
 
-
 ## Usage with a YAML config file
 
-Create a YAML config file. Find an example at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+This step is not required to work with this gem. However, if you're using
+[`html2rss-web`](https://github.com/gildesmarais/html2rss-web)
+and want to create your private feed configs, keep on reading!
 
-`Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')`  
-returns an `RSS:Rss` object.
+First, create your YAML file, e.g. called `config.yml`.
+This file will contain your global config and feed configs.
+
+Example:
+
+```yml
+  headers:
+    'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
+  feeds:
+    myfeed:
+      channel:
+      selectors:
+    myotherfeed:
+      channel:
+      selectors:
+```
+
+Your feed configs go below `feeds`. Everything else is part of the global config.
+
+You can now request your feeds like this:
+
+```ruby
+require 'html2rss'
+
+myfeed = Html2rss.feed_from_yaml_config('config.yml', 'myfeed')
+myotherfeed = Html2rss.feed_from_yaml_config('config.yml', 'myotherfeed')
+```  
+
+Find a full example config.yml at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
 
 ## Development
 
