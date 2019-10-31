@@ -10,7 +10,7 @@ Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 **Are you searching for a ready to use "website to RSS" solution?**
 [Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
 
-The *feed config* contains the URL to scrape and
+The _feed config_ contains the URL to scrape and
 CSS selectors to extract the desired information (like title, URL, ...).  
 This gem further provides [extractors](https://github.com/gildesmarais/html2rss/blob/master/lib/html2rss/item_extractors) (e.g. extract the information from an HTML attribute)
 and chain-able [post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors) to make information extraction, processing and sanitizing a breeze.
@@ -47,7 +47,7 @@ The `categories` selector takes an array of selector names. The value of those
 selectors will become a category on the item.
 
 <details>
-  <summary>See Ruby example</summary>
+  <summary>See a Ruby example</summary>
 
 ```ruby
 Html2rss.feed(
@@ -136,7 +136,19 @@ Since html2rss does no further inspection of the enclosure, its support comes wi
 
 Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item-enclosure) for further information on enclosing content.
 
-<!-- TODO: add ruby example -->
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    enclosure: { selector: 'img', extractor: 'attribute', attribute: 'src' }
+  }
+)
+```
+
+</details>
 
 <details>
   <summary>See a YAML feed config example</summary>
@@ -164,16 +176,13 @@ Adding `json: true` to the channel config will convert the JSON response to XML.
   <summary>See a Ruby example</summary>
 
 ```ruby
-feed = Html2rss.feed(
-  channel: {
-    url: "https://example.com",
-    title: "Example with JSON",
-    json: true
-  },
-  selectors: {
-    # ... omitted
-  }
-)
+feed =
+  Html2rss.feed(
+    channel: {
+      url: 'https://example.com', title: 'Example with JSON', json: true
+    },
+    selectors: {} # ... omitted
+  )
 ```
 
 </details>
@@ -193,7 +202,7 @@ selectors:
 </details>
 
 <details>
-  <summary>See how JSON objects are converted</summary>
+  <summary>See example of a converted JSON object</summary>
 
 This JSON object:
 
@@ -223,7 +232,7 @@ Find further information in [ActiveSupport's `Hash.to_xml` documentation](https:
 </details>
 
 <details>
-  <summary>See how JSON arrays are converted</summary>
+  <summary>See example of a converted JSON array</summary>
 
 This JSON array:
 
@@ -253,7 +262,25 @@ Find further information in [ActiveSupport's `Array.to_xml` documentation](https
 You can add any HTTP headers to the request to the channel URL.
 You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
 
-<!-- TODO: add ruby example -->
+<details>
+  <summary>See a Ruby example</summary>
+  
+  ```ruby
+  Html2rss.feed(
+    channel: {
+      url: 'https://example.com',
+      title: "Example with http headers"
+      headers: {
+        "User-Agent" => "html2rss-request",
+        "X-Something" => "Foobar",
+        "Authorization" => "Token deadbea7",
+        "Cookie" => "monster=MeWantCookie"
+      }
+    },
+    selectors: {}
+  )
+  ```
+</details>
 
 <details>
   <summary>See a YAML feed config example</summary>
@@ -328,6 +355,7 @@ You can also run `bin/console` for an interactive prompt that will allow you to 
 7. `git add CHANGELOG.md && git commit --amend`
 8. `git tag v.... -f`
 9. `git push && git push --tags`
+
 </details>
 
 ## Contributing
