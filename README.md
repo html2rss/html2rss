@@ -88,12 +88,14 @@ Sometimes the desired information is hard to extract or not in the format you'd
 like it to be in.
 For this case there are plenty of [post processors available](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
 
+[Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
+
 ### Chaining post processors
 
 Pass an array to `post_process` to chain the post processors.
 
 <details>
-  <summary>Build a description from a Template (Markdown) and convert it to HTML</summary>
+  <summary>YAML example: build the description from a template String (in Markdown) and convert that Markdown to HTML</summary>
 
 ```yml
 channel:

@@ -15,6 +15,7 @@ module Html2rss
     #        extractor: text
     #        post_process:
     #          name: parse_uri
+    #
     # Would return:
     #    'http://why-not-use-a-link.uh'
     class ParseUri

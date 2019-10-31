@@ -20,7 +20,9 @@ module Html2rss
     #    'Foo bar and baz'
     #
     # `pattern` can be a Regexp or a String.
+    #
     # `replacement` can be a String or a Hash.
+    #
     # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
     class Gsub
       def initialize(value, env)
