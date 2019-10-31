@@ -62,7 +62,7 @@ puts rss
 
 ### The `selectors`
 
-You must provide an `items` selector object which contains the CSS selector
+You must provide an `items` selector hash which contains the CSS selector
 which returns the items.
 
 To build a
@@ -85,7 +85,7 @@ will make it into the RSS feed:
 | `comments`    | `comments`       | A URL.                              |
 | `source`      | `source`         | Not yet supported.                  |
 
-### The `selector`
+### The `selector` hash
 
 Your selector hash can have these attributes:
 
@@ -133,13 +133,15 @@ selectors:
 </details>
 
 Extractors can require additional attributes on the selector hash.  
-[Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
 
 ## Using post processors
 
 The extracted information can be manipulated with post processors.
 
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet_! ⚠️
+
+- [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
 
 <details>
   <summary>See a Ruby example</summary>
@@ -173,8 +175,7 @@ selectors:
 
 </details>
 
-- [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
-- [Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
+👉 [Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
 ### Chaining post processors
 
