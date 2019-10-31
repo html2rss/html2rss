@@ -83,11 +83,11 @@ will make it into the feed in their tag:
 
 Your selector objects can have these attributes:
 
-| name           | value                                                     |
-| -------------- | --------------------------------------------------------- |
-| `selector`     | the CSS selector to the content                           |
-| `extractor`    | defaults to `'text'`                                      |
-| `post_process` | an object or an array, see notes on post processors below |
+| name           | value                                                  |
+| -------------- | ------------------------------------------------------ |
+| `selector`     | The CSS selector to the content.                       |
+| `extractor`    | Defaults to the `'text'` extractor.                    |
+| `post_process` | A object or array, see notes on post processors below. |
 
 ## Assigning categories to an item
 
@@ -132,7 +132,7 @@ selectors:
 
 </details>
 
-### Using post processors
+## Using post processors
 
 Sometimes the desired information is hard to extract or not in the format you'd
 like it to be in.
@@ -140,7 +140,7 @@ For this case there are plenty of [post processors available](https://github.com
 
 [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
-#### Chaining post processors
+### Chaining post processors
 
 Pass an array to `post_process` to chain the post processors.
 
@@ -216,7 +216,7 @@ selectors:
 
 </details>
 
-### Scraping JSON
+## Scraping JSON
 
 Although this gem is called **html\***2rss\*, it's possible to scrape and process JSON.
 
@@ -307,7 +307,7 @@ Find further information in [ActiveSupport's `Array.to_xml` documentation](https
 
 </details>
 
-### Set any HTTP header in the request
+## Set any HTTP header in the request
 
 You can add any HTTP headers to the request to the channel URL.
 You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
