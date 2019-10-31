@@ -73,7 +73,7 @@ will make it into the RSS feed:
 | RSS 2.0 tag   | html2rss selector attribute | remark                              |
 | ------------- | --------------------------- | ----------------------------------- |
 | `title`       | `title`                     |                                     |
-| `description` | `description`               | HTML is supported.                  |
+| `description` | `description`               | Supports HTML.                      |
 | `link`        | `link`                      | A URL.                              |
 | `author`      | `author`                    |                                     |
 | `category`    | `category`                  | See notes below.                    |
@@ -87,35 +87,93 @@ will make it into the RSS feed:
 
 Your selector hash can have these attributes:
 
-| name           | value                                                  |
-| -------------- | ------------------------------------------------------ |
-| `selector`     | The CSS selector to the content.                       |
-| `extractor`    | Defaults to the `'text'` extractor.                    |
-| `post_process` | A object or array, see notes on post processors below. |
+| name           | value                                                    |
+| -------------- | -------------------------------------------------------- |
+| `selector`     | The CSS selector to select the tag with the information. |
+| `extractor`    | Name of the extractor. See notes below.                  |
+| `post_process` | An object or array. See notes below.                     |
 
 ## Using extractors
 
 Extractors help with extracting the information from your item, e.g. from HTML attributes.
 
-- The default extractor is `text`, which return the inner text of the selected HTML tag.
-- The `href` extractor returns a URL from an `<a>` tag and corrects relative links to absolute ones.
-- The `attribute` extractor return the value of the attribute in the selected HTML tag.
+- The default extractor is `text`, which returns the inner text of the selected HTML tag.
+- The `html` extractor returns the outer HTML of the selected HTML tag.
+- The `href` extractor returns a URL from an `<a>` tag's `href` attribute and corrects relative links to absolute ones.
+- The `attribute` extractor returns the value of the attribute in the selected HTML tag.
+- The `static` extractor returns the configured static value (it doesn't extract anything).
+
 - [See file list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
 
-<!-- TODO: add example -->
+<details>
+  <summary>See a Ruby example</summary>
 
-Some extractors require additional attributes to be added to the selector hash.
+```ruby
+Html2rss.feed(
+  channel: {}, selectors: { link: { selector: 'a', extractor: 'href' } }
+)
+```
 
-[Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  link:
+    selector: 'a'
+    extractor: 'href'
+```
+
+</details>
+
+Extractors can require additional attributes on the selector hash.
+[Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
 
 ## Using post processors
 
 The extracted information can be manipulated with post processors.
 
-<!-- TODO: add example -->
+⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet_! ⚠️
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    description: {
+      selector: '.content', post_process: { name: 'sanitize_html' }
+    }
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  description:
+    selector: '.content'
+    post_process:
+      - name: sanitize_html
+```
+
+</details>
 
 - [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
-- [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
+- [Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
 ### Chaining post processors
 
