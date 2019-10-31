@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
 [![Coverage Status](https://coveralls.io/repos/github/gildesmarais/html2rss/badge.svg?branch=master)](https://coveralls.io/github/gildesmarais/html2rss?branch=master)
-[API docs on RubyDoc.info](https://www.rubydoc.info/gems/html2rss)
+[![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss)
 
 Request HTML from an URL and transform it to a Ruby RSS 2.0 object.
 
@@ -139,7 +139,7 @@ Extractors can require additional attributes on the selector hash.
 
 The extracted information can be manipulated with post processors.
 
-⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet_! ⚠️
+⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
 - [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
 
