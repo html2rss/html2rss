@@ -53,13 +53,10 @@ selectors will become a category on the item.
 Html2rss.feed(
   channel: {},
   selectors: {
-    genre: {
-      # ... omitted
-      # ... omitted
-      selector: '.genre'
-    },
+    # ... omitted
+    genre: { selector: '.genre' },
     branch: { selector: '.branch' },
-    categories: %i[genre branch]
+    categories: [:genre, :branch]
   }
 )
 ```
@@ -127,9 +124,9 @@ Note the use of `|` for a multi-line String in YAML.
 
 An enclosure can be 'anything', e.g. a image, audio or video file.
 
-The config's `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's url as a base.
+The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's URL as base.
 
-Since html2rss does no further inspection of the enclosure, the support of this tag comes with trade-offs:
+Since html2rss does no further inspection of the enclosure, its support comes with trade-offs:
 
 1. The content-type is guessed from the file extension of the URL.
 2. If the content-type guessing fails, it will default to `application/octet-stream`.
@@ -172,7 +169,7 @@ feed = Html2rss.feed(
     json: true
   },
   selectors: {
-    # ... omitted
+    # ... omitted
   }
 )
 ```
@@ -219,7 +216,7 @@ will be converted to:
 
 Your items selector would be `data > datum`, the item's `link` selector would be `url`.
 
-Find further information in [ActiveSupport's `Hash.to_xml` documentation](https://apidock.com/rails/Hash/to_xml) for the conversion.
+Find further information in [ActiveSupport's `Hash.to_xml` documentation](https://apidock.com/rails/Hash/to_xml).
 
 </details>
 
@@ -245,7 +242,7 @@ will be converted to:
 
 Your items selector would be `objects > object`, the item's `link` selector would be `url`.
 
-Find further information in [ActiveSupport's `Array.to_xml` documentation](https://apidock.com/rails/Hash/to_xml).
+Find further information in [ActiveSupport's `Array.to_xml` documentation](https://apidock.com/rails/Array/to_xml).
 
 </details>
 
@@ -301,7 +298,7 @@ Example:
 
 Your feed configs go below `feeds`. Everything else is part of the global config.
 
-You can build your feeds like this:
+Build your feeds like this:
 
 ```ruby
 require 'html2rss'
@@ -314,13 +311,11 @@ Find a full example of a `config.yml` at [`spec/config.test.yml`](https://github
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repository, run `bin/setup` to install dependencies. Then, run `bundle exec rspec` to run the tests.
+You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/gildesmarais/html2rss.
-
-## Releasing a new version
+<details>
+  <summary>Releasing a new version</summary>
 
 1. `git pull`
 2. increase version in `lib/html2rss/version.rb`
@@ -331,3 +326,8 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/gildes
 7. `git add CHANGELOG.md && git commit --amend`
 8. `git tag v.... -f`
 9. `git push && git push --tags`
+</details>
+
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/gildesmarais/html2rss.
