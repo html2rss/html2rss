@@ -24,7 +24,7 @@ In your code, `require 'html2rss'`.
 ## Building a feed config
 
 A feed config consists of a `channel` and a `selectors` Hash.
-The possible contents of both Hashes are explained below.
+The possible contents of both hashes are explained below.
 Have a look at this minimal example first:
 
 ```ruby
@@ -59,7 +59,8 @@ puts rss
 
 ### The `selectors`
 
-You must provide an `items` selector object which contains the CSS selector which is used to return the items.
+You must provide an `items` selector object which contains the CSS selector
+which returns the items.
 
 To build a
 [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item)
@@ -79,7 +80,7 @@ will make it into the RSS feed:
 | `pubDate`     | `update`               | Needs to be an instance of `Time`.  |
 | `guid`        | `guid`                 | Will be generated from the `title`. |
 | `comments`    | `comments`             | A URL.                              |
-| `source`      | `source`               | not yet supported.                  |
+| `source`      | `source`               | Not yet supported.                  |
 
 ### A 'selector' attribute
 
@@ -91,22 +92,28 @@ Your selector hash can have these attributes:
 | `extractor`    | Defaults to the `'text'` extractor.                    |
 | `post_process` | A object or array, see notes on post processors below. |
 
-Some extractors require additional attributes to be added.
+Some extractors require additional attributes to be added to the selector hash.
 
-## Using attribute extractors
+## Using extractors
 
-Attribute extractors help with extracting the information from your item.
+Extractors help with extracting the information from your item, e.g. from HTML attributes.
 
-- [See list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
-- [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+- The default extractor is `text`, which return the inner text of the selected HTML tag.
+- The `href` extractor returns a URL from an `<a>` tag and corrects relative links to absolute ones.
+- The `attribute` extractor return the value of the attribute in the selected HTML tag.
+- [See file list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
+
+<!-- TODO: add example -->
+
+[Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
 
 ## Using post processors
 
-Sometimes the desired information is hard to extract or not in the format you'd
-like it to be in.
-For this case there are plenty of [post processors available](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+The extracted information can be manipulated with post processors.
 
-- [See list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+<!-- TODO: add example -->
+
+- [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
 - [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
 ### Chaining post processors
