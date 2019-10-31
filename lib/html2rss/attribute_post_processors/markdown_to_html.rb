@@ -22,7 +22,7 @@ module Html2rss
     #            methods:
     #              - self
     #              - price
-    #          - name: html_to_markdown
+    #          - name: markdown_to_html
     #
     # Would e.g. return:
     #

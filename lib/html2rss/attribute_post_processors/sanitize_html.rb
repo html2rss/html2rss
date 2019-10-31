@@ -26,7 +26,7 @@ module Html2rss
     #
     #    selectors:
     #      description:
-    #        selector: section
+    #        selector: '.section'
     #        extractor: html
     #        post_process:
     #          name: sanitize_html

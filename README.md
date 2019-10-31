@@ -27,12 +27,12 @@ rss =
   Html2rss.feed(
     channel: {
       title: 'StackOverflow: Hot Network Questions',
-      url:   'https://stackoverflow.com/questions'
+      url: 'https://stackoverflow.com/questions'
     },
     selectors: {
       items: { selector: '#hot-network-questions > ul > li' },
       title: { selector: 'a' },
-      link:  { selector: 'a', extractor: 'href' }
+      link: { selector: 'a', extractor: 'href' }
     }
   )
 
@@ -46,9 +46,28 @@ puts rss.to_s
 The `categories` selector takes an array of selector names. The value of those
 selectors will become a category on the item.
 
-<!-- TODO: add ruby example -->
 <details>
-  <summary>See a YAML config example</summary>
+  <summary>See Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    genre: {
+      # ... omitted
+      # ... omitted
+      selector: '.genre'
+    },
+    branch: { selector: '.branch' },
+    categories: %i[genre branch]
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
 
 ```yml
 channel:
@@ -66,7 +85,45 @@ selectors:
 
 </details>
 
-## Adding an enclosure to each item
+## Using post processors
+
+Sometimes the desired information is hard to extract or not in the format you'd
+like it to be in.
+For this case there are plenty of [post processors available](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+
+### Chaining post processors
+
+Pass an array to `post_process` to chain the post processors.
+
+<details>
+  <summary>Build a description from a Template (Markdown) and convert it to HTML</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  price:
+    selector: '.price'
+  description:
+    selector: '.section'
+    post_process:
+      - name: template
+        string: |
+          # %s
+
+          Price: %s
+        methods:
+          - self
+          - price
+      - name: markdown_to_html
+```
+
+Note the use of `|` for a multi-line String in YAML.
+
+</details>
+
+## Adding an enclosure to an item
 
 An enclosure can be 'anything', e.g. a image, audio or video file.
 
@@ -83,13 +140,13 @@ Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item
 <!-- TODO: add ruby example -->
 
 <details>
-  <summary>See a YAML config example</summary>
+  <summary>See a YAML feed config example</summary>
 
 ```yml
 channel:
   # ... omitted
 selectors:
-  # ... omitted
+  # ... omitted
   enclosure:
     selector: "img"
     extractor: "attribute"
@@ -100,11 +157,27 @@ selectors:
 
 ## Scraping JSON
 
-Since 0.5.0 it's possible to scrape and process JSON.
+Although this gem is called **html\***2rss\*, it's possible to scrape and process JSON.
 
-Adding `json: true` to the channel config will convert the JSON response to XML. Under the hood it utilizes [ActiveSupport's `Hash.to_xml`](https://apidock.com/rails/Hash/to_xml) for the JSON to XML conversion.
+Adding `json: true` to the channel config will convert the JSON response to XML.
 
-<!-- TODO: add ruby example -->
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+feed = Html2rss.feed(
+  channel: {
+    url: "https://example.com",
+    title: "Example with JSON",
+    json: true
+  },
+  selectors: {
+    # ... omitted
+  }
+)
+```
+
+</details>
 
 <details>
   <summary>See a YAML feed config example</summary>
@@ -121,7 +194,7 @@ selectors:
 </details>
 
 <details>
-  <summary>See example: conversion of JSON objects</summary>
+  <summary>See how JSON objects are converted</summary>
 
 This JSON object:
 
@@ -146,10 +219,12 @@ will be converted to:
 
 Your items selector would be `data > datum`, the item's `link` selector would be `url`.
 
+Find further information in [ActiveSupport's `Hash.to_xml` documentation](https://apidock.com/rails/Hash/to_xml) for the conversion.
+
 </details>
 
 <details>
-  <summary>See example: conversion of JSON arrays</summary>
+  <summary>See how JSON arrays are converted</summary>
 
 This JSON array:
 
@@ -170,6 +245,8 @@ will be converted to:
 
 Your items selector would be `objects > object`, the item's `link` selector would be `url`.
 
+Find further information in [ActiveSupport's `Array.to_xml` documentation](https://apidock.com/rails/Hash/to_xml).
+
 </details>
 
 ## Set any HTTP header in the request
@@ -178,7 +255,10 @@ You can add any HTTP headers to the request to the channel URL.
 You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
 
 <!-- TODO: add ruby example -->
-<!-- TODO: add detail/summary yaml example -->
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
 ```yaml
 channel:
   url: https://example.com
@@ -191,6 +271,8 @@ channel:
 selectors:
   # ...
 ```
+
+</details>
 
 The headers provided by the channel will be merged into the global headers.
 
@@ -219,16 +301,16 @@ Example:
 
 Your feed configs go below `feeds`. Everything else is part of the global config.
 
-You can now request your feeds like this:
+You can build your feeds like this:
 
 ```ruby
 require 'html2rss'
 
 myfeed = Html2rss.feed_from_yaml_config('config.yml', 'myfeed')
 myotherfeed = Html2rss.feed_from_yaml_config('config.yml', 'myotherfeed')
-```  
+```
 
-Find a full example config.yml at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+Find a full example of a `config.yml` at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
 
 ## Development
 

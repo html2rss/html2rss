@@ -12,9 +12,9 @@ module Html2rss
     #      title:
     #        selector: h1
     #        post_process:
-    #         name: gsub
-    #         pattern: boo
-    #         replacement: baz
+    #          name: gsub
+    #          pattern: boo
+    #          replacement: baz
     #
     # Would return:
     #    'Foo bar and baz'

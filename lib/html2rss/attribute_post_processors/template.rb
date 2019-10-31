@@ -22,11 +22,11 @@ module Html2rss
     #      title:
     #        selector: h1
     #        post_process:
-    #         name: template
-    #         string: '%s (%s)'
-    #         methods:
-    #           - self
-    #           - price
+    #          name: template
+    #          string: '%s (%s)'
+    #          methods:
+    #            - self
+    #            - price
     #
     # Would return:
     #    'Product (23,42€)'

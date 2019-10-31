@@ -13,9 +13,9 @@ module Html2rss
     #      title:
     #        selector: h1
     #        post_process:
-    #         name: substring
-    #         start: 4
-    #         end: 6
+    #          name: substring
+    #          start: 4
+    #          end: 6
     #
     # Would return:
     #    'bar'
