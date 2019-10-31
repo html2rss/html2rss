@@ -17,14 +17,15 @@ and chain-able [post processors](https://github.com/gildesmarais/html2rss/tree/m
 
 ## Installation
 
-Add this line to your application's Gemfile: `gem 'html2rss'`  
-Then execute: `bundle`
-In your code, `require 'html2rss'`.
+| ---------------------------------------------: | -------------------- |
+| Add this line to your application's `Gemfile`: | `gem 'html2rss'`     |
+| Then execute:                                  | `bundle`             |
+| In your code:                                  | `require 'html2rss'` |
 
 ## Building a feed config
 
 A feed config consists of a `channel` and a `selectors` Hash.
-The contents of both hashes are explained below.
+The contents of both hashes are explained below.  
 Have a look at this minimal example first:
 
 ```ruby
@@ -67,23 +68,23 @@ To build a
 [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item)
 each item has to have at least a `title` or a `description`.
 
-Your `selectors` hash can contain arbitrary selector attributes, but only these
+Your `selectors` hash can contain arbitrary selector attribute names, but only these
 will make it into the RSS feed:
 
-| RSS 2.0 tag   | html2rss selector attribute | remark                              |
-| ------------- | --------------------------- | ----------------------------------- |
-| `title`       | `title`                     |                                     |
-| `description` | `description`               | Supports HTML.                      |
-| `link`        | `link`                      | A URL.                              |
-| `author`      | `author`                    |                                     |
-| `category`    | `category`                  | See notes below.                    |
-| `enclosure`   | `enclosure`                 | See notes below.                    |
-| `pubDate`     | `update`                    | Needs to be an instance of `Time`.  |
-| `guid`        | `guid`                      | Will be generated from the `title`. |
-| `comments`    | `comments`                  | A URL.                              |
-| `source`      | `source`                    | Not yet supported.                  |
+| RSS 2.0 tag   | name in html2rss | remark                              |
+| ------------- | ---------------- | ----------------------------------- |
+| `title`       | `title`          |                                     |
+| `description` | `description`    | Supports HTML.                      |
+| `link`        | `link`           | A URL.                              |
+| `author`      | `author`         |                                     |
+| `category`    | `category`       | See notes below.                    |
+| `enclosure`   | `enclosure`      | See notes below.                    |
+| `pubDate`     | `update`         | Needs to be an instance of `Time`.  |
+| `guid`        | `guid`           | Will be generated from the `title`. |
+| `comments`    | `comments`       | A URL.                              |
+| `source`      | `source`         | Not yet supported.                  |
 
-### A 'selector' attribute
+### The `selector`
 
 Your selector hash can have these attributes:
 
@@ -102,7 +103,6 @@ Extractors help with extracting the information from your item, e.g. from HTML a
 - The `href` extractor returns a URL from an `<a>` tag's `href` attribute and corrects relative links to absolute ones.
 - The `attribute` extractor returns the value of the attribute in the selected HTML tag.
 - The `static` extractor returns the configured static value (it doesn't extract anything).
-
 - [See file list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
 
 <details>
@@ -131,8 +131,8 @@ selectors:
 
 </details>
 
-Extractors can require additional attributes on the selector hash.
-[Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+Extractors can require additional attributes on the selector hash.  
+[Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
 
 ## Using post processors
 
@@ -296,7 +296,7 @@ selectors:
 
 ## Scraping JSON
 
-Although this gem is called **html\***2rss\*, it's possible to scrape and process JSON.
+Although this gem is called **html**​*2rss*, it's possible to scrape and process JSON.
 
 Adding `json: true` to the channel config will convert the JSON response to XML.
 
@@ -388,7 +388,7 @@ Find further information in [ActiveSupport's `Array.to_xml` documentation](https
 ## Set any HTTP header in the request
 
 You can add any HTTP headers to the request to the channel URL.
-You can use this to e.g. have Cookie or Authorization information being sent or to overwrite the User-Agent.
+Use this to e.g. have Cookie or Authorization information sent or to spoof the User-Agent.
 
 <details>
   <summary>See a Ruby example</summary>
