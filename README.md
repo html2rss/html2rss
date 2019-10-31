@@ -24,7 +24,7 @@ In your code, `require 'html2rss'`.
 ## Building a feed config
 
 A feed config consists of a `channel` and a `selectors` Hash.
-The possible contents of both hashes are explained below.
+The contents of both hashes are explained below.
 Have a look at this minimal example first:
 
 ```ruby
@@ -50,12 +50,13 @@ puts rss
 
 ### The `channel`
 
-| attribute |          | type    | remark                  |
-| --------- | -------- | ------- | ----------------------- |
-| `title`   | required | String  |                         |
-| `url`     | required | String  |                         |
-| `ttl`     | optional | Integer | time to live in minutes |
-| `headers` | optional | Object  | See notes below.        |
+| attribute     |          | type    | remark                  |
+| ------------- | -------- | ------- | ----------------------- |
+| `title`       | required | String  |                         |
+| `url`         | required | String  |                         |
+| `ttl`         | optional | Integer | time to live in minutes |
+| `description` | options  | String  |                         |
+| `headers`     | optional | Object  | See notes below.        |
 
 ### The `selectors`
 
@@ -69,18 +70,18 @@ each item has to have at least a `title` or a `description`.
 Your `selectors` hash can contain arbitrary selector attributes, but only these
 will make it into the RSS feed:
 
-| RSS 2.0 tag   | html2rss selector name | remark                              |
-| ------------- | ---------------------- | ----------------------------------- |
-| `title`       | `title`                |                                     |
-| `description` | `description`          | HTML is supported.                  |
-| `link`        | `link`                 | A URL.                              |
-| `author`      | `author`               |                                     |
-| `category`    | `category`             | See notes below.                    |
-| `enclosure`   | `enclosure`            | See notes below.                    |
-| `pubDate`     | `update`               | Needs to be an instance of `Time`.  |
-| `guid`        | `guid`                 | Will be generated from the `title`. |
-| `comments`    | `comments`             | A URL.                              |
-| `source`      | `source`               | Not yet supported.                  |
+| RSS 2.0 tag   | html2rss selector attribute | remark                              |
+| ------------- | --------------------------- | ----------------------------------- |
+| `title`       | `title`                     |                                     |
+| `description` | `description`               | HTML is supported.                  |
+| `link`        | `link`                      | A URL.                              |
+| `author`      | `author`                    |                                     |
+| `category`    | `category`                  | See notes below.                    |
+| `enclosure`   | `enclosure`                 | See notes below.                    |
+| `pubDate`     | `update`                    | Needs to be an instance of `Time`.  |
+| `guid`        | `guid`                      | Will be generated from the `title`. |
+| `comments`    | `comments`                  | A URL.                              |
+| `source`      | `source`                    | Not yet supported.                  |
 
 ### A 'selector' attribute
 
@@ -92,8 +93,6 @@ Your selector hash can have these attributes:
 | `extractor`    | Defaults to the `'text'` extractor.                    |
 | `post_process` | A object or array, see notes on post processors below. |
 
-Some extractors require additional attributes to be added to the selector hash.
-
 ## Using extractors
 
 Extractors help with extracting the information from your item, e.g. from HTML attributes.
@@ -104,6 +103,8 @@ Extractors help with extracting the information from your item, e.g. from HTML a
 - [See file list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
 
 <!-- TODO: add example -->
+
+Some extractors require additional attributes to be added to the selector hash.
 
 [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
 
@@ -406,6 +407,12 @@ myotherfeed = Html2rss.feed_from_yaml_config('config.yml', 'myotherfeed')
 ```
 
 Find a full example of a `config.yml` at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+
+## Gotchas and tips & tricks
+
+- Check that the channel URL does not redirect to a mobile page with a different markup structure.
+- Do not rely on your web browser's developer console. html2rss does not execute JavaScript.
+- Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
 
 ## Development
 
