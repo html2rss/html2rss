@@ -23,7 +23,9 @@ In your code, `require 'html2rss'`.
 
 ## Building a feed config
 
-Consists of `channel` and `selectors` objects. Here's a minimal example:
+A feed config consists of a `channel` and a `selectors` Hash.
+The possible contents of both Hashes are explained below.
+Have a look at this minimal example first:
 
 ```ruby
 require 'html2rss'
@@ -46,7 +48,7 @@ puts rss
 
 **Looks too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
 
-### The `channel` object
+### The `channel`
 
 | attribute |          | type    | remark                  |
 | --------- | -------- | ------- | ----------------------- |
@@ -55,16 +57,16 @@ puts rss
 | `ttl`     | optional | Integer | time to live in minutes |
 | `headers` | optional | Object  | See notes below.        |
 
-### The `selectors` object
+### The `selectors`
 
-You must provide an `items` selector object which returns items.
+You must provide an `items` selector object which contains the CSS selector which is used to return the items.
 
 To build a
 [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item)
 each item has to have at least a `title` or a `description`.
 
-Your `selectors` object can contain arbitrary selector objects, but only these
-will make it into the feed in their tag:
+Your `selectors` hash can contain arbitrary selector attributes, but only these
+will make it into the RSS feed:
 
 | RSS 2.0 tag   | html2rss selector name | remark                              |
 | ------------- | ---------------------- | ----------------------------------- |
@@ -79,9 +81,9 @@ will make it into the feed in their tag:
 | `comments`    | `comments`             | A URL.                              |
 | `source`      | `source`               | not yet supported.                  |
 
-### A selectors object
+### A 'selector' attribute
 
-Your selector objects can have these attributes:
+Your selector hash can have these attributes:
 
 | name           | value                                                  |
 | -------------- | ------------------------------------------------------ |
@@ -89,8 +91,55 @@ Your selector objects can have these attributes:
 | `extractor`    | Defaults to the `'text'` extractor.                    |
 | `post_process` | A object or array, see notes on post processors below. |
 
-[See list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).  
-[See list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+Some extractors require additional attributes to be added.
+
+## Using attribute extractors
+
+Attribute extractors help with extracting the information from your item.
+
+- [See list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
+- [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+
+## Using post processors
+
+Sometimes the desired information is hard to extract or not in the format you'd
+like it to be in.
+For this case there are plenty of [post processors available](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+
+- [See list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+- [Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
+
+### Chaining post processors
+
+Pass an array to `post_process` to chain the post processors.
+
+<details>
+  <summary>YAML example: build the description from a template String (in Markdown) and convert that Markdown to HTML</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  price:
+    selector: '.price'
+  description:
+    selector: '.section'
+    post_process:
+      - name: template
+        string: |
+          # %s
+
+          Price: %s
+        methods:
+          - self
+          - price
+      - name: markdown_to_html
+```
+
+Note the use of `|` for a multi-line String in YAML.
+
+</details>
 
 ## Assigning categories to an item
 
@@ -135,47 +184,7 @@ selectors:
 
 </details>
 
-## Using post processors
-
-Sometimes the desired information is hard to extract or not in the format you'd
-like it to be in.
-For this case there are plenty of [post processors available](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
-
-[Read their docs which come with usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
-
-### Chaining post processors
-
-Pass an array to `post_process` to chain the post processors.
-
-<details>
-  <summary>YAML example: build the description from a template String (in Markdown) and convert that Markdown to HTML</summary>
-
-```yml
-channel:
-  # ... omitted
-selectors:
-  # ... omitted
-  price:
-    selector: '.price'
-  description:
-    selector: '.section'
-    post_process:
-      - name: template
-        string: |
-          # %s
-
-          Price: %s
-        methods:
-          - self
-          - price
-      - name: markdown_to_html
-```
-
-Note the use of `|` for a multi-line String in YAML.
-
-</details>
-
-### Adding an enclosure to an item
+## Adding an enclosure to an item
 
 An enclosure can be 'anything', e.g. a image, audio or video file.
 
