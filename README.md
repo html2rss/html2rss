@@ -11,7 +11,7 @@ This Ruby gem builds RSS 2.0 feeds from a _feed config_.
 With the _feed config_ containing the URL to scrape and
 CSS selectors for information extraction (like title, URL, ...) your RSS builds.
 [Extractors](#using-extractors) and chain-able [post processors](#using-post-processors) make information extraction, processing and sanitizing a breeze.
-[Scraping JSON](#scraping-json) responses and [setting HTTP request headers](#set-any-http-header-in-the-request) supported, too.
+[Scraping JSON](#scraping-json) responses and [setting HTTP request headers](#set-any-http-header-in-the-request) is supported, too.
 
 **Searching for a ready to use "website to RSS" solution?**
 [Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
