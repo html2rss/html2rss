@@ -6,15 +6,18 @@
 [![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss)
 ![Retro Badge: valid RSS](https://validator.w3.org/feed/images/valid-rss-rogers.png)
 
+**Searching for a ready to use app which serves generated feeds via HTTP?**
+[Head over to `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
+
 This Ruby gem builds RSS 2.0 feeds from a _feed config_.
 
 With the _feed config_ containing the URL to scrape and
 CSS selectors for information extraction (like title, URL, ...) your RSS builds.
-[Extractors](#using-extractors) and chain-able [post processors](#using-post-processors) make information extraction, processing and sanitizing a breeze.
-[Scraping JSON](#scraping-json) responses and [setting HTTP request headers](#set-any-http-header-in-the-request) is supported, too.
-
-**Searching for a ready to use "website to RSS" solution?**
-[Check out `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
+[Extractors](#using-extractors) and chain-able [post processors](#using-post-processors)
+make information extraction, processing and sanitizing a breeze.
+[Scraping JSON](#scraping-json) responses and
+[setting HTTP request headers](#set-any-http-header-in-the-request) is
+supported, too.
 
 ## Installation
 
@@ -109,6 +112,9 @@ Extractors help with extracting the information from the selected HTML tag.
 - The `static` extractor returns the configured static value (it doesn't extract anything).
 - [See file list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
 
+Extractors can require additional attributes on the selector hash.  
+👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+
 <details>
   <summary>See a Ruby example</summary>
 
@@ -135,16 +141,26 @@ selectors:
 
 </details>
 
-Extractors can require additional attributes on the selector hash.  
-👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
-
 ## Using post processors
 
 Extracted information can be further manipulated with post processors.
 
+| name               |                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| `gsub`             | Allows global substitution operations on Strings (Regexp or simple pattern).          |
+| `html_to_markdown` | HTML to Markdown, using [reverse_markdown](https://github.com/xijo/reverse_markdown). |
+| `markdown_to_html` | converts Markdown to HTML, using [kramdown](https://github.com/gettalong/kramdown).   |
+| `parse_time`       | Parses a String containing a time in a time zone.                                     |
+| `parse_uri`        | Parses a String URL and builds an absolute one if it's relative.                      |
+| `sanitize_html`    | Strips unsafe and uneeded HTML and adds security related attributes.                  |
+| `substring`        | Cuts a part off of a String, starting at a position.                                  |
+| `template`         | Based on a template, it creates a new String filled with other selectors values.      |
+
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
 - [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+
+👉 [Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
 <details>
   <summary>See a Ruby example</summary>
@@ -177,8 +193,6 @@ selectors:
 ```
 
 </details>
-
-👉 [Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
 ### Chaining post processors
 
@@ -255,9 +269,9 @@ selectors:
 
 </details>
 
-## Adding an `<enclosure>` to an item
+## Adding an `<enclosure>` tag to an item
 
-An enclosure can be 'anything', e.g. a image, audio or video file..
+An enclosure can be 'anything', e.g. a image, audio or video file.
 
 The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's URL as base.
 
@@ -476,6 +490,7 @@ Find a full example of a `config.yml` at [`spec/config.test.yml`](https://github
 - Check that the channel URL does not redirect to a mobile page with a different markup structure.
 - Do not rely on your web browser's developer console. html2rss does not execute JavaScript.
 - Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
+- [CSS selectors are quite versatile, here's an overview.](https://www.w3.org/TR/selectors-4/#overview)
 
 ## Development
 
@@ -488,12 +503,14 @@ You can also run `bin/console` for an interactive prompt that will allow you to 
 1. `git pull`
 2. increase version in `lib/html2rss/version.rb`
 3. `bundle`
-4. commit the changes
-5. `git tag v....`
-6. [`standard-changelog -f`](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/standard-changelog)
-7. `git add CHANGELOG.md && git commit --amend`
-8. `git tag v.... -f`
-9. `git push && git push --tags`
+4. `git add Gemfile.lock lib/html2rss/version.rb
+5. `VERSION=$(ruby -e 'require "./lib/html2rss/version.rb"; puts Html2rss::VERSION')`
+6. `git commit -m "chore: release $VERSION"`
+7. `git tag v$VERSION`
+8. [`standard-changelog -f`](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/standard-changelog)
+9. `git add CHANGELOG.md && git commit --amend`
+10. `git tag v$VERSION -f`
+11. `git push && git push --tags`
 
 </details>
 
