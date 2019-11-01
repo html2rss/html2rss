@@ -213,12 +213,9 @@ selectors:
     post_process:
       - name: template
         string: |
-          # %s
+          # %{self}
 
-          Price: %s
-        methods:
-          - self
-          - price
+          Price: %{price}
       - name: markdown_to_html
 ```
 

@@ -4,7 +4,8 @@ module Html2rss
   module AttributePostProcessors
     ## Returns a formatted String according to the string pattern.
     #
-    # If +self+ is given as a method, the extracted value will be used.
+    # If +self+ is used, the selectors extracted value will be used.
+    # It uses [Kernel#format](https://ruby-doc.org/core/Kernel.html#method-i-format)
     #
     # Imagine this HTML:
     #    <li>
@@ -23,10 +24,7 @@ module Html2rss
     #        selector: h1
     #        post_process:
     #          name: template
-    #          string: '%s (%s)'
-    #          methods:
-    #            - self
-    #            - price
+    #          string: '%{self} (%{price})'
     #
     # Would return:
     #    'Product (23,42€)'
@@ -38,10 +36,16 @@ module Html2rss
       end
 
       ##
-      # - uses {http://ruby-doc.org/core-2.6.3/String.html#method-i-25 String#%}
       # @return [String]
       def get
-        string % methods
+        if @options['methods']
+          string % methods
+        else
+          names = string.scan(/%[<|{](\w*)[>|}]/).flatten
+          names.uniq!
+
+          format(string, names.map { |name| [name.to_sym, item_value(name)] }.to_h)
+        end
       end
 
       private
@@ -51,9 +55,11 @@ module Html2rss
       end
 
       def methods
-        @methods ||= @options['methods'].map do |method|
-          method == 'self' ? @value.to_s : @item.public_send(method.to_sym).to_s
-        end
+        @methods ||= @options['methods'].map(&method(:item_value))
+      end
+
+      def item_value(method_name)
+        method_name.to_s == 'self' ? @value.to_s : @item.public_send(method_name.to_sym).to_s
       end
     end
   end
