@@ -151,7 +151,7 @@ Extracted information can be further manipulated with post processors.
 | `html_to_markdown` | HTML to Markdown, using [reverse_markdown](https://github.com/xijo/reverse_markdown). |
 | `markdown_to_html` | converts Markdown to HTML, using [kramdown](https://github.com/gettalong/kramdown).   |
 | `parse_time`       | Parses a String containing a time in a time zone.                                     |
-| `parse_uri`        | Parses a String URL and builds an absolute one if it's relative.                      |
+| `parse_uri`        | Parses a String as URL.                                                               |
 | `sanitize_html`    | Strips unsafe and uneeded HTML and adds security related attributes.                  |
 | `substring`        | Cuts a part off of a String, starting at a position.                                  |
 | `template`         | Based on a template, it creates a new String filled with other selectors values.      |
