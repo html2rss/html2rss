@@ -17,12 +17,12 @@ module Html2rss
     #        selector: span
     #        post_process:
     #          name: 'parse_time'
+    #          time_zone: 'Europe/Berlin'
     #
     # Would return:
     #    "Tue, 02 Jul 2019 00:00:00 +0200"
     #
     # It uses {https://ruby-doc.org/stdlib-2.5.3/libdoc/time/rdoc/Time.html#method-c-parse Time.parse}.
-    # As of now it ignores time zones and always falls back to the UTC time zone.
     class ParseTime
       def initialize(value, env)
         @value = value.to_s

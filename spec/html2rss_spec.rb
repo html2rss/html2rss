@@ -34,6 +34,15 @@ RSpec.describe Html2rss do
       it 'returns a RSS:Rss instance' do
         expect(feed).to be_a_kind_of(RSS::Rss)
       end
+
+      context 'with returned rss feed' do
+        subject(:xml) { Nokogiri::XML(feed.to_s) }
+
+        it 'has the description derived from markdown' do
+          expect(xml.css('item > description').first.text)
+            .to eq '<h1>GOLDFINCH, THE</h1> <p>MPAA rating: R</p>'
+        end
+      end
     end
   end
 
@@ -137,6 +146,16 @@ RSpec.describe Html2rss do
         end
       end
 
+      describe 'item.enclosure' do
+        subject(:enclosure) { item.css('enclosure') }
+
+        it 'sets the enclosure', :aggregate_failures do
+          expect(enclosure.attr('url').value).to start_with('https://'), 'url'
+          expect(enclosure.attr('type').value).to eq('application/octet-stream'), 'type'
+          expect(enclosure.attr('length').value).to eq('0'), 'length'
+        end
+      end
+
       describe 'item.description' do
         let(:description) { item.css('description').text }
 
@@ -195,7 +214,7 @@ RSpec.describe Html2rss do
           }
         },
         selectors: {
-          items: { selector: 'html' },
+          items: { selector: 'hash' },
           title: { selector: 'host' },
           something: { selector: 'x-something' },
           authorization: { selector: 'authorization' },

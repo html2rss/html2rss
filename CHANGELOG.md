@@ -1,4 +1,27 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.6.0...v) (2019-10-05)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.8.0...v) (2019-11-02)
+
+
+
+# [0.8.0](https://github.com/gildesmarais/html2rss/compare/v0.7.0...v0.8.0) (2019-11-02)
+
+
+### Features
+
+* **post_processors:** add markdown to html ([#54](https://github.com/gildesmarais/html2rss/issues/54)) ([cdf77b8](https://github.com/gildesmarais/html2rss/commit/cdf77b8))
+* **post_processors:** support annotated tokens ([#62](https://github.com/gildesmarais/html2rss/issues/62)) ([b57bd7b](https://github.com/gildesmarais/html2rss/commit/b57bd7b)), closes [#56](https://github.com/gildesmarais/html2rss/issues/56)
+
+
+
+# [0.7.0](https://github.com/gildesmarais/html2rss/compare/v0.6.0...v0.7.0) (2019-10-28)
+
+
+### Features
+
+* handle json array response ([#49](https://github.com/gildesmarais/html2rss/issues/49)) ([288c2af](https://github.com/gildesmarais/html2rss/commit/288c2af))
+* support enclosure on items ([#52](https://github.com/gildesmarais/html2rss/issues/52)) ([80a30a1](https://github.com/gildesmarais/html2rss/commit/80a30a1)), closes [#50](https://github.com/gildesmarais/html2rss/issues/50)
+* use zeitwerk for autoloading ([#47](https://github.com/gildesmarais/html2rss/issues/47)) ([bce523d](https://github.com/gildesmarais/html2rss/commit/bce523d))
+* **post_processors:** add gsub ([#53](https://github.com/gildesmarais/html2rss/issues/53)) ([de268ae](https://github.com/gildesmarais/html2rss/commit/de268ae))
+* **postprocessor:** always wrap img tag in an a tag in sanitze html ([#51](https://github.com/gildesmarais/html2rss/issues/51)) ([6c7fb88](https://github.com/gildesmarais/html2rss/commit/6c7fb88))
 
 
 

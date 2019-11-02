@@ -4,10 +4,16 @@ module Html2rss
   module AttributePostProcessors
     ##
     # Returns sanitized HTML code as String.
-    # Adds
     #
-    # - rel="nofollow noopener noreferrer" to a elements
-    # - referrer-policy='no-referrer' to img elements
+    # It adds:
+    #
+    # - `rel="nofollow noopener noreferrer"` to <a> tags
+    # - `referrer-policy='no-referrer'` to <img> tags
+    #
+    # It also:
+    #
+    # - wraps all <img> tags, whose direct parent is not an <a>, into an <a>
+    #   linking to the <img>'s `src`.
     #
     # Imagine this HTML structure:
     #
@@ -21,7 +27,7 @@ module Html2rss
     #
     #    selectors:
     #      description:
-    #        selector: section
+    #        selector: '.section'
     #        extractor: html
     #        post_process:
     #          name: sanitize_html
@@ -41,28 +47,26 @@ module Html2rss
       # - adds target="_blank" to a elements
       # @return [String]
       def get
-        Sanitize.fragment(@value, Sanitize::Config.merge(
-                                    Sanitize::Config::RELAXED,
-                                    attributes: { all: %w[dir lang alt title translate] },
-                                    add_attributes: {
-                                      'a' => {
-                                        'rel' => 'nofollow noopener noreferrer',
-                                        'target' => '_blank'
-                                      },
-                                      'img' => {
-                                        'referrer-policy' => 'no-referrer'
-                                      }
-                                    },
-                                    transformers: [transform_urls_to_absolute_ones]
-                                  )).to_s.split.join(' ')
+        Sanitize.fragment(
+          @value,
+          Sanitize::Config.merge(
+            Sanitize::Config::RELAXED,
+            attributes: { all: %w[dir lang alt title translate] },
+            add_attributes: {
+              'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
+              'img' => { 'referrer-policy' => 'no-referrer' }
+            },
+            transformers: [transform_urls_to_absolute_ones, wrap_img_in_a]
+          )
+        )
+                .to_s
+                .split
+                .join(' ')
       end
 
       private
 
-      URL_ELEMENTS_WITH_URL_ATTRIBUTE = {
-        'a' => :href,
-        'img' => :src
-      }.freeze
+      URL_ELEMENTS_WITH_URL_ATTRIBUTE = { 'a' => :href, 'img' => :src }.freeze
 
       def transform_urls_to_absolute_ones
         lambda do |env|
@@ -76,6 +80,23 @@ module Html2rss
           absolute_url = Html2rss::Utils.build_absolute_url_from_relative(url, @channel_url)
 
           env[:node][url_attribute] = absolute_url
+        end
+      end
+
+      def wrap_img_in_a
+        lambda do |env|
+          return if env[:node_name] != 'img'
+
+          img = env[:node]
+
+          return if img.parent.name == 'a'
+
+          anchor = Nokogiri::XML::Node.new('a', img)
+          anchor[:href] = img[:src]
+
+          anchor.add_child img.dup
+
+          img.replace(anchor)
         end
       end
     end

@@ -42,3 +42,14 @@ feeds:
         - mpaa_rating
         - grade
         - year
+      description:
+        post_process:
+          - name: template
+            string: |
+              # %s
+
+              MPAA rating: %s
+            methods:
+              - movie_title
+              - mpaa_rating
+          - name: markdown_to_html

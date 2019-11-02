@@ -31,7 +31,7 @@ module Html2rss
 
     def available_attributes
       @available_attributes ||= (%w[title link description author comments updated] &
-        @config.attribute_names) - ['categories']
+        @config.attribute_names) - %w[categories enclosure]
     end
 
     ##
@@ -51,14 +51,19 @@ module Html2rss
       categories.keep_if { |category| category.to_s != '' }
     end
 
+    def enclosure_url
+      enclosure = method_missing(:enclosure)
+      return if enclosure.to_s == ''
+
+      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url).to_s
+    end
+
     ##
     # @return [Array]
     def self.from_url(url, config)
       body = get_body_from_url(url, config)
 
-      Nokogiri::HTML(body).css(config.selector('items')).map do |xml_item|
-        new xml_item, config
-      end
+      Nokogiri.HTML(body).css(config.selector('items')).map { |xml_item| new xml_item, config }
     end
 
     private

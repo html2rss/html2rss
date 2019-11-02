@@ -53,3 +53,7 @@ feeds:
       categories:
         - author
         - version
+      enclosure:
+        selector: 'img.avatar'
+        extractor: 'attribute'
+        attribute: 'src'
