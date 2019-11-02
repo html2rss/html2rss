@@ -62,7 +62,7 @@ The contents of both hashes are explained below.
 | `title`       | required | String  |                         |
 | `url`         | required | String  |                         |
 | `ttl`         | optional | Integer | time to live in minutes |
-| `description` | options  | String  |                         |
+| `description` | optional | String  |                         |
 | `headers`     | optional | Hash    | See notes below.        |
 
 ### The `selectors`
@@ -226,7 +226,7 @@ Note the use of `|` for a multi-line String in YAML.
 ## Adding `<category>` tags to an item
 
 The `categories` selector takes an array of selector names. The value of those
-selectors will become a <category> on the RSS item.
+selectors will become a `<category>` on the RSS item.
 
 <details>
   <summary>See a Ruby example</summary>
@@ -500,7 +500,7 @@ You can also run `bin/console` for an interactive prompt that will allow you to 
 1. `git pull`
 2. increase version in `lib/html2rss/version.rb`
 3. `bundle`
-4. `git add Gemfile.lock lib/html2rss/version.rb
+4. `git add Gemfile.lock lib/html2rss/version.rb`
 5. `VERSION=$(ruby -e 'require "./lib/html2rss/version.rb"; puts Html2rss::VERSION')`
 6. `git commit -m "chore: release $VERSION"`
 7. `git tag v$VERSION`

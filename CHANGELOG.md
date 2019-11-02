@@ -1,4 +1,14 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.7.0...v) (2019-10-28)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.8.0...v) (2019-11-02)
+
+
+
+# [0.8.0](https://github.com/gildesmarais/html2rss/compare/v0.7.0...v0.8.0) (2019-11-02)
+
+
+### Features
+
+* **post_processors:** add markdown to html ([#54](https://github.com/gildesmarais/html2rss/issues/54)) ([cdf77b8](https://github.com/gildesmarais/html2rss/commit/cdf77b8))
+* **post_processors:** support annotated tokens ([#62](https://github.com/gildesmarais/html2rss/issues/62)) ([b57bd7b](https://github.com/gildesmarais/html2rss/commit/b57bd7b)), closes [#56](https://github.com/gildesmarais/html2rss/issues/56)
 
 
 
