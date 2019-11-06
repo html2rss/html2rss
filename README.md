@@ -57,13 +57,14 @@ The contents of both hashes are explained below.
 
 ### The `channel`
 
-| attribute     |          | type    | remark                  |
-| ------------- | -------- | ------- | ----------------------- |
-| `title`       | required | String  |                         |
-| `url`         | required | String  |                         |
-| `ttl`         | optional | Integer | time to live in minutes |
-| `description` | optional | String  |                         |
-| `headers`     | optional | Hash    | See notes below.        |
+| attribute     |          | type    | default        | remark                  |
+| ------------- | -------- | ------- | -------------- | ----------------------- |
+| `url`         | required | String  |                |                         |
+| `title`       | optional | String  | auto-generated |                         |
+| `ttl`         | optional | Integer | 3 600          | time to live in minutes |
+| `description` | optional | String  | auto-generated |                         |
+| `time_zone`   | optional | String  | UTC            | TimeZone name           |
+| `headers`     | optional | Hash    | `{}`           | See notes below.        |
 
 ### The `selectors`
 
@@ -78,18 +79,18 @@ each item has to have at least a `title` or a `description`.
 Your `selectors` can contain arbitrary selector names, but only these
 will make it into the RSS feed:
 
-| RSS 2.0 tag   | name in html2rss | remark                      |
-| ------------- | ---------------- | --------------------------- |
-| `title`       | `title`          |                             |
-| `description` | `description`    | Supports HTML.              |
-| `link`        | `link`           | A URL.                      |
-| `author`      | `author`         |                             |
-| `category`    | `categories`     | See notes below.            |
-| `enclosure`   | `enclosure`      | See notes below.            |
-| `pubDate`     | `update`         | An instance of `Time`.      |
-| `guid`        | `guid`           | Generated from the `title`. |
-| `comments`    | `comments`       | A URL.                      |
-| `source`      | ~~source~~       | Not yet supported.          |
+| RSS 2.0 tag   | name in `html2rss` | remark                      |
+| ------------- | ------------------ | --------------------------- |
+| `title`       | `title`            |                             |
+| `description` | `description`      | Supports HTML.              |
+| `link`        | `link`             | A URL.                      |
+| `author`      | `author`           |                             |
+| `category`    | `categories`       | See notes below.            |
+| `enclosure`   | `enclosure`        | See notes below.            |
+| `pubDate`     | `update`           | An instance of `Time`.      |
+| `guid`        | `guid`             | Generated from the `title`. |
+| `comments`    | `comments`         | A URL.                      |
+| `source`      | ~~source~~         | Not yet supported.          |
 
 ### The `selector` hash
 
@@ -272,7 +273,7 @@ An enclosure can be 'anything', e.g. a image, audio or video file.
 
 The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's URL as base.
 
-Since html2rss does no further inspection of the enclosure, its support comes with trade-offs:
+Since `html2rss` does no further inspection of the enclosure, its support comes with trade-offs:
 
 1. The content-type is guessed from the file extension of the URL.
 2. If the content-type guessing fails, it will default to `application/octet-stream`.
@@ -485,7 +486,7 @@ Find a full example of a `config.yml` at [`spec/config.test.yml`](https://github
 ## Gotchas and tips & tricks
 
 - Check that the channel URL does not redirect to a mobile page with a different markup structure.
-- Do not rely on your web browser's developer console. html2rss does not execute JavaScript.
+- Do not rely on your web browser's developer console. `html2rss` does not execute JavaScript.
 - Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
 - [CSS selectors are quite versatile, here's an overview.](https://www.w3.org/TR/selectors-4/#overview)
 

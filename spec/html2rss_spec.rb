@@ -70,7 +70,7 @@ RSpec.describe Html2rss do
 
     describe 'feed.channel' do
       it 'sets a title' do
-        expect(xml.css('channel > title').text).to eq 'Nuxt.js Github Releases'
+        expect(xml.css('channel > title').text).to eq 'github.com: Nuxt Nuxt.Js Releases'
       end
 
       describe 'channel.link' do
@@ -78,13 +78,13 @@ RSpec.describe Html2rss do
           expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
         end
 
-        it 'is parseable by URI::HTTP' do
+        it 'is parse-able by URI::HTTP' do
           expect(URI(xml.css('channel > link').text)).to be_a(URI::HTTP)
         end
       end
 
       it 'sets a description' do
-        expect(xml.css('channel > description').text).to eq 'An example config.'
+        expect(xml.css('channel > description').text).to eq 'Latest items from https://github.com/nuxt/nuxt.js/releases.'
       end
 
       it 'sets a ttl' do
@@ -94,12 +94,12 @@ RSpec.describe Html2rss do
       describe '.generator' do
         subject(:generator) { xml.css('channel > generator').text }
 
-        it 'stars with html2rss' do
+        it 'starts with html2rss' do
           expect(generator).to start_with('html2rss')
         end
 
         it 'includes the version number' do
-          expect(generator).to include(Html2rss::VERSION)
+          expect(generator).to end_with(Html2rss::VERSION)
         end
       end
 
