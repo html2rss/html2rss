@@ -39,6 +39,9 @@ Style/BracesAroundHashParameters:
 Style/HashSyntax:
   Enabled: true
 
+Style/FormatStringToken:
+  Enabled: false
+
 Layout/SpaceInsideParens:
   Enabled: true
 
