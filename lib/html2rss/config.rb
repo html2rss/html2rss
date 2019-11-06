@@ -18,7 +18,15 @@ module Html2rss
     end
 
     def title
-      channel_config.fetch 'title', 'html2rss generated title'
+      channel_config.fetch 'title' do
+        uri = URI(url)
+
+        nicer_path = uri.path.split('/')
+        nicer_path.compact!
+        nicer_path.map!(&:titleize)
+
+        "#{uri.host}: #{nicer_path.join(' ')}".squish
+      end
     end
 
     def language
@@ -26,7 +34,7 @@ module Html2rss
     end
 
     def description
-      channel_config.fetch 'description', 'A description of my html2rss feed.'
+      channel_config.fetch 'description', "Latest items from #{url}."
     end
 
     def url

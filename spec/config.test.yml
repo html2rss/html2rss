@@ -7,10 +7,7 @@ headers:
 feeds:
   nuxt-releases:
     channel:
-      title: 'Nuxt.js Github Releases'
       url: https://github.com/nuxt/nuxt.js/releases
-      ttl: 60
-      description: 'An example config.'
     selectors:
       items:
         selector: '.release'
