@@ -21,7 +21,11 @@ module Html2rss
       channel_config.fetch 'title' do
         uri = URI(url)
 
-        "#{uri.host}: #{uri.path.split('/').compact.map(&:titleize).join(' ')}".squish
+        nicer_path = uri.path.split('/')
+        nicer_path.compact!
+        nicer_path.map!(&:titleize)
+
+        "#{uri.host}: #{nicer_path.join(' ')}".squish
       end
     end
 
