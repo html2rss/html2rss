@@ -36,10 +36,7 @@ require 'html2rss'
 
 rss =
   Html2rss.feed(
-    channel: {
-      title: 'StackOverflow: Hot Network Questions',
-      url: 'https://stackoverflow.com/questions'
-    },
+    channel: { url: 'https://stackoverflow.com/questions' },
     selectors: {
       items: { selector: '#hot-network-questions > ul > li' },
       title: { selector: 'a' },
@@ -57,14 +54,14 @@ The contents of both hashes are explained below.
 
 ### The `channel`
 
-| attribute     |          | type    | default        | remark                  |
-| ------------- | -------- | ------- | -------------- | ----------------------- |
-| `url`         | required | String  |                |                         |
-| `title`       | optional | String  | auto-generated |                         |
-| `ttl`         | optional | Integer | 3 600          | time to live in minutes |
-| `description` | optional | String  | auto-generated |                         |
-| `time_zone`   | optional | String  | UTC            | TimeZone name           |
-| `headers`     | optional | Hash    | `{}`           | See notes below.        |
+| attribute     |          | type    |        default | remark           |
+| ------------- | -------- | ------- | -------------: | ---------------- |
+| `url`         | required | String  |                |                  |
+| `title`       | optional | String  | auto-generated |                  |
+| `ttl`         | optional | Integer |          `360` | TTL in _minutes_ |
+| `description` | optional | String  | auto-generated |                  |
+| `time_zone`   | optional | String  |        `'UTC'` | TimeZone name    |
+| `headers`     | optional | Hash    |           `{}` | See notes below. |
 
 ### The `selectors`
 
@@ -226,7 +223,7 @@ Note the use of `|` for a multi-line String in YAML.
 
 ## Adding `<category>` tags to an item
 
-The `categories` selector takes an array of selector names. The value of those
+The `categories` selector takes an array of selector names. Each value of those
 selectors will become a `<category>` on the RSS item.
 
 <details>
@@ -269,7 +266,7 @@ selectors:
 
 ## Adding an `<enclosure>` tag to an item
 
-An enclosure can be 'anything', e.g. a image, audio or video file.
+An enclosure can be any file, e.g. a image, audio or video.
 
 The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's URL as base.
 
