@@ -15,7 +15,7 @@ With the _feed config_ containing the URL to scrape and
 CSS selectors for information extraction (like title, URL, ...) your RSS builds.
 [Extractors](#using-extractors) and chain-able [post processors](#using-post-processors)
 make information extraction, processing and sanitizing a breeze.
-[Scraping JSON](#scraping-json) responses and
+[Scraping JSON](#scraping-and-handling-json-responses) responses and
 [setting HTTP request headers](#set-any-http-header-in-the-request) is
 supported, too.
 
@@ -54,14 +54,15 @@ The contents of both hashes are explained below.
 
 ### The `channel`
 
-| attribute     |          | type    |        default | remark           |
-| ------------- | -------- | ------- | -------------: | ---------------- |
-| `url`         | required | String  |                |                  |
-| `title`       | optional | String  | auto-generated |                  |
-| `ttl`         | optional | Integer |          `360` | TTL in _minutes_ |
-| `description` | optional | String  | auto-generated |                  |
-| `time_zone`   | optional | String  |        `'UTC'` | TimeZone name    |
-| `headers`     | optional | Hash    |           `{}` | See notes below. |
+| attribute     |          | type    |        default | remark                                     |
+| ------------- | -------- | ------- | -------------: | ------------------------------------------ |
+| `url`         | required | String  |                |                                            |
+| `title`       | optional | String  | auto-generated |                                            |
+| `description` | optional | String  | auto-generated |                                            |
+| `ttl`         | optional | Integer |          `360` | TTL in _minutes_                           |
+| `time_zone`   | optional | String  |        `'UTC'` | TimeZone name                              |
+| `headers`     | optional | Hash    |           `{}` | Set HTTP request headers. See notes below. |
+| `json`        | optional | Boolean |        `false` | Handle JSON response. See notes below.     |
 
 ### The `selectors`
 
@@ -308,7 +309,7 @@ selectors:
 
 </details>
 
-## Scraping JSON
+## Scraping and handling JSON responses
 
 Although this gem is called **html**​*2rss*, it's possible to scrape and process JSON.
 
