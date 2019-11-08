@@ -14,7 +14,7 @@ module Html2rss
     end
 
     def ttl
-      channel_config.fetch 'ttl', 3600
+      channel_config.fetch 'ttl', 360
     end
 
     def title
