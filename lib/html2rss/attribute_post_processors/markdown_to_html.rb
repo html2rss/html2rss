@@ -38,10 +38,7 @@ module Html2rss
       ##
       # @return [String] formatted in Markdown
       def get
-        SanitizeHtml.new(
-          Kramdown::Document.new(@value).to_html,
-          @env
-        ).get
+        SanitizeHtml.new(Kramdown::Document.new(@value).to_html, @env).get
       end
     end
   end
