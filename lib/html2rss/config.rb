@@ -22,10 +22,10 @@ module Html2rss
         uri = URI(url)
 
         nicer_path = uri.path.split('/')
-        nicer_path.compact!
+        nicer_path.reject! { |p| p == '' }
         nicer_path.map!(&:titleize)
 
-        "#{uri.host}: #{nicer_path.join(' ')}".squish
+        nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ')}" : uri.host
       end
     end
 
