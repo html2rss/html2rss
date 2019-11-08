@@ -1,6 +1,6 @@
 RSpec.describe Html2rss do
-  let(:config_file) { File.join(['spec', 'config.test.yml']) }
-  let(:config_json_file) { File.join(['spec', 'config.json.test.yml']) }
+  let(:config_file) { File.join(%w[spec config.test.yml]) }
+  let(:config_json_file) { File.join(%w[spec config.json.test.yml]) }
   let(:yaml_config) { YAML.safe_load(File.open(config_file)) }
   let(:name) { 'nuxt-releases' }
   let(:feed_config) { yaml_config['feeds'][name] }
@@ -14,9 +14,7 @@ RSpec.describe Html2rss do
   describe '.feed_from_yaml_config' do
     context 'with html response' do
       subject(:feed) do
-        VCR.use_cassette('nuxt-releases') do
-          described_class.feed_from_yaml_config(config_file, name)
-        end
+        VCR.use_cassette('nuxt-releases') { described_class.feed_from_yaml_config(config_file, name) }
       end
 
       it 'returns a RSS:Rss instance' do
@@ -26,9 +24,7 @@ RSpec.describe Html2rss do
 
     context 'with json response' do
       subject(:feed) do
-        VCR.use_cassette('config.json') do
-          described_class.feed_from_yaml_config(config_json_file, 'json')
-        end
+        VCR.use_cassette('config.json') { described_class.feed_from_yaml_config(config_json_file, 'json') }
       end
 
       it 'returns a RSS:Rss instance' do
@@ -36,25 +32,24 @@ RSpec.describe Html2rss do
       end
 
       context 'with returned rss feed' do
-        subject(:xml) { Nokogiri::XML(feed.to_s) }
+        subject(:xml) { Nokogiri.XML(feed.to_s) }
 
         it 'has the description derived from markdown' do
-          expect(xml.css('item > description').first.text)
-            .to eq '<h1>GOLDFINCH, THE</h1> <p>MPAA rating: R</p>'
+          expect(
+            xml.css('item > description').first.text
+          ).to eq '<h1>GOLDFINCH, THE</h1> <p>MPAA rating: R</p>'
         end
       end
     end
   end
 
   describe '.feed' do
-    subject(:xml) { Nokogiri::XML(feed_return.to_s) }
+    subject(:xml) { Nokogiri.XML(feed_return.to_s) }
 
     let(:feed_return) { VCR.use_cassette('nuxt-releases') { described_class.feed(config) } }
 
     before do
-      allow(Faraday).to receive(:new)
-        .with(hash_including(headers: yaml_config['headers']))
-        .and_call_original
+      allow(Faraday).to receive(:new).with(hash_including(headers: yaml_config['headers'])).and_call_original
     end
 
     it 'returns a RSS::Rss instance' do
@@ -64,8 +59,7 @@ RSpec.describe Html2rss do
     it 'sets the request headers' do
       VCR.use_cassette('nuxt-releases') { described_class.feed(config) }
 
-      expect(Faraday).to have_received(:new)
-        .with(hash_including(headers: yaml_config['headers']))
+      expect(Faraday).to have_received(:new).with(hash_including(headers: yaml_config['headers']))
     end
 
     describe 'feed.channel' do
@@ -84,7 +78,9 @@ RSpec.describe Html2rss do
       end
 
       it 'sets a description' do
-        expect(xml.css('channel > description').text).to eq 'Latest items from https://github.com/nuxt/nuxt.js/releases.'
+        expect(
+          xml.css('channel > description').text
+        ).to eq 'Latest items from https://github.com/nuxt/nuxt.js/releases.'
       end
 
       it 'sets a ttl' do
@@ -164,15 +160,13 @@ RSpec.describe Html2rss do
         end
 
         it 'adds rel="nofollow noopener noreferrer" to all anchor elements' do
-          Nokogiri::HTML(description).css('a').each do |anchor|
+          Nokogiri.HTML(description).css('a').each do |anchor|
             expect(anchor.attr('rel')).to eq 'nofollow noopener noreferrer'
           end
         end
 
         it 'changes target="_blank" on all anchor elements' do
-          Nokogiri::HTML(description).css('a').each do |anchor|
-            expect(anchor.attr('target')).to eq '_blank'
-          end
+          Nokogiri.HTML(description).css('a').each { |anchor| expect(anchor.attr('target')).to eq '_blank' }
         end
       end
 
@@ -182,8 +176,7 @@ RSpec.describe Html2rss do
             described_class.feed(config)
           end.items.first.guid.content
 
-          expect(feed_return.items.first.guid.content)
-            .to be == first_guid
+          expect(feed_return.items.first.guid.content).to eq first_guid
         end
 
         it 'sets isPermaLink attribute to false' do

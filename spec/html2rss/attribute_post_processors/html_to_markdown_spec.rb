@@ -1,7 +1,7 @@
 RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
   subject { described_class.new(html, config: config).get }
 
-  let(:config) {
+  let(:config) do
     Html2rss::Config.new(
       channel: { title: 'Example: questions', url: 'https://example.com/questions' },
       selectors: {
@@ -10,8 +10,8 @@ RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
         link: { selector: 'a', extractor: 'href' }
       }
     )
-  }
-  let(:html) {
+  end
+  let(:html) do
     <<~HTML
       <html lang="en">
         <body>
@@ -29,16 +29,16 @@ RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
         </body>
       </html>
     HTML
-  }
+  end
 
-  let(:markdown) {
+  let(:markdown) do
     [
       "# Very interesting\n Breaking news: I'm a deprecated tag \n ",
       '[![An animal looking cute](https://example.com/lol.gif)](https://example.com/lol.gif) ',
       '[example.com](http://example.com "foo") ',
       "[Click here!](https://example.com/article-123) \n"
     ].join
-  }
+  end
 
   it { is_expected.to eq markdown }
 end

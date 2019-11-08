@@ -1,10 +1,9 @@
 RSpec.describe Html2rss::AttributePostProcessors::Gsub do
   context 'with string pattern' do
     context 'with string replacement' do
-      subject {
-        described_class.new('Foo bar and boo',
-                            options: { 'pattern' => 'boo', 'replacement' => 'baz' }).get
-      }
+      subject do
+        described_class.new('Foo bar and boo', options: { 'pattern' => 'boo', 'replacement' => 'baz' }).get
+      end
 
       it { is_expected.to eq 'Foo bar and baz' }
     end
