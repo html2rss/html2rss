@@ -5,7 +5,7 @@ module Html2rss
     #
     # Imagine this HTML structure:
     #
-    #    <span>http://why-not-use-a-link.uh</span>
+    #    <span>http://why-not-use-a-link.uh </span>
     #
     # YAML usage example:
     #
@@ -26,7 +26,7 @@ module Html2rss
       ##
       # @return [String]
       def get
-        URI(@value).to_s
+        URI(@value.to_s.split(' ').join).to_s
       end
     end
   end
