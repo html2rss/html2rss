@@ -6,7 +6,7 @@ RSpec.describe Html2rss::AttributePostProcessors::ParseUri do
   end
 
   context 'with String value' do
-    subject { described_class.new('http://example.com', {}).get }
+    subject { described_class.new('http://example.com ', {}).get }
 
     it { is_expected.to eq 'http://example.com' }
   end
