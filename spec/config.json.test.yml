@@ -16,12 +16,7 @@ feeds:
         selector: 'title'
         post_process:
           name: 'template'
-          string: '%s (%s) [Rated %s] (%s)'
-          methods:
-            - self
-            - grade
-            - mpaa_rating
-            - year
+          string: '%{self} (%{grade}) [Rated %{mpaa_rating}] (%{year})'
       grade:
         selector: 'grade'
       movie_title:
@@ -46,10 +41,7 @@ feeds:
         post_process:
           - name: template
             string: |
-              # %s
+              # %{movie_title}
 
-              MPAA rating: %s
-            methods:
-              - movie_title
-              - mpaa_rating
+              MPAA rating: %{mpaa_rating}
           - name: markdown_to_html

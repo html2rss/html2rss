@@ -321,7 +321,7 @@ Adding `json: true` to the channel config will convert the JSON response to XML.
 ```ruby
 Html2rss.feed(
   channel: {
-    url: 'https://example.com', title: 'Example with JSON', json: true
+    url: 'https://example.com', json: true
   },
   selectors: {} # ... omitted
 )
@@ -335,7 +335,6 @@ Html2rss.feed(
 ```yaml
 channel:
   url: https://example.com
-  title: "Example with JSON"
   json: true
 selectors:
   # ... omitted
@@ -411,7 +410,6 @@ Use this to e.g. have Cookie or Authorization information sent or to spoof the U
   Html2rss.feed(
     channel: {
       url: 'https://example.com',
-      title: "Example with http headers",
       headers: {
         "User-Agent" => "html2rss-request",
         "X-Something" => "Foobar",
@@ -431,7 +429,6 @@ Use this to e.g. have Cookie or Authorization information sent or to spoof the U
 ```yaml
 channel:
   url: https://example.com
-  title: "Example with http headers"
   headers:
     "User-Agent": "html2rss-request"
     "X-Something": "Foobar"
@@ -451,7 +448,7 @@ This step is not required to work with this gem. If you're using
 [`html2rss-web`](https://github.com/gildesmarais/html2rss-web)
 and want to create your private feed configs, keep on reading!
 
-First, create your YAML file, e.g. called `config.yml`.
+First, create your YAML file, e.g. called `feeds.yml`.
 This file will contain your global config and feed configs.
 
 Example:
@@ -475,11 +472,11 @@ Build your feeds like this:
 ```ruby
 require 'html2rss'
 
-myfeed = Html2rss.feed_from_yaml_config('config.yml', 'myfeed')
-myotherfeed = Html2rss.feed_from_yaml_config('config.yml', 'myotherfeed')
+myfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myfeed')
+myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
 ```
 
-Find a full example of a `config.yml` at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+Find a full example of a `feeds.yml` at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
 
 ## Gotchas and tips & tricks
 
