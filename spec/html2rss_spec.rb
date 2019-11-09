@@ -37,7 +37,7 @@ RSpec.describe Html2rss do
         it 'has the description derived from markdown' do
           expect(
             xml.css('item > description').first.text
-          ).to eq '<h1>GOLDFINCH, THE</h1> <p>MPAA rating: R</p>'
+          ).to eq '<h1>DOCTOR SLEEP</h1> <p>MPAA rating: R</p>'
         end
       end
     end
@@ -108,15 +108,15 @@ RSpec.describe Html2rss do
       subject(:item) { xml.css('channel > item').first }
 
       it 'formats item.title' do
-        expect(item.css('title').text).to eq 'v2.4.2 (manni)'
+        expect(item.css('title').text).to eq 'v2.10.2 (pi)'
       end
 
       it 'has a link' do
-        expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v2.4.2'
+        expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2'
       end
 
       it 'has an author' do
-        expect(item.css('author').text).to eq 'manni'
+        expect(item.css('author').text).to eq 'pi'
       end
 
       it 'has a guid' do
@@ -138,7 +138,7 @@ RSpec.describe Html2rss do
         subject(:categories) { item.css('category').to_s }
 
         it 'sets the author as category' do
-          expect(categories).to include '<category>manni</category>'
+          expect(categories).to include '<category>pi</category>'
         end
       end
 
