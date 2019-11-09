@@ -1,10 +1,10 @@
 RSpec.describe Html2rss do
   let(:config_file) { File.join(%w[spec config.test.yml]) }
   let(:config_json_file) { File.join(%w[spec config.json.test.yml]) }
-  let(:yaml_config) { YAML.safe_load(File.open(config_file)) }
+  let(:yaml_config) { YAML.safe_load(File.open(config_file)).deep_symbolize_keys }
   let(:name) { 'nuxt-releases' }
-  let(:feed_config) { yaml_config['feeds'][name] }
-  let(:global_config) { yaml_config.reject { |k| k == 'feeds' } }
+  let(:feed_config) { yaml_config[:feeds][name.to_sym] }
+  let(:global_config) { yaml_config.reject { |k| k == :feeds } }
   let(:config) { Html2rss::Config.new(feed_config, global_config) }
 
   it 'has a version number' do
@@ -49,7 +49,7 @@ RSpec.describe Html2rss do
     let(:feed_return) { VCR.use_cassette('nuxt-releases') { described_class.feed(config) } }
 
     before do
-      allow(Faraday).to receive(:new).with(hash_including(headers: yaml_config['headers'])).and_call_original
+      allow(Faraday).to receive(:new).with(hash_including(headers: yaml_config[:headers])).and_call_original
     end
 
     it 'returns a RSS::Rss instance' do
@@ -59,7 +59,7 @@ RSpec.describe Html2rss do
     it 'sets the request headers' do
       VCR.use_cassette('nuxt-releases') { described_class.feed(config) }
 
-      expect(Faraday).to have_received(:new).with(hash_including(headers: yaml_config['headers']))
+      expect(Faraday).to have_received(:new).with(hash_including(headers: yaml_config[:headers]))
     end
 
     describe 'feed.channel' do

@@ -30,11 +30,7 @@ module Html2rss
       enclosure = item_maker.enclosure
       content_type = MIME::Types.type_for(File.extname(url).delete('.'))
 
-      enclosure.type = if content_type.any?
-                         content_type.first.to_s
-                       else
-                         'application/octet-stream'
-                      end
+      enclosure.type = content_type.any? ? content_type.first.to_s : 'application/octet-stream'
       enclosure.length = 0
       enclosure.url = url
     end

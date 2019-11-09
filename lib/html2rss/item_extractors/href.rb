@@ -29,7 +29,7 @@ module Html2rss
 
       # @return [URI::HTTPS, URI::HTTP]
       def get
-        Html2rss::Utils.build_absolute_url_from_relative(@href, @options['channel']['url'])
+        Html2rss::Utils.build_absolute_url_from_relative(@href, @options[:channel][:url])
       end
     end
   end

@@ -6,9 +6,9 @@ module Html2rss
   # provides default values.
   class Config
     def initialize(feed_config, global_config = {})
-      @global_config = global_config.with_indifferent_access
-      @feed_config = feed_config.with_indifferent_access
-      @channel_config = @feed_config.fetch('channel', {}).with_indifferent_access
+      @global_config = global_config.deep_symbolize_keys
+      @feed_config = feed_config.deep_symbolize_keys
+      @channel_config = @feed_config.fetch(:channel, {})
     end
 
     def author
@@ -28,9 +28,8 @@ module Html2rss
 
       nicer_path = uri.path.split('/')
       nicer_path.reject! { |p| p == '' }
-      nicer_path.map!(&:titleize)
 
-      nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ')}" : uri.host
+      nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ').titleize}" : uri.host
     end
 
     def language

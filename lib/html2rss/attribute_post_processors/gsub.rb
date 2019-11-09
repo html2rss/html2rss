@@ -28,8 +28,8 @@ module Html2rss
       def initialize(value, env)
         @value = value
         options = env[:options]
-        @pattern = options['pattern'].to_regexp || options['pattern']
-        @replacement = options['replacement']
+        @pattern = options[:pattern].to_regexp || options[:pattern]
+        @replacement = options[:replacement]
       end
 
       ##

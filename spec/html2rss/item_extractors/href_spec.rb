@@ -1,7 +1,7 @@
 RSpec.describe Html2rss::ItemExtractors::Href do
   subject { described_class.new(xml, options).get }
 
-  let(:options) { { 'selector' => 'a', 'channel' => { 'url' => 'https://example.com' } } }
+  let(:options) { { selector: 'a', channel: { url: 'https://example.com' } } }
 
   context 'with relative href url' do
     let(:xml) { Nokogiri.HTML('<div><a href="/posts/latest-findings">...</a></div>') }

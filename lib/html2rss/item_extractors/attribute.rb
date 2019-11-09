@@ -30,7 +30,7 @@ module Html2rss
       ##
       # @return [String]
       def get
-        @element.attr(@options['attribute']).to_s
+        @element.attr(@options[:attribute]).to_s
       end
     end
   end
