@@ -4,7 +4,6 @@ loader = Zeitwerk::Loader.for_gem
 loader.setup
 
 require 'yaml'
-require 'active_support/core_ext/hash'
 
 ##
 # The Html2rss namespace.
