@@ -15,13 +15,13 @@ module Html2rss
         @options = options
       end
 
-      # Returns what options['static'] holds.
+      # Returns what options[:static] holds.
       #
       #    options = { static: 'Foobar' }
       #    Static.new(xml, options).get
       #    # => 'Foobar'
       def get
-        @options['static']
+        @options[:static]
       end
     end
   end

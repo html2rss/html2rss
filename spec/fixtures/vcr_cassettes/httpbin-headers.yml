@@ -7,9 +7,9 @@ http_interactions:
       encoding: US-ASCII
       string: ''
     headers:
-      User-Agent:
+      User-agent:
       - html2rss-request
-      X-Something:
+      X-something:
       - Foobar
       Authorization:
       - Token deadbea7
@@ -27,7 +27,7 @@ http_interactions:
       content-type:
       - application/json
       date:
-      - Sat, 05 Oct 2019 11:41:31 GMT
+      - Sat, 09 Nov 2019 20:10:53 GMT
       referrer-policy:
       - no-referrer-when-downgrade
       server:
@@ -50,5 +50,5 @@ http_interactions:
         \n    \"User-Agent\": \"html2rss-request\", \n    \"X-Something\": \"Foobar\"\n
         \ }\n}\n"
     http_version: 
-  recorded_at: Sat, 05 Oct 2019 11:41:31 GMT
+  recorded_at: Sat, 09 Nov 2019 20:10:53 GMT
 recorded_with: VCR 5.0.0

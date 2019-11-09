@@ -15,7 +15,7 @@ module Html2rss
     ##
     # @return [Nokogiri::XML::Element]
     def self.element(xml, options)
-      selector = options['selector']
+      selector = options[:selector]
       selector ? xml.css(selector) : xml
     end
   end
