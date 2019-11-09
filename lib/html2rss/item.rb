@@ -74,7 +74,7 @@ module Html2rss
         faraday.adapter Faraday.default_adapter
       end.get.body
 
-      config.json? ? Html2rss::Utils.hash_to_xml(JSON.parse(body)) : body
+      config.json? ? Html2rss::Utils.object_to_xml(JSON.parse(body)) : body
     end
     private_class_method :get_body_from_url
 

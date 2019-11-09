@@ -24,7 +24,7 @@ module Html2rss
       def initialize(xml, options)
         @options = options
         element = ItemExtractors.element(xml, options)
-        @href = element.attr('href').to_s
+        @href = Html2rss::Utils.sanitize_url(element.attr('href'))
       end
 
       # @return [URI::HTTPS, URI::HTTP]
