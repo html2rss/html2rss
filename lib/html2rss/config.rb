@@ -81,9 +81,7 @@ module Html2rss
     end
 
     def attribute_names
-      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap do |attrs|
-        attrs.delete(:items)
-      end
+      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap { |attrs| attrs.delete(:items) }
     end
 
     private
