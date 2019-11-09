@@ -415,10 +415,10 @@ Use this to e.g. have Cookie or Authorization information sent or to spoof the U
       url: 'https://example.com',
       title: "Example with http headers",
       headers: {
-        "User-Agent" => "html2rss-request",
-        "X-Something" => "Foobar",
-        "Authorization" => "Token deadbea7",
-        "Cookie" => "monster=MeWantCookie"
+        "User-Agent": "html2rss-request",
+        "X-Something": "Foobar",
+        "Authorization": "Token deadbea7",
+        "Cookie": "monster=MeWantCookie"
       }
     },
     selectors: {}
