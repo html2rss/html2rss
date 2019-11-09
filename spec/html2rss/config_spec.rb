@@ -1,4 +1,10 @@
 RSpec.describe Html2rss::Config do
+  describe '#attribute_names' do
+    subject { described_class.new(selectors: { items: {}, 'name': {} }).attribute_names }
+
+    it { is_expected.to eq [:name] }
+  end
+
   describe '#title' do
     subject { described_class.new(feed_config).title }
 

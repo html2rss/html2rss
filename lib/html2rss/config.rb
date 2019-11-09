@@ -61,7 +61,7 @@ module Html2rss
     end
 
     def attribute?(name)
-      attribute_names.include?(name.to_s)
+      attribute_names.include?(name)
     end
 
     def categories
@@ -73,7 +73,7 @@ module Html2rss
     end
 
     def attribute_names
-      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap do |attrs|
+      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.map(&:to_sym).tap do |attrs|
         attrs.delete(:items)
       end
     end

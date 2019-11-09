@@ -30,8 +30,8 @@ module Html2rss
     end
 
     def available_attributes
-      @available_attributes ||= (%w[title link description author comments updated] &
-        @config.attribute_names) - %w[categories enclosure]
+      @available_attributes ||= (%i[title link description author comments updated] &
+        @config.attribute_names) - %i[categories enclosure]
     end
 
     ##
