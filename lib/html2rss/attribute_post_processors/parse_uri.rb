@@ -26,7 +26,7 @@ module Html2rss
       ##
       # @return [String]
       def get
-        URI(@value.to_s.split(' ').join).to_s
+        URI(Html2rss::Utils.sanitize_url(@value)).to_s
       end
     end
   end
