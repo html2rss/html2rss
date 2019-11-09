@@ -61,6 +61,7 @@ The contents of both hashes are explained below.
 | `description` | optional | String  | auto-generated |                                            |
 | `ttl`         | optional | Integer |          `360` | TTL in _minutes_                           |
 | `time_zone`   | optional | String  |        `'UTC'` | TimeZone name                              |
+| `language`    | optional | String  |         `'en'` | Language name                              |
 | `headers`     | optional | Hash    |           `{}` | Set HTTP request headers. See notes below. |
 | `json`        | optional | Boolean |        `false` | Handle JSON response. See notes below.     |
 

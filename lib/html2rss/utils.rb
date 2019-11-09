@@ -1,6 +1,5 @@
 require 'active_support/core_ext/hash'
 require 'builder'
-require 'hashie'
 require 'json'
 require 'nokogiri'
 
@@ -8,13 +7,6 @@ module Html2rss
   ##
   # The collecting tank for utility methods.
   module Utils
-    ##
-    # A Hash with indifferent access, build with {https://github.com/intridea/hashie Hashie}.
-    class IndifferentAccessHash < Hash
-      include Hashie::Extensions::MergeInitializer
-      include Hashie::Extensions::IndifferentAccess
-    end
-
     def self.build_absolute_url_from_relative(url, channel_url)
       url = URI(url) if url.is_a?(String)
 

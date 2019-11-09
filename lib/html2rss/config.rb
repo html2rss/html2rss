@@ -1,24 +1,26 @@
+require 'active_support/core_ext/hash'
+
 module Html2rss
   ##
   # The Config class abstracts from the config data structure and
   # provides default values.
   class Config
     def initialize(feed_config, global_config = {})
-      @global_config = Utils::IndifferentAccessHash.new global_config
-      @feed_config = Utils::IndifferentAccessHash.new feed_config
-      @channel_config = Utils::IndifferentAccessHash.new @feed_config.fetch('channel', {})
+      @global_config = global_config.with_indifferent_access
+      @feed_config = feed_config.with_indifferent_access
+      @channel_config = @feed_config.fetch('channel', {}).with_indifferent_access
     end
 
     def author
-      channel_config.fetch 'author', 'html2rss'
+      channel_config.fetch :author, 'html2rss'
     end
 
     def ttl
-      channel_config.fetch 'ttl', 360
+      channel_config.fetch :ttl, 360
     end
 
     def title
-      channel_config.fetch 'title' do
+      channel_config.fetch :title do
         uri = URI(url)
 
         nicer_path = uri.path.split('/')
@@ -30,32 +32,32 @@ module Html2rss
     end
 
     def language
-      channel_config.fetch 'language', 'en'
+      channel_config.fetch :language, 'en'
     end
 
     def description
-      channel_config.fetch 'description', "Latest items from #{url}."
+      channel_config.fetch :description, "Latest items from #{url}."
     end
 
     def url
-      channel_config.dig 'url'
+      channel_config.dig :url
     end
     alias link url
 
     def time_zone
-      channel_config.fetch 'time_zone', 'UTC'
+      channel_config.fetch :time_zone, 'UTC'
     end
 
     def json?
-      channel_config.fetch 'json', false
+      channel_config.fetch :json, false
     end
 
     def headers
-      global_config.fetch('headers', {}).merge(channel_config.fetch('headers', {}))
+      global_config.fetch(:headers, {}).merge(channel_config.fetch(:headers, {}))
     end
 
     def attribute_options(name)
-      feed_config.dig('selectors').fetch(name, {}).merge('channel' => channel_config)
+      feed_config.dig(:selectors).fetch(name, {}).merge(channel: channel_config)
     end
 
     def attribute?(name)
@@ -63,16 +65,16 @@ module Html2rss
     end
 
     def categories
-      feed_config.dig('selectors').fetch('categories', []).map(&:to_sym)
+      feed_config.dig(:selectors).fetch(:categories, []).map(&:to_sym)
     end
 
     def selector(name)
-      feed_config.dig('selectors', name, 'selector')
+      feed_config.dig(:selectors, name, :selector)
     end
 
     def attribute_names
-      @attribute_names ||= feed_config.fetch('selectors', {}).keys.map(&:to_s).tap do |attrs|
-        attrs.delete('items')
+      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap do |attrs|
+        attrs.delete(:items)
       end
     end
 
