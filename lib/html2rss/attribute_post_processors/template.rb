@@ -39,16 +39,14 @@ module Html2rss
       ##
       # @return [String]
       def get
-        if @options[:methods]
-          string % methods
-        else
-          names = string.scan(/%[<|{](\w*)[>|}]/)
-          names.flatten!
-          names.compact!
-          names.map!(&:to_sym)
+        return format_string_with_methods if @options[:methods]
 
-          format(string, names.map { |name| [name, item_value(name)] }.to_h)
-        end
+        names = string.scan(/%[<|{](\w*)[>|}]/)
+        names.flatten!
+        names.compact!
+        names.map!(&:to_sym)
+
+        format(string, names.map { |name| [name, item_value(name)] }.to_h)
       end
 
       private
@@ -57,6 +55,10 @@ module Html2rss
 
       def methods
         @methods ||= @options[:methods].map(&method(:item_value))
+      end
+
+      def format_string_with_methods
+        string % methods
       end
 
       def item_value(method_name)

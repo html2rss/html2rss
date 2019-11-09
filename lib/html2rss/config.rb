@@ -27,7 +27,7 @@ module Html2rss
       uri = URI(url)
 
       nicer_path = uri.path.split('/')
-      nicer_path.reject! { |p| p == '' }
+      nicer_path.reject! { |part| part == '' }
 
       nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ').titleize}" : uri.host
     end
@@ -81,7 +81,7 @@ module Html2rss
     end
 
     def attribute_names
-      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.map(&:to_sym).tap do |attrs|
+      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap do |attrs|
         attrs.delete(:items)
       end
     end

@@ -24,6 +24,10 @@ module Html2rss
       end
     end
 
+    def self.add_categories(categories, item_maker)
+      categories.each { |category| item_maker.categories.new_category.content = category }
+    end
+
     def self.add_enclosure_from_url(url, item_maker)
       return unless url
 
@@ -36,8 +40,9 @@ module Html2rss
     end
 
     def self.add_guid(item, item_maker)
-      item_maker.guid.content = Digest::SHA1.hexdigest(item.title)
-      item_maker.guid.isPermaLink = false
+      guid = item_maker.guid
+      guid.content = Digest::SHA1.hexdigest(item.title)
+      guid.isPermaLink = false
     end
 
     private
@@ -62,8 +67,7 @@ module Html2rss
         item_maker.public_send("#{attribute_name}=", item.public_send(attribute_name))
       end
 
-      item.categories.each { |category| item_maker.categories.new_category.content = category }
-
+      self.class.add_categories(item.categories, item_maker)
       self.class.add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
       self.class.add_guid(item, item_maker)
     end
