@@ -27,8 +27,9 @@ module Html2rss
     class Gsub
       def initialize(value, env)
         @value = value
-        @pattern = env[:options]['pattern'].to_regexp || env[:options]['pattern']
-        @replacement = env[:options]['replacement']
+        options = env[:options]
+        @pattern = options['pattern'].to_regexp || options['pattern']
+        @replacement = options['replacement']
       end
 
       ##

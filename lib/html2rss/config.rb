@@ -20,15 +20,17 @@ module Html2rss
     end
 
     def title
-      channel_config.fetch :title do
-        uri = URI(url)
+      channel_config.fetch(:title) { generated_title }
+    end
 
-        nicer_path = uri.path.split('/')
-        nicer_path.reject! { |p| p == '' }
-        nicer_path.map!(&:titleize)
+    def generated_title
+      uri = URI(url)
 
-        nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ')}" : uri.host
-      end
+      nicer_path = uri.path.split('/')
+      nicer_path.reject! { |p| p == '' }
+      nicer_path.map!(&:titleize)
+
+      nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ')}" : uri.host
     end
 
     def language
@@ -64,8 +66,15 @@ module Html2rss
       attribute_names.include?(name)
     end
 
-    def categories
-      feed_config.dig(:selectors).fetch(:categories, []).map(&:to_sym)
+    def category_selectors
+      categories = feed_config.dig(:selectors, :categories)
+      return [] unless categories
+
+      categories = categories.keep_if { |category| category.to_s != '' }
+      categories.map!(&:to_sym)
+      categories.uniq!
+
+      categories
     end
 
     def selector(name)

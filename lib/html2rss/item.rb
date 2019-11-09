@@ -45,10 +45,11 @@ module Html2rss
     ##
     # @return [Array]
     def categories
-      categories = config.categories
-      categories.map!(&method(:method_missing))
-      categories.uniq!
-      categories.keep_if { |category| category.to_s != '' }
+      config.category_selectors.map(&method(:method_missing))
+    end
+
+    def enclosure?
+      config.attribute?(:enclosure)
     end
 
     def enclosure_url
@@ -62,7 +63,9 @@ module Html2rss
     def self.from_url(url, config)
       body = get_body_from_url(url, config)
 
-      Nokogiri.HTML(body).css(config.selector(:items)).map { |xml_item| new xml_item, config }
+      Nokogiri.HTML(body).css(config.selector(:items))
+              .map { |xml_item| new xml_item, config }
+              .keep_if(&:valid?)
     end
 
     private

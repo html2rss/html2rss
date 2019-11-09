@@ -5,6 +5,14 @@ RSpec.describe Html2rss::Config do
     it { is_expected.to eq [:name] }
   end
 
+  describe '#category_selectors' do
+    subject { described_class.new(feed_config).category_selectors }
+
+    let(:feed_config) { { selectors: { categories: ['name', 'name', nil], 'name': {} } } }
+
+    it { is_expected.to eq [:name] }
+  end
+
   describe '#title' do
     subject { described_class.new(feed_config).title }
 

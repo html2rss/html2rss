@@ -59,7 +59,7 @@ module Html2rss
       end
 
       def item_value(method_name)
-        method_name.to_s == 'self' ? @value.to_s : @item.public_send(method_name.to_sym).to_s
+        method_name.to_s == 'self' ? @value.to_s : @item.public_send(method_name).to_s
       end
     end
   end
