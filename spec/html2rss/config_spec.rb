@@ -1,11 +1,17 @@
 RSpec.describe Html2rss::Config do
+  describe '#attribute_names' do
+    subject { described_class.new(selectors: { items: {}, 'name': {} }).attribute_names }
+
+    it { is_expected.to eq [:name] }
+  end
+
   describe '#title' do
     subject { described_class.new(feed_config).title }
 
     context 'with channel.title present' do
-      let(:feed_config) { { channel: { title: 'An example channel' } } }
+      let(:feed_config) { { 'channel' => { 'title' => 'An example channel' } } }
 
-      it { is_expected.to eq feed_config[:channel][:title] }
+      it { is_expected.to eq feed_config['channel']['title'] }
     end
 
     context 'without channel.url having path' do

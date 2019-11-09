@@ -26,12 +26,12 @@ module Html2rss
       extractor = ItemExtractors.get_extractor(attribute_options['extractor'])
       value = extractor.new(xml, attribute_options).get
 
-      post_process(value, attribute_options.fetch('post_process', false))
+      post_process(value, attribute_options.fetch(:post_process, false))
     end
 
     def available_attributes
-      @available_attributes ||= (%w[title link description author comments updated] &
-        @config.attribute_names) - %w[categories enclosure]
+      @available_attributes ||= (%i[title link description author comments updated] &
+        @config.attribute_names) - %i[categories enclosure]
     end
 
     ##
@@ -62,7 +62,7 @@ module Html2rss
     def self.from_url(url, config)
       body = get_body_from_url(url, config)
 
-      Nokogiri.HTML(body).css(config.selector('items')).map { |xml_item| new xml_item, config }
+      Nokogiri.HTML(body).css(config.selector(:items)).map { |xml_item| new xml_item, config }
     end
 
     private
@@ -83,7 +83,7 @@ module Html2rss
       return value unless post_process_options
 
       [post_process_options].flatten.each do |options|
-        value = AttributePostProcessors.get_processor(options['name'])
+        value = AttributePostProcessors.get_processor(options[:name])
                                        .new(value, options: options, item: self, config: @config)
                                        .get
       end

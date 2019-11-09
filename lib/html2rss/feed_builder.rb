@@ -30,11 +30,11 @@ module Html2rss
 
     def add_channel(maker)
       %i[language author title description link ttl].each do |attribute_name|
-        maker.channel.public_send("#{attribute_name}=".to_sym, config.public_send(attribute_name))
+        maker.channel.public_send("#{attribute_name}=", config.public_send(attribute_name))
       end
 
       maker.channel.generator = "html2rss V. #{::Html2rss::VERSION}"
-      maker.channel.lastBuildDate = Time.now.to_s
+      maker.channel.lastBuildDate = Time.now
     end
 
     def feed_items
@@ -43,7 +43,7 @@ module Html2rss
 
     def add_item(feed_item, rss_item)
       feed_item.available_attributes.each do |attribute_name|
-        rss_item.public_send("#{attribute_name}=".to_sym, feed_item.public_send(attribute_name))
+        rss_item.public_send("#{attribute_name}=", feed_item.public_send(attribute_name))
       end
 
       feed_item.categories.each { |category| rss_item.categories.new_category.content = category }
