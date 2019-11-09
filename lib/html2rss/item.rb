@@ -52,10 +52,9 @@ module Html2rss
     end
 
     def enclosure_url
-      enclosure = method_missing(:enclosure)
-      return if enclosure.to_s == ''
+      enclosure = Html2rss::Utils.sanitize_url(method_missing(:enclosure))
 
-      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url).to_s
+      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url).to_s if enclosure
     end
 
     ##

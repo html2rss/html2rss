@@ -53,6 +53,7 @@ RSpec.describe Html2rss::Utils do
   describe '.sanitize_url(url)' do
     let(:examples) do
       {
+        nil => nil,
         ' ' => nil,
         ' http://example.com/ ' => 'http://example.com/',
         'http://ex.ampl/page?sc=345s#abc' => 'http://ex.ampl/page?sc=345s#abc',
