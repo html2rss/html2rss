@@ -1,4 +1,13 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.8.1...v) (2019-11-08)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.8.2...v) (2019-11-09)
+
+
+
+## [0.8.2](https://github.com/gildesmarais/html2rss/compare/v0.8.1...v0.8.2) (2019-11-09)
+
+
+### Features
+
+* improve url handling by sanitizing and normalizing urls ([#70](https://github.com/gildesmarais/html2rss/issues/70)) ([02cd551](https://github.com/gildesmarais/html2rss/commit/02cd551))
 
 
 
