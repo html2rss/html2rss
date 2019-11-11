@@ -15,10 +15,7 @@ feeds:
         selector: '.release-header .text-normal a'
         post_process:
           name: 'template'
-          string: '%s (%s)'
-          methods:
-            - self
-            - author
+          string: '%{self} (%{author})'
       author:
         selector: '.avatar'
         extractor: 'attribute'
@@ -32,8 +29,6 @@ feeds:
       link:
         selector: '.release-header .text-normal a'
         extractor: 'href'
-        post_process:
-          name: 'parse_uri'
       description:
         selector: '.markdown-body'
         extractor: 'html'
