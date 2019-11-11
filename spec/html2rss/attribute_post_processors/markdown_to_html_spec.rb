@@ -1,13 +1,11 @@
 RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
   subject { described_class.new(markdown, config: config).get }
 
-  let(:config) {
-    Html2rss::Config.new(
-      channel: { title: 'Example: questions', url: 'https://example.com/questions' }
-    )
-  }
+  let(:config) do
+    Html2rss::Config.new(channel: { title: 'Example: questions', url: 'https://example.com/questions' })
+  end
 
-  let(:markdown) {
+  let(:markdown) do
     <<~MD
       # Section
 
@@ -18,9 +16,9 @@ RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
 
       `puts 'hello world'`
     MD
-  }
+  end
 
-  let(:html) {
+  let(:html) do
     <<~HTML
       <h1>Section</h1>
 
@@ -34,7 +32,7 @@ RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
       <p><code>puts 'hello world'</code></p>
     HTML
       .squish
-  }
+  end
 
   it { is_expected.to eq html }
 end

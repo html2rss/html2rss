@@ -33,33 +33,36 @@ module Html2rss
         @value = value
         @options = env[:options]
         @item = env[:item]
+        @string = @options[:string]
       end
 
       ##
       # @return [String]
       def get
-        if @options['methods']
-          string % methods
-        else
-          names = string.scan(/%[<|{](\w*)[>|}]/).flatten
-          names.uniq!
+        return format_string_with_methods if @options[:methods]
 
-          format(string, names.map { |name| [name.to_sym, item_value(name)] }.to_h)
-        end
+        names = string.scan(/%[<|{](\w*)[>|}]/)
+        names.flatten!
+        names.compact!
+        names.map!(&:to_sym)
+
+        format(string, names.map { |name| [name, item_value(name)] }.to_h)
       end
 
       private
 
-      def string
-        @options['string']
-      end
+      attr_reader :string
 
       def methods
-        @methods ||= @options['methods'].map(&method(:item_value))
+        @methods ||= @options[:methods].map(&method(:item_value))
+      end
+
+      def format_string_with_methods
+        string % methods
       end
 
       def item_value(method_name)
-        method_name.to_s == 'self' ? @value.to_s : @item.public_send(method_name.to_sym).to_s
+        method_name.to_sym == :self ? @value.to_s : @item.public_send(method_name).to_s
       end
     end
   end

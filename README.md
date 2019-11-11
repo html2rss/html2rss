@@ -61,6 +61,8 @@ The contents of both hashes are explained below.
 | `description` | optional | String  | auto-generated |                                            |
 | `ttl`         | optional | Integer |          `360` | TTL in _minutes_                           |
 | `time_zone`   | optional | String  |        `'UTC'` | TimeZone name                              |
+| `language`    | optional | String  |         `'en'` | Language code                              |
+| `author`      | optional | String  |                | Format: `email (Name)'`                    |
 | `headers`     | optional | Hash    |           `{}` | Set HTTP request headers. See notes below. |
 | `json`        | optional | Boolean |        `false` | Handle JSON response. See notes below.     |
 
@@ -411,10 +413,10 @@ Use this to e.g. have Cookie or Authorization information sent or to spoof the U
     channel: {
       url: 'https://example.com',
       headers: {
-        "User-Agent" => "html2rss-request",
-        "X-Something" => "Foobar",
-        "Authorization" => "Token deadbea7",
-        "Cookie" => "monster=MeWantCookie"
+        "User-Agent": "html2rss-request",
+        "X-Something": "Foobar",
+        "Authorization": "Token deadbea7",
+        "Cookie": "monster=MeWantCookie"
       }
     },
     selectors: {}

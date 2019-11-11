@@ -1,4 +1,25 @@
-# [](https://github.com/gildesmarais/html2rss/compare/v0.8.0...v) (2019-11-02)
+# [](https://github.com/gildesmarais/html2rss/compare/v0.8.2...v) (2019-11-09)
+
+
+
+## [0.8.2](https://github.com/gildesmarais/html2rss/compare/v0.8.1...v0.8.2) (2019-11-09)
+
+
+### Features
+
+* improve url handling by sanitizing and normalizing urls ([#70](https://github.com/gildesmarais/html2rss/issues/70)) ([02cd551](https://github.com/gildesmarais/html2rss/commit/02cd551))
+
+
+
+## [0.8.1](https://github.com/gildesmarais/html2rss/compare/v0.8.0...v0.8.1) (2019-11-08)
+
+
+### Features
+
+* auto generate nicer channel's title and description ([#63](https://github.com/gildesmarais/html2rss/issues/63)) ([6db28f6](https://github.com/gildesmarais/html2rss/commit/6db28f6))
+* change default ttl to 360 ([#65](https://github.com/gildesmarais/html2rss/issues/65)) ([605c8db](https://github.com/gildesmarais/html2rss/commit/605c8db))
+* **config:** improve generation of channel.title from channel.url ([#68](https://github.com/gildesmarais/html2rss/issues/68)) ([bc8ecbb](https://github.com/gildesmarais/html2rss/commit/bc8ecbb))
+* **parse_uri:** squish url to not fail on url with padding spaces ([#67](https://github.com/gildesmarais/html2rss/issues/67)) ([e349449](https://github.com/gildesmarais/html2rss/commit/e349449))
 
 
 

@@ -24,12 +24,12 @@ module Html2rss
       def initialize(xml, options)
         @options = options
         element = ItemExtractors.element(xml, options)
-        @href = element.attr('href').to_s
+        @href = Html2rss::Utils.sanitize_url(element.attr('href'))
       end
 
       # @return [URI::HTTPS, URI::HTTP]
       def get
-        Html2rss::Utils.build_absolute_url_from_relative(@href, @options['channel']['url'])
+        Html2rss::Utils.build_absolute_url_from_relative(@href, @options[:channel][:url])
       end
     end
   end

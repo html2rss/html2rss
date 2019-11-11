@@ -23,15 +23,15 @@ module Html2rss
 
       attribute_options = config.attribute_options(method_name)
 
-      extractor = ItemExtractors.get_extractor(attribute_options['extractor'])
+      extractor = ItemExtractors.get_extractor(attribute_options[:extractor])
       value = extractor.new(xml, attribute_options).get
 
-      post_process(value, attribute_options.fetch('post_process', false))
+      post_process(value, attribute_options.fetch(:post_process, false))
     end
 
     def available_attributes
-      @available_attributes ||= (%w[title link description author comments updated] &
-        @config.attribute_names) - %w[categories enclosure]
+      @available_attributes ||= (%i[title link description author comments updated] &
+        @config.attribute_names) - %i[categories enclosure]
     end
 
     ##
@@ -45,17 +45,17 @@ module Html2rss
     ##
     # @return [Array]
     def categories
-      categories = config.categories
-      categories.map!(&method(:method_missing))
-      categories.uniq!
-      categories.keep_if { |category| category.to_s != '' }
+      config.category_selectors.map(&method(:method_missing))
+    end
+
+    def enclosure?
+      config.attribute?(:enclosure)
     end
 
     def enclosure_url
-      enclosure = method_missing(:enclosure)
-      return if enclosure.to_s == ''
+      enclosure = Html2rss::Utils.sanitize_url(method_missing(:enclosure))
 
-      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url).to_s
+      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url).to_s if enclosure
     end
 
     ##
@@ -63,7 +63,9 @@ module Html2rss
     def self.from_url(url, config)
       body = get_body_from_url(url, config)
 
-      Nokogiri.HTML(body).css(config.selector('items')).map { |xml_item| new xml_item, config }
+      Nokogiri.HTML(body).css(config.selector(:items))
+              .map { |xml_item| new xml_item, config }
+              .keep_if(&:valid?)
     end
 
     private
@@ -74,7 +76,7 @@ module Html2rss
         faraday.adapter Faraday.default_adapter
       end.get.body
 
-      config.json? ? Html2rss::Utils.hash_to_xml(JSON.parse(body)) : body
+      config.json? ? Html2rss::Utils.object_to_xml(JSON.parse(body)) : body
     end
     private_class_method :get_body_from_url
 
@@ -84,7 +86,7 @@ module Html2rss
       return value unless post_process_options
 
       [post_process_options].flatten.each do |options|
-        value = AttributePostProcessors.get_processor(options['name'])
+        value = AttributePostProcessors.get_processor(options[:name])
                                        .new(value, options: options, item: self, config: @config)
                                        .get
       end
