@@ -18,32 +18,27 @@ Metrics/ModuleLength:
   Exclude:
     - "**/*_spec.rb"
 
-Metrics/MethodLength:
-  Max: 15
-
-Style/BlockDelimiters:
-  Enabled: true
-  Exclude:
-    - '**/*_spec.rb'
-
-Style/FrozenStringLiteralComment:
-  Enabled: false
-
-Style/AsciiComments:
-  Enabled: false
-
-Style/BracesAroundHashParameters:
-  Description: 'Enforce braces style around hash parameters.'
+Layout/ClassStructure:
   Enabled: true
 
-Style/HashSyntax:
+Layout/HeredocArgumentClosingParenthesis:
   Enabled: true
 
-Style/FormatStringToken:
-  Enabled: false
+Layout/MultilineArrayLineBreaks:
+  Enabled: true
+
+Layout/MultilineHashKeyLineBreaks:
+  Enabled: true
 
 Layout/SpaceInsideParens:
   Enabled: true
+
+Lint/HeredocMethodCallPosition:
+  Enabled: true
+
+Lint/NumberConversion:
+  Enabled: false
+
 
 Performance/CaseWhenSplat:
   Enabled: true
@@ -54,6 +49,80 @@ Performance/ChainArrayAllocation:
 Performance/OpenStruct:
   Enabled: true
 
+
 RSpec/NestedGroups:
   Exclude:
     - spec/html2rss_spec.rb
+
+
+Style/AsciiComments:
+  Enabled: false
+
+Style/AutoResourceCleanup:
+  Enabled: true
+
+Style/BlockDelimiters:
+  Enabled: true
+  Exclude:
+    - '**/*_spec.rb'
+
+Style/BracesAroundHashParameters:
+  Enabled: true
+
+Style/CollectionMethods:
+  Enabled: true
+
+Style/ConstantVisibility:
+  Enabled: true
+
+Style/DateTime:
+  Enabled: true
+
+Style/Documentation:
+  Exclude:
+    - lib/html2rss/version.rb
+
+Style/DocumentationMethod:
+  Enabled: false
+
+Style/FormatStringToken:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/HashSyntax:
+  Enabled: true
+
+Style/InlineComment:
+  Enabled: true
+
+Style/IpAddresses:
+  Enabled: true
+
+Style/MethodCallWithArgsParentheses:
+  Enabled: false
+
+Style/MethodCalledOnDoEndBlock:
+  Enabled: true
+
+Style/MissingElse:
+  Enabled: true
+
+Style/MultilineMethodSignature:
+  Enabled: true
+
+Style/OptionHash:
+  Enabled: true
+
+Style/ReturnNil:
+  Enabled: true
+
+Style/SingleLineBlockParams:
+  Enabled: true
+
+Style/StderrPuts:
+  Enabled: true
+
+Style/StringMethods:
+  Enabled: true

@@ -172,9 +172,11 @@ RSpec.describe Html2rss do
 
       describe 'item.guid' do
         it 'stays the same string for each run' do
-          first_guid = VCR.use_cassette('nuxt-releases-second-run') do
+          feed = VCR.use_cassette('nuxt-releases-second-run') do
             described_class.feed(config)
-          end.items.first.guid.content
+          end
+
+          first_guid = feed.items.first.guid.content
 
           expect(feed_return.items.first.guid.content).to eq first_guid
         end
