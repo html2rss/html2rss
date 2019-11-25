@@ -18,8 +18,26 @@ Metrics/ModuleLength:
   Exclude:
     - "**/*_spec.rb"
 
+Layout/ClassStructure:
+  Enabled: true
+
+Layout/HeredocArgumentClosingParenthesis:
+  Enabled: true
+
+Layout/MultilineArrayLineBreaks:
+  Enabled: true
+
+Layout/MultilineHashKeyLineBreaks:
+  Enabled: true
+
 Layout/SpaceInsideParens:
   Enabled: true
+
+Lint/HeredocMethodCallPosition:
+  Enabled: true
+
+Lint/NumberConversion:
+  Enabled: false
 
 
 Performance/CaseWhenSplat:
@@ -64,6 +82,9 @@ Style/Documentation:
   Exclude:
     - lib/html2rss/version.rb
 
+Style/DocumentationMethod:
+  Enabled: false
+
 Style/FormatStringToken:
   Enabled: false
 
@@ -78,6 +99,9 @@ Style/InlineComment:
 
 Style/IpAddresses:
   Enabled: true
+
+Style/MethodCallWithArgsParentheses:
+  Enabled: false
 
 Style/MethodCalledOnDoEndBlock:
   Enabled: true

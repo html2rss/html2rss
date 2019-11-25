@@ -19,7 +19,7 @@ RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
   end
 
   let(:html) do
-    <<~HTML
+    <<~HTML.squish
       <h1>Section</h1>
 
       <p>Price: 12.34</p>
@@ -31,7 +31,6 @@ RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
 
       <p><code>puts 'hello world'</code></p>
     HTML
-      .squish
   end
 
   it { is_expected.to eq html }
