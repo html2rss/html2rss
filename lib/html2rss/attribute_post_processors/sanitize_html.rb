@@ -35,6 +35,9 @@ module Html2rss
     # Would return:
     #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
     class SanitizeHtml
+      URL_ELEMENTS_WITH_URL_ATTRIBUTE = { 'a' => :href, 'img' => :src }.freeze
+      private_constant :URL_ELEMENTS_WITH_URL_ATTRIBUTE
+
       def initialize(value, env)
         @value = value
         @channel_url = env[:config].url
@@ -47,26 +50,22 @@ module Html2rss
       # - adds target="_blank" to a elements
       # @return [String]
       def get
-        Sanitize.fragment(
-          @value,
-          Sanitize::Config.merge(
-            Sanitize::Config::RELAXED,
-            attributes: { all: %w[dir lang alt title translate] },
-            add_attributes: {
-              'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
-              'img' => { 'referrer-policy' => 'no-referrer' }
-            },
-            transformers: [transform_urls_to_absolute_ones, wrap_img_in_a]
-          )
-        )
-                .to_s
-                .split
-                .join(' ')
+        Sanitize.fragment(@value, sanitize_config).to_s.split.join(' ')
       end
 
       private
 
-      URL_ELEMENTS_WITH_URL_ATTRIBUTE = { 'a' => :href, 'img' => :src }.freeze
+      def sanitize_config
+        Sanitize::Config.merge(
+          Sanitize::Config::RELAXED,
+          attributes: { all: %w[dir lang alt title translate] },
+          add_attributes: {
+            'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
+            'img' => { 'referrer-policy' => 'no-referrer' }
+          },
+          transformers: [transform_urls_to_absolute_ones, wrap_img_in_a]
+        )
+      end
 
       def transform_urls_to_absolute_ones
         lambda do |env|
