@@ -118,7 +118,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  bundler
+  bundler (~> 1.16)
   byebug
   coveralls
   html2rss!
