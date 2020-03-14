@@ -6,9 +6,6 @@ AllCops:
   TargetRubyVersion: 2.4
   DisplayCopNames: true
 
-Metrics/LineLength:
-  Max: 110
-
 Metrics/BlockLength:
   Exclude:
     - "**/*_spec.rb"
@@ -23,6 +20,9 @@ Layout/ClassStructure:
 
 Layout/HeredocArgumentClosingParenthesis:
   Enabled: true
+
+Layout/LineLength:
+  Max: 110
 
 Layout/MultilineArrayLineBreaks:
   Enabled: true
@@ -66,7 +66,13 @@ Style/BlockDelimiters:
   Exclude:
     - '**/*_spec.rb'
 
-Style/BracesAroundHashParameters:
+Style/HashEachMethods:
+  Enabled: true
+
+Style/HashTransformKeys:
+  Enabled: true
+
+Style/HashTransformValues:
   Enabled: true
 
 Style/CollectionMethods:
