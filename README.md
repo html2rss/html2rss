@@ -5,6 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/gildesmarais/html2rss/badge.svg?branch=master)](https://coveralls.io/github/gildesmarais/html2rss?branch=master)
 [![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss)
 ![Retro Badge: valid RSS](https://validator.w3.org/feed/images/valid-rss-rogers.png)
+[![](http://img.shields.io/liberapay/goal/gildesmarais.svg?logo=liberapa)](https://liberapay.com/gildesmarais/donate)
 
 **Searching for a ready to use app which serves generated feeds via HTTP?**
 [Head over to `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
@@ -26,6 +27,8 @@ supported, too.
 | Add this line to your application's `Gemfile`: | `gem 'html2rss'`     |
 |                                  Then execute: | `bundle`             |
 |                                  In your code: | `require 'html2rss'` |
+
+😍 Love it? Feel free [to donate](https://liberapay.com/gildesmarais/donate). Thank you! 💓
 
 ## Building a feed config
 
