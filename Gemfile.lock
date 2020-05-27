@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     html2rss (0.8.2)
-      activesupport (~> 5.0)
+      activesupport (>= 5, < 7)
       addressable (~> 2.7)
       builder
       faraday (~> 1.0)
@@ -18,7 +18,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (5.2.4.1)
+    activesupport (5.2.4.3)
       concurrent-ruby (~> 1.0, >= 1.0.2)
       i18n (>= 0.7, < 2)
       minitest (~> 5.1)
@@ -38,19 +38,20 @@ GEM
     crass (1.0.6)
     diff-lcs (1.3)
     docile (1.3.2)
-    faraday (1.0.0)
+    faraday (1.0.1)
       multipart-post (>= 1.2, < 3)
-    faraday_middleware (1.0.0.rc1)
+    faraday_middleware (1.0.0)
       faraday (~> 1.0)
     i18n (1.8.2)
       concurrent-ruby (~> 1.0)
     jaro_winkler (1.5.4)
-    kramdown (2.1.0)
+    kramdown (2.2.1)
+      rexml
     mime-types (3.3.1)
       mime-types-data (~> 3.2015)
     mime-types-data (3.2019.1009)
     mini_portile2 (2.4.0)
-    minitest (5.14.0)
+    minitest (5.14.1)
     multi_json (1.14.1)
     multipart-post (2.1.1)
     nokogiri (1.10.9)
@@ -60,7 +61,7 @@ GEM
     parallel (1.19.1)
     parser (2.7.0.4)
       ast (~> 2.4.0)
-    public_suffix (4.0.3)
+    public_suffix (4.0.5)
     rainbow (3.0.0)
     rest-client (1.6.7)
       mime-types (>= 1.16)
@@ -107,7 +108,7 @@ GEM
     thread_safe (0.3.6)
     tins (0.13.2)
     to_regexp (0.2.1)
-    tzinfo (1.2.6)
+    tzinfo (1.2.7)
       thread_safe (~> 0.1)
     unicode-display_width (1.6.1)
     vcr (5.1.0)
