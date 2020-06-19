@@ -84,6 +84,10 @@ module Html2rss
       @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap { |attrs| attrs.delete(:items) }
     end
 
+    def items_order
+      feed_config.dig(:selectors, :items, :order)&.to_sym
+    end
+
     private
 
     attr_reader :feed_config, :channel_config, :global_config

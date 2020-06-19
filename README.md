@@ -105,6 +105,27 @@ Your selector hash can have these attributes:
 | `extractor`    | Name of the extractor. See notes below.                  |
 | `post_process` | A hash or array of hashes. See notes below.              |
 
+#### Reverse ordering of items
+
+The `items` selector hash can have an `order` attribute.
+If it is set to `reverse` it will reverse the order of items in
+the generated RSS feed.
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  items:
+    selector: 'ul > li'
+    order: 'reverse'
+  # ... omitted
+```
+
+</details>
+
 ## Using extractors
 
 Extractors help with extracting the information from the selected HTML tag.
