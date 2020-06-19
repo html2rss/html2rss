@@ -108,8 +108,7 @@ Your selector hash can have these attributes:
 #### Reverse ordering of items
 
 The `items` selector hash can have an `order` attribute.
-If it is set to `reverse` it will reverse the order of items in
-the generated RSS feed.
+If the value is `reverse` the order of items in the RSS will be reversed.
 
 <details>
   <summary>See a YAML feed config example</summary>
