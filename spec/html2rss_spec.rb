@@ -186,6 +186,16 @@ RSpec.describe Html2rss do
         end
       end
     end
+
+    context 'with items having order key and reverse as value' do
+      before do
+        feed_config[:selectors][:items][:order] = 'reverse'
+      end
+
+      it 'reverses the item ordering' do
+        expect(xml.css('channel > item').last.css('title').text).to eq 'v2.10.2 (pi)'
+      end
+    end
   end
 
   context 'with config having channel headers and json: true' do

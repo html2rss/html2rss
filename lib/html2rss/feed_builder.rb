@@ -59,7 +59,13 @@ module Html2rss
     end
 
     def items
-      @items ||= Item.from_url(config.url, config)
+      return @items if defined?(@items)
+
+      items = Item.from_url(config.url, config)
+
+      items.reverse! if config.items_order == :reverse
+
+      @items = items
     end
 
     def add_item(item, item_maker)
