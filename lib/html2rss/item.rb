@@ -14,9 +14,11 @@ module Html2rss
 
     private_class_method :new
 
+    # rubocop:disable Style/OptionalBooleanParameter
     def respond_to_missing?(method_name, _include_private = false)
       config.attribute?(method_name) || super
     end
+    # rubocop:enable Style/OptionalBooleanParameter
 
     def method_missing(method_name, *_args)
       return super unless respond_to_missing?(method_name)

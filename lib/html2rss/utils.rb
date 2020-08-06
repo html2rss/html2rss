@@ -24,7 +24,7 @@ module Html2rss
       object.to_xml(skip_instruct: true, skip_types: true)
     end
 
-    def self.get_class_from_name(snake_cased_name, module_name)
+    def self.class_from_name(snake_cased_name, module_name)
       camel_cased_name = snake_cased_name.split('_').map(&:capitalize).join
       class_name = ['Html2rss', module_name, camel_cased_name].join('::')
       Object.const_get(class_name)

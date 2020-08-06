@@ -41,7 +41,7 @@ module Html2rss
     end
 
     def url
-      channel_config.dig :url
+      channel_config[:url]
     end
     alias link url
 
@@ -58,7 +58,7 @@ module Html2rss
     end
 
     def attribute_options(name)
-      feed_config.dig(:selectors).fetch(name, {}).merge(channel: channel_config)
+      feed_config[:selectors].fetch(name, {}).merge(channel: channel_config)
     end
 
     def attribute?(name)
