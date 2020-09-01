@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require File.expand_path('lib/html2rss/cli.rb', Dir.pwd)
+
+Html2rss::CLI.start(ARGV)

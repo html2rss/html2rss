@@ -43,6 +43,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rss'
   spec.add_dependency 'sanitize', '~> 5.0'
   spec.add_dependency 'to_regexp'
+  spec.add_dependency 'thor'
   spec.add_dependency 'zeitwerk'
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'byebug'

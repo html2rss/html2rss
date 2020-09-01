@@ -13,6 +13,7 @@ PATH
       reverse_markdown (~> 2.0)
       rss
       sanitize (~> 5.0)
+      thor
       to_regexp
       zeitwerk
 
