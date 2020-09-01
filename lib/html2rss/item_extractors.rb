@@ -7,7 +7,7 @@ module Html2rss
 
     def self.get_extractor(name)
       @get_extractor ||= Hash.new do |extractors, key|
-        extractors[key] = Utils.get_class_from_name(key || DEFAULT, 'ItemExtractors')
+        extractors[key] = Utils.class_from_name(key || DEFAULT, 'ItemExtractors')
       end
 
       @get_extractor[name]

@@ -5,6 +5,10 @@ require:
 AllCops:
   TargetRubyVersion: 2.5
   DisplayCopNames: true
+  NewCops: enable
+
+Metrics/AbcSize:
+  Max: 17.23
 
 Metrics/BlockLength:
   Exclude:
@@ -72,6 +76,8 @@ RSpec/NestedGroups:
   Exclude:
     - spec/html2rss_spec.rb
 
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false
 
 Style/AsciiComments:
   Enabled: false
