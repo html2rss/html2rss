@@ -200,9 +200,9 @@ RSpec.describe Html2rss do
 
   context 'with config having channel headers and json: true' do
     subject(:categories) do
-      VCR.use_cassette('httpbin-headers') {
+      VCR.use_cassette('httpbin-headers') do
         described_class.feed(feed_config)
-      }.items.first.categories.map(&:content)
+      end.items.first.categories.map(&:content)
     end
 
     let(:feed_config) do

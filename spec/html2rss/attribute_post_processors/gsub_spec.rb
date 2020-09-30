@@ -11,10 +11,10 @@ RSpec.describe Html2rss::AttributePostProcessors::Gsub do
 
   context 'with pattern being a Regexp as String' do
     context 'with hash replacement' do
-      subject {
+      subject do
         described_class.new('hello',
                             options: { pattern: '/[eo]/', replacement: { 'e' => 3, 'o' => '*' } }).get
-      }
+      end
 
       it { is_expected.to eq 'h3ll*' }
     end
