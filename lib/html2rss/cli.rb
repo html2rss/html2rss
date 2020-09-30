@@ -1,6 +1,10 @@
+# frozen_string_literal: true
+
 require 'html2rss'
 require 'thor'
 
+##
+# The Html2rss command line
 module Html2rss
   class CLI < Thor
     def self.exit_on_failure?
