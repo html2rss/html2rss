@@ -22,10 +22,6 @@ Layout/LineLength:
 RSpec/NestedGroups:
   Exclude:
     - spec/html2rss_spec.rb
-Style/Documentation:
-  Exclude:
-    - lib/html2rss/version.rb
-
 Style/DocumentationMethod:
   Enabled: false
 
