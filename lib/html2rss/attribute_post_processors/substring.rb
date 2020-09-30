@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Html2rss
   module AttributePostProcessors
     ## Returns a defined part of a String.

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::Config do
   describe '#attribute_names' do
     subject { described_class.new(selectors: { items: {}, 'name': {} }).attribute_names }

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::AttributePostProcessors::Template do
   subject { described_class.new('Hi', options: options, item: item).get }
 

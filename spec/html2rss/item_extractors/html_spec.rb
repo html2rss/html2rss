@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::ItemExtractors::Html do
   subject { described_class.new(xml, options).get }
 

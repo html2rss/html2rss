@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::AttributePostProcessors::ParseUri do
   context 'with URI value' do
     subject { described_class.new(URI('http://example.com'), {}).get }
