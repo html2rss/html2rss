@@ -38,3 +38,7 @@ RSpec/MultipleMemoizedHelpers:
 Style/AsciiComments:
   AllowedChars:
     - €
+
+Style/FormatStringToken:
+  Exclude:
+    - spec/html2rss/attribute_post_processors/template_spec.rb
