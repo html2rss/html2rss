@@ -7,13 +7,13 @@ AllCops:
   DisplayCopNames: true
   NewCops: enable
 
+Layout/LineLength:
+  Max: 110
+
 Metrics/BlockLength:
   Exclude:
     - "**/*_spec.rb"
     - html2rss.gemspec
-
-Layout/LineLength:
-  Max: 110
 
 RSpec/NestedGroups:
   Exclude:
