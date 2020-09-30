@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 module Html2rss
   ##
   # Provides a namespace for item extractors.
   module ItemExtractors
-    DEFAULT = 'text'.freeze
+    DEFAULT = 'text'
     private_constant :DEFAULT
 
     def self.get_extractor(name)

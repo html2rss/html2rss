@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::AttributePostProcessors::Gsub do
   context 'with string pattern' do
     context 'with string replacement' do

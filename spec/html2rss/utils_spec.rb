@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::Utils do
   describe '.build_absolute_url_from_relative(url, channel_url)' do
     let(:channel_url) { 'https://example.com' }

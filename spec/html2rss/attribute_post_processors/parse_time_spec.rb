@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::AttributePostProcessors::ParseTime do
   context 'with String value' do
     subject { described_class.new('2019-07-01 12:00', config: config).get }

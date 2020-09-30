@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'reverse_markdown'
 
 module Html2rss

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'to_regexp'
 
 module Html2rss

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss do
   let(:config_file) { File.join(%w[spec config.test.yml]) }
   let(:config_json_file) { File.join(%w[spec config.json.test.yml]) }

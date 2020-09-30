@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe Html2rss::AttributePostProcessors::Substring do
   context 'with end' do
     subject { described_class.new('Foo bar and baz', options: { start: 4, end: 6 }).get }
