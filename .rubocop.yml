@@ -12,18 +12,12 @@ Metrics/BlockLength:
     - "**/*_spec.rb"
     - html2rss.gemspec
 
-Metrics/ModuleLength:
-  Exclude:
-    - "**/*_spec.rb"
-
 Layout/LineLength:
   Max: 110
 
 RSpec/NestedGroups:
   Exclude:
     - spec/html2rss_spec.rb
-Style/DocumentationMethod:
-  Enabled: false
 
 RSpec/MultipleMemoizedHelpers:
   Max: 9
