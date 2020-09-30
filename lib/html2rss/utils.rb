@@ -10,6 +10,7 @@ module Html2rss
   ##
   # The collecting tank for utility methods.
   module Utils
+    # rubocop:disable Metrics/AbcSize
     def self.build_absolute_url_from_relative(url, base_url)
       url = URI(url) if url.is_a?(String)
 
@@ -21,6 +22,7 @@ module Html2rss
         uri.fragment = url.fragment if url.fragment
       end
     end
+    # rubocop:enable Metrics/AbcSize
 
     def self.object_to_xml(object)
       object.to_xml(skip_instruct: true, skip_types: true)
