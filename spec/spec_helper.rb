@@ -1,13 +1,6 @@
 # frozen_string_literal: true
 
 require 'bundler/setup'
-require 'simplecov'
-require 'coveralls'
-
-SimpleCov.formatter = Coveralls::SimpleCov::Formatter
-SimpleCov.start do
-  add_filter 'spec/'
-end
 
 require 'vcr'
 require 'html2rss'
