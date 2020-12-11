@@ -40,6 +40,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'mime-types', '> 3.0'
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
   spec.add_dependency 'reverse_markdown', '~> 2.0'
+  spec.add_dependency 'rss'
   spec.add_dependency 'sanitize', '~> 5.0'
   spec.add_dependency 'to_regexp'
   spec.add_dependency 'zeitwerk'
@@ -49,7 +50,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop'
   spec.add_development_dependency 'rubocop-performance'
   spec.add_development_dependency 'rubocop-rspec'
-  spec.add_development_dependency 'simplecov'
   spec.add_development_dependency 'vcr'
   spec.add_development_dependency 'yard'
 end

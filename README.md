@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
-[![Coverage Status](https://coveralls.io/repos/github/gildesmarais/html2rss/badge.svg?branch=master)](https://coveralls.io/github/gildesmarais/html2rss?branch=master)
 [![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss)
 ![Retro Badge: valid RSS](https://validator.w3.org/feed/images/valid-rss-rogers.png)
 [![](http://img.shields.io/liberapay/goal/gildesmarais.svg?logo=liberapa)](https://liberapay.com/gildesmarais/donate)

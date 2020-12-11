@@ -11,7 +11,8 @@ bundler_args: "--jobs=3 --retry=3"
 rvm:
   - 2.5.8
   - 2.6.6
-  - 2.7.1
+  - 2.7.2
+  - 3.0.0-preview2
 
 script:
   - bundle exec rubocop -F
