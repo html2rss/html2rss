@@ -56,7 +56,7 @@ module Html2rss
       attr_reader :string
 
       def methods
-        @methods ||= @options[:methods].map(&method(:item_value))
+        @methods ||= @options[:methods].map { |method_name| item_value(method_name) }
       end
 
       def format_string_with_methods
