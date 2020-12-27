@@ -35,7 +35,7 @@ module Html2rss
     end
 
     def self.sanitize_url(url)
-      squished_url = url.to_s.split(' ').join
+      squished_url = url.to_s.split.join
       return if squished_url.to_s == ''
 
       Addressable::URI.parse(squished_url).normalize.to_s

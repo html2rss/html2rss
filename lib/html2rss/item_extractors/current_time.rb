@@ -11,7 +11,7 @@ module Html2rss
     #      updated:
     #        extractor: current_time
     class CurrentTime
-      def initialize(_xml, _options); end # rubocop:disable Lint/UselessMethodDefinition
+      def initialize(_xml, _options); end
 
       ##
       # @return [Time]
