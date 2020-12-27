@@ -6,9 +6,8 @@ AllCops:
   TargetRubyVersion: 2.5
   DisplayCopNames: true
   NewCops: enable
-
-Layout/LineLength:
-  Max: 110
+  Exclude:
+    - vendor/**/*
 
 Metrics/BlockLength:
   Exclude:
