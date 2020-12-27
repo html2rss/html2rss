@@ -1,6 +1,5 @@
-![html2rss logo](https://github.com/gildesmarais/html2rss/raw/master/support/logo.png)
+![html2rss logo](https://github.com/html2rss/html2rss/raw/master/support/logo.png)
 
-[![Build Status](https://travis-ci.org/gildesmarais/html2rss.svg?branch=master)](https://travis-ci.org/gildesmarais/html2rss)
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/)
 [![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss)
 ![Retro Badge: valid RSS](https://validator.w3.org/feed/images/valid-rss-rogers.png)
@@ -52,7 +51,7 @@ puts rss
 A _feed config_ consists of a `channel` and a `selectors` Hash.
 The contents of both hashes are explained below.
 
-**Looks too complicated?** See [`html2rss-configs`](https://github.com/gildesmarais/html2rss-configs) for ready-made feed configs!
+**Looks too complicated?** See [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) for ready-made feed configs!
 
 ### The `channel`
 
@@ -133,7 +132,7 @@ Extractors help with extracting the information from the selected HTML tag.
 - The `href` extractor returns a URL from the tag's `href` attribute and corrects relative ones to absolute ones.
 - The `attribute` extractor returns the value of that tag's attribute.
 - The `static` extractor returns the configured static value (it doesn't extract anything).
-- [See file list of extractors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/item_extractors).
+- [See file list of extractors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/item_extractors).
 
 Extractors can require additional attributes on the selector hash.  
 👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
@@ -181,7 +180,7 @@ Extracted information can be further manipulated with post processors.
 
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
-- [See file list of post processors](https://github.com/gildesmarais/html2rss/tree/master/lib/html2rss/attribute_post_processors).
+- [See file list of post processors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/attribute_post_processors).
 
 👉 [Read their docs for usage examples.](https://www.rubydoc.info/gems/html2rss/Html2rss/AttributePostProcessors)
 
@@ -500,7 +499,7 @@ myfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myfeed')
 myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
 ```
 
-Find a full example of a `feeds.yml` at [`spec/config.test.yml`](https://github.com/gildesmarais/html2rss/blob/master/spec/config.test.yml).
+Find a full example of a `feeds.yml` at [`spec/config.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/config.test.yml).
 
 ## Gotchas and tips & tricks
 
@@ -533,4 +532,4 @@ You can also run `bin/console` for an interactive prompt that will allow you to 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/gildesmarais/html2rss.
+Bug reports and pull requests are welcome on GitHub at https://github.com/html2rss/html2rss.
