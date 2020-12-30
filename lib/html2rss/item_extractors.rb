@@ -7,6 +7,9 @@ module Html2rss
     DEFAULT = 'text'
     private_constant :DEFAULT
 
+    ##
+    # @param name [String]
+    # @return [Class, nil] the extractor class
     def self.get_extractor(name)
       @get_extractor ||= Hash.new do |extractors, key|
         extractors[key] = Utils.class_from_name(key || DEFAULT, 'ItemExtractors')
@@ -16,6 +19,8 @@ module Html2rss
     end
 
     ##
+    # @param xml [Nokogiri::XML]
+    # @param options [Hash<Symbol, Object>]
     # @return [Nokogiri::XML::Element]
     def self.element(xml, options)
       selector = options[:selector]

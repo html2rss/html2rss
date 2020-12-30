@@ -21,6 +21,9 @@ module Html2rss
     # Would return:
     #    'http://why-not-use-a-link.uh'
     class ParseUri
+      ##
+      # @param value [String]
+      # @param _env [nil, Hash<Symbol, Object>]
       def initialize(value, _env)
         @value = value
       end

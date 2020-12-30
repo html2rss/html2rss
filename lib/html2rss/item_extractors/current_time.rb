@@ -11,6 +11,9 @@ module Html2rss
     #      updated:
     #        extractor: current_time
     class CurrentTime
+      ##
+      # @param _xml [nil, String]
+      # @param _options [nil, Hash<Symbol, Object>]
       def initialize(_xml, _options); end
 
       ##

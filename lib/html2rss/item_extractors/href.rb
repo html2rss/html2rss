@@ -23,6 +23,9 @@ module Html2rss
     # Would return:
     #    'http://blog-without-a-feed.example.com/posts/latest-findings'
     class Href
+      ##
+      # @param xml [Nokogiri::XML::Element]
+      # @param options [Hash<Symbol, Object>]
       def initialize(xml, options)
         @options = options
         element = ItemExtractors.element(xml, options)

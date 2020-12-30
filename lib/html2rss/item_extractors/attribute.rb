@@ -24,6 +24,9 @@ module Html2rss
     # during post processing with
     # {AttributePostProcessors::ParseTime}[rdoc-ref:Html2rss::AttributePostProcessors::ParseTime].
     class Attribute
+      ##
+      # @param xml [Nokogiri::XML::Element]
+      # @param options [Hash<Symbol, Object>]
       def initialize(xml, options)
         @options = options
         @element = ItemExtractors.element(xml, options)

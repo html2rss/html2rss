@@ -27,6 +27,9 @@ module Html2rss
     # Would return:
     #    'Lorem **ipsum** dolor'
     class HtmlToMarkdown
+      ##
+      # @param value [String]
+      # @param env [Hash<Symbol, Object>]
       def initialize(value, env)
         @value = SanitizeHtml.new(value, env).get
       end
