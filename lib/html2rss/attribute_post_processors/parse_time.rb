@@ -26,6 +26,9 @@ module Html2rss
     #
     # It uses {https://ruby-doc.org/stdlib-2.5.3/libdoc/time/rdoc/Time.html#method-c-parse Time.parse}.
     class ParseTime
+      ##
+      # @param value [String] the time to parse
+      # @param env [Hash<Symbol, Object>]
       def initialize(value, env)
         @value = value.to_s
         @time_zone = env[:config].time_zone

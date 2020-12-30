@@ -27,6 +27,9 @@ module Html2rss
     #
     # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
     class Gsub
+      ##
+      # @param value [String]
+      # @param env [Hash<Symbol, Object>]
       def initialize(value, env)
         @value = value
         options = env[:options]

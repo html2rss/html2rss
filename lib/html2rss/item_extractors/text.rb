@@ -20,6 +20,9 @@ module Html2rss
     # Would return:
     #    'Lorem ipsum dolor ...'
     class Text
+      ##
+      # @param xml [Nokogiri::XML::Element]
+      # @param options [Hash<Symbol, Object>]
       def initialize(xml, options)
         @element = ItemExtractors.element(xml, options)
       end

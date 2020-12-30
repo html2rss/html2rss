@@ -40,6 +40,9 @@ module Html2rss
       URL_ELEMENTS_WITH_URL_ATTRIBUTE = { 'a' => :href, 'img' => :src }.freeze
       private_constant :URL_ELEMENTS_WITH_URL_ATTRIBUTE
 
+      ##
+      # @param value [String]
+      # @param env [Hash<Symbol, Object>]
       def initialize(value, env)
         @value = value
         @channel_url = env[:config].url
@@ -57,6 +60,8 @@ module Html2rss
 
       private
 
+      ##
+      # @return [Sanitize::Config]
       def sanitize_config
         Sanitize::Config.merge(
           Sanitize::Config::RELAXED,
@@ -69,6 +74,8 @@ module Html2rss
         )
       end
 
+      ##
+      # @return [Proc]
       def transform_urls_to_absolute_ones
         lambda do |env|
           return unless URL_ELEMENTS_WITH_URL_ATTRIBUTE.key?(env[:node_name])
@@ -84,6 +91,8 @@ module Html2rss
         end
       end
 
+      ##
+      # @return [Proc]
       def wrap_img_in_a
         lambda do |env|
           return if env[:node_name] != 'img'

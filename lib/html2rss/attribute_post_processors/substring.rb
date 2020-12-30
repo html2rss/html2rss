@@ -28,6 +28,9 @@ module Html2rss
     # Would return:
     #    'bar'
     class Substring
+      ##
+      # @param value [String]
+      # @param env [Hash<Symbol, Object>]
       def initialize(value, env)
         @value = value
         @options = env[:options]

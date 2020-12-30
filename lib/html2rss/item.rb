@@ -9,6 +9,9 @@ module Html2rss
   # Takes the selected Nokogiri::HTML and responds to accessors names
   # defined in the feed config.
   class Item
+    ##
+    # @param xml [Nokogiri::XML::Element]
+    # @param config [Html2rss::Config]
     def initialize(xml, config)
       @xml = xml
       @config = config
@@ -16,10 +19,16 @@ module Html2rss
 
     private_class_method :new
 
+    ##
+    # @param method_name [Symbol]
+    # @param _include_private [true, false]
     def respond_to_missing?(method_name, _include_private = false)
       config.attribute?(method_name) || super
     end
 
+    ##
+    # @param method_name [Symbol]
+    # @return [String]
     def method_missing(method_name, *_args)
       return super unless respond_to_missing?(method_name)
 
@@ -31,6 +40,8 @@ module Html2rss
       post_process(value, attribute_options.fetch(:post_process, false))
     end
 
+    ##
+    # @return [Array<Symbol>]
     def available_attributes
       @available_attributes ||= (%i[title link description author comments updated] &
         @config.attribute_names) - %i[categories enclosure]
@@ -38,6 +49,7 @@ module Html2rss
 
     ##
     # At least a title or a description is required to be a valid RSS 2.0 item.
+    # @return [true, false]
     def valid?
       title = self.title if config.attribute?(:title)
       description = self.description if config.attribute?(:description)
@@ -45,15 +57,19 @@ module Html2rss
     end
 
     ##
-    # @return [Array]
+    # @return [Array<String>]
     def categories
       config.category_selectors.map { |method_name| method_missing(method_name) }
     end
 
+    ##
+    # @return [true, false]
     def enclosure?
       config.attribute?(:enclosure)
     end
 
+    ##
+    # @return [URI::HTTPS, URI::HTTP]
     def enclosure_url
       enclosure = Html2rss::Utils.sanitize_url(method_missing(:enclosure))
 
@@ -61,7 +77,9 @@ module Html2rss
     end
 
     ##
-    # @return [Array]
+    # @param url [URI::HTTPS, URI::HTTP, Addressable::URI]
+    # @param config [Html2rss::Config]
+    # @return [Array<Html2rss::Item>]
     def self.from_url(url, config)
       body = get_body_from_url(url, config)
 
@@ -72,6 +90,10 @@ module Html2rss
 
     private
 
+    ##
+    # @param url [String, URI::HTTPS, URI::HTTP, Addressable::URI]
+    # @param config [Html2rss::Config]
+    # @return [String]
     def self.get_body_from_url(url, config)
       request = Faraday.new(url: url, headers: config.headers) do |faraday|
         faraday.use FaradayMiddleware::FollowRedirects
@@ -84,8 +106,15 @@ module Html2rss
     end
     private_class_method :get_body_from_url
 
-    attr_reader :xml, :config
+    # @return [Nokogiri::XML::Element]
+    attr_reader :xml
+    # @return [Html2rss::Config]
+    attr_reader :config
 
+    ##
+    # @param value [String]
+    # @param post_process_options [Hash<Symbol, Object>]
+    # @return [String]
     def post_process(value, post_process_options)
       return value unless post_process_options
 

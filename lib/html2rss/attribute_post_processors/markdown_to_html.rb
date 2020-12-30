@@ -32,6 +32,9 @@ module Html2rss
     #
     #    <p>Price: 12.34</p>
     class MarkdownToHtml
+      ##
+      # @param value [String]
+      # @param env [Hash<Symbol, Object>]
       def initialize(value, env)
         @value = value
         @env = env

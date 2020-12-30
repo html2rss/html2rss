@@ -13,6 +13,9 @@ module Html2rss
     # Would return:
     #    'Foobar'
     class Static
+      ##
+      # @param _xml [nil, Nokogiri::XML::Element]
+      # @param options [Hash<Symbol, Object>]
       def initialize(_xml, options)
         @options = options
       end
@@ -22,6 +25,7 @@ module Html2rss
       #    options = { static: 'Foobar' }
       #    Static.new(xml, options).get
       #    # => 'Foobar'
+      # @return [String, Symbol]
       def get
         @options[:static]
       end
