@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'html2rss'
+require_relative '../html2rss'
 require 'thor'
 
 module Html2rss
@@ -11,14 +11,11 @@ module Html2rss
       true
     end
 
-    desc 'feed FEED_CONFIG', 'print RSS built from the FEED_CONFIG file to stdout'
-    def feed(feed_config)
-      raise 'feed_config file does not exist' unless File.exist?(feed_config)
+    desc 'feed YAML_FILE [FEED_NAME]', 'print RSS built from the FEED_CONFIG file to stdout'
+    def feed(yaml_file, feed_name = nil)
+      raise 'yaml_file file does not exist' unless File.exist?(yaml_file)
 
-      parsed_feed_config = YAML.safe_load(File.read(feed_config))
-      config = Config.new(parsed_feed_config)
-
-      puts Html2rss.feed(config)
+      puts Html2rss.feed_from_yaml_config(yaml_file, feed_name)
     end
   end
 end

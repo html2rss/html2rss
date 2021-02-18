@@ -25,12 +25,32 @@ supported, too.
 | Add this line to your application's `Gemfile`: | `gem 'html2rss'`     |
 |                                  Then execute: | `bundle`             |
 |                                  In your code: | `require 'html2rss'` |
+|                                   On your CLI: | `html2rss --help`    |
 
 😍 Love it? Feel free [to donate](https://liberapay.com/gildesmarais/donate). Thank you! 💓
 
-## Building a feed config
+## Generating a feed on the CLI
 
-Here's a minimal working example:
+Create a file called `my_config_file.yml` with this content:
+
+```yaml
+channel:
+  url: https://stackoverflow.com/questions
+selectors:
+  items:
+    selector: "#hot-network-questions > ul > li"
+  title:
+    selector: a
+  link:
+    selector: a
+    extractor: href
+```
+
+On your CLI, generate the RSS with: `html2rss feed my_config_file.yml`.
+
+## Generating a feed with Ruby
+
+Here's a minimal working example within Ruby:
 
 ```ruby
 require 'html2rss'
@@ -48,10 +68,12 @@ rss =
 puts rss
 ```
 
+## The _feed config_ and its options
+
 A _feed config_ consists of a `channel` and a `selectors` Hash.
 The contents of both hashes are explained below.
 
-**Looks too complicated?** See [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) for ready-made feed configs!
+**Looks too complicated?** See [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) for ready-made feed configs! You're invited to send a pull request to submit your config and make it available to the general public.
 
 ### The `channel`
 
@@ -478,7 +500,7 @@ Example:
 
 ```yml
 headers:
-  'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
 feeds:
   myfeed:
     channel:
