@@ -5,9 +5,6 @@
 ![Retro Badge: valid RSS](https://validator.w3.org/feed/images/valid-rss-rogers.png)
 [![](http://img.shields.io/liberapay/goal/gildesmarais.svg?logo=liberapa)](https://liberapay.com/gildesmarais/donate)
 
-**Searching for a ready to use app which serves generated feeds via HTTP?**
-[Head over to `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
-
 This Ruby gem builds RSS 2.0 feeds from a _feed config_.
 
 With the _feed config_ containing the URL to scrape and
@@ -18,19 +15,48 @@ make information extraction, processing and sanitizing a breeze.
 [setting HTTP request headers](#set-any-http-header-in-the-request) is
 supported, too.
 
+**Searching for a ready to use app which serves generated feeds via HTTP?**
+[Head over to `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
+
+To support the development, feel free [to donate](https://liberapay.com/gildesmarais/donate). Thank you! 💓
+
 ## Installation
 
-|                                    🤩 Like it? | Star it! ⭐️         |
-| ---------------------------------------------: | -------------------- |
-| Add this line to your application's `Gemfile`: | `gem 'html2rss'`     |
-|                                  Then execute: | `bundle`             |
-|                                  In your code: | `require 'html2rss'` |
+|     Install | `gem install html2rss` |
+| ----------: | ---------------------- |
+|       Usage | `html2rss help`        |
 
-😍 Love it? Feel free [to donate](https://liberapay.com/gildesmarais/donate). Thank you! 💓
+You can also install it as a dependency in your Ruby project:
 
-## Building a feed config
+|                      🤩 Like it? | Star it! ⭐️         |
+| -------------------------------: | -------------------- |
+| Add this line to your `Gemfile`: | `gem 'html2rss'`     |
+|                    Then execute: | `bundle`             |
+|                    In your code: | `require 'html2rss'` |
 
-Here's a minimal working example:
+
+## Generating a feed on the CLI
+
+Create a file called `my_config_file.yml` with this example content:
+
+```yml
+channel:
+  url: https://stackoverflow.com/questions
+selectors:
+  items:
+    selector: "#hot-network-questions > ul > li"
+  title:
+    selector: a
+  link:
+    selector: a
+    extractor: href
+```
+
+Build the RSS with: `html2rss feed ./my_config_file.yml`.
+
+## Generating a feed with Ruby
+
+Here's a minimal working example within Ruby:
 
 ```ruby
 require 'html2rss'
@@ -48,37 +74,45 @@ rss =
 puts rss
 ```
 
-A _feed config_ consists of a `channel` and a `selectors` Hash.
-The contents of both hashes are explained below.
+## The _feed config_ and its options
 
-**Looks too complicated?** See [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) for ready-made feed configs!
+A _feed config_ consists of a `channel` and a `selectors` Hash.
+The contents of both hashes are explained in the chapters below.
+
+Good to know:
+
+- You'll find extensive example feed configs at [`spec/config*.yml`](https://github.com/html2rss/html2rss/tree/master/spec).
+- See [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) for ready-made feed configs!
+- If you've already created feed configs, you're invited to send a PR to [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) to make your config available to the general public.
+
+Alright, let's move on.
 
 ### The `channel`
 
 | attribute     |          | type    |        default | remark                                     |
 | ------------- | -------- | ------- | -------------: | ------------------------------------------ |
-| `url`         | required | String  |                |                                            |
+| `url`         | **required** | String  |                |                                            |
 | `title`       | optional | String  | auto-generated |                                            |
 | `description` | optional | String  | auto-generated |                                            |
 | `ttl`         | optional | Integer |          `360` | TTL in _minutes_                           |
 | `time_zone`   | optional | String  |        `'UTC'` | TimeZone name                              |
 | `language`    | optional | String  |         `'en'` | Language code                              |
-| `author`      | optional | String  |                | Format: `email (Name)'`                    |
+| `author`      | optional | String  |                | Format: `email (Name)`                    |
 | `headers`     | optional | Hash    |           `{}` | Set HTTP request headers. See notes below. |
 | `json`        | optional | Boolean |        `false` | Handle JSON response. See notes below.     |
 
 ### The `selectors`
 
-You must provide an `items` selector hash which contains the CSS selector.
-`items` needs to return a collection of HTML tags.
-The other selectors are scoped to the tags of the items' collection.
+First, you must give an **`items`** selector hash which contains a CSS selector. The selector selects a collection of HTML tags from which the RSS feed items are build.
+Except the `items` selector, all other keys are scoped to each item of the collection.
 
-To build a
-[valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item)
-each item has to have at least a `title` or a `description`.
+Then, to build a
+[valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item),
+you need to have at least a `title` **or** a `description`. You can have both.
 
-Your `selectors` can contain arbitrary selector names, but only these
-will make it into the RSS feed:
+Having an `items` and a `title` selector is already enough to build a simple feed.
+
+Your `selectors` Hash can contain arbitrary named selectors, but only a few will make it into the RSS feed (This due to the RSS 2.0 specification):
 
 | RSS 2.0 tag   | name in `html2rss` | remark                      |
 | ------------- | ------------------ | --------------------------- |
@@ -95,33 +129,13 @@ will make it into the RSS feed:
 
 ### The `selector` hash
 
-Your selector hash can have these attributes:
+Every named selector in your `selectors` hash can have these attributes:
 
 | name           | value                                                    |
 | -------------- | -------------------------------------------------------- |
 | `selector`     | The CSS selector to select the tag with the information. |
 | `extractor`    | Name of the extractor. See notes below.                  |
 | `post_process` | A hash or array of hashes. See notes below.              |
-
-#### Reverse ordering of items
-
-The `items` selector hash can have an `order` attribute.
-If the value is `reverse` the order of items in the RSS will be reversed.
-
-<details>
-  <summary>See a YAML feed config example</summary>
-
-```yml
-channel:
-  # ... omitted
-selectors:
-  items:
-    selector: 'ul > li'
-    order: 'reverse'
-  # ... omitted
-```
-
-</details>
 
 ## Using extractors
 
@@ -134,7 +148,7 @@ Extractors help with extracting the information from the selected HTML tag.
 - The `static` extractor returns the configured static value (it doesn't extract anything).
 - [See file list of extractors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/item_extractors).
 
-Extractors can require additional attributes on the selector hash.  
+Extractors might need extra attributes on the selector hash.  
 👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
 
 <details>
@@ -465,6 +479,30 @@ selectors:
 
 The headers provided by the channel are merged into the global headers.
 
+## Reverse the order of items
+
+By default, `html2rss` keeps the order of the collection returned from the `items` selector.
+
+The `items` selector hash can optionally contain an `order` attribute.
+If the value is `reverse` the order of items in the RSS will reverse.
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  items:
+    selector: 'ul > li'
+    order: 'reverse'
+  # ... omitted
+```
+
+</details>
+
+Note that the order of items, according to the RSS 2.0 spec, should not matter on the feed-consuming client.
+
 ## Usage with a YAML config file
 
 This step is not required to work with this gem. If you're using
@@ -478,7 +516,7 @@ Example:
 
 ```yml
 headers:
-  'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
 feeds:
   myfeed:
     channel:
@@ -506,7 +544,7 @@ Find a full example of a `feeds.yml` at [`spec/config.test.yml`](https://github.
 - Check that the channel URL does not redirect to a mobile page with a different markup structure.
 - Do not rely on your web browser's developer console. `html2rss` does not execute JavaScript.
 - Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
-- [CSS selectors are quite versatile, here's an overview.](https://www.w3.org/TR/selectors-4/#overview)
+- [CSS selectors are versatile. Here's an overview.](https://www.w3.org/TR/selectors-4/#overview)
 
 ## Development
 

@@ -21,6 +21,10 @@ RSpec/NestedGroups:
 RSpec/MultipleMemoizedHelpers:
   Max: 9
 
+RSpec/DescribeClass:
+  Exclude:
+    - spec/exe/**/*_spec.rb
+
 Style/AsciiComments:
   AllowedChars:
     - €

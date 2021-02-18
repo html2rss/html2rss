@@ -216,8 +216,8 @@ RSpec.describe Html2rss do
           headers: {
             'User-Agent': 'html2rss-request',
             'X-Something': 'Foobar',
-            'Authorization': 'Token deadbea7',
-            'Cookie': 'monster=MeWantCookie'
+            Authorization: 'Token deadbea7',
+            Cookie: 'monster=MeWantCookie'
           }
         },
         selectors: {

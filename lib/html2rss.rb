@@ -20,14 +20,19 @@ module Html2rss
   #
   # @param file [File] a file object of the yaml file to use
   # @param name [String] name of the feed to generate from the yaml
+  # @param global_config [Hash] global options (e.g. HTTP headers) to use
   # @return [RSS::Rss]
-  def self.feed_from_yaml_config(file, name)
+  def self.feed_from_yaml_config(file, name = nil, global_config: {})
     # rubocop:disable Security/YAMLLoad
     yaml = YAML.load(File.open(file))
     # rubocop:enable Security/YAMLLoad
 
-    feed_config = yaml['feeds'][name]
-    global_config = yaml.reject { |key| key == 'feeds' }
+    if yaml['feeds'] && name
+      feed_config = yaml['feeds'].fetch(name)
+      global_config = global_config.merge(yaml.reject { |key| key == 'feeds' })
+    else
+      feed_config = yaml
+    end
 
     config = Config.new(feed_config, global_config)
     feed(config)
