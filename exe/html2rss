@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require File.expand_path('lib/html2rss/cli.rb', Dir.pwd)
+require_relative '../lib/html2rss/cli'
 
 Html2rss::CLI.start(ARGV)
