@@ -51,9 +51,16 @@ module Html2rss
     # At least a title or a description is required to be a valid RSS 2.0 item.
     # @return [true, false]
     def valid?
-      title = self.title if config.attribute?(:title)
-      description = self.description if config.attribute?(:description)
-      [title, description].join != ''
+      title_or_description.to_s != ''
+    end
+
+    ##
+    # Returns the title or, if absent, the description. Returns nil if both are absent.
+    # @return [String, nil]
+    def title_or_description
+      return title if config.attribute?(:title)
+
+      description if config.attribute?(:description)
     end
 
     ##

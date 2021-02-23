@@ -57,7 +57,7 @@ module Html2rss
     # @return nil
     def self.add_guid(item, item_maker)
       guid = item_maker.guid
-      guid.content = Digest::SHA1.hexdigest(item.title)
+      guid.content = Digest::SHA1.hexdigest(item.title_or_description)
       guid.isPermaLink = false
     end
 
