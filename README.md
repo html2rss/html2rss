@@ -81,7 +81,7 @@ The contents of both hashes are explained in the chapters below.
 
 Good to know:
 
-- You'll find extensive example feed configs at [`spec/config*.yml`](https://github.com/html2rss/html2rss/tree/master/spec).
+- You'll find extensive example feed configs at [`spec/*.test.yml`](https://github.com/html2rss/html2rss/tree/master/spec).
 - See [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) for ready-made feed configs!
 - If you've already created feed configs, you're invited to send a PR to [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) to make your config available to the general public.
 
@@ -481,10 +481,8 @@ The headers provided by the channel are merged into the global headers.
 
 ## Reverse the order of items
 
-By default, `html2rss` keeps the order of the collection returned from the `items` selector.
-
-The `items` selector hash can optionally contain an `order` attribute.
-If the value is `reverse` the order of items in the RSS will reverse.
+By default, `html2rss` keeps the order of the collection returned from the `items` selector. The `items` selector hash can optionally contain an `order` attribute.
+If its value is `reverse`, the order of items in the RSS will reverse.
 
 <details>
   <summary>See a YAML feed config example</summary>
@@ -501,7 +499,7 @@ selectors:
 
 </details>
 
-Note that the order of items, according to the RSS 2.0 spec, should not matter on the feed-consuming client.
+Note that the order of items, according to the RSS 2.0 spec, should not matter to the feed-consuming client.
 
 ## Usage with a YAML config file
 
@@ -509,8 +507,7 @@ This step is not required to work with this gem. If you're using
 [`html2rss-web`](https://github.com/gildesmarais/html2rss-web)
 and want to create your private feed configs, keep on reading!
 
-First, create your YAML file, e.g. called `feeds.yml`.
-This file will contain your global config and feed configs.
+First, create a YAML file, e.g. `feeds.yml`. This file will contain your global config and multiple feed configs under the key `feeds`.
 
 Example:
 
@@ -528,7 +525,13 @@ feeds:
 
 Your feed configs go below `feeds`. Everything else is part of the global config.
 
-Build your feeds like this:
+Find a full example of a `feeds.yml` at [`spec/feeds.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/feeds.test.yml).
+
+
+Now you can build your feeds like this:
+
+<details>
+  <summary>Build feeds in Ruby</summary>
 
 ```ruby
 require 'html2rss'
@@ -536,8 +539,16 @@ require 'html2rss'
 myfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myfeed')
 myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
 ```
+</details>
 
-Find a full example of a `feeds.yml` at [`spec/config.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/config.test.yml).
+<details>
+  <summary>Build feeds on the command line</summary>
+
+```sh
+$ html2rss feed feeds.yml myfeed
+$ html2rss feed feeds.yml myotherfeed
+```
+</details>
 
 ## Gotchas and tips & tricks
 

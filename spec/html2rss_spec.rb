@@ -1,13 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss do
-  let(:config_file) { File.join(%w[spec config.test.yml]) }
-  let(:config_json_file) { File.join(%w[spec config.json.test.yml]) }
-  let(:yaml_config) { YAML.safe_load(File.open(config_file)).deep_symbolize_keys }
+  let(:config_file) { File.join(%w[spec feeds.test.yml]) }
   let(:name) { 'nuxt-releases' }
-  let(:feed_config) { yaml_config[:feeds][name.to_sym] }
-  let(:global_config) { yaml_config.reject { |k| k == :feeds } }
-  let(:config) { Html2rss::Config.new(feed_config, global_config) }
 
   it 'has a version number' do
     expect(Html2rss::VERSION).not_to be nil
@@ -16,7 +11,7 @@ RSpec.describe Html2rss do
   describe '.feed_from_yaml_config' do
     context 'with html response' do
       subject(:feed) do
-        VCR.use_cassette('nuxt-releases') { described_class.feed_from_yaml_config(config_file, name) }
+        VCR.use_cassette(name) { described_class.feed_from_yaml_config(config_file, name) }
       end
 
       it 'returns a RSS:Rss instance' do
@@ -26,8 +21,10 @@ RSpec.describe Html2rss do
 
     context 'with json response' do
       subject(:feed) do
-        VCR.use_cassette('config.json') { described_class.feed_from_yaml_config(config_json_file, 'json') }
+        VCR.use_cassette(name) { described_class.feed_from_yaml_config(config_file, name) }
       end
+
+      let(:name) { 'json' }
 
       it 'returns a RSS:Rss instance' do
         expect(feed).to be_a_kind_of(RSS::Rss)
@@ -39,8 +36,20 @@ RSpec.describe Html2rss do
         it 'has the description derived from markdown' do
           expect(
             xml.css('item > description').first.text
-          ).to eq '<h1>DOCTOR SLEEP</h1> <p>MPAA rating: R</p>'
+          ).to eq '<h1>JUDAS AND THE BLACK MESSIAH</h1> <p>MPAA rating: R</p>'
         end
+      end
+    end
+
+    context 'with config without title selector' do
+      subject(:feed) do
+        VCR.use_cassette(name) { described_class.feed_from_yaml_config(config_file, name) }
+      end
+
+      let(:name) { 'notitle' }
+
+      it 'returns a RSS:Rss instance' do
+        expect(feed).to be_a_kind_of(RSS::Rss)
       end
     end
   end
@@ -48,7 +57,13 @@ RSpec.describe Html2rss do
   describe '.feed' do
     subject(:xml) { Nokogiri.XML(feed_return.to_s) }
 
-    let(:feed_return) { VCR.use_cassette('nuxt-releases') { described_class.feed(config) } }
+    let(:yaml_config) { YAML.safe_load(File.open(config_file), symbolize_names: true) }
+    let(:config) do
+      feed_config = yaml_config[:feeds][name.to_sym]
+      global_config = yaml_config.reject { |k| k == :feeds }
+      Html2rss::Config.new(feed_config, global_config)
+    end
+    let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 
     before do
       allow(Faraday).to receive(:new).with(hash_including(headers: yaml_config[:headers])).and_call_original
@@ -59,7 +74,7 @@ RSpec.describe Html2rss do
     end
 
     it 'sets the request headers' do
-      VCR.use_cassette('nuxt-releases') { described_class.feed(config) }
+      VCR.use_cassette(name) { described_class.feed(config) }
 
       expect(Faraday).to have_received(:new).with(hash_including(headers: yaml_config[:headers]))
     end
@@ -155,7 +170,7 @@ RSpec.describe Html2rss do
       end
 
       describe 'item.description' do
-        let(:description) { item.css('description').text }
+        subject(:description) { item.css('description').text }
 
         it 'has a description' do
           expect(description).to be_a(String)
@@ -174,7 +189,7 @@ RSpec.describe Html2rss do
 
       describe 'item.guid' do
         it 'stays the same string for each run' do
-          feed = VCR.use_cassette('nuxt-releases-second-run') do
+          feed = VCR.use_cassette("#{name}-second-run") do
             described_class.feed(config)
           end
 
@@ -191,7 +206,7 @@ RSpec.describe Html2rss do
 
     context 'with items having order key and reverse as value' do
       before do
-        feed_config[:selectors][:items][:order] = 'reverse'
+        yaml_config[:feeds][name.to_sym][:selectors][:items][:order] = 'reverse'
       end
 
       it 'reverses the item ordering' do

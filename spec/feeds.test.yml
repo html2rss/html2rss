@@ -49,3 +49,57 @@ feeds:
         selector: 'img.avatar'
         extractor: 'attribute'
         attribute: 'src'
+  json:
+    channel:
+      title: JSON
+      url: https://api.cinemascore.com/guest/surveys
+      ttl: 600
+      json: true
+    selectors:
+      items:
+        selector: 'new > new, recent > recent'
+      title:
+        selector: 'title'
+        post_process:
+          name: 'template'
+          string: '%{self} (%{grade}) [Rated %{mpaa_rating}] (%{year})'
+      grade:
+        selector: 'grade'
+      movie_title:
+        selector: 'movie-title'
+      link:
+        post_process:
+          name: 'template'
+          string: 'https://www.metacritic.com/search/movie/%s/results'
+          methods:
+            - movie_title
+      mpaa_rating:
+        selector: 'mpaa-rating'
+      distributor:
+        selector: 'distributor'
+      year:
+        selector: 'year'
+      categories:
+        - mpaa_rating
+        - grade
+        - year
+      description:
+        post_process:
+          - name: template
+            string: |
+              # %{movie_title}
+
+              MPAA rating: %{mpaa_rating}
+          - name: markdown_to_html
+  notitle:
+    channel:
+      url: https://www.horoscope.com/us/horoscopes/general/horoscope-general-daily-today.aspx?sign=10
+      language: en
+    selectors:
+      items:
+        selector: "div.main-horoscope"
+      description:
+        selector: "p"
+      link:
+        selector: "#src-horo-today"
+        extractor: "href"

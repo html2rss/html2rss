@@ -35,13 +35,13 @@ RSpec.describe 'exe/html2rss' do
 
   context 'with arguments: feed YAML_FILE' do
     it 'generates the RSS' do
-      expect(`#{executable} feed spec/cli.single.test.yml`).to start_with(rss_start)
+      expect(`#{executable} feed spec/single.test.yml`).to start_with(rss_start)
     end
   end
 
   context 'with arguments: feed YAML_FILE FEED_NAME' do
     it 'generates the RSS' do
-      expect(`#{executable} feed spec/cli.multiple.test.yml nuxt-releases`).to start_with(rss_start)
+      expect(`#{executable} feed spec/feeds.test.yml 'nuxt-releases'`).to start_with(rss_start)
     end
   end
 end

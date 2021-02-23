@@ -18,9 +18,6 @@ RSpec/NestedGroups:
   Exclude:
     - spec/html2rss_spec.rb
 
-RSpec/MultipleMemoizedHelpers:
-  Max: 9
-
 RSpec/DescribeClass:
   Exclude:
     - spec/exe/**/*_spec.rb

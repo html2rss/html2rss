@@ -20,35 +20,26 @@ http_interactions:
       code: 200
       message: OK
     headers:
-      access-control-allow-credentials:
-      - 'true'
-      access-control-allow-origin:
-      - "*"
+      date:
+      - Tue, 23 Feb 2021 22:03:27 GMT
       content-type:
       - application/json
-      date:
-      - Sat, 09 Nov 2019 20:10:53 GMT
-      referrer-policy:
-      - no-referrer-when-downgrade
-      server:
-      - nginx
-      x-content-type-options:
-      - nosniff
-      x-frame-options:
-      - DENY
-      x-xss-protection:
-      - 1; mode=block
       content-length:
-      - '211'
+      - '354'
       connection:
-      - Close
+      - keep-alive
+      server:
+      - gunicorn/19.9.0
+      access-control-allow-origin:
+      - "*"
+      access-control-allow-credentials:
+      - 'true'
     body:
-      encoding: ASCII-8BIT
+      encoding: UTF-8
       string: "{\n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\":
         \"gzip;q=1.0,deflate;q=0.6,identity;q=0.3\", \n    \"Authorization\": \"Token
         deadbea7\", \n    \"Cookie\": \"monster=MeWantCookie\", \n    \"Host\": \"httpbin.org\",
-        \n    \"User-Agent\": \"html2rss-request\", \n    \"X-Something\": \"Foobar\"\n
-        \ }\n}\n"
-    http_version: 
-  recorded_at: Sat, 09 Nov 2019 20:10:53 GMT
-recorded_with: VCR 5.0.0
+        \n    \"User-Agent\": \"html2rss-request\", \n    \"X-Amzn-Trace-Id\": \"Root=1-60357baf-389efb337cd7b4ac4d6d267e\",
+        \n    \"X-Something\": \"Foobar\"\n  }\n}\n"
+  recorded_at: Tue, 23 Feb 2021 22:03:27 GMT
+recorded_with: VCR 6.0.0
