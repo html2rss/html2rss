@@ -1,0 +1,72 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.cinemascore.com/guest/surveys
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-agent:
+      - Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30
+        (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      date:
+      - Tue, 23 Feb 2021 22:17:35 GMT
+      server:
+      - Apache/2.4.29 (Ubuntu)
+      expires:
+      - Thu, 19 Nov 1981 08:52:00 GMT
+      cache-control:
+      - no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+      pragma:
+      - no-cache
+      access-control-allow-origin:
+      - "*"
+      set-cookie:
+      - PHPSESSID=mq0dn9kj3u0l573qu3d6b61vg2; path=/, cs_mobile=1; expires=Fri, 26-Mar-2021
+        22:17:35 GMT; Max-Age=2678400; path=/; domain=.cinemascore.com, cs_platform=mobile;
+        expires=Fri, 26-Mar-2021 22:17:35 GMT; Max-Age=2678400; path=/; domain=.cinemascore.com,
+        www=mobile; expires=Fri, 26-Mar-2021 22:17:35 GMT; Max-Age=2678400; path=/;
+        domain=.cinemascore.com, cv_name=mq0dn9kj3u0l573qu3d6b61vg2; expires=Tue,
+        23-Feb-2021 21:47:35 GMT; Max-Age=-1800; path=/; domain=.cinemascore.com,
+        _csugg=62009366-8233-4C0D-B577-277DFB676010; expires=Mon, 27-Sep-2021 16:04:15
+        GMT; Max-Age=18640000; path=/, _csugg=62009366-8233-4C0D-B577-277DFB676010;
+        expires=Mon, 27-Sep-2021 16:04:15 GMT; Max-Age=18640000; path=/; domain=.cinemascore.com,
+        _csugg=62009366-8233-4C0D-B577-277DFB676010; expires=Mon, 27-Sep-2021 16:04:15
+        GMT; Max-Age=18640000; path=/; domain=cinemascore.com
+      transfer-encoding:
+      - chunked
+      content-type:
+      - application/json;charset=utf-8
+    body:
+      encoding: UTF-8
+      string: '{"new":[{"ID":7184,"TITLE":"JUDAS AND THE BLACK MESSIAH","MPAA_RATING":"R
+        ","GRADE":"A","SURVEY_DATE":"Feb 12 2021 12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Feb
+        12 2021 12:00:00:000AM","DISTRIBUTOR":"WARNER BROS","MOVIE_TITLE":"JUDAS AND
+        THE BLACK MESSIAH","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2021"},{"ID":7185,"TITLE":"LAND","MPAA_RATING":"PG13","GRADE":"B+","SURVEY_DATE":"Feb
+        12 2021 12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Feb
+        12 2021 12:00:00:000AM","DISTRIBUTOR":"FOCUS","MOVIE_TITLE":"LAND","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2021"}],"recent":[{"ID":7176,"TITLE":"ALL
+        MY LIFE","MPAA_RATING":"PG13","GRADE":"B+","SURVEY_DATE":"Dec  4 2020 12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Dec  4
+        2020 12:00:00:000AM","DISTRIBUTOR":"UNIVERSAL","MOVIE_TITLE":"ALL MY LIFE","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2020"},{"ID":7177,"TITLE":"HALF
+        BROTHERS","MPAA_RATING":"PG13","GRADE":"B","SURVEY_DATE":"Dec  4 2020 12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Dec  4
+        2020 12:00:00:000AM","DISTRIBUTOR":"FOCUS","MOVIE_TITLE":"HALF BROTHERS","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2020"},{"ID":7183,"TITLE":"LITTLE
+        THINGS, THE","MPAA_RATING":"R ","GRADE":"B-","SURVEY_DATE":"Jan 29 2021 12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Jan
+        29 2021 12:00:00:000AM","DISTRIBUTOR":"WARNER BROS","MOVIE_TITLE":"LITTLE
+        THINGS, THE","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2021"},{"ID":7181,"TITLE":"NEWS
+        OF THE WORLD","MPAA_RATING":"PG13","GRADE":"B+","SURVEY_DATE":"Dec 26 2020
+        12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Dec
+        25 2020 12:00:00:000AM","DISTRIBUTOR":"UNIVERSAL","MOVIE_TITLE":"NEWS OF THE
+        WORLD","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2020"},{"ID":7180,"TITLE":"PROMISING
+        YOUNG WOMAN","MPAA_RATING":"R ","GRADE":"B+","SURVEY_DATE":"Dec 26 2020 12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Dec
+        25 2020 12:00:00:000AM","DISTRIBUTOR":"FOCUS","MOVIE_TITLE":"PROMISING YOUNG
+        WOMAN","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2020"},{"ID":7182,"TITLE":"WONDER
+        WOMAN 1984","MPAA_RATING":"PG13","GRADE":"B+","SURVEY_DATE":"Dec 26 2020 12:00:00:000AM","CLIENT":"CINEMASCORE","SURVEY_TYPE":"CINEMASCORE","FRIDAY_DATE":"Dec
+        25 2020 12:00:00:000AM","DISTRIBUTOR":"WARNER BROS","MOVIE_TITLE":"WONDER
+        WOMAN 1984","PROFILE_REPORT":"PROFILE_REPORT1","SNAPSHOT_REPORT":"SNAPSHOT_REPORT1","OVERVIEW_REPORT":"OVERVIEW_REPORT1","YEAR":"2020"}]}'
+  recorded_at: Tue, 23 Feb 2021 22:17:36 GMT
+recorded_with: VCR 6.0.0
