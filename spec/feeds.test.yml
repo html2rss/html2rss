@@ -103,3 +103,12 @@ feeds:
       link:
         selector: "#src-horo-today"
         extractor: "href"
+  withparams:
+    channel:
+      url: https://www.horoscope.com/us/horoscopes/general/horoscope-general-daily-today.aspx?sign=%<sign>s
+      description: "The value of param is: %<param>s"
+    selectors:
+      items:
+        selector: "div.main-horoscope"
+      description:
+        selector: "p"
