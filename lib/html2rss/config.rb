@@ -168,7 +168,7 @@ module Html2rss
     ##
     # Sets the variables used in the feed config's channel.
     #
-    # @param feed_config [Hash<String, Object>]
+    # @param feed_config [Hash<Symbol, Object>]
     # @param feed_config [Hash<Symbol, Object>]
     def process_params(feed_config, params)
       return feed_config if params.keys.none?
