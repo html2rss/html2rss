@@ -15,7 +15,7 @@ module Html2rss
     def feed(yaml_file, *options)
       raise 'yaml_file file does not exist' unless File.exist?(yaml_file)
 
-      params = options.filter_map { |p| p.split('=') if p.include?('=') }.to_h
+      params = options.map { |p| p.split('=') if p.include?('=') }.compact.to_h
       feed_name = options.first
       puts Html2rss.feed_from_yaml_config(yaml_file, feed_name, params: params)
     end
