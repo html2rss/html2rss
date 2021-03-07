@@ -7,12 +7,20 @@ module Html2rss
   # The Config class abstracts from the config data structure and
   # provides default values.
   class Config
+    class ParamsMissing < StandardError; end
+
     ##
     # @param feed_config [Hash<Symbol, Object>]
     # @param global_config [Hash<Symbol, Object>]
-    def initialize(feed_config, global_config = {})
+    # @param params [Hash<Symbol, String>]
+    def initialize(feed_config, global_config = {}, params = {})
+      symbolized_params = params.transform_keys(&:to_sym)
+      feed_config = feed_config.deep_symbolize_keys
+
+      assert_required_params_presence(feed_config, symbolized_params)
+
       @global_config = global_config.deep_symbolize_keys
-      @feed_config = feed_config.deep_symbolize_keys
+      @feed_config = process_params(feed_config, symbolized_params)
       @channel_config = @feed_config.fetch(:channel, {})
     end
 
@@ -128,9 +136,50 @@ module Html2rss
       feed_config.dig(:selectors, :items, :order)&.to_sym
     end
 
+    ##
+    # Returns the dynamic parameter names which are required to use the feed config.
+    #
+    # @return [Set] containing Strings (the parameter names)
+    def self.required_params_for_feed_config(feed_config)
+      return unless feed_config[:channel]
+
+      Set.new.tap do |required_params|
+        feed_config[:channel].each_key do |attribute_name|
+          next unless feed_config[:channel][attribute_name].is_a?(String)
+
+          required_params.merge feed_config[:channel][attribute_name].scan(/%<([\w_\d]+)>(\w)?/).to_h.keys
+        end
+      end
+    end
+
+    def assert_required_params_presence(feed_config, params)
+      return unless feed_config[:channel]
+
+      missing_params = Config.required_params_for_feed_config(feed_config) - params.keys.map(&:to_s)
+
+      raise ParamsMissing, missing_params.to_a.join(', ') if missing_params.size.positive?
+    end
+
     private
 
     # @return [Hash<Symbol, Object>]
     attr_reader :feed_config, :channel_config, :global_config
+
+    ##
+    # Sets the variables used in the feed config's channel.
+    #
+    # @param feed_config [Hash<String, Object>]
+    # @param feed_config [Hash<Symbol, Object>]
+    def process_params(feed_config, params)
+      return feed_config if params.keys.none?
+
+      feed_config['channel'].each_key do |attribute_name|
+        next unless feed_config['channel'][attribute_name].is_a?(String)
+
+        feed_config['channel'][attribute_name] = format(feed_config['channel'][attribute_name], params)
+      end
+
+      feed_config
+    end
   end
 end

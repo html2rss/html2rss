@@ -19,10 +19,11 @@ module Html2rss
   #    # => #<RSS::Rss:0x00007fb2f6331228
   #
   # @param file [File] a file object of the yaml file to use
-  # @param name [String] name of the feed to generate from the yaml
+  # @param name [String, nil] name of the feed to generate from the yaml
   # @param global_config [Hash] global options (e.g. HTTP headers) to use
+  # @param params [Hash] if required by feed config, the dynamic parameters for the config
   # @return [RSS::Rss]
-  def self.feed_from_yaml_config(file, name = nil, global_config: {})
+  def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
     # rubocop:disable Security/YAMLLoad
     yaml = YAML.load(File.open(file))
     # rubocop:enable Security/YAMLLoad
@@ -34,7 +35,7 @@ module Html2rss
       feed_config = yaml
     end
 
-    config = Config.new(feed_config, global_config)
+    config = Config.new(feed_config, global_config, params)
     feed(config)
   end
 
@@ -53,10 +54,10 @@ module Html2rss
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
   #
-  # @param config [Html2rss::Config, Hash<String, Object>]
+  # @param config [Html2rss::Config]
   # @return [RSS::Rss]
   def self.feed(config)
-    config = Config.new(config) unless config.is_a?(Config)
+    raise 'given config must be a Html2rss::Config instance' unless config.is_a?(Config)
 
     feed = FeedBuilder.new config
     feed.rss

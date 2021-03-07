@@ -22,9 +22,9 @@ To support the development, feel free [to donate](https://liberapay.com/gildesma
 
 ## Installation
 
-|     Install | `gem install html2rss` |
-| ----------: | ---------------------- |
-|       Usage | `html2rss help`        |
+| Install | `gem install html2rss` |
+| ------: | ---------------------- |
+|   Usage | `html2rss help`        |
 
 You can also install it as a dependency in your Ruby project:
 
@@ -33,7 +33,6 @@ You can also install it as a dependency in your Ruby project:
 | Add this line to your `Gemfile`: | `gem 'html2rss'`     |
 |                    Then execute: | `bundle`             |
 |                    In your code: | `require 'html2rss'` |
-
 
 ## Generating a feed on the CLI
 
@@ -89,17 +88,46 @@ Alright, let's move on.
 
 ### The `channel`
 
-| attribute     |          | type    |        default | remark                                     |
-| ------------- | -------- | ------- | -------------: | ------------------------------------------ |
+| attribute     |              | type    |        default | remark                                     |
+| ------------- | ------------ | ------- | -------------: | ------------------------------------------ |
 | `url`         | **required** | String  |                |                                            |
-| `title`       | optional | String  | auto-generated |                                            |
-| `description` | optional | String  | auto-generated |                                            |
-| `ttl`         | optional | Integer |          `360` | TTL in _minutes_                           |
-| `time_zone`   | optional | String  |        `'UTC'` | TimeZone name                              |
-| `language`    | optional | String  |         `'en'` | Language code                              |
-| `author`      | optional | String  |                | Format: `email (Name)`                    |
-| `headers`     | optional | Hash    |           `{}` | Set HTTP request headers. See notes below. |
-| `json`        | optional | Boolean |        `false` | Handle JSON response. See notes below.     |
+| `title`       | optional     | String  | auto-generated |                                            |
+| `description` | optional     | String  | auto-generated |                                            |
+| `ttl`         | optional     | Integer |          `360` | TTL in _minutes_                           |
+| `time_zone`   | optional     | String  |        `'UTC'` | TimeZone name                              |
+| `language`    | optional     | String  |         `'en'` | Language code                              |
+| `author`      | optional     | String  |                | Format: `email (Name)`                     |
+| `headers`     | optional     | Hash    |           `{}` | Set HTTP request headers. See notes below. |
+| `json`        | optional     | Boolean |        `false` | Handle JSON response. See notes below.     |
+
+#### Dynamic parameters in `channel` attributes
+
+Sometimes there are structurally equal pages with different URLs. In such a case you can add _dynamic parameters_ to the channel's attributes.
+
+Example of a dynamic `id` parameter in the channel URLs:
+
+```yml
+channel:
+  url: "http://domainname.tld/whatever/%<id>s.html"
+```
+
+Command line usage example:
+
+```
+bundle exec html2rss feed the_feed_config.yml id=42
+```
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+config = Html2rss::Config.new({ channel: { url: 'http://domainname.tld/whatever/%<id>s.html' } }, {}, { id: 42 })
+Html2rss.feed(config)
+```
+
+</details>
+
+See the _more complex formatting_ of the [`sprintf` method](https://ruby-doc.org/core/Kernel.html#method-i-sprintf) for formatting options.
 
 ### The `selectors`
 
@@ -114,18 +142,18 @@ Having an `items` and a `title` selector is already enough to build a simple fee
 
 Your `selectors` Hash can contain arbitrary named selectors, but only a few will make it into the RSS feed (This due to the RSS 2.0 specification):
 
-| RSS 2.0 tag   | name in `html2rss` | remark                      |
-| ------------- | ------------------ | --------------------------- |
-| `title`       | `title`            |                             |
-| `description` | `description`      | Supports HTML.              |
-| `link`        | `link`             | A URL.                      |
-| `author`      | `author`           |                             |
-| `category`    | `categories`       | See notes below.            |
-| `enclosure`   | `enclosure`        | See notes below.            |
-| `pubDate`     | `update`           | An instance of `Time`.      |
-| `guid`        | `guid`             | Generated from the `title`. |
-| `comments`    | `comments`         | A URL.                      |
-| `source`      | ~~source~~         | Not yet supported.          |
+| RSS 2.0 tag   | name in `html2rss` | remark                                       |
+| ------------- | ------------------ | -------------------------------------------- |
+| `title`       | `title`            |                                              |
+| `description` | `description`      | Supports HTML.                               |
+| `link`        | `link`             | A URL.                                       |
+| `author`      | `author`           |                                              |
+| `category`    | `categories`       | See notes below.                             |
+| `enclosure`   | `enclosure`        | See notes below.                             |
+| `pubDate`     | `update`           | An instance of `Time`.                       |
+| `guid`        | `guid`             | Generated from the `title` or `description`. |
+| `comments`    | `comments`         | A URL.                                       |
+| `source`      | ~~source~~         | Not yet supported.                           |
 
 ### The `selector` hash
 
@@ -312,7 +340,7 @@ Since `html2rss` does no further inspection of the enclosure, its support comes 
 
 1. The content-type is guessed from the file extension of the URL.
 2. If the content-type guessing fails, it will default to `application/octet-stream`.
-3. The content-length will always be undetermined and thus stated as `0` bytes.
+3. The content-length will always be undetermined and therefore stated as `0` bytes.
 
 Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item-enclosure) for further information on enclosing content.
 
@@ -348,7 +376,7 @@ selectors:
 
 ## Scraping and handling JSON responses
 
-Although this gem is called **html**​*2rss*, it's possible to scrape and process JSON.
+Although this gem's name is **html**​*2rss*, it's possible to scrape and process JSON.
 
 Adding `json: true` to the channel config will convert the JSON response to XML.
 
@@ -527,7 +555,6 @@ Your feed configs go below `feeds`. Everything else is part of the global config
 
 Find a full example of a `feeds.yml` at [`spec/feeds.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/feeds.test.yml).
 
-
 Now you can build your feeds like this:
 
 <details>
@@ -539,6 +566,7 @@ require 'html2rss'
 myfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myfeed')
 myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
 ```
+
 </details>
 
 <details>
@@ -548,6 +576,7 @@ myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
 $ html2rss feed feeds.yml myfeed
 $ html2rss feed feeds.yml myotherfeed
 ```
+
 </details>
 
 ## Gotchas and tips & tricks

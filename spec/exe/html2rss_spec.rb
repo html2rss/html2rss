@@ -33,15 +33,25 @@ RSpec.describe 'exe/html2rss' do
     end
   end
 
-  context 'with arguments: feed YAML_FILE' do
-    it 'generates the RSS' do
-      expect(`#{executable} feed spec/single.test.yml`).to start_with(rss_start)
+  context 'with the nuxt example' do
+    context 'with arguments: feed YAML_FILE' do
+      it 'generates the RSS' do
+        expect(`#{executable} feed spec/single.test.yml`).to start_with(rss_start)
+      end
+    end
+
+    context 'with arguments: feed YAML_FILE FEED_NAME param=value' do
+      it 'generates the RSS' do
+        expect(`#{executable} feed spec/feeds.test.yml 'nuxt-releases'`).to start_with(rss_start)
+      end
     end
   end
 
-  context 'with arguments: feed YAML_FILE FEED_NAME' do
-    it 'generates the RSS' do
-      expect(`#{executable} feed spec/feeds.test.yml 'nuxt-releases'`).to start_with(rss_start)
+  context 'with params: feed YAML_FILE FEED_NAME param=<value>' do
+    it 'proccesses and escapes the params' do
+      expect(`#{executable} feed spec/feeds.test.yml withparams param='<value>' sign=10`)
+        .to include('<description>The value of param is: &lt;value&gt;</description>',
+                    'horoscope-general-daily-today.aspx?sign=10')
     end
   end
 end
