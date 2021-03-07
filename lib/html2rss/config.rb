@@ -173,10 +173,10 @@ module Html2rss
     def process_params(feed_config, params)
       return feed_config if params.keys.none?
 
-      feed_config['channel'].each_key do |attribute_name|
-        next unless feed_config['channel'][attribute_name].is_a?(String)
+      feed_config[:channel].each_key do |attribute_name|
+        next unless feed_config[:channel][attribute_name].is_a?(String)
 
-        feed_config['channel'][attribute_name] = format(feed_config['channel'][attribute_name], params)
+        feed_config[:channel][attribute_name] = format(feed_config[:channel][attribute_name], params)
       end
 
       feed_config
