@@ -139,6 +139,7 @@ module Html2rss
     ##
     # Returns the dynamic parameter names which are required to use the feed config.
     #
+    # @param feed_config [Hash<Symbol, Object>]
     # @return [Set] containing Strings (the parameter names)
     def self.required_params_for_feed_config(feed_config)
       return unless feed_config[:channel]
@@ -169,7 +170,7 @@ module Html2rss
     # Sets the variables used in the feed config's channel.
     #
     # @param feed_config [Hash<Symbol, Object>]
-    # @param feed_config [Hash<Symbol, Object>]
+    # @param params [Hash<Symbol, Object>]
     def process_params(feed_config, params)
       return feed_config if params.keys.none?
 

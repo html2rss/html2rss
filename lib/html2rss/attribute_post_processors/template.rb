@@ -46,12 +46,12 @@ module Html2rss
       def get
         return format_string_with_methods if @options[:methods]
 
-        names = string.scan(/%[<|{](\w*)[>|}]/)
-        names.flatten!
-        names.compact!
-        names.map!(&:to_sym)
+        names = string.scan(/%[<|{](\w*)[>|}]/).flatten
 
-        format(string, names.map { |name| [name, item_value(name)] }.to_h)
+        format(string, names.map do |name|
+          name_as_sym = name.to_sym
+          [name_as_sym, item_value(name_as_sym)]
+        end.to_h)
       end
 
       private
