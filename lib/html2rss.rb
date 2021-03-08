@@ -24,10 +24,13 @@ module Html2rss
   # @param params [Hash] if required by feed config, the dynamic parameters for the config
   # @return [RSS::Rss]
   def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
-    feed_config = YAML.safe_load(File.open(file))
+    yaml = YAML.safe_load(File.open(file))
 
-    if name && (feed_config = feed_config.dig('feeds', name))
-      global_config.merge!(feed_config.reject { |key| key == 'feeds' })
+    if name && yaml['feeds']
+      feed_config = yaml['feeds'].fetch(name)
+      global_config.merge!(yaml.reject { |key| key == 'feeds' })
+    else
+      feed_config = yaml
     end
 
     feed Config.new(feed_config, global_config, params)
