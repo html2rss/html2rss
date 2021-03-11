@@ -34,7 +34,7 @@ module Html2rss
 
       @options ||= Hash.new do |hash, klass|
         hash[klass] = Struct.new(
-          "#{klass.class.to_s.split('::').last}Option",
+          "#{klass.to_s.split('::').last}Option",
           *klass::REQUIRED_OPTIONS,
           keyword_init: true
         )
