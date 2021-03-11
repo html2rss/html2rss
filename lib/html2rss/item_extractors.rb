@@ -5,7 +5,6 @@ module Html2rss
   # Provides a namespace for item extractors.
   module ItemExtractors
     DEFAULT = 'text'
-    private_constant :DEFAULT
 
     ##
     # @param name [String]
@@ -20,11 +19,28 @@ module Html2rss
 
     ##
     # @param xml [Nokogiri::XML]
-    # @param options [Hash<Symbol, Object>]
+    # @param selector [String, nil]
     # @return [Nokogiri::XML::Element]
-    def self.element(xml, options)
-      selector = options[:selector]
+    def self.element(xml, selector)
       selector ? xml.css(selector) : xml
+    end
+
+    ##
+    # @param attribute_options [Hash<Symbol, Object>]
+    # @param xml [Nokogiri::XML]
+    # @return [ItemExtractor::*]
+    def self.item_extractor_factory(attribute_options, xml)
+      extractor = get_extractor(attribute_options[:extractor])
+
+      @options ||= Hash.new do |hash, klass|
+        hash[klass] = Struct.new(
+          "#{klass.class.to_s.split('::').last}Option",
+          *klass::REQUIRED_OPTIONS,
+          keyword_init: true
+        )
+      end
+
+      extractor.new(xml, @options[extractor].new(attribute_options.slice(*extractor::REQUIRED_OPTIONS)))
     end
   end
 end

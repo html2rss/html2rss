@@ -11,9 +11,11 @@ module Html2rss
     #      updated:
     #        extractor: current_time
     class CurrentTime
+      REQUIRED_OPTIONS = [].freeze
+
       ##
       # @param _xml [nil, String]
-      # @param _options [nil, Hash<Symbol, Object>]
+      # @param _options [nil, Struct::CurrentTimeOptions]
       def initialize(_xml, _options); end
 
       ##

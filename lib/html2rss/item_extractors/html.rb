@@ -22,11 +22,13 @@ module Html2rss
     # Always make sure to sanitize the HTML during post processing with
     # {AttributePostProcessors::SanitizeHtml}[rdoc-ref:Html2rss::AttributePostProcessors::SanitizeHtml].
     class Html
+      REQUIRED_OPTIONS = [:selector].freeze
+
       ##
       # @param xml [Nokogiri::XML::Element]
-      # @param options [Hash<Symbol, Object>]
+      # @param options [Struct::HtmlOptions]
       def initialize(xml, options)
-        @element = ItemExtractors.element(xml, options)
+        @element = ItemExtractors.element(xml, options.selector)
       end
 
       ##

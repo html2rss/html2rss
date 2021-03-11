@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::ItemExtractors::Static do
   subject { described_class.new(nil, options).get }
 
-  let(:options) { { static: 'Foobar' } }
+  let(:options) { OpenStruct.new static: 'Foobar' }
 
   it { is_expected.to eq 'Foobar' }
 end
