@@ -4,18 +4,22 @@ module Html2rss
   ##
   # Provides a namespace for item extractors.
   module ItemExtractors
-    DEFAULT = 'text'
+    class UnknownExtractorName < StandardError; end
 
     ##
-    # @param name [String]
-    # @return [Class, nil] the extractor class
-    def self.get_extractor(name)
-      @get_extractor ||= Hash.new do |extractors, key|
-        extractors[key] = Utils.class_from_name(key || DEFAULT, 'ItemExtractors')
-      end
+    # Maps the extractor name to the class implementing the extractor.
+    #
+    # The key is the name to use in the feed config.
+    NAME_TO_CLASS = {
+      attribute: Attribute,
+      current_time: CurrentTime,
+      href: Href,
+      html: Html,
+      static: Static,
+      text: Text
+    }.freeze
 
-      @get_extractor[name]
-    end
+    DEFAULT_NAME = :text
 
     ##
     # @param xml [Nokogiri::XML]
@@ -26,21 +30,37 @@ module Html2rss
     end
 
     ##
+    # Creates an instance of the requested extractor.
+    #
+    #
     # @param attribute_options [Hash<Symbol, Object>]
+    #   Should at least contain `:extractor`, plus the required options by that extractor.
     # @param xml [Nokogiri::XML]
-    # @return [ItemExtractor::*]
+    # @return [ItemExtractors::*]
     def self.item_extractor_factory(attribute_options, xml)
-      extractor = get_extractor(attribute_options[:extractor])
+      name = attribute_options[:extractor]&.to_sym || DEFAULT_NAME
+      extractor = NAME_TO_CLASS[name]
 
-      @options ||= Hash.new do |hash, klass|
-        hash[klass] = Struct.new(
-          "#{klass.to_s.split('::').last}Option",
-          *klass::REQUIRED_OPTIONS,
-          keyword_init: true
-        )
+      raise UnknownExtractorName, "Can't find an extractor named '#{name}' in NAME_TO_CLASS" unless extractor
+
+      extractor.new(
+        xml,
+        item_option_class(extractor).new(attribute_options.slice(*extractor::REQUIRED_OPTIONS))
+      )
+    end
+
+    ##
+    # The `extractor_class`
+    #
+    # @param extractor_class []
+    #   The extractor class must have a constant called REQUIRED_OPTIONS as array.
+    # @return [ItemExtractors::*Options] The option class for the extractor.
+    def self.item_option_class(extractor_class)
+      @item_option_class ||= Hash.new do |hash, klass|
+        hash[klass] = Struct.new("#{klass.to_s.split('::').last}Options", *klass::REQUIRED_OPTIONS, keyword_init: true)
       end
 
-      extractor.new(xml, @options[extractor].new(attribute_options.slice(*extractor::REQUIRED_OPTIONS)))
+      @item_option_class[extractor_class]
     end
   end
 end
