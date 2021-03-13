@@ -34,7 +34,7 @@ module Html2rss
     #
     #
     # @param attribute_options [Hash<Symbol, Object>]
-    #   Should at least contain `:extractor`, plus the required options by that extractor.
+    #   Should at least contain `:extractor` (the name), plus the required options by that extractor.
     # @param xml [Nokogiri::XML]
     # @return [ItemExtractors::*]
     def self.item_extractor_factory(attribute_options, xml)
@@ -45,22 +45,23 @@ module Html2rss
 
       extractor.new(
         xml,
-        item_option_class(extractor).new(attribute_options.slice(*extractor::REQUIRED_OPTIONS))
+        options_class(name).new(attribute_options.slice(*extractor::REQUIRED_OPTIONS))
       )
     end
 
     ##
     # The `extractor_class`
     #
-    # @param extractor_class []
+    # @param extractor_name [Symbol] Name of the extractor
     #   The extractor class must have a constant called REQUIRED_OPTIONS as array.
     # @return [ItemExtractors::*Options] The option class for the extractor.
-    def self.item_option_class(extractor_class)
-      @item_option_class ||= Hash.new do |hash, klass|
+    def self.options_class(extractor_name)
+      @item_option_class ||= Hash.new do |hash, name|
+        klass = NAME_TO_CLASS[name]
         hash[klass] = Struct.new("#{klass.to_s.split('::').last}Options", *klass::REQUIRED_OPTIONS, keyword_init: true)
       end
 
-      @item_option_class[extractor_class]
+      @item_option_class[extractor_name]
     end
   end
 end
