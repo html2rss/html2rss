@@ -81,13 +81,9 @@ module Html2rss
     ##
     # @return [Array<Html2rss::Item>]
     def items
-      return @items if defined?(@items)
-
-      items = Item.from_url(config.url, config)
-
-      items.reverse! if config.items_order == :reverse
-
-      @items = items
+      @items ||= Item.from_url(config.url, config).tap do |items|
+        items.reverse! if config.items_order == :reverse
+      end
     end
 
     ##
@@ -99,9 +95,9 @@ module Html2rss
         item_maker.public_send("#{attribute_name}=", item.public_send(attribute_name))
       end
 
-      self.class.add_categories(item.categories, item_maker)
-      self.class.add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
-      self.class.add_guid(item, item_maker)
+      FeedBuilder.add_categories(item.categories, item_maker)
+      FeedBuilder.add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
+      FeedBuilder.add_guid(item, item_maker)
     end
   end
 end

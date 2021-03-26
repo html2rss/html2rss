@@ -102,12 +102,10 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @return [String]
     def self.get_body_from_url(url, config)
-      request = Faraday.new(url: url, headers: config.headers) do |faraday|
+      body = Faraday.new(url: url, headers: config.headers) do |faraday|
         faraday.use FaradayMiddleware::FollowRedirects
         faraday.adapter Faraday.default_adapter
-      end
-
-      body = request.get.body
+      end.get.body
 
       config.json? ? Html2rss::Utils.object_to_xml(JSON.parse(body)) : body
     end
