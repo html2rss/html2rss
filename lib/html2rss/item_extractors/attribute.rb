@@ -24,18 +24,20 @@ module Html2rss
     # during post processing with
     # {AttributePostProcessors::ParseTime}[rdoc-ref:Html2rss::AttributePostProcessors::ParseTime].
     class Attribute
+      REQUIRED_OPTIONS = %i[selector attribute].freeze
+
       ##
       # @param xml [Nokogiri::XML::Element]
-      # @param options [Hash<Symbol, Object>]
+      # @param options [Struct::AttributeOptions]
       def initialize(xml, options)
         @options = options
-        @element = ItemExtractors.element(xml, options)
+        @element = ItemExtractors.element(xml, options.selector)
       end
 
       ##
       # @return [String]
       def get
-        @element.attr(@options[:attribute]).to_s
+        @element.attr(@options.attribute).to_s
       end
     end
   end

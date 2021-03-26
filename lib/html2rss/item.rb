@@ -34,10 +34,10 @@ module Html2rss
 
       attribute_options = config.attribute_options(method_name)
 
-      extractor = ItemExtractors.get_extractor(attribute_options[:extractor])
-      value = extractor.new(xml, attribute_options).get
-
-      post_process(value, attribute_options.fetch(:post_process, false))
+      post_process(
+        ItemExtractors.item_extractor_factory(attribute_options, xml).get,
+        attribute_options.fetch(:post_process, false)
+      )
     end
 
     ##

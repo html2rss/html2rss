@@ -4,27 +4,63 @@ module Html2rss
   ##
   # Provides a namespace for item extractors.
   module ItemExtractors
-    DEFAULT = 'text'
-    private_constant :DEFAULT
+    class UnknownExtractorName < StandardError; end
 
     ##
-    # @param name [String]
-    # @return [Class, nil] the extractor class
-    def self.get_extractor(name)
-      @get_extractor ||= Hash.new do |extractors, key|
-        extractors[key] = Utils.class_from_name(key || DEFAULT, 'ItemExtractors')
-      end
+    # Maps the extractor name to the class implementing the extractor.
+    #
+    # The key is the name to use in the feed config.
+    NAME_TO_CLASS = {
+      attribute: Attribute,
+      current_time: CurrentTime,
+      href: Href,
+      html: Html,
+      static: Static,
+      text: Text
+    }.freeze
 
-      @get_extractor[name]
-    end
+    DEFAULT_NAME = :text
 
     ##
     # @param xml [Nokogiri::XML]
-    # @param options [Hash<Symbol, Object>]
+    # @param selector [String, nil]
     # @return [Nokogiri::XML::Element]
-    def self.element(xml, options)
-      selector = options[:selector]
+    def self.element(xml, selector)
       selector ? xml.css(selector) : xml
+    end
+
+    ##
+    # Creates an instance of the requested extractor.
+    #
+    #
+    # @param attribute_options [Hash<Symbol, Object>]
+    #   Should at least contain `:extractor` (the name), plus the required options by that extractor.
+    # @param xml [Nokogiri::XML]
+    # @return [ItemExtractors::*]
+    def self.item_extractor_factory(attribute_options, xml)
+      name = attribute_options[:extractor]&.to_sym || DEFAULT_NAME
+      extractor = NAME_TO_CLASS[name]
+
+      raise UnknownExtractorName, "Can't find an extractor named '#{name}' in NAME_TO_CLASS" unless extractor
+
+      extractor.new(
+        xml,
+        options_class(name).new(attribute_options.slice(*extractor::REQUIRED_OPTIONS))
+      )
+    end
+
+    ITEM_OPTION_CLASSES = Hash.new do |hash, klass|
+      hash[klass] = Struct.new("#{klass.to_s.split('::').last}Options", *klass::REQUIRED_OPTIONS, keyword_init: true)
+    end
+
+    ##
+    # The `extractor_class`
+    #
+    # @param extractor_name [Symbol] Name of the extractor
+    #   The extractor class must have a constant called REQUIRED_OPTIONS as array.
+    # @return [ItemExtractors::*Options] The option class for the extractor.
+    def self.options_class(extractor_name)
+      ITEM_OPTION_CLASSES[NAME_TO_CLASS[extractor_name]]
     end
   end
 end

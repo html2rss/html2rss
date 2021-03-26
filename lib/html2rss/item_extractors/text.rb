@@ -20,11 +20,14 @@ module Html2rss
     # Would return:
     #    'Lorem ipsum dolor ...'
     class Text
+      REQUIRED_OPTIONS = [:selector].freeze
+
       ##
       # @param xml [Nokogiri::XML::Element]
-      # @param options [Hash<Symbol, Object>]
+      # @param options [Struct::TextOptions]
       def initialize(xml, options)
-        @element = ItemExtractors.element(xml, options)
+        @options = options
+        @element = ItemExtractors.element(xml, options.selector)
       end
 
       ##
