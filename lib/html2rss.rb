@@ -24,19 +24,16 @@ module Html2rss
   # @param params [Hash] if required by feed config, the dynamic parameters for the config
   # @return [RSS::Rss]
   def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
-    # rubocop:disable Security/YAMLLoad
-    yaml = YAML.load(File.open(file))
-    # rubocop:enable Security/YAMLLoad
+    yaml = YAML.safe_load(File.open(file))
 
-    if yaml['feeds'] && name
+    if name && yaml['feeds']
       feed_config = yaml['feeds'].fetch(name)
-      global_config = global_config.merge(yaml.reject { |key| key == 'feeds' })
+      global_config.merge!(yaml.reject { |key| key == 'feeds' })
     else
       feed_config = yaml
     end
 
-    config = Config.new(feed_config, global_config, params)
-    feed(config)
+    feed Config.new(feed_config, global_config, params)
   end
 
   ##
