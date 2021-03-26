@@ -49,6 +49,10 @@ module Html2rss
       )
     end
 
+    ITEM_OPTION_CLASSES = Hash.new do |hash, klass|
+      hash[klass] = Struct.new("#{klass.to_s.split('::').last}Options", *klass::REQUIRED_OPTIONS, keyword_init: true)
+    end
+
     ##
     # The `extractor_class`
     #
@@ -56,12 +60,7 @@ module Html2rss
     #   The extractor class must have a constant called REQUIRED_OPTIONS as array.
     # @return [ItemExtractors::*Options] The option class for the extractor.
     def self.options_class(extractor_name)
-      @item_option_class ||= Hash.new do |hash, name|
-        klass = NAME_TO_CLASS[name]
-        hash[klass] = Struct.new("#{klass.to_s.split('::').last}Options", *klass::REQUIRED_OPTIONS, keyword_init: true)
-      end
-
-      @item_option_class[extractor_name]
+      ITEM_OPTION_CLASSES[NAME_TO_CLASS[extractor_name]]
     end
   end
 end
