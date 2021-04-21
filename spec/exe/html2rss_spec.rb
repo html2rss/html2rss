@@ -8,9 +8,19 @@ RSpec.describe 'exe/html2rss' do
     File.expand_path('exe/html2rss', spec.full_gem_path)
   end
 
-  let(:rss_start) do
+  let(:doctype_xml) do
+    '<?xml version="1.0" encoding="UTF-8"?>'
+  end
+
+  let(:stylesheets_xml) do
+    <<~XML
+      <?xml-stylesheet href="/style.xls" type="text/xsl" media="all"?>
+      <?xml-stylesheet href="/rss.css" type="text/css" media="all"?>
+    XML
+  end
+
+  let(:rss_xml) do
     <<~RSS
-      <?xml version="1.0" encoding="UTF-8"?>
       <rss version="2.0"
         xmlns:content="http://purl.org/rss/1.0/modules/content/"
         xmlns:dc="http://purl.org/dc/elements/1.1/"
@@ -35,14 +45,22 @@ RSpec.describe 'exe/html2rss' do
 
   context 'with feed config: nuxt-releases' do
     context 'with arguments: feed YAML_FILE' do
-      it 'generates the RSS' do
-        expect(`#{executable} feed spec/single.test.yml`).to start_with(rss_start)
+      subject(:output) { `#{executable} feed spec/single.test.yml` }
+
+      it 'generates the RSS', :aggregate_failures do
+        expect(output).to start_with(doctype_xml)
+        expect(output).not_to include(stylesheets_xml)
+        expect(output).to include(rss_xml)
       end
     end
 
     context 'with arguments: feed YAML_FILE FEED_NAME' do
-      it 'generates the RSS' do
-        expect(`#{executable} feed spec/feeds.test.yml nuxt-releases`).to start_with(rss_start)
+      subject(:output) { `#{executable} feed spec/feeds.test.yml nuxt-releases` }
+
+      it 'generates the RSS', :aggregate_failures do
+        expect(output).to start_with(doctype_xml)
+        expect(output).to include(stylesheets_xml)
+        expect(output).to include(rss_xml)
       end
     end
   end

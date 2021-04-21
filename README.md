@@ -579,6 +579,73 @@ $ html2rss feed feeds.yml myotherfeed
 
 </details>
 
+## Display the RSS feed nicely in a web browser
+
+To display RSS feeds nicely in a web browser, you can:
+
+- add a plain old CSS stylesheet, or
+- use XSLT (e**X**tensible **S**tylesheet **L**anguage **T**ransformations).
+
+A web browser will apply these stylesheets and show the contents as described.
+
+In a CSS stylesheet, you'd use `element` selectors to apply styles.
+
+If you want to do more, then you need to create a XSLT. XSLT allows you
+to use a HTML template and to freely design the information of the RSS,
+including using JavaScript and external resources.
+
+You can add as many stylesheets and types as you like. Just add them to your global configuration.
+
+<details>
+  <summary>Ruby: a stylesheet config example</summary>
+
+```ruby
+  config =  Html2rss::Config.new(
+    { channel: {}, selectors: {} }, # omitted
+    {
+      stylesheets: [
+        {
+          href: '/relative/base/path/to/style.xls',
+          media: :all,
+          type: 'text/xsl'
+        },
+        {
+          href: 'http://example.com/rss.css',
+          media: :all,
+          type: 'text/css'
+        }
+      ]
+    }
+  )
+
+Html2rss.feed(config)
+```
+
+</details>
+
+<details>
+  <summary>YAML: a stylesheet config example</summary>
+
+```yml
+stylesheets:
+  - href: "/relative/base/path/to/style.xls"
+    media: "all"
+    type: "text/xsl"
+  - href: "http://example.com/rss.css"
+    media: "all"
+    type: "text/css"
+feeds:
+  # ... omitted
+```
+
+</details>
+
+Recommended further readings:
+
+- [How to format RSS with CSS on lifewire.com](https://www.lifewire.com/how-to-format-rss-3469302)
+- [XSLT: Extensible Stylesheet Language Transformations on MDN](https://developer.mozilla.org/en-US/docs/Web/XSLT)
+- [The XSLT used by html2rss-web](https://github.com/gildesmarais/html2rss-web/blob/master/public/rss.xsl)
+
 ## Gotchas and tips & tricks
 
 - Check that the channel URL does not redirect to a mobile page with a different markup structure.

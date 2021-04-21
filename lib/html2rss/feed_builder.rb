@@ -22,8 +22,9 @@ module Html2rss
     # @return [RSS::Rss]
     def rss
       RSS::Maker.make('2.0') do |maker|
-        add_channel(maker.channel)
+        config.stylesheets.each { |stylesheet| add_stylesheet(stylesheet, maker) }
 
+        add_channel(maker.channel)
         items.each { |item| add_item(item, maker.items.new_item) }
       end
     end
@@ -65,6 +66,19 @@ module Html2rss
 
     # @return [Html2rss::Config]
     attr_reader :config
+
+    ##
+    # @param [Array<Hash>] stylesheet <description>
+    # @param [RSS::Maker::RSS20] maker
+    #
+    # @return nil
+    def add_stylesheet(stylesheet, maker)
+      maker.xml_stylesheets.new_xml_stylesheet do |xss|
+        xss.href = stylesheet[:href]
+        xss.type = stylesheet[:type]
+        xss.media = stylesheet[:media]
+      end
+    end
 
     ##
     # @param channel_maker [RSS::Maker::RSS20::Channel]
