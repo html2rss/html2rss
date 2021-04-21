@@ -53,7 +53,8 @@ module Html2rss
       nicer_path = uri.path.split('/')
       nicer_path.reject! { |part| part == '' }
 
-      nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ').titleize}" : uri.host
+      host = uri.host
+      nicer_path.any? ? "#{host}: #{nicer_path.join(' ').titleize}" : host
     end
 
     ##

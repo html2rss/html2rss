@@ -10,13 +10,13 @@ module Html2rss
     ##
     # @param url [String, URI]
     # @param base_url [String]
-    # @return [URI::HTTPS, URI::HTTP]
+    # @return [Addressable::URI]
     def self.build_absolute_url_from_relative(url, base_url)
-      url = URI(url) if url.is_a?(String)
+      url = Addressable::URI.parse(url) if url.is_a?(String)
 
       return url if url.absolute?
 
-      URI(base_url).tap do |uri|
+      Addressable::URI.parse(base_url).tap do |uri|
         path = url.path
         fragment = url.fragment
 
