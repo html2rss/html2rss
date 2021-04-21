@@ -15,7 +15,6 @@ module Html2rss
     # The key is the name to use in the feed config.
     NAME_TO_CLASS = {
       attribute: Attribute,
-      current_time: CurrentTime,
       href: Href,
       html: Html,
       static: Static,
