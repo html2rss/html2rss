@@ -91,6 +91,12 @@ module Html2rss
     end
 
     ##
+    # @return [Array<Hash>]
+    def stylesheets
+      global_config.fetch(:stylesheets, [])
+    end
+
+    ##
     # @param name [Symbol]
     # @return [Hash]
     def attribute_options(name)
