@@ -22,10 +22,10 @@ module Html2rss
     # @return [RSS::Rss]
     def rss
       RSS::Maker.make('2.0') do |maker|
-        config.stylesheets.each { |stylesheet| add_stylesheet(stylesheet, maker) }
+        config.stylesheets.each { |stylesheet| FeedBuilder.add_stylesheet(stylesheet, maker) }
 
         add_channel(maker.channel)
-        items.each { |item| add_item(item, maker.items.new_item) }
+        items.each { |item| FeedBuilder.add_item(item, maker.items.new_item) }
       end
     end
 
@@ -62,23 +62,39 @@ module Html2rss
       guid.isPermaLink = false
     end
 
-    private
-
-    # @return [Html2rss::Config]
-    attr_reader :config
-
     ##
+    # Adds a stylesheet to the RSS::Maker.
+    #
     # @param [Array<Hash>] stylesheet <description>
     # @param [RSS::Maker::RSS20] maker
-    #
     # @return nil
-    def add_stylesheet(stylesheet, maker)
+    def self.add_stylesheet(stylesheet, maker)
       maker.xml_stylesheets.new_xml_stylesheet do |xss|
         xss.href = stylesheet[:href]
         xss.type = stylesheet[:type]
         xss.media = stylesheet[:media]
       end
     end
+
+    ##
+    # Adds the item to the Item Maker
+    # @param item [Html2rss::Item]
+    # @param item_maker [RSS::Maker::RSS20::Items::Item]
+    # @return nil
+    def self.add_item(item, item_maker)
+      item.available_attributes.each do |attribute_name|
+        item_maker.public_send("#{attribute_name}=", item.public_send(attribute_name))
+      end
+
+      FeedBuilder.add_categories(item.categories, item_maker)
+      FeedBuilder.add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
+      FeedBuilder.add_guid(item, item_maker)
+    end
+
+    private
+
+    # @return [Html2rss::Config]
+    attr_reader :config
 
     ##
     # @param channel_maker [RSS::Maker::RSS20::Channel]
@@ -98,20 +114,6 @@ module Html2rss
       @items ||= Item.from_url(config.url, config).tap do |items|
         items.reverse! if config.items_order == :reverse
       end
-    end
-
-    ##
-    # @param item [Html2rss::Item]
-    # @param item_maker [RSS::Maker::RSS20::Items::Item]
-    # @return nil
-    def add_item(item, item_maker)
-      item.available_attributes.each do |attribute_name|
-        item_maker.public_send("#{attribute_name}=", item.public_send(attribute_name))
-      end
-
-      FeedBuilder.add_categories(item.categories, item_maker)
-      FeedBuilder.add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
-      FeedBuilder.add_guid(item, item_maker)
     end
   end
 end

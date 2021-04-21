@@ -2,9 +2,6 @@
 
 require 'active_support/core_ext/hash'
 require 'addressable/uri'
-require 'builder'
-require 'json'
-require 'nokogiri'
 
 module Html2rss
   ##
@@ -14,19 +11,20 @@ module Html2rss
     # @param url [String, URI]
     # @param base_url [String]
     # @return [URI::HTTPS, URI::HTTP]
-    # rubocop:disable Metrics/AbcSize
     def self.build_absolute_url_from_relative(url, base_url)
       url = URI(url) if url.is_a?(String)
 
       return url if url.absolute?
 
       URI(base_url).tap do |uri|
-        uri.path = url.path.to_s.start_with?('/') ? url.path : "/#{url.path}"
+        path = url.path
+        fragment = url.fragment
+
+        uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
         uri.query = url.query
-        uri.fragment = url.fragment if url.fragment
+        uri.fragment = fragment if fragment
       end
     end
-    # rubocop:enable Metrics/AbcSize
 
     ##
     # @param object [Array, Hash]
