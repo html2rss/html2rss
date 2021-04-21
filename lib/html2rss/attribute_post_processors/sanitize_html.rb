@@ -51,8 +51,8 @@ module Html2rss
       ##
       # - uses the {https://github.com/rgrove/sanitize sanitize gem}
       # - uses the config {https://github.com/rgrove/sanitize#sanitizeconfigrelaxed Sanitize::Config::RELAXED}
-      # - adds rel="nofollow noopener noreferrer" to a elements
-      # - adds target="_blank" to a elements
+      # - adds rel="nofollow noopener noreferrer" to <a> tags
+      # - adds target="_blank" to <a> tags
       # @return [String]
       def get
         Sanitize.fragment(@value, sanitize_config).to_s.split.join(' ')
@@ -70,7 +70,7 @@ module Html2rss
             'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
             'img' => { 'referrer-policy' => 'no-referrer' }
           },
-          transformers: [transform_urls_to_absolute_ones, wrap_img_in_a]
+          transformers: [transform_urls_to_absolute_ones, WRAP_IMG_IN_A]
         )
       end
 
@@ -92,22 +92,20 @@ module Html2rss
       end
 
       ##
-      # @return [Proc]
-      def wrap_img_in_a
-        lambda do |env|
-          return if env[:node_name] != 'img'
+      # Wraps an <img> tag into an <a> tag which links to `img.src`.
+      WRAP_IMG_IN_A = lambda do |env|
+        return if env[:node_name] != 'img'
 
-          img = env[:node]
+        img = env[:node]
 
-          return if img.parent.name == 'a'
+        return if img.parent.name == 'a'
 
-          anchor = Nokogiri::XML::Node.new('a', img)
-          anchor[:href] = img[:src]
+        anchor = Nokogiri::XML::Node.new('a', img)
+        anchor[:href] = img[:src]
 
-          anchor.add_child img.dup
+        anchor.add_child img.dup
 
-          img.replace(anchor)
-        end
+        img.replace(anchor)
       end
     end
   end

@@ -10,6 +10,8 @@ require 'yaml'
 ##
 # The Html2rss namespace.
 module Html2rss
+  CONFIG_KEY_FEEDS = 'feeds'
+
   ##
   # Returns a RSS object which is generated from the provided file.
   #
@@ -26,9 +28,9 @@ module Html2rss
   def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
     yaml = YAML.safe_load(File.open(file))
 
-    if name && yaml['feeds']
-      feed_config = yaml['feeds'].fetch(name)
-      global_config.merge!(yaml.reject { |key| key == 'feeds' })
+    if name && (feeds = yaml[CONFIG_KEY_FEEDS])
+      feed_config = feeds.fetch(name)
+      global_config.merge!(yaml.reject { |key| key == CONFIG_KEY_FEEDS })
     else
       feed_config = yaml
     end

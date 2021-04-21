@@ -7,6 +7,9 @@ module Html2rss
   # The Config class abstracts from the config data structure and
   # provides default values.
   class Config
+    ##
+    # The Error class to be thrown when a feed config requires params, but none
+    # were passed to Config.
     class ParamsMissing < StandardError; end
 
     ##
@@ -50,7 +53,8 @@ module Html2rss
       nicer_path = uri.path.split('/')
       nicer_path.reject! { |part| part == '' }
 
-      nicer_path.any? ? "#{uri.host}: #{nicer_path.join(' ').titleize}" : uri.host
+      host = uri.host
+      nicer_path.any? ? "#{host}: #{nicer_path.join(' ').titleize}" : host
     end
 
     ##

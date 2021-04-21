@@ -4,6 +4,9 @@ module Html2rss
   ##
   # Provides a namespace for item extractors.
   module ItemExtractors
+    ##
+    # The Error class to be thrown when an unknown (= absent in NAME_TO_CLASS
+    # mapping) extractor is requested.
     class UnknownExtractorName < StandardError; end
 
     ##

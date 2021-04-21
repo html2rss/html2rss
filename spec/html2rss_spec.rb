@@ -8,6 +8,10 @@ RSpec.describe Html2rss do
     expect(Html2rss::VERSION).not_to be nil
   end
 
+  describe '::CONFIG_KEY_FEEDS' do
+    it { expect(described_class::CONFIG_KEY_FEEDS).to eq 'feeds' }
+  end
+
   describe '.feed_from_yaml_config' do
     context 'with html response' do
       subject(:feed) do
@@ -59,8 +63,8 @@ RSpec.describe Html2rss do
 
     let(:yaml_config) { YAML.safe_load(File.open(config_file), symbolize_names: true) }
     let(:config) do
-      feed_config = yaml_config[:feeds][name.to_sym]
-      global_config = yaml_config.reject { |k| k == :feeds }
+      feed_config = yaml_config[described_class::CONFIG_KEY_FEEDS.to_sym][name.to_sym]
+      global_config = yaml_config.reject { |k| k == described_class::CONFIG_KEY_FEEDS.to_sym }
       Html2rss::Config.new(feed_config, global_config)
     end
     let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
@@ -206,7 +210,7 @@ RSpec.describe Html2rss do
 
     context 'with items having order key and reverse as value' do
       before do
-        yaml_config[:feeds][name.to_sym][:selectors][:items][:order] = 'reverse'
+        yaml_config[described_class::CONFIG_KEY_FEEDS.to_sym][name.to_sym][:selectors][:items][:order] = 'reverse'
       end
 
       it 'reverses the item ordering' do
