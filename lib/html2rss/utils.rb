@@ -34,16 +34,6 @@ module Html2rss
     end
 
     ##
-    # @param snake_cased_name [String]
-    # @param module_name [String]
-    # @return Object
-    def self.class_from_name(snake_cased_name, module_name)
-      camel_cased_name = snake_cased_name.split('_').map(&:capitalize).join
-      class_name = ['Html2rss', module_name, camel_cased_name].join('::')
-      Object.const_get(class_name)
-    end
-
-    ##
     # @param url [String]
     # @return [Addressable::URI] sanitized and normalized URL
     def self.sanitize_url(url)
