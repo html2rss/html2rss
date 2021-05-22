@@ -16,7 +16,7 @@ make information extraction, processing and sanitizing a breeze.
 supported, too.
 
 **Searching for a ready to use app which serves generated feeds via HTTP?**
-[Head over to `html2rss-web`!](https://github.com/gildesmarais/html2rss-web)
+[Head over to `html2rss-web`!](https://github.com/html2rss/html2rss-web)
 
 To support the development, feel free [to donate](https://liberapay.com/gildesmarais/donate). Thank you! 💓
 
@@ -532,7 +532,7 @@ Note that the order of items, according to the RSS 2.0 spec, should not matter t
 ## Usage with a YAML config file
 
 This step is not required to work with this gem. If you're using
-[`html2rss-web`](https://github.com/gildesmarais/html2rss-web)
+[`html2rss-web`](https://github.com/html2rss/html2rss-web)
 and want to create your private feed configs, keep on reading!
 
 First, create a YAML file, e.g. `feeds.yml`. This file will contain your global config and multiple feed configs under the key `feeds`.
@@ -644,7 +644,7 @@ Recommended further readings:
 
 - [How to format RSS with CSS on lifewire.com](https://www.lifewire.com/how-to-format-rss-3469302)
 - [XSLT: Extensible Stylesheet Language Transformations on MDN](https://developer.mozilla.org/en-US/docs/Web/XSLT)
-- [The XSLT used by html2rss-web](https://github.com/gildesmarais/html2rss-web/blob/master/public/rss.xsl)
+- [The XSLT used by html2rss-web](https://github.com/html2rss/html2rss-web/blob/master/public/rss.xsl)
 
 ## Gotchas and tips & tricks
 
