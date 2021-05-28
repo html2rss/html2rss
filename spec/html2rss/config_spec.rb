@@ -22,7 +22,7 @@ RSpec.describe Html2rss::Config do
   end
 
   describe '#attribute_names' do
-    subject { described_class.new(selectors: { items: {}, name: {} }).attribute_names }
+    subject { described_class.new(channel: {}, selectors: { items: {}, name: {} }).attribute_names }
 
     it { is_expected.to eq %i[name] }
   end
@@ -30,7 +30,7 @@ RSpec.describe Html2rss::Config do
   describe '#category_selectors' do
     subject { described_class.new(feed_config).category_selectors }
 
-    let(:feed_config) { { selectors: { categories: ['name', 'name', nil], name: {} } } }
+    let(:feed_config) { { channel: {}, selectors: { categories: ['name', 'name', nil], name: {} } } }
 
     it { is_expected.to eq %i[name] }
   end
@@ -39,9 +39,9 @@ RSpec.describe Html2rss::Config do
     subject { described_class.new(feed_config).title }
 
     context 'with channel.title present' do
-      let(:feed_config) { { 'channel' => { 'title' => 'An example channel' } } }
+      let(:feed_config) { { channel: { title: 'An example channel' } } }
 
-      it { is_expected.to eq feed_config['channel']['title'] }
+      it { is_expected.to eq feed_config[:channel][:title] }
     end
 
     context 'without channel.url having path' do
