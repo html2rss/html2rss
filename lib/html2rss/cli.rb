@@ -11,7 +11,7 @@ module Html2rss
       true
     end
 
-    desc 'feed YAML_FILE [FEED_NAME] [param=value ...]', 'print RSS built from the FEED_CONFIG file to stdout'
+    desc 'feed YAML_FILE [FEED_NAME] [param=value ...]', 'print RSS built from the YAML_FILE file to stdout'
     def feed(yaml_file, *options)
       raise 'yaml_file file does not exist' unless File.exist?(yaml_file)
 
