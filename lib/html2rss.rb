@@ -41,6 +41,10 @@ module Html2rss
   ##
   # Returns a RSS object which is generated from the provided config.
   #
+  # In case you need `global_config` or `params`, you need to
+  # provide a Html2rss::Config instance as `config`.
+  # Otherwise a Hash using Symbols as keys will do fine.
+  #
   # Example:
   #
   #    feed = Html2rss.feed(
@@ -53,10 +57,10 @@ module Html2rss
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
   #
-  # @param config [Html2rss::Config]
+  # @param config [Hash<Symbol, Object>, Html2rss::Config]
   # @return [RSS::Rss]
   def self.feed(config)
-    raise 'given config must be a Html2rss::Config instance' unless config.is_a?(Config)
+    config = Config.new(config) unless config.is_a?(Config)
 
     feed = FeedBuilder.new config
     feed.rss
