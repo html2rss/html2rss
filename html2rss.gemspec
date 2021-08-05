@@ -41,7 +41,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
   spec.add_dependency 'reverse_markdown', '~> 2.0'
   spec.add_dependency 'rss'
-  spec.add_dependency 'sanitize', '~> 5.0'
+  spec.add_dependency 'sanitize', '~> 6.0'
   spec.add_dependency 'thor'
   spec.add_dependency 'to_regexp'
   spec.add_dependency 'zeitwerk'
