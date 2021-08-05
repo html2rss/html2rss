@@ -2,6 +2,7 @@
 
 require 'faraday'
 require 'faraday_middleware'
+require 'json'
 require 'nokogiri'
 
 module Html2rss
