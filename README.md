@@ -150,7 +150,7 @@ Your `selectors` Hash can contain arbitrary named selectors, but only a few will
 | `author`      | `author`           |                                              |
 | `category`    | `categories`       | See notes below.                             |
 | `enclosure`   | `enclosure`        | See notes below.                             |
-| `pubDate`     | `update`           | An instance of `Time`.                       |
+| `pubDate`     | `updated`          | An instance of `Time`.                       |
 | `guid`        | `guid`             | Generated from the `title` or `description`. |
 | `comments`    | `comments`         | A URL.                                       |
 | `source`      | ~~source~~         | Not yet supported.                           |
