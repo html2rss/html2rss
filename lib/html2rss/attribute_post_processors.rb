@@ -15,7 +15,7 @@ module Html2rss
     # The key is the name to use in the feed config.
     NAME_TO_CLASS = {
       gsub: Gsub,
-      html_to_mark: HtmlToMarkdown,
+      html_to_markdown: HtmlToMarkdown,
       markdown_to_html: MarkdownToHtml,
       parse_time: ParseTime,
       parse_uri: ParseUri,
