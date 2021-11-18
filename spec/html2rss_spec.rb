@@ -85,63 +85,24 @@ RSpec.describe Html2rss do
       end
 
       describe 'feed.channel' do
-        it 'sets a title' do
+        it 'sets the channel attributes', :aggregate_failures do
           expect(xml.css('channel > title').text).to eq 'github.com: Nuxt Nuxt.Js Releases'
-        end
-
-        describe 'channel.link' do
-          it 'sets it to the feed-configs channel url' do
-            expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
-          end
-
-          it 'is parse-able by URI::HTTP' do
-            expect(URI(xml.css('channel > link').text)).to be_a(URI::HTTP)
-          end
-        end
-
-        it 'sets a description' do
-          expect(
-            xml.css('channel > description').text
-          ).to eq 'Latest items from https://github.com/nuxt/nuxt.js/releases.'
-        end
-
-        it 'sets a ttl' do
+          expect(xml.css('channel > description').text).to eq 'Latest items from https://github.com/nuxt/nuxt.js/releases.'
           expect(xml.css('channel > ttl').text.to_i).to be > 0
-        end
-
-        describe '.generator' do
-          subject(:generator) { xml.css('channel > generator').text }
-
-          it 'starts with html2rss' do
-            expect(generator).to start_with('html2rss')
-          end
-
-          it 'includes the version number' do
-            expect(generator).to end_with(Html2rss::VERSION)
-          end
-        end
-
-        it 'has items' do
           expect(xml.css('channel > item').count).to be > 0
+          expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
+          expect(URI(xml.css('channel > link').text)).to be_a(URI::HTTP)
+          expect(xml.css('channel > generator').text).to start_with('html2rss') & end_with(Html2rss::VERSION)
         end
       end
 
       describe 'feed.items' do
         subject(:item) { xml.css('channel > item').first }
 
-        it 'formats item.title' do
+        it 'sets item attributes', :aggregate_failures do
           expect(item.css('title').text).to eq 'v2.10.2 (pi)'
-        end
-
-        it 'has a link' do
           expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2'
-        end
-
-        it 'has an author' do
           expect(item.css('author').text).to eq 'pi'
-        end
-
-        it 'has a guid' do
           expect(item.css('guid').text).to be_a(String)
         end
 

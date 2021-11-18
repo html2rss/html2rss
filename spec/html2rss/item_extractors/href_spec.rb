@@ -8,14 +8,18 @@ RSpec.describe Html2rss::ItemExtractors::Href do
   context 'with relative href url' do
     let(:xml) { Nokogiri.HTML('<div><a href="/posts/latest-findings">...</a></div>') }
 
-    it { is_expected.to be_a(Addressable::URI) }
-    it { is_expected.to eq Addressable::URI.parse('https://example.com/posts/latest-findings') }
+    specify(:aggregate_failures) do
+      expect(subject).to be_a(Addressable::URI)
+      expect(subject).to eq Addressable::URI.parse('https://example.com/posts/latest-findings')
+    end
   end
 
   context 'with absolute href url' do
     let(:xml) { Nokogiri.HTML('<div><a href="http://example.com/posts/absolute">...</a></div>') }
 
-    it { is_expected.to be_a(Addressable::URI) }
-    it { is_expected.to eq Addressable::URI.parse('http://example.com/posts/absolute') }
+    specify(:aggregate_failures) do
+      expect(subject).to be_a(Addressable::URI)
+      expect(subject).to eq Addressable::URI.parse('http://example.com/posts/absolute')
+    end
   end
 end
