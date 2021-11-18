@@ -56,6 +56,8 @@ feeds:
         selector: 'img.avatar'
         extractor: 'attribute'
         attribute: 'src'
+      guid:
+        - link
   json:
     channel:
       title: JSON

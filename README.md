@@ -149,9 +149,9 @@ Your `selectors` Hash can contain arbitrary named selectors, but only a few will
 | `link`        | `link`             | A URL.                                       |
 | `author`      | `author`           |                                              |
 | `category`    | `categories`       | See notes below.                             |
+| `guid`        | `guid`             | Default title/description. See notes below.  |
 | `enclosure`   | `enclosure`        | See notes below.                             |
 | `pubDate`     | `updated`          | An instance of `Time`.                       |
-| `guid`        | `guid`             | Generated from the `title` or `description`. |
 | `comments`    | `comments`         | A URL.                                       |
 | `source`      | ~~source~~         | Not yet supported.                           |
 
@@ -326,6 +326,53 @@ selectors:
   categories:
     - genre
     - branch
+```
+
+</details>
+
+## Custom item GUID
+
+By default, html2rss generates a GUID from the `title` or `description`.
+
+If this does not work well, you can choose other attributes from which the GUID is build.
+The principle is the same as for the categories: pass an array of selectors names.
+
+In all cases, the GUID is a SHA1-encoded string.
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    title: {
+      # ... omitted
+      selector: 'h1'
+    },
+    link: { selector: 'a', extractor: 'href' },
+    guid: %i[link]
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  title:
+    selector: "h1"
+  link:
+    selector: "a"
+    extractor: "href"
+  guid:
+    - link
 ```
 
 </details>

@@ -55,6 +55,17 @@ RSpec.describe Html2rss do
       it 'returns a RSS:Rss instance' do
         expect(feed).to be_a_kind_of(RSS::Rss)
       end
+
+      context 'with item' do
+        subject(:item) { Nokogiri.XML(feed.to_s).css('item:first') }
+
+        let(:guid) { item.css('guid').text }
+
+        it 'autogenerates a guid', :aggregate_failures do
+          expect(guid).to be_a String
+          expect(guid.bytesize).to eq 40
+        end
+      end
     end
   end
 
@@ -103,7 +114,7 @@ RSpec.describe Html2rss do
           expect(item.css('title').text).to eq 'v2.10.2 (pi)'
           expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2'
           expect(item.css('author').text).to eq 'pi'
-          expect(item.css('guid').text).to be_a(String)
+          expect(item.css('guid').text).to eq Digest::SHA1.hexdigest('https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2')
         end
 
         describe 'item.pubDate' do

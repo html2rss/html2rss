@@ -45,7 +45,7 @@ module Html2rss
     # @return [Array<Symbol>]
     def available_attributes
       @available_attributes ||= (%i[title link description author comments updated] &
-        @config.attribute_names) - %i[categories enclosure]
+        config.attribute_names) - %i[categories enclosure]
     end
 
     ##
@@ -65,9 +65,18 @@ module Html2rss
     end
 
     ##
+    #
+    # @return [String] SHA1
+    def guid
+      content = config.guid_selectors.flat_map { |method_name| public_send(method_name) }.join
+
+      Digest::SHA1.hexdigest content
+    end
+
+    ##
     # @return [Array<String>]
     def categories
-      config.category_selectors.map { |method_name| method_missing(method_name) }
+      config.category_selectors.map { |method_name| public_send(method_name) }
     end
 
     ##
@@ -126,7 +135,7 @@ module Html2rss
 
       [post_process_options].flatten.each do |options|
         value = AttributePostProcessors.get_processor(options[:name])
-                                       .new(value, options: options, item: self, config: @config)
+                                       .new(value, options: options, item: self, config: config)
                                        .get
       end
 
