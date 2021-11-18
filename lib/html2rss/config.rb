@@ -121,14 +121,13 @@ module Html2rss
     ##
     # @return [Array<Symbol>]
     def category_selectors
-      categories = feed_config.dig(:selectors, :categories)
-      return [] unless categories
+      selector_names_for(:categories)
+    end
 
-      categories = categories.keep_if { |category| category.to_s != '' }
-      categories.map!(&:to_sym)
-      categories.uniq!
-
-      categories
+    ##
+    # @return [Array<Symbol>]
+    def guid_selectors
+      selector_names_for(:guid, default: :title_or_description)
     end
 
     ##
@@ -193,6 +192,17 @@ module Html2rss
       end
 
       feed_config
+    end
+
+    ##
+    # Returns the selector names for selector `name`. If none, returns [default].
+    # @return [Array<Symbol>]
+    def selector_names_for(name, default: nil)
+      feed_config[:selectors].fetch(name) { Array(default) }.tap do |array|
+        array.reject! { |entry| entry.to_s == '' }
+        array.map!(&:to_sym)
+        array.uniq!
+      end
     end
   end
 end
