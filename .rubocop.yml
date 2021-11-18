@@ -22,6 +22,12 @@ RSpec/DescribeClass:
   Exclude:
     - spec/exe/**/*_spec.rb
 
+RSpec/ExampleLength:
+  Max: 7
+
+RSpec/NamedSubject:
+  Enabled: false
+
 Style/AsciiComments:
   AllowedChars:
     - €
