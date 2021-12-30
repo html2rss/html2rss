@@ -9,6 +9,9 @@ AllCops:
   Exclude:
     - vendor/**/*
 
+Performance/StringIdentifierArgument:
+  Enabled: false
+
 Metrics/BlockLength:
   Exclude:
     - "**/*_spec.rb"

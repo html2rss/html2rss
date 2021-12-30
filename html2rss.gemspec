@@ -19,6 +19,7 @@ Gem::Specification.new do |spec|
   if spec.respond_to?(:metadata)
     spec.metadata['allowed_push_host'] = 'https://rubygems.org'
     spec.metadata['changelog_uri'] = 'https://github.com/html2rss/html2rss/blob/master/CHANGELOG.md'
+    spec.metadata['rubygems_mfa_required'] = 'true'
   else
     raise 'RubyGems 2.0 or newer is required to protect against ' \
           'public gem pushes.'
