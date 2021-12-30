@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'active_support/isolated_execution_state'
 require 'active_support/core_ext/hash'
 
 module Html2rss
@@ -166,22 +167,27 @@ module Html2rss
       end
     end
 
-    def assert_required_params_presence(feed_config, params)
-      missing_params = Config.required_params_for_feed_config(feed_config) - params.keys.map(&:to_s)
-
-      raise ParamsMissing, missing_params.to_a.join(', ') if missing_params.size.positive?
-    end
-
     private
 
     # @return [Hash<Symbol, Object>]
     attr_reader :feed_config, :channel_config, :global_config
 
     ##
+    # @param feed_config [Hash<Symbol, Object>]
+    # @param params [Hash<Symbol, String>]
+    # @return [nil]
+    def assert_required_params_presence(feed_config, params)
+      missing_params = Config.required_params_for_feed_config(feed_config) - params.keys.map(&:to_s)
+
+      raise ParamsMissing, missing_params.to_a.join(', ') if missing_params.size.positive?
+    end
+
+    ##
     # Sets the variables used in the feed config's channel.
     #
     # @param feed_config [Hash<Symbol, Object>]
     # @param params [Hash<Symbol, Object>]
+    # @return [Hash<Symbol, Object>]
     def process_params(feed_config, params)
       return feed_config if params.keys.none?
 
@@ -196,6 +202,8 @@ module Html2rss
 
     ##
     # Returns the selector names for selector `name`. If none, returns [default].
+    # @param name [Symbol]
+    # @param default [String, Symbol]
     # @return [Array<Symbol>]
     def selector_names_for(name, default: nil)
       feed_config[:selectors].fetch(name) { Array(default) }.tap do |array|

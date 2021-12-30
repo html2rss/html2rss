@@ -12,6 +12,12 @@ module Html2rss
     end
 
     desc 'feed YAML_FILE [FEED_NAME] [param=value ...]', 'print RSS built from the YAML_FILE file to stdout'
+    ##
+    # Prints the feed to STDOUT.
+    #
+    # @param yaml_file [String]
+    # @param options [String]
+    # @return nil
     def feed(yaml_file, *options)
       raise 'yaml_file file does not exist' unless File.exist?(yaml_file)
 

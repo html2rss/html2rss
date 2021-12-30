@@ -42,7 +42,7 @@ module Html2rss
 
       ##
       # @param value [String]
-      # @param env [Hash<Symbol, Object>]
+      # @param env [Item::Context]
       def initialize(value, env)
         @value = value
         @channel_url = env[:config].url

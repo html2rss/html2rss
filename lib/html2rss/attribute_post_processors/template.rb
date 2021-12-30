@@ -33,7 +33,7 @@ module Html2rss
     class Template
       ##
       # @param value [String]
-      # @param env [Hash<Symbol, Object>]
+      # @param env [Item::Context]
       def initialize(value, env)
         @value = value
         @options = env[:options]

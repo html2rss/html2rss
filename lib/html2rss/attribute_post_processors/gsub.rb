@@ -29,7 +29,7 @@ module Html2rss
     class Gsub
       ##
       # @param value [String]
-      # @param env [Hash<Symbol, Object>]
+      # @param env [Item::Context]
       def initialize(value, env)
         @value = value
         options = env[:options]

@@ -34,7 +34,7 @@ module Html2rss
     class MarkdownToHtml
       ##
       # @param value [String]
-      # @param env [Hash<Symbol, Object>]
+      # @param env [Item::Context]
       def initialize(value, env)
         @value = value
         @env = env
