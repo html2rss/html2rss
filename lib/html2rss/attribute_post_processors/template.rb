@@ -48,10 +48,10 @@ module Html2rss
 
         names = string.scan(/%[<|{](\w*)[>|}]/).flatten
 
-        format(string, names.map do |name|
+        format(string, names.to_h do |name|
           name_as_sym = name.to_sym
           [name_as_sym, item_value(name_as_sym)]
-        end.to_h)
+        end)
       end
 
       private
