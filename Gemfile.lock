@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     html2rss (0.9.0)
-      activesupport (>= 5, < 7)
+      activesupport (>= 5, < 8)
       addressable (~> 2.7)
       builder
       faraday (~> 1.0)
@@ -67,10 +67,6 @@ GEM
     multipart-post (2.1.1)
     nokogiri (1.12.5)
       mini_portile2 (~> 2.6.1)
-      racc (~> 1.4)
-    nokogiri (1.12.5-x86_64-darwin)
-      racc (~> 1.4)
-    nokogiri (1.12.5-x86_64-linux)
       racc (~> 1.4)
     parallel (1.20.1)
     parser (3.0.2.0)
@@ -145,4 +141,4 @@ DEPENDENCIES
   yard
 
 BUNDLED WITH
-   2.2.21
+   2.3.4
