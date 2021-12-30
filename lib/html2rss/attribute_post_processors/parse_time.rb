@@ -28,7 +28,7 @@ module Html2rss
     class ParseTime
       ##
       # @param value [String] the time to parse
-      # @param env [Hash<Symbol, Object>]
+      # @param env [Item::Context]
       def initialize(value, env)
         @value = value.to_s
         @time_zone = env[:config].time_zone

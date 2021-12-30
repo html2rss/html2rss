@@ -29,7 +29,7 @@ module Html2rss
     class HtmlToMarkdown
       ##
       # @param value [String]
-      # @param env [Hash<Symbol, Object>]
+      # @param env [Item::Context]
       def initialize(value, env)
         @value = SanitizeHtml.new(value, env).get
       end

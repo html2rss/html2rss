@@ -23,7 +23,7 @@ module Html2rss
     class ParseUri
       ##
       # @param value [String]
-      # @param _env [nil, Hash<Symbol, Object>]
+      # @param _env [Item::Context]
       def initialize(value, _env)
         @value = value
       end

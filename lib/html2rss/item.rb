@@ -10,6 +10,8 @@ module Html2rss
   # Takes the selected Nokogiri::HTML and responds to accessors names
   # defined in the feed config.
   class Item
+    Context = Struct.new('Context', :options, :item, :config, keyword_init: true)
+
     ##
     # @param xml [Nokogiri::XML::Element]
     # @param config [Html2rss::Config]
@@ -29,6 +31,7 @@ module Html2rss
 
     ##
     # @param method_name [Symbol]
+    # @param _args [Object]
     # @return [String]
     def method_missing(method_name, *_args)
       return super unless respond_to_missing?(method_name)
@@ -135,7 +138,7 @@ module Html2rss
 
       [post_process_options].flatten.each do |options|
         value = AttributePostProcessors.get_processor(options[:name])
-                                       .new(value, options: options, item: self, config: config)
+                                       .new(value, Context.new(options: options, item: self, config: config))
                                        .get
       end
 
