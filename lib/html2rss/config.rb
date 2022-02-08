@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
-require 'active_support/isolated_execution_state'
+begin
+  require 'active_support/isolated_execution_state'
+rescue LoadError => e
+  puts e.message
+end
+
 require 'active_support/core_ext/hash'
 
 module Html2rss
