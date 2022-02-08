@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Give the URL to scrape and some CSS selectors. Get a RSS::Rss instance in return.'
   spec.homepage      = 'https://github.com/html2rss/html2rss'
   spec.license       = 'MIT'
-  spec.required_ruby_version = '>= 2.6.0'
+  spec.required_ruby_version = '>= 2.7.0'
 
   if spec.respond_to?(:metadata)
     spec.metadata['allowed_push_host'] = 'https://rubygems.org'
