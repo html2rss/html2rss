@@ -18,7 +18,7 @@ supported, too.
 **Searching for a ready to use app which serves generated feeds via HTTP?**
 [Head over to `html2rss-web`!](https://github.com/html2rss/html2rss-web)
 
-To support the development, feel free [to donate](https://liberapay.com/gildesmarais/donate). Thank you! 💓
+To support the development, feel free to sponsor this project on Github. Thank you! 💓
 
 ## Installation
 
@@ -176,7 +176,7 @@ Extractors help with extracting the information from the selected HTML tag.
 - The `static` extractor returns the configured static value (it doesn't extract anything).
 - [See file list of extractors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/item_extractors).
 
-Extractors might need extra attributes on the selector hash.  
+Extractors might need extra attributes on the selector hash.
 👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
 
 <details>
@@ -517,7 +517,7 @@ Use this to e.g. have Cookie or Authorization information sent or to spoof the U
 
 <details>
   <summary>See a Ruby example</summary>
-  
+
   ```ruby
   Html2rss.feed(
     channel: {
