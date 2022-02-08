@@ -16,16 +16,7 @@ RSpec.describe Html2rss::Utils do
     context 'with JSON object' do
       let(:hash) { { 'data' => [{ 'title' => 'Headline', 'url' => 'https://example.com' }] } }
       let(:xml) do
-        <<~XML
-          <hash>
-            <data>
-              <datum>
-                <title>Headline</title>
-                <url>https://example.com</url>
-              </datum>
-            </data>
-          </hash>
-        XML
+        '<object><data><array><object><title>Headline</title><url>https://example.com</url></object></array></data></object>'
       end
 
       it 'converts the hash to xml' do
@@ -36,14 +27,7 @@ RSpec.describe Html2rss::Utils do
     context 'with JSON array' do
       let(:hash) { [{ 'title' => 'Headline', 'url' => 'https://example.com' }] }
       let(:xml) do
-        <<~XML
-          <objects>
-            <object>
-              <title>Headline</title>
-              <url>https://example.com</url>
-            </object>
-          </objects>
-        XML
+        '<array><object><title>Headline</title><url>https://example.com</url></object></array>'
       end
 
       it 'converts the hash to xml' do

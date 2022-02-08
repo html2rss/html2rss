@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'active_support/core_ext/hash'
 require 'addressable/uri'
 
 module Html2rss
@@ -26,11 +25,28 @@ module Html2rss
       end
     end
 
+    OBJECT_TO_XML_TAGS = {
+      array: ['<array>', '</array>'],
+      object: ['<object>', '</object>']
+    }.freeze
+
     ##
-    # @param object [Array, Hash]
-    # @return [String] a string representing the object in XML
+    # A naive implementation of "Object to XML".
+    #
+    # @param object [#each_pair, #each]
+    # @return [String] representing the object in XML, with all types being Strings
     def self.object_to_xml(object)
-      object.to_xml(skip_instruct: true, skip_types: true)
+      if object.respond_to? :each_pair
+        prefix, suffix = OBJECT_TO_XML_TAGS[:object]
+        xml = object.each_pair.map { |k, v| "<#{k}>#{object_to_xml(v)}</#{k}>" }
+      elsif object.respond_to? :each
+        prefix, suffix = OBJECT_TO_XML_TAGS[:array]
+        xml = object.map { |o| object_to_xml(o) }
+      else
+        xml = [object]
+      end
+
+      "#{prefix}#{xml.join}#{suffix}"
     end
 
     ##

@@ -9,7 +9,7 @@ RSpec.describe Html2rss do
   end
 
   describe '::CONFIG_KEY_FEEDS' do
-    it { expect(described_class::CONFIG_KEY_FEEDS).to eq 'feeds' }
+    it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
   end
 
   describe '.feed_from_yaml_config' do
@@ -75,8 +75,8 @@ RSpec.describe Html2rss do
 
       let(:yaml_config) { YAML.safe_load(File.open(config_file), symbolize_names: true) }
       let(:config) do
-        feed_config = yaml_config[described_class::CONFIG_KEY_FEEDS.to_sym][name.to_sym]
-        global_config = yaml_config.reject { |k| k == described_class::CONFIG_KEY_FEEDS.to_sym }
+        feed_config = yaml_config[described_class::CONFIG_KEY_FEEDS][name.to_sym]
+        global_config = yaml_config.reject { |k| k == described_class::CONFIG_KEY_FEEDS }
         Html2rss::Config.new(feed_config, global_config)
       end
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
@@ -97,7 +97,7 @@ RSpec.describe Html2rss do
 
       describe 'feed.channel' do
         it 'sets the channel attributes', :aggregate_failures do
-          expect(xml.css('channel > title').text).to eq 'github.com: Nuxt Nuxt.Js Releases'
+          expect(xml.css('channel > title').text).to eq 'github.com: Nuxt Nuxt.js Releases'
           expect(xml.css('channel > description').text).to eq 'Latest items from https://github.com/nuxt/nuxt.js/releases.'
           expect(xml.css('channel > ttl').text.to_i).to be > 0
           expect(xml.css('channel > item').count).to be > 0
@@ -183,7 +183,7 @@ RSpec.describe Html2rss do
 
       context 'with items having order key and reverse as value' do
         before do
-          yaml_config[described_class::CONFIG_KEY_FEEDS.to_sym][name.to_sym][:selectors][:items][:order] = 'reverse'
+          yaml_config[described_class::CONFIG_KEY_FEEDS][name.to_sym][:selectors][:items][:order] = 'reverse'
         end
 
         it 'reverses the item ordering' do
@@ -213,7 +213,7 @@ RSpec.describe Html2rss do
             }
           },
           selectors: {
-            items: { selector: 'hash' },
+            items: { selector: 'object' },
             title: { selector: 'host' },
             something: { selector: 'x-something' },
             authorization: { selector: 'authorization' },

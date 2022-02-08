@@ -66,7 +66,7 @@ feeds:
       json: true
     selectors:
       items:
-        selector: 'new > new, recent > recent'
+        selector: 'new > array > object, recent > array > object'
       title:
         selector: 'title'
         post_process:
@@ -75,7 +75,7 @@ feeds:
       grade:
         selector: 'grade'
       movie_title:
-        selector: 'movie-title'
+        selector: 'movie_title'
       link:
         post_process:
           name: 'template'
@@ -83,7 +83,7 @@ feeds:
           methods:
             - movie_title
       mpaa_rating:
-        selector: 'mpaa-rating'
+        selector: 'mpaa_rating'
       distributor:
         selector: 'distributor'
       year:

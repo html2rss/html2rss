@@ -27,7 +27,7 @@ RSpec.describe 'exe/html2rss' do
         xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
         xmlns:trackback="http://madskills.com/public/xml/rss/module/trackback/">
         <channel>
-          <title>github.com: Nuxt Nuxt.Js Releases</title>
+          <title>github.com: Nuxt Nuxt.js Releases</title>
     RSS
   end
 
