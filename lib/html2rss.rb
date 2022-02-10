@@ -10,7 +10,7 @@ require 'yaml'
 ##
 # The Html2rss namespace.
 module Html2rss
-  CONFIG_KEY_FEEDS = 'feeds'
+  CONFIG_KEY_FEEDS = :feeds
 
   ##
   # Returns a RSS object which is generated from the provided file.
@@ -21,15 +21,15 @@ module Html2rss
   #    # => #<RSS::Rss:0x00007fb2f6331228
   #
   # @param file [File] a file object of the yaml file to use
-  # @param name [String, nil] name of the feed to generate from the yaml
+  # @param name [String, Symbol, nil] name of the feed to generate from the yaml
   # @param global_config [Hash] global options (e.g. HTTP headers) to use
   # @param params [Hash] if required by feed config, the dynamic parameters for the config
   # @return [RSS::Rss]
   def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
-    yaml = YAML.safe_load(File.open(file))
+    yaml = YAML.safe_load(File.open(file), symbolize_names: true)
 
     if name && (feeds = yaml[CONFIG_KEY_FEEDS])
-      feed_config = feeds.fetch(name)
+      feed_config = feeds.fetch(name.to_sym)
       global_config.merge!(yaml.reject { |key| key == CONFIG_KEY_FEEDS })
     else
       feed_config = yaml

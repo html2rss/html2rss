@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'active_support/core_ext/hash'
 require 'addressable/uri'
+require 'tzinfo'
 
 module Html2rss
   ##
@@ -26,11 +26,28 @@ module Html2rss
       end
     end
 
+    OBJECT_TO_XML_TAGS = {
+      array: ['<array>', '</array>'],
+      object: ['<object>', '</object>']
+    }.freeze
+
     ##
-    # @param object [Array, Hash]
-    # @return [String] a string representing the object in XML
+    # A naive implementation of "Object to XML".
+    #
+    # @param object [#each_pair, #each]
+    # @return [String] representing the object in XML, with all types being Strings
     def self.object_to_xml(object)
-      object.to_xml(skip_instruct: true, skip_types: true)
+      if object.respond_to? :each_pair
+        prefix, suffix = OBJECT_TO_XML_TAGS[:object]
+        xml = object.each_pair.map { |k, v| "<#{k}>#{object_to_xml(v)}</#{k}>" }
+      elsif object.respond_to? :each
+        prefix, suffix = OBJECT_TO_XML_TAGS[:array]
+        xml = object.map { |o| object_to_xml(o) }
+      else
+        xml = [object]
+      end
+
+      "#{prefix}#{xml.join}#{suffix}"
     end
 
     ##
@@ -41,6 +58,23 @@ module Html2rss
       return if squished_url.to_s == ''
 
       Addressable::URI.parse(squished_url).normalize.to_s
+    end
+
+    ##
+    # Allows override of time zone locally inside supplied block; resets previous time zone when done.
+    #
+    # @param time_zone [String]
+    # @return whatever the given block returns
+    def self.use_zone(time_zone)
+      raise ArgumentError, 'a block is required' unless block_given?
+
+      time_zone = TZInfo::Timezone.get(time_zone)
+
+      prev_tz = ENV['TZ']
+      ENV['TZ'] = time_zone.name
+      yield
+    ensure
+      ENV['TZ'] = prev_tz
     end
   end
 end

@@ -21,18 +21,13 @@ RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
   end
 
   let(:html) do
-    <<~HTML.squish
-      <h1>Section</h1>
-
-      <p>Price: 12.34</p>
-
-      <ul>
-        <li>Item 1</li>
-        <li>Item 2</li>
-      </ul>
-
-      <p><code>puts 'hello world'</code></p>
-    HTML
+    ['<h1>Section</h1>',
+     '<p>Price: 12.34</p>',
+     '<ul>',
+     '<li>Item 1</li>',
+     '<li>Item 2</li>',
+     '</ul>',
+     "<p><code>puts 'hello world'</code></p>"].join(' ')
   end
 
   it { is_expected.to eq html }

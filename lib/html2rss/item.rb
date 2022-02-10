@@ -108,8 +108,6 @@ module Html2rss
               .keep_if(&:valid?)
     end
 
-    private
-
     ##
     # @param url [String, URI::HTTPS, URI::HTTP, Addressable::URI]
     # @param config [Html2rss::Config]
@@ -122,7 +120,8 @@ module Html2rss
 
       config.json? ? Html2rss::Utils.object_to_xml(JSON.parse(body)) : body
     end
-    private_class_method :get_body_from_url
+
+    private
 
     # @return [Nokogiri::XML::Element]
     attr_reader :xml

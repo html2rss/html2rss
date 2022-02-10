@@ -1,13 +1,5 @@
 # frozen_string_literal: true
 
-begin
-  require 'active_support/isolated_execution_state'
-rescue LoadError => e
-  puts e.message
-end
-
-require 'active_support/core_ext/hash'
-
 module Html2rss
   ##
   # The Config class abstracts from the config data structure and
@@ -28,13 +20,12 @@ module Html2rss
     # @param params [Hash<Symbol, String>]
     def initialize(feed_config, global_config = {}, params = {})
       symbolized_params = params.transform_keys(&:to_sym)
-      feed_config = feed_config.deep_symbolize_keys
 
       assert_required_params_presence(feed_config, symbolized_params)
 
-      @global_config = global_config.deep_symbolize_keys
+      @global_config = global_config
       @feed_config = process_params(feed_config, symbolized_params)
-      @channel_config = @feed_config.fetch(:channel, {})
+      @channel_config = @feed_config.fetch(:channel)
     end
 
     ##
@@ -64,7 +55,7 @@ module Html2rss
       nicer_path.reject! { |part| part == '' }
 
       host = uri.host
-      nicer_path.any? ? "#{host}: #{nicer_path.join(' ').titleize}" : host
+      nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
     end
 
     ##

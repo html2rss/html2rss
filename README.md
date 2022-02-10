@@ -468,19 +468,19 @@ This JSON object:
 converts to:
 
 ```xml
-<hash>
+<object>
   <data>
-    <datum>
-      <title>Headline</title>
-      <url>https://example.com</url>
-    </datum>
+    <array>
+      <object>
+        <title>Headline</title>
+        <url>https://example.com</url>
+      </object>
+    </array>
   </data>
-</hash>
+</object>
 ```
 
-Your items selector would be `data > datum`, the item's `link` selector would be `url`.
-
-Find further information in [ActiveSupport's `Hash.to_xml` documentation](https://apidock.com/rails/Hash/to_xml).
+Your items selector would be `array > object`, the item's `link` selector would be `url`.
 
 </details>
 
@@ -496,17 +496,15 @@ This JSON array:
 converts to:
 
 ```xml
-<objects>
+<array>
   <object>
     <title>Headline</title>
     <url>https://example.com</url>
   </object>
-</objects>
+</array>
 ```
 
-Your items selector would be `objects > object`, the item's `link` selector would be `url`.
-
-Find further information in [ActiveSupport's `Array.to_xml` documentation](https://apidock.com/rails/Array/to_xml).
+Your items selector would be `array > object`, the item's `link` selector would be `url`.
 
 </details>
 
