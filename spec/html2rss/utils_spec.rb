@@ -57,4 +57,12 @@ RSpec.describe Html2rss::Utils do
       end
     end
   end
+
+  describe '.use_zone(time_zone)' do
+    context 'without given block' do
+      it do
+        expect { described_class.use_zone('Europe/Berlin') }.to raise_error ArgumentError, /block is required/
+      end
+    end
+  end
 end

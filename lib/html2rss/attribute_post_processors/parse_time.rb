@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'active_support'
-require 'active_support/core_ext/time'
-
 module Html2rss
   module AttributePostProcessors
     ##
@@ -37,7 +34,7 @@ module Html2rss
       ##
       # @return [String] rfc822 formatted time
       def get
-        Time.use_zone(@time_zone) { Time.zone.parse(@value).rfc822 }
+        Utils.use_zone(@time_zone) { Time.parse(@value).rfc822 }
       end
     end
   end

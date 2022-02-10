@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'addressable/uri'
+require 'tzinfo'
 
 module Html2rss
   ##
@@ -57,6 +58,23 @@ module Html2rss
       return if squished_url.to_s == ''
 
       Addressable::URI.parse(squished_url).normalize.to_s
+    end
+
+    ##
+    # Allows override of time zone locally inside supplied block; resets previous time zone when done.
+    #
+    # @param time_zone [String]
+    # @return whatever the given block returns
+    def self.use_zone(time_zone)
+      raise ArgumentError, 'a block is required' unless block_given?
+
+      time_zone = TZInfo::Timezone.get(time_zone)
+
+      prev_tz = ENV['TZ']
+      ENV['TZ'] = time_zone.name
+      yield
+    ensure
+      ENV['TZ'] = prev_tz
     end
   end
 end
