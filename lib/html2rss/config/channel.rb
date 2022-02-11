@@ -42,19 +42,7 @@ module Html2rss
       ##
       # @return [String]
       def title
-        config.fetch(:title) { generated_title }
-      end
-
-      ##
-      # @return [String]
-      def generated_title
-        uri = URI(url)
-
-        nicer_path = uri.path.split('/')
-        nicer_path.reject! { |part| part == '' }
-
-        host = uri.host
-        nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
+        config.fetch(:title) { Utils.titleized_url(url) }
       end
 
       ##
@@ -95,9 +83,10 @@ module Html2rss
       def self.required_params_for_config(config)
         Set.new.tap do |required_params|
           config.each_key do |attribute_name|
-            next unless config[attribute_name].is_a?(String)
+            value = config[attribute_name]
+            next unless value.is_a?(String)
 
-            required_params.merge config[attribute_name].scan(/%<([\w_\d]+)>(\w)?/).to_h.keys
+            required_params.merge value.scan(/%<([\w_\d]+)>(\w)?/).to_h.keys
           end
         end
       end
@@ -129,9 +118,10 @@ module Html2rss
         return config if params.keys.none?
 
         config.each_key do |attribute_name|
-          next unless config[attribute_name].is_a?(String)
+          value = config[attribute_name]
+          next unless value.is_a?(String)
 
-          config[attribute_name] = format(config[attribute_name], params)
+          config[attribute_name] = format(value, params)
         end
 
         config

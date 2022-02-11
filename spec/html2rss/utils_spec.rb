@@ -65,4 +65,27 @@ RSpec.describe Html2rss::Utils do
       end
     end
   end
+
+  describe '.titleized_url' do
+    {
+      'http://www.example.com' => 'www.example.com',
+      'http://www.example.com/foobar' => 'www.example.com: Foobar',
+      'http://www.example.com/foobar/baz' => 'www.example.com: Foobar Baz'
+    }.each_pair do |url, expected|
+      it { expect(described_class.titleized_url(url)).to eq(expected) }
+    end
+  end
+
+  describe '.request_body_from_url(url, convert_json_to_xml: false, headers: {})' do
+    let(:url) { 'http://example.com' }
+    let(:options) { { headers: {} } }
+    let(:response) { instance_double(Faraday::Response, body: '') }
+    let(:connection) { instance_double(Faraday::Connection, get: response) }
+
+    it 'uses Faraday for the request' do
+      allow(Faraday).to receive(:new).with(options.merge(url: url)).and_return(connection)
+      described_class.request_body_from_url(url, **options.merge(convert_json_to_xml: false))
+      expect(response).to have_received(:body)
+    end
+  end
 end

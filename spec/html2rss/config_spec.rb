@@ -56,26 +56,26 @@ RSpec.describe Html2rss::Config do
   end
 
   describe '#title' do
-    subject { described_class.new(feed_config).title }
-
     context 'with channel.title present' do
+      subject { described_class.new(feed_config).title }
+
       let(:feed_config) do
         { channel: { title: 'An example channel', url: 'http://example.com/title' }, selectors: { items: {} } }
       end
 
-      it { is_expected.to eq feed_config[:channel][:title] }
-    end
-
-    context 'without channel.url having path' do
-      let(:feed_config) { { channel: { url: 'http://www.example.com' }, selectors: { items: {} } } }
-
-      it { is_expected.to eq 'www.example.com' }
+      it 'uses the given title' do
+        expect(subject).to eq feed_config[:channel][:title]
+      end
     end
 
     context 'with channel.url having path' do
       let(:feed_config) { { channel: { url: 'http://www.example.com/news' }, selectors: { items: {} } } }
 
-      it { is_expected.to eq 'www.example.com: News' }
+      it 'uses the Util method' do
+        allow(Html2rss::Utils).to receive(:titleized_url).and_call_original
+        described_class.new(feed_config).title
+        expect(Html2rss::Utils).to have_received(:titleized_url).with('http://www.example.com/news')
+      end
     end
   end
 

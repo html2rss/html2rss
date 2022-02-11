@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'faraday'
-require 'faraday_middleware'
-require 'json'
 require 'nokogiri'
 
 module Html2rss
@@ -101,24 +98,12 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @return [Array<Html2rss::Item>]
     def self.from_url(url, config)
-      body = get_body_from_url(url, config)
+      body = Utils.request_body_from_url(url, convert_json_to_xml: config.json?, headers: config.headers)
 
-      Nokogiri.HTML(body).css(config.selector(Config::Selectors::ITEMS_SELECTOR_NAME))
+      Nokogiri.HTML(body)
+              .css(config.selector(Config::Selectors::ITEMS_SELECTOR_NAME))
               .map { |xml_item| new xml_item, config }
               .keep_if(&:valid?)
-    end
-
-    ##
-    # @param url [String, URI::HTTPS, URI::HTTP, Addressable::URI]
-    # @param config [Html2rss::Config]
-    # @return [String]
-    def self.get_body_from_url(url, config)
-      body = Faraday.new(url: url, headers: config.headers) do |faraday|
-        faraday.use FaradayMiddleware::FollowRedirects
-        faraday.adapter Faraday.default_adapter
-      end.get.body
-
-      config.json? ? Html2rss::Utils.object_to_xml(JSON.parse(body)) : body
     end
 
     private

@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require 'addressable/uri'
+require 'faraday'
+require 'faraday_middleware'
+require 'json'
 require 'tzinfo'
 
 module Html2rss
@@ -51,6 +54,7 @@ module Html2rss
     end
 
     ##
+    # Removes any space, parses and normalizes the given url.
     # @param url [String]
     # @return [Addressable::URI] sanitized and normalized URL
     def self.sanitize_url(url)
@@ -75,6 +79,32 @@ module Html2rss
       yield
     ensure
       ENV['TZ'] = prev_tz
+    end
+
+    ##
+    # Builds a titleized representation of the URL.
+    # @param url [#to_s]
+    # @return [String]
+    def self.titleized_url(url)
+      uri = Addressable::URI.parse(url.to_s)
+      host = uri.host
+
+      nicer_path = uri.path.split('/').reject { |part| part == '' }
+      nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
+    end
+
+    ##
+    # @param url [String, URI::HTTPS, URI::HTTP, Addressable::URI]
+    # @param convert_json_to_xml [true, false] Should JSON be converted to XML
+    # @param headers [Hash] additional HTTP request headers to use for the request
+    # @return [String]
+    def self.request_body_from_url(url, convert_json_to_xml: false, headers: {})
+      body = Faraday.new(url: url, headers: headers) do |faraday|
+        faraday.use FaradayMiddleware::FollowRedirects
+        faraday.adapter Faraday.default_adapter
+      end.get.body
+
+      convert_json_to_xml ? object_to_xml(JSON.parse(body)) : body
     end
   end
 end

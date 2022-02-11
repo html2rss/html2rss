@@ -20,7 +20,7 @@ module Html2rss
 
     ##
     # @return [RSS::Rss]
-    def rss
+    def build
       RSS::Maker.make('2.0') do |maker|
         config.stylesheets.each { |stylesheet| FeedBuilder.add_stylesheet(stylesheet, maker) }
 
