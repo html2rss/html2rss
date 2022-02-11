@@ -5,8 +5,12 @@ module Html2rss
     ##
     # Holds the configurations of the selectors.
     class Selectors
-      def initialize(feed_config)
-        @feed_config = feed_config
+      ITEMS_SELECTOR_NAME = :items
+
+      def initialize(config)
+        raise ArgumentError, 'selector for items is required' unless config[ITEMS_SELECTOR_NAME].is_a?(Hash)
+
+        @config = config
       end
 
       ##
@@ -22,7 +26,7 @@ module Html2rss
       def selector_attributes(name)
         raise "invalid attribute: #{name}" unless attribute?(name)
 
-        feed_config[name]
+        config[name]
       end
 
       ##
@@ -41,24 +45,24 @@ module Html2rss
       # @param name [Symbol]
       # @return [String]
       def selector(name)
-        feed_config.dig(name, :selector)
+        config.dig(name, :selector)
       end
 
       ##
       # @return [Array<String>]
       def attribute_names
-        @attribute_names ||= feed_config.keys.tap { |attrs| attrs.delete(:items) }
+        @attribute_names ||= config.keys.tap { |attrs| attrs.delete(ITEMS_SELECTOR_NAME) }
       end
 
       ##
       # @return [Symbol]
       def items_order
-        feed_config.dig(:items, :order)&.to_sym
+        config.dig(ITEMS_SELECTOR_NAME, :order)&.to_sym
       end
 
       private
 
-      attr_reader :feed_config
+      attr_reader :config
 
       ##
       # Returns the selector names for selector `name`. If none, returns [default].
@@ -66,7 +70,7 @@ module Html2rss
       # @param default [String, Symbol]
       # @return [Array<Symbol,nil>]
       def selector_keys_for(name, default: nil)
-        feed_config.fetch(name) { Array(default) }.tap do |array|
+        config.fetch(name) { Array(default) }.tap do |array|
           array.reject! { |entry| entry.to_s == '' }
           array.map!(&:to_sym)
           array.uniq!

@@ -103,7 +103,7 @@ module Html2rss
     def self.from_url(url, config)
       body = get_body_from_url(url, config)
 
-      Nokogiri.HTML(body).css(config.selector(:items))
+      Nokogiri.HTML(body).css(config.selector(Config::Selectors::ITEMS_SELECTOR_NAME))
               .map { |xml_item| new xml_item, config }
               .keep_if(&:valid?)
     end

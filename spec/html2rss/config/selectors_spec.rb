@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Config::Selectors do
-  let(:instance) { described_class.new(selectors: {}) }
+  let(:instance) { described_class.new(items: {}) }
 
   describe '#category_selectors' do
     subject { instance.category_selectors }

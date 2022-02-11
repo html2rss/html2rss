@@ -2,14 +2,19 @@
 
 RSpec.describe Html2rss::Config do
   let(:config) do
-    { channel: { url: 'http://example.com/config' } }
+    {
+      channel: { url: 'http://example.com/config' },
+      selectors: {
+        items: { selector: 'li' }
+      }
+    }
   end
 
   describe '.new' do
     context 'with missing required params' do
       it 'raises ParamsMissing' do
         expect do
-          described_class.new(channel: { url: 'http://example.com/%<section>s' })
+          described_class.new(channel: { url: 'http://example.com/%<section>s' }, selectors: { items: {} })
         end.to raise_error described_class::ParamsMissing, /section/
       end
     end
@@ -28,6 +33,7 @@ RSpec.describe Html2rss::Config do
       {
         channel: { url: 'http://example.com' },
         selectors: {
+          items: {},
           title: { selector: 'h1' }
         }
       }
@@ -42,7 +48,9 @@ RSpec.describe Html2rss::Config do
   describe '#category_selectors' do
     subject { described_class.new(feed_config).category_selectors }
 
-    let(:feed_config) { config.merge(selectors: { categories: ['name', 'name', nil], name: {} }) }
+    let(:feed_config) do
+      config.merge(selectors: { items: { selector: {} }, categories: ['name', 'name', nil], name: {} })
+    end
 
     it { is_expected.to eq %i[name] }
   end
@@ -51,19 +59,21 @@ RSpec.describe Html2rss::Config do
     subject { described_class.new(feed_config).title }
 
     context 'with channel.title present' do
-      let(:feed_config) { { channel: { title: 'An example channel', url: 'http://example.com/title' } } }
+      let(:feed_config) do
+        { channel: { title: 'An example channel', url: 'http://example.com/title' }, selectors: { items: {} } }
+      end
 
       it { is_expected.to eq feed_config[:channel][:title] }
     end
 
     context 'without channel.url having path' do
-      let(:feed_config) { { channel: { url: 'http://www.example.com' } } }
+      let(:feed_config) { { channel: { url: 'http://www.example.com' }, selectors: { items: {} } } }
 
       it { is_expected.to eq 'www.example.com' }
     end
 
     context 'with channel.url having path' do
-      let(:feed_config) { { channel: { url: 'http://www.example.com/news' } } }
+      let(:feed_config) { { channel: { url: 'http://www.example.com/news' }, selectors: { items: {} } } }
 
       it { is_expected.to eq 'www.example.com: News' }
     end
