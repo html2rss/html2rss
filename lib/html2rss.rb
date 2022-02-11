@@ -63,6 +63,6 @@ module Html2rss
     config = Config.new(config) unless config.is_a?(Config)
 
     feed = FeedBuilder.new config
-    feed.rss
+    feed.build
   end
 end

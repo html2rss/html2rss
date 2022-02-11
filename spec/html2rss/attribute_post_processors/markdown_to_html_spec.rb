@@ -4,7 +4,8 @@ RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
   subject { described_class.new(markdown, config: config).get }
 
   let(:config) do
-    Html2rss::Config.new(channel: { title: 'Example: questions', url: 'https://example.com/questions' })
+    Html2rss::Config.new(channel: { title: 'Example: questions', url: 'https://example.com/questions' },
+                         selectors: { items: {} })
   end
 
   let(:markdown) do
