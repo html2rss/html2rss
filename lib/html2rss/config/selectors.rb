@@ -1,7 +1,7 @@
 module Html2rss
   class Config
     ##
-    # Holds the configuration for the selectors in the config.
+    # Holds the configurations of the selectors.
     class Selectors
       def initialize(feed_config, params)
         symbolized_params = params.transform_keys(&:to_sym)
