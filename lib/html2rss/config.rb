@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'forwardable'
 
 module Html2rss
@@ -18,19 +19,22 @@ module Html2rss
     class ChannelMissing < StandardError; end
 
     def_delegator :@global_config, :stylesheets
+    def_delegator :@selectors, :attribute_names
+    def_delegator :@selectors, :attribute_options
+    def_delegator :@selectors, :attribute?
+    def_delegator :@selectors, :category_selectors
+    def_delegator :@selectors, :guid_selectors
+    def_delegator :@selectors, :items_order
+    def_delegator :@selectors, :selector
 
     ##
     # @param feed_config [Hash<Symbol, Object>]
     # @param global_config [Hash<Symbol, Object>]
     # @param params [Hash<Symbol, String>]
     def initialize(feed_config, global_config = {}, params = {})
-      symbolized_params = params.transform_keys(&:to_sym)
-
-      assert_required_params_presence(feed_config, symbolized_params)
-
       @global_config = Global.new(global_config)
-      @feed_config = process_params(feed_config, symbolized_params)
-      @channel_config = @feed_config.fetch(:channel)
+      @channel_config = feed_config.fetch(:channel)
+      @feed_config = Feed.new(feed_config, params, @channel_config)
     end
 
     ##
@@ -97,116 +101,13 @@ module Html2rss
     ##
     # @return [Hash]
     def headers
-      # TODO: move to feed config
+      # TODO: move to feed config, avoid fetch call (provide method)
       @global_config.headers.merge(channel_config.fetch(:headers, {}))
-    end
-
-    ##
-    # @param name [Symbol]
-    # @return [Hash]
-    def attribute_options(name)
-      feed_config[:selectors].fetch(name, {}).merge(channel: channel_config)
-    end
-
-    ##
-    # @param name [Symbol]
-    # @return [true, false]
-    def attribute?(name)
-      attribute_names.include?(name)
-    end
-
-    ##
-    # @return [Array<Symbol>]
-    def category_selectors
-      selector_names_for(:categories)
-    end
-
-    ##
-    # @return [Array<Symbol>]
-    def guid_selectors
-      selector_names_for(:guid, default: :title_or_description)
-    end
-
-    ##
-    # @param name [Symbol]
-    # @return [String]
-    def selector(name)
-      feed_config.dig(:selectors, name, :selector)
-    end
-
-    ##
-    # @return [Array<String>]
-    def attribute_names
-      @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap { |attrs| attrs.delete(:items) }
-    end
-
-    ##
-    # @return [Symbol]
-    def items_order
-      feed_config.dig(:selectors, :items, :order)&.to_sym
-    end
-
-    ##
-    # Returns the dynamic parameter names which are required to use the feed config.
-    #
-    # @param feed_config [Hash<Symbol, Object>]
-    # @return [Set] containing Strings (the parameter names)
-    def self.required_params_for_feed_config(feed_config)
-      raise ChannelMissing, 'feed config misses :channel key' unless feed_config[:channel]
-
-      Set.new.tap do |required_params|
-        feed_config[:channel].each_key do |attribute_name|
-          next unless feed_config[:channel][attribute_name].is_a?(String)
-
-          required_params.merge feed_config[:channel][attribute_name].scan(/%<([\w_\d]+)>(\w)?/).to_h.keys
-        end
-      end
     end
 
     private
 
     # @return [Hash<Symbol, Object>]
-    attr_reader :feed_config, :channel_config
-
-    ##
-    # @param feed_config [Hash<Symbol, Object>]
-    # @param params [Hash<Symbol, String>]
-    # @return [nil]
-    def assert_required_params_presence(feed_config, params)
-      missing_params = Config.required_params_for_feed_config(feed_config) - params.keys.map(&:to_s)
-
-      raise ParamsMissing, missing_params.to_a.join(', ') if missing_params.size.positive?
-    end
-
-    ##
-    # Sets the variables used in the feed config's channel.
-    #
-    # @param feed_config [Hash<Symbol, Object>]
-    # @param params [Hash<Symbol, Object>]
-    # @return [Hash<Symbol, Object>]
-    def process_params(feed_config, params)
-      return feed_config if params.keys.none?
-
-      feed_config[:channel].each_key do |attribute_name|
-        next unless feed_config[:channel][attribute_name].is_a?(String)
-
-        feed_config[:channel][attribute_name] = format(feed_config[:channel][attribute_name], params)
-      end
-
-      feed_config
-    end
-
-    ##
-    # Returns the selector names for selector `name`. If none, returns [default].
-    # @param name [Symbol]
-    # @param default [String, Symbol]
-    # @return [Array<Symbol>]
-    def selector_names_for(name, default: nil)
-      feed_config[:selectors].fetch(name) { Array(default) }.tap do |array|
-        array.reject! { |entry| entry.to_s == '' }
-        array.map!(&:to_sym)
-        array.uniq!
-      end
-    end
+    attr_reader :channel_config
   end
 end
