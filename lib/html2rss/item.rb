@@ -36,7 +36,7 @@ module Html2rss
     def method_missing(method_name, *_args)
       return super unless respond_to_missing?(method_name)
 
-      attribute_options = config.attribute_options(method_name)
+      attribute_options = config.selector_attributes_with_channel(method_name)
 
       post_process(
         ItemExtractors.item_extractor_factory(attribute_options, xml).get,

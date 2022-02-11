@@ -34,8 +34,8 @@ RSpec.describe Html2rss::Config do
     end
 
     it do
-      expect(instance.attribute_options(:title)).to be_a(Hash) & include(selector: 'h1',
-                                                                         channel: Html2rss::Config::Channel)
+      expect(instance.selector_attributes_with_channel(:title)).to a_hash_including(selector: 'h1',
+                                                                                    channel: Html2rss::Config::Channel)
     end
   end
 

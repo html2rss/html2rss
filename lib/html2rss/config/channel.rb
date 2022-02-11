@@ -108,7 +108,7 @@ module Html2rss
       attr_reader :config
 
       ##
-      # @param feed_config [Hash<Symbol, Object>]
+      # @param config [Hash<Symbol, Object>]
       # @param params [Hash<Symbol, String>]
       # @return [nil]
       def assert_required_params_presence(config, params)

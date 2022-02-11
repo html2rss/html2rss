@@ -40,19 +40,16 @@ module Html2rss
     # @param global [Hash<Symbol, Object>]
     # @param params [Hash<Symbol, String>]
     def initialize(feed_config, global = {}, params = {})
-      # TODO: pass feed_config[:selectors], :channel
       @channel = Channel.new(feed_config[:channel], params: params)
-      @selectors = Selectors.new(feed_config)
+      @selectors = Selectors.new(feed_config[:selectors])
       @global = global
     end
 
     ##
-    # TODO: rename appropriatley. this returns the selector's configuration + channel object.
-    # the name should reflect that this is used to _extract_ the data for that attribute
     # @param name [Symbol]
     # @return [Hash]
-    def attribute_options(name)
-      @selectors.attribute(name).merge(channel: @channel)
+    def selector_attributes_with_channel(name)
+      @selectors.selector_attributes(name).merge(channel: @channel)
     end
 
     ##

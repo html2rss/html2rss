@@ -16,41 +16,44 @@ module Html2rss
         attribute_names.include?(name)
       end
 
-      def attribute(name)
+      ##
+      # @param name [Symbol]
+      # @return [Hash<Symbol, Object>]
+      def selector_attributes(name)
         raise "invalid attribute: #{name}" unless attribute?(name)
 
-        feed_config.dig(:selectors, name)
+        feed_config[name]
       end
 
       ##
       # @return [Array<Symbol>]
       def category_selectors
-        selector_names_for(:categories)
+        selector_keys_for(:categories)
       end
 
       ##
       # @return [Array<Symbol>]
       def guid_selectors
-        selector_names_for(:guid, default: :title_or_description)
+        selector_keys_for(:guid, default: :title_or_description)
       end
 
       ##
       # @param name [Symbol]
       # @return [String]
       def selector(name)
-        feed_config.dig(:selectors, name, :selector)
+        feed_config.dig(name, :selector)
       end
 
       ##
       # @return [Array<String>]
       def attribute_names
-        @attribute_names ||= feed_config.fetch(:selectors, {}).keys.tap { |attrs| attrs.delete(:items) }
+        @attribute_names ||= feed_config.keys.tap { |attrs| attrs.delete(:items) }
       end
 
       ##
       # @return [Symbol]
       def items_order
-        feed_config.dig(:selectors, :items, :order)&.to_sym
+        feed_config.dig(:items, :order)&.to_sym
       end
 
       private
@@ -61,9 +64,9 @@ module Html2rss
       # Returns the selector names for selector `name`. If none, returns [default].
       # @param name [Symbol]
       # @param default [String, Symbol]
-      # @return [Array<Symbol>]
-      def selector_names_for(name, default: nil)
-        feed_config[:selectors].fetch(name) { Array(default) }.tap do |array|
+      # @return [Array<Symbol,nil>]
+      def selector_keys_for(name, default: nil)
+        feed_config.fetch(name) { Array(default) }.tap do |array|
           array.reject! { |entry| entry.to_s == '' }
           array.map!(&:to_sym)
           array.uniq!
