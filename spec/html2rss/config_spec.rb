@@ -1,36 +1,48 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Config do
+  let(:config) do
+    { channel: { url: 'http://example.com/config' } }
+  end
+
   describe '.new' do
     context 'with missing required params' do
       it 'raises ParamsMissing' do
         expect do
           described_class.new(channel: { url: 'http://example.com/%<section>s' })
-        end.to raise_error described_class::ParamsMissing
+        end.to raise_error described_class::ParamsMissing, /section/
       end
     end
   end
 
-  describe '.required_params_for_feed_config(feed_config)' do
-    it do
-      expect(
-        described_class.required_params_for_feed_config(
-          channel: { url: 'http://example.com/%<section>s/%<something>d' }
-        )
-      ).to be_a(Set).and include 'section', 'something'
-    end
-  end
-
   describe '#attribute_names' do
-    subject { described_class.new(channel: {}, selectors: { items: {}, name: {} }).attribute_names }
+    subject { described_class.new(config.merge(selectors: { items: {}, name: {} })).attribute_names }
 
     it { is_expected.to eq %i[name] }
+  end
+
+  describe '#attribute_options(name)' do
+    subject(:instance) { described_class.new(config) }
+
+    let(:config) do
+      {
+        channel: { url: 'http://example.com' },
+        selectors: {
+          title: { selector: 'h1' }
+        }
+      }
+    end
+
+    it do
+      expect(instance.attribute_options(:title)).to be_a(Hash) & include(selector: 'h1',
+                                                                         channel: Html2rss::Config::Channel)
+    end
   end
 
   describe '#category_selectors' do
     subject { described_class.new(feed_config).category_selectors }
 
-    let(:feed_config) { { channel: {}, selectors: { categories: ['name', 'name', nil], name: {} } } }
+    let(:feed_config) { config.merge(selectors: { categories: ['name', 'name', nil], name: {} }) }
 
     it { is_expected.to eq %i[name] }
   end
@@ -39,7 +51,7 @@ RSpec.describe Html2rss::Config do
     subject { described_class.new(feed_config).title }
 
     context 'with channel.title present' do
-      let(:feed_config) { { channel: { title: 'An example channel' } } }
+      let(:feed_config) { { channel: { title: 'An example channel', url: 'http://example.com/title' } } }
 
       it { is_expected.to eq feed_config[:channel][:title] }
     end
@@ -54,6 +66,12 @@ RSpec.describe Html2rss::Config do
       let(:feed_config) { { channel: { url: 'http://www.example.com/news' } } }
 
       it { is_expected.to eq 'www.example.com: News' }
+    end
+  end
+
+  describe '.headers' do
+    context 'without channel headers' do
+      it { expect(described_class.new(config).headers).to be_a Hash }
     end
   end
 end

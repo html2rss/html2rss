@@ -18,8 +18,6 @@ module Html2rss
     # Thrown when a feed config (Hash) does not contain a value at `:channel`.
     class ChannelMissing < StandardError; end
 
-    def_delegator :@global, :stylesheets
-
     def_delegator :@channel, :author
     def_delegator :@channel, :ttl
     def_delegator :@channel, :title
@@ -31,7 +29,6 @@ module Html2rss
     def_delegator :@channel, :json?
 
     def_delegator :@selectors, :attribute_names
-    def_delegator :@selectors, :attribute_options
     def_delegator :@selectors, :attribute?
     def_delegator :@selectors, :category_selectors
     def_delegator :@selectors, :guid_selectors
@@ -43,15 +40,33 @@ module Html2rss
     # @param global [Hash<Symbol, Object>]
     # @param params [Hash<Symbol, String>]
     def initialize(feed_config, global = {}, params = {})
-      @global = Global.new(global)
-      @channel = Channel.new(feed_config)
-      @selectors = Selectors.new(feed_config, params)
+      # TODO: pass feed_config[:selectors], :channel
+      @channel = Channel.new(feed_config[:channel], params: params)
+      @selectors = Selectors.new(feed_config)
+      @global = global
+    end
+
+    ##
+    # TODO: rename appropriatley. this returns the selector's configuration + channel object.
+    # the name should reflect that this is used to _extract_ the data for that attribute
+    # @param name [Symbol]
+    # @return [Hash]
+    def attribute_options(name)
+      @selectors.attribute(name).merge(channel: @channel)
     end
 
     ##
     # @return [Hash]
     def headers
-      @global.headers.merge @channel.headers
+      @global.fetch(:headers, {}).merge @channel.headers
     end
+
+    ##
+    # @return [Array<Hash>]
+    def stylesheets
+      @global.fetch(:stylesheets, [])
+    end
+
+    attr_reader :channel
   end
 end
