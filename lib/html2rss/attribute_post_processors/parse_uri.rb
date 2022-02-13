@@ -4,6 +4,7 @@ module Html2rss
   module AttributePostProcessors
     ##
     # Returns the URI as String.
+    # If the URL is relative, it builds an absolute one with the channel's URL as base.
     #
     # Imagine this HTML structure:
     #
@@ -23,15 +24,19 @@ module Html2rss
     class ParseUri
       ##
       # @param value [String]
-      # @param _env [Item::Context]
-      def initialize(value, _env)
+      # @param context [Item::Context]
+      def initialize(value, context)
         @value = value
+        @context = context
       end
 
       ##
       # @return [String]
       def get
-        URI(Html2rss::Utils.sanitize_url(@value)).to_s
+        Html2rss::Utils.build_absolute_url_from_relative(
+          Html2rss::Utils.sanitize_url(@value),
+          @context.config.url
+        ).to_s
       end
     end
   end
