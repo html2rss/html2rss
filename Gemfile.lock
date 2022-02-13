@@ -3,6 +3,7 @@ PATH
   specs:
     html2rss (0.9.0)
       addressable (~> 2.7)
+      dry-schema (~> 1.0)
       faraday (> 2.0.1, < 3.0)
       faraday-follow_redirects
       kramdown
@@ -26,6 +27,32 @@ GEM
     concurrent-ruby (1.1.10)
     crass (1.0.6)
     diff-lcs (1.5.0)
+    dry-configurable (0.15.0)
+      concurrent-ruby (~> 1.0)
+      dry-core (~> 0.6)
+    dry-container (0.9.0)
+      concurrent-ruby (~> 1.0)
+      dry-configurable (~> 0.13, >= 0.13.0)
+    dry-core (0.7.1)
+      concurrent-ruby (~> 1.0)
+    dry-inflector (0.2.1)
+    dry-initializer (3.1.1)
+    dry-logic (1.2.0)
+      concurrent-ruby (~> 1.0)
+      dry-core (~> 0.5, >= 0.5)
+    dry-schema (1.9.3)
+      concurrent-ruby (~> 1.0)
+      dry-configurable (~> 0.13, >= 0.13.0)
+      dry-core (~> 0.5, >= 0.5)
+      dry-initializer (~> 3.0)
+      dry-logic (~> 1.0)
+      dry-types (~> 1.5)
+    dry-types (1.5.1)
+      concurrent-ruby (~> 1.0)
+      dry-container (~> 0.3)
+      dry-core (~> 0.5, >= 0.5)
+      dry-inflector (~> 0.1, >= 0.1.2)
+      dry-logic (~> 1.0, >= 1.0.2)
     faraday (2.3.0)
       faraday-net_http (~> 2.0)
       ruby2_keywords (>= 0.0.4)
@@ -35,6 +62,7 @@ GEM
     json (2.6.2)
     kramdown (2.4.0)
       rexml
+    language_server-protocol (3.16.0.3)
     mime-types (3.4.1)
       mime-types-data (~> 3.2015)
     mime-types-data (3.2022.0105)
@@ -83,6 +111,9 @@ GEM
       unicode-display_width (>= 1.4.0, < 3.0)
     rubocop-ast (1.18.0)
       parser (>= 3.1.1.0)
+    rubocop-lsp (0.1.6)
+      language_server-protocol (>= 3.16)
+      rubocop (>= 1.0)
     rubocop-md (1.0.1)
       rubocop (>= 1.0)
     rubocop-performance (1.14.2)
@@ -116,6 +147,7 @@ DEPENDENCIES
   html2rss!
   rspec (~> 3.0)
   rubocop
+  rubocop-lsp
   rubocop-md
   rubocop-performance
   rubocop-rspec
@@ -123,4 +155,4 @@ DEPENDENCIES
   yard
 
 BUNDLED WITH
-   2.3.6
+   2.3.17

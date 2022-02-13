@@ -33,6 +33,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'addressable', '~> 2.7'
+  spec.add_dependency 'dry-schema', '~> 1.0'
   spec.add_dependency 'faraday', '> 2.0.1', '< 3.0'
   spec.add_dependency 'faraday-follow_redirects'
   spec.add_dependency 'kramdown'

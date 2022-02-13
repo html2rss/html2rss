@@ -13,7 +13,7 @@ module Html2rss
       ##
       # @param config [Hash<Symbol, Object>]
       def initialize(config)
-        raise ArgumentError, 'selector for items is required' unless config[ITEMS_SELECTOR_NAME].is_a?(Hash)
+        Utils.validate!(Schemas::Selectors, config)
 
         @config = config
       end

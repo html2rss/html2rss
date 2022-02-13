@@ -14,12 +14,11 @@ module Html2rss
       # @param channel [Hash<Symbol, Object>]
       # @param params [Hash]
       def initialize(channel, params: {})
-        raise ArgumentError, 'channel must be a hash' unless channel.is_a?(Hash)
-        raise ArgumentError, 'missing key :url' unless channel[:url].is_a?(String)
+        Utils.validate!(Schemas::Channel, channel)
 
         symbolized_params = params.transform_keys(&:to_sym)
 
-        @config = process_params channel, symbolized_params
+        @config = process_params result.to_h, symbolized_params
       end
 
       ##
