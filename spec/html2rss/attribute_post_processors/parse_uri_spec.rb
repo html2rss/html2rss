@@ -1,15 +1,41 @@
 # frozen_string_literal: true
 
+require 'addressable'
+
 RSpec.describe Html2rss::AttributePostProcessors::ParseUri do
+  subject do
+    described_class.new(url, context).get
+  end
+
+  let(:context) do
+    Html2rss::Item::Context.new(
+      config: instance_double(Html2rss::Config, url: 'http://example.com')
+    )
+  end
+
   context 'with URI value' do
-    subject { described_class.new(URI('http://example.com'), {}).get }
+    let(:url) { URI('http://example.com') }
+
+    it { is_expected.to eq 'http://example.com/' }
+  end
+
+  context 'with Addressable::URI value' do
+    let(:url) { Addressable::URI.parse('http://example.com') }
 
     it { is_expected.to eq 'http://example.com/' }
   end
 
   context 'with String value' do
-    subject { described_class.new('http://example.com ', {}).get }
+    context 'with an absolute url containing a trailing space' do
+      let(:url) { 'http://example.com ' }
 
-    it { is_expected.to eq 'http://example.com/' }
+      it { is_expected.to eq 'http://example.com/' }
+    end
+
+    context 'with relative url' do
+      let(:url) { '/foo/bar' }
+
+      it { is_expected.to eq 'http://example.com/foo/bar' }
+    end
   end
 end
