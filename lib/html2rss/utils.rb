@@ -78,7 +78,7 @@ module Html2rss
       ENV['TZ'] = time_zone.name
       yield
     ensure
-      ENV['TZ'] = prev_tz
+      ENV['TZ'] = prev_tz if prev_tz
     end
 
     ##
