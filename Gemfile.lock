@@ -8,11 +8,11 @@ PATH
       kramdown
       mime-types (> 3.0)
       nokogiri (>= 1.10, < 2.0)
+      regexp_parser
       reverse_markdown (~> 2.0)
       rss
       sanitize (~> 6.0)
       thor
-      to_regexp
       tzinfo
       zeitwerk
 
@@ -112,7 +112,6 @@ GEM
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
     thor (1.2.1)
-    to_regexp (0.2.1)
     tzinfo (2.0.4)
       concurrent-ruby (~> 1.0)
     unicode-display_width (2.1.0)

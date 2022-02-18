@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'to_regexp'
-
 module Html2rss
   module AttributePostProcessors
     ##
@@ -21,7 +19,9 @@ module Html2rss
     # Would return:
     #    'Foo bar and baz'
     #
-    # `pattern` can be a Regexp or a String.
+    # `pattern` can be a Regexp or a String. If it is a String, it will remove
+    # one pair of sourrounding slashes ('/') to keep a backwards compatibility
+    # and then parse it to build a Regexp.
     #
     # `replacement` can be a String or a Hash.
     #
@@ -29,19 +29,36 @@ module Html2rss
     class Gsub
       ##
       # @param value [String]
-      # @param env [Item::Context]
-      def initialize(value, env)
+      # @param context [Item::Context]
+      def initialize(value, context)
         @value = value
-        options = env[:options]
-        pattern = options[:pattern]
-        @pattern = pattern.to_regexp || pattern
-        @replacement = options[:replacement]
+        @context = context
       end
 
       ##
       # @return [String]
       def get
-        @value.to_s.gsub(@pattern, @replacement)
+        @value.to_s.gsub(pattern, replacement)
+      end
+
+      def pattern
+        pattern = @context[:options][:pattern]
+
+        raise ArgumentError, 'The `pattern` option is missing' unless pattern
+
+        pattern.is_a?(String) ? Utils.build_regexp_from_string(pattern) : pattern
+      end
+
+      def replacement
+        replacement = @context[:options][:replacement]
+
+        return replacement unless replacement
+
+        if !replacement.is_a?(Hash) && !replacement.is_a?(String)
+          raise ArgumentError, 'The `replacement` option must be a String or Hash'
+        end
+
+        replacement
       end
     end
   end
