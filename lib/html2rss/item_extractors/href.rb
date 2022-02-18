@@ -34,7 +34,7 @@ module Html2rss
         @href = Html2rss::Utils.sanitize_url(element.attr('href'))
       end
 
-      # @return [URI::HTTPS, URI::HTTP]
+      # @return [Addressable::URI]
       def get
         Html2rss::Utils.build_absolute_url_from_relative(@href, @options.channel.url)
       end

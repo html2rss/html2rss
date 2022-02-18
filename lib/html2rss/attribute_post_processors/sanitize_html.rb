@@ -83,11 +83,7 @@ module Html2rss
           url_attribute = URL_ELEMENTS_WITH_URL_ATTRIBUTE[env[:node_name]]
           url = env[:node][url_attribute]
 
-          return if URI(url).absolute?
-
-          absolute_url = Html2rss::Utils.build_absolute_url_from_relative(url, @channel_url)
-
-          env[:node][url_attribute] = absolute_url
+          env[:node][url_attribute] = Html2rss::Utils.build_absolute_url_from_relative(url, @channel_url)
         end
       end
 

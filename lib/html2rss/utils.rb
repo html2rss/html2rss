@@ -95,7 +95,7 @@ module Html2rss
     end
 
     ##
-    # @param url [String, URI::HTTPS, URI::HTTP, Addressable::URI]
+    # @param url [String, Addressable::URI]
     # @param convert_json_to_xml [true, false] Should JSON be converted to XML
     # @param headers [Hash] additional HTTP request headers to use for the request
     # @return [String]

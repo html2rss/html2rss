@@ -86,7 +86,7 @@ module Html2rss
     end
 
     ##
-    # @return [URI::HTTPS, URI::HTTP]
+    # @return [Addressable::URI]
     def enclosure_url
       enclosure = Html2rss::Utils.sanitize_url(method_missing(:enclosure))
 
@@ -94,7 +94,7 @@ module Html2rss
     end
 
     ##
-    # @param url [URI::HTTPS, URI::HTTP, Addressable::URI]
+    # @param url [String, Addressable::URI]
     # @param config [Html2rss::Config]
     # @return [Array<Html2rss::Item>]
     def self.from_url(url, config)
