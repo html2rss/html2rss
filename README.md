@@ -113,7 +113,7 @@ channel:
 
 Command line usage example:
 
-```
+```sh
 bundle exec html2rss feed the_feed_config.yml id=42
 ```
 
@@ -517,18 +517,18 @@ Use this to e.g. have Cookie or Authorization information sent or to spoof the U
   <summary>See a Ruby example</summary>
 
   ```ruby
-  Html2rss.feed(
-    channel: {
-      url: 'https://example.com',
-      headers: {
-        "User-Agent": "html2rss-request",
-        "X-Something": "Foobar",
-        "Authorization": "Token deadbea7",
-        "Cookie": "monster=MeWantCookie"
-      }
-    },
-    selectors: {}
-  )
+Html2rss.feed(
+  channel: {
+    url: 'https://example.com',
+    headers: {
+      'User-Agent': 'html2rss-request',
+      'X-Something': 'Foobar',
+      Authorization: 'Token deadbea7',
+      Cookie: 'monster=MeWantCookie'
+    }
+  },
+  selectors: {}
+)
   ```
 
 </details>
@@ -645,23 +645,23 @@ You can add as many stylesheets and types as you like. Just add them to your glo
   <summary>Ruby: a stylesheet config example</summary>
 
 ```ruby
-  config =  Html2rss::Config.new(
-    { channel: {}, selectors: {} }, # omitted
-    {
-      stylesheets: [
-        {
-          href: '/relative/base/path/to/style.xls',
-          media: :all,
-          type: 'text/xsl'
-        },
-        {
-          href: 'http://example.com/rss.css',
-          media: :all,
-          type: 'text/css'
-        }
-      ]
-    }
-  )
+config = Html2rss::Config.new(
+  { channel: {}, selectors: {} }, # omitted
+  {
+    stylesheets: [
+      {
+        href: '/relative/base/path/to/style.xls',
+        media: :all,
+        type: 'text/xsl'
+      },
+      {
+        href: 'http://example.com/rss.css',
+        media: :all,
+        type: 'text/css'
+      }
+    ]
+  }
+)
 
 Html2rss.feed(config)
 ```
