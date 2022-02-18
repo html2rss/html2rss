@@ -88,4 +88,14 @@ RSpec.describe Html2rss::Utils do
       expect(response).to have_received(:body)
     end
   end
+
+  describe '.build_regexp_from_string(string)' do
+    {
+      '/\\d/' => /\d/,
+      '\\d' => /\d/,
+      '/[aeo]/' => /[aeo]/
+    }.each_pair do |string, expected|
+      it { expect(described_class.build_regexp_from_string(string)).to eq expected }
+    end
+  end
 end

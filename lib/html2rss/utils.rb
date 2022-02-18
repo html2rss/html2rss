@@ -4,6 +4,7 @@ require 'addressable/uri'
 require 'faraday'
 require 'faraday_middleware'
 require 'json'
+require 'regexp_parser'
 require 'tzinfo'
 
 module Html2rss
@@ -105,6 +106,22 @@ module Html2rss
       end.get.body
 
       convert_json_to_xml ? object_to_xml(JSON.parse(body)) : body
+    end
+
+    ##
+    # Parses the given String and builds a Regexp out of it.
+    #
+    # It will remove one pair of sourrounding slashes ('/') from the String
+    # to maintain backwards compatibility before building the Regexp.
+    #
+    # @param string [String]
+    # @return [Regexp]
+    def self.build_regexp_from_string(string)
+      raise ArgumentError, 'must be a string!' unless string.is_a?(String)
+
+      string = string[1..-2] if string[0] == '/' && string[-1] == '/'
+
+      Regexp::Parser.parse(string, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
     end
   end
 end
