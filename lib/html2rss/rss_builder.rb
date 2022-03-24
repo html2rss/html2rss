@@ -7,7 +7,7 @@ module Html2rss
   ##
   # Builds the feed, which consists of the '<channel>' and the '<item>'s
   # elements in the RSS.
-  class FeedBuilder
+  class RssBuilder
     private_class_method :new
     attr_reader :config
 
