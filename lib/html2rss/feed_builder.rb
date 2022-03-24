@@ -5,35 +5,39 @@ require 'mime/types'
 
 module Html2rss
   ##
-  # The purpose is to build the feed, consisting of
-  #
-  # - the 'channel' and
-  # - the 'item'
-  #
-  # parts.
+  # Builds the feed, which consists of the '<channel>' and the '<item>'s
+  # elements in the RSS.
   class FeedBuilder
-    ##
-    # @param config [Html2rss::Config]
+    private_class_method :new
+    attr_reader :config
+
     def initialize(config)
       @config = config
     end
 
-    ##
-    # @return [RSS::Rss]
     def build
       RSS::Maker.make('2.0') do |maker|
-        config.stylesheets.each { |stylesheet| FeedBuilder.add_stylesheet(stylesheet, maker) }
+        config.stylesheets.each { |stylesheet| add_stylesheet(stylesheet, maker) }
 
         add_channel(maker.channel)
-        items.each { |item| FeedBuilder.add_item(item, maker.items.new_item) }
+        items.each { |item| add_item(item, maker.items.new_item) }
       end
     end
+
+    ##
+    # @param config [Html2rss::Config]
+    # @return [RSS::Rss]
+    def self.build(config)
+      new(config).build
+    end
+
+    private
 
     ##
     # @param categories [Array<String>]
     # @param item_maker [RSS::Maker::RSS20::Items::Item]
     # @return nil
-    def self.add_categories(categories, item_maker)
+    def add_categories(categories, item_maker)
       categories.each { |category| item_maker.categories.new_category.content = category }
     end
 
@@ -41,7 +45,7 @@ module Html2rss
     # @param url [String]
     # @param item_maker [RSS::Maker::RSS20::Items::Item]
     # @return nil
-    def self.add_enclosure_from_url(url, item_maker)
+    def add_enclosure_from_url(url, item_maker)
       return unless url
 
       enclosure = item_maker.enclosure
@@ -56,7 +60,7 @@ module Html2rss
     # @param item
     # @param item_maker [RSS::Maker::RSS20::Items::Item]
     # @return nil
-    def self.add_guid(item, item_maker)
+    def add_guid(item, item_maker)
       guid = item_maker.guid
       guid.content = item.guid
       guid.isPermaLink = false
@@ -68,7 +72,7 @@ module Html2rss
     # @param [Array<Hash>] stylesheet <description>
     # @param [RSS::Maker::RSS20] maker
     # @return nil
-    def self.add_stylesheet(stylesheet, maker)
+    def add_stylesheet(stylesheet, maker)
       maker.xml_stylesheets.new_xml_stylesheet do |xss|
         xss.href = stylesheet[:href]
         xss.type = stylesheet[:type]
@@ -81,20 +85,15 @@ module Html2rss
     # @param item [Html2rss::Item]
     # @param item_maker [RSS::Maker::RSS20::Items::Item]
     # @return nil
-    def self.add_item(item, item_maker)
+    def add_item(item, item_maker)
       item.available_attributes.each do |attribute_name|
         item_maker.public_send("#{attribute_name}=", item.public_send(attribute_name))
       end
 
-      FeedBuilder.add_categories(item.categories, item_maker)
-      FeedBuilder.add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
-      FeedBuilder.add_guid(item, item_maker)
+      add_categories(item.categories, item_maker)
+      add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
+      add_guid(item, item_maker)
     end
-
-    private
-
-    # @return [Html2rss::Config]
-    attr_reader :config
 
     ##
     # @param channel_maker [RSS::Maker::RSS20::Channel]
@@ -111,7 +110,7 @@ module Html2rss
     ##
     # @return [Array<Html2rss::Item>]
     def items
-      @items ||= Item.from_url(config.url, config).tap do |items|
+      Item.from_url(config.url, config).tap do |items|
         items.reverse! if config.items_order == :reverse
       end
     end
