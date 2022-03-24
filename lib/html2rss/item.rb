@@ -6,6 +6,10 @@ module Html2rss
   ##
   # Takes the selected Nokogiri::HTML and responds to accessors names
   # defined in the feed config.
+  #
+  # Instances can only be created via `.from_url` and
+  # each represents a internally used "RSS item".
+  # Such an item provides the dynamically defined attributes as a method.
   class Item
     Context = Struct.new('Context', :options, :item, :config, keyword_init: true)
 
@@ -39,13 +43,6 @@ module Html2rss
         ItemExtractors.item_extractor_factory(attribute_options, xml).get,
         attribute_options.fetch(:post_process, false)
       )
-    end
-
-    ##
-    # @return [Array<Symbol>]
-    def available_attributes
-      @available_attributes ||= (%i[title link description author comments updated] &
-        config.attribute_names) - %i[categories enclosure]
     end
 
     ##
@@ -102,7 +99,7 @@ module Html2rss
 
       Nokogiri.HTML(body)
               .css(config.selector(Config::Selectors::ITEMS_SELECTOR_NAME))
-              .map { |xml_item| new xml_item, config }
+              .map { |xml| new xml, config }
               .keep_if(&:valid?)
     end
 
