@@ -18,6 +18,9 @@ module Html2rss
     # Thrown when a feed config (Hash) does not contain a value at `:channel`.
     class ChannelMissing < StandardError; end
 
+    # Class to keep the XML Stylesheet attributes
+    Stylesheet = Struct.new('Stylesheet', :href, :type, :media, keyword_init: true)
+
     def_delegator :@channel, :author
     def_delegator :@channel, :ttl
     def_delegator :@channel, :title
@@ -59,9 +62,9 @@ module Html2rss
     end
 
     ##
-    # @return [Array<Hash>]
+    # @return [Array<Stylesheet>]
     def stylesheets
-      @global.fetch(:stylesheets, [])
+      @global.fetch(:stylesheets, []).map { |attributes| Stylesheet.new(attributes) }
     end
 
     attr_reader :channel

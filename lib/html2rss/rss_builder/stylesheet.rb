@@ -8,15 +8,15 @@ module Html2rss
       ##
       # Adds the stylesheet xml tags to the RSS.
       #
-      # @param stylesheets [Array<Hash>]
       # @param maker [RSS::Maker::RSS20]
+      # @param stylesheets [Array<Stylesheet>]
       # @return nil
       def self.add(maker, stylesheets)
         stylesheets.each do |stylesheet|
           maker.xml_stylesheets.new_xml_stylesheet do |xss|
-            xss.href = stylesheet[:href]
-            xss.type = stylesheet[:type]
-            xss.media = stylesheet[:media]
+            xss.href = stylesheet.href
+            xss.type = stylesheet.type
+            xss.media = stylesheet.media
           end
         end
       end
