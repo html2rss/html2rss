@@ -38,7 +38,16 @@ module Html2rss
     def method_missing(method_name, *_args)
       return super unless respond_to_missing?(method_name)
 
-      attribute_options = config.selector_attributes_with_channel(method_name)
+      extract method_name
+    end
+
+    ##
+    # Selects and processes according to the selector name.
+    #
+    # @param selector_name [Symbol, #to_sym]
+    # @return [String] the extracted value for the selector.
+    def extract(selector_name)
+      attribute_options = config.selector_attributes_with_channel(selector_name.to_sym)
 
       post_process(
         ItemExtractors.item_extractor_factory(attribute_options, xml).get,
@@ -88,7 +97,7 @@ module Html2rss
     def enclosure
       url = enclosure_url
 
-      raise 'Trying to build item.enclosure with non-absolute url' if !url || !url.absolute?
+      raise 'An item.enclosure requires an absolute URL' if !url || !url.absolute?
 
       content_type = MIME::Types.type_for(File.extname(url).delete('.'))
 
@@ -138,7 +147,7 @@ module Html2rss
     ##
     # @return [Addressable::URI, nil] the (absolute) URL of the content
     def enclosure_url
-      enclosure = Html2rss::Utils.sanitize_url(method_missing(:enclosure))
+      enclosure = Html2rss::Utils.sanitize_url(extract(:enclosure))
 
       Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url) if enclosure
     end

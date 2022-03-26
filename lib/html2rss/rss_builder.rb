@@ -20,7 +20,7 @@ module Html2rss
       RSS::Maker.make('2.0') do |maker|
         Stylesheet.add(maker, config.stylesheets)
 
-        Channel.add(config, maker.channel, CHANNEL_TAGS)
+        Channel.add(maker.channel, config, CHANNEL_TAGS)
 
         item_attributes = config.attribute_names & ITEM_TAGS
         Html2rss::Item.from_url(config.url, config)
