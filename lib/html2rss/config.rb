@@ -31,12 +31,12 @@ module Html2rss
     def_delegator :@channel, :time_zone
     def_delegator :@channel, :json?
 
-    def_delegator :@selectors, :attribute_names
-    def_delegator :@selectors, :attribute?
-    def_delegator :@selectors, :category_selectors
-    def_delegator :@selectors, :guid_selectors
+    def_delegator :@selectors, :item_selector_names
+    def_delegator :@selectors, :selector?
+    def_delegator :@selectors, :category_selector_names
+    def_delegator :@selectors, :guid_selector_names
     def_delegator :@selectors, :items_order
-    def_delegator :@selectors, :selector
+    def_delegator :@selectors, :selector_string
 
     ##
     # @param feed_config [Hash<Symbol, Object>]

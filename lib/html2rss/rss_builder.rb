@@ -22,7 +22,7 @@ module Html2rss
 
         Channel.add(maker.channel, config, CHANNEL_TAGS)
 
-        item_attributes = config.attribute_names & ITEM_TAGS
+        item_attributes = config.item_selector_names & ITEM_TAGS
         Html2rss::Item.from_url(config.url, config)
                       .tap { |items| items.reverse! if config.items_order == :reverse }
                       .each do |item|

@@ -18,34 +18,38 @@ module Html2rss
       ##
       # @param name [Symbol]
       # @return [true, false]
-      def attribute?(name)
-        attribute_names.include?(name)
+      def selector?(name)
+        raise "selector #{ITEMS_SELECTOR_NAME} must not be used as an item's selector" if name == ITEMS_SELECTOR_NAME
+
+        item_selector_names.include?(name)
       end
 
       ##
       # @param name [Symbol]
       # @return [Selector]
       def selector(name)
-        raise "invalid attribute: #{name}" unless attribute?(name)
+        raise "invalid item's selector name: #{name}" unless selector?(name)
 
         Selector.new config[name]
       end
       alias selector_attributes selector
+      # TODO: rename selector_attributes calls
 
       ##
       # @return [Set<Symbol>]
-      def category_selectors
+      def category_selector_names
         selector_keys_for(:categories)
       end
 
       ##
       # @return [Set<Symbol>]
-      def guid_selectors
+      def guid_selector_names
         selector_keys_for(:guid, default: :title_or_description)
       end
 
       ##
       # Returns the CSS/XPath selector.
+      #
       # @param name [Symbol]
       # @return [String]
       def selector_string(name)
@@ -54,8 +58,8 @@ module Html2rss
 
       ##
       # @return [Set<String>]
-      def attribute_names
-        @attribute_names ||= config.keys.tap { |attrs| attrs.delete(ITEMS_SELECTOR_NAME) }.to_set
+      def item_selector_names
+        @item_selector_names ||= config.keys.tap { |attrs| attrs.delete(ITEMS_SELECTOR_NAME) }.to_set
       end
 
       ##
@@ -69,7 +73,8 @@ module Html2rss
       attr_reader :config
 
       ##
-      # Returns the selector names for selector `name`. If none, returns [default].
+      # Returns the selector keys for the selector named `name`. If none, returns [default].
+      #
       # @param name [Symbol]
       # @param default [String, Symbol]
       # @return [Set<Symbol>]

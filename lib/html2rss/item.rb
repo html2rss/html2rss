@@ -28,7 +28,7 @@ module Html2rss
     # @param method_name [Symbol]
     # @param _include_private [true, false]
     def respond_to_missing?(method_name, _include_private = false)
-      config.attribute?(method_name) || super
+      config.selector?(method_name) || super
     end
 
     ##
@@ -47,7 +47,7 @@ module Html2rss
     ##
     # Selects and processes according to the selector name.
     #
-    # @param selector_name [Symbol, #to_sym]
+    # @param tag [Symbol, #to_sym]
     # @return [String] the extracted value for the selector.
     def extract(tag)
       attribute_options = config.selector_attributes_with_channel(tag.to_sym)
@@ -69,16 +69,16 @@ module Html2rss
     # Returns the title or, if absent, the description. Returns nil if both are absent.
     # @return [String, nil]
     def title_or_description
-      return title if config.attribute?(:title)
+      return title if config.selector?(:title)
 
-      description if config.attribute?(:description)
+      description if config.selector?(:description)
     end
 
     ##
     #
     # @return [String] SHA1
     def guid
-      content = config.guid_selectors.flat_map { |method_name| public_send(method_name) }.join
+      content = config.guid_selector_names.flat_map { |method_name| public_send(method_name) }.join
 
       Digest::SHA1.hexdigest content
     end
@@ -86,13 +86,13 @@ module Html2rss
     ##
     # @return [Array<String>]
     def categories
-      config.category_selectors.map { |method_name| public_send(method_name) }
+      config.category_selector_names.map { |method_name| public_send(method_name) }
     end
 
     ##
     # @return [true, false]
     def enclosure?
-      config.attribute?(:enclosure)
+      config.selector?(:enclosure)
     end
 
     ##

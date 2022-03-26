@@ -20,12 +20,6 @@ RSpec.describe Html2rss::Config do
     end
   end
 
-  describe '#attribute_names' do
-    subject { described_class.new(config.merge(selectors: { items: {}, name: {} })).attribute_names }
-
-    it { is_expected.to eq Set.new(%i[name]) }
-  end
-
   describe '#attribute_options(name)' do
     subject(:instance) { described_class.new(config) }
 
