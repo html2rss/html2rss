@@ -23,7 +23,7 @@ RSpec.describe Html2rss::Config do
   describe '#attribute_names' do
     subject { described_class.new(config.merge(selectors: { items: {}, name: {} })).attribute_names }
 
-    it { is_expected.to eq %i[name] }
+    it { is_expected.to eq Set.new(%i[name]) }
   end
 
   describe '#attribute_options(name)' do
@@ -43,16 +43,6 @@ RSpec.describe Html2rss::Config do
       expect(instance.selector_attributes_with_channel(:title)).to a_hash_including(selector: 'h1',
                                                                                     channel: Html2rss::Config::Channel)
     end
-  end
-
-  describe '#category_selectors' do
-    subject { described_class.new(feed_config).category_selectors }
-
-    let(:feed_config) do
-      config.merge(selectors: { items: { selector: {} }, categories: ['name', 'name', nil], name: {} })
-    end
-
-    it { is_expected.to eq %i[name] }
   end
 
   describe '#title' do

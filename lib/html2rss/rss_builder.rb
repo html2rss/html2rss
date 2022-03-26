@@ -28,8 +28,9 @@ module Html2rss
       end
     end
 
+    # @return [Set<Symbol>]
     def self.item_attributes(config)
-      (%i[title link description author comments updated] & config.attribute_names) - %i[categories enclosure]
+      (config.attribute_names & %i[title link description author comments updated]) - %i[categories enclosure]
     end
   end
 end

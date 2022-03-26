@@ -30,13 +30,13 @@ module Html2rss
       end
 
       ##
-      # @return [Array<Symbol>]
+      # @return [Set<Symbol>]
       def category_selectors
         selector_keys_for(:categories)
       end
 
       ##
-      # @return [Array<Symbol>]
+      # @return [Set<Symbol>]
       def guid_selectors
         selector_keys_for(:guid, default: :title_or_description)
       end
@@ -49,9 +49,9 @@ module Html2rss
       end
 
       ##
-      # @return [Array<String>]
+      # @return [Set<String>]
       def attribute_names
-        @attribute_names ||= config.keys.tap { |attrs| attrs.delete(ITEMS_SELECTOR_NAME) }
+        @attribute_names ||= config.keys.tap { |attrs| attrs.delete(ITEMS_SELECTOR_NAME) }.to_set
       end
 
       ##
@@ -68,13 +68,12 @@ module Html2rss
       # Returns the selector names for selector `name`. If none, returns [default].
       # @param name [Symbol]
       # @param default [String, Symbol]
-      # @return [Array<Symbol,nil>]
+      # @return [Set<Symbol>]
       def selector_keys_for(name, default: nil)
         config.fetch(name) { Array(default) }.tap do |array|
           array.reject! { |entry| entry.to_s == '' }
           array.map!(&:to_sym)
-          array.uniq!
-        end
+        end.to_set
       end
     end
   end

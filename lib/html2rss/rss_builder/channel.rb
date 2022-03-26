@@ -2,10 +2,11 @@
 
 module Html2rss
   module RssBuilder
+    ##
+    # Builds the <channel> tag (with the provided maker).
     class Channel
       ##
       # @return nil
-      # TODO: remove config reference
       def self.add(channel_maker, config, attributes)
         attributes.each do |attribute_name|
           channel_maker.public_send("#{attribute_name}=", config.public_send(attribute_name))

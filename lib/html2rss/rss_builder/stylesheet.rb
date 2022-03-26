@@ -2,11 +2,13 @@
 
 module Html2rss
   module RssBuilder
+    ##
+    # Adds XML stylesheet tags (with the provided maker).
     class Stylesheet
       ##
       # Adds the xml stylesheets to the RSS::Maker.
       #
-      # @param stylesheet [Array<Hash>] <description>
+      # @param stylesheets [Array<Hash>]
       # @param maker [RSS::Maker::RSS20]
       # @return nil
       def self.add(maker, stylesheets)
