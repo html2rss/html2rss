@@ -12,6 +12,7 @@ module Html2rss
   # Such an item provides the dynamically defined attributes as a method.
   class Item
     Context = Struct.new('Context', :options, :item, :config, keyword_init: true)
+    Enclosure = Struct.new('Enclosure', :type, :bits_length, :url, keyword_init: true)
 
     ##
     # @param xml [Nokogiri::XML::Element]
@@ -83,11 +84,19 @@ module Html2rss
     end
 
     ##
-    # @return [Addressable::URI]
-    def enclosure_url
-      enclosure = Html2rss::Utils.sanitize_url(method_missing(:enclosure))
+    # @return [Enclosure]
+    def enclosure
+      url = enclosure_url
 
-      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url).to_s if enclosure
+      raise 'Trying to build item.enclosure with non-absolute url' if !url || !url.absolute?
+
+      content_type = MIME::Types.type_for(File.extname(url).delete('.'))
+
+      Enclosure.new(
+        type: content_type.any? ? content_type.first.to_s : 'application/octet-stream',
+        bits_length: 0,
+        url: url
+      )
     end
 
     ##
@@ -124,6 +133,14 @@ module Html2rss
       end
 
       value
+    end
+
+    ##
+    # @return [Addressable::URI, nil] the (absolute) URL of the content
+    def enclosure_url
+      enclosure = Html2rss::Utils.sanitize_url(method_missing(:enclosure))
+
+      Html2rss::Utils.build_absolute_url_from_relative(enclosure, config.url) if enclosure
     end
   end
 end

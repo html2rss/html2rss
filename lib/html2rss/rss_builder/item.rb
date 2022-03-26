@@ -19,34 +19,34 @@ module Html2rss
             item_maker.public_send("#{attribute_name}=", item.public_send(attribute_name))
           end
 
-          add_categories(item.categories, item_maker)
-          add_enclosure_from_url(item.enclosure_url, item_maker) if item.enclosure?
+          add_categories(item, item_maker)
+          add_enclosure(item, item_maker)
           add_guid(item, item_maker)
         end
 
         private
 
         ##
-        # @param categories [Array<String>]
+        # @param item [Html2rss::Item]
         # @param item_maker [RSS::Maker::RSS20::Items::Item]
         # @return nil
-        def add_categories(categories, item_maker)
-          categories.each { |category| item_maker.categories.new_category.content = category }
+        def add_categories(item, item_maker)
+          item.categories.each { |category| item_maker.categories.new_category.content = category }
         end
 
         ##
-        # @param url [String]
+        # @param item [Html2rss::Item]
         # @param item_maker [RSS::Maker::RSS20::Items::Item]
         # @return nil
-        def add_enclosure_from_url(url, item_maker)
-          return unless url
+        def add_enclosure(item, item_maker)
+          return unless item.enclosure?
 
-          enclosure = item_maker.enclosure
-          content_type = MIME::Types.type_for(File.extname(url).delete('.'))
+          item_enclosure = item.enclosure
+          rss_enclosure = item_maker.enclosure
 
-          enclosure.type = content_type.any? ? content_type.first.to_s : 'application/octet-stream'
-          enclosure.length = 0
-          enclosure.url = url
+          rss_enclosure.type = item_enclosure.type
+          rss_enclosure.length = item_enclosure.bits_length
+          rss_enclosure.url = item_enclosure.url
         end
 
         ##
