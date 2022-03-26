@@ -10,6 +10,8 @@ module Html2rss
       # Class to keep user-defined selectors.
       Selector = Struct.new('Selector', :selector, :order, :extractor, :attribute, :post_process, keyword_init: true)
 
+      ##
+      # @param config [Hash<Symbol, Object>]
       def initialize(config)
         raise ArgumentError, 'selector for items is required' unless config[ITEMS_SELECTOR_NAME].is_a?(Hash)
 
@@ -69,6 +71,7 @@ module Html2rss
 
       private
 
+      # @return [Hash<Symbol, Object>]
       attr_reader :config
 
       ##

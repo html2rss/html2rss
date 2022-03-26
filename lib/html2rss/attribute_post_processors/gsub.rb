@@ -41,6 +41,7 @@ module Html2rss
         @value.to_s.gsub(pattern, replacement)
       end
 
+      # @return [Regexp]
       def pattern
         pattern = @context[:options][:pattern]
 
@@ -49,6 +50,7 @@ module Html2rss
         pattern.is_a?(String) ? Utils.build_regexp_from_string(pattern) : pattern
       end
 
+      # @return [Hash, String]
       def replacement
         replacement = @context[:options][:replacement]
 

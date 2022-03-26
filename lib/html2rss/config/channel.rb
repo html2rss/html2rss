@@ -10,6 +10,9 @@ module Html2rss
     # 2. html2rss options like json or custom HTTP-headers for the request
     #
     class Channel
+      ##
+      # @param channel [Hash<Symbol, Object>]
+      # @param params [Hash]
       def initialize(channel, params: {})
         raise ArgumentError, 'channel must be a hash' unless channel.is_a?(Hash)
         raise ArgumentError, 'missing key :url' unless channel[:url].is_a?(String)

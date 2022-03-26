@@ -67,6 +67,7 @@ module Html2rss
       @global.fetch(:stylesheets, []).map { |attributes| Stylesheet.new(attributes) }
     end
 
+    # @return [Channel]
     attr_reader :channel
   end
 end

@@ -7,13 +7,13 @@ module Html2rss
     ##
     # Returns sanitized HTML code as String.
     #
-    # It adds:
+    # It sanitizes by using the [sanitize gem](https://github.com/rgrove/sanitize) with
+    # [Sanitize::Config::RELAXED](https://github.com/rgrove/sanitize#sanitizeconfigrelaxed).
+    #
+    # Furthermore, it adds:
     #
     # - `rel="nofollow noopener noreferrer"` to <a> tags
     # - `referrer-policy='no-referrer'` to <img> tags
-    #
-    # It also:
-    #
     # - wraps all <img> tags, whose direct parent is not an <a>, into an <a>
     #   linking to the <img>'s `src`.
     #
@@ -49,10 +49,6 @@ module Html2rss
       end
 
       ##
-      # - uses the {https://github.com/rgrove/sanitize sanitize gem}
-      # - uses the config {https://github.com/rgrove/sanitize#sanitizeconfigrelaxed Sanitize::Config::RELAXED}
-      # - adds rel="nofollow noopener noreferrer" to <a> tags
-      # - adds target="_blank" to <a> tags
       # @return [String]
       def get
         Sanitize.fragment(@value, sanitize_config).to_s.split.join(' ')

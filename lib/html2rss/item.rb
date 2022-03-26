@@ -49,7 +49,7 @@ module Html2rss
     ##
     # Selects and processes according to the selector name.
     #
-    # @param tag [Symbol, #to_sym]
+    # @param tag [Symbol]
     # @return [String] the extracted value for the selector.
     def extract(tag)
       attribute_options = config.selector_attributes_with_channel(tag.to_sym)

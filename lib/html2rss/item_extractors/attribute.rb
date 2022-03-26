@@ -21,14 +21,13 @@ module Html2rss
     #    '2019-07-01'
     #
     # In case you're extracting a date or a time, do not forget to parse it
-    # during post processing with
-    # {AttributePostProcessors::ParseTime}[rdoc-ref:Html2rss::AttributePostProcessors::ParseTime].
+    # during post processing with {AttributePostProcessors::ParseTime}.
     class Attribute
-      REQUIRED_OPTIONS = %i[selector attribute].freeze
+      Options = Struct.new('Options', :selector, :attribute, keyword_init: true)
 
       ##
       # @param xml [Nokogiri::XML::Element]
-      # @param options [Struct::AttributeOptions]
+      # @param options [Options]
       def initialize(xml, options)
         @options = options
         @element = ItemExtractors.element(xml, options.selector)

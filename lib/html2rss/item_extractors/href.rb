@@ -23,11 +23,11 @@ module Html2rss
     # Would return:
     #    'http://blog-without-a-feed.example.com/posts/latest-findings'
     class Href
-      REQUIRED_OPTIONS = %i[selector channel].freeze
+      Options = Struct.new('Options', :selector, :channel, keyword_init: true)
 
       ##
       # @param xml [Nokogiri::XML::Element]
-      # @param options [Struct::HrefOptions]
+      # @param options [Options]
       def initialize(xml, options)
         @options = options
         element = ItemExtractors.element(xml, options.selector)
