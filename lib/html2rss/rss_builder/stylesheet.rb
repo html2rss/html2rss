@@ -6,7 +6,7 @@ module Html2rss
     # Adds XML stylesheet tags (with the provided maker).
     class Stylesheet
       ##
-      # Adds the xml stylesheets to the RSS::Maker.
+      # Adds the stylesheet xml tags to the RSS.
       #
       # @param stylesheets [Array<Hash>]
       # @param maker [RSS::Maker::RSS20]

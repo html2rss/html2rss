@@ -6,14 +6,17 @@ module Html2rss
     # Builds the <channel> tag (with the provided maker).
     class Channel
       ##
+      # @param maker [RSS::Maker::RSS20::Channel]
+      # @param config [Html2rss::Config]
+      # @param tags [Set<Symbol>]
       # @return nil
-      def self.add(channel_maker, config, attributes)
-        attributes.each do |attribute_name|
-          channel_maker.public_send("#{attribute_name}=", config.public_send(attribute_name))
+      def self.add(maker, config, tags)
+        tags.each do |tag|
+          maker.public_send("#{tag}=", config.public_send(tag))
         end
 
-        channel_maker.generator = "html2rss V. #{::Html2rss::VERSION}"
-        channel_maker.lastBuildDate = Time.now
+        maker.generator = "html2rss V. #{::Html2rss::VERSION}"
+        maker.lastBuildDate = Time.now
       end
     end
   end
