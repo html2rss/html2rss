@@ -32,6 +32,9 @@ module Html2rss
     end
 
     ##
+    # If the object does not respond to *method_name*,
+    # it will call {extract} with *method_name* as *tag* param.
+    #
     # @param method_name [Symbol]
     # @param _args [Object]
     # @return [String]
@@ -46,8 +49,8 @@ module Html2rss
     #
     # @param selector_name [Symbol, #to_sym]
     # @return [String] the extracted value for the selector.
-    def extract(selector_name)
-      attribute_options = config.selector_attributes_with_channel(selector_name.to_sym)
+    def extract(tag)
+      attribute_options = config.selector_attributes_with_channel(tag.to_sym)
 
       post_process(
         ItemExtractors.item_extractor_factory(attribute_options, xml).get,
@@ -116,7 +119,7 @@ module Html2rss
       body = Utils.request_body_from_url(url, convert_json_to_xml: config.json?, headers: config.headers)
 
       Nokogiri.HTML(body)
-              .css(config.selector(Config::Selectors::ITEMS_SELECTOR_NAME))
+              .css(config.selector_string(Config::Selectors::ITEMS_SELECTOR_NAME))
               .map { |xml| new xml, config }
               .keep_if(&:valid?)
     end

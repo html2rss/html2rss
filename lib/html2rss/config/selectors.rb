@@ -7,6 +7,8 @@ module Html2rss
     class Selectors
       ITEMS_SELECTOR_NAME = :items
 
+      Selector = Struct.new('Selector', :selector, :order, :extractor, :attribute, :post_process, keyword_init: true)
+
       def initialize(config)
         raise ArgumentError, 'selector for items is required' unless config[ITEMS_SELECTOR_NAME].is_a?(Hash)
 
@@ -22,12 +24,13 @@ module Html2rss
 
       ##
       # @param name [Symbol]
-      # @return [Hash<Symbol, Object>]
-      def selector_attributes(name)
+      # @return [Selector]
+      def selector(name)
         raise "invalid attribute: #{name}" unless attribute?(name)
 
-        config[name]
+        Selector.new config[name]
       end
+      alias selector_attributes selector
 
       ##
       # @return [Set<Symbol>]
@@ -42,10 +45,11 @@ module Html2rss
       end
 
       ##
+      # Returns the CSS/XPath selector.
       # @param name [Symbol]
       # @return [String]
-      def selector(name)
-        config.dig(name, :selector)
+      def selector_string(name)
+        Selector.new(config[name]).selector
       end
 
       ##
@@ -55,7 +59,7 @@ module Html2rss
       end
 
       ##
-      # @return [Symbol]
+      # @return [Symbol, nil]
       def items_order
         config.dig(ITEMS_SELECTOR_NAME, :order)&.to_sym
       end

@@ -76,14 +76,12 @@ module Html2rss
       end
 
       ##
-      # Returns the dynamic parameter names which are required to use the feed config.
-      #
       # @param config [Hash<Symbol, Object>]
-      # @return [Set<String>] the parameter names
+      # @return [Set<String>] the required parameter names
       def self.required_params_for_config(config)
         Set.new.tap do |required_params|
-          config.each_key do |tag|
-            value = config[tag]
+          config.each_key do |selector_name|
+            value = config[selector_name]
             next unless value.is_a?(String)
 
             required_params.merge value.scan(/%<([\w_\d]+)>(\w)?/).to_h.keys
@@ -117,11 +115,11 @@ module Html2rss
 
         return config if params.keys.none?
 
-        config.each_key do |tag|
-          value = config[tag]
+        config.each_key do |selector_name|
+          value = config[selector_name]
           next unless value.is_a?(String)
 
-          config[tag] = format(value, params)
+          config[selector_name] = format(value, params)
         end
 
         config
