@@ -113,8 +113,6 @@ module Html2rss
       def process_params(config, params)
         assert_required_params_presence(config, params)
 
-        return config if params.keys.none?
-
         config.each_key do |selector_name|
           value = config[selector_name]
           next unless value.is_a?(String)

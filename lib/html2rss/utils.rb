@@ -43,10 +43,10 @@ module Html2rss
     def self.object_to_xml(object)
       if object.respond_to? :each_pair
         prefix, suffix = OBJECT_TO_XML_TAGS[:object]
-        xml = object.each_pair.map { |k, v| "<#{k}>#{object_to_xml(v)}</#{k}>" }
+        xml = object.each_pair.map { |key, value| "<#{key}>#{object_to_xml(value)}</#{key}>" }
       elsif object.respond_to? :each
         prefix, suffix = OBJECT_TO_XML_TAGS[:array]
-        xml = object.map { |o| object_to_xml(o) }
+        xml = object.map { |value| object_to_xml(value) }
       else
         xml = [object]
       end
