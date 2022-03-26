@@ -28,9 +28,10 @@ module Html2rss
       end
     end
 
+    # The attribute names which should be present in the RSS
     # @return [Set<Symbol>]
     def self.item_attributes(config)
-      (config.attribute_names & %i[title link description author comments updated]) - %i[categories enclosure]
+      config.attribute_names & %i[title link description author comments updated]
     end
   end
 end

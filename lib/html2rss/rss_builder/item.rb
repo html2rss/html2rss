@@ -7,6 +7,8 @@ module Html2rss
     ##
     # Builds an <item> tag (with the provided maker).
     class Item
+      SPECIAL_TREATMENT_ATTRIBUTES = %i[categories enclosure guid].freeze
+
       class << self
         ##
         # Adds the item to the Item Maker
@@ -15,13 +17,13 @@ module Html2rss
         # @param attributes [Set<Symbol>]
         # @return nil
         def add(item, item_maker, attributes)
-          attributes.each do |attribute_name|
+          (attributes - SPECIAL_TREATMENT_ATTRIBUTES).each do |attribute_name|
             item_maker.public_send("#{attribute_name}=", item.public_send(attribute_name))
           end
 
-          add_categories(item, item_maker)
-          add_enclosure(item, item_maker)
-          add_guid(item, item_maker)
+          SPECIAL_TREATMENT_ATTRIBUTES.each do |attribute_name|
+            send("add_#{attribute_name}", item, item_maker)
+          end
         end
 
         private
