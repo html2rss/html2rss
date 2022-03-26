@@ -18,6 +18,9 @@ module Html2rss
     # Thrown when a feed config (Hash) does not contain a value at `:channel`.
     class ChannelMissing < StandardError; end
 
+    # Class to keep the XML Stylesheet attributes
+    Stylesheet = Struct.new('Stylesheet', :href, :type, :media, keyword_init: true)
+
     def_delegator :@channel, :author
     def_delegator :@channel, :ttl
     def_delegator :@channel, :title
@@ -28,12 +31,12 @@ module Html2rss
     def_delegator :@channel, :time_zone
     def_delegator :@channel, :json?
 
-    def_delegator :@selectors, :attribute_names
-    def_delegator :@selectors, :attribute?
-    def_delegator :@selectors, :category_selectors
-    def_delegator :@selectors, :guid_selectors
+    def_delegator :@selectors, :item_selector_names
+    def_delegator :@selectors, :selector?
+    def_delegator :@selectors, :category_selector_names
+    def_delegator :@selectors, :guid_selector_names
     def_delegator :@selectors, :items_order
-    def_delegator :@selectors, :selector
+    def_delegator :@selectors, :selector_string
 
     ##
     # @param feed_config [Hash<Symbol, Object>]
@@ -47,9 +50,9 @@ module Html2rss
 
     ##
     # @param name [Symbol]
-    # @return [Hash]
+    # @return [Hash<Symbol, Object>]
     def selector_attributes_with_channel(name)
-      @selectors.selector_attributes(name).merge(channel: @channel)
+      @selectors.selector(name).to_h.merge(channel: @channel)
     end
 
     ##
@@ -59,11 +62,12 @@ module Html2rss
     end
 
     ##
-    # @return [Array<Hash>]
+    # @return [Array<Stylesheet>]
     def stylesheets
-      @global.fetch(:stylesheets, [])
+      @global.fetch(:stylesheets, []).map { |attributes| Stylesheet.new(attributes) }
     end
 
+    # @return [Channel]
     attr_reader :channel
   end
 end

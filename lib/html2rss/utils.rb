@@ -12,11 +12,11 @@ module Html2rss
   # The collecting tank for utility methods.
   module Utils
     ##
-    # @param url [String, URI]
+    # @param url [String, Addressable::URI]
     # @param base_url [String]
     # @return [Addressable::URI]
     def self.build_absolute_url_from_relative(url, base_url)
-      url = Addressable::URI.parse(url) if url.is_a?(String)
+      url = Addressable::URI.parse(url) unless url.is_a?(Addressable::URI)
 
       return url if url.absolute?
 
@@ -38,15 +38,15 @@ module Html2rss
     ##
     # A naive implementation of "Object to XML".
     #
-    # @param object [#each_pair, #each]
+    # @param object [Hash, Enumerable, String, Symbol]
     # @return [String] representing the object in XML, with all types being Strings
     def self.object_to_xml(object)
       if object.respond_to? :each_pair
         prefix, suffix = OBJECT_TO_XML_TAGS[:object]
-        xml = object.each_pair.map { |k, v| "<#{k}>#{object_to_xml(v)}</#{k}>" }
+        xml = object.each_pair.map { |key, value| "<#{key}>#{object_to_xml(value)}</#{key}>" }
       elsif object.respond_to? :each
         prefix, suffix = OBJECT_TO_XML_TAGS[:array]
-        xml = object.map { |o| object_to_xml(o) }
+        xml = object.map { |value| object_to_xml(value) }
       else
         xml = [object]
       end
@@ -84,10 +84,10 @@ module Html2rss
 
     ##
     # Builds a titleized representation of the URL.
-    # @param url [#to_s]
+    # @param url [String]
     # @return [String]
     def self.titleized_url(url)
-      uri = Addressable::URI.parse(url.to_s)
+      uri = Addressable::URI.parse(url)
       host = uri.host
 
       nicer_path = uri.path.split('/').reject { |part| part == '' }

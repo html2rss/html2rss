@@ -62,7 +62,6 @@ module Html2rss
   def self.feed(config)
     config = Config.new(config) unless config.is_a?(Config)
 
-    feed = FeedBuilder.new config
-    feed.build
+    RssBuilder.build config
   end
 end

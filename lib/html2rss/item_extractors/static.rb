@@ -13,11 +13,11 @@ module Html2rss
     # Would return:
     #    'Foobar'
     class Static
-      REQUIRED_OPTIONS = [:static].freeze
+      Options = Struct.new('Options', :static, keyword_init: true)
 
       ##
       # @param _xml [nil, Nokogiri::XML::Element]
-      # @param options [Struct::StaticOptions]
+      # @param options [Options]
       def initialize(_xml, options)
         @options = options
       end

@@ -10,6 +10,9 @@ module Html2rss
     # 2. html2rss options like json or custom HTTP-headers for the request
     #
     class Channel
+      ##
+      # @param channel [Hash<Symbol, Object>]
+      # @param params [Hash]
       def initialize(channel, params: {})
         raise ArgumentError, 'channel must be a hash' unless channel.is_a?(Hash)
         raise ArgumentError, 'missing key :url' unless channel[:url].is_a?(String)
@@ -76,14 +79,12 @@ module Html2rss
       end
 
       ##
-      # Returns the dynamic parameter names which are required to use the feed config.
-      #
       # @param config [Hash<Symbol, Object>]
-      # @return [Set] containing Strings (the parameter names)
+      # @return [Set<String>] the required parameter names
       def self.required_params_for_config(config)
         Set.new.tap do |required_params|
-          config.each_key do |attribute_name|
-            value = config[attribute_name]
+          config.each_key do |selector_name|
+            value = config[selector_name]
             next unless value.is_a?(String)
 
             required_params.merge value.scan(/%<([\w_\d]+)>(\w)?/).to_h.keys
@@ -115,13 +116,11 @@ module Html2rss
       def process_params(config, params)
         assert_required_params_presence(config, params)
 
-        return config if params.keys.none?
-
-        config.each_key do |attribute_name|
-          value = config[attribute_name]
+        config.each_key do |selector_name|
+          value = config[selector_name]
           next unless value.is_a?(String)
 
-          config[attribute_name] = format(value, params)
+          config[selector_name] = format(value, params)
         end
 
         config
