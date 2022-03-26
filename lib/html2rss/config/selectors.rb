@@ -32,8 +32,6 @@ module Html2rss
 
         Selector.new config[name]
       end
-      alias selector_attributes selector
-      # TODO: rename selector_attributes calls
 
       ##
       # @return [Set<Symbol>]

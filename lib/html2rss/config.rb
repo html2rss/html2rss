@@ -52,7 +52,7 @@ module Html2rss
     # @param name [Symbol]
     # @return [Hash<Symbol, Object>]
     def selector_attributes_with_channel(name)
-      @selectors.selector_attributes(name).to_h.merge(channel: @channel)
+      @selectors.selector(name).to_h.merge(channel: @channel)
     end
 
     ##
