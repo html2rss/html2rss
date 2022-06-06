@@ -69,13 +69,14 @@ module Html2rss
     # Allows override of time zone locally inside supplied block; resets previous time zone when done.
     #
     # @param time_zone [String]
+    # @param default_time_zone [String]
     # @return whatever the given block returns
-    def self.use_zone(time_zone)
+    def self.use_zone(time_zone, default_time_zone: Time.now.getlocal.zone)
       raise ArgumentError, 'a block is required' unless block_given?
 
       time_zone = TZInfo::Timezone.get(time_zone)
 
-      prev_tz = ENV['TZ']
+      prev_tz = ENV.fetch('TZ', default_time_zone)
       ENV['TZ'] = time_zone.name
       yield
     ensure
