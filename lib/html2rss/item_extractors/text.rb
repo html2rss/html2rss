@@ -20,7 +20,7 @@ module Html2rss
     # Would return:
     #    'Lorem ipsum dolor ...'
     class Text
-      Options = Struct.new('Options', :selector, keyword_init: true)
+      Options = Struct.new('TextOptions', :selector, keyword_init: true)
 
       ##
       # @param xml [Nokogiri::XML::Element]

@@ -13,7 +13,7 @@ module Html2rss
     # Would return:
     #    'Foobar'
     class Static
-      Options = Struct.new('Options', :static, keyword_init: true)
+      Options = Struct.new('StaticOptions', :static, keyword_init: true)
 
       ##
       # @param _xml [nil, Nokogiri::XML::Element]

@@ -23,7 +23,7 @@ module Html2rss
     # Would return:
     #    'http://blog-without-a-feed.example.com/posts/latest-findings'
     class Href
-      Options = Struct.new('Options', :selector, :channel, keyword_init: true)
+      Options = Struct.new('HrefOptions', :selector, :channel, keyword_init: true)
 
       ##
       # @param xml [Nokogiri::XML::Element]

@@ -22,7 +22,7 @@ module Html2rss
     # Always make sure to sanitize the HTML during post processing with
     # {AttributePostProcessors::SanitizeHtml}.
     class Html
-      Options = Struct.new('Options', :selector, keyword_init: true)
+      Options = Struct.new('HtmlOptions', :selector, keyword_init: true)
 
       ##
       # @param xml [Nokogiri::XML::Element]
