@@ -5,7 +5,7 @@ RSpec.describe Html2rss do
   let(:name) { 'nuxt-releases' }
 
   it 'has a version number' do
-    expect(Html2rss::VERSION).not_to be nil
+    expect(Html2rss::VERSION).not_to be_nil
   end
 
   describe '::CONFIG_KEY_FEEDS' do
