@@ -23,7 +23,7 @@ module Html2rss
     # In case you're extracting a date or a time, do not forget to parse it
     # during post processing with {AttributePostProcessors::ParseTime}.
     class Attribute
-      Options = Struct.new('Options', :selector, :attribute, keyword_init: true)
+      Options = Struct.new('AttributeOptions', :selector, :attribute, keyword_init: true)
 
       ##
       # @param xml [Nokogiri::XML::Element]
