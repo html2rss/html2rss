@@ -2,7 +2,7 @@
 
 require 'addressable/uri'
 require 'faraday'
-require 'faraday_middleware'
+require 'faraday/follow_redirects'
 require 'json'
 require 'regexp_parser'
 require 'tzinfo'
@@ -102,7 +102,7 @@ module Html2rss
     # @return [String]
     def self.request_body_from_url(url, convert_json_to_xml: false, headers: {})
       body = Faraday.new(url: url, headers: headers) do |faraday|
-        faraday.use FaradayMiddleware::FollowRedirects
+        faraday.use Faraday::FollowRedirects::Middleware
         faraday.adapter Faraday.default_adapter
       end.get.body
 
