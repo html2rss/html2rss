@@ -114,7 +114,7 @@ module Html2rss
     end
 
     ##
-    # @param url [String, Addressable::URI]
+    # @param url [Addressable::URI]
     # @param config [Html2rss::Config]
     # @return [Array<Html2rss::Item>]
     def self.from_url(url, config)

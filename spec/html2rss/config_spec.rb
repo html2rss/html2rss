@@ -58,7 +58,7 @@ RSpec.describe Html2rss::Config do
       it 'uses the Util method' do
         allow(Html2rss::Utils).to receive(:titleized_url).and_call_original
         described_class.new(feed_config).title
-        expect(Html2rss::Utils).to have_received(:titleized_url).with('http://www.example.com/news')
+        expect(Html2rss::Utils).to have_received(:titleized_url)
       end
     end
   end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'addressable'
+
 module Html2rss
   class Config
     ##
@@ -61,9 +63,9 @@ module Html2rss
       end
 
       ##
-      # @return [String]
+      # @return [Addressable::URI]
       def url
-        config[:url]
+        Addressable::URI.parse(config[:url]).normalize
       end
 
       ##
