@@ -43,7 +43,7 @@ module Html2rss
     # @param global [Hash<Symbol, Object>]
     # @param params [Hash<Symbol, String>]
     def initialize(feed_config, global = {}, params = {})
-      @channel = Channel.new(feed_config[:channel], params: params)
+      @channel = Channel.new(feed_config[:channel], params:)
       @selectors = Selectors.new(feed_config[:selectors])
       @global = global
     end

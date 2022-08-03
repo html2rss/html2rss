@@ -109,7 +109,7 @@ module Html2rss
       Enclosure.new(
         type: content_type.any? ? content_type.first.to_s : 'application/octet-stream',
         bits_length: 0,
-        url: url
+        url:
       )
     end
 
@@ -142,7 +142,7 @@ module Html2rss
 
       [post_process_options].flatten.each do |options|
         value = AttributePostProcessors.get_processor(options[:name])
-                                       .new(value, Context.new(options: options, item: self, config: config))
+                                       .new(value, Context.new(options:, item: self, config:))
                                        .get
       end
 

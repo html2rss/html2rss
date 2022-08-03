@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
-  subject { described_class.new(html, config: config).get }
+  subject { described_class.new(html, config:).get }
 
   let(:config) do
     Html2rss::Config.new(

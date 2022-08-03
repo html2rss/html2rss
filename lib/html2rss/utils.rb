@@ -101,7 +101,7 @@ module Html2rss
     # @param headers [Hash] additional HTTP request headers to use for the request
     # @return [String]
     def self.request_body_from_url(url, convert_json_to_xml: false, headers: {})
-      body = Faraday.new(url: url, headers: headers) do |faraday|
+      body = Faraday.new(url:, headers:) do |faraday|
         faraday.use Faraday::FollowRedirects::Middleware
         faraday.adapter Faraday.default_adapter
       end.get.body

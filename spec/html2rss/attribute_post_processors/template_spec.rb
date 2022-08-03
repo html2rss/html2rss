@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AttributePostProcessors::Template do
-  subject { described_class.new('Hi', options: options, item: item).get }
+  subject { described_class.new('Hi', options:, item:).get }
 
   # An instance_double does not work with method_missing.
   # rubocop:disable RSpec/VerifiedDoubles
