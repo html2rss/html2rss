@@ -4,7 +4,6 @@ require:
   - rubocop-md
 
 AllCops:
-  TargetRubyVersion: 2.7
   DisplayCopNames: true
   NewCops: enable
   Exclude:
