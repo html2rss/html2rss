@@ -83,7 +83,7 @@ RSpec.describe Html2rss::Utils do
     let(:connection) { instance_double(Faraday::Connection, get: response) }
 
     it 'uses Faraday for the request' do
-      allow(Faraday).to receive(:new).with(options.merge(url: url)).and_return(connection)
+      allow(Faraday).to receive(:new).with(options.merge(url:)).and_return(connection)
       described_class.request_body_from_url(url, **options.merge(convert_json_to_xml: false))
       expect(response).to have_received(:body)
     end

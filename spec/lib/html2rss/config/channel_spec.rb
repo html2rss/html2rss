@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::Config::Channel do
   describe '#url' do
-    subject { described_class.new(hash, params: params).url }
+    subject { described_class.new(hash, params:).url }
 
     let(:params) { {} }
 
