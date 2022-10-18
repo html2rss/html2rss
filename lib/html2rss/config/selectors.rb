@@ -8,7 +8,14 @@ module Html2rss
       ITEMS_SELECTOR_NAME = :items
 
       # Class to keep user-defined selectors.
-      Selector = Struct.new('Selector', :selector, :order, :extractor, :attribute, :post_process, keyword_init: true)
+      Selector = Struct.new('Selector',
+                            :selector,
+                            :attribute,
+                            :extractor,
+                            :post_process,
+                            :order,
+                            :static,
+                            keyword_init: true)
 
       ##
       # @param config [Hash<Symbol, Object>]
