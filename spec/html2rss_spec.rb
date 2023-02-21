@@ -19,7 +19,7 @@ RSpec.describe Html2rss do
       end
 
       it 'returns a RSS:Rss instance' do
-        expect(feed).to be_a_kind_of(RSS::Rss)
+        expect(feed).to be_a(RSS::Rss)
       end
     end
 
@@ -31,7 +31,7 @@ RSpec.describe Html2rss do
       let(:name) { 'json' }
 
       it 'returns a RSS:Rss instance' do
-        expect(feed).to be_a_kind_of(RSS::Rss)
+        expect(feed).to be_a(RSS::Rss)
       end
 
       context 'with returned rss feed' do
@@ -53,7 +53,7 @@ RSpec.describe Html2rss do
       let(:name) { 'notitle' }
 
       it 'returns a RSS:Rss instance' do
-        expect(feed).to be_a_kind_of(RSS::Rss)
+        expect(feed).to be_a(RSS::Rss)
       end
 
       context 'with item' do
@@ -86,7 +86,7 @@ RSpec.describe Html2rss do
       end
 
       it 'returns a RSS::Rss instance' do
-        expect(feed_return).to be_a_kind_of(RSS::Rss)
+        expect(feed_return).to be_a(RSS::Rss)
       end
 
       it 'sets the request headers' do
