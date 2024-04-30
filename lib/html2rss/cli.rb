@@ -2,6 +2,7 @@
 
 require_relative '../html2rss'
 require 'thor'
+require 'addressable'
 
 ##
 # The Html2rss namespace / command line interface.
@@ -28,6 +29,15 @@ module Html2rss
       feed_name = options.shift
       params = options.to_h { |opt| opt.split('=', 2) }
       puts Html2rss.feed_from_yaml_config(yaml_file, feed_name, params:)
+    end
+
+    desc 'auto URL', 'automatically sources an RSS feed from the URL'
+    def auto(url)
+      url = url.to_s.strip
+
+      raise 'URL is required' if url.empty? || !Addressable::URI.parse(url).absolute?
+
+      puts Html2rss.auto_source(url)
     end
   end
 end
