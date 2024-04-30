@@ -110,7 +110,6 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  bundler
   byebug
   html2rss!
   rspec (~> 3.0)
