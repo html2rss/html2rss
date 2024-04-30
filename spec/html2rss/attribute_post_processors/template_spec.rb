@@ -9,9 +9,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Template do
   # rubocop:enable RSpec/VerifiedDoubles
 
   before do
-    allow(item).to receive(:name).and_return('My name')
-    allow(item).to receive(:autor).and_return('Slim Shady')
-    allow(item).to receive(:returns_nil).and_return(nil)
+    allow(item).to receive_messages(name: 'My name', autor: 'Slim Shady', returns_nil: nil)
   end
 
   context 'with methods present (simple formatting)' do
