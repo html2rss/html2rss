@@ -64,4 +64,8 @@ module Html2rss
 
     RssBuilder.build config
   end
+
+  def self.auto_source(url)
+    Html2rss::AutoSource.new(url)
+  end
 end
