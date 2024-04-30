@@ -51,7 +51,7 @@ RSpec.describe Html2rss::Utils do
       }
     end
 
-    it 'sanitizes the url', aggregate_failures: true do
+    it 'sanitizes the url', :aggregate_failures do
       examples.each_pair do |url, out|
         expect(described_class.sanitize_url(url)).to eq(out), url
       end
