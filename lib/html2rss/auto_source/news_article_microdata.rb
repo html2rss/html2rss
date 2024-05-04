@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'date'
+
 module Html2rss
   class AutoSource
     ##
@@ -8,6 +10,7 @@ module Html2rss
     # See:
     # 1. https://schema.org/NewsArticle
     # 2. https://developers.google.com/search/docs/appearance/structured-data/article#microdata
+    # 3. https://developers.google.com/search/docs/appearance/structured-data/article#article-types
     class NewsArticleMicrodata
       def initialize(parsed_body)
         @parsed_body = parsed_body
@@ -53,7 +56,10 @@ module Html2rss
       end
 
       def updated_at(article)
-        article.css('[itemprop="dateModified"]')&.text
+        DateTime.parse article.css('[itemprop="dateModified"]')&.text
+      rescue Date::Error
+        # TODO: log error
+        nil
       end
 
       attr_reader :parsed_body
