@@ -17,7 +17,7 @@ module Html2rss
 
     ARTICLE_EXTRACTORS = [
       JsonLd,
-      NewsArticleMicrodata
+      SemanticHtml
     ].freeze
 
     def initialize(url)
@@ -46,11 +46,16 @@ module Html2rss
     def extract_articles(parsed_body)
       raise NoArticleSelectorFound, 'No article extractor found for URL.' if article_extractors.empty?
 
-      article_extractors.flat_map do |extractor|
+      articles = article_extractors.flat_map do |extractor|
         extractor.new(parsed_body).call
-      rescue StandardError
+      rescue StandardError => e
+        warn "Error extracting articles from #{url}: #{e.message}"
         # TODO: log error
       end
+
+      articles.uniq! { |article| article[:link] }
+      articles.filter! { |article| article[:link] && article[:link] != '' }
+      articles
     end
 
     private
