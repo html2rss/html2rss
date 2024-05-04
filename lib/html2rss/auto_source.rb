@@ -11,31 +11,12 @@ module Html2rss
   class AutoSource
     class NoArticleSelectorFound < StandardError; end
 
-    class HTMLMetadata
-      def initialize(parsed_body, url:)
-        @url = url
-        @parsed_body = parsed_body
-      end
-
-      def call
-        {
-          url:,
-          title: parsed_body.css('title').text,
-          language: parsed_body.css('html').attr('lang').value,
-          description: parsed_body.css('meta[name="description"]').attr('content').value
-        }
-      end
-
-      private
-
-      attr_reader :parsed_body, :url
-    end
-
     CHANNEL_EXTRACTORS = [
-      HTMLMetadata
-    ]
+      Channel::Metadata
+    ].freeze
 
     ARTICLE_EXTRACTORS = [
+      JsonLd,
       NewsArticleMicrodata
     ].freeze
 
@@ -63,9 +44,13 @@ module Html2rss
     end
 
     def extract_articles(parsed_body)
-      raise NoArticleSelectorFound, 'No extractor found articles.' if article_extractors.empty?
+      raise NoArticleSelectorFound, 'No article extractor found for URL.' if article_extractors.empty?
 
-      article_extractors.flat_map { |extractor| extractor.new(parsed_body).call }
+      article_extractors.flat_map do |extractor|
+        extractor.new(parsed_body).call
+      rescue StandardError
+        # TODO: log error
+      end
     end
 
     private
