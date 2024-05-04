@@ -31,6 +31,10 @@ module Html2rss
       }
     end
 
+    def to_rss
+      Html2rss::AutoSource::RssBuilder.new(url:, **call).call
+    end
+
     def extract_channel(parsed_body)
       channel = CHANNEL_EXTRACTORS.map do |extractor|
         extractor.new(parsed_body, url:).call
@@ -53,8 +57,10 @@ module Html2rss
         # TODO: log error
       end
 
+      # TODO: instead of uniq, try finding duplicates and merge them into one, to get the most information
       articles.uniq! { |article| article[:link] }
-      articles.filter! { |article| article[:link] && article[:link] != '' }
+      articles.filter! { |article| article[:link]&.to_s != '' }
+
       articles
     end
 
@@ -65,7 +71,7 @@ module Html2rss
 
       body = Html2rss::Utils.request_body_from_url(url)
 
-      @parsed_body = Nokogiri.HTML(body)
+      @parsed_body = Nokogiri.HTML(body).freeze
     end
 
     attr_reader :url

@@ -65,7 +65,11 @@ module Html2rss
     RssBuilder.build config
   end
 
+  ##
+  # TODO: add description
+  # @param url [String] the URL to automatically source the feed from
+  # @return [RSS::Rss]
   def self.auto_source(url)
-    Html2rss::AutoSource.new(url)
+    Html2rss::AutoSource.new(url).to_rss
   end
 end
