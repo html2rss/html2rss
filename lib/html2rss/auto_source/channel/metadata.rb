@@ -14,9 +14,9 @@ module Html2rss
         def call
           {
             url:,
-            title: parsed_body.css('title').text,
-            language: parsed_body.css('html').attr('lang')&.value,
-            description: parsed_body.css('meta[name="description"]')&.attr('content')&.value
+            title: parsed_body.css('head > title').first&.text,
+            language: parsed_body.css('html').first.attr('lang'),
+            description: parsed_body.css('meta[name="description"]')&.first&.[]('content')
           }
         end
 
