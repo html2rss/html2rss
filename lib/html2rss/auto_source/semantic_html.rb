@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'addressable'
+
 module Html2rss
   class AutoSource
     ##
@@ -10,6 +12,11 @@ module Html2rss
     # 1. https://developer.mozilla.org/en-US/docs/Web/HTML/Element/article
     class SemanticHtml
       ANCHOR_TAG_SELECTOR = 'article :not(article) a[href]'
+      HEADING_TAGS_SELECTOR = 'h1, h2, h3, h4, h5, h6'
+      NOT_HEADLINE_SELECTOR = HEADING_TAGS_SELECTOR.split(',')
+                                                   .map { |selector| ":not(#{selector})" }
+                                                   .join(', ')
+                                                   .freeze
 
       # TODO: also handle <h2><a href>...</a></h2> as article
       # TODO: also handle <X class="article"><a href>...</a></X> as article
@@ -26,10 +33,8 @@ module Html2rss
 
       ##
       # @return [Array<Hash>] the extracted articles
-      def call
-        anchors = parsed_body.css(ANCHOR_TAG_SELECTOR)
-
-        anchors.filter_map do |anchor|
+      def call # rubocop:disable Metrics/MethodLength
+        articles = parsed_body.css(ANCHOR_TAG_SELECTOR).filter_map do |anchor|
           article_tag = anchor.parent
 
           while (name = article_tag.name) != 'article'
@@ -40,6 +45,11 @@ module Html2rss
 
           extract_article(article_tag)
         end
+
+        Html2rss::AutoSource.deduplicate_by_url!(articles)
+        Html2rss::AutoSource.remove_titleless_articles!(articles)
+
+        articles
       end
 
       def extract_article(article)
@@ -47,20 +57,16 @@ module Html2rss
 
         heading = heading(article)
 
-        {
-          id: id(article),
+        scraped_article = {
           title: title(article, heading),
           url: url(article, heading),
           image: image(article),
           description: description(article, heading)
         }
+        scraped_article[:id] = generate_id(article, scraped_article)
+        scraped_article
       end
 
-      HEADING_TAGS_SELECTOR = 'h1, h2, h3, h4, h5, h6'
-      NOT_HEADLINE_SELECTOR = HEADING_TAGS_SELECTOR.split(',')
-                                                   .map { |selector| ":not(#{selector})" }
-                                                   .join(', ')
-                                                   .freeze
       ##
       # Finds the heading tag of an article.
       #
@@ -77,12 +83,16 @@ module Html2rss
         heading_tags[heading_tags.keys.min].max_by { |h| h.text.size }
       end
 
-      # @return [String, nil]
-      def id(article)
-        if (id = article['id'] && !id.empty?)
+      # @return [String, nil] nil when no "stable" ID can be generated
+      def generate_id(article, scraped_article) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+        return article['id'] unless article['id'].to_s.empty?
+
+        dom_ids = article.css('*[id]')&.filter_map { |tag| tag['id'] unless tag['id'].to_s.empty? }
+
+        if !dom_ids.empty? && (id = dom_ids.first)
           id
         else
-          article.css('*[id]:not([id=""])')&.map { |tag| tag['id'] }&.first
+          Addressable::URI.parse(scraped_article[:url])&.path
         end
       end
 
@@ -116,7 +126,7 @@ module Html2rss
         if !heading && (down = heading&.css('a')&.first&.[]('href'))
           down
         else
-          article.css('a').first['href']
+          article.css('a[href]').first['href']
         end
       end
 

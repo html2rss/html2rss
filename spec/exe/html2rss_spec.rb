@@ -72,4 +72,20 @@ RSpec.describe 'exe/html2rss' do
                     'horoscope-general-daily-today.aspx?sign=10')
     end
   end
+
+  context 'with argument: auto URL' do
+    subject(:output) { `#{executable} auto #{url}` }
+
+    let(:url) { 'https://welt.de' }
+
+    it 'generates the RSS', :aggregate_failures do
+      expect(output).to start_with(doctype_xml) &
+                        include(url) &
+                        end_with(<<~XML)
+                              <generator>html2rss [autosourced] V. #{Html2rss::VERSION}</generator>
+                            </channel>
+                          </rss>
+                        XML
+    end
+  end
 end

@@ -252,7 +252,7 @@ RSpec.describe Html2rss do
 
   describe '.auto_source' do
     let(:url) { 'https://www.welt.de/' }
-    let(:feed_return) { VCR.use_cassette(url.tr('/', '_')) { described_class.auto_source(url) } }
+    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source(url) } }
 
     it 'returns a RSS::Rss instance with channel and items', :aggregate_failures do
       expect(feed_return).to be_a(RSS::Rss)

@@ -16,10 +16,14 @@ module Html2rss
       class Base
         def initialize(article)
           @article = article
-          @attributes = %i[id headline description url image published_at] + specific_attributes
+          @attributes = %i[id title abstract description url image published_at] + specific_attributes
         end
 
         attr_reader :article
+
+        def self.to_article(article)
+          new(article).to_article
+        end
 
         # @return [Array<Symbol>] addition attributes for specific type (override in subclass)
         def specific_attributes
@@ -33,8 +37,10 @@ module Html2rss
         end
 
         def id = article[:@id]
-        def headline = article[:headline]
-        alias title headline
+        def title = article[:title]
+        alias headline title
+
+        def abstract = article[:abstract]
 
         def description = article[:description]
         def url = article[:url]
@@ -50,10 +56,6 @@ module Html2rss
         rescue Date::Error
           # TODO: log error
           nil
-        end
-
-        def self.to_article(article)
-          new(article).to_article
         end
       end
     end

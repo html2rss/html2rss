@@ -20,8 +20,13 @@ module Html2rss
       ##
       # @return [Array<Hash>] the extracted articles
       def call
-        article_objects = self.class.article_objects(parsed_json)
-        article_objects.map { |article| self.class.extract(article) }
+        articles = self.class.article_objects(parsed_json)
+                       .filter_map { |article| self.class.extract(article) }
+
+        Html2rss::AutoSource.deduplicate_by_url!(articles)
+        Html2rss::AutoSource.remove_titleless_articles!(articles)
+
+        articles
       end
 
       def parsed_json
@@ -72,10 +77,9 @@ module Html2rss
                   Base
                 when 'NewsArticle'
                   NewsArticle
-                else
-                  # TODO: probably worth a debug log?
-                  return nil
                 end
+
+        return nil unless klass # TODO: probably worth a debug log?
 
         klass.to_article(article)
       end
