@@ -17,3 +17,7 @@ group :development, :test do
   gem 'vcr'
   gem 'yard'
 end
+
+group :test do
+  gem 'simplecov', require: false
+end

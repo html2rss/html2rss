@@ -700,8 +700,12 @@ Recommended further readings:
 
 ## Development
 
-After checking out the repository, run `bin/setup` to install dependencies. Then, run `bundle exec rspec` to run the tests.
-You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+1. Check out the repository: `git clone ... && cd html2rss`
+2. Install Ruby >=3.3, if you haven't already.
+3. Run `bin/setup` to install dependencies.
+4. Run the test suite `bundle exec rspec`.
+    - To generate Test Coverage, run `COVERAGE=true bundle exec rspec` and open `coverage/index.html`.
+5. For an interactive prompt You can also run `bin/console`.
 
 <details>
   <summary>Releasing a new version</summary>
