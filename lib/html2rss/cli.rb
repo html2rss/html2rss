@@ -2,6 +2,7 @@
 
 require_relative '../html2rss'
 require 'thor'
+require 'addressable'
 
 module Html2rss
   ##
@@ -24,6 +25,13 @@ module Html2rss
       params = options.filter_map { |param| param.split('=') if param.include?('=') }.to_h
       feed_name = options.first
       puts Html2rss.feed_from_yaml_config(yaml_file, feed_name, params:)
+    end
+
+    desc 'auto URL', 'automatically sources an RSS feed from the URL'
+    def auto(url)
+      raise 'URL is required' if url.empty? || !Addressable::URI.parse(url).absolute?
+
+      puts Html2rss.auto_source(url)
     end
   end
 end

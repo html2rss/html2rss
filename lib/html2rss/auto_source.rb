@@ -53,18 +53,22 @@ module Html2rss
     end
 
     def extract_articles(parsed_body)
-      articles = article_extractors.flat_map do |extractor|
+      article_extractors.flat_map do |extractor|
         extractor.new(parsed_body).call
-      rescue StandardError => e
-        warn "Error extracting articles from #{url}: #{e.message}"
-        # TODO: log error
-        raise e
       end
+    end
 
-      # TODO: instead of uniq, try finding duplicates and merge them into one, to get the most information
+    ##
+    # Provides a way for sourcers to deduplicate articles based on their URL.
+    def self.deduplicate_by_url!(articles)
+      # TODO: to get the most information, finding duplicates across all sourcers and merge duplicates into one article.
+      articles.reject! { |article| article[:url].empty? }
       articles.uniq! { |article| article[:url] }
-      articles.filter! { |article| article[:url]&.to_s&.strip != '' }
+      articles
+    end
 
+    def self.remove_titleless_articles!(articles)
+      articles.reject! { |article| article[:title].nil? || article[:title].empty? }
       articles
     end
 
