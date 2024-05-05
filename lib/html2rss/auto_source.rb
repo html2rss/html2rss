@@ -40,26 +40,30 @@ module Html2rss
         extractor.new(parsed_body, url:).call
       end
 
+      # TODO: extract TTL from Cache Control / Expires header from HTTP response
       channel.reduce({}, :merge)
     end
 
     def article_extractors
-      @article_extractors ||= ARTICLE_EXTRACTORS.select { |extractor| extractor.articles?(parsed_body) }
+      article_extractors = ARTICLE_EXTRACTORS.select { |extractor| extractor.articles?(parsed_body) }
+
+      raise NoArticleSelectorFound, 'No article extractor found for URL.' if article_extractors.empty?
+
+      article_extractors
     end
 
     def extract_articles(parsed_body)
-      raise NoArticleSelectorFound, 'No article extractor found for URL.' if article_extractors.empty?
-
       articles = article_extractors.flat_map do |extractor|
         extractor.new(parsed_body).call
       rescue StandardError => e
         warn "Error extracting articles from #{url}: #{e.message}"
         # TODO: log error
+        raise e
       end
 
       # TODO: instead of uniq, try finding duplicates and merge them into one, to get the most information
-      articles.uniq! { |article| article[:link] }
-      articles.filter! { |article| article[:link]&.to_s != '' }
+      articles.uniq! { |article| article[:url] }
+      articles.filter! { |article| article[:url]&.to_s&.strip != '' }
 
       articles
     end
@@ -69,6 +73,7 @@ module Html2rss
     def parsed_body
       return @parsed_body if defined?(@parsed_body)
 
+      # TODO: add headers to request, use Global config
       body = Html2rss::Utils.request_body_from_url(url)
 
       @parsed_body = Nokogiri.HTML(body).freeze

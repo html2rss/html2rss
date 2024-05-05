@@ -34,8 +34,11 @@ module Html2rss
 
         def id = article[:@id]
         def headline = article[:headline]
+        alias title headline
+
         def description = article[:description]
         def url = article[:url]
+        alias link url
 
         def images = [article[:image]].flatten.compact
         def image = images.first || nil
