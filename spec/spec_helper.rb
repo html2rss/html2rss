@@ -3,6 +3,23 @@
 require 'bundler/setup'
 
 require 'vcr'
+
+if ENV['COVERAGE']
+  require 'simplecov'
+
+  SimpleCov.start do
+    enable_coverage :branch
+
+    add_filter '/spec/'
+
+    minimum_coverage 95
+    minimum_coverage_by_file 90
+
+    add_group 'Attribute Post Processors', 'lib/html2rss/attribute_post_processors'
+    add_group 'Item Extractors', 'lib/html2rss/item_extractors'
+  end
+end
+
 require 'html2rss'
 
 RSpec.configure do |config|

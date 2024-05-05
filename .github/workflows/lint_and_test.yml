@@ -17,4 +17,6 @@ jobs:
           bundler-cache: true
       - run: bundle exec rubocop -F
       - run: bundle exec rspec
+        env:
+          COVERAGE: "true"
       - run: bundle exec yard doc --fail-on-warning --no-output
