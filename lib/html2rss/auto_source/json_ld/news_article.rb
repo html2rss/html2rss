@@ -10,9 +10,8 @@ module Html2rss
       #
       # See: https://schema.org/NewsArticle
       class NewsArticle < Base
-        def specific_attributes = %i[abstract article_body]
+        def specific_attributes = %i[article_body]
 
-        def abstract = article[:abstract]
         def article_body = article[:articleBody]
       end
     end

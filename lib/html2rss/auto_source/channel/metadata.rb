@@ -14,13 +14,19 @@ module Html2rss
         def call
           {
             url:,
-            title: parsed_body.css('head > title').first&.text,
-            language: parsed_body.css('html').first.attr('lang'),
+            title: parsed_body.css('head > title')&.first&.text,
+            language:,
             description: parsed_body.css('meta[name="description"]')&.first&.[]('content')
           }
         end
 
         private
+
+        def language
+          return parsed_body['lang'] if parsed_body.name == 'html'
+
+          parsed_body.css('html[lang]')&.first&.[]('lang')
+        end
 
         attr_reader :parsed_body, :url
       end
