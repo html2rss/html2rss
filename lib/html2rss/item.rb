@@ -104,10 +104,8 @@ module Html2rss
 
       raise 'An item.enclosure requires an absolute URL' if !url || !url.absolute?
 
-      content_type = MIME::Types.type_for(File.extname(url).delete('.'))
-
       Enclosure.new(
-        type: content_type.any? ? content_type.first.to_s : 'application/octet-stream',
+        type: Html2rss::Utils.guess_content_type_from_url(url),
         bits_length: 0,
         url:
       )

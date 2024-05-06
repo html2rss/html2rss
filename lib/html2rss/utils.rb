@@ -6,6 +6,7 @@ require 'faraday/follow_redirects'
 require 'json'
 require 'regexp_parser'
 require 'tzinfo'
+require 'mime/types'
 
 module Html2rss
   ##
@@ -123,6 +124,13 @@ module Html2rss
       string = string[1..-2] if string[0] == '/' && string[-1] == '/'
 
       Regexp::Parser.parse(string, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
+    end
+
+    def self.guess_content_type_from_url(url)
+      url = url.to_s.split('?').first
+
+      content_type = MIME::Types.type_for(File.extname(url).delete('.'))
+      content_type.any? ? content_type.first.to_s : 'application/octet-stream'
     end
   end
 end
