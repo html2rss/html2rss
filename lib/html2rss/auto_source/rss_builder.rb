@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rss'
+require 'zlib'
 
 module Html2rss
   class AutoSource
@@ -58,13 +59,17 @@ module Html2rss
       end
 
       def generate_guid(article)
-        Digest::SHA1.hexdigest [url, article[:id] || article[:url].gsub(url, '')].join('|')
+        Zlib.crc32 [url, article[:id]].join('#!/')
       end
 
       def add_image(article, maker)
         return unless article[:image]
 
-        maker.enclosure.url = clean_url(article[:image])
+        url = clean_url(article[:image])
+
+        return if url.start_with?('data:image/svg+xml')
+
+        maker.enclosure.url = url
         maker.enclosure.type = Html2rss::Utils.guess_content_type_from_url(article[:image])
         maker.enclosure.length = 0
       end

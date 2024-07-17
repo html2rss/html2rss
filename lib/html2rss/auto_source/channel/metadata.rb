@@ -16,7 +16,7 @@ module Html2rss
             url:,
             title: parsed_body.css('head > title')&.first&.text,
             language:,
-            description: parsed_body.css('meta[name="description"]')&.first&.[]('content')
+            description: parsed_body.css('meta[name="description"]')&.first&.[]('content') || ''
           }
         end
 

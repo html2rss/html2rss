@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'nokogiri'
+require 'parallel'
 
 module Html2rss
   ##
@@ -53,22 +54,36 @@ module Html2rss
     end
 
     def extract_articles(parsed_body)
-      article_extractors.flat_map do |extractor|
-        extractor.new(parsed_body).call
-      end
+      Parallel.flat_map(article_extractors) { |extractor| extractor.new(parsed_body).call }
     end
 
     ##
     # Provides a way for sourcers to deduplicate articles based on their URL.
     def self.deduplicate_by_url!(articles)
-      # TODO: to get the most information, finding duplicates across all sourcers and merge duplicates into one article.
-      articles.reject! { |article| article[:url].empty? }
+      # articles.reject! { |article| article[:url].to_s.empty? }
       articles.uniq! { |article| article[:url] }
+      articles
+    end
+
+    def self.keep_only_http_urls!(articles)
+      string = 'http'
+
+      articles.select! { |article| article[:url].to_s.start_with?(string) }
+
       articles
     end
 
     def self.remove_titleless_articles!(articles)
       articles.reject! { |article| article[:title].nil? || article[:title].empty? }
+      articles
+    end
+
+    def self.remove_one_word_title_articles!(articles)
+      articles.reject! do |article|
+        article[:title].nil? ||
+          article[:title].empty? ||
+          article[:title].count(' ') < 1
+      end
       articles
     end
 

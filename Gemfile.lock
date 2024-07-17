@@ -8,6 +8,7 @@ PATH
       kramdown
       mime-types (> 3.0)
       nokogiri (>= 1.10, < 2.0)
+      parallel
       regexp_parser
       reverse_markdown (~> 2.0)
       rss

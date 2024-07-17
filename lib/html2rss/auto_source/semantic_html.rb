@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'addressable'
+require 'parallel'
+require 'set'
 
 module Html2rss
   class AutoSource
@@ -11,12 +13,30 @@ module Html2rss
     # See:
     # 1. https://developer.mozilla.org/en-US/docs/Web/HTML/Element/article
     class SemanticHtml
-      ANCHOR_TAG_SELECTOR = 'article :not(article) a[href]'
-      HEADING_TAGS_SELECTOR = 'h1, h2, h3, h4, h5, h6'
-      NOT_HEADLINE_SELECTOR = HEADING_TAGS_SELECTOR.split(',')
-                                                   .map { |selector| ":not(#{selector})" }
-                                                   .join(', ')
-                                                   .freeze
+      ##
+      ## key = parent element name to find, when searching for articles,
+      # value = array of CSS selectors selecting <a href>
+      #
+      # Note: X :not(x) a[href] is used to avoid selecting <X><X><a href></X></X>
+      # rubocop:disable Layout/HashAlignment
+      ANCHOR_TAG_SELECTORS = {
+        'article' => ['article :not(article) a[href]'],
+        'section' => ['section :not(section) a[href]'],
+        'tr' =>      ['table tr > td a[href]'],
+        'li' =>      ['li :not(li) a[href]'],
+        'div' =>     ['div > a[href]']
+      }.freeze
+      # rubocop:enable Layout/HashAlignment
+
+      ARTICLE_TAGS = ANCHOR_TAG_SELECTORS.keys
+      INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
+
+      HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].to_set
+
+      NOT_HEADLINE_SELECTOR = HEADING_TAGS.to_a.map { |selector| ":not(#{selector})" }
+                                          .concat(INVISIBLE_CONTENT_TAG_SELECTORS)
+                                          .join(',')
+                                          .freeze
 
       # TODO: also handle <h2><a href>...</a></h2> as article
       # TODO: also handle <X class="article"><a href>...</a></X> as article
@@ -28,28 +48,72 @@ module Html2rss
       attr_reader :parsed_body
 
       def self.articles?(parsed_body)
-        parsed_body.css(ANCHOR_TAG_SELECTOR).any?
+        ANCHOR_TAG_SELECTORS.each_pair do |_tag, selectors|
+          return true if parsed_body.css(selectors.join(', ')).any?
+        end
+
+        false
       end
 
       ##
       # @return [Array<Hash>] the extracted articles
       def call # rubocop:disable Metrics/MethodLength
-        articles = parsed_body.css(ANCHOR_TAG_SELECTOR).filter_map do |anchor|
-          article_tag = anchor.parent
+        articles = Parallel.map(ANCHOR_TAG_SELECTORS.to_a) do |tag, selectors|
+          parsed_body.css(selectors.join(', ')).filter_map do |anchor|
+            article_tag = anchor.parent
 
-          while (name = article_tag.name) != 'article'
-            next if name == 'body'
+            while (name = article_tag.name) != tag
+              next if name == 'body'
 
-            article_tag = article_tag.parent
+              article_tag = article_tag.parent
+            end
+
+            extract_article(article_tag)
           end
-
-          extract_article(article_tag)
         end
 
-        Html2rss::AutoSource.deduplicate_by_url!(articles)
+        articles.flatten!
+
+        articles = self.class.keep_longest_attributes(articles)
+
         Html2rss::AutoSource.remove_titleless_articles!(articles)
 
         articles
+      end
+
+      ##
+      # With multiple articles sharing the same URL, build one out of them, by
+      # keeping the longest attribute values.
+      def self.keep_longest_attributes(articles) # rubocop:disable Metrics/AbcSize
+        grouped_by_url = Hash.new { |h, k| h[k] = [] }
+
+        articles.each { |article| grouped_by_url[article[:url]] << article }
+
+        grouped_by_url.each_pair.map do |url, same_url_articles|
+          builder = LongestStringBuilder.new(url:)
+
+          same_url_articles.each do |article|
+            article.each_pair { |key, value| builder.add(key, value) }
+          end
+
+          builder.to_h
+        end
+      end
+
+      class LongestStringBuilder
+        def initialize(**initial_args)
+          @hash = Hash.new { |h, k| h[k] = '' }
+
+          initial_args.each_pair { |key, string| add(key, string) }
+        end
+
+        def add(key, string)
+          return if !key || !key.is_a?(Symbol) || !string
+
+          @hash[key] = string if string.size > @hash[key]&.to_s&.size
+        end
+
+        def to_h = @hash
       end
 
       def extract_article(article)
@@ -76,24 +140,18 @@ module Html2rss
       #
       # @return [Nokogiri::XML::Element, nil] a heading tag or nil if none found
       def heading(article)
-        heading_tags = article.css(HEADING_TAGS_SELECTOR).group_by(&:name)
+        heading_tags = article.css(HEADING_TAGS).group_by(&:name)
 
         return if heading_tags.empty?
 
         heading_tags[heading_tags.keys.min].max_by { |h| h.text.size }
       end
 
-      # @return [String, nil] nil when no "stable" ID can be generated
-      def generate_id(article, scraped_article) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+      # @return [String, nil] a derived ID for the article
+      def generate_id(article, scraped_article)
         return article['id'] unless article['id'].to_s.empty?
 
-        dom_ids = article.css('*[id]')&.filter_map { |tag| tag['id'] unless tag['id'].to_s.empty? }
-
-        if !dom_ids.empty? && (id = dom_ids.first)
-          id
-        else
-          Addressable::URI.parse(scraped_article[:url])&.path
-        end
+        scraped_article[:url].split('/')[3..].to_a.join('/').split('#').first
       end
 
       def title(article, heading)
@@ -122,12 +180,15 @@ module Html2rss
 
       # Assumes a URL closer to the headline is the correct one.
       # Falls back to first URL in article.
+      # @return [String, nil] the URL of the article or nil if empty
       def url(article, heading = nil)
-        if !heading && (down = heading&.css('a')&.first&.[]('href'))
-          down
-        else
-          article.css('a[href]').first['href']
-        end
+        url = if !heading && (down = heading&.css('a')&.first&.[]('href'))
+                down
+              else
+                article.css('a[href]').first['href']
+              end
+
+        url&.split('#')&.first
       end
 
       def image(article)

@@ -51,8 +51,8 @@ RSpec.describe Html2rss::AutoSource::Channel::Metadata do
     context 'without a description' do
       let(:parsed_body) { Nokogiri::HTML('<head></head>') }
 
-      it 'extracts nil' do
-        expect(call[:description]).to be_nil
+      it 'extracts an empty string' do
+        expect(call[:description]).to eq('')
       end
     end
   end
