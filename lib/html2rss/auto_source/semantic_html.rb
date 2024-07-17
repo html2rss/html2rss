@@ -57,28 +57,33 @@ module Html2rss
 
       ##
       # @return [Array<Hash>] the extracted articles
-      def call # rubocop:disable Metrics/MethodLength
-        articles = Parallel.map(ANCHOR_TAG_SELECTORS.to_a) do |tag, selectors|
+      def call
+        articles = Parallel.flat_map(ANCHOR_TAG_SELECTORS.to_a) do |tag_name, selectors|
           parsed_body.css(selectors.join(', ')).filter_map do |anchor|
-            article_tag = anchor.parent
-
-            while (name = article_tag.name) != tag
-              next if name == 'body'
-
-              article_tag = article_tag.parent
-            end
+            article_tag = self.class.find_article_tag(anchor, tag_name)
 
             extract_article(article_tag)
           end
         end
 
-        articles.flatten!
-
-        articles = self.class.keep_longest_attributes(articles)
-
-        Html2rss::AutoSource.remove_titleless_articles!(articles)
+        # articles = self.class.keep_longest_attributes(articles)
+        Html2rss::AutoSource.deduplicate_by_url!(articles)
+        Html2rss::AutoSource.remove_one_word_title_articles!(articles)
+        Html2rss::AutoSource.keep_only_http_urls!(articles)
 
         articles
+      end
+
+      def self.find_article_tag(anchor, tag_name)
+        article_tag = anchor.parent
+
+        while (name = article_tag.name) != tag_name
+          next if name == 'body'
+
+          article_tag = article_tag.parent
+        end
+
+        article_tag
       end
 
       ##
@@ -151,7 +156,12 @@ module Html2rss
       def generate_id(article, scraped_article)
         return article['id'] unless article['id'].to_s.empty?
 
-        scraped_article[:url].split('/')[3..].to_a.join('/').split('#').first
+        if (url = scraped_article[:url])
+          url.split('/')[3..].to_a.join('/').split('#').first
+        else
+          title = scraped_article[:title]
+          title&.downcase&.gsub(/\s+/, '-')
+        end
       end
 
       def title(article, heading)
@@ -178,15 +188,16 @@ module Html2rss
         text.empty? ? nil : text
       end
 
-      # Assumes a URL closer to the headline is the correct one.
-      # Falls back to first URL in article.
+      # TODO: Assume a URL closer to the headline is the correct one.
+      # Falls back to longest URL in article.
       # @return [String, nil] the URL of the article or nil if empty
-      def url(article, heading = nil)
-        url = if !heading && (down = heading&.css('a')&.first&.[]('href'))
-                down
-              else
-                article.css('a[href]').first['href']
-              end
+      def url(article, heading = nil) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+        anchors = if !heading && (down = heading&.css('a'))
+                    down
+                  else
+                    article.css('a[href]')
+                  end
+        url = anchors.filter_map { |a| a['href'] }.max_by(&:size)
 
         url&.split('#')&.first
       end

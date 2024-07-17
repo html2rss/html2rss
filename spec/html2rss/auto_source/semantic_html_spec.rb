@@ -61,10 +61,11 @@ RSpec.describe Html2rss::AutoSource::SemanticHtml do
 
     it 'returns the expected number of articles' do
       # Many articles are extracted from the page, but only 4 are expected [above].
-      # The SemanticHtml class tries to catch as many article as pssobile.
+      # The SemanticHtml class tries to catch as many article as possibile.
       # RSS readers respecting the items' guid will only show the other articles once.
       #
       # However, to catch larger changes in the algorithm, the number of articles is expected.
+      #
       expect(articles.size).to eq(33)
     end
   end
