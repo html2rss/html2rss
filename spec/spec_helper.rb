@@ -31,6 +31,9 @@ RSpec.configure do |config|
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
+
+    # Do not limit the output length of the formatted output
+    c.max_formatted_output_length = nil
   end
 
   VCR.configure do |vcr_config|
