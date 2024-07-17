@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 require 'nokogiri'
+require 'parallel'
 
 module Html2rss
   ##
   # The AutoSource class is responsible for extracting channel and articles
-  # from (just) a given URL.
-  # It uses a set of ArticleExtractors to extract articles, using utilizing popular ways of
+  # from a given URL.
+  # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
     class NoArticleSelectorFound < StandardError; end
@@ -35,54 +36,48 @@ module Html2rss
       Html2rss::AutoSource::RssBuilder.new(url:, **call).call
     end
 
-    def extract_channel(parsed_body)
-      channel = CHANNEL_EXTRACTORS.map do |extractor|
-        extractor.new(parsed_body, url:).call
-      end
-
-      # TODO: extract TTL from Cache Control / Expires header from HTTP response
-      channel.reduce({}, :merge)
-    end
-
-    def article_extractors
-      article_extractors = ARTICLE_EXTRACTORS.select { |extractor| extractor.articles?(parsed_body) }
-
-      raise NoArticleSelectorFound, 'No article extractor found for URL.' if article_extractors.empty?
-
-      article_extractors
-    end
-
-    def extract_articles(parsed_body)
-      article_extractors.flat_map do |extractor|
-        extractor.new(parsed_body).call
-      end
-    end
-
-    ##
-    # Provides a way for sourcers to deduplicate articles based on their URL.
     def self.deduplicate_by_url!(articles)
-      # TODO: to get the most information, finding duplicates across all sourcers and merge duplicates into one article.
-      articles.reject! { |article| article[:url].empty? }
       articles.uniq! { |article| article[:url] }
-      articles
+    end
+
+    def self.keep_only_http_urls!(articles)
+      articles.select! { |article| article[:url].to_s.start_with?('http') }
     end
 
     def self.remove_titleless_articles!(articles)
-      articles.reject! { |article| article[:title].nil? || article[:title].empty? }
-      articles
+      articles.reject! { |article| article[:title].to_s.strip.empty? }
+    end
+
+    def self.remove_one_word_title_articles!(articles)
+      articles.reject! do |article|
+        title = article[:title].to_s.strip
+        title.empty? || title.split.size < 2
+      end
     end
 
     private
 
+    attr_reader :url
+
     def parsed_body
-      return @parsed_body if defined?(@parsed_body)
-
-      # TODO: add headers to request, use Global config
-      body = Html2rss::Utils.request_body_from_url(url)
-
-      @parsed_body = Nokogiri.HTML(body).freeze
+      @parsed_body ||= Nokogiri.HTML(Html2rss::Utils.request_body_from_url(url)).freeze
     end
 
-    attr_reader :url
+    def extract_channel(parsed_body)
+      CHANNEL_EXTRACTORS.each_with_object({}) do |extractor, channel|
+        channel.merge!(extractor.new(parsed_body, url:).call)
+      end
+    end
+
+    def article_extractors
+      available_extractors = ARTICLE_EXTRACTORS.select { |extractor| extractor.articles?(parsed_body) }
+      raise NoArticleSelectorFound, 'No article extractor found for URL.' if available_extractors.empty?
+
+      available_extractors
+    end
+
+    def extract_articles(parsed_body)
+      Parallel.flat_map(article_extractors) { |extractor| extractor.new(parsed_body).call }
+    end
   end
 end

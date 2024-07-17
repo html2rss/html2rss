@@ -16,7 +16,7 @@ RSpec.describe Html2rss::AutoSource::SemanticHtml do
   describe '#call' do
     subject(:articles) { described_class.new(parsed_body).call }
 
-    let(:expected_return_value) do
+    let(:expected_articles) do
       [
         {
           id: '/6972085/brittney-griner-book-coming-home/',
@@ -56,7 +56,16 @@ RSpec.describe Html2rss::AutoSource::SemanticHtml do
     end
 
     it 'returns the extracted articles' do
-      expect(articles).to eq(expected_return_value)
+      expect(articles).to include(*expected_articles)
+    end
+
+    it 'returns the expected number of articles' do
+      # Many articles are extracted from the page, but only 4 are expected [above].
+      # The SemanticHtml class tries to catch as many article as possibile.
+      # RSS readers respecting the items' guid will only show the other articles once.
+      #
+      # However, to catch larger changes in the algorithm, the number of articles is expected.
+      expect(articles.size).to be > 33
     end
   end
 end

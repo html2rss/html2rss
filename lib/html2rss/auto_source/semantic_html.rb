@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'addressable'
+require 'parallel'
+require 'set'
 
 module Html2rss
   class AutoSource
@@ -11,12 +13,27 @@ module Html2rss
     # See:
     # 1. https://developer.mozilla.org/en-US/docs/Web/HTML/Element/article
     class SemanticHtml
-      ANCHOR_TAG_SELECTOR = 'article :not(article) a[href]'
-      HEADING_TAGS_SELECTOR = 'h1, h2, h3, h4, h5, h6'
-      NOT_HEADLINE_SELECTOR = HEADING_TAGS_SELECTOR.split(',')
-                                                   .map { |selector| ":not(#{selector})" }
-                                                   .join(', ')
-                                                   .freeze
+      ##
+      ## key = parent element name to find, when searching for articles,
+      # value = array of CSS selectors selecting <a href>
+      #
+      # Note: X :not(x) a[href] is used to avoid selecting <X><X><a href></X></X>
+      ANCHOR_TAG_SELECTORS = {
+        'article' => ['article :not(article) a[href]'],
+        'section' => ['section :not(section) a[href]'],
+        'tr' => ['table tr > td a[href]'],
+        'li' => ['li :not(li) a[href]'],
+        'div' => ['div > a[href]']
+      }.freeze
+
+      ARTICLE_TAGS = ANCHOR_TAG_SELECTORS.keys
+      INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
+      HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].to_set
+
+      NOT_HEADLINE_SELECTOR = HEADING_TAGS.to_a.map { |selector| ":not(#{selector})" }
+                                          .concat(INVISIBLE_CONTENT_TAG_SELECTORS)
+                                          .join(',')
+                                          .freeze
 
       # TODO: also handle <h2><a href>...</a></h2> as article
       # TODO: also handle <X class="article"><a href>...</a></X> as article
@@ -28,125 +45,62 @@ module Html2rss
       attr_reader :parsed_body
 
       def self.articles?(parsed_body)
-        parsed_body.css(ANCHOR_TAG_SELECTOR).any?
+        ANCHOR_TAG_SELECTORS.each_value do |selectors|
+          return true if parsed_body.css(selectors.join(', ')).any?
+        end
+        false
       end
 
-      ##
-      # @return [Array<Hash>] the extracted articles
-      def call # rubocop:disable Metrics/MethodLength
-        articles = parsed_body.css(ANCHOR_TAG_SELECTOR).filter_map do |anchor|
-          article_tag = anchor.parent
-
-          while (name = article_tag.name) != 'article'
-            next if name == 'body'
-
-            article_tag = article_tag.parent
+      def call
+        articles = Parallel.flat_map(ANCHOR_TAG_SELECTORS.to_a) do |tag_name, selectors|
+          parsed_body.css(selectors.join(', ')).filter_map do |anchor|
+            article_tag = self.class.find_article_tag(anchor, tag_name)
+            ArticleExtractor.new(article_tag).extract if article_tag
           end
-
-          extract_article(article_tag)
         end
 
-        Html2rss::AutoSource.deduplicate_by_url!(articles)
-        Html2rss::AutoSource.remove_titleless_articles!(articles)
-
-        articles
+        clean_articles(articles)
       end
 
-      def extract_article(article)
-        # TODO: extract the article into a separate class, get rid of passing `article` around to methods
+      def clean_articles(articles)
+        articles = self.class.keep_longest_attributes(articles)
+        articles = deduplicate_by_url!(articles)
+        articles = remove_short_title_articles!(articles)
+        keep_only_http_urls!(articles)
+      end
 
-        heading = heading(article)
-
-        scraped_article = {
-          title: title(article, heading),
-          url: url(article, heading),
-          image: image(article),
-          description: description(article, heading)
-        }
-        scraped_article[:id] = generate_id(article, scraped_article)
-        scraped_article
+      def self.find_article_tag(anchor, tag_name)
+        article_tag = anchor.parent
+        article_tag = article_tag.parent while article_tag && article_tag.name != tag_name
+        article_tag
       end
 
       ##
-      # Finds the heading tag of an article.
-      #
-      # If multiple headings are found, the smallest heading tag (h1 is smaller than h2) is returned.
-      # If multiple tags of the same size are found, the one with the longest text is returned.
-      # If no heading is found, nil is returned.
-      #
-      # @return [Nokogiri::XML::Element, nil] a heading tag or nil if none found
-      def heading(article)
-        heading_tags = article.css(HEADING_TAGS_SELECTOR).group_by(&:name)
-
-        return if heading_tags.empty?
-
-        heading_tags[heading_tags.keys.min].max_by { |h| h.text.size }
-      end
-
-      # @return [String, nil] nil when no "stable" ID can be generated
-      def generate_id(article, scraped_article) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-        return article['id'] unless article['id'].to_s.empty?
-
-        dom_ids = article.css('*[id]')&.filter_map { |tag| tag['id'] unless tag['id'].to_s.empty? }
-
-        if !dom_ids.empty? && (id = dom_ids.first)
-          id
-        else
-          Addressable::URI.parse(scraped_article[:url])&.path
+      # With multiple articles sharing the same URL, build one out of them, by
+      # keeping the longest attribute values.
+      def self.keep_longest_attributes(articles)
+        grouped_by_url = articles.group_by { |article| article[:url] }
+        grouped_by_url.map do |_url, articles_with_same_url|
+          longest_attributes_article = articles_with_same_url.first
+          articles_with_same_url.each do |article|
+            article.each do |key, value|
+              longest_attributes_article[key] = value if value && value.size > longest_attributes_article[key].to_s.size
+            end
+          end
+          longest_attributes_article
         end
       end
 
-      def title(article, heading)
-        if heading && (title = extract_text(heading))
-          title
-        else
-          article.css(NOT_HEADLINE_SELECTOR)
-                 .filter_map { |tag| extract_text(tag) }
-                 .max_by(&:size)
-        end
+      def deduplicate_by_url!(articles)
+        articles.uniq { |article| article[:url] }
       end
 
-      # @return [String, nil] the text of the tag or nil if empty
-      def extract_text(tag, separator: ' ')
-        text = case tag.children.size
-               when 0
-                 tag.text
-               when (1..)
-                 tag.children.filter_map { |tag| extract_text(tag) }.uniq.join(separator)
-               end.dup
-
-        text.gsub!(/\s+/, ' ')
-        text.strip!
-        text.empty? ? nil : text
+      def remove_short_title_articles!(articles, min_words: 2)
+        articles.reject { |article| article[:title]&.split&.size&.< min_words }
       end
 
-      # Assumes a URL closer to the headline is the correct one.
-      # Falls back to first URL in article.
-      def url(article, heading = nil)
-        if !heading && (down = heading&.css('a')&.first&.[]('href'))
-          down
-        else
-          article.css('a[href]').first['href']
-        end
-      end
-
-      def image(article)
-        # TODO: also try <picture><source srcset> (when an <img> is missing)
-        article.css('img[src]')&.first&.[]('src')
-      end
-
-      # @return [String, nil] the description of the article or nil if empty
-      def description(article, heading = nil)
-        text = extract_text(article.css('p, span'), separator: '<br>')
-
-        return text if text || !heading
-
-        # Get all text of the article, but remove the title
-        description = extract_text(article).gsub(title(article, heading), '')
-
-        description.strip!
-
-        description.empty? ? nil : description
+      def keep_only_http_urls!(articles)
+        articles.select { |article| article[:url]&.start_with?('http') }
       end
     end
   end
