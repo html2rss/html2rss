@@ -3,31 +3,34 @@
 module Html2rss
   module ItemExtractors
     ##
-    # YAML usage example:
+    # Returns a static value provided in the options.
+    #
+    # Example usage in YAML:
     #
     #    selectors:
-    #      autor:
+    #      author:
     #        extractor: static
     #        static: Foobar
     #
     # Would return:
     #    'Foobar'
     class Static
+      # The available option for the static extractor.
       Options = Struct.new('StaticOptions', :static, keyword_init: true)
 
       ##
-      # @param _xml [nil, Nokogiri::XML::Element]
-      # @param options [Options]
+      # Initializes the Static extractor.
+      #
+      # @param _xml [nil, Nokogiri::XML::Element] Unused parameter for compatibility with other extractors.
+      # @param options [Options] Options containing the static value.
       def initialize(_xml, options)
         @options = options
       end
 
-      # Returns what options[:static] holds.
+      ##
+      # Retrieves and returns the static value.
       #
-      #    options = { static: 'Foobar' }
-      #    Static.new(xml, options).get
-      #    # => 'Foobar'
-      # @return [String, Symbol]
+      # @return [String, Symbol] The static value provided in options.
       def get
         @options.static
       end

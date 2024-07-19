@@ -5,7 +5,7 @@ module Html2rss
     ##
     # Returns the value of the attribute.
     #
-    # Imagine this +time+ HTML element with a +datetime+ attribute:
+    # Imagine this +time+ HTML tag with a +datetime+ attribute:
     #
     #     <time datetime="2019-07-01">...</time>
     #
@@ -20,12 +20,15 @@ module Html2rss
     # Would return:
     #    '2019-07-01'
     #
-    # In case you're extracting a date or a time, do not forget to parse it
+    # In case you're extracting a date or a time, consider parsing it
     # during post processing with {AttributePostProcessors::ParseTime}.
     class Attribute
+      # The available options for the attribute extractor.
       Options = Struct.new('AttributeOptions', :selector, :attribute, keyword_init: true)
 
       ##
+      # Initializes the Attribute extractor.
+      #
       # @param xml [Nokogiri::XML::Element]
       # @param options [Options]
       def initialize(xml, options)
@@ -34,9 +37,13 @@ module Html2rss
       end
 
       ##
-      # @return [String]
+      # Retrieves and returns the attribute's value as a string.
+      #
+      # @return [String] The value of the attribute.
       def get
-        @element.attr(@options.attribute).to_s
+        @element.attr(@options.attribute).to_s.freeze
+      rescue NoMethodError => error
+        raise "Failed to extract attribute: #{error.message}"
       end
     end
   end
