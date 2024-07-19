@@ -4,12 +4,12 @@ require 'nokogiri'
 
 module Html2rss
   ##
-  # Takes the selected Nokogiri::HTML and responds to accessors names
+  # Takes the selected Nokogiri::HTML and responds to accessor names
   # defined in the feed config.
   #
   # Instances can only be created via `.from_url` and
-  # each represents a internally used "RSS item".
-  # Such an item provides the dynamically defined attributes as a method.
+  # each represents an internally used "RSS item".
+  # Such an item provides dynamically defined attributes as methods.
   class Item
     # A context instance is passed to Item Extractors.
     Context = Struct.new('Context', :options, :item, :config, keyword_init: true)
@@ -27,27 +27,29 @@ module Html2rss
     private_class_method :new
 
     ##
+    # Checks if the object responds to a method dynamically based on the configuration.
+    #
     # @param method_name [Symbol]
     # @param _include_private [true, false]
+    # @return [true, false]
     def respond_to_missing?(method_name, _include_private = false)
       config.selector?(method_name) || super
     end
 
     ##
-    # If the object does not respond to *method_name*,
-    # it will call {extract} with *method_name* as *tag* param.
+    # Dynamically extracts data based on the method name.
     #
     # @param method_name [Symbol]
-    # @param _args [Object]
-    # @return [String]
+    # @param _args [Array]
+    # @return [String] extracted value for the selector.
     def method_missing(method_name, *_args)
       return super unless respond_to_missing?(method_name)
 
-      extract method_name
+      extract(method_name)
     end
 
     ##
-    # Selects and processes according to the selector name.
+    # Selects and processes data according to the selector name.
     #
     # @param tag [Symbol]
     # @return [String] the extracted value for the selector.
@@ -61,14 +63,17 @@ module Html2rss
     end
 
     ##
-    # At least a title or a description is required to be a valid RSS 2.0 item.
+    # Checks if the item is valid accordin to RSS 2.0 spec,
+    # by ensuring it has at least a title or a description.
+    #
     # @return [true, false]
     def valid?
       title_or_description.to_s != ''
     end
 
     ##
-    # Returns the title or, if absent, the description. Returns nil if both are absent.
+    # Returns either the title or the description, preferring title if available.
+    #
     # @return [String, nil]
     def title_or_description
       return title if config.selector?(:title)
@@ -78,63 +83,73 @@ module Html2rss
 
     ##
     #
-    # @return [String] SHA1
+    # @return [String] SHA1 hashed GUID.
     def guid
       content = config.guid_selector_names.flat_map { |method_name| public_send(method_name) }.join
 
-      Digest::SHA1.hexdigest content
+      Digest::SHA1.hexdigest(content)
     end
 
     ##
-    # @return [Array<String>]
+    # Retrieves categories for the item based on configured category selectors.
+    #
+    # @return [Array<String>] list of categories.
     def categories
       config.category_selector_names.map { |method_name| public_send(method_name) }
     end
 
     ##
+    # Checks if the item has an enclosure based on configuration.
+    #
     # @return [true, false]
     def enclosure?
       config.selector?(:enclosure)
     end
 
     ##
-    # @return [Enclosure]
+    # Retrieves enclosure details for the item.
+    #
+    # @return [Enclosure] enclosure details.
     def enclosure
       url = enclosure_url
 
-      raise 'An item.enclosure requires an absolute URL' if !url || !url.absolute?
+      raise 'An item.enclosure requires an absolute URL' unless url&.absolute?
 
       Enclosure.new(
         type: Html2rss::Utils.guess_content_type_from_url(url),
         bits_length: 0,
-        url:
+        url: url.to_s
       )
     end
 
     ##
-    # @param url [Addressable::URI]
-    # @param config [Html2rss::Config]
-    # @return [Array<Html2rss::Item>]
+    # Fetches items from a given URL using configuration settings.
+    #
+    # @param url [String] URL to fetch items from.
+    # @param config [Html2rss::Config] Configuration object.
+    # @return [Array<Html2rss::Item>] list of items fetched.
     def self.from_url(url, config)
       body = Utils.request_body_from_url(url, convert_json_to_xml: config.json?, headers: config.headers)
 
       Nokogiri.HTML(body)
               .css(config.selector_string(Config::Selectors::ITEMS_SELECTOR_NAME))
-              .map { |xml| new xml, config }
-              .keep_if(&:valid?)
+              .map { |xml| new(xml, config) }
+              .select(&:valid?)
     end
 
     private
 
-    # @return [Nokogiri::XML::Element]
+    # @return [Nokogiri::XML::Element] XML element representing the item.
     attr_reader :xml
-    # @return [Html2rss::Config]
+    # @return [Html2rss::Config] Configuration object for the item.
     attr_reader :config
 
     ##
-    # @param value [String]
-    # @param post_process_options [Hash<Symbol, Object>]
-    # @return [String]
+    # Processes the extracted value according to post-processing options.
+    #
+    # @param value [String] extracted value.
+    # @param post_process_options [Hash<Symbol, Object>] post-processing options.
+    # @return [String] processed value.
     def post_process(value, post_process_options)
       return value unless post_process_options
 
@@ -148,7 +163,9 @@ module Html2rss
     end
 
     ##
-    # @return [Addressable::URI, nil] the (absolute) URL of the content
+    # Retrieves the URL for the enclosure, sanitizing and ensuring it's absolute.
+    #
+    # @return [Addressable::URI, nil] absolute URL of the enclosure.
     def enclosure_url
       enclosure = Html2rss::Utils.sanitize_url(extract(:enclosure))
 
