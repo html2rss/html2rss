@@ -12,30 +12,6 @@ RSpec.describe Html2rss::Utils do
     end
   end
 
-  describe '.object_to_xml' do
-    context 'with JSON object' do
-      let(:hash) { { 'data' => [{ 'title' => 'Headline', 'url' => 'https://example.com' }] } }
-      let(:xml) do
-        '<object><data><array><object><title>Headline</title><url>https://example.com</url></object></array></data></object>'
-      end
-
-      it 'converts the hash to xml' do
-        expect(described_class.object_to_xml(hash)).to eq xml
-      end
-    end
-
-    context 'with JSON array' do
-      let(:hash) { [{ 'title' => 'Headline', 'url' => 'https://example.com' }] }
-      let(:xml) do
-        '<array><object><title>Headline</title><url>https://example.com</url></object></array>'
-      end
-
-      it 'converts the hash to xml' do
-        expect(described_class.object_to_xml(hash)).to eq xml
-      end
-    end
-  end
-
   describe '.sanitize_url(url)' do
     let(:examples) do
       {
