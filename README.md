@@ -204,6 +204,32 @@ Extracted information can be further manipulated with post processors.
 
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
+### Chaining post processors
+
+Pass an array to `post_process` to chain the post processors.
+
+<details><summary>YAML example: build the description from a template String (in Markdown) and convert that Markdown to HTML</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  price:
+    selector: '.price'
+  description:
+    selector: '.section'
+    post_process:
+      - name: template
+        string: |
+          # %{self}
+
+          Price: %{price}
+      - name: markdown_to_html
+```
+
+</details>
+
 ### Post processor `gsub`
 
 The post processor `gsub` makes use of Ruby's [`gsub`](https://apidock.com/ruby/String/gsub) method.
@@ -243,6 +269,137 @@ selectors:
 
 </details>
 
+## Adding `<category>` tags to an item
+
+The `categories` selector takes an array of selector names. Each value of those
+selectors will become a `<category>` on the RSS item.
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    genre: {
+      # ... omitted
+      selector: '.genre'
+    },
+    branch: { selector: '.branch' },
+    categories: %i[genre branch]
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  genre:
+    selector: ".genre"
+  branch:
+    selector: ".branch"
+  categories:
+    - genre
+    - branch
+```
+
+</details>
+
+## Custom item GUID
+
+By default, html2rss generates a GUID from the `title` or `description`.
+
+If this does not work well, you can choose other attributes from which the GUID is build.
+The principle is the same as for the categories: pass an array of selectors names.
+
+In all cases, the GUID is a SHA1-encoded string.
+
+<details><summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    title: {
+      # ... omitted
+      selector: 'h1'
+    },
+    link: { selector: 'a', extractor: 'href' },
+    guid: %i[link]
+  }
+)
+```
+
+</details>
+
+<details><summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  title:
+    selector: "h1"
+  link:
+    selector: "a"
+    extractor: "href"
+  guid:
+    - link
+```
+
+</details>
+
+## Adding an `<enclosure>` tag to an item
+
+An enclosure can be any file, e.g. a image, audio or video - think Podcast.
+
+The `enclosure` selector needs to return a URL of the content to enclose. If the extracted URL is relative, it will be converted to an absolute one using the channel's URL as base.
+
+Since `html2rss` does no further inspection of the enclosure, its support comes with trade-offs:
+
+1. The content-type is guessed from the file extension of the URL.
+2. If the content-type guessing fails, it will default to `application/octet-stream`.
+3. The content-length will always be undetermined and therefore stated as `0` bytes.
+
+Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item-enclosure) for further information on enclosing content.
+
+<details>
+  <summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(
+  channel: {},
+  selectors: {
+    enclosure: { selector: 'audio', extractor: 'attribute', attribute: 'src' }
+  }
+)
+```
+
+</details>
+
+<details>
+  <summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  # ... omitted
+selectors:
+  # ... omitted
+  enclosure:
+    selector: "audio"
+    extractor: "attribute"
+    attribute: "src"
+```
+
+</details>
 ## Scraping and handling JSON responses
 
 By default, `html2rss` assumes the URL responds with HTML. However, it can also handle JSON responses. The JSON must return an Array or Hash.
@@ -252,11 +409,9 @@ By default, `html2rss` assumes the URL responds with HTML. However, it can also 
 | `json`     | optional | false   | If set to `true`, the response is parsed as JSON.    |
 | `jsonpath` | optional | $       | Use [JSONPath syntax]() to select nodes of interest. |
 
-<details> <summary>See a Ruby example</summary>
+<details><summary>See a Ruby example</summary>
 
-```
-ruby
-Copy code
+```ruby
 Html2rss.feed(
   channel: { url: 'http://domainname.tld/whatever.json', json: true },
   selectors: { title: { selector: 'foo' } }
@@ -301,6 +456,130 @@ channel:
 selectors:
   # ... omitted
 ```
+
+## Usage with a YAML config file
+
+This step is not required to work with this gem. If you're using
+[`html2rss-web`](https://github.com/html2rss/html2rss-web)
+and want to create your private feed configs, keep on reading!
+
+First, create a YAML file, e.g. `feeds.yml`. This file will contain your global config and multiple feed configs under the key `feeds`.
+
+Example:
+
+```yml
+headers:
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
+feeds:
+  myfeed:
+    channel:
+    selectors:
+  myotherfeed:
+    channel:
+    selectors:
+```
+
+Your feed configs go below `feeds`. Everything else is part of the global config.
+
+Find a full example of a `feeds.yml` at [`spec/feeds.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/feeds.test.yml).
+
+Now you can build your feeds like this:
+
+<details>
+  <summary>Build feeds in Ruby</summary>
+
+```ruby
+require 'html2rss'
+
+myfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myfeed')
+myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
+```
+
+</details>
+
+<details>
+  <summary>Build feeds on the command line</summary>
+
+```sh
+html2rss feed feeds.yml myfeed
+html2rss feed feeds.yml myotherfeed
+```
+
+</details>
+
+## Display the RSS feed nicely in a web browser
+
+To display RSS feeds nicely in a web browser, you can:
+
+- add a plain old CSS stylesheet, or
+- use XSLT (e**X**tensible **S**tylesheet **L**anguage **T**ransformations).
+
+A web browser will apply these stylesheets and show the contents as described.
+
+In a CSS stylesheet, you'd use `element` selectors to apply styles.
+
+If you want to do more, then you need to create a XSLT. XSLT allows you
+to use a HTML template and to freely design the information of the RSS,
+including using JavaScript and external resources.
+
+You can add as many stylesheets and types as you like. Just add them to your global configuration.
+
+<details>
+  <summary>Ruby: a stylesheet config example</summary>
+
+```ruby
+config = Html2rss::Config.new(
+  { channel: {}, selectors: {} }, # omitted
+  {
+    stylesheets: [
+      {
+        href: '/relative/base/path/to/style.xls',
+        media: :all,
+        type: 'text/xsl'
+      },
+      {
+        href: 'http://example.com/rss.css',
+        media: :all,
+        type: 'text/css'
+      }
+    ]
+  }
+)
+
+Html2rss.feed(config)
+```
+
+</details>
+
+<details>
+  <summary>YAML: a stylesheet config example</summary>
+
+```yml
+stylesheets:
+  - href: "/relative/base/path/to/style.xls"
+    media: "all"
+    type: "text/xsl"
+  - href: "http://example.com/rss.css"
+    media: "all"
+    type: "text/css"
+feeds:
+  # ... omitted
+```
+
+</details>
+
+Recommended further readings:
+
+- [How to format RSS with CSS on lifewire.com](https://www.lifewire.com/how-to-format-rss-3469302)
+- [XSLT: Extensible Stylesheet Language Transformations on MDN](https://developer.mozilla.org/en-US/docs/Web/XSLT)
+- [The XSLT used by html2rss-web](https://github.com/html2rss/html2rss-web/blob/master/public/rss.xsl)
+
+## Gotchas and tips & tricks
+
+- Check that the channel URL does not redirect to a mobile page with a different markup structure.
+- Do not rely on your web browser's developer console. `html2rss` does not execute JavaScript.
+- Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
+- [CSS selectors are versatile. Here's an overview.](https://www.w3.org/TR/selectors-4/#overview)
 
 ### Contributing
 
