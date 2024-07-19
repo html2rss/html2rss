@@ -5,24 +5,24 @@ require 'thor'
 
 module Html2rss
   ##
-  # The Html2rss command line
+  # The Html2rss command line interface.
   class CLI < Thor
     def self.exit_on_failure?
       true
     end
 
-    desc 'feed YAML_FILE [FEED_NAME] [param=value ...]', 'print RSS built from the YAML_FILE file to stdout'
+    desc 'feed YAML_FILE [FEED_NAME] [param=value ...]', 'Print RSS built from the YAML_FILE file to stdout'
     ##
     # Prints the feed to STDOUT.
     #
-    # @param yaml_file [String]
-    # @param options [String]
-    # @return nil
+    # @param yaml_file [String] Path to the YAML configuration file.
+    # @param options [Array<String>] Additional options including feed name and parameters.
+    # @return [nil]
     def feed(yaml_file, *options)
-      raise 'yaml_file file does not exist' unless File.exist?(yaml_file)
+      raise "File '#{yaml_file}' does not exist" unless File.exist?(yaml_file)
 
-      params = options.filter_map { |param| param.split('=') if param.include?('=') }.to_h
-      feed_name = options.first
+      feed_name = options.shift
+      params = options.to_h { |opt| opt.split('=', 2) }
       puts Html2rss.feed_from_yaml_config(yaml_file, feed_name, params:)
     end
   end
