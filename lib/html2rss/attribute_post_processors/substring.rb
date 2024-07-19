@@ -2,7 +2,8 @@
 
 module Html2rss
   module AttributePostProcessors
-    ## Returns a defined part of a String.
+    ##
+    # Returns a defined part of a String.
     #
     # Both parameters must be an Integer and they can be negative.
     # The +end+ parameter can be omitted, in that case it will not cut the
@@ -29,18 +30,22 @@ module Html2rss
     #    'bar'
     class Substring
       ##
-      # @param value [String]
-      # @param env [Item::Context]
+      # @param value [String] The original string to extract a substring from.
+      # @param env [Item::Context] Context object providing additional environment details.
       def initialize(value, env)
         @value = value
         @options = env[:options]
       end
 
       ##
-      # @return [String]
+      # Extracts the substring from the original string based on the provided start and end indices.
+      #
+      # @return [String] The extracted substring.
       def get
-        ending = @options.fetch(:end, @value.length).to_i
-        @value[@options[:start].to_i..ending]
+        start_index = @options[:start].to_i
+        end_index = @options[:end]&.to_i || @value.length
+
+        @value[start_index..end_index]
       end
     end
   end

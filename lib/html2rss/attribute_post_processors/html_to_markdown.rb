@@ -31,13 +31,13 @@ module Html2rss
       # @param value [String]
       # @param env [Item::Context]
       def initialize(value, env)
-        @value = SanitizeHtml.new(value, env).get
+        @sanitized_value = SanitizeHtml.new(value, env).get
       end
 
       ##
       # @return [String] formatted in Markdown
       def get
-        ReverseMarkdown.convert @value
+        ReverseMarkdown.convert(@sanitized_value)
       end
     end
   end

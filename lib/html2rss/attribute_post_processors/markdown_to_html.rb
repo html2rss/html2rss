@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'kramdown'
+require_relative 'sanitize_html'
 
 module Html2rss
   module AttributePostProcessors
@@ -33,17 +34,20 @@ module Html2rss
     #    <p>Price: 12.34</p>
     class MarkdownToHtml
       ##
-      # @param value [String]
-      # @param env [Item::Context]
+      # @param value [String] Markdown content to convert to HTML
+      # @param env [Item::Context] Context object providing additional environment details
       def initialize(value, env)
         @value = value
         @env = env
       end
 
       ##
-      # @return [String] formatted in Markdown
+      # Converts Markdown to sanitized HTML.
+      #
+      # @return [String] Sanitized HTML content
       def get
-        SanitizeHtml.new(Kramdown::Document.new(@value).to_html, @env).get
+        html_content = Kramdown::Document.new(@value).to_html
+        SanitizeHtml.new(html_content, @env).get
       end
     end
   end

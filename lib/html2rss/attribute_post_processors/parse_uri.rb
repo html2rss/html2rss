@@ -27,7 +27,7 @@ module Html2rss
       # @param context [Item::Context]
       def initialize(value, context)
         @value = value
-        @context = context
+        @config_url = context.config.url
       end
 
       ##
@@ -35,7 +35,7 @@ module Html2rss
       def get
         Html2rss::Utils.build_absolute_url_from_relative(
           Html2rss::Utils.sanitize_url(@value),
-          @context.config.url
+          @config_url
         ).to_s
       end
     end

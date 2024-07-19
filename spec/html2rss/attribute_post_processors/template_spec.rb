@@ -9,17 +9,17 @@ RSpec.describe Html2rss::AttributePostProcessors::Template do
   # rubocop:enable RSpec/VerifiedDoubles
 
   before do
-    allow(item).to receive_messages(name: 'My name', autor: 'Slim Shady', returns_nil: nil)
+    allow(item).to receive_messages(name: 'My name', author: 'Slim Shady', returns_nil: nil)
   end
 
   context 'with methods present (simple formatting)' do
-    let(:options) { { string: '%s! %s is %s! %s', methods: %i[self name autor returns_nil] } }
+    let(:options) { { string: '%s! %s is %s! %s', methods: %i[self name author returns_nil] } }
 
     it { is_expected.to eq 'Hi! My name is Slim Shady! ' }
   end
 
   context 'with methods absent (complex formatting)' do
-    let(:options) { { string: '%{self}! %<name>s is %{autor}! %{returns_nil}' } }
+    let(:options) { { string: '%{self}! %<name>s is %{author}! %{returns_nil}' } }
 
     it { is_expected.to eq 'Hi! My name is Slim Shady! ' }
   end

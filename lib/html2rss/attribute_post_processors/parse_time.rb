@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'time'
+require_relative '../utils'
+
 module Html2rss
   module AttributePostProcessors
     ##
@@ -25,14 +28,16 @@ module Html2rss
     class ParseTime
       ##
       # @param value [String] the time to parse
-      # @param env [Item::Context]
+      # @param env [Item::Context] Context object providing additional environment details
       def initialize(value, env)
         @value = value.to_s
         @time_zone = env[:config].time_zone
       end
 
       ##
-      # @return [String] rfc822 formatted time
+      # Converts the provided time string to RFC822 format, taking into account the configured time zone.
+      #
+      # @return [String] RFC822 formatted time
       def get
         Utils.use_zone(@time_zone) { Time.parse(@value).rfc822 }
       end

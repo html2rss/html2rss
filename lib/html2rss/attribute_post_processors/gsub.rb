@@ -3,7 +3,6 @@
 module Html2rss
   module AttributePostProcessors
     ##
-    #
     # Imagine this HTML:
     #    <h1>Foo bar and boo<h1>
     #
@@ -20,7 +19,7 @@ module Html2rss
     #    'Foo bar and baz'
     #
     # `pattern` can be a Regexp or a String. If it is a String, it will remove
-    # one pair of sourrounding slashes ('/') to keep a backwards compatibility
+    # one pair of surrounding slashes ('/') to keep backwards compatibility
     # and then parse it to build a Regexp.
     #
     # `replacement` can be a String or a Hash.
@@ -32,7 +31,7 @@ module Html2rss
       # @param context [Item::Context]
       def initialize(value, context)
         @value = value
-        @context = context
+        @options = context[:options]
       end
 
       ##
@@ -41,26 +40,24 @@ module Html2rss
         @value.to_s.gsub(pattern, replacement)
       end
 
+      private
+
+      ##
       # @return [Regexp]
       def pattern
-        pattern = @context[:options][:pattern]
-
+        pattern = @options[:pattern]
         raise ArgumentError, 'The `pattern` option is missing' unless pattern
 
         pattern.is_a?(String) ? Utils.build_regexp_from_string(pattern) : pattern
       end
 
+      ##
       # @return [Hash, String]
       def replacement
-        replacement = @context[:options][:replacement]
+        replacement = @options[:replacement]
+        return replacement if replacement.is_a?(String) || replacement.is_a?(Hash)
 
-        return replacement unless replacement
-
-        if !replacement.is_a?(Hash) && !replacement.is_a?(String)
-          raise ArgumentError, 'The `replacement` option must be a String or Hash'
-        end
-
-        replacement
+        raise ArgumentError, 'The `replacement` option must be a String or Hash'
       end
     end
   end

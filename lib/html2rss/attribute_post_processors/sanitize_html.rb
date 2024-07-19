@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'sanitize'
+require_relative 'html_transformers/transform_urls_to_absolute_ones'
+require_relative 'html_transformers/wrap_img_in_a'
 
 module Html2rss
   module AttributePostProcessors
@@ -37,9 +39,6 @@ module Html2rss
     # Would return:
     #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
     class SanitizeHtml
-      URL_ELEMENTS_WITH_URL_ATTRIBUTE = { 'a' => :href, 'img' => :src }.freeze
-      private_constant :URL_ELEMENTS_WITH_URL_ATTRIBUTE
-
       ##
       # @param value [String]
       # @param env [Item::Context]
@@ -51,7 +50,8 @@ module Html2rss
       ##
       # @return [String]
       def get
-        Sanitize.fragment(@value, sanitize_config).to_s.split.join(' ')
+        sanitized_html = Sanitize.fragment(@value, sanitize_config)
+        sanitized_html.to_s.gsub(/\s+/, ' ').strip
       end
 
       private
@@ -62,42 +62,37 @@ module Html2rss
         Sanitize::Config.merge(
           Sanitize::Config::RELAXED,
           attributes: { all: %w[dir lang alt title translate] },
-          add_attributes: {
-            'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
-            'img' => { 'referrer-policy' => 'no-referrer' }
-          },
-          transformers: [transform_urls_to_absolute_ones, WRAP_IMG_IN_A]
+          add_attributes:,
+          transformers: [
+            method(:transform_urls_to_absolute_ones),
+            method(:wrap_img_in_a)
+          ]
         )
       end
 
-      ##
-      # @return [Proc]
-      def transform_urls_to_absolute_ones
-        lambda do |env|
-          return unless URL_ELEMENTS_WITH_URL_ATTRIBUTE.key?(env[:node_name])
-
-          url_attribute = URL_ELEMENTS_WITH_URL_ATTRIBUTE[env[:node_name]]
-          url = env[:node][url_attribute]
-
-          env[:node][url_attribute] = Html2rss::Utils.build_absolute_url_from_relative(url, @channel_url)
-        end
+      def add_attributes
+        {
+          'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
+          'img' => { 'referrer-policy' => 'no-referrer' }
+        }
       end
 
       ##
-      # Wraps an <img> tag into an <a> tag which links to `img.src`.
-      WRAP_IMG_IN_A = lambda do |env|
-        return if env[:node_name] != 'img'
+      # Wrapper for transform_urls_to_absolute_ones to pass the channel_url.
+      #
+      # @param env [Hash]
+      # @return [nil]
+      def transform_urls_to_absolute_ones(env)
+        HtmlTransformers::TransformUrlsToAbsoluteOnes.new(@channel_url).call(**env)
+      end
 
-        img = env[:node]
-
-        return if img.parent.name == 'a'
-
-        anchor = Nokogiri::XML::Node.new('a', img)
-        anchor[:href] = img[:src]
-
-        anchor.add_child img.dup
-
-        img.replace(anchor)
+      ##
+      # Wrapper for wrap_img_in_a.
+      #
+      # @param env [Hash]
+      # @return [nil]
+      def wrap_img_in_a(env)
+        HtmlTransformers::WrapImgInA.new.call(**env)
       end
     end
   end
