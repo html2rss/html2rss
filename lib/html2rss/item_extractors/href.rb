@@ -23,20 +23,29 @@ module Html2rss
     # Would return:
     #    'http://blog-without-a-feed.example.com/posts/latest-findings'
     class Href
+      # The available options for the href (attribute) extractor.
       Options = Struct.new('HrefOptions', :selector, :channel, keyword_init: true)
 
       ##
+      # Initializes the Href extractor.
+      #
       # @param xml [Nokogiri::XML::Element]
       # @param options [Options]
       def initialize(xml, options)
         @options = options
-        element = ItemExtractors.element(xml, options.selector)
-        @href = Html2rss::Utils.sanitize_url(element.attr('href'))
+        @element = ItemExtractors.element(xml, options.selector)
+        @href = @element.attr('href').to_s
       end
 
-      # @return [Addressable::URI]
+      ##
+      # Retrieves and returns the normalized absolute URL.
+      #
+      # @return [String] The absolute URL.
       def get
-        Html2rss::Utils.build_absolute_url_from_relative(@href, @options.channel.url)
+        return nil unless @href
+
+        sanitized_href = Html2rss::Utils.sanitize_url(@href)
+        Html2rss::Utils.build_absolute_url_from_relative(sanitized_href, @options.channel.url)
       end
     end
   end

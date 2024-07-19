@@ -3,9 +3,9 @@
 module Html2rss
   module ItemExtractors
     ##
-    # Return the HTML of the attribute.
+    # Returns the HTML content of the specified element.
     #
-    # Imagine this HTML structure:
+    # Example HTML structure:
     #
     #     <p>Lorem <b>ipsum</b> dolor ...</p>
     #
@@ -19,12 +19,15 @@ module Html2rss
     # Would return:
     #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
     #
-    # Always make sure to sanitize the HTML during post processing with
+    # Always ensure to sanitize the HTML during post-processing with
     # {AttributePostProcessors::SanitizeHtml}.
     class Html
+      # The available options for the html extractor.
       Options = Struct.new('HtmlOptions', :selector, keyword_init: true)
 
       ##
+      # Initializes the Html extractor.
+      #
       # @param xml [Nokogiri::XML::Element]
       # @param options [Options]
       def initialize(xml, options)
@@ -32,7 +35,9 @@ module Html2rss
       end
 
       ##
-      # @return [String]
+      # Retrieves and returns the HTML content of the element.
+      #
+      # @return [String] The HTML content.
       def get
         @element.to_s
       end
