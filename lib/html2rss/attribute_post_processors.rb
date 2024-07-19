@@ -5,8 +5,7 @@ module Html2rss
   # Provides a namespace for attribute post processors.
   module AttributePostProcessors
     ##
-    # The Error class to be thrown when an unknown (= absent in NAME_TO_CLASS
-    # mapping) post processor is requested.
+    # Error raised when an unknown post processor name is requested.
     class UnknownPostProcessorName < StandardError; end
 
     ##
@@ -25,11 +24,13 @@ module Html2rss
     }.freeze
 
     ##
-    # @param name [String]
-    # @return [Class] the attribute post processor
+    # Retrieves the attribute post processor class based on the given name.
+    #
+    # @param name [Symbol] The name of the post processor.
+    # @return [Class] The attribute post processor class.
+    # @raise [UnknownPostProcessorName] If the requested name is not found in NAME_TO_CLASS.
     def self.get_processor(name)
-      NAME_TO_CLASS[name.to_sym] || raise(UnknownPostProcessorName,
-                                          "Can't find an post processor named '#{name}' in NAME_TO_CLASS")
+      NAME_TO_CLASS[name.to_sym] || raise(UnknownPostProcessorName, "Can't find a post processor named '#{name}'")
     end
   end
 end

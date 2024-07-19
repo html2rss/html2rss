@@ -38,3 +38,6 @@ Style/AsciiComments:
 Style/FormatStringToken:
   Exclude:
     - spec/html2rss/attribute_post_processors/template_spec.rb
+
+Naming/RescuedExceptionsVariableName:
+  PreferredName: error

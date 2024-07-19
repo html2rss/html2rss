@@ -1,19 +1,20 @@
 # frozen_string_literal: true
 
-require 'sanitize'
-
 module Html2rss
   module AttributePostProcessors
-    ## Returns a formatted String according to the string pattern.
+    ##
+    # Returns a formatted String according to the string pattern.
     #
     # If +self+ is used, the selectors extracted value will be used.
     # It uses [Kernel#format](https://ruby-doc.org/core/Kernel.html#method-i-format)
     #
     # Imagine this HTML:
+    #
     #    <li>
     #      <h1>Product</h1>
     #      <span class="price">23,42€</span>
     #    </li>
+    #
     #
     # YAML usage example:
     #
@@ -21,7 +22,7 @@ module Html2rss
     #      items:
     #        selector: 'li'
     #      price:
-    #       selector: '.price'
+    #        selector: '.price'
     #      title:
     #        selector: h1
     #        post_process:
@@ -44,18 +45,12 @@ module Html2rss
       ##
       # @return [String]
       def get
-        return format_string_with_methods if @options[:methods]
-
-        names = string.scan(/%[<|{](\w*)[>|}]/).flatten
-
-        format(string, names.to_h do |name|
-          name_as_sym = name.to_sym
-          [name_as_sym, item_value(name_as_sym)]
-        end)
+        @options[:methods] ? format_string_with_methods : format_string_with_dynamic_params
       end
 
       private
 
+      ##
       # @return [String] the string containing the template
       attr_reader :string
 
@@ -66,14 +61,30 @@ module Html2rss
       end
 
       ##
+      # Formats a string using methods.
+      #
       # @return [String]
+      # @deprecated Use %<id>s formatting instead. Will be removed in version 1.0.0. See README / Dynamic parameters.
       def format_string_with_methods
+        warn '[DEPRECATION] This method of using params is deprecated and \
+              support for it will be removed in version 1.0.0.\
+              Please use dynamic parameters (i.e. %<id>s, see README.md) instead.'
+
         string % methods
       end
 
       ##
+      # @return [String]
+      def format_string_with_dynamic_params
+        param_names = string.scan(/%[<|{](\w*)[>|}]/)
+        param_names.flatten!
+
+        format(string, param_names.to_h { |name| [name.to_sym, item_value(name)] })
+      end
+
+      ##
       # @param method_name [String, Symbol]
-      # @return String
+      # @return [String]
       def item_value(method_name)
         method_name.to_sym == :self ? @value.to_s : @item.public_send(method_name).to_s
       end
