@@ -18,7 +18,9 @@ module Html2rss
       # @param tags [Set<Symbol>]
       # @return nil
       def self.add(maker, item, tags)
-        (tags - SPECIAL_TAGS).each do |tag|
+        tags.each do |tag|
+          next if SPECIAL_TAGS.include?(tag)
+
           maker.public_send("#{tag}=", item.public_send(tag))
         end
 
@@ -47,17 +49,27 @@ module Html2rss
       def self.add_enclosure(item, maker)
         return unless item.enclosure?
 
-        item_enclosure = item.enclosure
-        rss_enclosure = maker.enclosure
-
-        rss_enclosure.type = item_enclosure.type
-        rss_enclosure.length = item_enclosure.bits_length
-        rss_enclosure.url = item_enclosure.url
+        set_enclosure_attributes(item.enclosure, maker.enclosure)
       end
       private_class_method :add_enclosure
 
       ##
-      # @param item
+      # Sets the attributes of an RSS enclosure.
+      #
+      # @param item_enclosure [Html2rss::Enclosure]
+      # @param rss_enclosure [RSS::Maker::RSS20::Items::Enclosure]
+      # @return nil
+      def self.set_enclosure_attributes(item_enclosure, rss_enclosure)
+        rss_enclosure.type = item_enclosure.type
+        rss_enclosure.length = item_enclosure.bits_length
+        rss_enclosure.url = item_enclosure.url
+      end
+      private_class_method :set_enclosure_attributes
+
+      ##
+      # Adds a non-permalink GUID to the item.
+      #
+      # @param item [Html2rss::Item]
       # @param maker [RSS::Maker::RSS20::Items::Item]
       # @return nil
       def self.add_guid(item, maker)

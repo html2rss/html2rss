@@ -11,9 +11,7 @@ module Html2rss
       # @param tags [Set<Symbol>]
       # @return nil
       def self.add(maker, config, tags)
-        tags.each do |tag|
-          maker.public_send("#{tag}=", config.public_send(tag))
-        end
+        tags.each { |tag| maker.public_send("#{tag}=", config.public_send(tag)) }
 
         maker.generator = "html2rss V. #{::Html2rss::VERSION}"
         maker.lastBuildDate = Time.now
