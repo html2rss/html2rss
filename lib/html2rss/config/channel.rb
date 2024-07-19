@@ -10,7 +10,6 @@ module Html2rss
     #
     # 1. the RSS channel attributes
     # 2. html2rss options like json or custom HTTP-headers for the request
-    #
     class Channel
       ##
       # @param channel [Hash<Symbol, Object>]
@@ -19,9 +18,7 @@ module Html2rss
         raise ArgumentError, 'channel must be a hash' unless channel.is_a?(Hash)
         raise ArgumentError, 'missing key :url' unless channel[:url].is_a?(String)
 
-        symbolized_params = params.transform_keys(&:to_sym)
-
-        @config = process_params channel, symbolized_params
+        @config = process_params(channel, params.transform_keys(&:to_sym))
       end
 
       ##
@@ -35,13 +32,13 @@ module Html2rss
       ##
       # @return [String]
       def author
-        config.fetch :author, 'html2rss'
+        config.fetch(:author, 'html2rss')
       end
 
       ##
       # @return [Integer]
       def ttl
-        config.fetch :ttl, 360
+        config.fetch(:ttl, 360)
       end
 
       ##
@@ -53,7 +50,7 @@ module Html2rss
       ##
       # @return [String] language code
       def language
-        config.fetch :language, 'en'
+        config.fetch(:language, 'en')
       end
 
       ##
@@ -71,26 +68,21 @@ module Html2rss
       ##
       # @return [String] time_zone name
       def time_zone
-        config.fetch :time_zone, 'UTC'
+        config.fetch(:time_zone, 'UTC')
       end
 
       ##
       # @return [true, false]
       def json?
-        config.fetch :json, false
+        config.fetch(:json, false)
       end
 
       ##
       # @param config [Hash<Symbol, Object>]
       # @return [Set<String>] the required parameter names
       def self.required_params_for_config(config)
-        Set.new.tap do |required_params|
-          config.each_key do |selector_name|
-            value = config[selector_name]
-            next unless value.is_a?(String)
-
-            required_params.merge value.scan(/%<([\w_\d]+)>(\w)?/).to_h.keys
-          end
+        config.each_with_object(Set.new) do |(_, value), required_params|
+          required_params.merge(value.scan(/%<([\w_\d]+)>/).flatten) if value.is_a?(String)
         end
       end
 
@@ -105,8 +97,7 @@ module Html2rss
       # @return [nil]
       def assert_required_params_presence(config, params)
         missing_params = self.class.required_params_for_config(config) - params.keys.map(&:to_s)
-
-        raise ParamsMissing, missing_params.to_a.join(', ') if missing_params.size.positive?
+        raise ParamsMissing, missing_params.to_a.join(', ') unless missing_params.empty?
       end
 
       ##
@@ -117,15 +108,9 @@ module Html2rss
       # @return [Hash<Symbol, Object>]
       def process_params(config, params)
         assert_required_params_presence(config, params)
-
-        config.each_key do |selector_name|
-          value = config[selector_name]
-          next unless value.is_a?(String)
-
-          config[selector_name] = format(value, params)
+        config.transform_values do |value|
+          value.is_a?(String) ? format(value, params) : value
         end
-
-        config
       end
     end
   end
