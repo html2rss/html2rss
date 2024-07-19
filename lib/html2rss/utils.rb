@@ -7,6 +7,7 @@ require 'json'
 require 'regexp_parser'
 require 'tzinfo'
 require 'mime/types'
+require_relative 'object_to_xml_converter'
 
 module Html2rss
   ##
@@ -17,53 +18,25 @@ module Html2rss
     # @param base_url [String]
     # @return [Addressable::URI]
     def self.build_absolute_url_from_relative(url, base_url)
-      url = Addressable::URI.parse(url) unless url.is_a?(Addressable::URI)
+      url = Addressable::URI.parse(url.to_s) unless url.is_a?(Addressable::URI)
 
       return url if url.absolute?
 
-      Addressable::URI.parse(base_url).tap do |uri|
-        path = url.path
-        fragment = url.fragment
+      base_uri = Addressable::URI.parse(base_url)
+      base_uri.path = '/' if base_uri.path.empty?
 
-        uri.path = path.to_s.start_with?('/') ? path : "/#{path}"
-        uri.query = url.query
-        uri.fragment = fragment if fragment
-      end
-    end
-
-    OBJECT_TO_XML_TAGS = {
-      array: ['<array>', '</array>'],
-      object: ['<object>', '</object>']
-    }.freeze
-
-    ##
-    # A naive implementation of "Object to XML".
-    #
-    # @param object [Hash, Enumerable, String, Symbol]
-    # @return [String] representing the object in XML, with all types being Strings
-    def self.object_to_xml(object)
-      if object.respond_to? :each_pair
-        prefix, suffix = OBJECT_TO_XML_TAGS[:object]
-        xml = object.each_pair.map { |key, value| "<#{key}>#{object_to_xml(value)}</#{key}>" }
-      elsif object.respond_to? :each
-        prefix, suffix = OBJECT_TO_XML_TAGS[:array]
-        xml = object.map { |value| object_to_xml(value) }
-      else
-        xml = [object]
-      end
-
-      "#{prefix}#{xml.join}#{suffix}"
+      base_uri.join(url).normalize
     end
 
     ##
     # Removes any space, parses and normalizes the given url.
     # @param url [String]
-    # @return [Addressable::URI] sanitized and normalized URL
+    # @return [String, nil] sanitized and normalized URL, or nil if input is empty
     def self.sanitize_url(url)
-      squished_url = url.to_s.split.join
-      return if squished_url.to_s == ''
+      url = url.to_s.gsub(/\s+/, ' ').strip
+      return if url.empty?
 
-      Addressable::URI.parse(squished_url).normalize.to_s
+      Addressable::URI.parse(url).normalize.to_s
     end
 
     ##
@@ -71,7 +44,7 @@ module Html2rss
     #
     # @param time_zone [String]
     # @param default_time_zone [String]
-    # @return whatever the given block returns
+    # @return [Object] whatever the given block returns
     def self.use_zone(time_zone, default_time_zone: Time.now.getlocal.zone)
       raise ArgumentError, 'a block is required' unless block_given?
 
@@ -86,13 +59,13 @@ module Html2rss
 
     ##
     # Builds a titleized representation of the URL.
-    # @param url [String]
+    # @param url [String, Addressable::URI]
     # @return [String]
     def self.titleized_url(url)
       uri = Addressable::URI.parse(url)
       host = uri.host
 
-      nicer_path = uri.path.split('/').reject { |part| part == '' }
+      nicer_path = uri.path.split('/').reject(&:empty?)
       nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
     end
 
@@ -100,20 +73,22 @@ module Html2rss
     # @param url [String, Addressable::URI]
     # @param convert_json_to_xml [true, false] Should JSON be converted to XML
     # @param headers [Hash] additional HTTP request headers to use for the request
-    # @return [String]
+    # @return [String] body of the HTTP response
     def self.request_body_from_url(url, convert_json_to_xml: false, headers: {})
-      body = Faraday.new(url:, headers:) do |faraday|
+      response = Faraday.new(url:, headers:) do |faraday|
         faraday.use Faraday::FollowRedirects::Middleware
         faraday.adapter Faraday.default_adapter
-      end.get.body
+      end.get
 
-      convert_json_to_xml ? object_to_xml(JSON.parse(body)) : body
+      body = response.body
+
+      convert_json_to_xml ? ObjectToXmlConverter.new(JSON.parse(body)).call : body
     end
 
     ##
     # Parses the given String and builds a Regexp out of it.
     #
-    # It will remove one pair of sourrounding slashes ('/') from the String
+    # It will remove one pair of surrounding slashes ('/') from the String
     # to maintain backwards compatibility before building the Regexp.
     #
     # @param string [String]
@@ -121,16 +96,20 @@ module Html2rss
     def self.build_regexp_from_string(string)
       raise ArgumentError, 'must be a string!' unless string.is_a?(String)
 
-      string = string[1..-2] if string[0] == '/' && string[-1] == '/'
-
+      string = string[1..-2] if string.start_with?('/') && string.end_with?('/')
       Regexp::Parser.parse(string, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
     end
 
+    ##
+    # Guesses the content type based on the file extension of the URL.
+    #
+    # @param url [String, Addressable::URI]
+    # @return [String] guessed content type, defaults to 'application/octet-stream'
     def self.guess_content_type_from_url(url)
       url = url.to_s.split('?').first
 
       content_type = MIME::Types.type_for(File.extname(url).delete('.'))
-      content_type.any? ? content_type.first.to_s : 'application/octet-stream'
+      content_type.first&.to_s || 'application/octet-stream'
     end
   end
 end
