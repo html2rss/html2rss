@@ -15,11 +15,11 @@ module Html2rss
     class ParamsMissing < StandardError; end
 
     ##
-    # Thrown when a feed config (Hash) does not contain a value at `:channel`.
+    # Thrown when the feed config does not contain a value at `:channel`.
     class ChannelMissing < StandardError; end
 
-    # Class to keep the XML Stylesheet attributes
-    Stylesheet = Struct.new('Stylesheet', :href, :type, :media, keyword_init: true)
+    # Struct to store XML Stylesheet attributes
+    Stylesheet = Struct.new(:href, :type, :media, keyword_init: true)
 
     def_delegator :@channel, :author
     def_delegator :@channel, :ttl
@@ -39,35 +39,46 @@ module Html2rss
     def_delegator :@selectors, :selector_string
 
     ##
-    # @param feed_config [Hash<Symbol, Object>]
-    # @param global [Hash<Symbol, Object>]
-    # @param params [Hash<Symbol, String>]
+    # Initializes the Config object with feed configuration, global settings, and parameters.
+    #
+    # @param feed_config [Hash<Symbol, Object>] The configuration hash containing `:channel` and `:selectors`.
+    # @param global [Hash<Symbol, Object>] Global settings hash.
+    # @param params [Hash<Symbol, String>] Parameters hash.
     def initialize(feed_config, global = {}, params = {})
-      @channel = Channel.new(feed_config[:channel], params:)
+      channel_config = feed_config[:channel]
+      raise ChannelMissing, 'Channel configuration is missing in feed_config' unless channel_config
+
+      @channel = Channel.new(channel_config, params:)
       @selectors = Selectors.new(feed_config[:selectors])
       @global = global
     end
 
     ##
-    # @param name [Symbol]
-    # @return [Hash<Symbol, Object>]
+    # Retrieves selector attributes merged with channel attributes.
+    #
+    # @param name [Symbol] Selector name.
+    # @return [Hash<Symbol, Object>] Merged attributes hash.
     def selector_attributes_with_channel(name)
       @selectors.selector(name).to_h.merge(channel: @channel)
     end
 
     ##
-    # @return [Hash]
+    # Retrieves headers merged from global settings and channel headers.
+    #
+    # @return [Hash] Merged headers hash.
     def headers
-      @global.fetch(:headers, {}).merge @channel.headers
+      @global.fetch(:headers, {}).merge(@channel.headers)
     end
 
     ##
-    # @return [Array<Stylesheet>]
+    # Retrieves stylesheets from global settings.
+    #
+    # @return [Array<Stylesheet>] Array of Stylesheet structs.
     def stylesheets
       @global.fetch(:stylesheets, []).map { |attributes| Stylesheet.new(attributes) }
     end
 
-    # @return [Channel]
+    # Provides read-only access to the channel object.
     attr_reader :channel
   end
 end

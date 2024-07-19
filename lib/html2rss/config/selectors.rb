@@ -7,21 +7,13 @@ module Html2rss
     class Selectors
       ITEMS_SELECTOR_NAME = :items
 
-      # Class to keep user-defined selectors.
-      Selector = Struct.new('Selector',
-                            :selector,
-                            :attribute,
-                            :extractor,
-                            :post_process,
-                            :order,
-                            :static,
-                            keyword_init: true)
+      # Struct to represent a selector with associated attributes for extraction and processing.
+      Selector = Struct.new(:selector, :attribute, :extractor, :post_process, :order, :static, keyword_init: true)
 
       ##
       # @param config [Hash<Symbol, Object>]
       def initialize(config)
-        raise ArgumentError, 'selector for items is required' unless config[ITEMS_SELECTOR_NAME].is_a?(Hash)
-
+        validate_config(config)
         @config = config
       end
 
@@ -29,18 +21,16 @@ module Html2rss
       # @param name [Symbol]
       # @return [true, false]
       def selector?(name)
-        raise "selector #{ITEMS_SELECTOR_NAME} must not be used as an item's selector" if name == ITEMS_SELECTOR_NAME
-
-        item_selector_names.include?(name)
+        name != ITEMS_SELECTOR_NAME && item_selector_names.include?(name)
       end
 
       ##
       # @param name [Symbol]
       # @return [Selector]
       def selector(name)
-        raise "invalid item's selector name: #{name}" unless selector?(name)
+        raise ArgumentError, "invalid item's selector name: #{name}" unless selector?(name)
 
-        Selector.new config[name]
+        Selector.new(config[name])
       end
 
       ##
@@ -65,9 +55,9 @@ module Html2rss
       end
 
       ##
-      # @return [Set<String>]
+      # @return [Set<Symbol>]
       def item_selector_names
-        @item_selector_names ||= config.keys.tap { |attrs| attrs.delete(ITEMS_SELECTOR_NAME) }.to_set
+        @item_selector_names ||= config.keys.reject { |key| key == ITEMS_SELECTOR_NAME }.to_set
       end
 
       ##
@@ -78,8 +68,11 @@ module Html2rss
 
       private
 
-      # @return [Hash<Symbol, Object>]
       attr_reader :config
+
+      def validate_config(config)
+        raise ArgumentError, 'selector for items is required' unless config[ITEMS_SELECTOR_NAME].is_a?(Hash)
+      end
 
       ##
       # Returns the selector keys for the selector named `name`. If none, returns [default].
