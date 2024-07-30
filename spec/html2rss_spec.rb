@@ -96,7 +96,7 @@ RSpec.describe Html2rss do
       end
 
       describe 'feed.channel' do
-        it 'sets the channel attributes', :aggregate_failures do
+        it 'sets the channel attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
           expect(xml.css('channel > title').text).to eq 'github.com: Nuxt Nuxt.js Releases'
           expect(xml.css('channel > description').text).to eq 'Latest items from https://github.com/nuxt/nuxt.js/releases.'
           expect(xml.css('channel > ttl').text.to_i).to be > 0

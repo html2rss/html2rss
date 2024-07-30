@@ -23,7 +23,7 @@ module Html2rss
     ##
     # Maps the extractor class to its corresponding options class.
     ITEM_OPTION_CLASSES = Hash.new do |hash, klass|
-      hash[klass] = klass.const_get('Options')
+      hash[klass] = klass.const_get(:Options)
     end
 
     DEFAULT_EXTRACTOR = :text
