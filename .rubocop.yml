@@ -2,6 +2,7 @@ require:
   - rubocop-performance
   - rubocop-rspec
   - rubocop-md
+  - rubocop-rake
 
 AllCops:
   DisplayCopNames: true
