@@ -19,7 +19,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Template do
   end
 
   context 'with methods absent (complex formatting)' do
-    let(:options) { { string: '%{self}! %<name>s is %{author}! %{returns_nil}' } }
+    let(:options) { { string: '%{self}! %<name>s is %{author}! %{returns_nil}' } } # rubocop:disable Style/FormatStringToken
 
     it { is_expected.to eq 'Hi! My name is Slim Shady! ' }
   end

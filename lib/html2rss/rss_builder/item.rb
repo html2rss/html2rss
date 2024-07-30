@@ -21,11 +21,11 @@ module Html2rss
         tags.each do |tag|
           next if SPECIAL_TAGS.include?(tag)
 
-          maker.public_send("#{tag}=", item.public_send(tag))
+          maker.public_send(:"#{tag}=", item.public_send(tag))
         end
 
         SPECIAL_TAGS.each do |tag|
-          send("add_#{tag}", item, maker)
+          send(:"add_#{tag}", item, maker)
         end
       end
 
