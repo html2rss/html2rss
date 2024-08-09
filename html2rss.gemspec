@@ -10,15 +10,15 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Gil Desmarais']
   spec.email         = ['html2rss@desmarais.de']
 
-  spec.summary       = 'Returns an RSS::Rss object by scraping a URL.'
-  spec.description   = 'Give the URL to scrape and some CSS selectors. Get a RSS::Rss instance in return.'
+  spec.summary       = 'Generates RSS feeds from websites by scraping a URL and using CSS selectors to extract item.'
+  spec.description   = 'Supports JSON content, custom HTTP headers, and post-processing of extracted content.'
   spec.homepage      = 'https://github.com/html2rss/html2rss'
   spec.license       = 'MIT'
   spec.required_ruby_version = '>= 3.1'
 
   if spec.respond_to?(:metadata)
     spec.metadata['allowed_push_host'] = 'https://rubygems.org'
-    spec.metadata['changelog_uri'] = 'https://github.com/html2rss/html2rss/releases'
+    spec.metadata['changelog_uri'] = "#{spec.homepage}/releases/tag/v#{spec.version}"
     spec.metadata['rubygems_mfa_required'] = 'true'
   else
     raise 'RubyGems 2.0 or newer is required to protect against ' \
