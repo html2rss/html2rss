@@ -10,6 +10,12 @@ require 'yaml'
 ##
 # The Html2rss namespace.
 module Html2rss
+  ##
+  # The Html2rss::Error base class.
+  class Error < StandardError; end
+
+  ##
+  # Key for the feeds configuration in the YAML file.
   CONFIG_KEY_FEEDS = :feeds
 
   ##

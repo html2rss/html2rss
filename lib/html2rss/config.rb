@@ -12,11 +12,11 @@ module Html2rss
     ##
     # The Error class to be thrown when a feed config requires params, but none
     # were passed to Config.
-    class ParamsMissing < StandardError; end
+    class ParamsMissing < Html2rss::Error; end
 
     ##
     # Thrown when the feed config does not contain a value at `:channel`.
-    class ChannelMissing < StandardError; end
+    class ChannelMissing < Html2rss::Error; end
 
     # Struct to store XML Stylesheet attributes
     Stylesheet = Struct.new(:href, :type, :media, keyword_init: true)

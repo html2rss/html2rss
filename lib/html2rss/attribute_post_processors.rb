@@ -6,7 +6,7 @@ module Html2rss
   module AttributePostProcessors
     ##
     # Error raised when an unknown post processor name is requested.
-    class UnknownPostProcessorName < StandardError; end
+    class UnknownPostProcessorName < Html2rss::Error; end
 
     ##
     # Maps the post processor name to the class implementing the post processor.
