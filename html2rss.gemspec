@@ -25,8 +25,8 @@ Gem::Specification.new do |spec|
           'public gem pushes.'
   end
 
-  spec.files = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{^(test|spec|features|support|docs|.github|.yardoc)/})
+  spec.files = `git ls-files -z`.split("\x0").select do |f|
+    f.match(%r{^(lib/|exe/|README.md|LICENSE|html2rss.gemspec)})
   end
   spec.bindir        = 'exe'
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
