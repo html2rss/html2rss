@@ -8,6 +8,10 @@ RSpec.describe Html2rss do
     expect(Html2rss::VERSION).not_to be_nil
   end
 
+  it 'defines a Error class' do
+    expect(Html2rss::Error).to be < StandardError
+  end
+
   describe '::CONFIG_KEY_FEEDS' do
     it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
   end

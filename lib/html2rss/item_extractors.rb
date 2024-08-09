@@ -6,7 +6,7 @@ module Html2rss
   module ItemExtractors
     ##
     # The Error class to be thrown when an unknown extractor name is requested.
-    class UnknownExtractorName < StandardError; end
+    class UnknownExtractorName < Html2rss::Error; end
 
     ##
     # Maps the extractor name to the class implementing the extractor.
