@@ -17,6 +17,21 @@ module Html2rss
     Enclosure = Struct.new('Enclosure', :type, :bits_length, :url, keyword_init: true)
 
     ##
+    # Fetches items from a given URL using configuration settings.
+    #
+    # @param url [String] URL to fetch items from.
+    # @param config [Html2rss::Config] Configuration object.
+    # @return [Array<Html2rss::Item>] list of items fetched.
+    def self.from_url(url, config)
+      body = Utils.request_body_from_url(url, convert_json_to_xml: config.json?, headers: config.headers)
+
+      Nokogiri.HTML(body)
+              .css(config.selector_string(Config::Selectors::ITEMS_SELECTOR_NAME))
+              .map { |xml| new(xml, config) }
+              .select(&:valid?)
+    end
+
+    ##
     # @param xml [Nokogiri::XML::Element]
     # @param config [Html2rss::Config]
     def initialize(xml, config)
@@ -120,21 +135,6 @@ module Html2rss
         bits_length: 0,
         url: url.to_s
       )
-    end
-
-    ##
-    # Fetches items from a given URL using configuration settings.
-    #
-    # @param url [String] URL to fetch items from.
-    # @param config [Html2rss::Config] Configuration object.
-    # @return [Array<Html2rss::Item>] list of items fetched.
-    def self.from_url(url, config)
-      body = Utils.request_body_from_url(url, convert_json_to_xml: config.json?, headers: config.headers)
-
-      Nokogiri.HTML(body)
-              .css(config.selector_string(Config::Selectors::ITEMS_SELECTOR_NAME))
-              .map { |xml| new(xml, config) }
-              .select(&:valid?)
     end
 
     private

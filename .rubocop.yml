@@ -28,3 +28,6 @@ RSpec/NamedSubject:
 
 Naming/RescuedExceptionsVariableName:
   PreferredName: error
+
+Layout/ClassStructure:
+  Enabled: true

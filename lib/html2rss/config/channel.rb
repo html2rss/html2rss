@@ -12,6 +12,15 @@ module Html2rss
     # 2. html2rss options like json or custom HTTP-headers for the request
     class Channel
       ##
+      # @param config [Hash<Symbol, Object>]
+      # @return [Set<String>] the required parameter names
+      def self.required_params_for_config(config)
+        config.each_with_object(Set.new) do |(_, value), required_params|
+          required_params.merge(value.scan(/%<([\w_\d]+)>/).flatten) if value.is_a?(String)
+        end
+      end
+
+      ##
       # @param channel [Hash<Symbol, Object>]
       # @param params [Hash]
       def initialize(channel, params: {})
@@ -75,15 +84,6 @@ module Html2rss
       # @return [true, false]
       def json?
         config.fetch(:json, false)
-      end
-
-      ##
-      # @param config [Hash<Symbol, Object>]
-      # @return [Set<String>] the required parameter names
-      def self.required_params_for_config(config)
-        config.each_with_object(Set.new) do |(_, value), required_params|
-          required_params.merge(value.scan(/%<([\w_\d]+)>/).flatten) if value.is_a?(String)
-        end
       end
 
       private
