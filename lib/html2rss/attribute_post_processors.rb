@@ -9,6 +9,14 @@ module Html2rss
     class UnknownPostProcessorName < Html2rss::Error; end
 
     ##
+    # Error raised when a required option is missing.
+    class MissingOption < Html2rss::Error; end
+
+    ##
+    # Error raised when an invalid type is provided.
+    class InvalidType < Html2rss::Error; end
+
+    ##
     # Maps the post processor name to the class implementing the post processor.
     #
     # The key is the name to use in the feed config.
