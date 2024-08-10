@@ -24,22 +24,22 @@ module Html2rss
     # Would return:
     #    "Tue, 02 Jul 2019 00:00:00 +0200"
     #
-    # It uses {https://ruby-doc.org/stdlib-2.5.3/libdoc/time/rdoc/Time.html#method-c-parse Time.parse}.
-    class ParseTime
-      ##
-      # @param value [String] the time to parse
-      # @param env [Item::Context] Context object providing additional environment details
-      def initialize(value, env)
-        @value = value.to_s
-        @time_zone = env[:config].time_zone
+    # It uses `Time.parse`.
+    class ParseTime < Base
+      def self.validate_args!(value, context)
+        assert_type value, String, :value
+        assert_type context[:config].time_zone, String, :time_zone
       end
 
       ##
-      # Converts the provided time string to RFC822 format, taking into account the configured time zone.
+      # Converts the provided time string to RFC822 format, taking into account the time_zone.
       #
       # @return [String] RFC822 formatted time
+      # @raise [TZInfo::InvalidTimezoneIdentifier] if the configured time zone is invalid
       def get
-        Utils.use_zone(@time_zone) { Time.parse(@value).rfc822 }
+        time_zone = context[:config].time_zone
+
+        Utils.use_zone(time_zone) { Time.parse(value).rfc822 }
       end
     end
   end
