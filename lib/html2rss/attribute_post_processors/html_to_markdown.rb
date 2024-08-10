@@ -26,18 +26,17 @@ module Html2rss
     #
     # Would return:
     #    'Lorem **ipsum** dolor'
-    class HtmlToMarkdown
-      ##
-      # @param value [String]
-      # @param env [Item::Context]
-      def initialize(value, env)
-        @sanitized_value = SanitizeHtml.new(value, env).get
+    class HtmlToMarkdown < Base
+      def self.validate_args!(value, _context)
+        assert_type value, String, :value
       end
 
       ##
       # @return [String] formatted in Markdown
       def get
-        ReverseMarkdown.convert(@sanitized_value)
+        sanitized_value = SanitizeHtml.new(value, context).get
+
+        ReverseMarkdown.convert(sanitized_value)
       end
     end
   end

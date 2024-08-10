@@ -3,15 +3,13 @@
 RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
   subject { described_class.new(html, config:).get }
 
-  let(:config) do
-    Html2rss::Config.new(
-      channel: { title: 'Example: questions', url: 'https://example.com/questions' },
-      selectors: {
-        items: { selector: '#questions > ul > li' },
-        title: { selector: 'a' },
-        link: { selector: 'a', extractor: 'href' }
-      }
-    )
+  let(:markdown) do
+    [
+      "# Very interesting\n Breaking news: I'm a deprecated tag \n ",
+      '[![An animal looking cute](https://example.com/lol.gif)](https://example.com/lol.gif) ',
+      '[example.com](http://example.com "foo") ',
+      "[Click here!](https://example.com/article-123) \n"
+    ].join
   end
   let(:html) do
     <<~HTML
@@ -32,15 +30,18 @@ RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
       </html>
     HTML
   end
-
-  let(:markdown) do
-    [
-      "# Very interesting\n Breaking news: I'm a deprecated tag \n ",
-      '[![An animal looking cute](https://example.com/lol.gif)](https://example.com/lol.gif) ',
-      '[example.com](http://example.com "foo") ',
-      "[Click here!](https://example.com/article-123) \n"
-    ].join
+  let(:config) do
+    Html2rss::Config.new(
+      channel: { title: 'Example: questions', url: 'https://example.com/questions' },
+      selectors: {
+        items: { selector: '#questions > ul > li' },
+        title: { selector: 'a' },
+        link: { selector: 'a', extractor: 'href' }
+      }
+    )
   end
+
+  it { expect(described_class).to be < Html2rss::AttributePostProcessors::Base }
 
   it { is_expected.to eq markdown }
 end
