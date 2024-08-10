@@ -32,13 +32,9 @@ module Html2rss
     #    <h1>Section</h1>
     #
     #    <p>Price: 12.34</p>
-    class MarkdownToHtml
-      ##
-      # @param value [String] Markdown content to convert to HTML
-      # @param env [Item::Context] Context object providing additional environment details
-      def initialize(value, env)
-        @value = value
-        @env = env
+    class MarkdownToHtml < Base
+      def self.validate_args!(value, _context)
+        assert_type value, String, :value
       end
 
       ##
@@ -46,8 +42,8 @@ module Html2rss
       #
       # @return [String] Sanitized HTML content
       def get
-        html_content = Kramdown::Document.new(@value).to_html
-        SanitizeHtml.new(html_content, @env).get
+        html_content = Kramdown::Document.new(value).to_html
+        SanitizeHtml.new(html_content, context).get
       end
     end
   end
