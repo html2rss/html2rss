@@ -15,9 +15,6 @@ Metrics/BlockLength:
     - "spec/**/*_spec.rb"
     - html2rss.gemspec
 
-Metrics/MethodLength:
-  CountComments: falseo
-
 RSpec/NestedGroups:
   Exclude:
     - spec/html2rss_spec.rb

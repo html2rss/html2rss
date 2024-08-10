@@ -47,7 +47,7 @@ module Html2rss
       #
       # @param article [Hash<Symbol, Object>]
       # @return [Base, nil] nil when the article type is not supported
-      def self.extract(article)
+      def self.extract(article, url:)
         klass = case article[:@type]
                 when 'Article'
                   Base
@@ -55,20 +55,21 @@ module Html2rss
                   NewsArticle
                 end
 
-        return nil unless klass # TODO: probably worth a debug log?
+        Log.warn('JsonLD#extract: article type', article:) and return nil unless klass
 
-        klass.to_article(article)
+        klass.to_article(article, url:)
       end
 
-      def initialize(parsed_body)
+      def initialize(parsed_body, url:)
         @parsed_body = parsed_body
+        @url = url
       end
 
       ##
-      # @return [Array<Hash>] the extracted articles
+      # @return [Array<Article>] the extracted articles
       def call
         self.class.article_objects(parsed_json)
-            .filter_map { |article| self.class.extract(article) }
+            .filter_map { |article| self.class.extract(article, url: @url) }
       end
 
       def parsed_json

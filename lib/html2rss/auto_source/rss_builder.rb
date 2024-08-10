@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'rss'
-require 'zlib'
 
 module Html2rss
   class AutoSource
@@ -55,13 +54,9 @@ module Html2rss
 
       def add_guid(article, maker)
         maker.guid.tap do |guid|
-          guid.content = generate_guid(article)
+          guid.content = article.guid
           guid.isPermaLink = false
         end
-      end
-
-      def generate_guid(article)
-        Zlib.crc32([url, article[:id]].join('#!/'))
       end
 
       def add_image(article, maker)

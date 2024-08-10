@@ -14,12 +14,13 @@ module Html2rss
       # 3. For each specific attribute, define a method that returns the desired value.
       # 4. Add the subclass to JsonLd::ARTICLE_TYPES and JsonLd#parse_article.
       class Base
-        def self.to_article(article)
-          new(article).to_article
+        def self.to_article(article, url:)
+          new(article, url:).to_article
         end
 
-        def initialize(article)
+        def initialize(article, url:)
           @article = article
+          @url = url
           @attributes = %i[id title abstract description url image published_at] + specific_attributes
         end
 
@@ -36,14 +37,26 @@ module Html2rss
           end
         end
 
-        def id = article[:@id]
+        def id = article[:@id] || url&.path || title.to_s.downcase.gsub(/\s+/, '-')
         def title = article[:title]
         alias headline title
 
         def abstract = article[:abstract]
 
-        def description = article[:description]
-        def url = article[:url]
+        def description
+          [article[:description], article[:article_body]].max_by { |desc| desc.to_s.size }
+        end
+
+        # @return [Adressable::URI, nil] the URL of the article
+        def url
+          url = article[:url]
+          if url.to_s.empty?
+            Log.debug("JsonLD#Base.url: no url in article: #{article.inspect}")
+            return
+          end
+
+          Utils.build_absolute_url_from_relative(url, @url)
+        end
         alias link url
 
         def images = [article[:image]].flatten.compact
@@ -54,7 +67,7 @@ module Html2rss
             DateTime.parse(string)
           end
         rescue Date::Error
-          # TODO: log error
+          Log.warn("JsonLD#Base.published_at: invalid datePublished: #{string.inspect}")
           nil
         end
       end

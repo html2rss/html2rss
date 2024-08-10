@@ -35,8 +35,8 @@ module Html2rss
 
         keywords = config[name].slice(*available_keys)
 
-        if (additional_keys = available_keys - keywords.keys).any?
-          warn "additional keys (#{additional_keys.join(', ')}) present in selector #{name}"
+        if (additional_keys = keywords.keys - available_keys).any?
+          Log.warn "additional keys (#{additional_keys.join(', ')}) present in selector #{name}"
         end
 
         Selector.new(keywords)

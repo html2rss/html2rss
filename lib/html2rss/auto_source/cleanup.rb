@@ -7,82 +7,115 @@ module Html2rss
     ##
     # Cleanup is responsible for cleaning up the extracted articles.
     # It has several strategies
+    # :reek:MissingSafeMethod { enabled: false }
     class Cleanup
       class << self
-        def clean_articles(articles) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
-          Log.debug "Clean Articels: start with #{articles.size} articles"
-          # TODO: extract to separate "merger" classes
-          articles = keep_longest_attributes(articles)
+        def call(articles, url:)
+          # Log.debug "Clean Articels: start with #{articles.size} articles"
+
+          keep_longest_attributes(articles)
+          articles.filter!(&:valid?)
 
           remove_short!(articles, :title)
 
-          Log.debug "Clean Articels: within 1 with #{articles.size} articles"
-
           deduplicate_by!(articles, :url)
-
-          Log.debug "Clean Articels: within 2 with #{articles.size} articles"
-
           deduplicate_by!(articles, :title)
-
-          Log.debug "Clean Articels: within 3 with #{articles.size} articles"
-
           remove_empty!(articles, :url)
-
-          Log.debug "Clean Articels: within 4 with #{articles.size} articles"
           remove_empty!(articles, :title)
-
-          Log.debug "Clean Articels: within 5 with #{articles.size} articles"
-
           keep_only_http_urls!(articles)
+          reject_different_domain!(articles, url)
 
-          Log.debug "Clean Articels: end with #{articles.size} articles"
           articles
         end
 
-        # TODO: reject articles which have a url that is not on the same domain as the source
-
         ##
-        # With multiple articles sharing the same URL, build one out of them, by
-        # keeping the longest attribute values.
-        # # TODO: extract to separate "merger" / reducer classes
+        # Removes articles with short values for a given key.
         #
-        # @param articles [Article]
-        # @return [Array<Arrticle>]
-        def keep_longest_attributes(articles) # rubocop:disable Metrics/MethodLength
-          grouped_by_url = articles.group_by { |article| article[:url] }
-
-          grouped_by_url.each_pair.map do |_url, articles_with_same_url|
-            longest_attributes_article = articles_with_same_url.first
-
-            articles_with_same_url.each do |article|
-              article.each do |key, value|
-                if value && value.size > longest_attributes_article[key].to_s.size
-                  longest_attributes_article[key] = value
-                end
-              end
-            end
-
-            longest_attributes_article
-          end
-        end
-
+        # @param articles [Array<Hash>] The list of articles to process.
+        # @param key [Symbol] The key to check for short values.
+        # @param min_words [Integer] The minimum number of words required.
         def remove_short!(articles, key = :title, min_words: 3)
           articles.reject! do |article|
-            size = article[key]&.to_s&.split&.size.to_i
+            return true unless article[key]
+
+            size = article[key].to_s.size.to_i
             size < min_words
           end
         end
 
+        ##
+        # Deduplicates articles by a given key.
+        #
+        # @param articles [Array<Hash>] The list of articles to process.
+        # @param key [Symbol] The key to deduplicate by.
         def deduplicate_by!(articles, key)
-          articles.uniq! { |article| article[key].to_s.strip }
+          seen = {}
+          articles.reject! do |article|
+            value = article[key]&.to_s&.strip
+            next true if value.nil? || seen[value]
+
+            seen[value] = true
+            false
+          end
         end
 
+        ##
+        # Removes articles with empty values for a given key.
+        #
+        # @param articles [Array<Hash>] The list of articles to process.
+        # @param key [Symbol] The key to check for empty values.
         def remove_empty!(articles, key)
           articles.reject! { |article| article[key].to_s.strip.empty? }
         end
 
+        ##
+        # Keeps only articles with HTTP or HTTPS URLs.
+        #
+        # @param articles [Array<Hash>] The list of articles to process.
         def keep_only_http_urls!(articles)
-          articles.select! { |article| article[:url]&.to_s&.start_with?('http') }
+          articles.select! { |article| article[:url].scheme.start_with?('http') }
+        end
+
+        ##
+        # Rejects articles which have a URL that is not on the same domain as the source.
+        #
+        # @param articles [Array<Article>] The list of articles to process.
+        # @param base_url [String] The source URL to compare against.
+        def reject_different_domain!(articles, base_url)
+          base_host = base_url.host
+
+          articles.reject! do |article|
+            article_url = article.url
+            next true unless article_url
+
+            article_url.host != base_host
+          end
+        end
+
+        # TODO: extract to separate "merger" classes
+        def keep_longest_attributes(articles)
+          grouped_by_url = articles.group_by { |article| article[:url] }
+          grouped_by_url.each_with_object([]) do |(_url, articles_with_same_url), result|
+            result << find_longest_attributes_article(articles_with_same_url)
+          end
+        end
+
+        private
+
+        def find_longest_attributes_article(articles)
+          longest_attributes_article = articles.shift
+          articles.each do |article|
+            keep_longest_attributes_from_article(longest_attributes_article, article)
+          end
+          longest_attributes_article
+        end
+
+        def keep_longest_attributes_from_article(longest_attributes_article, article)
+          article.each do |key, value|
+            if value && value.to_s.size > longest_attributes_article[key].to_s.size
+              longest_attributes_article[key] = value
+            end
+          end
         end
       end
     end

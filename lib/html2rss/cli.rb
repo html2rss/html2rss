@@ -4,7 +4,12 @@ require_relative '../html2rss'
 require 'thor'
 require 'addressable'
 
+##
+# The Html2rss namespace / command line interface.
 module Html2rss
+  Log = Logger.new($stderr)
+  Log.level = :warn
+
   ##
   # The Html2rss command line interface.
   class CLI < Thor
@@ -29,6 +34,8 @@ module Html2rss
 
     desc 'auto URL', 'automatically sources an RSS feed from the URL'
     def auto(url)
+      url = url.to_s.strip
+
       raise 'URL is required' if url.empty? || !Addressable::URI.parse(url).absolute?
 
       puts Html2rss.auto_source(url)

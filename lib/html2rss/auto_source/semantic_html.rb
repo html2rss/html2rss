@@ -6,8 +6,8 @@ require 'parallel'
 module Html2rss
   class AutoSource
     ##
-    # Extracts articles by looking for <article> tags containing an <a href> tag.
-    # An article is not considered an article without having an URL.
+    # Extracts articles by looking for common markup tags (article, section, li)
+    # containing an <a href> tag.
     #
     # See:
     # 1. https://developer.mozilla.org/en-US/docs/Web/HTML/Element/article
@@ -18,11 +18,9 @@ module Html2rss
       #
       # Note: X :not(x) a[href] is used to avoid selecting <X><X><a href></X></X>
       ANCHOR_TAG_SELECTORS = {
-        # 'article' => ['article a[href]']
-        # 'section' => ['section :not(section) a[href]'],
-        # 'tr' => ['table tr a[href]'],
-        # 'li' => ['li :not(li) a[href]'],
-        # 'div' => ['div :not(div) a[href]'],
+        'section' => ['section :not(section) a[href]'],
+        'tr' => ['table tr :not(tr) a[href]'],
+        'div' => ['div :not(div) a[href]'],
         'article' => ['article :not(article) a[href]'],
         'li' => [
           'ul > li :not(li) a[href]',
@@ -44,12 +42,15 @@ module Html2rss
         false
       end
 
-      def self.find_article_tag(anchor, tag_name)
+      def self.find_article_tag(anchor, tag_name, stop_tag: 'html')
         return anchor if anchor.name == tag_name
 
         article_tag = anchor.parent
-        article_tag = article_tag.parent while article_tag && article_tag.name != tag_name
-        article_tag
+        while article_tag && article_tag.name != tag_name && article_tag.name != stop_tag
+          article_tag = article_tag.parent
+        end
+
+        article_tag.name == stop_tag ? nil : article_tag
       end
 
       # Returns an array of [tag_name, selector] pairs
@@ -62,8 +63,9 @@ module Html2rss
         end
       end
 
-      def initialize(parsed_body)
+      def initialize(parsed_body, url:)
         @parsed_body = parsed_body
+        @url = url
       end
 
       attr_reader :parsed_body
@@ -73,7 +75,7 @@ module Html2rss
           parsed_body.css(selector).filter_map do |anchor|
             article_tag = self.class.find_article_tag(anchor, tag_name)
 
-            ArticleExtractor.new(article_tag).extract if article_tag
+            ArticleExtractor.new(article_tag, url: @url).extract
           end
         end
       end

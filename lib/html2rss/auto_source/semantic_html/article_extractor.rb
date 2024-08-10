@@ -4,76 +4,72 @@ module Html2rss
   class AutoSource
     class SemanticHtml
       ##
-      # ArticleExtractor is responsible for extracting the details of an article from a given
-      # Nokogiri element representing an article. It extracts the title, URL, image, and description
-      # of the article, and generates an ID for it.
-      #
-      # The class is designed to work with parsed HTML documents and leverages Nokogiri for
-      # parsing and navigating the HTML structure. It aims to identify and extract useful information
-      # from typical article structures found on web pages.
+      # ArticleExtractor is responsible for extracting the details of an article .
+      # It focuses on finding a headline first, and from it traverse as much as possible,
+      # to find the DOM upwards to find the other details.
       class ArticleExtractor
         INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
         NOT_HEADLINE_SELECTOR = SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" }
                                                           .concat(INVISIBLE_CONTENT_TAG_SELECTORS)
                                                           .freeze
-
-        def initialize(article_tag)
+        def initialize(article_tag, url:)
           @article_tag = article_tag
+          @url = url
         end
 
+        # @return [Hash] The extracted article or nil if no article could be extracted.
         def extract
-          Log.debug "START: Extracting article from <#{article_tag.name}> with heading <#{heading&.name}>"
+          unless heading
+            Log.debug "No heading in <#{article_tag.name}> article found: #{article_tag}"
+            return
+          end
 
-          options = clean_values({
-                                   title: extract_title(heading),
-                                   url: extract_url(heading),
-                                   image: extract_image,
-                                   description: extract_description(heading),
-                                   id: generate_id
-                                 })
-          Log.debug "END: Return Article #{options.inspect} from <#{article_tag.name}> with heading <#{heading&.name}>"
-
-          Article.new(**options)
+          { title: extract_title,
+            url: extract_url,
+            image: extract_image,
+            description: extract_description,
+            id: generate_id }
         end
 
         private
 
-        attr_reader :article_tag
+        attr_reader :article_tag, :url
 
-        ##
-        # Finds the heading tag of an article.
-        #
-        # If multiple headings are found, the smallest heading tag (h1 is smaller than h2) is returned.
-        # If multiple tags of the same size are found, the one with the longest text is returned.
-        # If no heading is found, nil is returned.
-        #
-        # @return [Nokogiri::XML::Element, nil] a heading tag or nil if none found
         def heading
           return @heading if defined?(@heading)
 
           heading_tags = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).group_by(&:name)
-          return if heading_tags.empty?
+
+          if heading_tags.empty?
+            Log.debug "No heading in <#{article_tag.name}> article found: #{article_tag}"
+            return
+          end
 
           smallest_heading = heading_tags.keys.min
           @heading = heading_tags[smallest_heading].max_by { |h| h.text.size }
         end
 
-        def extract_title(heading)
+        def extract_title
           return extract_text(heading) if heading&.text
 
-          largest_tag = article_tag.css(NOT_HEADLINE_SELECTOR.join(', ')).max_by { |tag| tag.text.size }
+          largest_tag = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).max_by { |tag| tag.text.size }
+
           extract_text(largest_tag) if largest_tag
         end
 
-        # Falls back to longest URL in article.
-        # @return [String, nil] the URL of the article or nil if empty
-        def extract_url(heading)
-          closest_anchor = if heading
-                             heading.css('a[href]').first || find_closest_anchor_upwards(heading)
-                           else
-                             find_closest_anchor_upwards(article_tag)
-                           end
-          closest_anchor['href']&.split('#')&.first&.strip
+        def extract_url
+          return @extract_url if defined?(@extract_url)
+
+          closest_anchor = find_closest_anchor(heading || article_tag)
+          href = closest_anchor['href']&.split('#')&.first&.strip
+
+          return if href.to_s.empty?
+
+          @extract_url = Utils.build_absolute_url_from_relative(href, url)
+        end
+
+        def find_closest_anchor(element)
+          element.css('a[href]').first || find_closest_anchor_upwards(element)
         end
 
         def find_closest_anchor_upwards(element)
@@ -86,14 +82,19 @@ module Html2rss
           nil
         end
 
+        # @return [Adressable::URI, nil]
         def extract_image
-          img_tag = article_tag.at_css('img[src]') || article_tag.at_css('picture source[srcset]')
-          img_tag&.[]('src') || img_tag&.[]('srcset')&.split&.first&.strip
+          src = article_tag.css('img[src]').first&.[]('src')
+
+          src ||= article_tag.css('source[srcset]')
+                             .flat_map { |source| source['srcset'].split(',') }
+                             .max_by { |source| source ? source.size : 0 }
+
+          Utils.build_absolute_url_from_relative(src, url) if src
         end
 
-        # @return [String, nil] the description of the article or nil if empty
-        def extract_description(heading)
-          text = extract_text(article_tag.css('p, span'), separator: '<br>')
+        def extract_description
+          text = extract_text(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
           return text if text
 
           description = extract_text(article_tag)
@@ -105,7 +106,6 @@ module Html2rss
           description.empty? ? nil : description
         end
 
-        # @return [String, nil] the text of the tag or nil if empty
         def extract_text(tag, separator: ' ')
           text = if tag.children.empty?
                    tag.text
@@ -118,39 +118,7 @@ module Html2rss
         end
 
         def generate_id
-          article_tag['id'] || generate_id_from_heading
-        end
-
-        def generate_id_from_heading
-          url_id = extract_url_id(heading)
-          return url_id if url_id
-
-          extract_title_id(heading)
-        end
-
-        def extract_url_id(heading)
-          url = extract_url(heading)
-          return unless url
-
-          parts = url.split('/')
-          parts[3..]&.join('/')&.split('#')&.first
-        end
-
-        def extract_title_id(heading)
-          title = extract_title(heading)
-          return unless title
-
-          title.downcase.gsub(/\s+/, '-')
-        end
-
-        def clean_values(hash)
-          hash.transform_values do |value|
-            next value unless value.is_a?(String)
-
-            value.gsub!(/[[:space:]]+/, ' ')
-            value.strip!
-            value.empty? ? nil : value
-          end
+          [article_tag['id'], article_tag.at_css('[id]')&.attr('id'), extract_url&.path].compact.reject(&:empty?).first
         end
       end
     end

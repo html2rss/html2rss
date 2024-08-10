@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::AutoSource::JsonLd::Base do
   describe '.to_article(article)' do
-    subject(:to_article) { described_class.to_article(article) }
+    subject(:to_article) { described_class.to_article(article, url: nil) }
 
     context 'with unparsable date' do
       let(:article) do

@@ -10,7 +10,9 @@ module Html2rss
   # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
-    class NoArticleSelectorFound < Html2rss::Error; end
+    ##
+    # Error raised when no article extractor selector is found.
+    class NoArticleExtractorFound < Html2rss::Error; end
 
     CHANNEL_EXTRACTORS = [
       Channel::Metadata
@@ -22,7 +24,7 @@ module Html2rss
     ].freeze
 
     def initialize(url)
-      @url = url
+      @url = Addressable::URI.parse(url)
     end
 
     def call
@@ -31,7 +33,7 @@ module Html2rss
         articles: extract_articles(parsed_body)
       }
 
-      sourced[:articles] = Cleanup.clean_articles(sourced[:articles])
+      sourced[:articles] = Cleanup.call(sourced[:articles], url:)
 
       sourced
     end
@@ -55,18 +57,21 @@ module Html2rss
     end
 
     def article_extractors
-      return @article_extractors if defined?(@article_extractors)
-
-      available_extractors = ARTICLE_EXTRACTORS.select { |extractor| extractor.articles?(parsed_body) }
-      raise NoArticleSelectorFound, 'No article extractor found for URL.' if available_extractors.empty?
-
-      @article_extractors = available_extractors
+      ARTICLE_EXTRACTORS.select { |extractor| extractor.articles?(parsed_body) }
+                        .tap do |available_extractors|
+        raise NoArticleExtractorFound, 'No article extractor found for URL.' if available_extractors.empty?
+      end
     end
 
+    # @return [Array<Article>]
     def extract_articles(parsed_body)
-      Parallel.flat_map(article_extractors) do |extractor|
-        extractor.new(parsed_body).call
+      article_hashes = Parallel.flat_map(article_extractors) do |extractor|
+        extractor.new(parsed_body, url: @url).call
       end
+
+      article_hashes.map! { |article_hash| Article.new(**article_hash) }
+
+      article_hashes
     end
   end
 end

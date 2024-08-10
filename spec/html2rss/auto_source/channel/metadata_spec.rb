@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::Channel::Metadata do
   describe '#call' do
     subject(:call) { described_class.new(parsed_body, url:).call }
 
-    let(:url) { 'https://example.com' }
+    let(:url) { Addressable::URI.parse('https://example.com') }
 
     context 'with a title' do
       let(:parsed_body) { Nokogiri::HTML('<html><head><title>Example</title></head></html>') }

@@ -6,29 +6,50 @@ module Html2rss
       ##
       # Extracts channel information from the HTML document's <head>.
       class Metadata
+        ##
+        # Initializes a new Metadata object.
+        #
+        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
+        # @param url [Addressable::URI] The URL of the HTML document.
         def initialize(parsed_body, url:)
           @url = url
           @parsed_body = parsed_body
         end
 
+        ##
+        # Extracts metadata from the HTML document.
+        #
+        # @return [Hash] A hash containing the URL, title, language, and description.
         def call
           {
-            url:,
-            title: parsed_body.css('head > title')&.first&.text,
-            language:,
-            description: parsed_body.css('meta[name="description"]')&.first&.[]('content') || ''
+            url: extract_url,
+            title: extract_title,
+            language: extract_language,
+            description: extract_description
           }
         end
 
         private
 
-        def language
-          return parsed_body['lang'] if parsed_body.name == 'html'
+        attr_reader :parsed_body
 
-          parsed_body.css('html[lang]')&.first&.[]('lang')
+        def extract_url
+          @url.normalize.to_s
         end
 
-        attr_reader :parsed_body, :url
+        def extract_title
+          parsed_body.at_css('head > title')&.text
+        end
+
+        def extract_language
+          return parsed_body['lang'] if parsed_body.name == 'html'
+
+          parsed_body.at_css('html[lang]')&.[]('lang')
+        end
+
+        def extract_description
+          parsed_body.at_css('meta[name="description"]')&.[]('content') || ''
+        end
       end
     end
   end

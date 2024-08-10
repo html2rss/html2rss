@@ -154,30 +154,30 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
 
   describe '.extract(article)' do
     context 'with a NewsArticle' do
-      subject(:extract) { described_class.extract(news_article) }
+      subject(:extract) { described_class.extract(news_article, url: '') }
 
       it 'extracts the article' do # rubocop:disable RSpec/ExampleLength
         expect(extract).to match(
           title: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'",
-          url: 'http://www.bbc.com/news/world-us-canada-39324587',
+          url: Addressable::URI,
           image: 'http://ichef-1.bbci.co.uk/news/560/media/images/75306000/jpg/_75306515_line976.jpg',
           article_body: "Director Comey says the probe into last year's US election " \
                         'would assess if crimes were committed.',
           abstract: nil,
           description: nil,
-          id: nil,
+          id: '/news/world-us-canada-39324587',
           published_at: DateTime.parse('2017-03-20T20:30:54+00:00')
         )
       end
     end
 
     context 'with an Article' do
-      subject(:extract) { described_class.extract(article) }
+      subject(:extract) { described_class.extract(article, url: '') }
 
       it 'extracts the article' do # rubocop:disable RSpec/ExampleLength
         expect(extract).to match(
           title: 'Für Einsparungen kündigt Google komplettem Python-Team',
-          url: '/news/Google-entlaesst-Python-Team-fuer-billigere-Arbeitskraefte-in-Muenchen-9703029.html',
+          url: Addressable::URI,
           image: 'https://www.heise.de/imgs/18/4/5/8/2/0/6/6/shutterstock_1777981682-958a1d575a8f5e3e.jpeg',
           description: nil,
           abstract: 'Einem Python-Team wurde offenbar komplett gekündigt.',
@@ -189,7 +189,7 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
   end
 
   describe '.call' do
-    subject(:call) { described_class.new(parsed_body).call }
+    subject(:call) { described_class.new(parsed_body, url: '').call }
 
     context 'with a NewsArticle' do
       let(:parsed_body) do

@@ -259,7 +259,7 @@ RSpec.describe Html2rss do
       expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
       expect(feed_return.channel.link).to eq 'https://www.welt.de/'
       expect(feed_return.items.size >= 29).to be true
-      expect(feed_return.items.first.title).to eq 'Die Videos und Berichte zur 1. und 2. Liga'
+      expect(feed_return.items.first.title).to eq '„Ob man gesund altert, hat jeder zu 91 Prozent selbst in der Hand“'
     end
   end
 end

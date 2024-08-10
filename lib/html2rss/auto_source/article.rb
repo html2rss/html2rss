@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'zlib'
+
 module Html2rss
   class AutoSource
     ##
@@ -7,17 +9,24 @@ module Html2rss
     # It is used to store the extracted information of an article.
     #
     # TODO: make this the input for the Rss Builder
+    # TODO: make this become strict on options, to allow refactoring. this is glue code.
+    # TODO: it can handle the id generation of any extractor sourced article
     class Article
       def initialize(**options)
-        @to_h = options
+        @to_h = {}
+        options.each_pair { |key, value| self[key] = value }
+      end
+
+      def valid?
+        !url.to_s.empty? && !title.to_s.empty? && !id.to_s.empty?
       end
 
       def [](key)
-        @to_h[key]
+        @to_h[key.to_sym]
       end
 
       def []=(key, value)
-        @to_h[key] = value
+        @to_h[key.to_sym] = value.freeze
       end
 
       def keys
@@ -28,9 +37,37 @@ module Html2rss
         @to_h.each(&)
       end
 
+      def title
+        @to_h[:title]
+      end
+
+      # @return [Addressable::URI, nil]
+      def url
+        @to_h[:url] || @to_h[:link] || @to_h[:source_url]
+      end
+
+      def id
+        @to_h[:id]
+      end
+
+      def guid
+        Zlib.crc32([url, id].uniq.join('#!/'))
+      end
+
+      # :reek:BooleanParameter { enabled: false }
       def respond_to_missing?(method_name, include_private = false)
-        Log.debug "Article#respond_to_missing? #{method_name}"
-        @to_h.key?(method_name) || super
+        @to_h.key?(method_name.to_sym) || super
+      end
+
+      def method_missing(method_name, *args, &)
+        method_name = method_name.to_sym
+
+        if @to_h.key?(method_name)
+          Log.info "Article#method_missing #{method_name}"
+          return @to_h[method_name]
+        end
+
+        super
       end
     end
   end
