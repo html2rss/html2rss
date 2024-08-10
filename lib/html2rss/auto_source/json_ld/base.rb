@@ -14,16 +14,16 @@ module Html2rss
       # 3. For each specific attribute, define a method that returns the desired value.
       # 4. Add the subclass to JsonLd::ARTICLE_TYPES and JsonLd#parse_article.
       class Base
+        def self.to_article(article)
+          new(article).to_article
+        end
+
         def initialize(article)
           @article = article
           @attributes = %i[id title abstract description url image published_at] + specific_attributes
         end
 
         attr_reader :article
-
-        def self.to_article(article)
-          new(article).to_article
-        end
 
         # @return [Array<Symbol>] addition attributes for specific type (override in subclass)
         def specific_attributes

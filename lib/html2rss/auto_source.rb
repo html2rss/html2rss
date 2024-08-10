@@ -21,21 +21,6 @@ module Html2rss
       SemanticHtml
     ].freeze
 
-    def initialize(url)
-      @url = url
-    end
-
-    def call
-      {
-        channel: extract_channel(parsed_body),
-        articles: extract_articles(parsed_body)
-      }
-    end
-
-    def to_rss
-      Html2rss::AutoSource::RssBuilder.new(url:, **call).call
-    end
-
     def self.deduplicate_by_url!(articles)
       articles.uniq! { |article| article[:url] }
     end
@@ -53,6 +38,21 @@ module Html2rss
         title = article[:title].to_s.strip
         title.empty? || title.split.size < 2
       end
+    end
+
+    def initialize(url)
+      @url = url
+    end
+
+    def call
+      {
+        channel: extract_channel(parsed_body),
+        articles: extract_articles(parsed_body)
+      }
+    end
+
+    def to_rss
+      Html2rss::AutoSource::RssBuilder.new(url:, **call).call
     end
 
     private

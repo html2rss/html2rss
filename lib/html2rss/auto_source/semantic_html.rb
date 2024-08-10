@@ -38,35 +38,11 @@ module Html2rss
       # TODO: also handle <h2><a href>...</a></h2> as article
       # TODO: also handle <X class="article"><a href>...</a></X> as article
 
-      def initialize(parsed_body)
-        @parsed_body = parsed_body
-      end
-
-      attr_reader :parsed_body
-
       def self.articles?(parsed_body)
         ANCHOR_TAG_SELECTORS.each_value do |selectors|
           return true if parsed_body.css(selectors.join(', ')).any?
         end
         false
-      end
-
-      def call
-        articles = Parallel.flat_map(ANCHOR_TAG_SELECTORS.to_a) do |tag_name, selectors|
-          parsed_body.css(selectors.join(', ')).filter_map do |anchor|
-            article_tag = self.class.find_article_tag(anchor, tag_name)
-            ArticleExtractor.new(article_tag).extract if article_tag
-          end
-        end
-
-        clean_articles(articles)
-      end
-
-      def clean_articles(articles)
-        articles = self.class.keep_longest_attributes(articles)
-        articles = deduplicate_by_url!(articles)
-        articles = remove_short_title_articles!(articles)
-        keep_only_http_urls!(articles)
       end
 
       def self.find_article_tag(anchor, tag_name)
@@ -89,6 +65,30 @@ module Html2rss
           end
           longest_attributes_article
         end
+      end
+
+      def initialize(parsed_body)
+        @parsed_body = parsed_body
+      end
+
+      attr_reader :parsed_body
+
+      def call
+        articles = Parallel.flat_map(ANCHOR_TAG_SELECTORS.to_a) do |tag_name, selectors|
+          parsed_body.css(selectors.join(', ')).filter_map do |anchor|
+            article_tag = self.class.find_article_tag(anchor, tag_name)
+            ArticleExtractor.new(article_tag).extract if article_tag
+          end
+        end
+
+        clean_articles(articles)
+      end
+
+      def clean_articles(articles)
+        articles = self.class.keep_longest_attributes(articles)
+        articles = deduplicate_by_url!(articles)
+        articles = remove_short_title_articles!(articles)
+        keep_only_http_urls!(articles)
       end
 
       def deduplicate_by_url!(articles)

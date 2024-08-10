@@ -13,30 +13,6 @@ module Html2rss
 
       ARTICLE_TYPES = %w[Article NewsArticle].freeze
 
-      def initialize(parsed_body)
-        @parsed_body = parsed_body
-      end
-
-      ##
-      # @return [Array<Hash>] the extracted articles
-      def call
-        articles = self.class.article_objects(parsed_json)
-                       .filter_map { |article| self.class.extract(article) }
-
-        Html2rss::AutoSource.deduplicate_by_url!(articles)
-        Html2rss::AutoSource.remove_titleless_articles!(articles)
-
-        articles
-      end
-
-      def parsed_json
-        scripts = parsed_body.css(TAG_SELECTOR)
-
-        scripts.flat_map do |script|
-          JSON.parse(script.text, symbolize_names: true) if self.class.supported_type?(script.text)
-        end
-      end
-
       def self.articles?(parsed_body)
         parsed_body.css(TAG_SELECTOR).any? { |script| supported_type?(script.text) }
       end
@@ -82,6 +58,30 @@ module Html2rss
         return nil unless klass # TODO: probably worth a debug log?
 
         klass.to_article(article)
+      end
+
+      def initialize(parsed_body)
+        @parsed_body = parsed_body
+      end
+
+      ##
+      # @return [Array<Hash>] the extracted articles
+      def call
+        articles = self.class.article_objects(parsed_json)
+                       .filter_map { |article| self.class.extract(article) }
+
+        Html2rss::AutoSource.deduplicate_by_url!(articles)
+        Html2rss::AutoSource.remove_titleless_articles!(articles)
+
+        articles
+      end
+
+      def parsed_json
+        scripts = parsed_body.css(TAG_SELECTOR)
+
+        scripts.flat_map do |script|
+          JSON.parse(script.text, symbolize_names: true) if self.class.supported_type?(script.text)
+        end
       end
 
       private
