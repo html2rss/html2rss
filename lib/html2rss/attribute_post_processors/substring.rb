@@ -28,13 +28,15 @@ module Html2rss
     #
     # Would return:
     #    'bar'
-    class Substring
-      ##
-      # @param value [String] The original string to extract a substring from.
-      # @param env [Item::Context] Context object providing additional environment details.
-      def initialize(value, env)
-        @value = value
-        @options = env[:options]
+    class Substring < Base
+      def self.validate_args!(value, context)
+        assert_type value, String, :value
+
+        options = context[:options]
+        assert_type options[:start], Integer, :start
+
+        end_index = options[:end]
+        assert_type end_index, Integer, :end if end_index
       end
 
       ##
@@ -42,11 +44,29 @@ module Html2rss
       #
       # @return [String] The extracted substring.
       def get
-        start_index = @options[:start].to_i
-        end_index = @options[:end]&.to_i || @value.length
-
-        @value[start_index..end_index]
+        value[range]
       end
+
+      ##
+      # Determines the range for the substring extraction based on the provided start and end indices.
+      #
+      # @return [Range] The range object representing the start and end/Infinity (integers).
+      def range
+        return (start_index..) unless end_index?
+
+        if start_index == end_index
+          raise ArgumentError,
+                'The `start` value must be unequal to the `end` value.'
+        end
+
+        (start_index..end_index)
+      end
+
+      private
+
+      def end_index?  = !context[:options][:end].to_s.empty?
+      def end_index   = context[:options][:end].to_i
+      def start_index = context[:options][:start].to_i
     end
   end
 end
