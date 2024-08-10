@@ -21,21 +21,24 @@ module Html2rss
     #
     # Would return:
     #    'http://why-not-use-a-link.uh'
-    class ParseUri
-      ##
-      # @param value [String]
-      # @param context [Item::Context]
-      def initialize(value, context)
-        @value = value
-        @config_url = context.config.url
+    class ParseUri < Base
+      def self.validate_args!(value, context)
+        url_types = [String, URI::HTTP, Addressable::URI].freeze
+
+        assert_type(value, url_types, :value)
+        assert_type(context.config.url, url_types, :url)
+
+        raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
       end
 
       ##
       # @return [String]
       def get
+        config_url = context.config.url
+
         Html2rss::Utils.build_absolute_url_from_relative(
-          Html2rss::Utils.sanitize_url(@value),
-          @config_url
+          Html2rss::Utils.sanitize_url(value),
+          config_url
         ).to_s
       end
     end
