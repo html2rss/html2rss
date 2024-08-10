@@ -13,6 +13,8 @@ RSpec.describe Html2rss::AttributePostProcessors::ParseUri do
     )
   end
 
+  it { expect(described_class).to be < Html2rss::AttributePostProcessors::Base }
+
   context 'with URI value' do
     let(:url) { URI('http://example.com') }
 
