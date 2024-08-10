@@ -10,6 +10,9 @@ module Html2rss
       # Struct to represent a selector with associated attributes for extraction and processing.
       Selector = Struct.new(:selector, :attribute, :extractor, :post_process, :order, :static, keyword_init: true)
 
+      # raised when an invalid selector name is used
+      class InvalidSelectorName < Html2rss::Error; end
+
       ##
       # @param config [Hash<Symbol, Object>]
       def initialize(config)
@@ -28,9 +31,15 @@ module Html2rss
       # @param name [Symbol]
       # @return [Selector]
       def selector(name)
-        raise ArgumentError, "invalid item's selector name: #{name}" unless selector?(name)
+        raise InvalidSelectorName, "invalid selector name: #{name}" unless selector?(name)
 
-        Selector.new(config[name])
+        keywords = config[name].slice(*available_keys)
+
+        if (additional_keys = available_keys - keywords.keys).any?
+          warn "additional keys (#{additional_keys.join(', ')}) present in selector #{name}"
+        end
+
+        Selector.new(keywords)
       end
 
       ##
@@ -86,6 +95,8 @@ module Html2rss
           array.map!(&:to_sym)
         end.to_set
       end
+
+      def available_keys = @available_keys ||= Selector.members
     end
   end
 end
