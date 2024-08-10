@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AttributePostProcessors::ParseTime do
+  it { expect(described_class).to be < Html2rss::AttributePostProcessors::Base }
+
   context 'with known time_zone' do
     {
       'America/New_York' => 'Mon, 01 Jul 2019 12:00:00 -0400',
