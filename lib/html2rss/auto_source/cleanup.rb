@@ -54,8 +54,8 @@ module Html2rss
 
         def remove_short!(articles, key = :title, min_words: 2)
           articles.reject! do |article|
-            size = article[key]&.to_s&.split&.size
-            size.to_i < min_words
+            size = article[key]&.to_s&.split&.size.to_i
+            size < min_words
           end
         end
 

@@ -2,7 +2,6 @@
 
 require 'addressable'
 require 'parallel'
-require 'set'
 
 module Html2rss
   class AutoSource
@@ -19,18 +18,18 @@ module Html2rss
       #
       # Note: X :not(x) a[href] is used to avoid selecting <X><X><a href></X></X>
       ANCHOR_TAG_SELECTORS = {
-        'article' => ['article :not(article) a[href]'],
         'section' => ['section :not(section) a[href]'],
-        'tr' => ['table tr > td a[href]'],
+        'article' => ['article :not(article) a[href]'],
+        'tr' => ['table tr a[href]'],
         'li' => ['li :not(li) a[href]'],
-        'div' => ['div > a[href]']
+        'div' => ['div :not(div) a[href]']
       }.freeze
 
       ARTICLE_TAGS = ANCHOR_TAG_SELECTORS.keys
       INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
-      HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].to_set
+      HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
 
-      NOT_HEADLINE_SELECTOR = HEADING_TAGS.to_a.map { |selector| ":not(#{selector})" }
+      NOT_HEADLINE_SELECTOR = HEADING_TAGS.map { |selector| ":not(#{selector})" }
                                           .concat(INVISIBLE_CONTENT_TAG_SELECTORS)
                                           .join(',')
                                           .freeze
