@@ -11,6 +11,11 @@ module Html2rss
     # parsing and navigating the HTML structure. It aims to identify and extract useful information
     # from typical article structures found on web pages.
     class ArticleExtractor
+      INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
+      NOT_HEADLINE_SELECTOR = SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" }
+                                                        .concat(INVISIBLE_CONTENT_TAG_SELECTORS)
+                                                        .freeze
+
       def initialize(article_tag)
         @article_tag = article_tag
       end
@@ -41,7 +46,7 @@ module Html2rss
       def find_heading
         return @find_heading if defined?(@find_heading)
 
-        heading_tags = article_tag.css(SemanticHtml::HEADING_TAGS.to_a.join(',')).group_by(&:name)
+        heading_tags = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).group_by(&:name)
         return if heading_tags.empty?
 
         smallest_heading = heading_tags.keys.min
@@ -49,9 +54,9 @@ module Html2rss
       end
 
       def extract_title(heading)
-        return heading&.text if heading&.text
+        return extract_text(heading) if heading&.text
 
-        largest_tag = article_tag.css(SemanticHtml::NOT_HEADLINE_SELECTOR).max_by { |tag| tag.text.size }
+        largest_tag = article_tag.css(NOT_HEADLINE_SELECTOR.join(', ')).max_by { |tag| tag.text.size }
         extract_text(largest_tag) if largest_tag
       end
 

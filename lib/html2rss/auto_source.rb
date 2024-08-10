@@ -55,14 +55,18 @@ module Html2rss
     end
 
     def article_extractors
+      return @article_extractors if defined?(@article_extractors)
+
       available_extractors = ARTICLE_EXTRACTORS.select { |extractor| extractor.articles?(parsed_body) }
       raise NoArticleSelectorFound, 'No article extractor found for URL.' if available_extractors.empty?
 
-      available_extractors
+      @article_extractors = available_extractors
     end
 
     def extract_articles(parsed_body)
-      Parallel.flat_map(article_extractors) { |extractor| extractor.new(parsed_body).call }
+      Parallel.flat_map(article_extractors) do |extractor|
+        extractor.new(parsed_body).call
+      end
     end
   end
 end

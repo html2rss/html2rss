@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'byebug'
+
 module Html2rss
   class AutoSource
     ##
@@ -29,30 +31,22 @@ module Html2rss
         ##
         # With multiple articles sharing the same URL, build one out of them, by
         # keeping the longest attribute values.
-        # # TODO: extract to separate "merger" classes
-        def keep_longest_attributes(articles) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
-          grouped_by_url = articles.group_by { |article| article[:url] }
-
-          grouped_by_url = grouped_by_url.each_pair do |_url, articles_with_same_url|
-            longest_attributes_article = articles_with_same_url.first
-
-            articles_with_same_url.each do |article|
-              article.each do |key, value|
-                if value && value.size > longest_attributes_article[key].to_s.size
-                  longest_attributes_article[key] = value
-                end
-              end
+        # # TODO: extract to separate "merger" / reducer classes
+        #
+        # @param articles [Array<Hash>]
+        # @return [Array<Hash>]
+        def keep_longest_attributes(articles)
+          articles.group_by { |article| article[:url] }
+                  .map do |_url, articles_with_same_url|
+            longest_attributes_article = articles_with_same_url.max_by do |article|
+              article.transform_values { |value| value.to_s.size }
             end
 
             longest_attributes_article
           end
-
-          values = grouped_by_url.values
-          values.map!(&:first)
-          values
         end
 
-        def remove_short!(articles, key = :title, min_words: 2)
+        def remove_short!(articles, key = :title, min_words: 3)
           articles.reject! do |article|
             size = article[key]&.to_s&.split&.size.to_i
             size < min_words
