@@ -27,9 +27,9 @@ module Html2rss
     # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
     class Gsub < Base
       def self.validate_args!(value, context)
-        assert_type value, String, :value
+        assert_type value, String, :value, context:
         expect_options(%i[replacement pattern], context)
-        assert_type context.dig(:options, :replacement), [String, Hash], :replacement
+        assert_type context.dig(:options, :replacement), [String, Hash], :replacement, context:
       end
 
       ##

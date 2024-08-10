@@ -27,8 +27,8 @@ module Html2rss
     # It uses `Time.parse`.
     class ParseTime < Base
       def self.validate_args!(value, context)
-        assert_type value, String, :value
-        assert_type context[:config].time_zone, String, :time_zone
+        assert_type(value, String, :value, context:)
+        assert_type(context[:config].time_zone, String, :time_zone, context:)
       end
 
       ##

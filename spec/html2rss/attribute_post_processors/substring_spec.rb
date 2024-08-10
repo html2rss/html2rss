@@ -48,7 +48,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Substring do
       let(:options) { { end: 4 } }
 
       it 'raises an error' do
-        expect { subject.range }.to raise_error(Html2rss::AttributePostProcessors::InvalidType, /but is: NilClass/)
+        expect { subject.range }.to raise_error(Html2rss::AttributePostProcessors::InvalidType, /but is: NilClass in:/)
       end
     end
   end

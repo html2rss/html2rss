@@ -20,21 +20,24 @@ RSpec.describe Html2rss::AttributePostProcessors::Base do
   end
 
   describe '.assert_type' do
+    let(:context) { nil }
+
     it 'does not raise an error if value is of the correct type' do
-      expect { described_class.send(:assert_type, 'string', String, 'test') }.not_to raise_error
+      expect { described_class.send(:assert_type, 'string', String, 'test', context:) }.not_to raise_error
     end
 
     it 'raises an error if value is of the incorrect type' do
       expect do
-        described_class.send(:assert_type, 123, String,
-                             'test')
+        described_class.send(:assert_type, 123, String, 'test', context:)
       end.to raise_error(Html2rss::AttributePostProcessors::InvalidType,
-                         'The type of `test` must be String, but is: Integer')
+                         'The type of `test` must be String, but is: Integer in: {:file=>"base_spec.rb"}')
     end
 
     it 'supports multiple types', :aggregate_failures do
-      expect { described_class.send(:assert_type, 'string', [String, Symbol], 'test') }.not_to raise_error
-      expect { described_class.send(:assert_type, :symbol, [String, Symbol], 'test') }.not_to raise_error
+      expect do
+        described_class.send(:assert_type, 'string', [String, Symbol], 'test', context:)
+        described_class.send(:assert_type, :symbol, [String, Symbol], 'test', context:)
+      end.not_to raise_error
     end
   end
 

@@ -33,8 +33,8 @@ module Html2rss
     #
     #    <p>Price: 12.34</p>
     class MarkdownToHtml < Base
-      def self.validate_args!(value, _context)
-        assert_type value, String, :value
+      def self.validate_args!(value, context)
+        assert_type value, String, :value, context:
       end
 
       ##

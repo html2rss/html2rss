@@ -39,8 +39,8 @@ module Html2rss
     # Would return:
     #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
     class SanitizeHtml < Base
-      def self.validate_args!(value, _context)
-        assert_type value, String, :value
+      def self.validate_args!(value, context)
+        assert_type value, String, :value, context:
       end
 
       ##
