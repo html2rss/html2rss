@@ -31,15 +31,23 @@ module Html2rss
     #
     # Would return:
     #    'Product (23,42€)'
-    class Template
+    class Template < Base
+      def self.validate_args!(value, context)
+        assert_type value, String, :value
+
+        string = context[:options]&.dig(:string).to_s
+        raise InvalidType, 'The `string` template is absent.' if string.empty?
+      end
+
       ##
       # @param value [String]
-      # @param env [Item::Context]
-      def initialize(value, env)
-        @value = value
-        @options = env[:options]
-        @item = env[:item]
-        @string = @options[:string]
+      # @param context [Item::Context]
+      def initialize(value, context)
+        super
+
+        @options = context[:options] || {}
+        @item = context[:item]
+        @string = @options[:string].to_s
       end
 
       ##
@@ -86,7 +94,7 @@ module Html2rss
       # @param method_name [String, Symbol]
       # @return [String]
       def item_value(method_name)
-        method_name.to_sym == :self ? @value.to_s : @item.public_send(method_name).to_s
+        method_name.to_sym == :self ? value : @item.public_send(method_name).to_s
       end
     end
   end

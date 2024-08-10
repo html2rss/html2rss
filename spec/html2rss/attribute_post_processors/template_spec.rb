@@ -12,6 +12,17 @@ RSpec.describe Html2rss::AttributePostProcessors::Template do
     allow(item).to receive_messages(name: 'My name', author: 'Slim Shady', returns_nil: nil)
   end
 
+  it { expect(described_class).to be < Html2rss::AttributePostProcessors::Base }
+
+  context 'when the string is empty' do
+    it 'raises an error' do
+      expect do
+        described_class.new('',
+                            {})
+      end.to raise_error(Html2rss::AttributePostProcessors::InvalidType, 'The `string` template is absent.')
+    end
+  end
+
   context 'with methods present (simple formatting)' do
     let(:options) { { string: '%s! %s is %s! %s', methods: %i[self name author returns_nil] } }
 
