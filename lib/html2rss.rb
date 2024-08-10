@@ -6,10 +6,20 @@ loader = Zeitwerk::Loader.for_gem
 loader.setup
 
 require 'yaml'
+require 'logger'
+
+require 'byebug'
 
 ##
 # The Html2rss namespace.
 module Html2rss
+  Log = Logger.new($stdout)
+
+  Log.level = Logger::DEBUG
+  Log.formatter = proc do |severity, datetime, _progname, msg|
+    "#{datetime} [#{severity}] #{msg}\n"
+  end
+
   ##
   # The Html2rss::Error base class.
   class Error < StandardError; end
