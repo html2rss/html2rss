@@ -25,39 +25,39 @@ module Html2rss
     # `replacement` can be a String or a Hash.
     #
     # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
-    class Gsub
+    class Gsub < Base
+      def self.validate_args!(value, context)
+        assert_type value, String, :value
+        expect_options(%i[replacement pattern], context)
+        assert_type context.dig(:options, :replacement), [String, Hash], :replacement
+      end
+
       ##
       # @param value [String]
       # @param context [Item::Context]
       def initialize(value, context)
-        @value = value
-        @options = context[:options]
+        super
+
+        options = context[:options]
+
+        @replacement = options[:replacement]
+        @pattern = options[:pattern]
       end
 
       ##
       # @return [String]
       def get
-        @value.to_s.gsub(pattern, replacement)
+        value.to_s.gsub(pattern, replacement)
       end
 
       private
 
+      attr_accessor :replacement
+
       ##
       # @return [Regexp]
       def pattern
-        pattern = @options[:pattern]
-        raise ArgumentError, 'The `pattern` option is missing' unless pattern
-
-        pattern.is_a?(String) ? Utils.build_regexp_from_string(pattern) : pattern
-      end
-
-      ##
-      # @return [Hash, String]
-      def replacement
-        replacement = @options[:replacement]
-        return replacement if replacement.is_a?(String) || replacement.is_a?(Hash)
-
-        raise ArgumentError, 'The `replacement` option must be a String or Hash'
+        @pattern.is_a?(String) ? Utils.build_regexp_from_string(@pattern) : @pattern
       end
     end
   end
