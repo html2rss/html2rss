@@ -67,13 +67,8 @@ module Html2rss
       ##
       # @return [Array<Hash>] the extracted articles
       def call
-        articles = self.class.article_objects(parsed_json)
-                       .filter_map { |article| self.class.extract(article) }
-
-        Html2rss::AutoSource.deduplicate_by_url!(articles)
-        Html2rss::AutoSource.remove_titleless_articles!(articles)
-
-        articles
+        self.class.article_objects(parsed_json)
+            .filter_map { |article| self.class.extract(article) }
       end
 
       def parsed_json

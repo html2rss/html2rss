@@ -10,7 +10,7 @@ module Html2rss
   # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
-    class NoArticleSelectorFound < StandardError; end
+    class NoArticleSelectorFound < Html2rss::Error; end
 
     CHANNEL_EXTRACTORS = [
       Channel::Metadata
@@ -21,34 +21,19 @@ module Html2rss
       SemanticHtml
     ].freeze
 
-    def self.deduplicate_by_url!(articles)
-      articles.uniq! { |article| article[:url] }
-    end
-
-    def self.keep_only_http_urls!(articles)
-      articles.select! { |article| article[:url].to_s.start_with?('http') }
-    end
-
-    def self.remove_titleless_articles!(articles)
-      articles.reject! { |article| article[:title].to_s.strip.empty? }
-    end
-
-    def self.remove_one_word_title_articles!(articles)
-      articles.reject! do |article|
-        title = article[:title].to_s.strip
-        title.empty? || title.split.size < 2
-      end
-    end
-
     def initialize(url)
       @url = url
     end
 
     def call
-      {
+      sourced = {
         channel: extract_channel(parsed_body),
         articles: extract_articles(parsed_body)
       }
+
+      sourced[:articles] = Cleanup.clean_articles(sourced[:articles])
+
+      sourced
     end
 
     def to_rss

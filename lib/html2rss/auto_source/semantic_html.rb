@@ -51,22 +51,6 @@ module Html2rss
         article_tag
       end
 
-      ##
-      # With multiple articles sharing the same URL, build one out of them, by
-      # keeping the longest attribute values.
-      def self.keep_longest_attributes(articles)
-        grouped_by_url = articles.group_by { |article| article[:url] }
-        grouped_by_url.map do |_url, articles_with_same_url|
-          longest_attributes_article = articles_with_same_url.first
-          articles_with_same_url.each do |article|
-            article.each do |key, value|
-              longest_attributes_article[key] = value if value && value.size > longest_attributes_article[key].to_s.size
-            end
-          end
-          longest_attributes_article
-        end
-      end
-
       def initialize(parsed_body)
         @parsed_body = parsed_body
       end
@@ -74,33 +58,12 @@ module Html2rss
       attr_reader :parsed_body
 
       def call
-        articles = Parallel.flat_map(ANCHOR_TAG_SELECTORS.to_a) do |tag_name, selectors|
+        Parallel.flat_map(ANCHOR_TAG_SELECTORS.to_a) do |tag_name, selectors|
           parsed_body.css(selectors.join(', ')).filter_map do |anchor|
             article_tag = self.class.find_article_tag(anchor, tag_name)
             ArticleExtractor.new(article_tag).extract if article_tag
           end
         end
-
-        clean_articles(articles)
-      end
-
-      def clean_articles(articles)
-        articles = self.class.keep_longest_attributes(articles)
-        articles = deduplicate_by_url!(articles)
-        articles = remove_short_title_articles!(articles)
-        keep_only_http_urls!(articles)
-      end
-
-      def deduplicate_by_url!(articles)
-        articles.uniq { |article| article[:url] }
-      end
-
-      def remove_short_title_articles!(articles, min_words: 2)
-        articles.reject { |article| article[:title]&.split&.size&.< min_words }
-      end
-
-      def keep_only_http_urls!(articles)
-        articles.select { |article| article[:url]&.start_with?('http') }
       end
     end
   end

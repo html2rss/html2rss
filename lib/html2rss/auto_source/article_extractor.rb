@@ -102,7 +102,8 @@ module Html2rss
                else
                  tag.children.map { |child| extract_text(child) }.join(separator)
                end
-        text.gsub(/\s+/, ' ').strip!
+        text.gsub!(/\s+/, ' ')
+        text.strip!
         text.empty? ? nil : text
       end
 
