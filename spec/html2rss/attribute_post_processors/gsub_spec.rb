@@ -27,10 +27,10 @@ RSpec.describe Html2rss::AttributePostProcessors::Gsub do
     context 'without replacement option not being a String or Hash' do
       it do
         expect do
-          described_class.new('hello',
-                              options: { pattern: 'world', replacement: [] })
+          described_class.new('hello', options: { pattern: 'world', replacement: [] })
         end.to raise_error(Html2rss::AttributePostProcessors::InvalidType,
-                           'The type of `replacement` must be String or Hash, but is: Array')
+                           'The type of `replacement` must be String or Hash, but is: ' \
+                           'Array in: {:pattern=>"world", :replacement=>[]}')
       end
     end
   end

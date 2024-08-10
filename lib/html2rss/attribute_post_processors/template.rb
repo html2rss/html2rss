@@ -33,7 +33,7 @@ module Html2rss
     #    'Product (23,42€)'
     class Template < Base
       def self.validate_args!(value, context)
-        assert_type value, String, :value
+        assert_type value, String, :value, context:
 
         string = context[:options]&.dig(:string).to_s
         raise InvalidType, 'The `string` template is absent.' if string.empty?

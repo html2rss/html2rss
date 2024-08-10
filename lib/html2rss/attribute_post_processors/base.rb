@@ -26,17 +26,20 @@ module Html2rss
       # @param value [Object] the value to check
       # @param types [Array<Class>, Class] the expected type(s)
       # @param name [String] the name of the option being checked
+      # @param context [Item::Context] the context
       # @raise [InvalidType] if the value is not of the expected type(s)
-      def self.assert_type(value, types = [], name)
+      def self.assert_type(value, types = [], name, context:)
         types = [types] unless types.is_a?(Array)
 
         return if types.any? { |type| value.is_a?(type) }
 
-        error_message_template = 'The type of `%s` must be %s, but is: %s'
-        raise InvalidType, format(error_message_template, name, types.join(' or '), value.class), [], cause: nil
-      end
+        options = context[:options] if context.is_a?(Hash)
+        options ||= { file: File.basename(caller_locations(1, 1).first.absolute_path) }
 
-      # private_class_method :expect_options, :assert_type
+        raise InvalidType, format('The type of `%<name>s` must be %<types>s, but is: %<type>s in: %<options>s',
+                                  name:, types: types.join(' or '), type: value.class, options: options.inspect),
+              [], cause: nil
+      end
 
       ##
       # This method validates the arguments passed to the post processor. Must be implemented by subclasses.
@@ -51,7 +54,7 @@ module Html2rss
       def initialize(value, context)
         klass = self.class
         # TODO: get rid of Hash
-        klass.assert_type(context, [Item::Context, Hash], 'context')
+        klass.assert_type(context, [Item::Context, Hash], 'context', context:)
         klass.validate_args!(value, context)
 
         @value = value

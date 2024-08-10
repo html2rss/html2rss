@@ -30,13 +30,13 @@ module Html2rss
     #    'bar'
     class Substring < Base
       def self.validate_args!(value, context)
-        assert_type value, String, :value
+        assert_type value, String, :value, context:
 
         options = context[:options]
-        assert_type options[:start], Integer, :start
+        assert_type options[:start], Integer, :start, context:
 
         end_index = options[:end]
-        assert_type end_index, Integer, :end if end_index
+        assert_type(end_index, Integer, :end, context:) if end_index
       end
 
       ##

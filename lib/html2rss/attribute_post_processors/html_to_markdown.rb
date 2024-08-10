@@ -27,8 +27,8 @@ module Html2rss
     # Would return:
     #    'Lorem **ipsum** dolor'
     class HtmlToMarkdown < Base
-      def self.validate_args!(value, _context)
-        assert_type value, String, :value
+      def self.validate_args!(value, context)
+        assert_type value, String, :value, context:
       end
 
       ##

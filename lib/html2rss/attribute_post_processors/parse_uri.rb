@@ -25,8 +25,8 @@ module Html2rss
       def self.validate_args!(value, context)
         url_types = [String, URI::HTTP, Addressable::URI].freeze
 
-        assert_type(value, url_types, :value)
-        assert_type(context.config.url, url_types, :url)
+        assert_type(value, url_types, :value, context:)
+        assert_type(context.config.url, url_types, :url, context:)
 
         raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
       end
