@@ -47,6 +47,7 @@ module Html2rss
     # @param method_name [Symbol]
     # @param _include_private [true, false]
     # @return [true, false]
+    # :reek:BooleanParameter { enabled: false }
     def respond_to_missing?(method_name, _include_private = false)
       config.selector?(method_name) || super
     end
@@ -110,7 +111,11 @@ module Html2rss
     #
     # @return [Array<String>] list of categories.
     def categories
-      config.category_selector_names.map { |method_name| public_send(method_name) }
+      config.category_selector_names
+            .filter_map do |method_name|
+        category = public_send(method_name)
+        category.strip unless category.to_s.empty?
+      end.uniq
     end
 
     ##
