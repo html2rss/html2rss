@@ -38,19 +38,15 @@ module Html2rss
     #
     # Would return:
     #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
-    class SanitizeHtml
-      ##
-      # @param value [String]
-      # @param env [Item::Context]
-      def initialize(value, env)
-        @value = value
-        @channel_url = env[:config].url
+    class SanitizeHtml < Base
+      def self.validate_args!(value, _context)
+        assert_type value, String, :value
       end
 
       ##
       # @return [String]
       def get
-        sanitized_html = Sanitize.fragment(@value, sanitize_config)
+        sanitized_html = Sanitize.fragment(value, sanitize_config)
         sanitized_html.to_s.gsub(/\s+/, ' ').strip
       end
 
@@ -77,13 +73,15 @@ module Html2rss
         }
       end
 
+      def channel_url = context[:config].url
+
       ##
       # Wrapper for transform_urls_to_absolute_ones to pass the channel_url.
       #
       # @param env [Hash]
       # @return [nil]
       def transform_urls_to_absolute_ones(env)
-        HtmlTransformers::TransformUrlsToAbsoluteOnes.new(@channel_url).call(**env)
+        HtmlTransformers::TransformUrlsToAbsoluteOnes.new(channel_url).call(**env)
       end
 
       ##
