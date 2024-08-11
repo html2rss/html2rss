@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::SemanticHtml do
+RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
 
   describe '.articles?' do

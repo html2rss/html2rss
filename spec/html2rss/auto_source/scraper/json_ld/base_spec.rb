@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::JsonLd::Base do
+RSpec.describe Html2rss::AutoSource::Scraper::JsonLd::Base do
   describe '.to_article(article)' do
     subject(:to_article) { described_class.to_article(article, url: nil) }
 

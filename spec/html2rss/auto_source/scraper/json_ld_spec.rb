@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::JsonLd do
+RSpec.describe Html2rss::AutoSource::Scraper::JsonLd do
   let(:news_article) do
     # src: https://schema.org/NewsArticle
     {
@@ -52,7 +52,7 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
     context 'with nil' do
       let(:object) { nil }
 
-      it 'extracts the article' do
+      it 'scrapes the article' do
         expect(array).to eq([])
       end
     end
@@ -60,7 +60,7 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
     context 'with a single Article object' do
       let(:object) { article }
 
-      it 'extracts the article' do
+      it 'scrapes the article' do
         expect(array).to include(hash_including('@type': 'Article'))
       end
     end
@@ -76,7 +76,7 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
         }
       end
 
-      it 'extracts the article' do
+      it 'scrapes the article' do
         expect(array).to include(hash_including('@type': 'Article'))
       end
     end
@@ -92,7 +92,7 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
         }
       end
 
-      it 'extracts the NewsArticle' do
+      it 'scrapes the NewsArticle' do
         expect(array).to include(hash_including('@type': 'NewsArticle'))
       end
     end
@@ -152,12 +152,12 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
     end
   end
 
-  describe '.extract(article)' do
+  describe '.scrape(article)' do
     context 'with a NewsArticle' do
-      subject(:extract) { described_class.extract(news_article, url: '') }
+      subject(:scrape) { described_class.scrape(news_article, url: '') }
 
-      it 'extracts the article' do # rubocop:disable RSpec/ExampleLength
-        expect(extract).to match(
+      it 'scrapes the article' do # rubocop:disable RSpec/ExampleLength
+        expect(scrape).to match(
           title: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'",
           url: Addressable::URI,
           image: 'http://ichef-1.bbci.co.uk/news/560/media/images/75306000/jpg/_75306515_line976.jpg',
@@ -172,10 +172,10 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
     end
 
     context 'with an Article' do
-      subject(:extract) { described_class.extract(article, url: '') }
+      subject(:scrape) { described_class.scrape(article, url: '') }
 
-      it 'extracts the article' do # rubocop:disable RSpec/ExampleLength
-        expect(extract).to match(
+      it 'scrapes the article' do # rubocop:disable RSpec/ExampleLength
+        expect(scrape).to match(
           title: 'Für Einsparungen kündigt Google komplettem Python-Team',
           url: Addressable::URI,
           image: 'https://www.heise.de/imgs/18/4/5/8/2/0/6/6/shutterstock_1777981682-958a1d575a8f5e3e.jpeg',
@@ -196,7 +196,7 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
         Nokogiri::HTML("<script type=\"application/ld+json\">#{news_article.to_json}</script>")
       end
 
-      it 'extracts the article' do
+      it 'scrapes the article' do
         expect(call).to include(
           hash_including(
             title: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'"
@@ -210,7 +210,7 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
         Nokogiri::HTML("<script type=\"application/ld+json\">#{article.to_json}</script>")
       end
 
-      it 'extracts the article' do
+      it 'scrapes the article' do
         expect(call).to include(hash_including(title: 'Für Einsparungen kündigt Google komplettem Python-Team'))
       end
     end
@@ -250,22 +250,23 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
     end
   end
 
-  describe '.extractor_for_type' do
+  describe '.scraper_for_type' do
     context 'when given "Article"' do
-      it 'returns the Base extractor' do
-        expect(described_class.extractor_for_type('Article')).to eq(Html2rss::AutoSource::JsonLd::Base)
+      it 'returns the Base scrapeor' do
+        expect(described_class.scraper_for_type('Article')).to eq(Html2rss::AutoSource::Scraper::JsonLd::Base)
       end
     end
 
     context 'when given "NewsArticle"' do
-      it 'returns the NewsArticle extractor' do
-        expect(described_class.extractor_for_type('NewsArticle')).to eq(Html2rss::AutoSource::JsonLd::NewsArticle)
+      it 'returns the NewsArticle scrapeor' do
+        expect(described_class.scraper_for_type('NewsArticle')).to \
+          eq(Html2rss::AutoSource::Scraper::JsonLd::NewsArticle)
       end
     end
 
     context 'when given an unsupported article type' do
       it 'returns nil' do
-        expect(described_class.extractor_for_type('Foo')).to be_nil
+        expect(described_class.scraper_for_type('Foo')).to be_nil
       end
     end
   end
