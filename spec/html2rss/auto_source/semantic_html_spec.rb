@@ -19,10 +19,10 @@ RSpec.describe Html2rss::AutoSource::SemanticHtml do
     let(:expected_articles) do
       # rubocop:disable Metrics/LineLength
       [
-        { title: 'Brittney Griner: What I Endured in Russia', url: Addressable::URI, image: 'https://api.PAGE.com/wp-content/uploads/2024/04/brittney-griner-basketball-russia.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: '17 MIN READ May 3, 2024 • 8:00 AM EDT "Prison is more than a place. It’s also a mindset," Brittney Griner writes in an excerpt from her book about surviving imprisonment in Russia.', id: '/6972085/brittney-griner-book-coming-home/' },
-        { title: 'How Far Trump Would Go', url: Addressable::URI, image: 'https://api.PAGE.com/wp-content/uploads/2024/04/trump-PAGE-interview-2024-00.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: '26 MIN READ April 30, 2024 • 7:00 AM EDT', id: '/6972021/donald-trump-2024-election-interview/' },
-        { title: 'The Kristi Noem and Kim Jong Un Controversy, Explained', url: Addressable::URI, image: 'https://api.PAGE.com/wp-content/uploads/2024/05/Untitled-design-4.png?w=925&h=617&crop=1&quality=85&resize=925,617', description: '3 MIN READ May 5, 2024 • 8:18 AM EDT', id: '/6974797/kristi-noem-kim-jong-un-book-controversy/' },
-        { title: 'Driver Dies After Crashing Into White House Security Barrier', url: Addressable::URI, image: 'https://api.PAGE.com/wp-content/uploads/2024/05/AP24126237101577.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: '1 MIN READ May 5, 2024 • 7:46 AM EDT', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
+        { title: 'Brittney Griner: What I Endured in Russia', url: Addressable::URI, image: nil, description: '17 MIN READ May 3, 2024 • 8:00 AM EDT "Prison is more than a place. It’s also a mindset," Brittney Griner writes in an excerpt from her book about surviving imprisonment in Russia.', id: '/6972085/brittney-griner-book-coming-home/' },
+        { title: 'How Far Trump Would Go', url: Addressable::URI, image: nil, description: '26 MIN READ April 30, 2024 • 7:00 AM EDT', id: '/6972021/donald-trump-2024-election-interview/' },
+        { title: 'The Kristi Noem and Kim Jong Un Controversy, Explained', url: Addressable::URI, image: nil, description: '3 MIN READ May 5, 2024 • 8:18 AM EDT', id: '/6974797/kristi-noem-kim-jong-un-book-controversy/' },
+        { title: 'Driver Dies After Crashing Into White House Security Barrier', url: Addressable::URI, image: nil, description: '1 MIN READ May 5, 2024 • 7:46 AM EDT', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
       ]
       # rubocop:enable Metrics/LineLength
     end
@@ -119,6 +119,102 @@ RSpec.describe Html2rss::AutoSource::SemanticHtml do
       second_call = described_class.tag_and_selector
 
       expect(first_call).to equal(second_call)
+    end
+  end
+
+  describe '.find_closest_anchor' do
+    let(:html) do
+      <<-HTML
+      <body>
+        <div id="container">
+          <p>
+            <a href="#" id="link">Link</a>
+          </p>
+        </div>
+      </body>
+      HTML
+    end
+
+    let(:document) { Nokogiri::HTML(html) }
+    let(:container) { document.at_css('#container') }
+
+    context 'when the anchor is directly within the element' do
+      it 'returns the anchor' do
+        anchor = described_class.find_closest_anchor(container)
+        expect(anchor['id']).to eq('link')
+      end
+    end
+
+    context 'when the anchor is nested within the element' do
+      let(:nested_html) do
+        <<-HTML
+        <body>
+          <div id="container">
+            <div>
+              <a href="#" id="nested-link">Nested Link</a>
+            </div>
+          </div>
+        </body>
+        HTML
+      end
+
+      it 'returns the nested anchor' do
+        nested_document = Nokogiri::HTML(nested_html)
+        nested_container = nested_document.at_css('#container')
+
+        anchor = described_class.find_closest_anchor(nested_container)
+        expect(anchor['id']).to eq('nested-link')
+      end
+    end
+
+    context 'when there is no anchor within the element' do
+      let(:no_anchor_container) do
+        no_anchor_html = <<-HTML
+        <body>
+          <div id="container">
+            <p>No link here</p>
+          </div>
+        </body>
+        HTML
+
+        Nokogiri::HTML(no_anchor_html).at_css('#container')
+      end
+
+      it 'returns nil' do
+        anchor = described_class.find_closest_anchor(no_anchor_container)
+        expect(anchor).to be_nil
+      end
+    end
+  end
+
+  describe '.find_closest_anchor_upwards' do
+    let(:html) do
+      <<-HTML
+        <div>
+          <p>
+            <a href="#" id="link">Link</a>
+            <span id="span">Span</span>
+          </p>
+        </div>
+      HTML
+    end
+
+    let(:document) { Nokogiri::HTML(html) }
+    let(:element) { document.at_css('#span') }
+    let(:expected_anchor) { document.at_css('a') }
+
+    context 'when an anchor is found in the current element' do
+      it 'returns the anchor' do
+        anchor = described_class.find_closest_anchor_upwards(element)
+        expect(anchor).to eq(expected_anchor)
+      end
+    end
+
+    context 'when an anchor is not found in the current element' do
+      it 'returns the closest anchor in the parent elements' do
+        anchor = described_class.find_closest_anchor_upwards(element.parent)
+        expect(anchor).to eq(expected_anchor)
+      end
     end
   end
 end

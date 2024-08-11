@@ -62,6 +62,8 @@ module Html2rss
           anchor = element.at_css('a[href]')
           return anchor if anchor
 
+          return nil unless element.respond_to?(:parent)
+
           element = element.parent
         end
         nil
