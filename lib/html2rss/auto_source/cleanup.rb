@@ -11,19 +11,19 @@ module Html2rss
     class Cleanup
       class << self
         def call(articles, url:)
-          # Log.debug "Clean Articels: start with #{articles.size} articles"
+          Log.debug "Cleanup: start with #{articles.size} articles"
 
-          keep_longest_attributes(articles)
-          articles.filter!(&:valid?)
-
-          remove_short!(articles, :title)
+          remove_empty!(articles, :url)
+          remove_empty!(articles, :title)
 
           deduplicate_by!(articles, :url)
           deduplicate_by!(articles, :title)
-          remove_empty!(articles, :url)
-          remove_empty!(articles, :title)
+
+          remove_short!(articles, :title)
           keep_only_http_urls!(articles)
           reject_different_domain!(articles, url)
+
+          Log.debug "Cleanup: end with #{articles.size} articles"
 
           articles
         end
@@ -89,32 +89,6 @@ module Html2rss
             next true unless article_url
 
             article_url.host != base_host
-          end
-        end
-
-        # TODO: extract to separate "merger" classes
-        def keep_longest_attributes(articles)
-          grouped_by_url = articles.group_by { |article| article[:url] }
-          grouped_by_url.each_with_object([]) do |(_url, articles_with_same_url), result|
-            result << find_longest_attributes_article(articles_with_same_url)
-          end
-        end
-
-        private
-
-        def find_longest_attributes_article(articles)
-          longest_attributes_article = articles.shift
-          articles.each do |article|
-            keep_longest_attributes_from_article(longest_attributes_article, article)
-          end
-          longest_attributes_article
-        end
-
-        def keep_longest_attributes_from_article(longest_attributes_article, article)
-          article.each do |key, value|
-            if value && value.to_s.size > longest_attributes_article[key].to_s.size
-              longest_attributes_article[key] = value
-            end
           end
         end
       end

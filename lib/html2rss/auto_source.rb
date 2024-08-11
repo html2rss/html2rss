@@ -33,6 +33,7 @@ module Html2rss
         articles: extract_articles(parsed_body)
       }
 
+      sourced[:articles] = Reducer.call(sourced[:articles], url:)
       sourced[:articles] = Cleanup.call(sourced[:articles], url:)
 
       sourced
