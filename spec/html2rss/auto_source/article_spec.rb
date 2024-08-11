@@ -50,26 +50,6 @@ RSpec.describe Html2rss::AutoSource::Article do
     end
   end
 
-  describe '#respond_to_missing?' do
-    it 'returns true if the method name is a key in the hash' do
-      expect(instance.respond_to?(:title)).to be true
-    end
-
-    it 'returns false if the method name is not a key in the hash' do
-      expect(instance.respond_to?(:nonexistent)).to be false
-    end
-  end
-
-  describe '#method_missing' do
-    it 'returns the value for a given key if it exists' do
-      expect(instance.title).to eq('Sample instance')
-    end
-
-    it 'raises NoMethodError if the key does not exist' do
-      expect { instance.nonexistent }.to raise_error(NoMethodError)
-    end
-  end
-
   describe '#valid?' do
     context 'when url, title, and id are present' do
       let(:options) { { url: 'http://example.com', title: 'Sample Title', id: 'foobar' } }

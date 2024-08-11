@@ -40,10 +40,20 @@ module Html2rss
           klass&.to_article(article, url:)
         end
 
+        def extractor_for_type(type)
+          case type
+          when 'Article' then Base
+          when 'NewsArticle' then NewsArticle
+          else
+            Log.warn("JsonLD#extractor_for_type: Unsupported article type #{type}")
+            nil
+          end
+        end
+
         def parse_json(json_string)
           JSON.parse(json_string, symbolize_names: true)
         rescue JSON::ParserError => error
-          Log.warn('JsonLD#parsed_json: Failed to parse JSON', error: error.message)
+          Log.warn("JsonLD#parsed_json: Failed to parse JSON: #{error.message}")
           nil
         end
 
@@ -52,16 +62,6 @@ module Html2rss
         def supported_article_type?(object)
           type = object[:@type]
           type && ARTICLE_TYPES.include?(type)
-        end
-
-        def extractor_for_type(type)
-          case type
-          when 'Article' then Base
-          when 'NewsArticle' then NewsArticle
-          else
-            Log.warn('JsonLD#extract: Unsupported article type', article_type: type)
-            nil
-          end
         end
       end
 

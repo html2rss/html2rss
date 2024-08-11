@@ -231,4 +231,42 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
       end
     end
   end
+
+  describe '.parse_json' do
+    context 'with valid JSON string' do
+      let(:json_string) { '{"@type": "Article", "title": "Test Article"}' }
+
+      it 'returns the parsed JSON as a hash' do
+        expect(described_class.parse_json(json_string)).to eq({ '@type': 'Article', title: 'Test Article' })
+      end
+    end
+
+    context 'with invalid JSON string' do
+      let(:json_string) { '{"@type": "Article", "title": "Test Article"' }
+
+      it 'returns nil' do
+        expect(described_class.parse_json(json_string)).to be_nil
+      end
+    end
+  end
+
+  describe '.extractor_for_type' do
+    context 'when given "Article"' do
+      it 'returns the Base extractor' do
+        expect(described_class.extractor_for_type('Article')).to eq(Html2rss::AutoSource::JsonLd::Base)
+      end
+    end
+
+    context 'when given "NewsArticle"' do
+      it 'returns the NewsArticle extractor' do
+        expect(described_class.extractor_for_type('NewsArticle')).to eq(Html2rss::AutoSource::JsonLd::NewsArticle)
+      end
+    end
+
+    context 'when given an unsupported article type' do
+      it 'returns nil' do
+        expect(described_class.extractor_for_type('Foo')).to be_nil
+      end
+    end
+  end
 end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'exe/html2rss' do
+RSpec.describe 'exe/html2rss', :slow do
   let(:executable) do
     matches = Gem::Specification.find_all_by_name 'html2rss'
     spec = matches.first

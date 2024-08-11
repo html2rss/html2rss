@@ -17,12 +17,6 @@ module Html2rss
       def self.add_image(article, maker)
         url = article.image || return
 
-        if url.to_s.start_with?('data:image/')
-          # ie. svg+xml
-          Log.warn "Rssbuilder: Skipping data-encoded image for #{article.id}"
-          return
-        end
-
         maker.enclosure.tap do |enclosure|
           enclosure.url = url
           enclosure.type = Html2rss::Utils.guess_content_type_from_url(url)

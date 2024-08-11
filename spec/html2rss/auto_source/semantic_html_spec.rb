@@ -53,6 +53,16 @@ RSpec.describe Html2rss::AutoSource::SemanticHtml do
       # However, to catch larger changes in the algorithm, the number of articles is expected.
       expect(articles.size).to be_within(460).of(expected_articles.size)
     end
+
+    it 'returns an array of articles' do
+      expect(articles).to be_an(Array) & all(be_a(Hash))
+    end
+
+    it 'extracts articles with valid URLs' do
+      articles.each do |article|
+        expect(article[:url]).to be_a(Addressable::URI)
+      end
+    end
   end
 
   describe '.find_article_tag' do
