@@ -8,14 +8,12 @@ loader.setup
 require 'yaml'
 require 'logger'
 
-require 'byebug'
-
 ##
 # The Html2rss namespace.
 module Html2rss
   Log = Logger.new($stdout)
 
-  Log.level = Logger::DEBUG
+  Log.level = Logger::WARN
   Log.formatter = proc do |severity, datetime, _progname, msg|
     "#{datetime} [#{severity}] #{msg}\n"
   end
@@ -102,7 +100,9 @@ module Html2rss
   end
 
   ##
-  # TODO: add description
+  # Scrapes the provided URL and returns an RSS object.
+  # No need for a "feed config".
+  #
   # @param url [String] the URL to automatically source the feed from
   # @return [RSS::Rss]
   def self.auto_source(url)
