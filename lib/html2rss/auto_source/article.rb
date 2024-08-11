@@ -23,7 +23,7 @@ module Html2rss
       end
 
       def valid?
-        !url.to_s.empty? && !title.to_s.empty? && !id.to_s.empty?
+        !url.to_s.empty? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
       end
 
       def each(&)
@@ -45,7 +45,7 @@ module Html2rss
 
       # @return [Addressable::URI, nil]
       def url
-        Html2rss::Utils.sanitize_url(@to_h[:url] || @to_h[:link] || @to_h[:source_url])
+        Html2rss::Utils.sanitize_url(@to_h[:url])
       end
 
       # @return [Addressable::URI, nil]

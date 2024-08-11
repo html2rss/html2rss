@@ -11,7 +11,7 @@ module Html2rss
         def call(articles, **_options)
           Log.debug "Reducer: inited with #{articles.size} articles"
 
-          keep_longest_attributes(articles)
+          articles = keep_longest_attributes(articles)
 
           Log.debug "Reducer: having longest #{articles.size} articles"
 

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'rspec'
-
 RSpec.describe Html2rss::AutoSource::Article do
   subject(:instance) { described_class.new(**options) }
 

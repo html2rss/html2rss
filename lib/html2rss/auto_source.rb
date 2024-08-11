@@ -21,8 +21,8 @@ module Html2rss
     def build
       Html2rss::AutoSource::RssBuilder.new(
         url:,
-        channel: extract_channel(parsed_body),
-        articles: scrape_articles(parsed_body).then do |articles|
+        channel: extract_channel,
+        articles: scrape_articles.then do |articles|
                     Reducer.call(articles, url:)
                     Cleanup.call(articles, url:)
                   end
@@ -38,14 +38,14 @@ module Html2rss
       @parsed_body ||= Nokogiri.HTML(Html2rss::Utils.request_body_from_url(url)).freeze
     end
 
-    def extract_channel(parsed_body)
+    def extract_channel
       CHANNEL_EXTRACTORS.each_with_object({}) do |extractor, channel|
         channel.merge!(extractor.new(parsed_body, url:).call)
       end
     end
 
     # @return [Array<Article>]
-    def scrape_articles(parsed_body)
+    def scrape_articles
       article_hashes = Parallel.flat_map(Scraper.from(parsed_body)) do |klass|
         klass.new(parsed_body, url:).call
       end
