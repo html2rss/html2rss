@@ -16,7 +16,7 @@ module Html2rss
       # @return [Set<String>] the required parameter names
       def self.required_params_for_config(config)
         config.each_with_object(Set.new) do |(_, value), required_params|
-          required_params.merge(value.scan(/%<([\w_\d]+)>/).flatten) if value.is_a?(String)
+          required_params.merge(value.scan(/%<(\w+)>[s|d]/).flatten) if value.is_a?(String)
         end
       end
 
