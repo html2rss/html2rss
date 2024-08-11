@@ -21,6 +21,7 @@ module Html2rss
           ARTICLE_TYPES.any? { |type| json_string.include?("\"@type\":\"#{type}\"") }
         end
 
+        # :reek:DuplicateMethodCall
         def article_objects(object)
           case object
           in Hash if supported_article_type?(object)

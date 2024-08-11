@@ -93,10 +93,11 @@ module Html2rss
         end
 
         def extract_text_from_tag(tag, separator: ' ')
-          text = if tag.children.empty?
+          children = tag.children
+          text = if children.empty?
                    tag.text
                  else
-                   tag.children.map { |child| extract_text_from_tag(child) }.join(separator)
+                   children.filter_map { |child| extract_text_from_tag(child) }.join(separator)
                  end
 
           sanitized_text = text.gsub(/\s+/, ' ').strip

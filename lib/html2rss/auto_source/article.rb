@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'zlib'
+require 'sanitize'
 
 module Html2rss
   class AutoSource
@@ -39,6 +40,11 @@ module Html2rss
 
       def title
         @to_h[:title]
+      end
+
+      def description
+        # TODO: reuse Postprocessor Sanitize
+        Sanitize.fragment(@to_h[:description])
       end
 
       # @return [Addressable::URI, nil]
