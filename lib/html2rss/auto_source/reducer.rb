@@ -25,18 +25,19 @@ module Html2rss
         private
 
         def keep_longest_attributes(articles)
-          grouped_by_url = articles.group_by { |article| article[:url].to_s.split('#').first }
+          grouped_by_url = articles.group_by { |article| article.url.to_s.split('#').first }
           grouped_by_url.each_with_object([]) do |(_url, articles_with_same_url), result|
             result << find_longest_attributes_article(articles_with_same_url)
           end
         end
 
         def find_longest_attributes_article(articles)
-          longest_attributes_article = articles.shift
+          longest_attributes_article = {}
           articles.each do |article|
             keep_longest_attributes_from_article(longest_attributes_article, article)
           end
-          longest_attributes_article
+
+          Article.new(**longest_attributes_article)
         end
 
         def keep_longest_attributes_from_article(longest_attributes_article, article)

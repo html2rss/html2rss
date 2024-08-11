@@ -35,9 +35,10 @@ module Html2rss
         # @param min_words [Integer] The minimum number of words required.
         def remove_short!(articles, key = :title, min_words: 3)
           articles.reject! do |article|
-            return true unless article[key]
+            value = article.public_send(key)
+            return true unless value
 
-            size = article[key].to_s.size.to_i
+            size = value.to_s.size.to_i
             size < min_words
           end
         end
@@ -50,7 +51,7 @@ module Html2rss
         def deduplicate_by!(articles, key)
           seen = {}
           articles.reject! do |article|
-            value = article[key]
+            value = article.public_send(key)
             next true if !value || seen.key?(value)
 
             seen[value] = true
@@ -63,7 +64,7 @@ module Html2rss
         #
         # @param articles [Array<Hash>] The list of articles to process.
         def keep_only_http_urls!(articles)
-          articles.select! { |article| article[:url].scheme.start_with?('http') }
+          articles.select! { |article| article.url.scheme.start_with?('http') }
         end
 
         ##
