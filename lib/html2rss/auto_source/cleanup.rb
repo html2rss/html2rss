@@ -1,32 +1,31 @@
 # frozen_string_literal: true
 
-require 'byebug'
-
 module Html2rss
   class AutoSource
     ##
     # Cleanup is responsible for cleaning up the extracted articles.
-    # It has several strategies
+    # It has several strategies.
     # :reek:MissingSafeMethod { enabled: false }
     class Cleanup
       class << self
         def call(articles, url:)
           Log.debug "Cleanup: start with #{articles.size} articles"
 
-          remove_empty!(articles, :url)
-          remove_empty!(articles, :title)
+          articles.select!(&:valid?)
+
+          remove_short!(articles, :title)
 
           deduplicate_by!(articles, :url)
           deduplicate_by!(articles, :title)
 
-          remove_short!(articles, :title)
           keep_only_http_urls!(articles)
           reject_different_domain!(articles, url)
 
           Log.debug "Cleanup: end with #{articles.size} articles"
-
           articles
         end
+
+        private
 
         ##
         # Removes articles with short values for a given key.
@@ -51,21 +50,12 @@ module Html2rss
         def deduplicate_by!(articles, key)
           seen = {}
           articles.reject! do |article|
-            value = article[key]&.to_s&.strip
-            next true if value.nil? || seen[value]
+            value = article[key]
+            next true if !value || seen.key?(value)
 
             seen[value] = true
             false
           end
-        end
-
-        ##
-        # Removes articles with empty values for a given key.
-        #
-        # @param articles [Array<Hash>] The list of articles to process.
-        # @param key [Symbol] The key to check for empty values.
-        def remove_empty!(articles, key)
-          articles.reject! { |article| article[key].to_s.strip.empty? }
         end
 
         ##

@@ -23,23 +23,17 @@ module Html2rss
         ARTICLE_TYPES.any? { |type| string.include?(type) }
       end
 
-      def self.article_objects(object) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
-        # TODO: rewrite in an efficient way
+      def self.article_objects(object)
+        case object
+        when Hash
+          return [object] if object[:@type] && ARTICLE_TYPES.include?(object[:@type])
 
-        array = if object.is_a?(Hash)
-                  if object.key?(:@type) && ARTICLE_TYPES.include?(object[:@type])
-                    [object]
-                  else
-                    object.flat_map { |_, v| article_objects(v) }
-                  end
-                elsif object.is_a?(Array)
-                  object.flat_map { |v| article_objects(v) }
-                else
-                  []
-                end
-
-        array.compact! if array.any?
-        array
+          object.values.flat_map { |v| article_objects(v) }.compact
+        when Array
+          object.flat_map { |v| article_objects(v) }.compact
+        else
+          []
+        end
       end
 
       ##

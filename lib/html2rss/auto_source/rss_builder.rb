@@ -7,6 +7,29 @@ module Html2rss
     ##
     # Converts the autosourced channel and articles to an RSS feed.
     class RssBuilder
+      def self.add_guid(article, maker)
+        maker.guid.tap do |guid|
+          guid.content = article.guid
+          guid.isPermaLink = false
+        end
+      end
+
+      def self.add_image(article, maker)
+        url = article.image || return
+
+        if url.to_s.start_with?('data:image/')
+          # ie. svg+xml
+          Log.warn "Rssbuilder: Skipping data-encoded image for #{article.id}"
+          return
+        end
+
+        maker.enclosure.tap do |enclosure|
+          enclosure.url = url
+          enclosure.type = Html2rss::Utils.guess_content_type_from_url(url)
+          enclosure.length = 0
+        end
+      end
+
       def initialize(channel:, articles:, url:)
         @channel = channel
         @articles = articles
@@ -36,37 +59,14 @@ module Html2rss
       def make_items(maker)
         articles.each do |article|
           maker.items.new_item do |item_maker|
-            add_guid(article, item_maker)
-            add_image(article, item_maker)
+            RssBuilder.add_guid(article, item_maker)
+            RssBuilder.add_image(article, item_maker)
 
             item_maker.title = article.title
             item_maker.description = article.description
             item_maker.pubDate = article.published_at
             item_maker.link = article.url
           end
-        end
-      end
-
-      def add_guid(article, maker)
-        maker.guid.tap do |guid|
-          guid.content = article.guid
-          guid.isPermaLink = false
-        end
-      end
-
-      def add_image(article, maker)
-        url = article.image || return
-
-        if url.to_s.start_with?('data:image/')
-          # ie. svg+xml
-          Log.warn "Rssbuilder: Skipping data-encoded image for #{article.id}"
-          return
-        end
-
-        maker.enclosure.tap do |enclosure|
-          enclosure.url = url
-          enclosure.type = Html2rss::Utils.guess_content_type_from_url(url)
-          enclosure.length = 0
         end
       end
     end

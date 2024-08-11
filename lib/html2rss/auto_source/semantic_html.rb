@@ -53,6 +53,20 @@ module Html2rss
         article_tag.name == stop_tag ? nil : article_tag
       end
 
+      def self.find_closest_anchor(element)
+        element.css('a[href]').first || find_closest_anchor_upwards(element)
+      end
+
+      def self.find_closest_anchor_upwards(element)
+        while element
+          anchor = element.at_css('a[href]')
+          return anchor if anchor
+
+          element = element.parent
+        end
+        nil
+      end
+
       # Returns an array of [tag_name, selector] pairs
       # @return [Array<[<String>, <String>]>]
       def self.tag_and_selector
@@ -71,9 +85,9 @@ module Html2rss
       attr_reader :parsed_body
 
       def call
-        Parallel.flat_map(self.class.tag_and_selector) do |tag_name, selector|
+        Parallel.flat_map(SemanticHtml.tag_and_selector) do |tag_name, selector|
           parsed_body.css(selector).filter_map do |anchor|
-            article_tag = self.class.find_article_tag(anchor, tag_name)
+            article_tag = SemanticHtml.find_article_tag(anchor, tag_name)
 
             ArticleExtractor.new(article_tag, url: @url).extract
           end

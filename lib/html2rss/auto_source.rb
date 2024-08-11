@@ -28,15 +28,13 @@ module Html2rss
     end
 
     def call
-      sourced = {
+      {
         channel: extract_channel(parsed_body),
-        articles: extract_articles(parsed_body)
+        articles: extract_articles(parsed_body).then do |articles|
+                    Reducer.call(articles, url:)
+                    Cleanup.call(articles, url:)
+                  end
       }
-
-      sourced[:articles] = Reducer.call(sourced[:articles], url:)
-      sourced[:articles] = Cleanup.call(sourced[:articles], url:)
-
-      sourced
     end
 
     def to_rss
