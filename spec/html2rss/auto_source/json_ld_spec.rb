@@ -124,8 +124,8 @@ RSpec.describe Html2rss::AutoSource::JsonLd do
     end
   end
 
-  describe '.supported_type?(string)' do
-    subject(:supported_type?) { described_class.supported_type?(string) }
+  describe '.article_type_supported?(json_string)' do
+    subject(:article_type_supported?) { described_class.article_type_supported?(string) }
 
     context 'with a NewsArticle' do
       let(:string) { news_article.to_json }

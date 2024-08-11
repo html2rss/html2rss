@@ -10,48 +10,58 @@ module Html2rss
     # 2. https://developers.google.com/search/docs/appearance/structured-data/article#microdata
     class JsonLd
       TAG_SELECTOR = 'script[type="application/ld+json"]'
-
       ARTICLE_TYPES = %w[Article NewsArticle].freeze
 
-      def self.articles?(parsed_body)
-        parsed_body.css(TAG_SELECTOR).any? { |script| supported_type?(script.text) }
-      end
-
-      def self.supported_type?(string)
-        return false unless string.include?('@type')
-
-        ARTICLE_TYPES.any? { |type| string.include?(type) }
-      end
-
-      def self.article_objects(object)
-        case object
-        when Hash
-          return [object] if object[:@type] && ARTICLE_TYPES.include?(object[:@type])
-
-          object.values.flat_map { |v| article_objects(v) }.compact
-        when Array
-          object.flat_map { |v| article_objects(v) }.compact
-        else
-          []
+      class << self
+        def articles?(parsed_body)
+          parsed_body.css(TAG_SELECTOR).any? { |script| article_type_supported?(script.text) }
         end
-      end
 
-      ##
-      # Selects the extractor class based on article @type and returns the extracted article.
-      #
-      # @param article [Hash<Symbol, Object>]
-      # @return [Base, nil] nil when the article type is not supported
-      def self.extract(article, url:)
-        klass = case article[:@type]
-                when 'Article'
-                  Base
-                when 'NewsArticle'
-                  NewsArticle
-                end
+        def article_type_supported?(json_string)
+          ARTICLE_TYPES.any? { |type| json_string.include?("\"@type\":\"#{type}\"") }
+        end
 
-        Log.warn('JsonLD#extract: article type', article:) and return nil unless klass
+        def article_objects(object)
+          case object
+          in Hash if supported_article_type?(object)
+            [object]
+          in Hash
+            object.values.flat_map { |item| article_objects(item) }.compact
+          in Array
+            object.flat_map { |item| article_objects(item) }.compact
+          else
+            []
+          end
+        end
 
-        klass.to_article(article, url:)
+        def extract(article, url:)
+          klass = extractor_for_type(article[:@type])
+          klass&.to_article(article, url:)
+        end
+
+        def parse_json(json_string)
+          JSON.parse(json_string, symbolize_names: true)
+        rescue JSON::ParserError => error
+          Log.warn('JsonLD#parsed_json: Failed to parse JSON', error: error.message)
+          nil
+        end
+
+        private
+
+        def supported_article_type?(object)
+          type = object[:@type]
+          type && ARTICLE_TYPES.include?(type)
+        end
+
+        def extractor_for_type(type)
+          case type
+          when 'Article' then Base
+          when 'NewsArticle' then NewsArticle
+          else
+            Log.warn('JsonLD#extract: Unsupported article type', article_type: type)
+            nil
+          end
+        end
       end
 
       def initialize(parsed_body, url:)
@@ -60,23 +70,24 @@ module Html2rss
       end
 
       ##
-      # @return [Array<Article>] the extracted articles
+      # @return [Array<Hash>] the extracted articles
       def call
-        self.class.article_objects(parsed_json)
-            .filter_map { |article| self.class.extract(article, url: @url) }
-      end
-
-      def parsed_json
-        scripts = parsed_body.css(TAG_SELECTOR)
-
-        scripts.flat_map do |script|
-          JSON.parse(script.text, symbolize_names: true) if self.class.supported_type?(script.text)
-        end
+        articles = JsonLd.article_objects(parsed_json)
+        articles.map! { |article| JsonLd.extract(article, url: @url) }
+        articles
       end
 
       private
 
-      attr_reader :parsed_body
+      def parsed_json
+        @parsed_body.css(TAG_SELECTOR).filter_map do |script|
+          script_text = script.text
+
+          JsonLd.parse_json(script_text) if JsonLd.article_type_supported?(script_text)
+        end
+      end
+
+      attr_reader :parsed_body, :url
     end
   end
 end
