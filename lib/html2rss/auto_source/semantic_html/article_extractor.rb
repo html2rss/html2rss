@@ -28,10 +28,23 @@ module Html2rss
             url: extract_url,
             image: extract_image,
             description: extract_description,
-            id: generate_id }
+            id: generate_id,
+            published_at: extract_published_at }
         end
 
         private
+
+        def extract_published_at
+          times = article_tag.css('time[datetime]').filter_map { |time| time['datetime']&.strip }
+
+          return nil if times.empty?
+
+          times.filter_map do |time|
+            DateTime.parse(time)
+          rescue StandardError
+            nil
+          end.min
+        end
 
         attr_reader :article_tag, :url
 
