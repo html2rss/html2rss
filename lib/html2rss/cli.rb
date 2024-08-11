@@ -3,7 +3,12 @@
 require_relative '../html2rss'
 require 'thor'
 
+##
+# The Html2rss namespace / command line interface.
 module Html2rss
+  Log = Logger.new($stderr)
+  Log.level = :warn
+
   ##
   # The Html2rss command line interface.
   class CLI < Thor

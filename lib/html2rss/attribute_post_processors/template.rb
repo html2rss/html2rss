@@ -74,9 +74,9 @@ module Html2rss
       # @return [String]
       # @deprecated Use %<id>s formatting instead. Will be removed in version 1.0.0. See README / Dynamic parameters.
       def format_string_with_methods
-        warn '[DEPRECATION] This method of using params is deprecated and \
-              support for it will be removed in version 1.0.0.\
-              Please use dynamic parameters (i.e. %<id>s, see README.md) instead.'
+        Log.warn '[DEPRECATION] This method of using params is deprecated and \
+                  support for it will be removed in version 1.0.0.\
+                  Please use dynamic parameters (i.e. %<id>s, see README.md) instead.'
 
         string % methods
       end
