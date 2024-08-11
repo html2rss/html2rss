@@ -31,7 +31,7 @@ module Html2rss
       end
 
       def call
-        # TODO: re-use the existing Html2Rss::RssBuilder, ..Item, ..Channel?
+        # TODO: re-use the existing Html2Rss::RssBuilder, ..Item, ..Channel? Or make it use the Article class.
         RSS::Maker.make('2.0') do |maker|
           make_channel(maker.channel)
           make_items(maker)

@@ -6,14 +6,14 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   it { is_expected.to be_a(Module) }
   it { expect(described_class::SCRAPERS).to be_an(Array) }
 
-  describe '.scrapers' do
+  describe '.from(parsed_body)' do
     context 'when suitable scraper is found' do
       let(:parsed_body) do
         Nokogiri::HTML('<html><body><article><a href="#"></a></article></body></html>')
       end
 
       it 'returns an array of scrapers' do
-        expect(described_class.scrapers(parsed_body)).to be_an(Array)
+        expect(described_class.from(parsed_body)).to be_an(Array)
       end
     end
 
@@ -22,7 +22,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
       it 'raises NoScraperFound error' do
         expect do
-          described_class.scrapers(parsed_body)
+          described_class.from(parsed_body)
         end.to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound)
       end
     end

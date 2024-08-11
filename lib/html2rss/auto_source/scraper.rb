@@ -10,7 +10,7 @@ module Html2rss
     #
     module Scraper
       SCRAPERS = [
-        JsonLd,
+        Schema,
         SemanticHtml
       ].freeze
 
@@ -18,7 +18,9 @@ module Html2rss
       # Error raised when no suitable scraper is found.
       class NoScraperFound < Html2rss::Error; end
 
-      def self.scrapers(parsed_body)
+      ##
+      # Returns an array of scrapers that claim to find articles in the parsed body.
+      def self.from(parsed_body)
         SCRAPERS.select { |scraper| scraper.articles?(parsed_body) }
                 .tap do |scrapers|
           raise NoScraperFound, 'No suitable scraper found for URL.' if scrapers.empty?

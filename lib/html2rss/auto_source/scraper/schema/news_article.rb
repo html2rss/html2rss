@@ -5,7 +5,7 @@ require 'date'
 module Html2rss
   class AutoSource
     module Scraper
-      class JsonLd
+      class Schema
         ##
         # Subclass for NewsArticle JSON-LD.
         #
@@ -13,7 +13,7 @@ module Html2rss
         class NewsArticle < Base
           def specific_attributes = %i[article_body]
 
-          def article_body = article[:articleBody]
+          def article_body = schema_object[:articleBody]
         end
       end
     end

@@ -18,24 +18,22 @@ module Html2rss
       @url = Addressable::URI.parse(url)
     end
 
-    def call
-      {
+    def build
+      Html2rss::AutoSource::RssBuilder.new(
+        url:,
         channel: extract_channel(parsed_body),
         articles: scrape_articles(parsed_body).then do |articles|
                     Reducer.call(articles, url:)
                     Cleanup.call(articles, url:)
                   end
-      }
-    end
-
-    def to_rss
-      Html2rss::AutoSource::RssBuilder.new(url:, **call).call
+      ).call
     end
 
     private
 
     attr_reader :url
 
+    # @return [Nokogiri::HTML::Document]
     def parsed_body
       @parsed_body ||= Nokogiri.HTML(Html2rss::Utils.request_body_from_url(url)).freeze
     end
@@ -48,8 +46,8 @@ module Html2rss
 
     # @return [Array<Article>]
     def scrape_articles(parsed_body)
-      article_hashes = Parallel.flat_map(Scraper.scrapers(parsed_body)) do |scraper|
-        scraper.new(parsed_body, url: @url).call
+      article_hashes = Parallel.flat_map(Scraper.from(parsed_body)) do |klass|
+        klass.new(parsed_body, url:).call
       end
 
       article_hashes.map! { |article_hash| Article.new(**article_hash) }

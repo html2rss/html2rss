@@ -109,7 +109,7 @@ module Html2rss
   # @param url [String] the URL to automatically source the feed from
   # @return [RSS::Rss]
   def self.auto_source(url)
-    Html2rss::AutoSource.new(url).to_rss
+    Html2rss::AutoSource.new(url).build
   end
 
   private_class_method :load_yaml, :find_feed_config
