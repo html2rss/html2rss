@@ -39,17 +39,12 @@ module Html2rss
             add_guid(article, item_maker)
             add_image(article, item_maker)
 
-            item_maker.title = article[:title]
-            item_maker.description = article[:description]
-            item_maker.pubDate = article[:published_at]
-            item_maker.link = clean_url(article[:url])
+            item_maker.title = article.title
+            item_maker.description = article.description
+            item_maker.pubDate = article.published_at
+            item_maker.link = article.url
           end
         end
-      end
-
-      def clean_url(url)
-        link = Html2rss::Utils.build_absolute_url_from_relative(url, @url)
-        Html2rss::Utils.sanitize_url(link)
       end
 
       def add_guid(article, maker)
@@ -60,14 +55,17 @@ module Html2rss
       end
 
       def add_image(article, maker)
-        return unless article[:image]
+        url = article.image || return
 
-        url = clean_url(article[:image])
-        return if url.start_with?('data:image/svg+xml')
+        if url.to_s.start_with?('data:image/')
+          # ie. svg+xml
+          Log.warn "Rssbuilder: Skipping data-encoded image for #{article.id}"
+          return
+        end
 
         maker.enclosure.tap do |enclosure|
           enclosure.url = url
-          enclosure.type = Html2rss::Utils.guess_content_type_from_url(article[:image])
+          enclosure.type = Html2rss::Utils.guess_content_type_from_url(url)
           enclosure.length = 0
         end
       end

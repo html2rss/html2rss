@@ -43,15 +43,24 @@ module Html2rss
 
       # @return [Addressable::URI, nil]
       def url
-        @to_h[:url] || @to_h[:link] || @to_h[:source_url]
+        Html2rss::Utils.sanitize_url(@to_h[:url] || @to_h[:link] || @to_h[:source_url])
       end
 
       def id
         @to_h[:id]
       end
 
+      # @return [Addressable::URI, nil]
+      def image
+        Html2rss::Utils.sanitize_url @to_h[:image]
+      end
+
       def guid
         Zlib.crc32([url, id].uniq.join('#!/'))
+      end
+
+      def published_at
+        @to_h[:published_at]
       end
 
       # :reek:BooleanParameter { enabled: false }

@@ -31,12 +31,12 @@ module Html2rss
     ##
     # Removes any space, parses and normalizes the given url.
     # @param url [String]
-    # @return [String, nil] sanitized and normalized URL, or nil if input is empty
+    # @return [Addressable::URI, nil] normalized URL, or nil if input is empty
     def self.sanitize_url(url)
       url = url.to_s.gsub(/\s+/, ' ').strip
       return if url.empty?
 
-      Addressable::URI.parse(url).normalize.to_s
+      Addressable::URI.parse(url).normalize
     end
 
     ##

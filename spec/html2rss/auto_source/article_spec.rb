@@ -42,8 +42,11 @@ RSpec.describe Html2rss::AutoSource::Article do
   end
 
   describe '#url' do
-    it 'returns the url if present' do
-      expect(instance.url).to eq('http://example.com')
+    it 'returns the url if present', :aggregate_failures do
+      url =  instance.url
+
+      expect(url).to be_a(Addressable::URI)
+      expect(url.to_s).to eq('http://example.com/')
     end
 
     it 'returns nil if no url is present' do
