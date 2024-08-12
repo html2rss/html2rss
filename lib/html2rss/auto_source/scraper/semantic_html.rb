@@ -90,13 +90,15 @@ module Html2rss
 
         ##
         # @return [Array<Hash>] The scraped articles.
-        def call
-          Parallel.flat_map(SemanticHtml.anchor_tag_selector_pairs) do |tag_name, selector|
+        def each(&)
+          SemanticHtml.anchor_tag_selector_pairs.each do |tag_name, selector|
             parsed_body.css(selector)
-                       .filter_map do |selected_tag|
+                       .each do |selected_tag|
               article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
 
-              ArticleExtractor.new(article_tag, url: @url).scrape
+              article_hash = ArticleExtractor.new(article_tag, url: @url).scrape
+
+              yield article_hash if article_hash
             end
           end
         end

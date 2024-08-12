@@ -157,8 +157,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
   end
 
-  describe '#call' do
-    subject(:array) { described_class.new(parsed_body, url: '').call }
+  describe '#each' do
+    subject(:new) { described_class.new(parsed_body, url: '') }
 
     context 'with a NewsArticle' do
       let(:parsed_body) do
@@ -166,7 +166,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       end
 
       it 'scrapes the article_hash' do
-        expect(array).to include(
+        expect { |b| new.each(&b) }.to yield_with_args(
           hash_including(
             title: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'"
           )
@@ -180,7 +180,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       end
 
       it 'scrapes the article' do
-        expect(array).to include(hash_including(title: 'Für Einsparungen kündigt Google komplettem Python-Team'))
+        expect do |b|
+          new.each(&b)
+        end.to yield_with_args hash_including(title: 'Für Einsparungen kündigt Google komplettem Python-Team')
       end
     end
 
@@ -188,7 +190,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       let(:parsed_body) { Nokogiri::HTML('') }
 
       it 'returns an empty array' do
-        expect(array).to eq([])
+        expect { |b| new.each(&b) }.not_to yield_with_args
       end
     end
 
@@ -196,7 +198,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       let(:parsed_body) { Nokogiri::HTML('<script type="application/ld+json">{"@type": "foo"}</script>') }
 
       it 'returns an empty array' do
-        expect(array).to eq([])
+        expect { |b| new.each(&b) }.not_to yield_with_args
       end
     end
   end

@@ -13,23 +13,24 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 
-  describe '#call' do
-    subject(:articles) { described_class.new(parsed_body, url: 'https://page.com').call }
+  describe '#each' do
+    subject(:new) { described_class.new(parsed_body, url: 'https://page.com') }
 
-    let(:expected_articles) do
+    let(:grouped_expected_articles) do
       # rubocop:disable Metrics/LineLength
       [
         { title: 'Brittney Griner: What I Endured in Russia', url: Addressable::URI, image: nil, description: '17 MIN READ May 3, 2024 • 8:00 AM EDT "Prison is more than a place. It’s also a mindset," Brittney Griner writes in an excerpt from her book about surviving imprisonment in Russia.', id: '/6972085/brittney-griner-book-coming-home/' },
         { title: 'How Far Trump Would Go', url: Addressable::URI, image: nil, description: '26 MIN READ April 30, 2024 • 7:00 AM EDT', id: '/6972021/donald-trump-2024-election-interview/' },
         { title: 'The Kristi Noem and Kim Jong Un Controversy, Explained', url: Addressable::URI, image: nil, description: '3 MIN READ May 5, 2024 • 8:18 AM EDT', id: '/6974797/kristi-noem-kim-jong-un-book-controversy/' },
         { title: 'Driver Dies After Crashing Into White House Security Barrier', url: Addressable::URI, image: nil, description: '1 MIN READ May 5, 2024 • 7:46 AM EDT', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
-      ]
+      ].group_by { |article| article[:id] }
       # rubocop:enable Metrics/LineLength
     end
 
-    it 'returns also the expected articles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      expected_articles.each do |expected_article|
-        article = articles.find { |a| a[:title] == expected_article[:title] }
+    it 'yields all the expected articles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      new.each do |article|
+        expected_article = grouped_expected_articles[article[:id]]&.shift
+        next unless expected_article
 
         expected_article.each do |key, value|
           if key == :url
@@ -38,11 +39,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
                                       "Expected #{key} to be an Addressable::URI, but was #{article[key]}"
                                     }
           else
-            expect(article[key]).to eq(value),
-                                    -> { "Expected #{key} to be #{value}, but was #{article[key].inspect}" }
+            expect(article[key].to_s).to eq(value.to_s),
+                                         -> { "Expected #{key} to be #{value}, but was #{article[key].inspect}" }
           end
         end
       end
+      expect(grouped_expected_articles.values.flatten).to be_empty
     end
 
     it 'returns the expected number of articles' do
@@ -51,17 +53,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       # RSS readers respecting the items' guid will only show the other articles once.
       #
       # However, to catch larger changes in the algorithm, the number of articles is expected.
-      expect(articles.size).to be_within(460).of(expected_articles.size)
-    end
-
-    it 'returns an array of articles' do
-      expect(articles).to be_an(Array) & all(be_a(Hash))
-    end
-
-    it 'extracts articles with valid URLs' do
-      articles.each do |article|
-        expect(article[:url]).to be_a(Addressable::URI)
-      end
+      expect { |b| new.each(&b) }.to yield_control.at_least(333).times
     end
   end
 

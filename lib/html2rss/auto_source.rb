@@ -2,6 +2,7 @@
 
 require 'nokogiri'
 require 'parallel'
+require 'addressable'
 
 module Html2rss
   ##
@@ -46,13 +47,13 @@ module Html2rss
 
     # @return [Array<Article>]
     def scrape_articles
-      article_hashes = Parallel.flat_map(Scraper.from(parsed_body)) do |klass|
-        klass.new(parsed_body, url:).call
+      Parallel.flat_map(Scraper.from(parsed_body)) do |klass|
+        [].tap do |articles|
+          klass.new(parsed_body, url:).each do |article_hash|
+            articles << Article.new(**article_hash)
+          end
+        end
       end
-
-      article_hashes.map! { |article_hash| Article.new(**article_hash) }
-
-      article_hashes
     end
   end
 end
