@@ -63,7 +63,8 @@ module Html2rss
           end
 
           def find_url
-            closest_anchor = SemanticHtml.find_closest_anchor(heading || article_tag)
+            closest_anchor = SemanticHtml.find_closest_selector(heading || article_tag,
+                                                                selector: 'a[href]:not([href=""])')
             href = closest_anchor&.[]('href')&.split('#')&.first&.strip
             return if href.to_s.empty?
 

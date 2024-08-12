@@ -65,7 +65,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 
-  describe '.find_article_tag' do
+  describe '.find_tag_in_ancestors' do
     let(:html) do
       <<-HTML
         <body>
@@ -79,19 +79,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     let(:document) { Nokogiri::HTML(html) }
-    let(:anchor) { document.at_css('#link') }
+    let(:current_tag) { document.at_css('#link') }
 
     context 'when the anchor is inside the specified tag' do
       it 'returns the specified tag' do
-        article_tag = described_class.find_article_tag(anchor, 'article')
+        article_tag = described_class.find_tag_in_ancestors(current_tag, 'article')
         expect(article_tag.name).to eq('article')
       end
     end
 
     context 'when the anchor is not inside the specified tag' do
-      it 'returns nil' do
-        article_tag = described_class.find_article_tag(anchor, 'section')
-        expect(article_tag).to be_nil
+      it 'returns stop_tag' do
+        article_tag = described_class.find_tag_in_ancestors(current_tag, 'body')
+        expect(article_tag).to be document.at_css('body')
       end
     end
 
@@ -105,14 +105,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
 
       it 'returns the anchor itself' do
-        article_tag = described_class.find_article_tag(anchor, 'article')
-        expect(article_tag).to eq(anchor)
+        article_tag = described_class.find_tag_in_ancestors(current_tag, 'article')
+        expect(article_tag).to eq(current_tag)
       end
     end
   end
 
-  describe '.tag_and_selector' do
-    let(:expected_result) do
+  describe '.anchor_tag_selector_pairs' do
+    let(:pairs) do
       [
         ['article', 'article :not(article) a[href]'],
         ['li', 'ul > li :not(li) a[href]'],
@@ -121,18 +121,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'returns an array of tag and selector pairs' do
-      expect(described_class.tag_and_selector).to include(*expected_result)
-    end
-
-    it 'memoizes the result' do
-      first_call = described_class.tag_and_selector
-      second_call = described_class.tag_and_selector
-
-      expect(first_call).to equal(second_call)
+      expect(described_class.anchor_tag_selector_pairs).to include(*pairs)
     end
   end
 
-  describe '.find_closest_anchor' do
+  describe '.find_closest_selector' do
     let(:html) do
       <<-HTML
       <body>
@@ -150,7 +143,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     context 'when the anchor is directly within the element' do
       it 'returns the anchor' do
-        anchor = described_class.find_closest_anchor(container)
+        anchor = described_class.find_closest_selector(container)
         expect(anchor['id']).to eq('link')
       end
     end
@@ -172,7 +165,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         nested_document = Nokogiri::HTML(nested_html)
         nested_container = nested_document.at_css('#container')
 
-        anchor = described_class.find_closest_anchor(nested_container)
+        anchor = described_class.find_closest_selector(nested_container)
         expect(anchor['id']).to eq('nested-link')
       end
     end
@@ -191,13 +184,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
 
       it 'returns nil' do
-        anchor = described_class.find_closest_anchor(no_anchor_container)
+        anchor = described_class.find_closest_selector(no_anchor_container)
         expect(anchor).to be_nil
       end
     end
   end
 
-  describe '.find_closest_anchor_upwards' do
+  describe '.find_closest_selector_upwards' do
     let(:html) do
       <<-HTML
         <div>
@@ -215,14 +208,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     context 'when an anchor is found in the current element' do
       it 'returns the anchor' do
-        anchor = described_class.find_closest_anchor_upwards(element)
+        anchor = described_class.find_closest_selector_upwards(element, selector: 'a')
         expect(anchor).to eq(expected_anchor)
       end
     end
 
     context 'when an anchor is not found in the current element' do
       it 'returns the closest anchor in the parent elements' do
-        anchor = described_class.find_closest_anchor_upwards(element.parent)
+        anchor = described_class.find_closest_selector_upwards(element.parent, selector: 'a')
         expect(anchor).to eq(expected_anchor)
       end
     end

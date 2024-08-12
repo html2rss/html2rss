@@ -46,40 +46,38 @@ module Html2rss
           false
         end
 
-        def self.find_article_tag(anchor, tag_name, stop_tag: 'html')
-          return anchor if anchor.name == tag_name
+        def self.find_tag_in_ancestors(current_tag, tag_name, stop_tag: 'html')
+          return current_tag if current_tag.name == tag_name
 
-          article_tag = anchor.parent
-          while article_tag && article_tag.name != tag_name && article_tag.name != stop_tag
-            article_tag = article_tag.parent
+          stop_tags = Set[tag_name, stop_tag]
+
+          while current_tag.respond_to?(:parent) && !stop_tags.member?(current_tag.name)
+            current_tag = current_tag.parent
           end
 
-          article_tag.name == stop_tag ? nil : article_tag
+          current_tag
         end
 
-        def self.find_closest_anchor(element)
-          element.css('a[href]').first || find_closest_anchor_upwards(element)
+        def self.find_closest_selector(current_tag, selector: 'a[href]:not([href=""])')
+          current_tag.css(selector).first || find_closest_selector_upwards(current_tag, selector:)
         end
 
-        def self.find_closest_anchor_upwards(element)
-          while element
-            anchor = element.at_css('a[href]')
-            return anchor if anchor
+        def self.find_closest_selector_upwards(current_tag, selector:)
+          while current_tag
+            found = current_tag.at_css(selector)
+            return found if found
 
-            return nil unless element.respond_to?(:parent)
+            return nil unless current_tag.respond_to?(:parent)
 
-            element = element.parent
+            current_tag = current_tag.parent
           end
-          nil
         end
 
         # Returns an array of [tag_name, selector] pairs
         # @return [Array<[<String>, <String>]>]
-        def self.tag_and_selector
-          @tag_and_selector ||= [].tap do |tag_and_selector|
-            ANCHOR_TAG_SELECTORS.each_pair do |tag_name, selectors|
-              selectors.each { |selector| tag_and_selector << [tag_name, selector] }
-            end
+        def self.anchor_tag_selector_pairs
+          ANCHOR_TAG_SELECTORS.flat_map do |tag_name, selectors|
+            selectors.map { |selector| [tag_name, selector] }
           end
         end
 
@@ -90,10 +88,13 @@ module Html2rss
 
         attr_reader :parsed_body
 
+        ##
+        # @return [Array<Hash>] The scraped articles.
         def call
-          Parallel.flat_map(SemanticHtml.tag_and_selector) do |tag_name, selector|
-            parsed_body.css(selector).filter_map do |anchor|
-              article_tag = SemanticHtml.find_article_tag(anchor, tag_name)
+          Parallel.flat_map(SemanticHtml.anchor_tag_selector_pairs) do |tag_name, selector|
+            parsed_body.css(selector)
+                       .filter_map do |selected_tag|
+              article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
 
               ArticleExtractor.new(article_tag, url: @url).scrape
             end
