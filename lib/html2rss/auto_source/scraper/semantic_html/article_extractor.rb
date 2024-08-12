@@ -62,25 +62,6 @@ module Html2rss
             extract_text_from_tag(largest_tag) if largest_tag
           end
 
-          def find_url
-            closest_anchor = SemanticHtml.find_closest_selector(heading || article_tag,
-                                                                selector: 'a[href]:not([href=""])')
-            href = closest_anchor&.[]('href')&.split('#')&.first&.strip
-            return if href.to_s.empty?
-
-            Utils.build_absolute_url_from_relative(href, url)
-          end
-
-          def extract_image
-            img_src = article_tag.css('img[src]').first&.[]('src')
-
-            img_src ||= article_tag.css('source[srcset]')
-                                   .flat_map { |source| source['srcset'].split(',') }
-                                   .max_by { |source| source&.size.to_i }
-
-            Utils.build_absolute_url_from_relative(img_src, url) if img_src
-          end
-
           def extract_description
             text = extract_text_from_tag(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
             return text if text
@@ -92,6 +73,39 @@ module Html2rss
             description.gsub!(title_text, '') if title_text
             description.strip!
             description.empty? ? nil : description
+          end
+
+          def find_url
+            closest_anchor = SemanticHtml.find_closest_selector(heading || article_tag,
+                                                                selector: 'a[href]:not([href=""])')
+            href = closest_anchor&.[]('href')&.split('#')&.first&.strip
+            return if href.to_s.empty?
+
+            Utils.build_absolute_url_from_relative(href, url)
+          end
+
+          def extract_image
+            img_src = extract_image_from_img(article_tag)
+            img_src ||= extract_image_from_source(article_tag)
+            img_src ||= extract_image_from_style(article_tag)
+
+            Utils.build_absolute_url_from_relative(img_src, url) if img_src
+          end
+
+          def extract_image_from_img(article_tag) = article_tag.css('img[src]').first&.[]('src')
+
+          def extract_image_from_source(article_tag)
+            article_tag.css('source[srcset]')
+                       .flat_map { |source| source['srcset'].split(',') }
+                       .filter_map { |srcset| srcset.split.first.strip }
+                       .max_by(&:size)
+          end
+
+          def extract_image_from_style(article_tag)
+            article_tag.css('[style], *[style]').to_a
+                       .keep_if { |tag| tag['style'].include?('background-image') }
+                       .filter_map { |tag| tag['style'][/url\(['"]?(.*?)['"]?\)/, 1] }
+                       .max_by(&:size)
           end
 
           def extract_text_from_tag(tag, separator: ' ')
