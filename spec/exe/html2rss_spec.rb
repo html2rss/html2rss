@@ -76,18 +76,10 @@ RSpec.describe 'exe/html2rss', :slow do
   context 'with argument: auto URL' do
     subject(:output) { `#{executable} auto https://welt.de` }
 
-    let(:end_of_rss) do
-      <<~XML
-            <generator>html2rss V. #{Html2rss::VERSION} (using auto_source scrapers: [SemanticHtml=128])</generator>
-          </channel>
-        </rss>
-      XML
-    end
-
     it 'generates the RSS', :aggregate_failures do
       expect(output).to start_with(doctype_xml) &
                         include('https://welt.de') &
-                        end_with(end_of_rss)
+                        match(%r{using auto_source scrapers: \[SemanticHtml=\d+\]\)</generator>})
     end
   end
 end

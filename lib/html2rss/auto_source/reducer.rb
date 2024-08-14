@@ -15,7 +15,7 @@ module Html2rss
 
           Log.debug "Reducer: having longest #{articles.size} articles"
 
-          articles = keep_longest_attributes(articles, keep: [:generated_by]) { |article| article.url.path }
+          articles = reduce_by_keeping_longest_values(articles, keep: [:generated_by]) { |article| article.url.path }
 
           Log.debug "Reducer: end with #{articles.size} valid articles"
 
@@ -27,29 +27,27 @@ module Html2rss
         # @param articles [Array<Article>]
         # @param block [Proc] returns a key to group the articles for further processing
         # @return [Array<Article>] reduced articles
-        def keep_longest_attributes(articles, keep:, &)
+        def reduce_by_keeping_longest_values(articles, keep:, &)
           grouped_by_block = articles.group_by(&)
           grouped_by_block.each_with_object([]) do |(_key, grouped_articles), result|
-            result << find_longest_attributes_article(grouped_articles, keep:)
+            memo_object = {}
+            grouped_articles.each do |article_hash|
+              keep_longest_values(memo_object, article_hash, keep:)
+            end
+
+            result << Article.new(**memo_object)
           end
         end
 
-        def find_longest_attributes_article(articles, keep:)
-          longest_attributes_article = {}
-          articles.each do |article|
-            keep_longest_attributes_from_article(longest_attributes_article, article, keep:)
-          end
+        def keep_longest_values(memo_object, article_hash, keep:)
+          article_hash.each do |key, value|
+            next if value.eql?(memo_object[key])
 
-          Article.new(**longest_attributes_article)
-        end
-
-        def keep_longest_attributes_from_article(longest_attributes_article, article, keep:)
-          article.each do |key, value|
             if keep.include?(key)
-              longest_attributes_article[key] ||= []
-              longest_attributes_article[key] << value
-            elsif value && value.to_s.size > longest_attributes_article[key].to_s.size
-              longest_attributes_article[key] = value
+              memo_object[key] ||= []
+              memo_object[key] << value
+            elsif value && value.to_s.size > memo_object[key].to_s.size
+              memo_object[key] = value
             end
           end
         end
