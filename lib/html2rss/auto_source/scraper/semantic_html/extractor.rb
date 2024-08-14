@@ -8,7 +8,7 @@ module Html2rss
         # ArticleExtractor is responsible for extracting the details of an article.
         # It focuses on finding a headline first, and from it traverse as much as possible,
         # to find the DOM upwards to find the other details.
-        class ArticleExtractor
+        class Extractor
           INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
           NOT_HEADLINE_SELECTOR = (SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" } +
                                    INVISIBLE_CONTENT_TAG_SELECTORS).freeze
@@ -21,7 +21,7 @@ module Html2rss
           end
 
           # @return [Hash, nil] The scraped article or nil.
-          def scrape
+          def call
             return unless heading
 
             {

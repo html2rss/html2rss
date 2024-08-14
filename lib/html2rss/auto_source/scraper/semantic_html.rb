@@ -109,7 +109,7 @@ module Html2rss
           SemanticHtml.anchor_tag_selector_pairs.each do |tag_name, selector|
             parsed_body.css(selector).each do |selected_tag|
               article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
-              article_hash = ArticleExtractor.new(article_tag, url: @url).scrape
+              article_hash = Extractor.new(article_tag, url: @url).call
               next unless article_hash
 
               article_hash[:generated_by] = self.class
