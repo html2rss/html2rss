@@ -32,6 +32,14 @@ RSpec.describe Html2rss::AutoSource::Article do
     it 'yields each PROVIDED_KEY with their values' do
       expect { |b| instance.each(&b) }.to yield_successive_args(*yields)
     end
+
+    it 'returns an Enumerator if no block is given' do
+      expect(instance.each).to be_an(Enumerator)
+    end
+
+    it 'returns frozen values' do
+      instance.each { |value| expect(value).to be_frozen } # rubocop:disable RSpec/IteratedExpectation
+    end
   end
 
   describe '#url' do
@@ -71,6 +79,32 @@ RSpec.describe Html2rss::AutoSource::Article do
       let(:options) { {} }
 
       it { is_expected.not_to be_valid }
+    end
+  end
+
+  describe '#guid' do
+    it 'returns a unique identifier based on the url and id', :aggregate_failures do
+      instance = described_class.new(url: 'http://example.com/article', id: '123')
+      expect(instance.guid).to eq('vikwuv')
+      expect(instance.guid.encoding).to eq(Encoding::UTF_8)
+    end
+
+    it 'returns a different identifier for different urls' do
+      instance1 = described_class.new(url: 'http://example.com/article1', id: '123')
+      instance2 = described_class.new(url: 'http://example.com/article2', id: '123')
+      expect(instance1.guid).not_to eq(instance2.guid)
+    end
+
+    it 'returns a different identifier for different ids' do
+      instance1 = described_class.new(url: 'http://example.com/article1', id: '123')
+      instance2 = described_class.new(url: 'http://example.com/article2', id: '456')
+      expect(instance1.guid).not_to eq(instance2.guid)
+    end
+
+    it 'returns the same identifier for the same url and id' do
+      instance1 = described_class.new(url: 'http://example.com/article', id: '123')
+      instance2 = described_class.new(url: 'http://example.com/article', id: '123')
+      expect(instance1.guid).to eq(instance2.guid)
     end
   end
 

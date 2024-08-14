@@ -16,7 +16,7 @@ module Html2rss
       # @param options [Hash<Symbol, String>]
       def initialize(**options)
         @to_h = {}
-        options.each_pair { |key, value| @to_h[key] = value.freeze }
+        options.each_pair { |key, value| @to_h[key] = value.freeze if value }
         @to_h.freeze
 
         return unless (unknown_keys = options.keys - PROVIDED_KEYS).any?
@@ -28,8 +28,12 @@ module Html2rss
         !url.to_s.empty? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
       end
 
+      # @yield [key, value]
+      # @return [Enumerator] if no block is given
       def each(&)
-        PROVIDED_KEYS.each { |key| yield(key, public_send(key)) }
+        PROVIDED_KEYS.each { |key| yield(key, public_send(key)) } if block_given?
+
+        to_enum
       end
 
       def id
@@ -42,29 +46,29 @@ module Html2rss
 
       def description
         # TODO: reuse Postprocessor Sanitize
-        Sanitize.fragment(@to_h[:description])
+        @description ||= Sanitize.fragment(@to_h[:description])
       end
 
       # @return [Addressable::URI, nil]
       def url
-        Html2rss::Utils.sanitize_url(@to_h[:url])
+        @url ||= Html2rss::Utils.sanitize_url(@to_h[:url])
       end
 
       # @return [Addressable::URI, nil]
       def image
-        Html2rss::Utils.sanitize_url @to_h[:image]
+        @image ||= Html2rss::Utils.sanitize_url @to_h[:image]
       end
 
       # @return [String]
       def guid
-        Zlib.crc32([url, id].uniq.join('#!/'))
+        @guid ||= Zlib.crc32([url, id].join('#!/')).to_s(36).encode('utf-8')
       end
 
       # @return [Time, nil]
       def published_at
-        unless (string = @to_h[:published_at]).strip.empty?
-          Time.parse(string)
-        end
+        @published_at ||= unless (string = @to_h[:published_at]).strip.empty?
+                            Time.parse(string)
+                          end
       rescue StandardError
         nil
       end
