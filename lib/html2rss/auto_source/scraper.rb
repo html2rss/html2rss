@@ -3,9 +3,9 @@
 module Html2rss
   class AutoSource
     ##
-    # Scraper module contains all scrapers that can be used to extract articles.
+    # The Scraper module contains all scrapers that can be used to extract articles.
     # Each scraper should implement a `call` method that returns an array of article hashes.
-    # Each scraper should also implement a `articles?` method that returns true if the scraper
+    # Each scraper should also implement an `articles?` method that returns true if the scraper
     # can potentially be used to extract articles from the given HTML.
     #
     module Scraper
@@ -20,11 +20,13 @@ module Html2rss
 
       ##
       # Returns an array of scrapers that claim to find articles in the parsed body.
+      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
+      # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
       def self.from(parsed_body)
-        SCRAPERS.select { |scraper| scraper.articles?(parsed_body) }
-                .tap do |scrapers|
-          raise NoScraperFound, 'No suitable scraper found for URL.' if scrapers.empty?
-        end
+        scrapers = SCRAPERS.select { |scraper| scraper.articles?(parsed_body) }
+        raise NoScraperFound, 'No suitable scraper found for URL.' if scrapers.empty?
+
+        scrapers
       end
     end
   end

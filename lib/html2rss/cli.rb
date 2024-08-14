@@ -35,7 +35,7 @@ module Html2rss
     def auto(url)
       url = url.to_s.strip
 
-      raise 'URL is required' if url.empty? || !Addressable::URI.parse(url).absolute?
+      raise 'An absolute URL is required' if url.empty? || !Addressable::URI.parse(url).absolute?
 
       puts Html2rss.auto_source(url)
     end

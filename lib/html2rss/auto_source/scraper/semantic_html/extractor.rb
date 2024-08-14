@@ -56,17 +56,17 @@ module Html2rss
           end
 
           def extract_title
-            return extract_text_from_tag(heading) if heading&.text
+            return text_from_tag(heading) if heading&.text
 
             largest_tag = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).max_by { |tag| tag.text.size }
-            extract_text_from_tag(largest_tag)
+            text_from_tag(largest_tag)
           end
 
           def extract_description
-            text = extract_text_from_tag(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
+            text = text_from_tag(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
             return text if text
 
-            description = extract_text_from_tag(article_tag)
+            description = text_from_tag(article_tag)
             return nil unless description
 
             title_text = heading&.text
@@ -106,12 +106,12 @@ module Html2rss
                        .max_by(&:size)
           end
 
-          def extract_text_from_tag(tag, separator: ' ')
+          def text_from_tag(tag, separator: ' ')
             children = tag.children
             text = if children.empty?
                      tag.text
                    else
-                     children.filter_map { |child| extract_text_from_tag(child) }.join(separator)
+                     children.filter_map { |child| text_from_tag(child) }.join(separator)
                    end
 
             sanitized_text = text.gsub(/\s+/, ' ').strip

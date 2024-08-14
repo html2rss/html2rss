@@ -4,8 +4,8 @@ module Html2rss
   class AutoSource
     ##
     # Cleanup is responsible for cleaning up the extracted articles.
-    # It has several strategies.
     # :reek:MissingSafeMethod { enabled: false }
+    # It applies various strategies to filter and refine the article list.
     class Cleanup
       class << self
         def call(articles, url:)
@@ -30,57 +30,45 @@ module Html2rss
         ##
         # Removes articles with short values for a given key.
         #
-        # @param articles [Array<Hash>] The list of articles to process.
+        # @param articles [Array<Article>] The list of articles to process.
         # @param key [Symbol] The key to check for short values.
         # @param min_words [Integer] The minimum number of words required.
         def remove_short!(articles, key = :title, min_words: 3)
           articles.reject! do |article|
             value = article.public_send(key)
-            return true unless value
-
-            size = value.to_s.size.to_i
-            size < min_words
+            value.nil? || value.to_s.split.size < min_words
           end
         end
 
         ##
         # Deduplicates articles by a given key.
         #
-        # @param articles [Array<Hash>] The list of articles to process.
+        # @param articles [Array<Article>] The list of articles to process.
         # @param key [Symbol] The key to deduplicate by.
         def deduplicate_by!(articles, key)
           seen = {}
           articles.reject! do |article|
             value = article.public_send(key)
-            next true if !value || seen.key?(value)
-
-            seen[value] = true
-            false
+            value.nil? || seen.key?(value).tap { seen[value] = true }
           end
         end
 
         ##
         # Keeps only articles with HTTP or HTTPS URLs.
         #
-        # @param articles [Array<Hash>] The list of articles to process.
+        # @param articles [Array<Article>] The list of articles to process.
         def keep_only_http_urls!(articles)
-          articles.select! { |article| article.url.scheme.start_with?('http') }
+          articles.select! { |article| %w[http https].include?(article.url&.scheme) }
         end
 
         ##
-        # Rejects articles which have a URL that is not on the same domain as the source.
+        # Rejects articles that have a URL not on the same domain as the source.
         #
         # @param articles [Array<Article>] The list of articles to process.
-        # @param base_url [String] The source URL to compare against.
+        # @param base_url [Addressable::URI] The source URL to compare against.
         def reject_different_domain!(articles, base_url)
           base_host = base_url.host
-
-          articles.reject! do |article|
-            article_url = article.url
-            next true unless article_url
-
-            article_url.host != base_host
-          end
+          articles.select! { |article| article.url&.host == base_host }
         end
       end
     end

@@ -7,7 +7,7 @@ module Html2rss
   class AutoSource
     ##
     # Article is a simple data object representing an article extracted from a page.
-    # It is enumerable and responds to all PROVIDED_KEYS in the options.
+    # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
     class Article
       include Enumerable
 
@@ -24,16 +24,18 @@ module Html2rss
         Log.warn "Article: unknown keys found: #{unknown_keys.join(', ')}"
       end
 
+      # Checks if the article is valid based on the presence of URL, ID, and either title or description.
+      # @return [Boolean] True if the article is valid, otherwise false.
       def valid?
         !url.to_s.empty? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
       end
 
       # @yield [key, value]
       # @return [Enumerator] if no block is given
-      def each(&)
-        PROVIDED_KEYS.each { |key| yield(key, public_send(key)) } if block_given?
+      def each
+        return enum_for(:each) unless block_given?
 
-        to_enum
+        PROVIDED_KEYS.each { |key| yield(key, public_send(key)) }
       end
 
       def id
@@ -59,17 +61,19 @@ module Html2rss
         @image ||= Html2rss::Utils.sanitize_url @to_h[:image]
       end
 
+      # Generates a unique identifier based on the URL and ID using CRC32.
       # @return [String]
       def guid
         @guid ||= Zlib.crc32([url, id].join('#!/')).to_s(36).encode('utf-8')
       end
 
+      # Parses and returns the published_at time.
       # @return [Time, nil]
       def published_at
-        @published_at ||= unless (string = @to_h[:published_at]).strip.empty?
-                            Time.parse(string)
-                          end
-      rescue StandardError
+        return if (string = @to_h[:published_at]).to_s.strip.empty?
+
+        @published_at ||= Time.parse(string)
+      rescue ArgumentError
         nil
       end
 
