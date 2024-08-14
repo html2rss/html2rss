@@ -10,9 +10,8 @@ module Html2rss
         # to find the DOM upwards to find the other details.
         class ArticleExtractor
           INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
-          NOT_HEADLINE_SELECTOR = SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" }
-                                                            .concat(INVISIBLE_CONTENT_TAG_SELECTORS)
-                                                            .freeze
+          NOT_HEADLINE_SELECTOR = (SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" } +
+                                   INVISIBLE_CONTENT_TAG_SELECTORS).freeze
 
           def initialize(article_tag, url:)
             @article_tag = article_tag
@@ -21,16 +20,18 @@ module Html2rss
             @extract_url = find_url
           end
 
-          # @return [Hash] The scraped article or nil.
+          # @return [Hash, nil] The scraped article or nil.
           def scrape
             return unless heading
 
-            { title: extract_title,
+            {
+              title: extract_title,
               url: extract_url,
               image: extract_image,
               description: extract_description,
               id: generate_id,
-              published_at: extract_published_at }
+              published_at: extract_published_at
+            }
           end
 
           private
@@ -38,28 +39,27 @@ module Html2rss
           attr_reader :article_tag, :url, :heading, :extract_url
 
           def extract_published_at
-            times = article_tag.css('time[datetime]').filter_map { |tag| tag['datetime']&.strip }
-
-            times.min_by do |time|
-              DateTime.parse(time)
-            rescue StandardError
+            times = article_tag.css('time[datetime]')
+                               .filter_map do |tag|
+              DateTime.parse(tag['datetime'])
+            rescue ArgumentError, TypeError
               nil
             end
+
+            times.min
           end
 
           def find_heading
             heading_tags = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).group_by(&:name)
-            return unless heading_tags.any?
-
             smallest_heading = heading_tags.keys.min
-            heading_tags[smallest_heading].max_by { |tag| tag.text.size }
+            heading_tags[smallest_heading]&.max_by { |tag| tag.text.size }
           end
 
           def extract_title
             return extract_text_from_tag(heading) if heading&.text
 
             largest_tag = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).max_by { |tag| tag.text.size }
-            extract_text_from_tag(largest_tag) if largest_tag
+            extract_text_from_tag(largest_tag)
           end
 
           def extract_description
@@ -79,32 +79,30 @@ module Html2rss
             closest_anchor = SemanticHtml.find_closest_selector(heading || article_tag,
                                                                 selector: 'a[href]:not([href=""])')
             href = closest_anchor&.[]('href')&.split('#')&.first&.strip
-            return if href.to_s.empty?
-
-            Utils.build_absolute_url_from_relative(href, url)
+            Utils.build_absolute_url_from_relative(href, url) unless href.to_s.empty?
           end
 
           def extract_image
-            img_src = extract_image_from_img(article_tag)
-            img_src ||= extract_image_from_source(article_tag)
-            img_src ||= extract_image_from_style(article_tag)
-
+            img_src = extract_image_from_img(article_tag) ||
+                      extract_image_from_source(article_tag) ||
+                      extract_image_from_style(article_tag)
             Utils.build_absolute_url_from_relative(img_src, url) if img_src
           end
 
-          def extract_image_from_img(article_tag) = article_tag.css('img[src]').first&.[]('src')
+          def extract_image_from_img(article_tag)
+            article_tag.at_css('img[src]')&.[]('src')
+          end
 
           def extract_image_from_source(article_tag)
             article_tag.css('source[srcset]')
                        .flat_map { |source| source['srcset'].split(',') }
-                       .filter_map { |srcset| srcset.split.first.strip }
-                       .max_by(&:size)
+                       .map { |srcset| srcset.split.first.strip }.max_by(&:size)
           end
 
           def extract_image_from_style(article_tag)
-            article_tag.css('[style], *[style]').to_a
-                       .keep_if { |tag| tag['style'].include?('background-image') }
-                       .filter_map { |tag| tag['style'][/url\(['"]?(.*?)['"]?\)/, 1] }
+            article_tag.css('[style*="background-image"]')
+                       .map { |tag| tag['style'][/url\(['"]?(.*?)['"]?\)/, 1] }
+                       .keep_if { |src| src&.start_with?('data:') }
                        .max_by(&:size)
           end
 
@@ -117,7 +115,7 @@ module Html2rss
                    end
 
             sanitized_text = text.gsub(/\s+/, ' ').strip
-            sanitized_text.empty? ? nil : sanitized_text
+            sanitized_text unless sanitized_text.empty?
           end
 
           def generate_id

@@ -10,20 +10,22 @@ module Html2rss
         # Base class for Schema.org schema_objects.
         #
         # To add more attributes:
-        # 1. Create a subclass
-        # 2. Override `#specific_attributes`
+        # 1. Create a subclass.
+        # 2. Override `#specific_attributes`.
         # 3. For each specific attribute, define a method that returns the desired value.
-        # 4. Add the subclass to Schema::schema_object_TYPES and Schema#scraper_from_schema_object.
+        # 4. Add the subclass to `Schema::SCHEMA_OBJECT_TYPES` and `Schema#scraper_from_schema_object`.
         class Base
+          DEFAULT_ATTRIBUTES = %i[id title description url image published_at].freeze
+
           def initialize(schema_object, url:)
             @schema_object = schema_object
             @url = url
-            @attributes = %i[id title description url image published_at] + specific_attributes
+            @attributes = DEFAULT_ATTRIBUTES + specific_attributes
           end
 
-          # @return [Hash] the scraped article_hash
+          # @return [Hash] the scraped article hash
           def call
-            @attributes.to_h do |attribute, _|
+            @attributes.to_h do |attribute|
               [attribute, public_send(attribute)]
             end
           end
@@ -32,13 +34,11 @@ module Html2rss
           def title = schema_object[:title]
 
           def description
-            [
-              schema_object[:description], schema_object[:schema_object_body], schema_object[:abstract
-              ]
-            ].max_by { |desc| desc.to_s.size }
+            [schema_object[:description], schema_object[:schema_object_body], schema_object[:abstract]]
+              .max_by { |desc| desc.to_s.size }
           end
 
-          # @return [Adressable::URI, nil] the URL of the schema_object
+          # @return [Addressable::URI, nil] the URL of the schema object
           def url
             url = schema_object[:url]
             if url.to_s.empty?
@@ -56,9 +56,11 @@ module Html2rss
 
           attr_reader :schema_object
 
-          def images = [schema_object[:image]].flatten.compact
+          def images
+            Array(schema_object[:image]).compact
+          end
 
-          # @return [Array<Symbol>] addition attributes for specific type (override in subclass)
+          # @return [Array<Symbol>] additional attributes for specific type (override in subclass)
           def specific_attributes
             []
           end

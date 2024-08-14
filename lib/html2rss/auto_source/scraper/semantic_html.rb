@@ -7,17 +7,14 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scraps articles by looking for common markup tags (article, section, li)
+      # Scrapes articles by looking for common markup tags (article, section, li)
       # containing an <a href> tag.
       #
       # See:
       # 1. https://developer.mozilla.org/en-US/docs/Web/HTML/Element/article
       class SemanticHtml
         ##
-        ## key = parent element name to find, when searching for articles,
-        # value = array of CSS selectors selecting <a href>
-        #
-        # Note: X :not(x) a[href] is used to avoid selecting <X><X><a href></X></X>
+        # Map of parent element names to CSS selectors for finding <a href> tags.
         ANCHOR_TAG_SELECTORS = {
           'section' => ['section :not(section) a[href]'],
           'tr' => ['table tr :not(tr) a[href]'],
@@ -32,20 +29,27 @@ module Html2rss
           ]
         }.freeze
 
-        ARTICLE_TAGS = ANCHOR_TAG_SELECTORS.keys
-
+        ARTICLE_TAGS = ANCHOR_TAG_SELECTORS.keys.freeze
         HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
 
         # TODO: also handle <h2><a href>...</a></h2> as article
         # TODO: also handle <X class="article"><a href>...</a></X> as article
 
+        # Check if the parsed_body contains articles
+        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document
+        # @return [Boolean] True if articles are found, otherwise false.
         def self.articles?(parsed_body)
           ANCHOR_TAG_SELECTORS.each_value do |selectors|
-            selectors.each { |selector| return true if parsed_body.css(selector).any? }
+            return true if selectors.any? { |selector| parsed_body.at_css(selector) }
           end
           false
         end
 
+        # Finds the closest ancestor tag matching the specified tag name
+        # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
+        # @param tag_name [String] The tag name to search for
+        # @param stop_tag [String] The tag name to stop searching at
+        # @return [Nokogiri::XML::Node] The found ancestor tag or the current tag if matched
         def self.find_tag_in_ancestors(current_tag, tag_name, stop_tag: 'html')
           return current_tag if current_tag.name == tag_name
 
@@ -58,10 +62,18 @@ module Html2rss
           current_tag
         end
 
+        # Finds the closest matching selector upwards in the DOM tree
+        # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
+        # @param selector [String] The CSS selector to search for
+        # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
         def self.find_closest_selector(current_tag, selector: 'a[href]:not([href=""])')
-          current_tag.css(selector).first || find_closest_selector_upwards(current_tag, selector:)
+          current_tag.at_css(selector) || find_closest_selector_upwards(current_tag, selector:)
         end
 
+        # Helper method to find a matching selector upwards
+        # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
+        # @param selector [String] The CSS selector to search for
+        # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
         def self.find_closest_selector_upwards(current_tag, selector:)
           while current_tag
             found = current_tag.at_css(selector)
@@ -74,7 +86,7 @@ module Html2rss
         end
 
         # Returns an array of [tag_name, selector] pairs
-        # @return [Array<[<String>, <String>]>]
+        # @return [Array<[String, String]>] Array of tag name and selector pairs
         def self.anchor_tag_selector_pairs
           ANCHOR_TAG_SELECTORS.flat_map do |tag_name, selectors|
             selectors.map { |selector| [tag_name, selector] }
@@ -89,18 +101,18 @@ module Html2rss
         attr_reader :parsed_body
 
         ##
-        # @return [Array<Hash>] The scraped articles.
-        def each(&)
-          SemanticHtml.anchor_tag_selector_pairs.each do |tag_name, selector|
-            parsed_body.css(selector)
-                       .each do |selected_tag|
-              article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
+        # @yieldparam [Hash] The scraped article hash
+        # @return [Enumerator] Enumerator for the scraped articles
+        def each
+          return enum_for(:each) unless block_given?
 
+          SemanticHtml.anchor_tag_selector_pairs.each do |tag_name, selector|
+            parsed_body.css(selector).each do |selected_tag|
+              article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
               article_hash = ArticleExtractor.new(article_tag, url: @url).scrape
               next unless article_hash
 
               article_hash[:generated_by] = self.class
-
               yield article_hash
             end
           end

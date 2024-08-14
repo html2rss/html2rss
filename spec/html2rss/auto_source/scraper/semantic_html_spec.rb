@@ -188,26 +188,32 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         <div>
           <p>
             <a href="#" id="link">Link</a>
-            <span id="span">Span</span>
+            <span id="span">
+              <p>:rocket:</p>
+            </span>
           </p>
         </div>
       HTML
     end
 
     let(:document) { Nokogiri::HTML(html) }
-    let(:element) { document.at_css('#span') }
+
     let(:expected_anchor) { document.at_css('a') }
 
-    context 'when an anchor is found in the current element' do
-      it 'returns the anchor' do
-        anchor = described_class.find_closest_selector_upwards(element, selector: 'a')
+    context 'when an anchor is sibling to current_tag' do
+      let(:current_tag) { document.at_css('#span') }
+
+      it 'returns the closest anchor in as sibling' do
+        anchor = described_class.find_closest_selector_upwards(current_tag, selector: 'a')
         expect(anchor).to eq(expected_anchor)
       end
     end
 
-    context 'when an anchor is not found in the current element' do
-      it 'returns the closest anchor in the parent elements' do
-        anchor = described_class.find_closest_selector_upwards(element.parent, selector: 'a')
+    context 'when an anchor is not below current_tag' do
+      let(:current_tag) { document.at_css('p') }
+
+      it 'returns the anchor upwards from current_tag' do
+        anchor = described_class.find_closest_selector_upwards(current_tag, selector: 'a')
         expect(anchor).to eq(expected_anchor)
       end
     end
