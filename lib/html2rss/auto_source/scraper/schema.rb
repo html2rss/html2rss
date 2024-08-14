@@ -18,11 +18,9 @@ module Html2rss
 
         class << self
           def articles?(parsed_body)
-            parsed_body.css(TAG_SELECTOR).any? { |script| Schema.supported?(script.text) }
-          end
-
-          def supported?(script_text)
-            SCHEMA_OBJECT_TYPES.any? { |type| script_text.include?("\"@type\":\"#{type}\"") }
+            parsed_body.css(TAG_SELECTOR).any? do |script|
+              SCHEMA_OBJECT_TYPES.any? { |type| script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/) }
+            end
           end
 
           ##
@@ -35,20 +33,40 @@ module Html2rss
           # :reek:DuplicateMethodCall
           def from(object)
             case object
-            in Hash if supported_schema_object?(object)
-              [object]
-            in Hash
-              object.values.flat_map { |item| from(item) }.compact
-            in Array
-              object.flat_map { |item| from(item) }.compact
+            when Nokogiri::XML::Element
+              from(parse_script_tag(object))
+            when Hash
+              supported_schema_object?(object) ? [object] : object.values.flat_map { |item| from(item) }
+            when Array
+              object.flat_map { |item| from(item) }
             else
               []
             end
           end
 
           def supported_schema_object?(object)
-            object_type = object[:@type]
-            object_type && SCHEMA_OBJECT_TYPES.include?(object_type)
+            scraper_for_schema_object(object) ? true : false
+          end
+
+          ##
+          # @return [Scraper::Schema::Base, Scraper::Schema::NewsArticle, nil]
+          def scraper_for_schema_object(schema_object)
+            case schema_object[:@type]
+            when 'Article' then Base
+            when 'NewsArticle' then NewsArticle
+            else
+              Log.warn('Schema#scraper_for_schema_object: Unsupported schema object @type')
+              nil
+            end
+          end
+
+          private
+
+          def parse_script_tag(script_tag)
+            JSON.parse(script_tag.text, symbolize_names: true)
+          rescue JSON::ParserError => error
+            Log.warn('Schema#schema_objects: Failed to parse JSON', error: error.message)
+            []
           end
         end
 
@@ -58,46 +76,26 @@ module Html2rss
         end
 
         ##
+        # @yield [Hash] Each scraped article_hash
         # @return [Array<Hash>] the scraped article_hashes
         def each(&)
           schema_objects.filter_map do |schema_object|
-            next unless (klass = scraper_from_schema_object(schema_object))
+            next unless (klass = self.class.scraper_for_schema_object(schema_object))
             next unless (article_hash = klass.new(schema_object, url:).call)
 
-            if article_hash
-              article_hash[:generated_by] = klass
+            article_hash[:generated_by] = klass
 
-              yield article_hash
+            yield article_hash
 
-              article_hash
-            end
+            article_hash
           end
         end
 
         private
 
         def schema_objects
-          schema_objects = @parsed_body.css(TAG_SELECTOR).filter_map do |script_tag|
-            hash_or_array = JSON.parse(script_tag.text, symbolize_names: true)
-
-            Schema.from(hash_or_array)
-          end
-
-          schema_objects.flatten!
-          schema_objects
-        end
-
-        ##
-        # @return [Scraper::Schema::Base, Scraper::Schema::NewsArticle, nil]
-        def scraper_from_schema_object(schema_object)
-          object_type = schema_object[:@type]
-
-          case object_type
-          when 'Article' then Base
-          when 'NewsArticle' then NewsArticle
-          else
-            Log.warn("Schema#scraper_for_type: Unsupported schema object.@type #{object_type}")
-            nil
+          @parsed_body.css(TAG_SELECTOR).flat_map do |tag|
+            Schema.from(tag)
           end
         end
 

@@ -70,33 +70,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
 
       it { is_expected.to be_falsey }
     end
-  end
 
-  describe '.supported?(script_text)' do
-    subject(:supported?) { described_class.supported?(script_text) }
-
-    context 'with a NewsArticle' do
-      let(:script_text) { news_article_schema_object.to_json }
+    context 'with excessive spacing in JSON and supported @type' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type"  :  "NewsArticle"  }</script>')
+      end
 
       it { is_expected.to be_truthy }
-    end
-
-    context 'with an Article' do
-      let(:script_text) { article_schema_object.to_json }
-
-      it { is_expected.to be_truthy }
-    end
-
-    context 'with an empty string' do
-      let(:script_text) { '' }
-
-      it { is_expected.to be_falsey }
-    end
-
-    context 'with a string without @type' do
-      let(:script_text) { { foo: 'bar' }.to_json }
-
-      it { is_expected.to be_falsey }
     end
   end
 
