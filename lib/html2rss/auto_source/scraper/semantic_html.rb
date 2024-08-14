@@ -97,8 +97,11 @@ module Html2rss
               article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
 
               article_hash = ArticleExtractor.new(article_tag, url: @url).scrape
+              next unless article_hash
 
-              yield article_hash if article_hash
+              article_hash[:generated_by] = self.class
+
+              yield article_hash
             end
           end
         end

@@ -24,10 +24,9 @@ module Html2rss
         end
       end
 
-      def initialize(channel:, articles:, url:)
+      def initialize(channel:, articles:)
         @channel = channel
         @articles = articles
-        @url = url
       end
 
       def call
@@ -40,14 +39,18 @@ module Html2rss
 
       private
 
-      attr_reader :channel, :articles, :url
+      attr_reader :channel, :articles
 
       def make_channel(maker)
         maker.language = channel[:language]
         maker.title = channel[:title]
         maker.link = channel[:url]
         maker.description = channel[:description]
-        maker.generator = "html2rss [autosourced] V. #{::Html2rss::VERSION}"
+        maker.generator = generator
+      end
+
+      def generator
+        "html2rss V. #{::Html2rss::VERSION} (using auto_source scrapers: #{scraper_counts})"
       end
 
       def make_items(maker)
@@ -62,6 +65,17 @@ module Html2rss
             item_maker.link = article.url
           end
         end
+      end
+
+      def scraper_counts
+        scraper_counts = +''
+
+        articles.each_with_object(Hash.new(0)) { |article, counts| counts[article.generated_by] += 1 }
+                .each do |klass, count|
+          scraper_counts.concat("[#{klass.to_s.gsub('Html2rss::AutoSource::Scraper::', '')}=#{count}]")
+        end
+
+        scraper_counts
       end
     end
   end

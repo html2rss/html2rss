@@ -11,11 +11,11 @@ module Html2rss
         def call(articles, **_options)
           Log.debug "Reducer: inited with #{articles.size} articles"
 
-          articles = keep_longest_attributes(articles)
+          articles.filter!(&:valid?)
 
           Log.debug "Reducer: having longest #{articles.size} articles"
 
-          articles.filter!(&:valid?)
+          articles = keep_longest_attributes(articles, keep: [:generated_by]) { |article| article.url.path }
 
           Log.debug "Reducer: end with #{articles.size} valid articles"
 
@@ -24,25 +24,31 @@ module Html2rss
 
         private
 
-        def keep_longest_attributes(articles)
-          grouped_by_url = articles.group_by { |article| article.url.to_s.split('#').first }
-          grouped_by_url.each_with_object([]) do |(_url, articles_with_same_url), result|
-            result << find_longest_attributes_article(articles_with_same_url)
+        # @param articles [Array<Article>]
+        # @param block [Proc] returns a key to group the articles for further processing
+        # @return [Array<Article>] reduced articles
+        def keep_longest_attributes(articles, keep:, &)
+          grouped_by_block = articles.group_by(&)
+          grouped_by_block.each_with_object([]) do |(_key, grouped_articles), result|
+            result << find_longest_attributes_article(grouped_articles, keep:)
           end
         end
 
-        def find_longest_attributes_article(articles)
+        def find_longest_attributes_article(articles, keep:)
           longest_attributes_article = {}
           articles.each do |article|
-            keep_longest_attributes_from_article(longest_attributes_article, article)
+            keep_longest_attributes_from_article(longest_attributes_article, article, keep:)
           end
 
           Article.new(**longest_attributes_article)
         end
 
-        def keep_longest_attributes_from_article(longest_attributes_article, article)
+        def keep_longest_attributes_from_article(longest_attributes_article, article, keep:)
           article.each do |key, value|
-            if value && value.to_s.size > longest_attributes_article[key].to_s.size
+            if keep.include?(key)
+              longest_attributes_article[key] ||= []
+              longest_attributes_article[key] << value
+            elsif value && value.to_s.size > longest_attributes_article[key].to_s.size
               longest_attributes_article[key] = value
             end
           end

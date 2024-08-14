@@ -11,11 +11,13 @@ module Html2rss
     class Article
       include Enumerable
 
-      PROVIDED_KEYS = %i[id title description url image guid published_at].freeze
+      PROVIDED_KEYS = %i[id title description url image guid published_at generated_by].freeze
 
+      # @param options [Hash<Symbol, String>]
       def initialize(**options)
         @to_h = {}
         options.each_pair { |key, value| @to_h[key] = value.freeze }
+        @to_h.freeze
 
         return unless (unknown_keys = options.keys - PROVIDED_KEYS).any?
 
@@ -60,11 +62,15 @@ module Html2rss
 
       # @return [Time, nil]
       def published_at
-        if (string = @to_h[:published_at])
+        unless (string = @to_h[:published_at]).strip.empty?
           Time.parse(string)
         end
       rescue StandardError
         nil
+      end
+
+      def generated_by
+        @to_h[:generated_by]
       end
     end
   end

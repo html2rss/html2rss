@@ -60,14 +60,17 @@ module Html2rss
         ##
         # @return [Array<Hash>] the scraped article_hashes
         def each(&)
-          schema_objects.map do |schema_object|
-            klass = scraper_from_schema_object(schema_object)
-            return nil unless klass
+          schema_objects.filter_map do |schema_object|
+            next unless (klass = scraper_from_schema_object(schema_object))
+            next unless (article_hash = klass.new(schema_object, url:).call)
 
-            article_hash = klass.new(schema_object, url:).call
+            if article_hash
+              article_hash[:generated_by] = klass
 
-            yield article_hash if article_hash
-            article_hash
+              yield article_hash
+
+              article_hash
+            end
           end
         end
 

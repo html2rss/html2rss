@@ -78,7 +78,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
     let(:end_of_rss) do
       <<~XML
-            <generator>html2rss [autosourced] V. #{Html2rss::VERSION}</generator>
+            <generator>html2rss V. #{Html2rss::VERSION} (using auto_source scrapers: [SemanticHtml=128])</generator>
           </channel>
         </rss>
       XML

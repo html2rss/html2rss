@@ -23,7 +23,7 @@ module Html2rss
 
           # @return [Hash] the scraped article_hash
           def call
-            @attributes.to_h do |attribute|
+            @attributes.to_h do |attribute, _|
               [attribute, public_send(attribute)]
             end
           end

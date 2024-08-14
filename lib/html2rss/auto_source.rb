@@ -21,7 +21,6 @@ module Html2rss
 
     def build
       Html2rss::AutoSource::RssBuilder.new(
-        url:,
         channel: extract_channel,
         articles: scrape_articles.then do |articles|
                     Reducer.call(articles, url:)
