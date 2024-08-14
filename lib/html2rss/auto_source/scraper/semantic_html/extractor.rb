@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 module Html2rss
   class AutoSource
     module Scraper
@@ -9,9 +11,9 @@ module Html2rss
         # It focuses on finding a headline first, and from it traverse as much as possible,
         # to find the DOM upwards to find the other details.
         class Extractor
-          INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].freeze
+          INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].to_set.freeze
           NOT_HEADLINE_SELECTOR = (SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" } +
-                                   INVISIBLE_CONTENT_TAG_SELECTORS).freeze
+                                   INVISIBLE_CONTENT_TAG_SELECTORS.to_a).freeze
 
           def initialize(article_tag, url:)
             @article_tag = article_tag
@@ -56,10 +58,14 @@ module Html2rss
           end
 
           def extract_title
-            return text_from_tag(heading) if heading&.text
-
-            largest_tag = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).max_by { |tag| tag.text.size }
-            text_from_tag(largest_tag)
+            @extract_title ||= if heading&.text
+                                 text_from_tag(heading)
+                               else
+                                 text_from_tag(
+                                   article_tag.css(SemanticHtml::HEADING_TAGS.join(','))
+                                              .max_by { |tag| tag.text.size }
+                                 )
+                               end
           end
 
           def extract_description
@@ -69,7 +75,7 @@ module Html2rss
             description = text_from_tag(article_tag)
             return nil unless description
 
-            title_text = heading&.text
+            title_text = extract_title
             description.gsub!(title_text, '') if title_text
             description.strip!
             description.empty? ? nil : description
@@ -83,33 +89,16 @@ module Html2rss
           end
 
           def extract_image
-            img_src = extract_image_from_img(article_tag) ||
-                      extract_image_from_source(article_tag) ||
-                      extract_image_from_style(article_tag)
-            Utils.build_absolute_url_from_relative(img_src, url) if img_src
-          end
-
-          def extract_image_from_img(article_tag)
-            article_tag.at_css('img[src]')&.[]('src')
-          end
-
-          def extract_image_from_source(article_tag)
-            article_tag.css('source[srcset]')
-                       .flat_map { |source| source['srcset'].split(',') }
-                       .map { |srcset| srcset.split.first.strip }.max_by(&:size)
-          end
-
-          def extract_image_from_style(article_tag)
-            article_tag.css('[style*="background-image"]')
-                       .map { |tag| tag['style'][/url\(['"]?(.*?)['"]?\)/, 1] }
-                       .keep_if { |src| src&.start_with?('data:') }
-                       .max_by(&:size)
+            Image.call(article_tag, url:)
           end
 
           def text_from_tag(tag, separator: ' ')
-            children = tag.children
+            children = tag.children.to_a.reject do |child_tag|
+              INVISIBLE_CONTENT_TAG_SELECTORS.member?(child_tag.name)
+            end
+
             text = if children.empty?
-                     tag.text
+                     tag.text.strip
                    else
                      children.filter_map { |child| text_from_tag(child) }.join(separator)
                    end
