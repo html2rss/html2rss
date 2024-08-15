@@ -58,7 +58,7 @@ module Html2rss
 
       # @return [Addressable::URI, nil]
       def image
-        @image ||= Html2rss::Utils.sanitize_url @to_h[:image]
+        @image ||= Html2rss::Utils.sanitize_url(@to_h[:image])
       end
 
       # Generates a unique identifier based on the URL and ID using CRC32.
@@ -70,7 +70,7 @@ module Html2rss
       # Parses and returns the published_at time.
       # @return [Time, nil]
       def published_at
-        return if (string = @to_h[:published_at]).to_s.strip.empty?
+        return if (string = @to_h[:published_at].to_s).strip.empty?
 
         @published_at ||= Time.parse(string)
       rescue ArgumentError

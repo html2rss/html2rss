@@ -11,6 +11,8 @@ module Html2rss
   # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
+    class NoArticlesFound < Html2rss::Error; end
+
     CHANNEL_EXTRACTORS = [
       Channel::Metadata
     ].freeze
@@ -20,13 +22,16 @@ module Html2rss
     end
 
     def build
-      Html2rss::AutoSource::RssBuilder.new(
-        channel: extract_channel,
-        articles: scrape_articles.then do |articles|
-                    Reducer.call(articles, url:)
-                    Cleanup.call(articles, url:)
-                  end
-      ).call
+      articles = scrape_articles
+
+      Reducer.call(articles, url:)
+      Cleanup.call(articles, url:, keep_different_domain: true)
+
+      raise NoArticlesFound if articles.empty?
+
+      channel = extract_channel
+
+      Html2rss::AutoSource::RssBuilder.new(channel:, articles:).call
     end
 
     private
@@ -44,11 +49,16 @@ module Html2rss
       end
     end
 
+    # Scrape articles from the parsed body
     # @return [Array<Article>]
     def scrape_articles
-      Parallel.flat_map(Scraper.from(parsed_body)) do |klass|
+      articles = Parallel.flat_map(Scraper.from(parsed_body)) do |klass|
         klass.new(parsed_body, url:).map { |article_hash| Article.new(**article_hash) }
       end
+
+      Log.debug "AutoSource#scrape_articles: #{articles.size}"
+
+      articles
     end
   end
 end

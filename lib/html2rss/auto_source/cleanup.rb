@@ -8,7 +8,7 @@ module Html2rss
     # It applies various strategies to filter and refine the article list.
     class Cleanup
       class << self
-        def call(articles, url:)
+        def call(articles, url:, keep_different_domain: false)
           Log.debug "Cleanup: start with #{articles.size} articles"
 
           articles.select!(&:valid?)
@@ -19,7 +19,7 @@ module Html2rss
           deduplicate_by!(articles, :title)
 
           keep_only_http_urls!(articles)
-          reject_different_domain!(articles, url)
+          reject_different_domain!(articles, url) unless keep_different_domain
 
           Log.debug "Cleanup: end with #{articles.size} articles"
           articles
@@ -33,7 +33,7 @@ module Html2rss
         # @param articles [Array<Article>] The list of articles to process.
         # @param key [Symbol] The key to check for short values.
         # @param min_words [Integer] The minimum number of words required.
-        def remove_short!(articles, key = :title, min_words: 3)
+        def remove_short!(articles, key = :title, min_words: 2)
           articles.reject! do |article|
             value = article.public_send(key)
             value.nil? || value.to_s.split.size < min_words
