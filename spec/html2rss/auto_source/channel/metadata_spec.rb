@@ -55,5 +55,17 @@ RSpec.describe Html2rss::AutoSource::Channel::Metadata do
         expect(call[:description]).to eq('')
       end
     end
+
+    context 'with a og:image' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<head><meta property="og:image" content="https://example.com/images/rock.jpg" />
+</head>')
+      end
+
+      it 'extracts the url', :aggregate_failures do
+        expect(call[:image]).to be_a(Addressable::URI)
+        expect(call[:image].to_s).to eq('https://example.com/images/rock.jpg')
+      end
+    end
   end
 end

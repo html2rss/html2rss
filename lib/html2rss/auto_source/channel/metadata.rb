@@ -25,7 +25,8 @@ module Html2rss
             url: extract_url,
             title: extract_title,
             language: extract_language,
-            description: extract_description
+            description: extract_description,
+            image: extract_image
           }
         end
 
@@ -49,6 +50,11 @@ module Html2rss
 
         def extract_description
           parsed_body.at_css('meta[name="description"]')&.[]('content') || ''
+        end
+
+        def extract_image
+          url = parsed_body.at_css('meta[property="og:image"]')&.[]('content')
+          Html2rss::Utils.sanitize_url(url) if url
         end
       end
     end

@@ -42,10 +42,10 @@ module Html2rss
       attr_reader :channel, :articles
 
       def make_channel(maker)
-        maker.language = channel[:language]
-        maker.title = channel[:title]
-        maker.link = channel[:url]
-        maker.description = channel[:description]
+        %i[language title url description image].each do |key|
+          maker.public_send(:"#{key}=", channel[key])
+        end
+
         maker.generator = generator
       end
 
