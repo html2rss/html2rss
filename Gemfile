@@ -9,15 +9,25 @@ gemspec
 
 group :development, :test do
   gem 'byebug'
-  gem 'rake'
-  gem 'rspec', '~> 3.0'
-  gem 'rubocop'
-  gem 'rubocop-md'
-  gem 'rubocop-performance'
-  gem 'rubocop-rake'
-  gem 'rubocop-rspec'
-  gem 'vcr'
-  gem 'yard'
+  gem 'rake', require: false
+  gem 'yard', require: false
+
+  gem 'reek', require: false
+
+  gem 'rubocop', require: false
+  gem 'rubocop-md', require: false
+  gem 'rubocop-performance', require: false
+  gem 'rubocop-rake', require: false
+  gem 'rubocop-rspec', require: false
+
+  gem 'rspec', '~> 3.0', require: false
+  gem 'rspec-instafail', require: false
+  gem 'vcr', require: false
+
+  gem 'guard', require: false
+  gem 'guard-reek', require: false
+  gem 'guard-rspec', require: false
+  gem 'guard-rubocop', require: false
 end
 
 group :test do
