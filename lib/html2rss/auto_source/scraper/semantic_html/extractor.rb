@@ -40,6 +40,7 @@ module Html2rss
 
           attr_reader :article_tag, :url, :heading, :extract_url
 
+          # @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLTimeElement/dateTime
           def extract_published_at
             times = article_tag.css('time[datetime]')
                                .filter_map do |tag|
@@ -58,7 +59,7 @@ module Html2rss
           end
 
           def extract_title
-            @extract_title ||= if heading&.text
+            @extract_title ||= if heading.children.empty? && heading.text
                                  text_from_tag(heading)
                                else
                                  text_from_tag(

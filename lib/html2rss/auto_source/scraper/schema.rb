@@ -13,6 +13,8 @@ module Html2rss
       # 1. https://schema.org/NewsArticle
       # 2. https://developers.google.com/search/docs/appearance/structured-data/article#microdata
       class Schema
+        include Enumerable
+
         TAG_SELECTOR = 'script[type="application/ld+json"]'
         SCHEMA_OBJECT_TYPES = %w[Article NewsArticle].freeze
 

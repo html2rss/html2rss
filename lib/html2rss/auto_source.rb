@@ -47,11 +47,7 @@ module Html2rss
     # @return [Array<Article>]
     def scrape_articles
       Parallel.flat_map(Scraper.from(parsed_body)) do |klass|
-        [].tap do |articles|
-          klass.new(parsed_body, url:).each do |article_hash|
-            articles << Article.new(**article_hash)
-          end
-        end
+        klass.new(parsed_body, url:).map { |article_hash| Article.new(**article_hash) }
       end
     end
   end

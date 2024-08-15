@@ -13,6 +13,8 @@ module Html2rss
       # See:
       # 1. https://developer.mozilla.org/en-US/docs/Web/HTML/Element/article
       class SemanticHtml
+        include Enumerable
+
         ##
         # Map of parent element names to CSS selectors for finding <a href> tags.
         ANCHOR_TAG_SELECTORS = {

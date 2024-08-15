@@ -25,7 +25,6 @@ module Html2rss
         private
 
         # @param articles [Array<Article>]
-        # @param block [Proc] returns a key to group the articles for further processing
         # @return [Array<Article>] reduced articles
         def reduce_by_keeping_longest_values(articles, keep:, &)
           grouped_by_block = articles.group_by(&)
