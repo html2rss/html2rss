@@ -33,9 +33,6 @@ module Html2rss
         ARTICLE_TAGS = ANCHOR_TAG_SELECTORS.keys.freeze
         HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
 
-        # TODO: also handle <h2><a href>...</a></h2> as article
-        # TODO: also handle <X class="article"><a href>...</a></X> as article
-
         # Check if the parsed_body contains articles
         # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document
         # @return [Boolean] True if articles are found, otherwise false.
