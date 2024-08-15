@@ -47,8 +47,11 @@ module Html2rss
       end
 
       def description
-        # TODO: reuse Postprocessor Sanitize
-        @description ||= Sanitize.fragment(@to_h[:description])
+        return @description if defined?(@description)
+
+        return if url.to_s.empty? || @to_h[:description].to_s.empty?
+
+        @description ||= Html2rss::AttributePostProcessors::SanitizeHtml.get(@to_h[:description], url)
       end
 
       # @return [Addressable::URI, nil]
