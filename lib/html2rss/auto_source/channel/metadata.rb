@@ -42,9 +42,9 @@ module Html2rss
         end
 
         def extract_language
-          return parsed_body['lang'] if parsed_body.name == 'html'
+          return parsed_body['lang'] if parsed_body.name == 'html' && parsed_body['lang']
 
-          parsed_body.at_css('html[lang]')&.[]('lang')
+          parsed_body.at_css('[lang]')&.[]('lang')
         end
 
         def extract_description

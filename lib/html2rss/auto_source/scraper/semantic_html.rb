@@ -20,7 +20,6 @@ module Html2rss
         ANCHOR_TAG_SELECTORS = {
           'section' => ['section :not(section) a[href]'],
           'tr' => ['table tr :not(tr) a[href]'],
-          'div' => ['div :not(div) a[href]'],
           'article' => [
             'article :not(article) a[href]',
             'article a[href]'
@@ -41,6 +40,8 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document
         # @return [Boolean] True if articles are found, otherwise false.
         def self.articles?(parsed_body)
+          return false unless parsed_body
+
           ANCHOR_TAG_SELECTORS.each_value do |selectors|
             return true if selectors.any? { |selector| parsed_body.at_css(selector) }
           end
