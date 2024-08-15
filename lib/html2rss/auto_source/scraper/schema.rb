@@ -57,7 +57,7 @@ module Html2rss
             when 'Article' then Base
             when 'NewsArticle' then NewsArticle
             else
-              Log.warn('Schema#scraper_for_schema_object: Unsupported schema object @type')
+              Log.warn("Schema#scraper_for_schema_object: Unsupported schema object @type: #{schema_object[:@type]}")
               nil
             end
           end
