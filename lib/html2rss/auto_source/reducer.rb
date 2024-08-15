@@ -11,15 +11,7 @@ module Html2rss
         def call(articles, **_options)
           Log.debug "Reducer: inited with #{articles.size} articles"
 
-          articles.filter!(&:valid?)
-
-          Log.debug "Reducer: having longest #{articles.size} articles"
-
-          articles = reduce_by_keeping_longest_values(articles, keep: [:generated_by]) { |article| article.url.path }
-
-          Log.debug "Reducer: end with #{articles.size} valid articles"
-
-          articles
+          reduce_by_keeping_longest_values(articles, keep: [:generated_by]) { |article| article.url&.path }
         end
 
         private

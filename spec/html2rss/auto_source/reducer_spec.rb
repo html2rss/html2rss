@@ -44,23 +44,5 @@ RSpec.describe Html2rss::AutoSource::Reducer do
         expect(result[0].generated_by).to eq([RSpec, RSpec, RSpec])
       end
     end
-
-    describe 'filtering out invalid articles' do
-      let(:articles) do
-        [
-          Html2rss::AutoSource::Article.new(url: 'a', id: 1, title: 'Foobar'),
-          Html2rss::AutoSource::Article.new(url: 'b', id: 2, title: nil),
-          Html2rss::AutoSource::Article.new(url: 'c', id: 3, title: 'Foobar')
-        ]
-      end
-
-      it 'filters out invalid Html2rss::AutoSource::Articles', :aggregate_failures do
-        result = described_class.call(articles)
-
-        expect(result.size).to eq(2)
-        expect(result[0].valid?).to be true
-        expect(result[1].valid?).to be true
-      end
-    end
   end
 end
