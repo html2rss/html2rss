@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Base do
   subject(:instance) { described_class.new(schema_object, url: nil) }
 
   let(:schema_object) do
-    { title: 'Baustellen der Nation' }
+    { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation' }
   end
 
   describe '#call' do

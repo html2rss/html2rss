@@ -16,7 +16,26 @@ module Html2rss
         include Enumerable
 
         TAG_SELECTOR = 'script[type="application/ld+json"]'
-        SCHEMA_OBJECT_TYPES = %w[Article NewsArticle].freeze
+        SCHEMA_OBJECT_TYPES = %w[
+          AdvertiserContentArticle
+          AnalysisNewsArticle
+          APIReference
+          Article
+          AskPublicNewsArticle
+          BackgroundNewsArticle
+          BlogPosting
+          DiscussionForumPosting
+          LiveBlogPosting
+          NewsArticle
+          OpinionNewsArticle
+          Report
+          ReportageNewsArticle
+          ReviewNewsArticle
+          SatiricalArticle
+          ScholarlyArticle
+          SocialMediaPosting
+          TechArticle
+        ].to_set.freeze
 
         class << self
           def articles?(parsed_body)
@@ -53,9 +72,8 @@ module Html2rss
           ##
           # @return [Scraper::Schema::Base, Scraper::Schema::NewsArticle, nil]
           def scraper_for_schema_object(schema_object)
-            case schema_object[:@type]
-            when 'Article' then Base
-            when 'NewsArticle' then NewsArticle
+            if SCHEMA_OBJECT_TYPES.member?(schema_object[:@type])
+              Base
             else
               Log.warn("Schema#scraper_for_schema_object: Unsupported schema object @type: #{schema_object[:@type]}")
               nil
