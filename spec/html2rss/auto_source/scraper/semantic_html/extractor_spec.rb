@@ -70,4 +70,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
       expect(article_hash).to be_nil
     end
   end
+
+  describe '.visible_text_from_tag' do
+    subject(:visible_text) { described_class.visible_text_from_tag(tag) }
+
+    let(:tag) do
+      Nokogiri::HTML.fragment('<div>Hello <span>World</span><script>App = {}</script></div>').at_css('div')
+    end
+
+    it 'returns the visible text from the tag and its children' do
+      expect(visible_text).to eq('Hello World')
+    end
+  end
 end

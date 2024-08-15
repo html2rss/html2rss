@@ -15,6 +15,22 @@ module Html2rss
           NOT_HEADLINE_SELECTOR = (SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" } +
                                    INVISIBLE_CONTENT_TAG_SELECTORS.to_a).freeze
 
+          def self.visible_text_from_tag(tag, separator: ' ')
+            text = if (children = tag.children).empty?
+                     tag.text.strip
+                   else
+                     children.filter_map do |child|
+                       next if INVISIBLE_CONTENT_TAG_SELECTORS.include?(child.name)
+
+                       visible_text_from_tag(child)
+                     end.join(separator)
+                   end
+
+            return if (sanitized_text = text.gsub(/\s+/, ' ').strip).empty?
+
+            sanitized_text
+          end
+
           def initialize(article_tag, url:)
             @article_tag = article_tag
             @url = url
@@ -40,6 +56,8 @@ module Html2rss
 
           attr_reader :article_tag, :url, :heading, :extract_url
 
+          def visible_text_from_tag(tag, separator: ' ') = self.class.visible_text_from_tag(tag, separator:)
+
           # @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLTimeElement/dateTime
           def extract_published_at
             times = article_tag.css('time[datetime]')
@@ -60,9 +78,9 @@ module Html2rss
 
           def extract_title
             @extract_title ||= if heading.children.empty? && heading.text
-                                 text_from_tag(heading)
+                                 visible_text_from_tag(heading)
                                else
-                                 text_from_tag(
+                                 visible_text_from_tag(
                                    article_tag.css(SemanticHtml::HEADING_TAGS.join(','))
                                               .max_by { |tag| tag.text.size }
                                  )
@@ -70,10 +88,10 @@ module Html2rss
           end
 
           def extract_description
-            text = text_from_tag(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
+            text = visible_text_from_tag(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
             return text if text
 
-            description = text_from_tag(article_tag)
+            description = visible_text_from_tag(article_tag)
             return nil unless description
 
             title_text = extract_title
@@ -91,21 +109,6 @@ module Html2rss
 
           def extract_image
             Image.call(article_tag, url:)
-          end
-
-          def text_from_tag(tag, separator: ' ')
-            children = tag.children.to_a.reject do |child_tag|
-              INVISIBLE_CONTENT_TAG_SELECTORS.member?(child_tag.name)
-            end
-
-            text = if children.empty?
-                     tag.text.strip
-                   else
-                     children.filter_map { |child| text_from_tag(child) }.join(separator)
-                   end
-
-            sanitized_text = text.gsub(/\s+/, ' ').strip
-            sanitized_text unless sanitized_text.empty?
           end
 
           def generate_id
