@@ -583,8 +583,22 @@ Recommended further readings:
 
 ### Contributing
 
-1. Fork it ( <https://github.com/html2rss/html2rss/fork> )
+Find ideas what to contribute in:
+
+1. <https://github.com/orgs/html2rss/discussions>
+2. the issues tracker: <https://github.com/html2rss/html2rss/issues>
+
+#### Development Helpers
+
+1. `bin/setup`: installs dependencies and sets up the development environment.
+2. `bin/guard`: automatically runs rspec, rubocop and reek when a file changes.
+3. for a modern Ruby development experience: install [`ruby-lsp`](https://github.com/Shopify/ruby-lsp) and integrate it to your IDE:
+   a. [Ruby in Visual Studio Code](https://code.visualstudio.com/docs/languages/ruby)
+
+#### How to submit changes
+
+1. Fork this repo ( <https://github.com/html2rss/html2rss/fork> )
 2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
+3. Implement a commit your changes (`git commit -am 'feat: add XYZ'`)
 4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+5. Create a new Pull Request using the Github web UI
