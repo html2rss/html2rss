@@ -22,12 +22,15 @@ RSpec.describe Html2rss::AutoSource::RssBuilder do
     ]
   end
   let(:channel) do
-    {
-      title: 'Test Channel',
-      url: 'http://example.com',
-      description: 'A test channel',
-      language: 'en'
-    }
+    instance_double(Html2rss::AutoSource::Channel,
+                    title: 'Test Channel',
+                    url: 'http://example.com',
+                    description: 'A test channel',
+                    language: 'en',
+                    generator: "html2rss V. #{Html2rss::VERSION} (using auto_source scrapers: [RSpec=2])",
+                    image: 'http://example.com/image.jpg',
+                    ttl: 12,
+                    last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT')
   end
 
   describe '#call' do

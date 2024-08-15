@@ -13,10 +13,6 @@ module Html2rss
   class AutoSource
     class NoArticlesFound < Html2rss::Error; end
 
-    CHANNEL_EXTRACTORS = [
-      Channel::Metadata
-    ].freeze
-
     def initialize(url)
       @url = Addressable::URI.parse(url)
     end
@@ -29,7 +25,7 @@ module Html2rss
 
       raise NoArticlesFound if articles.empty?
 
-      channel = extract_channel
+      channel = Channel.new(parsed_body, response:, url:, articles:)
 
       Html2rss::AutoSource::RssBuilder.new(channel:, articles:).call
     end
@@ -38,15 +34,13 @@ module Html2rss
 
     attr_reader :url
 
-    # @return [Nokogiri::HTML::Document]
-    def parsed_body
-      @parsed_body ||= Nokogiri.HTML(Html2rss::Utils.request_body_from_url(url)).freeze
+    def response
+      @response ||= Html2rss::Utils.request_url(url)
     end
 
-    def extract_channel
-      CHANNEL_EXTRACTORS.each_with_object({}) do |extractor, channel|
-        channel.merge!(extractor.new(parsed_body, url:).call)
-      end
+    # @return [Nokogiri::HTML::Document]
+    def parsed_body
+      @parsed_body ||= Nokogiri.HTML(response.body).freeze
     end
 
     # Scrape articles from the parsed body

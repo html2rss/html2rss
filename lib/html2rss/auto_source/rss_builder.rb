@@ -42,15 +42,13 @@ module Html2rss
       attr_reader :channel, :articles
 
       def make_channel(maker)
-        %i[language title url description image].each do |key|
-          maker.public_send(:"#{key}=", channel[key])
+        %i[language title description ttl].each do |key|
+          maker.public_send(:"#{key}=", channel.public_send(key))
         end
 
-        maker.generator = generator
-      end
-
-      def generator
-        "html2rss V. #{::Html2rss::VERSION} (using auto_source scrapers: #{scraper_counts})"
+        maker.link = channel.url
+        maker.generator = channel.generator
+        maker.updated = channel.last_build_date
       end
 
       def make_items(maker)
@@ -65,17 +63,6 @@ module Html2rss
             item_maker.link = article.url
           end
         end
-      end
-
-      def scraper_counts
-        scraper_counts = +''
-
-        articles.each_with_object(Hash.new(0)) { |article, counts| counts[article.generated_by] += 1 }
-                .each do |klass, count|
-          scraper_counts.concat("[#{klass.to_s.gsub('Html2rss::AutoSource::Scraper::', '')}=#{count}]")
-        end
-
-        scraper_counts
       end
     end
   end

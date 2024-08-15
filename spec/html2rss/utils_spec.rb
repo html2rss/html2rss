@@ -52,7 +52,7 @@ RSpec.describe Html2rss::Utils do
     end
   end
 
-  describe '.request_body_from_url(url, convert_json_to_xml: false, headers: {})' do
+  describe '.request_url(url, headers: {})' do
     let(:url) { 'http://example.com' }
     let(:options) { { headers: {} } }
     let(:response) { instance_double(Faraday::Response, body: '') }
@@ -60,8 +60,8 @@ RSpec.describe Html2rss::Utils do
 
     it 'uses Faraday for the request' do
       allow(Faraday).to receive(:new).with(options.merge(url:)).and_return(connection)
-      described_class.request_body_from_url(url, **options.merge(convert_json_to_xml: false))
-      expect(response).to have_received(:body)
+
+      expect(described_class.request_url(url, **options)).to eq(response)
     end
   end
 
