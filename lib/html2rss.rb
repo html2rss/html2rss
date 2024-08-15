@@ -15,7 +15,8 @@ module Html2rss
   # The logger instance.
   Log = Logger.new($stdout)
 
-  Log.level = Logger::WARN
+  Log.level = ENV.fetch('LOG_LEVEL', :warn).upcase.to_sym
+
   Log.formatter = proc do |severity, datetime, _progname, msg|
     "#{datetime} [#{severity}] #{msg}\n"
   end
