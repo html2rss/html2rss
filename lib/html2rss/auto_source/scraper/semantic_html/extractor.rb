@@ -74,7 +74,7 @@ module Html2rss
           def find_heading
             heading_tags = article_tag.css(HEADING_TAGS.join(',')).group_by(&:name)
             smallest_heading = heading_tags.keys.min
-            heading_tags[smallest_heading]&.max_by { |tag| tag.text.size }
+            heading_tags[smallest_heading]&.max_by { |tag| visible_text_from_tag(tag)&.size }
           end
 
           def extract_title
