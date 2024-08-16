@@ -25,7 +25,9 @@ module Html2rss
       # @param params [Hash]
       def initialize(channel, params: {})
         raise ArgumentError, 'channel must be a hash' unless channel.is_a?(Hash)
-        raise ArgumentError, 'missing key :url' unless channel[:url].is_a?(String)
+
+        url = channel[:url]
+        raise ArgumentError, 'missing key :url' unless url.is_a?(String) || url.is_a?(Addressable::URI)
 
         @config = process_params(channel, params.transform_keys(&:to_sym))
       end

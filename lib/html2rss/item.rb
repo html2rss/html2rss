@@ -23,7 +23,8 @@ module Html2rss
     # @param config [Html2rss::Config] Configuration object.
     # @return [Array<Html2rss::Item>] list of items fetched.
     def self.from_url(url, config)
-      body = Utils.request_body_from_url(url, convert_json_to_xml: config.json?, headers: config.headers)
+      body = Utils.request_url(url, headers: config.headers).body
+      body = ObjectToXmlConverter.new(JSON.parse(body)).call if config.json?
 
       Nokogiri.HTML(body)
               .css(config.selector_string(Config::Selectors::ITEMS_SELECTOR_NAME))

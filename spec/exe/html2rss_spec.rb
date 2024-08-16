@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'exe/html2rss' do
+RSpec.describe 'exe/html2rss', :slow do
   let(:executable) do
     matches = Gem::Specification.find_all_by_name 'html2rss'
     spec = matches.first
@@ -70,6 +70,13 @@ RSpec.describe 'exe/html2rss' do
       expect(`#{executable} feed spec/feeds.test.yml withparams param='<value>' sign=10`)
         .to include('<description>The value of param is: &lt;value&gt;</description>',
                     'horoscope-general-daily-today.aspx?sign=10')
+    end
+  end
+
+  context 'with argument: auto URL' do
+    it 'exists with error' do
+      `#{executable} auto file://etc/passwd`
+      expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
     end
   end
 end

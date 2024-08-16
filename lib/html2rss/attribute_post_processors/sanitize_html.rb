@@ -44,6 +44,17 @@ module Html2rss
       end
 
       ##
+      # Shorthand method to get the sanitized HTML.
+      # @param html [String]
+      # @param url [String, Addressable::URI]
+      def self.get(html, url)
+        raise ArgumentError, 'url must be a String or Addressable::URI' if url.to_s.empty?
+        return nil if html.to_s.empty?
+
+        new(html, { config: Config::Channel.new({ url: }) }).get
+      end
+
+      ##
       # @return [String]
       def get
         sanitized_html = Sanitize.fragment(value, sanitize_config)

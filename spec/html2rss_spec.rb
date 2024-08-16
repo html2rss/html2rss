@@ -249,4 +249,17 @@ RSpec.describe Html2rss do
       it { expect(feed).to be_a(RSS::Rss) }
     end
   end
+
+  describe '.auto_source' do
+    let(:url) { 'https://www.welt.de/' }
+    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source(url) } }
+
+    it 'returns a RSS::Rss instance with channel and items', :aggregate_failures, :slow do
+      expect(feed_return).to be_a(RSS::Rss)
+      expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
+      expect(feed_return.channel.link).to eq 'https://www.welt.de/'
+      expect(feed_return.items.size >= 29).to be true
+      expect(feed_return.items.first.title).to eq '„Ob man gesund altert, hat jeder zu 91 Prozent selbst in der Hand“'
+    end
+  end
 end

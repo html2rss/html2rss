@@ -71,18 +71,13 @@ module Html2rss
 
     ##
     # @param url [String, Addressable::URI]
-    # @param convert_json_to_xml [true, false] Should JSON be converted to XML
     # @param headers [Hash] additional HTTP request headers to use for the request
-    # @return [String] body of the HTTP response
-    def self.request_body_from_url(url, convert_json_to_xml: false, headers: {})
-      response = Faraday.new(url:, headers:) do |faraday|
+    # @return [Faraday::Response] body of the HTTP response
+    def self.request_url(url, headers: {})
+      Faraday.new(url:, headers:) do |faraday|
         faraday.use Faraday::FollowRedirects::Middleware
         faraday.adapter Faraday.default_adapter
       end.get
-
-      body = response.body
-
-      convert_json_to_xml ? ObjectToXmlConverter.new(JSON.parse(body)).call : body
     end
 
     ##
