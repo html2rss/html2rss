@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+require 'json'
+require 'nokogiri'
+require 'set'
+
 module Html2rss
   class AutoSource
     module Scraper
@@ -99,6 +103,8 @@ module Html2rss
         # @yield [Hash] Each scraped article_hash
         # @return [Array<Hash>] the scraped article_hashes
         def each(&)
+          return enum_for(:each) unless block_given?
+
           schema_objects.filter_map do |schema_object|
             next unless (klass = self.class.scraper_for_schema_object(schema_object))
             next unless (article_hash = klass.new(schema_object, url:).call)

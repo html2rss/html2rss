@@ -140,6 +140,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
   describe '#each' do
     subject(:new) { described_class.new(parsed_body, url: '') }
 
+    let(:parsed_body) { Nokogiri::HTML('') }
+
+    context 'without a block' do
+      it 'returns an enumerator' do
+        expect(new.each).to be_a(Enumerator)
+      end
+    end
+
     context 'with a NewsArticle' do
       let(:parsed_body) do
         Nokogiri::HTML("<script type=\"application/ld+json\">#{news_article_schema_object.to_json}</script>")
@@ -167,8 +175,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with an empty body' do
-      let(:parsed_body) { Nokogiri::HTML('') }
-
       it 'returns an empty array' do
         expect { |b| new.each(&b) }.not_to yield_with_args
       end
