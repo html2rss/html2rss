@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss do
-  let(:config_file) { File.join(%w[spec feeds.test.yml]) }
+  let(:config_file) { File.join(%w[spec fixtures feeds.test.yml]) }
   let(:name) { 'nuxt-releases' }
 
   it 'has a version number' do

@@ -495,7 +495,7 @@ feeds:
 
 Your feed configs go below `feeds`. Everything else is part of the global config.
 
-Find a full example of a `feeds.yml` at [`spec/feeds.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/feeds.test.yml).
+Find a full example of a `feeds.yml` at [`spec/fixtures/feeds.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/fixtures/feeds.test.yml).
 
 Now you can build your feeds like this:
 

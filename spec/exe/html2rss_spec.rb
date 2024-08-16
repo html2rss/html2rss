@@ -45,7 +45,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
   context 'with feed config: nuxt-releases' do
     context 'with arguments: feed YAML_FILE' do
-      subject(:output) { `#{executable} feed spec/single.test.yml` }
+      subject(:output) { `#{executable} feed spec/fixtures/single.test.yml` }
 
       it 'generates the RSS', :aggregate_failures do
         expect(output).to start_with(doctype_xml)
@@ -55,7 +55,7 @@ RSpec.describe 'exe/html2rss', :slow do
     end
 
     context 'with arguments: feed YAML_FILE FEED_NAME' do
-      subject(:output) { `#{executable} feed spec/feeds.test.yml nuxt-releases` }
+      subject(:output) { `#{executable} feed spec/fixtures/feeds.test.yml nuxt-releases` }
 
       it 'generates the RSS', :aggregate_failures do
         expect(output).to start_with(doctype_xml)
@@ -67,7 +67,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
   context 'with feed config: withparams' do
     it 'processes and escapes the params' do
-      expect(`#{executable} feed spec/feeds.test.yml withparams param='<value>' sign=10`)
+      expect(`#{executable} feed spec/fixtures/feeds.test.yml withparams param='<value>' sign=10`)
         .to include('<description>The value of param is: &lt;value&gt;</description>',
                     'horoscope-general-daily-today.aspx?sign=10')
     end
