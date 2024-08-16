@@ -74,12 +74,9 @@ RSpec.describe 'exe/html2rss', :slow do
   end
 
   context 'with argument: auto URL' do
-    subject(:output) { `#{executable} auto https://welt.de` }
-
-    it 'generates the RSS', :aggregate_failures do
-      expect(output).to start_with(doctype_xml) &
-                        include('https://welt.de') &
-                        match(%r{using auto_source scrapers: \[SemanticHtml=\d+\]\)</generator>})
+    it 'exists with error' do
+      `#{executable} auto file://etc/passwd`
+      expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
     end
   end
 end

@@ -11,7 +11,7 @@ module Html2rss
         def call(articles, **_options)
           Log.debug "Reducer: inited with #{articles.size} articles"
 
-          reduce_by_keeping_longest_values(articles, keep: [:generated_by]) { |article| article.url&.path }
+          reduce_by_keeping_longest_values(articles, keep: [:scraper]) { |article| article.url&.path }
         end
 
         private

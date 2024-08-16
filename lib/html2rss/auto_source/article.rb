@@ -10,8 +10,9 @@ module Html2rss
     # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
     class Article
       include Enumerable
+      include Comparable
 
-      PROVIDED_KEYS = %i[id title description url image guid published_at generated_by].freeze
+      PROVIDED_KEYS = %i[id title description url image guid published_at scraper].freeze
 
       # @param options [Hash<Symbol, String>]
       def initialize(**options)
@@ -80,8 +81,14 @@ module Html2rss
         nil
       end
 
-      def generated_by
-        @to_h[:generated_by]
+      def scraper
+        @to_h[:scraper]
+      end
+
+      def <=>(other)
+        return nil unless other.is_a?(Article)
+
+        0 if other.all? { |key, value| value == public_send(key) ? public_send(key) <=> value : false }
       end
     end
   end

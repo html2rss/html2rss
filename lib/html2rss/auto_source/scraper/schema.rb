@@ -103,11 +103,7 @@ module Html2rss
             next unless (klass = self.class.scraper_for_schema_object(schema_object))
             next unless (article_hash = klass.new(schema_object, url:).call)
 
-            article_hash[:generated_by] = klass
-
             yield article_hash
-
-            article_hash
           end
         end
 

@@ -21,15 +21,15 @@ RSpec.describe Html2rss::AutoSource::Reducer do
           Html2rss::AutoSource::Article.new(url:, id: 1,
                                             title: 'Title 1',
                                             description: 'Longer Description 1 wins',
-                                            generated_by: RSpec),
+                                            scraper: RSpec),
           Html2rss::AutoSource::Article.new(url:, id: 2,
                                             title: 'Title wins',
                                             description: 'Description 2',
-                                            generated_by: RSpec),
+                                            scraper: RSpec),
           Html2rss::AutoSource::Article.new(url:, id: 3,
                                             title: 'Longer Title 3 wins',
                                             description: 'Description 3',
-                                            generated_by: RSpec)
+                                            scraper: RSpec)
         ]
       end
 
@@ -41,7 +41,7 @@ RSpec.describe Html2rss::AutoSource::Reducer do
       end
 
       it 'keeps the kept attributes' do
-        expect(result[0].generated_by).to eq([RSpec, RSpec, RSpec])
+        expect(result[0].scraper).to eq([RSpec, RSpec, RSpec])
       end
     end
   end

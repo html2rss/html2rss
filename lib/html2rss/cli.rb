@@ -33,10 +33,6 @@ module Html2rss
 
     desc 'auto URL', 'automatically sources an RSS feed from the URL'
     def auto(url)
-      url = url.to_s.strip
-
-      raise 'An absolute URL is required' if url.empty? || !Addressable::URI.parse(url).absolute?
-
       puts Html2rss.auto_source(url)
     end
   end

@@ -11,14 +11,14 @@ RSpec.describe Html2rss::AutoSource::RssBuilder do
                                         description: 'Description 1',
                                         published_at: '1969-12-31 23:59:59',
                                         image: 'http://example.com/image1.jpg',
-                                        generated_by: RSpec),
+                                        scraper: RSpec),
       Html2rss::AutoSource::Article.new(url: 'http://example.com/2',
                                         id: 2,
                                         title: 'Title 2',
                                         description: 'Description 2',
                                         published_at: '1969-12-31 23:59:59',
                                         image: 'http://example.com/image2.jpg',
-                                        generated_by: RSpec)
+                                        scraper: RSpec)
     ]
   end
   let(:channel) do

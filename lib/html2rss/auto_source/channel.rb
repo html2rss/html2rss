@@ -67,7 +67,7 @@ module Html2rss
       def scraper_counts
         scraper_counts = +''
 
-        @articles.each_with_object(Hash.new(0)) { |article, counts| counts[article.generated_by] += 1 }
+        @articles.each_with_object(Hash.new(0)) { |article, counts| counts[article.scraper] += 1 }
                  .each do |klass, count|
           scraper_counts.concat("[#{klass.to_s.gsub('Html2rss::AutoSource::Scraper::', '')}=#{count}]")
         end

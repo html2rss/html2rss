@@ -110,10 +110,8 @@ module Html2rss
             parsed_body.css(selector).each do |selected_tag|
               article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
               article_hash = Extractor.new(article_tag, url: @url).call
-              next unless article_hash
 
-              article_hash[:generated_by] = self.class
-              yield article_hash
+              yield article_hash if article_hash
             end
           end
         end
