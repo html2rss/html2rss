@@ -67,7 +67,7 @@ RSpec.describe Html2rss::AutoSource do
     let(:articles) { [] }
 
     before do
-      allow(Parallel).to receive(:flat_map).and_return(articles)
+      allow(Parallel).to receive(:map).and_return(articles)
     end
 
     context 'when articles are found' do
@@ -84,7 +84,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'calls Reducer twice and Cleanup once', :aggregate_failures do
         instance.build
 
-        expect(described_class::Reducer).to have_received(:call).with(articles, url:).once
+        expect(described_class::Reducer).to have_received(:call).with(articles, url:).at_least(:twice)
         expect(described_class::Cleanup).to have_received(:call).with(articles, url:, keep_different_domain: true).once
       end
 
@@ -109,8 +109,12 @@ RSpec.describe Html2rss::AutoSource do
 
   describe '#articles' do
     before do
-      allow(Parallel).to receive(:flat_map).and_yield(Html2rss::AutoSource::Scraper::SemanticHtml)
+      allow(Parallel).to receive(:flat_map)
+        .and_yield(Html2rss::AutoSource::Scraper::SemanticHtml.new(parsed_body,
+                                                                   url:).each)
     end
+
+    let(:parsed_body) { Nokogiri::HTML.parse(response.body) }
 
     it 'returns a list of articles', :aggregate_failures do
       expect(instance.articles).to eq([article])

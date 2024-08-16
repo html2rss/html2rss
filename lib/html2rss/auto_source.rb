@@ -29,7 +29,7 @@ module Html2rss
     end
 
     def build
-      assert_articles_found!
+      raise NoArticlesFound if articles.empty?
 
       Reducer.call(articles, url:)
       Cleanup.call(articles, url:, keep_different_domain: true)
@@ -41,10 +41,17 @@ module Html2rss
     end
 
     def articles
-      @articles ||= Parallel.flat_map(Scraper.from(parsed_body)) do |scraper|
-        articles_in_thread = scraper.new(parsed_body, url:)
-                                    .map { |article_hash| Article.new(**article_hash, scraper:) }
+      @articles ||= Scraper.from(parsed_body).flat_map do |scraper|
+        instance = scraper.new(parsed_body, url:)
+
+        articles_in_thread = Parallel.map(instance.each) do |article_hash|
+          Log.debug "Scraper: #{scraper} in worker: #{Parallel.worker_number} [#{article_hash[:url]}]"
+
+          Article.new(**article_hash, scraper:)
+        end
+
         Reducer.call(articles_in_thread, url:)
+
         articles_in_thread
       end
     end
@@ -65,12 +72,6 @@ module Html2rss
     # @return [Nokogiri::HTML::Document]
     def parsed_body
       @parsed_body ||= Nokogiri.HTML(response.body).freeze
-    end
-
-    def assert_articles_found!
-      raise NoArticlesFound if articles.empty?
-
-      Log.debug "AutoSource#assert_articles_found! #{articles.size}"
     end
   end
 end
