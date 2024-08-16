@@ -29,8 +29,7 @@ group :red_green_refactor, halt_on_fail: true do
     watch(rspec.spec_support) { rspec.spec_dir }
     watch(rspec.spec_files)
 
-    # TODO: move specs to spec/lib to be standard
-    watch(%r{^lib/(.+)\.rb$}) { |m| "spec/#{m[1]}_spec.rb" }
+    watch(%r{^lib/(.+)\.rb$}) { |m| "spec/lib/#{m[1]}_spec.rb" }
   end
 
   guard :rubocop, all_on_start: false,
