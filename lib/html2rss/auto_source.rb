@@ -71,7 +71,11 @@ module Html2rss
     # Parses the HTML body of the response using Nokogiri.
     # @return [Nokogiri::HTML::Document]
     def parsed_body
-      @parsed_body ||= Nokogiri.HTML(response.body).freeze
+      @parsed_body ||= Nokogiri.HTML(response.body)
+                               .tap do |doc|
+        # Remove comments from the document
+        doc.xpath('//comment()').each(&:remove)
+      end.freeze
     end
   end
 end

@@ -17,7 +17,7 @@ RSpec.describe Html2rss::AutoSource do
     instance_double(Faraday::Response, body: '<html>
       <body>
         <article id="article-1">
-          <h2>Article 1</h2>
+          <h2>Article 1 <!-- remove this --></h2>
           <a href="/article1">Read more</a>
         </article>
         </body>
