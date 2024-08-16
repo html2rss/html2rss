@@ -26,26 +26,40 @@ You can also install it as a dependency in your Ruby project:
 
 ## Generating a feed on the CLI
 
-Create a file called `my_config_file.yml` with this example content:
+### using automatic scraping
+
+html2rss offers an automatic scrapting feature. Try it with:
+
+`html2rss auto https://unmatchedstyle.com/`
+
+### creating a feed config file and using it
+
+If the results are not to your satisfaction, you can create a feed config file.
+
+Create a file called `my_config_file.yml` with this sample content:
 
 ```yml
 channel:
-  url: https://stackoverflow.com/questions
+  url: https://unmatchedstyle.com
 selectors:
   items:
-    selector: "#hot-network-questions > ul > li"
+    selector: "article[id^='post-']"
   title:
-    selector: a
+    selector: h2
   link:
     selector: a
     extractor: href
+  description:
+    selector: ".post-content"
+    post_process:
+      - name: sanitize_html
 ```
 
-Build the RSS with: `html2rss feed ./my_config_file.yml`.
+Build the feed from this config with: `html2rss feed ./my_config_file.yml`.
 
 ## Generating a feed with Ruby
 
-Here's a minimal working example in Ruby:
+Here's a minimal working example using Ruby:
 
 ```ruby
 require 'html2rss'
