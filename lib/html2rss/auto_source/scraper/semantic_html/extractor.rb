@@ -12,7 +12,8 @@ module Html2rss
         # to find the DOM upwards to find the other details.
         class Extractor
           INVISIBLE_CONTENT_TAG_SELECTORS = %w[svg script noscript style template].to_set.freeze
-          NOT_HEADLINE_SELECTOR = (SemanticHtml::HEADING_TAGS.map { |selector| ":not(#{selector})" } +
+          HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
+          NOT_HEADLINE_SELECTOR = (HEADING_TAGS.map { |selector| ":not(#{selector})" } +
                                    INVISIBLE_CONTENT_TAG_SELECTORS.to_a).freeze
 
           def self.visible_text_from_tag(tag, separator: ' ')
@@ -71,7 +72,7 @@ module Html2rss
           end
 
           def find_heading
-            heading_tags = article_tag.css(SemanticHtml::HEADING_TAGS.join(',')).group_by(&:name)
+            heading_tags = article_tag.css(HEADING_TAGS.join(',')).group_by(&:name)
             smallest_heading = heading_tags.keys.min
             heading_tags[smallest_heading]&.max_by { |tag| tag.text.size }
           end
@@ -81,7 +82,7 @@ module Html2rss
                                  visible_text_from_tag(heading)
                                else
                                  visible_text_from_tag(
-                                   article_tag.css(SemanticHtml::HEADING_TAGS.join(','))
+                                   article_tag.css(HEADING_TAGS.join(','))
                                               .max_by { |tag| tag.text.size }
                                  )
                                end
