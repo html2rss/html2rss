@@ -3,6 +3,6 @@
 ##
 # The Html2rss namespace.
 module Html2rss
-  VERSION = '0.12.0'
+  VERSION = '0.13.0'
   public_constant :VERSION
 end
