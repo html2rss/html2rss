@@ -17,7 +17,7 @@ Metrics/BlockLength:
 
 RSpec/NestedGroups:
   Exclude:
-    - spec/html2rss_spec.rb
+    - spec/lib/html2rss_spec.rb
 
 RSpec/DescribeClass:
   Exclude:
