@@ -16,7 +16,11 @@ module Html2rss
 
     SUPPORTED_URL_SCHEMES = %w[http https].to_set.freeze
 
-    def initialize(url)
+    def self.build_from_response(response, url)
+      new(url, response:).build
+    end
+
+    def initialize(url, response: nil)
       unless url.is_a?(String) || url.is_a?(Addressable::URI)
         raise ArgumentError,
               'URL must be a String or Addressable::URI'
@@ -26,6 +30,8 @@ module Html2rss
 
       raise ArgumentError, 'URL must be absolute' unless @url.absolute?
       raise UnsupportedUrlScheme, "#{@url.scheme} not supported" unless SUPPORTED_URL_SCHEMES.include?(@url.scheme)
+
+      @response = response if response
     end
 
     def build
