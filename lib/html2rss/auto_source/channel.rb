@@ -10,7 +10,7 @@ module Html2rss
       ##
       #
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
-      # @param response [Faraday::Response] The URL of the HTML document.
+      # @param response [Net::HTTPResponse, Faraday::Response] The HTTP response.
       def initialize(parsed_body, url:, response:, articles: [])
         @parsed_body = parsed_body
         @url = url
@@ -24,7 +24,7 @@ module Html2rss
       def description = extract_description
       def image = extract_image
       def ttl = extract_ttl
-      def last_build_date = response.headers['last-modified']
+      def last_build_date = response_header('last-modified')
 
       def generator
         "html2rss V. #{::Html2rss::VERSION} (using auto_source scrapers: #{scraper_counts})"
@@ -58,7 +58,7 @@ module Html2rss
       end
 
       def extract_ttl
-        ttl = response.headers['cache-control']&.match(/max-age=(\d+)/)&.[](1)
+        ttl = response_header('cache-control')&.match(/max-age=(\d+)/)&.[](1)
         return unless ttl
 
         ttl.to_i.fdiv(60).ceil
@@ -73,6 +73,19 @@ module Html2rss
         end
 
         scraper_counts
+      end
+
+      def response_header(name)
+        # Faraday::Response responds to #headers
+        return response.headers[name] if response.respond_to?(:headers)
+
+        # Net::HTTPResponse responds to []
+        if (value = response[name])
+          value
+        else
+          Log.warn("Channel#response_header: header not found: #{name}")
+          nil
+        end
       end
     end
   end
