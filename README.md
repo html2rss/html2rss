@@ -2,7 +2,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/) [![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss) ![Retro Badge: valid RSS](https://validator.w3.org/feed/images/valid-rss-rogers.png)
 
-`html2rss` is a Ruby gem that generates RSS 2.0 feeds from a _feed config_.
+`html2rss` is a Ruby gem that generates RSS 2.0 feeds from websites automatically, and as a fallback via _feed config_.
 
 With the _feed config_, you provide a URL to scrape and CSS selectors for extracting information (like title, URL, etc.). The gem builds the RSS feed accordingly. [Extractors](#using-extractors) and chainable [post processors](#using-post-processors) make information extraction, processing, and sanitizing a breeze. The gem also supports [scraping JSON](#scraping-and-handling-json-responses) responses and [setting HTTP request headers](#set-any-http-header-in-the-request).
 
@@ -26,9 +26,9 @@ You can also install it as a dependency in your Ruby project:
 
 ## Generating a feed on the CLI
 
-### using automatic scraping
+### using automatic generation
 
-html2rss offers an automatic scrapting feature. Try it with:
+html2rss offers an automatic RSS generation feature. Try it with:
 
 `html2rss auto https://unmatchedstyle.com/`
 
