@@ -106,10 +106,18 @@ module Html2rss
   # Scrapes the provided URL and returns an RSS object.
   # No need for a "feed config".
   #
-  # @param url [String] the URL to automatically source the feed from
   # @return [RSS::Rss]
   def self.auto_source(url)
-    Html2rss::AutoSource.new(url).build
+    unless url.is_a?(String) || url.is_a?(Addressable::URI)
+      raise ArgumentError,
+            'URL must be a String or Addressable::URI'
+    end
+
+    url = Addressable::URI.parse(url)
+
+    response = Html2rss::Utils.request_url(url)
+
+    Html2rss::AutoSource.new(url, body: response.body, headers: response.headers).build
   end
 
   private_class_method :load_yaml, :find_feed_config

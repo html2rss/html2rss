@@ -1,18 +1,16 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Channel do
-  subject(:instance) { described_class.new(parsed_body, url:, response:) }
+  subject(:instance) { described_class.new(parsed_body, url:, headers:, articles: []) }
 
   let(:parsed_body) { Nokogiri::HTML('') }
   let(:url) { Addressable::URI.parse('https://example.com') }
-  let(:response) do
-    instance_double(Faraday::Response,
-                    body: '',
-                    headers: {
-                      'content-type' => 'text/html',
-                      'cache-control' => 'max-age=120, private, must-revalidate',
-                      'last-modified' => 'Tue, 01 Jan 2019 00:00:00 GMT'
-                    })
+  let(:headers) do
+    {
+      'content-type' => 'text/html',
+      'cache-control' => 'max-age=120, private, must-revalidate',
+      'last-modified' => 'Tue, 01 Jan 2019 00:00:00 GMT'
+    }
   end
 
   describe '#title' do
@@ -101,11 +99,10 @@ RSpec.describe Html2rss::AutoSource::Channel do
     end
 
     context 'without a last-modified header' do
-      let(:response) do
-        instance_double(Faraday::Response,
-                        headers: {
-                          'cache-control' => 'max-age=120, private, must-revalidate'
-                        })
+      let(:headers) do
+        {
+          'cache-control' => 'max-age=120, private, must-revalidate'
+        }
       end
 
       it 'extracts nil' do
