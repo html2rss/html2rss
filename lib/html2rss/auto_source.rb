@@ -16,22 +16,18 @@ module Html2rss
 
     SUPPORTED_URL_SCHEMES = %w[http https].to_set.freeze
 
-    def self.build_from_response(response, url)
-      new(url, response:).build
-    end
+    ##
+    # @param url [Addressable::URI] The URL to extract articles from.
+    # @param body [String] The body of the response.
+    # @param headers [Hash] The headers of the response.
+    def initialize(url, body:, headers: {})
+      raise ArgumentError, 'URL must be a Addressable::URI' unless url.is_a?(Addressable::URI)
+      raise ArgumentError, 'URL must be absolute' unless url.absolute?
+      raise UnsupportedUrlScheme, "#{url.scheme} not supported" unless SUPPORTED_URL_SCHEMES.include?(url.scheme)
 
-    def initialize(url, response: nil)
-      unless url.is_a?(String) || url.is_a?(Addressable::URI)
-        raise ArgumentError,
-              'URL must be a String or Addressable::URI'
-      end
-
-      @url = Addressable::URI.parse(url)
-
-      raise ArgumentError, 'URL must be absolute' unless @url.absolute?
-      raise UnsupportedUrlScheme, "#{@url.scheme} not supported" unless SUPPORTED_URL_SCHEMES.include?(@url.scheme)
-
-      @response = response if response
+      @url = url
+      @body = body
+      @headers = headers
     end
 
     def build
@@ -63,21 +59,16 @@ module Html2rss
     end
 
     def channel
-      Channel.new(parsed_body, response:, url:, articles:)
+      Channel.new(parsed_body, headers: @headers, url:, articles:)
     end
 
     private
 
     attr_reader :url
 
-    def response
-      @response ||= Html2rss::Utils.request_url(url)
-    end
-
-    # Parses the HTML body of the response using Nokogiri.
     # @return [Nokogiri::HTML::Document]
     def parsed_body
-      @parsed_body ||= Nokogiri.HTML(response.body)
+      @parsed_body ||= Nokogiri.HTML(@body)
                                .tap do |doc|
         # Remove comments from the document
         doc.xpath('//comment()').each(&:remove)
