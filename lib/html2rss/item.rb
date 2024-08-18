@@ -19,7 +19,7 @@ module Html2rss
     ##
     # Fetches items from a given URL using configuration settings.
     #
-    # @param url [String] URL to fetch items from.
+    # @param url [Addressable::URI] URL to fetch items from.
     # @param config [Html2rss::Config] Configuration object.
     # @return [Array<Html2rss::Item>] list of items fetched.
     def self.from_url(url, config)

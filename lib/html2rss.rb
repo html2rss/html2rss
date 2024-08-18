@@ -108,11 +108,6 @@ module Html2rss
   #
   # @return [RSS::Rss]
   def self.auto_source(url)
-    unless url.is_a?(String) || url.is_a?(Addressable::URI)
-      raise ArgumentError,
-            'URL must be a String or Addressable::URI'
-    end
-
     url = Addressable::URI.parse(url)
 
     response = Html2rss::Utils.request_url(url)

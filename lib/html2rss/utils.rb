@@ -44,6 +44,7 @@ module Html2rss
     #
     # @param time_zone [String]
     # @param default_time_zone [String]
+    # @yield block to execute with the given time zone
     # @return [Object] whatever the given block returns
     def self.use_zone(time_zone, default_time_zone: Time.now.getlocal.zone)
       raise ArgumentError, 'a block is required' unless block_given?
@@ -74,6 +75,11 @@ module Html2rss
     # @param headers [Hash] additional HTTP request headers to use for the request
     # @return [Faraday::Response] body of the HTTP response
     def self.request_url(url, headers: {})
+      url = Addressable::URI.parse(url.to_s) unless url.is_a?(Addressable::URI)
+
+      raise ArgumentError, 'URL must be absolute' unless url.absolute?
+      raise ArgumentError, 'URL must not contain an @ characater' if url.to_s.include?('@')
+
       Faraday.new(url:, headers:) do |faraday|
         faraday.use Faraday::FollowRedirects::Middleware
         faraday.adapter Faraday.default_adapter
