@@ -53,7 +53,7 @@ RSpec.describe Html2rss::Utils do
   end
 
   describe '.request_url(url, headers: {})' do
-    let(:url) { 'http://example.com' }
+    let(:url) { Addressable::URI.parse 'http://example.com' }
     let(:options) { { headers: {} } }
     let(:response) { instance_double(Faraday::Response, body: '') }
     let(:connection) { instance_double(Faraday::Connection, get: response) }
@@ -62,6 +62,17 @@ RSpec.describe Html2rss::Utils do
       allow(Faraday).to receive(:new).with(options.merge(url:)).and_return(connection)
 
       expect(described_class.request_url(url, **options)).to eq(response)
+    end
+
+    context 'with url contains userinfo' do
+      ['https://user:pass@example.com',
+       'https://example.com/foo?:/@https://www.youtube.com/watch?v=dQw4w9WgXcQ'].each do |url|
+        it do
+          expect do
+            described_class.request_url(Addressable::URI.parse(url), **options)
+          end.to raise_error(ArgumentError, /URL must not contain an @ characater/)
+        end
+      end
     end
   end
 
