@@ -36,6 +36,8 @@ module Html2rss
       Reducer.call(articles, url:)
       Cleanup.call(articles, url:, keep_different_domain: true)
 
+      channel.articles = articles
+
       Html2rss::AutoSource::RssBuilder.new(
         channel:,
         articles:
@@ -59,7 +61,7 @@ module Html2rss
     end
 
     def channel
-      Channel.new(parsed_body, headers: @headers, url:, articles:)
+      @channel ||= Channel.new(parsed_body, headers: @headers, url:)
     end
 
     private

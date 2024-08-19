@@ -13,12 +13,16 @@ module Html2rss
       # @param url [Addressable::URI] The URL of the channel.
       # @param headers [Hash<String, String>] the http headers
       # @param articles [Array<Html2rss::AutoSource::Article>] The articles.
-      def initialize(parsed_body, url:, headers:, articles: [])
+      def initialize(parsed_body, url:, headers:, articles: [], stylesheets: [])
         @parsed_body = parsed_body
         @url = url
         @headers = headers
         @articles = articles
+        @stylesheets = stylesheets
       end
+
+      attr_writer :articles
+      attr_reader :stylesheets
 
       def url = extract_url
       def title = extract_title
