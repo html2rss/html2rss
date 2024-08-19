@@ -31,6 +31,8 @@ module Html2rss
 
       def call
         RSS::Maker.make('2.0') do |maker|
+          Html2rss::RssBuilder::Stylesheet.add(maker, channel.stylesheets)
+
           make_channel(maker.channel)
           make_items(maker)
         end

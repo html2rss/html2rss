@@ -30,15 +30,26 @@ RSpec.describe Html2rss::AutoSource::RssBuilder do
                     generator: "html2rss V. #{Html2rss::VERSION} (using auto_source scrapers: [RSpec=2])",
                     image: 'http://example.com/image.jpg',
                     ttl: 12,
-                    last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT')
+                    last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT',
+                    stylesheets: [
+                      Html2rss::RssBuilder::Stylesheet.new(href: 'rss.xsl', type: 'text/xsl')
+                    ])
   end
 
   describe '#call' do
     subject(:rss) { instance.call }
 
+    let(:rss_feed) do
+      <<~RSS.strip
+        <?xml version="1.0" encoding="UTF-8"?>
+        <?xml-stylesheet href="rss.xsl" type="text/xsl" media="all"?>
+        <rss version="2.0"\n
+      RSS
+    end
+
     it 'returns an RSS 2.0 Rss object', :aggregate_failures do
       expect(rss).to be_a(RSS::Rss)
-      expect(rss.to_s).to start_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rss version=\"2.0\"")
+      expect(rss.to_s).to start_with(rss_feed)
     end
 
     context 'with <channel> tag' do

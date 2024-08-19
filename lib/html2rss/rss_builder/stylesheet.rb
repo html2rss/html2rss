@@ -3,35 +3,50 @@
 module Html2rss
   module RssBuilder
     ##
-    # Adds XML stylesheet tags (with the provided maker).
+    # Represents a stylesheet.
     class Stylesheet
-      ##
-      # Adds the stylesheet XML tags to the RSS.
-      #
-      # @param maker [RSS::Maker::RSS20] RSS maker object.
-      # @param stylesheets [Array<Html2rss::Config::Stylesheet>] Array of stylesheet configurations.
-      # @return [nil]
-      def self.add(maker, stylesheets)
-        stylesheets.each do |stylesheet|
-          add_stylesheet(maker, stylesheet)
+      class << self
+        ##
+        # Adds the stylesheet XML tags to the RSS.
+        #
+        # @param maker [RSS::Maker::RSS20] RSS maker object.
+        # @param stylesheets [Array<Html2rss::Config::Stylesheet>] Array of stylesheet configurations.
+        # @return [nil]
+        def add(maker, stylesheets)
+          stylesheets.each do |stylesheet|
+            add_stylesheet(maker, stylesheet)
+          end
+        end
+
+        private
+
+        ##
+        # Adds a single Stylesheet to the RSS.
+        #
+        # @param maker [RSS::Maker::RSS20] RSS maker object.
+        # @param stylesheet [Html2rss::Config::Stylesheet] Stylesheet configuration.
+        # @return [nil]
+        def add_stylesheet(maker, stylesheet)
+          maker.xml_stylesheets.new_xml_stylesheet do |xss|
+            xss.href = stylesheet.href
+            xss.type = stylesheet.type
+            xss.media = stylesheet.media
+          end
         end
       end
 
-      ##
-      # Adds a single Stylesheet to the RSS.
-      #
-      # @param maker [RSS::Maker::RSS20] RSS maker object.
-      # @param stylesheet [Html2rss::Config::Stylesheet] Stylesheet configuration.
-      # @return [nil]
-      def self.add_stylesheet(maker, stylesheet)
-        maker.xml_stylesheets.new_xml_stylesheet do |xss|
-          xss.href = stylesheet.href
-          xss.type = stylesheet.type
-          xss.media = stylesheet.media
-        end
-      end
+      TYPES = ['text/css', 'text/xsl'].freeze
 
-      private_class_method :add_stylesheet
+      def initialize(href:, type:, media: 'all')
+        raise ArgumentError, 'stylesheet.href must be a String' unless href.is_a?(String)
+        raise ArgumentError, 'stylesheet.type invalid' unless TYPES.include?(type)
+        raise ArgumentError, 'stylesheet.media must be a String' unless media.is_a?(String)
+
+        @href = href
+        @type = type
+        @media = media
+      end
+      attr_reader :href, :type, :media
     end
   end
 end
