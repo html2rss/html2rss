@@ -43,7 +43,7 @@ module Html2rss
   # @param params [Hash] Dynamic parameters for the feed configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
-    yaml = load_yaml(file)
+    yaml = YAML.safe_load_file(file, symbolize_names: true)
     feeds = yaml[CONFIG_KEY_FEEDS] || {}
 
     feed_config = find_feed_config(yaml, feeds, name, global_config)
@@ -74,15 +74,6 @@ module Html2rss
   end
 
   ##
-  # Loads and parses the YAML file.
-  #
-  # @param file [String] Path to the YAML file.
-  # @return [Hash] Parsed YAML content.
-  def self.load_yaml(file)
-    YAML.safe_load_file(file, symbolize_names: true)
-  end
-
-  ##
   # Builds the feed configuration based on the provided parameters.
   #
   # @param yaml [Hash] Parsed YAML content.
@@ -106,6 +97,7 @@ module Html2rss
   # Scrapes the provided URL and returns an RSS object.
   # No need for a "feed config".
   #
+  # @param url [String] the URL to automatically source the feed from
   # @return [RSS::Rss]
   def self.auto_source(url)
     url = Addressable::URI.parse(url)
@@ -115,5 +107,5 @@ module Html2rss
     Html2rss::AutoSource.new(url, body: response.body, headers: response.headers).build
   end
 
-  private_class_method :load_yaml, :find_feed_config
+  private_class_method :find_feed_config
 end
