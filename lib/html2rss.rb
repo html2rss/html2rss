@@ -5,8 +5,9 @@ require 'zeitwerk'
 loader = Zeitwerk::Loader.for_gem
 loader.setup
 
-require 'yaml'
+require 'addressable'
 require 'logger'
+require 'yaml'
 
 ##
 # The Html2rss namespace.
