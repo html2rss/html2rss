@@ -35,13 +35,13 @@ module Html2rss
           def initialize(article_tag, url:)
             @article_tag = article_tag
             @url = url
-            @heading = find_heading
-            @extract_url = find_url
           end
 
           # @return [Hash, nil] The scraped article or nil.
           def call
-            return unless heading
+            @heading = find_heading || closest_anchor || return
+
+            @extract_url = find_url
 
             {
               title: extract_title,
@@ -71,14 +71,20 @@ module Html2rss
             times.min
           end
 
+          ##
+          # Find the heading of the article.
+          # @return [Nokogiri::XML::Node, nil]
           def find_heading
             heading_tags = article_tag.css(HEADING_TAGS.join(',')).group_by(&:name)
+
+            return if heading_tags.empty?
+
             smallest_heading = heading_tags.keys.min
             heading_tags[smallest_heading]&.max_by { |tag| visible_text_from_tag(tag)&.size }
           end
 
           def extract_title
-            @extract_title ||= if heading.children.empty? && heading.text
+            @extract_title ||= if heading && (heading.children.empty? || heading.text)
                                  visible_text_from_tag(heading)
                                else
                                  visible_text_from_tag(
@@ -101,9 +107,12 @@ module Html2rss
             description.empty? ? nil : description
           end
 
+          def closest_anchor
+            SemanticHtml.find_closest_selector(heading || article_tag,
+                                               selector: 'a[href]:not([href=""])')
+          end
+
           def find_url
-            closest_anchor = SemanticHtml.find_closest_selector(heading || article_tag,
-                                                                selector: 'a[href]:not([href=""])')
             href = closest_anchor&.[]('href')&.split('#')&.first&.strip
             Utils.build_absolute_url_from_relative(href, url) unless href.to_s.empty?
           end
@@ -113,8 +122,12 @@ module Html2rss
           end
 
           def generate_id
-            [article_tag['id'], article_tag.at_css('[id]')&.attr('id'),
-             extract_url&.path].compact.reject(&:empty?).first
+            [
+              article_tag['id'],
+              article_tag.at_css('[id]')&.attr('id'),
+              extract_url&.path,
+              extract_url&.query
+            ].compact.reject(&:empty?).first
           end
         end
       end
