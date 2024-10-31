@@ -26,7 +26,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
       it 'returns the article_hash', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(article_hash).to a_hash_including(
           title: 'Sample Heading',
-          description: 'FCK PTN Sample description',
+          description: 'Sample Heading FCK PTN Sample description',
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
           url: an_instance_of(Addressable::URI),

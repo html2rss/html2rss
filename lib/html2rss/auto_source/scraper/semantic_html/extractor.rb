@@ -100,8 +100,6 @@ module Html2rss
             description = visible_text_from_tag(article_tag)
             return nil unless description
 
-            title_text = extract_title
-            description.gsub!(title_text, '') if title_text
             description.strip!
             description.empty? ? nil : description
           end
