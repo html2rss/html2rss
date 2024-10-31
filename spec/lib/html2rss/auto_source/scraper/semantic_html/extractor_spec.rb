@@ -82,4 +82,42 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
       expect(visible_text).to eq('Hello World')
     end
   end
+
+  describe '#find_heading' do
+    subject(:find_heading) { described_class.new(article_tag, url: 'https://example.com').send(:find_heading) }
+
+    let(:article_tag) { Nokogiri::HTML.fragment(html) }
+
+    context 'when heading is present' do
+      let(:html) do
+        <<~HTML
+          <article>
+            <h1>Heading 1</h1>
+            <h2>Heading 2</h2>
+            <h3>Heading 3</h3>
+          </article>
+        HTML
+      end
+
+      it 'returns the smallest heading with the largest visible text', :aggregate_failures do
+        expect(find_heading.name).to eq('h1')
+        expect(find_heading.text).to eq('Heading 1')
+      end
+    end
+
+    context 'when heading is not present' do
+      let(:html) do
+        <<~HTML
+          <article>
+            <p>Paragraph 1</p>
+            <p>Paragraph 2</p>
+          </article>
+        HTML
+      end
+
+      it 'returns nil' do
+        expect(find_heading).to be_nil
+      end
+    end
+  end
 end
