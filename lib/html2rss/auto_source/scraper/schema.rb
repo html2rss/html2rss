@@ -51,9 +51,9 @@ module Html2rss
           ##
           # Returns a flat array
           # of all supported schema objects
-          # by recursively traversing the `from` object.
+          # by recursively traversing the given `object`.
           #
-          # @param object [Hash, Array]
+          # @param object [Hash, Array, Nokogiri::XML::Element]
           # @return [Array<Hash>] the schema_objects, or an empty array
           # :reek:DuplicateMethodCall
           def from(object)
