@@ -84,14 +84,13 @@ module Html2rss
           end
 
           def extract_title
-            @extract_title ||= if heading && (heading.children.empty? || heading.text)
-                                 visible_text_from_tag(heading)
-                               else
-                                 visible_text_from_tag(
-                                   article_tag.css(HEADING_TAGS.join(','))
-                                              .max_by { |tag| tag.text.size }
-                                 )
-                               end
+            if heading && (heading.children.empty? || heading.text)
+              visible_text_from_tag(heading)
+            else
+              visible_text_from_tag(article_tag.css(HEADING_TAGS.join(','))
+                                               .max_by { |tag| tag.text.size })
+
+            end
           end
 
           def extract_description
