@@ -24,13 +24,28 @@ module Html2rss
       attr_writer :articles
       attr_reader :stylesheets
 
-      def url = extract_url
-      def title = extract_title
-      def language = extract_language
-      def description = extract_description
-      def image = extract_image
-      def ttl = extract_ttl
+      def url = @url.normalize.to_s
+      def title = parsed_body.at_css('head > title')&.text
+      def description = parsed_body.at_css('meta[name="description"]')&.[]('content') || ''
       def last_build_date = headers['last-modified']
+
+      def language
+        return parsed_body['lang'] if parsed_body.name == 'html' && parsed_body['lang']
+
+        parsed_body.at_css('[lang]')&.[]('lang')
+      end
+
+      def image
+        url = parsed_body.at_css('meta[property="og:image"]')&.[]('content')
+        Html2rss::Utils.sanitize_url(url) if url
+      end
+
+      def ttl
+        ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1)
+        return unless ttl
+
+        ttl.to_i.fdiv(60).ceil
+      end
 
       def generator
         "html2rss V. #{::Html2rss::VERSION} (using auto_source scrapers: #{scraper_counts})"
@@ -39,36 +54,6 @@ module Html2rss
       private
 
       attr_reader :parsed_body, :headers
-
-      def extract_url
-        @url.normalize.to_s
-      end
-
-      def extract_title
-        parsed_body.at_css('head > title')&.text
-      end
-
-      def extract_language
-        return parsed_body['lang'] if parsed_body.name == 'html' && parsed_body['lang']
-
-        parsed_body.at_css('[lang]')&.[]('lang')
-      end
-
-      def extract_description
-        parsed_body.at_css('meta[name="description"]')&.[]('content') || ''
-      end
-
-      def extract_image
-        url = parsed_body.at_css('meta[property="og:image"]')&.[]('content')
-        Html2rss::Utils.sanitize_url(url) if url
-      end
-
-      def extract_ttl
-        ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1)
-        return unless ttl
-
-        ttl.to_i.fdiv(60).ceil
-      end
 
       def scraper_counts
         scraper_counts = +''

@@ -80,18 +80,17 @@ module Html2rss
             return if heading_tags.empty?
 
             smallest_heading = heading_tags.keys.min
-            heading_tags[smallest_heading]&.max_by { |tag| visible_text_from_tag(tag)&.size }
+            heading_tags[smallest_heading]&.max_by { |tag| visible_text_from_tag(tag)&.size.to_i }
           end
 
           def extract_title
-            @extract_title ||= if heading && (heading.children.empty? || heading.text)
-                                 visible_text_from_tag(heading)
-                               else
-                                 visible_text_from_tag(
-                                   article_tag.css(HEADING_TAGS.join(','))
-                                              .max_by { |tag| tag.text.size }
-                                 )
-                               end
+            if heading && (heading.children.empty? || heading.text)
+              visible_text_from_tag(heading)
+            else
+              visible_text_from_tag(article_tag.css(HEADING_TAGS.join(','))
+                                               .max_by { |tag| tag.text.size })
+
+            end
           end
 
           def extract_description
@@ -101,8 +100,6 @@ module Html2rss
             description = visible_text_from_tag(article_tag)
             return nil unless description
 
-            title_text = extract_title
-            description.gsub!(title_text, '') if title_text
             description.strip!
             description.empty? ? nil : description
           end

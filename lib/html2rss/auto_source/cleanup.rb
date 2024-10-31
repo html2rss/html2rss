@@ -21,6 +21,8 @@ module Html2rss
           keep_only_http_urls!(articles)
           reject_different_domain!(articles, url) unless keep_different_domain
 
+          remove_title_in_description!(articles)
+
           Log.debug "Cleanup: end with #{articles.size} articles"
           articles
         end
@@ -69,6 +71,21 @@ module Html2rss
         def reject_different_domain!(articles, base_url)
           base_host = base_url.host
           articles.select! { |article| article.url&.host == base_host }
+        end
+
+        ##
+        # Removes the title from the description if it's either at the beginning
+        # or within the first 50% of the description.
+        #
+        # @param articles [Array<Article>] The list of articles to process.
+        def remove_title_in_description!(articles)
+          articles.each do |article|
+            max_range = (article.description.size * 0.5).to_i
+            next unless article.description.index(article.title).to_i < max_range
+
+            article.description = article.description.gsub(/^(.{0,#{max_range}})#{Regexp.escape(article.title)}/,
+                                                           '\1').strip
+          end
         end
       end
     end

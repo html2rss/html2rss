@@ -32,7 +32,7 @@ module Html2rss
         def initialize(parsed_body, url:)
           @parsed_body = parsed_body
           @url = url
-          @css_selectors = Hash.new(0)
+          @selectors = Hash.new(0)
         end
 
         attr_reader :parsed_body
@@ -58,18 +58,18 @@ module Html2rss
         ##
         # Find all the anchors in root.
         # @param root [Nokogiri::XML::Node] The root node to search for anchors
-        # @return [Set<String>] The set of CSS selectors which exist at least min_frequency times
+        # @return [Set<String>] The set of XPath selectors which exist at least min_frequency times
         def frequent_selectors(root = @parsed_body.at_css('body'), min_frequency: 2)
           @frequent_selectors ||= begin
             root.traverse do |node|
               next if !node.element? || node.name != 'a'
 
-              @css_selectors[self.class.simplify_xpath(node.path)] += 1
+              @selectors[self.class.simplify_xpath(node.path)] += 1
             end
 
-            @css_selectors.keys
-                          .select { |selector| (@css_selectors[selector]).to_i >= min_frequency }
-                          .to_set
+            @selectors.keys
+                      .select { |selector| (@selectors[selector]).to_i >= min_frequency }
+                      .to_set
           end
         end
 

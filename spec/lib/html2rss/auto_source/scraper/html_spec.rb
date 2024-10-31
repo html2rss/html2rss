@@ -48,7 +48,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       { title: 'Article 1 Headline',
         url: be_a(Addressable::URI),
         image: nil,
-        description: 'Teaser for article 1. Read more',
+        description: 'Article 1 Headline Teaser for article 1. Read more',
         id: '/article1/',
         published_at: nil }
     end
@@ -56,7 +56,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       { title: 'Article 2 Headline',
         url: be_a(Addressable::URI),
         image: nil,
-        description: 'Teaser for article 2. Read more',
+        description: 'Article 2 Headline Teaser for article 2. Read more',
         id: '/article2/',
         published_at: nil }
     end
@@ -97,7 +97,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         { title: '[Plonk]',
           url: be_a(Addressable::URI),
           image: nil,
-          description: nil,
+          description: '[Plonk]',
           id: '/',
           published_at: nil }
       end

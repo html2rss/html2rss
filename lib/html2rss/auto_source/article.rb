@@ -55,6 +55,11 @@ module Html2rss
         @description ||= Html2rss::AttributePostProcessors::SanitizeHtml.get(@to_h[:description], url)
       end
 
+      def description=(value)
+        @to_h[:description] = value
+        @description = nil
+      end
+
       # @return [Addressable::URI, nil]
       def url
         @url ||= Html2rss::Utils.sanitize_url(@to_h[:url])
