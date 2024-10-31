@@ -80,7 +80,7 @@ module Html2rss
             return if heading_tags.empty?
 
             smallest_heading = heading_tags.keys.min
-            heading_tags[smallest_heading]&.max_by { |tag| visible_text_from_tag(tag)&.size }
+            heading_tags[smallest_heading]&.max_by { |tag| visible_text_from_tag(tag)&.size.to_i }
           end
 
           def extract_title
