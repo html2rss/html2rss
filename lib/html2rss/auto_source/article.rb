@@ -2,6 +2,7 @@
 
 require 'zlib'
 require 'sanitize'
+require 'nokogiri'
 
 module Html2rss
   class AutoSource
@@ -13,6 +14,31 @@ module Html2rss
       include Comparable
 
       PROVIDED_KEYS = %i[id title description url image guid published_at scraper].freeze
+
+      ##
+      # Removes the specified pattern from the beginning of the text
+      # within a given range if the pattern occurs before the range's end.
+      #
+      # @param text [String]
+      # @param pattern [String]
+      # @param end_of_range [Integer] - Optional, defaults to half the size of the text
+      # @return [String]
+      def self.remove_pattern_from_start(text, pattern, end_of_range: (text.size * 0.5).to_i)
+        return text unless text.is_a?(String) && pattern.is_a?(String)
+
+        index = text.index(pattern)
+        return text if index.nil? || index >= end_of_range
+
+        text.gsub(/^(.{0,#{end_of_range}})#{Regexp.escape(pattern)}/, '\1')
+      end
+
+      ##
+      # Checks if the text contains HTML tags.
+      # @param text [String]
+      # @return [Boolean]
+      def self.contains_html?(text)
+        Nokogiri::HTML.fragment(text).children.any?(&:element?)
+      end
 
       # @param options [Hash<Symbol, String>]
       def initialize(**options)
@@ -50,9 +76,15 @@ module Html2rss
       def description
         return @description if defined?(@description)
 
-        return if url.to_s.empty? || @to_h[:description].to_s.empty?
+        return if (description = @to_h[:description]).to_s.empty?
 
-        @description ||= Html2rss::AttributePostProcessors::SanitizeHtml.get(@to_h[:description], url)
+        @description = self.class.remove_pattern_from_start(description, title) if title
+
+        if self.class.contains_html?(@description) && url
+          @description = Html2rss::AttributePostProcessors::SanitizeHtml.get(description, url)
+        else
+          @description
+        end
       end
 
       # @return [Addressable::URI, nil]
