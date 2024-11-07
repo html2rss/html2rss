@@ -110,8 +110,11 @@ module Html2rss
           end
 
           def find_url
-            href = closest_anchor&.[]('href')&.split('#')&.first&.strip
-            Utils.build_absolute_url_from_relative(href, url) unless href.to_s.empty?
+            href = closest_anchor&.[]('href')
+
+            return if (parts = href.to_s.split('#')).empty?
+
+            Utils.build_absolute_url_from_relative(parts.first.strip, url)
           end
 
           def extract_image
