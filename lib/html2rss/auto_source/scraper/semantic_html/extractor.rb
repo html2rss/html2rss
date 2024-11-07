@@ -57,20 +57,6 @@ module Html2rss
 
           attr_reader :article_tag, :url, :heading, :extract_url
 
-          def visible_text_from_tag(tag, separator: ' ') = self.class.visible_text_from_tag(tag, separator:)
-
-          # @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLTimeElement/dateTime
-          def extract_published_at
-            times = article_tag.css('time[datetime]')
-                               .filter_map do |tag|
-              DateTime.parse(tag['datetime'])
-            rescue ArgumentError, TypeError
-              nil
-            end
-
-            times.min
-          end
-
           ##
           # Find the heading of the article.
           # @return [Nokogiri::XML::Node, nil]
@@ -83,26 +69,7 @@ module Html2rss
             heading_tags[smallest_heading]&.max_by { |tag| visible_text_from_tag(tag)&.size.to_i }
           end
 
-          def extract_title
-            if heading && (heading.children.empty? || heading.text)
-              visible_text_from_tag(heading)
-            else
-              visible_text_from_tag(article_tag.css(HEADING_TAGS.join(','))
-                                               .max_by { |tag| tag.text.size })
-
-            end
-          end
-
-          def extract_description
-            text = visible_text_from_tag(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
-            return text if text
-
-            description = visible_text_from_tag(article_tag)
-            return nil unless description
-
-            description.strip!
-            description.empty? ? nil : description
-          end
+          def visible_text_from_tag(tag, separator: ' ') = self.class.visible_text_from_tag(tag, separator:)
 
           def closest_anchor
             SemanticHtml.find_closest_selector(heading || article_tag,
@@ -117,8 +84,29 @@ module Html2rss
             Utils.build_absolute_url_from_relative(parts.first.strip, url)
           end
 
+          def extract_title
+            if heading && (heading.children.empty? || heading.text)
+              visible_text_from_tag(heading)
+            else
+              visible_text_from_tag(article_tag.css(HEADING_TAGS.join(','))
+                                               .max_by { |tag| tag.text.size })
+
+            end
+          end
+
           def extract_image
             Image.call(article_tag, url:)
+          end
+
+          def extract_description
+            text = visible_text_from_tag(article_tag.css(NOT_HEADLINE_SELECTOR), separator: '<br>')
+            return text if text
+
+            description = visible_text_from_tag(article_tag)
+            return nil unless description
+
+            description.strip!
+            description.empty? ? nil : description
           end
 
           def generate_id
@@ -128,6 +116,18 @@ module Html2rss
               extract_url&.path,
               extract_url&.query
             ].compact.reject(&:empty?).first
+          end
+
+          # @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLTimeElement/dateTime
+          def extract_published_at
+            times = article_tag.css('time[datetime]')
+                               .filter_map do |tag|
+              DateTime.parse(tag['datetime'])
+            rescue ArgumentError, TypeError
+              nil
+            end
+
+            times.min
           end
         end
       end
