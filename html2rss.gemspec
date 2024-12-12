@@ -40,10 +40,10 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
   spec.add_dependency 'parallel'
   spec.add_dependency 'regexp_parser'
-  spec.add_dependency 'reverse_markdown', '~> 2.0'
+  spec.add_dependency 'reverse_markdown', '~> 3.0'
   spec.add_dependency 'rss'
   spec.add_dependency 'sanitize', '~> 6.0'
   spec.add_dependency 'thor'
   spec.add_dependency 'tzinfo'
-  spec.add_dependency 'zeitwerk'
+  spec.add_dependency 'zeitwerk', '~> 2.6.0'
 end
