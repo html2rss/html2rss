@@ -16,7 +16,7 @@ PATH
       sanitize (~> 6.0)
       thor
       tzinfo
-      zeitwerk (~> 2.6.0)
+      zeitwerk
 
 GEM
   remote: https://rubygems.org/

@@ -46,5 +46,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'sanitize', '~> 6.0'
   spec.add_dependency 'thor'
   spec.add_dependency 'tzinfo'
-  spec.add_dependency 'zeitwerk', '~> 2.6.0'
+  spec.add_dependency 'zeitwerk'
 end
