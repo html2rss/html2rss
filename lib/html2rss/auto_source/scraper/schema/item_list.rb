@@ -12,7 +12,7 @@ module Html2rss
         # 2. interesting attributes, i.e. description, url, image, itself.
         #
         # @see https://schema.org/ItemList
-        class ItemList < Base
+        class ItemList < Thing
           SUPPORTED_TYPES = Set['ItemList']
 
           # @return [Array<Hash>] the scraped article hashes with DEFAULT_ATTRIBUTES

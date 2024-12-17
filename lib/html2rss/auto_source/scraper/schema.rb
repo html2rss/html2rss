@@ -23,7 +23,7 @@ module Html2rss
         class << self
           def articles?(parsed_body)
             parsed_body.css(TAG_SELECTOR).any? do |script|
-              (Base::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES).any? do |type|
+              (Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES).any? do |type|
                 script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/)
               end
             end
@@ -55,12 +55,12 @@ module Html2rss
           end
 
           ##
-          # @return [Scraper::Schema::Base, Scraper::Schema::NewsArticle, nil]
+          # @return [Scraper::Schema::Thing, Scraper::Schema::NewsArticle, nil]
           def scraper_for_schema_object(schema_object)
             type = schema_object[:@type]
 
-            if Base::SUPPORTED_TYPES.member?(type)
-              Base
+            if Thing::SUPPORTED_TYPES.member?(type)
+              Thing
             elsif ItemList::SUPPORTED_TYPES.member?(type)
               ItemList
             else

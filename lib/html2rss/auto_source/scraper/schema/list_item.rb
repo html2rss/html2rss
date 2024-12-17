@@ -7,10 +7,8 @@ module Html2rss
         ##
         #
         # @see https://schema.org/ListItem
-        class ListItem < Base
+        class ListItem < Thing
           def id =          schema_object.dig(:item, :@id)  || super
-
-          # TODO: replace titleized url with a method which is more suitable for title generation
           def title =       schema_object.dig(:item, :name) || super || Utils.titleized_url(url)
           def description = schema_object.dig(:item, :description) || super
 
