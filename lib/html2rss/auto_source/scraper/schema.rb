@@ -55,7 +55,7 @@ module Html2rss
           end
 
           ##
-          # @return [Scraper::Schema::Thing, Scraper::Schema::NewsArticle, nil]
+          # @return [Scraper::Schema::Thing, Scraper::Schema::ItemList, nil] a class responding to `#call`
           def scraper_for_schema_object(schema_object)
             type = schema_object[:@type]
 
