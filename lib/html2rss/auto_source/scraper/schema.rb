@@ -2,7 +2,6 @@
 
 require 'json'
 require 'nokogiri'
-require 'set'
 
 module Html2rss
   class AutoSource
