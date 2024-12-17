@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Supports JSON content, custom HTTP headers, and post-processing of extracted content.'
   spec.homepage      = 'https://github.com/html2rss/html2rss'
   spec.license       = 'MIT'
-  spec.required_ruby_version = '>= 3.1'
+  spec.required_ruby_version = '>= 3.2'
 
   if spec.respond_to?(:metadata)
     spec.metadata['allowed_push_host'] = 'https://rubygems.org'
