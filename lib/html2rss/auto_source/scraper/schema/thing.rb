@@ -65,15 +65,28 @@ module Html2rss
             Utils.build_absolute_url_from_relative(url, @url)
           end
 
-          def image = images.first || nil
+          def image
+            if (image_url = image_urls.first)
+              Utils.build_absolute_url_from_relative(image_url, @url)
+            end
+          end
+
           def published_at = schema_object[:datePublished]
 
           private
 
           attr_reader :schema_object
 
-          def images
-            Array(schema_object[:image]).compact
+          def image_urls
+            schema_object.values_at(:image, :thumbnailUrl).filter_map do |object|
+              next unless object
+
+              if object.is_a?(String)
+                object
+              elsif object.is_a?(Hash) && object[:@type] == 'ImageObject'
+                object[:url] || object[:contentUrl]
+              end
+            end
           end
         end
       end
