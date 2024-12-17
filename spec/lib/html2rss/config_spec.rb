@@ -55,10 +55,8 @@ RSpec.describe Html2rss::Config do
     context 'with channel.url having path' do
       let(:feed_config) { { channel: { url: 'http://www.example.com/news' }, selectors: { items: {} } } }
 
-      it 'uses the Util method' do
-        allow(Html2rss::Utils).to receive(:titleized_url).and_call_original
-        described_class.new(feed_config).title
-        expect(Html2rss::Utils).to have_received(:titleized_url)
+      it 'generates a channel title' do
+        expect(described_class.new(feed_config).title).to eq 'www.example.com: News'
       end
     end
   end

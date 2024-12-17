@@ -25,7 +25,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ListItem do
 
     it 'falls back to titleized url if title and super are not present', :aggregate_failures do
       schema_object[:item].delete(:name)
-      expect(list_item.title).to eq('example.com: Foobar')
+      expect(list_item.title).to eq('Foobar')
     end
   end
 

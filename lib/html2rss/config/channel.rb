@@ -55,7 +55,7 @@ module Html2rss
       ##
       # @return [String]
       def title
-        config.fetch(:title) { Utils.titleized_url(url) }
+        config.fetch(:title) { Utils.titleized_channel_url(url) }
       end
 
       ##

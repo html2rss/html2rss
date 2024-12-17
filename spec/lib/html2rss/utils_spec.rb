@@ -42,11 +42,24 @@ RSpec.describe Html2rss::Utils do
     end
   end
 
-  describe '.titleized_url' do
+  describe '.titleized_channel_url' do
     {
       'http://www.example.com' => 'www.example.com',
       'http://www.example.com/foobar' => 'www.example.com: Foobar',
       'http://www.example.com/foobar/baz' => 'www.example.com: Foobar Baz'
+    }.each_pair do |url, expected|
+      it { expect(described_class.titleized_channel_url(url)).to eq(expected) }
+    end
+  end
+
+  describe '.titleized_url' do
+    {
+      'http://www.example.com' => '',
+      'http://www.example.com/foobar/' => 'Foobar',
+      'http://www.example.com/foobar/baz.txt' => 'Foobar Baz',
+      'http://www.example.com/foo-bar/baz_qux.pdf' => 'Foo Bar Baz Qux',
+      'http://www.example.com/foo%20bar/baz%20qux.php' => 'Foo Bar Baz Qux',
+      'http://www.example.com/foo%20bar/baz%20qux-4711.html' => 'Foo Bar Baz Qux 4711'
     }.each_pair do |url, expected|
       it { expect(described_class.titleized_url(url)).to eq(expected) }
     end
