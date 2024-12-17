@@ -7,10 +7,31 @@ module Html2rss
     module Scraper
       class Schema
         ##
-        # Base class for Schema.org schema_objects.
+        # A Thing is kind of the 'base class' for Schema.org schema_objects.
         #
-        # @see https://schema.org/Article
-        class Base
+        # @see https://schema.org/Thing
+        class Thing
+          SUPPORTED_TYPES = %w[
+            AdvertiserContentArticle
+            AnalysisNewsArticle
+            APIReference
+            Article
+            AskPublicNewsArticle
+            BackgroundNewsArticle
+            BlogPosting
+            DiscussionForumPosting
+            LiveBlogPosting
+            NewsArticle
+            OpinionNewsArticle
+            Report
+            ReportageNewsArticle
+            ReviewNewsArticle
+            SatiricalArticle
+            ScholarlyArticle
+            SocialMediaPosting
+            TechArticle
+          ].to_set.freeze
+
           DEFAULT_ATTRIBUTES = %i[id title description url image published_at].freeze
 
           def initialize(schema_object, url:)
@@ -37,7 +58,7 @@ module Html2rss
           def url
             url = schema_object[:url]
             if url.to_s.empty?
-              Log.debug("Schema#Base.url: no url in schema_object: #{schema_object.inspect}")
+              Log.debug("Schema#Thing.url: no url in schema_object: #{schema_object.inspect}")
               return
             end
 

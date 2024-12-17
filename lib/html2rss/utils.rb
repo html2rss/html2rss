@@ -59,15 +59,34 @@ module Html2rss
     end
 
     ##
+    # Builds a titleized representation of the URL with prefixed host.
+    # @param url [String, Addressable::URI]
+    # @return [String]
+    def self.titleized_channel_url(url)
+      uri = Addressable::URI.parse(url)
+      host = uri.host
+
+      nicer_path = CGI.unescapeURIComponent(uri.path).split('/').reject(&:empty?)
+      nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
+    end
+
+    ##
     # Builds a titleized representation of the URL.
     # @param url [String, Addressable::URI]
     # @return [String]
     def self.titleized_url(url)
       uri = Addressable::URI.parse(url)
-      host = uri.host
 
-      nicer_path = uri.path.split('/').reject(&:empty?)
-      nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
+      return '' if uri.path.empty?
+
+      nicer_path = CGI.unescapeURIComponent(uri.path)
+                      .split('/')
+                      .flat_map do |part|
+        part.gsub(/[^a-zA-Z0-9\.]/, ' ').gsub(/\s+/, ' ').split
+      end
+
+      nicer_path.map!(&:capitalize)
+      File.basename nicer_path.join(' '), '.*'
     end
 
     ##
