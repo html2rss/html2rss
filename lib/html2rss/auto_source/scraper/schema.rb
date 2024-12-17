@@ -8,43 +8,24 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scraps articles from Schema.org objects, by looking for the objects in:
+      # Scrapes articles from Schema.org objects, by looking for the objects in:
 
-      #  1. <script type="application/ld+json"> "schema" tag.
-      #  2. tbd
+      # <script type="application/ld+json"> "schema" tags.
       #
       # See:
-      # 1. https://schema.org/NewsArticle
+      # 1. https://schema.org/docs/full.html
       # 2. https://developers.google.com/search/docs/appearance/structured-data/article#microdata
       class Schema
         include Enumerable
 
         TAG_SELECTOR = 'script[type="application/ld+json"]'
-        SCHEMA_OBJECT_TYPES = %w[
-          AdvertiserContentArticle
-          AnalysisNewsArticle
-          APIReference
-          Article
-          AskPublicNewsArticle
-          BackgroundNewsArticle
-          BlogPosting
-          DiscussionForumPosting
-          LiveBlogPosting
-          NewsArticle
-          OpinionNewsArticle
-          Report
-          ReportageNewsArticle
-          ReviewNewsArticle
-          SatiricalArticle
-          ScholarlyArticle
-          SocialMediaPosting
-          TechArticle
-        ].to_set.freeze
 
         class << self
           def articles?(parsed_body)
             parsed_body.css(TAG_SELECTOR).any? do |script|
-              SCHEMA_OBJECT_TYPES.any? { |type| script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/) }
+              (Base::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES).any? do |type|
+                script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/)
+              end
             end
           end
 
@@ -76,10 +57,14 @@ module Html2rss
           ##
           # @return [Scraper::Schema::Base, Scraper::Schema::NewsArticle, nil]
           def scraper_for_schema_object(schema_object)
-            if SCHEMA_OBJECT_TYPES.member?(schema_object[:@type])
+            type = schema_object[:@type]
+
+            if Base::SUPPORTED_TYPES.member?(type)
               Base
+            elsif ItemList::SUPPORTED_TYPES.member?(type)
+              ItemList
             else
-              Log.warn("Schema#scraper_for_schema_object: Unsupported schema object @type: #{schema_object[:@type]}")
+              Log.warn("Schema#scraper_for_schema_object: Unsupported schema object @type: #{type}")
               nil
             end
           end
@@ -107,9 +92,9 @@ module Html2rss
 
           schema_objects.filter_map do |schema_object|
             next unless (klass = self.class.scraper_for_schema_object(schema_object))
-            next unless (article_hash = klass.new(schema_object, url:).call)
+            next unless (results = klass.new(schema_object, url:).call)
 
-            yield article_hash
+            results.is_a?(Array) ? results.each(&) : yield(results)
           end
         end
 

@@ -11,6 +11,27 @@ module Html2rss
         #
         # @see https://schema.org/Article
         class Base
+          SUPPORTED_TYPES = %w[
+            AdvertiserContentArticle
+            AnalysisNewsArticle
+            APIReference
+            Article
+            AskPublicNewsArticle
+            BackgroundNewsArticle
+            BlogPosting
+            DiscussionForumPosting
+            LiveBlogPosting
+            NewsArticle
+            OpinionNewsArticle
+            Report
+            ReportageNewsArticle
+            ReviewNewsArticle
+            SatiricalArticle
+            ScholarlyArticle
+            SocialMediaPosting
+            TechArticle
+          ].to_set.freeze
+
           DEFAULT_ATTRIBUTES = %i[id title description url image published_at].freeze
 
           def initialize(schema_object, url:)

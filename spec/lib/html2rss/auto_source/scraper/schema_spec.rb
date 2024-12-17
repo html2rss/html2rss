@@ -105,13 +105,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
           '@context': 'https://schema.org',
           '@type': 'ItemList',
           itemListElement: [
-            article_schema_object
+            {
+              '@type': 'ListItem',
+              position: 1,
+              url: 'https://www.example.com/breakdancerin-raygun-geht-weiter-110168077.html'
+            },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              url: 'https://www.example.com/in-frankfurt-macht-die-neue-grundsteuer-das-wohnen-noch-teurer-110165876.html'
+            }
           ]
         }
       end
 
-      it 'scrapes the article' do
-        expect(array).to include(hash_including('@type': 'Article'))
+      it 'returns the ItemList' do
+        expect(array).to include(hash_including('@type': 'ItemList'))
       end
     end
 

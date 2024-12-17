@@ -7,6 +7,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Base do
     { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation' }
   end
 
+  specify { expect(described_class::SUPPORTED_TYPES).to be_a(Set) }
+
   describe '#call' do
     subject(:call) { instance.call }
 
