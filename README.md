@@ -10,21 +10,11 @@ With the _feed config_, you provide a URL to scrape and CSS selectors for extrac
 
 Support the development by sponsoring this project on GitHub. Thank you! 💓
 
-## Installation
-
-| Install | `gem install html2rss` |
-| ------- | ---------------------- |
-| Usage   | `html2rss help`        |
-
-You can also install it as a dependency in your Ruby project:
-
-|                      🤩 Like it? | Star it! ⭐️         |
-| -------------------------------: | -------------------- |
-| Add this line to your `Gemfile`: | `gem 'html2rss'`     |
-|                    Then execute: | `bundle`             |
-|                    In your code: | `require 'html2rss'` |
-
 ## Generating a feed on the CLI
+
+[Install Ruby](https://www.ruby-lang.org/en/documentation/installation/) (latest version is recommended) on your machine and run `gem install html2rss` in your terminal.
+
+After the installation has finished, `html2rss help` will print usage information.
 
 ### using automatic generation
 
@@ -58,6 +48,14 @@ selectors:
 Build the feed from this config with: `html2rss feed ./my_config_file.yml`.
 
 ## Generating a feed with Ruby
+
+You can also install it as a dependency in your Ruby project:
+
+|                      🤩 Like it? | Star it! ⭐️         |
+| -------------------------------: | -------------------- |
+| Add this line to your `Gemfile`: | `gem 'html2rss'`     |
+|                    Then execute: | `bundle`             |
+|                    In your code: | `require 'html2rss'` |
 
 Here's a minimal working example using Ruby:
 
