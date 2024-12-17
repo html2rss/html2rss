@@ -60,7 +60,7 @@ module Html2rss
 
             item_maker.title = article.title
             item_maker.description = article.description
-            item_maker.pubDate = article.published_at
+            item_maker.pubDate = article.published_at&.rfc2822
             item_maker.link = article.url
           end
         end

@@ -104,11 +104,11 @@ module Html2rss
       end
 
       # Parses and returns the published_at time.
-      # @return [Time, nil]
+      # @return [DateTime, nil]
       def published_at
-        return if (string = @to_h[:published_at].to_s).strip.empty?
+        return if (string = @to_h[:published_at].to_s.strip).empty?
 
-        @published_at ||= Time.parse(string)
+        @published_at ||= DateTime.parse(string)
       rescue ArgumentError
         nil
       end

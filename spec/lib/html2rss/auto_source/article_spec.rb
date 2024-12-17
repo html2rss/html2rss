@@ -111,7 +111,7 @@ RSpec.describe Html2rss::AutoSource::Article do
   describe '#published_at' do
     it 'returns a Time object if published_at is present and valid' do
       instance = described_class.new(published_at: '2022-01-01T12:00:00Z')
-      expect(instance.published_at).to be_a(Time)
+      expect(instance.published_at).to be_a(DateTime)
     end
 
     it 'returns nil if published_at is not present' do
