@@ -13,10 +13,7 @@ module Html2rss
 
           articles.select!(&:valid?)
 
-          remove_short!(articles, :title)
-
           deduplicate_by!(articles, :url)
-          deduplicate_by!(articles, :title)
 
           keep_only_http_urls!(articles)
           reject_different_domain!(articles, url) unless keep_different_domain
@@ -26,19 +23,6 @@ module Html2rss
         end
 
         private
-
-        ##
-        # Removes articles with short values for a given key.
-        #
-        # @param articles [Array<Article>] The list of articles to process.
-        # @param key [Symbol] The key to check for short values.
-        # @param min_words [Integer] The minimum number of words required.
-        def remove_short!(articles, key = :title, min_words: 2)
-          articles.reject! do |article|
-            value = article.public_send(key)
-            value.nil? || value.to_s.split.size < min_words
-          end
-        end
 
         ##
         # Deduplicates articles by a given key.
