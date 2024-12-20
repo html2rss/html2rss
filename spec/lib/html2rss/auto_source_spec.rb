@@ -16,50 +16,6 @@ RSpec.describe Html2rss::AutoSource do
   end
   let(:headers) { {} }
 
-  describe '#initialize' do
-    context 'with a valid URL (String)' do
-      it 'does not raise an error' do
-        expect do
-          described_class.new('http://www.example.com', body:, headers:)
-        end.to raise_error(/be a Addressable::URI/)
-      end
-    end
-
-    context 'with a valid URL (Addressable::URI)' do
-      it 'does not raise an error' do
-        expect do
-          described_class.new(Addressable::URI.parse('http://www.example.com'), body:, headers:)
-        end.not_to raise_error
-      end
-    end
-
-    context 'with an invalid URL' do
-      it 'raises an ArgumentError' do
-        expect do
-          described_class.new(12_345, body:,
-                                      headers:)
-        end.to raise_error(ArgumentError, /be a Addressable::URI/)
-      end
-    end
-
-    context 'with an unsupported URL scheme' do
-      it 'raises an UnsupportedUrlScheme error' do
-        expect do
-          described_class.new(Addressable::URI.parse('ftp://www.example.com'), body:, headers:)
-        end.to raise_error(described_class::UnsupportedUrlScheme, /not supported/)
-      end
-    end
-
-    context 'when the URL is not absolute' do
-      it 'raises an ArgumentError' do
-        expect do
-          described_class.new(Addressable::URI.parse('/relative/path'), body:,
-                                                                        headers:)
-        end.to raise_error(ArgumentError, 'URL must be absolute')
-      end
-    end
-  end
-
   describe '#build' do
     let(:parsed_body) { Nokogiri::HTML.parse(response.body) }
     let(:articles) { [] }

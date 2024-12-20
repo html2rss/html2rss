@@ -16,6 +16,7 @@ if ENV['COVERAGE']
     add_group 'Auto Source', 'lib/html2rss/auto_source'
     add_group 'Attribute Post Processors', 'lib/html2rss/attribute_post_processors'
     add_group 'Item Extractors', 'lib/html2rss/item_extractors'
+    add_group 'Request Service', 'lib/html2rss/request_service'
   end
 end
 

@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require 'addressable/uri'
-require 'faraday'
-require 'faraday/follow_redirects'
 require 'json'
 require 'regexp_parser'
 require 'tzinfo'
@@ -15,11 +13,10 @@ module Html2rss
   module Utils
     ##
     # @param url [String, Addressable::URI]
-    # @param base_url [String]
+    # @param base_url [String, Addressable::URI]
     # @return [Addressable::URI]
     def self.build_absolute_url_from_relative(url, base_url)
-      url = Addressable::URI.parse(url.to_s) unless url.is_a?(Addressable::URI)
-
+      url = Addressable::URI.parse(url)
       return url if url.absolute?
 
       base_uri = Addressable::URI.parse(base_url)
@@ -60,26 +57,23 @@ module Html2rss
 
     ##
     # Builds a titleized representation of the URL with prefixed host.
-    # @param url [String, Addressable::URI]
+    # @param url [Addressable::URI]
     # @return [String]
     def self.titleized_channel_url(url)
-      uri = Addressable::URI.parse(url)
-      host = uri.host
+      nicer_path = CGI.unescapeURIComponent(url.path).split('/').reject(&:empty?)
+      host = url.host
 
-      nicer_path = CGI.unescapeURIComponent(uri.path).split('/').reject(&:empty?)
       nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
     end
 
     ##
     # Builds a titleized representation of the URL.
-    # @param url [String, Addressable::URI]
+    # @param url [Addressable::URI]
     # @return [String]
     def self.titleized_url(url)
-      uri = Addressable::URI.parse(url)
+      return '' if url.path.empty?
 
-      return '' if uri.path.empty?
-
-      nicer_path = CGI.unescapeURIComponent(uri.path)
+      nicer_path = CGI.unescapeURIComponent(url.path)
                       .split('/')
                       .flat_map do |part|
         part.gsub(/[^a-zA-Z0-9\.]/, ' ').gsub(/\s+/, ' ').split
@@ -87,22 +81,6 @@ module Html2rss
 
       nicer_path.map!(&:capitalize)
       File.basename nicer_path.join(' '), '.*'
-    end
-
-    ##
-    # @param url [String, Addressable::URI]
-    # @param headers [Hash] additional HTTP request headers to use for the request
-    # @return [Faraday::Response] body of the HTTP response
-    def self.request_url(url, headers: {})
-      url = Addressable::URI.parse(url.to_s) unless url.is_a?(Addressable::URI)
-
-      raise ArgumentError, 'URL must be absolute' unless url.absolute?
-      raise ArgumentError, 'URL must not contain an @ characater' if url.to_s.include?('@')
-
-      Faraday.new(url:, headers:) do |faraday|
-        faraday.use Faraday::FollowRedirects::Middleware
-        faraday.adapter Faraday.default_adapter
-      end.get
     end
 
     ##
@@ -123,10 +101,10 @@ module Html2rss
     ##
     # Guesses the content type based on the file extension of the URL.
     #
-    # @param url [String, Addressable::URI]
+    # @param url [Addressable::URI]
     # @return [String] guessed content type, defaults to 'application/octet-stream'
     def self.guess_content_type_from_url(url)
-      url = url.to_s.split('?').first
+      url = url.path.split('?').first
 
       content_type = MIME::Types.type_for(File.extname(url).delete('.'))
       content_type.first&.to_s || 'application/octet-stream'

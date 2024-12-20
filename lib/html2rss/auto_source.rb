@@ -11,20 +11,13 @@ module Html2rss
   # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
-    class UnsupportedUrlScheme < Html2rss::Error; end
     class NoArticlesFound < Html2rss::Error; end
-
-    SUPPORTED_URL_SCHEMES = %w[http https].to_set.freeze
 
     ##
     # @param url [Addressable::URI] The URL to extract articles from.
     # @param body [String] The body of the response.
     # @param headers [Hash] The headers of the response.
     def initialize(url, body:, headers: {})
-      raise ArgumentError, 'URL must be a Addressable::URI' unless url.is_a?(Addressable::URI)
-      raise ArgumentError, 'URL must be absolute' unless url.absolute?
-      raise UnsupportedUrlScheme, "#{url.scheme} not supported" unless SUPPORTED_URL_SCHEMES.include?(url.scheme)
-
       @url = url
       @body = body
       @headers = headers

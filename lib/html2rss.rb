@@ -99,13 +99,13 @@ module Html2rss
   # No need for a "feed config".
   #
   # @param url [String] the URL to automatically source the feed from
+  # @param strategy [Symbol] the request strategy to use
   # @return [RSS::Rss]
-  def self.auto_source(url)
-    url = Addressable::URI.parse(url)
+  def self.auto_source(url, strategy: :faraday)
+    ctx = RequestService::Context.new(url:, headers: {})
+    response = RequestService.execute(ctx, strategy:)
 
-    response = Html2rss::Utils.request_url(url)
-
-    Html2rss::AutoSource.new(url, body: response.body, headers: response.headers).build
+    Html2rss::AutoSource.new(ctx.url, body: response.body, headers: response.headers).build
   end
 
   private_class_method :find_feed_config
