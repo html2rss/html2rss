@@ -2,6 +2,8 @@
 
 module Html2rss
   class RequestService
+    ##
+    # Defines the interface of every request strategy.
     class Strategy
       ##
       # @param ctx [Context] the context for the request

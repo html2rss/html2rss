@@ -13,14 +13,14 @@ module Html2rss
 
         headers = headers.dup
         headers.transform_keys!(&:to_s)
-        headers.transform_values!(&:to_s)
+
         @headers = headers
       end
 
       # @return [String] the body of the response
       attr_reader :body
 
-      # @return [Hash<String, String>] the headers of the response
+      # @return [Hash<String, Object>] the headers of the response
       attr_reader :headers
     end
   end

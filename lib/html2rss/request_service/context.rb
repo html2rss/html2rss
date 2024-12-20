@@ -16,6 +16,7 @@ module Html2rss
       def initialize(url:, headers: {})
         @url = Addressable::URI.parse(url)
         assert_valid_url!
+
         @headers = headers
       end
 
