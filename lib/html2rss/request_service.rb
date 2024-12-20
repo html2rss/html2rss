@@ -2,18 +2,19 @@
 
 module Html2rss
   ##
-  # Requests website URLs to retrieve their HTML for further processing.
+  # Requests website URLs to retreive their HTML for further processing.
   # Provides strategies, i.e. to integrate Browserless.io.
   class RequestService
     class UnknownStrategy < Html2rss::Error; end
     class InvalidUrl < Html2rss::Error; end
     class UnsupportedUrlScheme < Html2rss::Error; end
 
-    Response = Data.define(:body, :headers)
-
     STRATEGIES = {
-      faraday: FaradayStrategy
+      faraday: FaradayStrategy,
+      browserless: BrowserlessStrategy
     }.freeze
+
+    DEFAULT_STRATEGY = :faraday
 
     ##
     # Executes the request.
@@ -21,7 +22,7 @@ module Html2rss
     # @param strategy [Symbol] the strategy to use
     # @return [Response] the response from the strategy
     # @raise [UnknownStrategy] if the strategy is not known
-    def self.execute(ctx, strategy: :faraday)
+    def self.execute(ctx, strategy: DEFAULT_STRATEGY)
       strategy_class = STRATEGIES.fetch(strategy.to_sym) do
         raise UnknownStrategy,
               "The strategy '#{strategy}' is not known. Available strategies are: #{STRATEGIES.keys.join(', ')}"

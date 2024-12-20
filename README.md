@@ -152,9 +152,9 @@ Your `selectors` hash can contain arbitrary named selectors, but only a few will
 | `comments`    | `comments`         | A URL.                                      |
 | `source`      | ~~source~~         | Not yet supported.                          |
 
-### The `selector` hash
+### Build RSS 2.0 item attributes by specifying selectors
 
-Every named selector in your `selectors` hash can have these attributes:
+Every named selector (i.e. `title`, `description`, see table above) in your `selectors` hash can have these attributes:
 
 | name           | value                                                    |
 | -------------- | -------------------------------------------------------- |
@@ -162,7 +162,7 @@ Every named selector in your `selectors` hash can have these attributes:
 | `extractor`    | Name of the extractor. See notes below.                  |
 | `post_process` | A hash or array of hashes. See notes below.              |
 
-## Using extractors
+#### Using extractors
 
 Extractors help with extracting the information from the selected HTML tag.
 
@@ -199,7 +199,7 @@ selectors:
 
 </details>
 
-## Using post processors
+### Using post processors
 
 Extracted information can be further manipulated with post processors.
 
@@ -216,7 +216,7 @@ Extracted information can be further manipulated with post processors.
 
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
-### Chaining post processors
+#### Chaining post processors
 
 Pass an array to `post_process` to chain the post processors.
 
@@ -242,7 +242,7 @@ selectors:
 
 </details>
 
-### Post processor `gsub`
+##### Post processor `gsub`
 
 The post processor `gsub` makes use of Ruby's [`gsub`](https://apidock.com/ruby/String/gsub) method.
 
@@ -281,7 +281,7 @@ selectors:
 
 </details>
 
-## Adding `<category>` tags to an item
+#### Adding `<category>` tags to an item
 
 The `categories` selector takes an array of selector names. Each value of those
 selectors will become a `<category>` on the RSS item.
@@ -324,7 +324,7 @@ selectors:
 
 </details>
 
-## Custom item GUID
+#### Custom item GUID
 
 By default, html2rss generates a GUID from the `title` or `description`.
 
@@ -369,7 +369,7 @@ selectors:
 
 </details>
 
-## Adding an `<enclosure>` tag to an item
+#### Adding an `<enclosure>` tag to an item
 
 An enclosure can be any file, e.g. a image, audio or video - think Podcast.
 
@@ -445,7 +445,33 @@ selectors:
 
 </details>
 
-## Set any HTTP header in the request
+## Customization of how requests to the channel URL are sent
+
+By default, html2rss issues a naiive HTTP request and extracts information from the response. That is performant and works for many websites.
+
+However, modern websites often do not render much HTML on the server, but evaluate JavaScript on the client to create the HTML. In such cases, the default strategy will not find the "juicy content".
+
+### Use Browserless.io
+
+You can use _Browserless.io_ to run a Chrome browser and return the website's source code after the website generated it.
+For this, you can either run your own Browserless.io instance (Docker image available -- read their license!) or pay them for a hosted instance.
+
+To make html2rss use your instance, specify the environment variables accordingly and use the `browserless` strategy for those websites.
+
+Using auto source:
+
+```sh
+BROWSERLESS_IO_WEBSOCKET_URL="ws://127.0.0.1:3000" BROWSERLESS_IO_API_TOKEN="6R0W53R135510" \
+  html2rss auto --strategy=browserless https://example.com
+```
+
+Inside your feed config:
+
+```sh
+# TODO: rename strategy and adjust examples, add links to browserless getting started
+```
+
+### Set any HTTP header in the request
 
 To set HTTP request headers, you can add them to the channel's `headers` hash. This is useful for APIs that require an Authorization header.
 
@@ -593,24 +619,24 @@ Recommended further readings:
 - Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
 - [CSS selectors are versatile. Here's an overview.](https://www.w3.org/TR/selectors-4/#overview)
 
-### Contributing
+## Contributing
 
 Find ideas what to contribute in:
 
 1. <https://github.com/orgs/html2rss/discussions>
 2. the issues tracker: <https://github.com/html2rss/html2rss/issues>
 
-#### Development Helpers
-
-1. `bin/setup`: installs dependencies and sets up the development environment.
-2. `bin/guard`: automatically runs rspec, rubocop and reek when a file changes.
-3. for a modern Ruby development experience: install [`ruby-lsp`](https://github.com/Shopify/ruby-lsp) and integrate it to your IDE:
-   a. [Ruby in Visual Studio Code](https://code.visualstudio.com/docs/languages/ruby)
-
-#### How to submit changes
+To submit changes:
 
 1. Fork this repo ( <https://github.com/html2rss/html2rss/fork> )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Implement a commit your changes (`git commit -am 'feat: add XYZ'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create a new Pull Request using the Github web UI
+
+## Development Helpers
+
+1. `bin/setup`: installs dependencies and sets up the development environment.
+2. `bin/guard`: automatically runs rspec, rubocop and reek when a file changes.
+3. for a modern Ruby development experience: install [`ruby-lsp`](https://github.com/Shopify/ruby-lsp) and integrate it to your IDE:
+   a. [Ruby in Visual Studio Code](https://code.visualstudio.com/docs/languages/ruby)

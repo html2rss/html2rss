@@ -31,9 +31,16 @@ module Html2rss
       puts Html2rss.feed_from_yaml_config(yaml_file, feed_name, params:)
     end
 
-    desc 'auto URL', 'automatically sources an RSS feed from the URL'
+    desc 'auto URL', 'Automatically sources an RSS feed from the URL'
+    method_option :strategy,
+                  type: :string,
+                  desc: 'The strategy to request the URL',
+                  enum: RequestService::STRATEGIES.keys.map(&:to_s),
+                  default: :faraday
     def auto(url)
-      puts Html2rss.auto_source(url)
+      strategy = (options[:strategy] || :faraday).to_sym
+
+      puts Html2rss.auto_source(url, strategy:)
     end
   end
 end
