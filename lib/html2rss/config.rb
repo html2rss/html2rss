@@ -27,6 +27,7 @@ module Html2rss
     def_delegator :@channel, :url, :link
     def_delegator :@channel, :time_zone
     def_delegator :@channel, :json?
+    def_delegator :@channel, :strategy
 
     def_delegator :@selectors, :item_selector_names
     def_delegator :@selectors, :selector?

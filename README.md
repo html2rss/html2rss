@@ -454,22 +454,62 @@ However, modern websites often do not render much HTML on the server, but evalua
 ### Use Browserless.io
 
 You can use _Browserless.io_ to run a Chrome browser and return the website's source code after the website generated it.
-For this, you can either run your own Browserless.io instance (Docker image available -- read their license!) or pay them for a hosted instance.
+For this, you can either run your own Browserless.io instance (Docker image available -- [read their license](https://github.com/browserless/browserless/pkgs/container/chromium#licensing)!) or pay them for a hosted instance.
 
-To make html2rss use your instance, specify the environment variables accordingly and use the `browserless` strategy for those websites.
+To run a local Browserless.io instance, you can use the following Docker command:
 
-Using auto source:
+```sh
+docker run \
+  --rm \
+  -p 3000:3000 \
+  -e "CONCURRENT=10" \
+  -e "TOKEN=6R0W53R135510" \
+  ghcr.io/browserless/chromium
+```
+
+To make html2rss use your instance,
+
+1. specify the environment variables accordingly, and
+2. use the `browserless` strategy for those websites.
+
+When running locally with commands from above, you can skip setting the environment variables, as they are aligned with the default values.
 
 ```sh
 BROWSERLESS_IO_WEBSOCKET_URL="ws://127.0.0.1:3000" BROWSERLESS_IO_API_TOKEN="6R0W53R135510" \
   html2rss auto --strategy=browserless https://example.com
 ```
 
-Inside your feed config:
+When using traditional feed configs, inside your channel config set `strategy: browserless`.
 
-```sh
-# TODO: rename strategy and adjust examples, add links to browserless getting started
+<details><summary>See a YAML feed config example</summary>
+
+```yml
+channel:
+  url: https://www.imdb.com/user/ur67728460/ratings
+  time_zone: UTC
+  ttl: 1440
+  strategy: browserless
+  headers:
+    User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+selectors:
+  items:
+    selector: "li.ipc-metadata-list-summary-item"
+  title:
+    selector: ".ipc-title__text"
+    post_process:
+      - name: gsub
+        pattern: "/^(\\d+.)\\s/"
+        replacement: ""
+      - name: template
+        string: "%{self} rated with: %{user_rating}"
+  link:
+    selector: "a.ipc-title-link-wrapper"
+    extractor: "href"
+  user_rating:
+    selector: "[data-testid='ratingGroup--other-user-rating'] > .ipc-rating-star--rating"
 ```
+
+</details>
 
 ### Set any HTTP header in the request
 

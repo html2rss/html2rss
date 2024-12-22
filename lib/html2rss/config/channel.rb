@@ -88,6 +88,12 @@ module Html2rss
         config.fetch(:json, false)
       end
 
+      ##
+      # @return [Symbol]
+      def strategy
+        config.fetch(:strategy, RequestService::DEFAULT_STRATEGY).to_sym
+      end
+
       private
 
       # @return [Hash<Symbol, Object>]
