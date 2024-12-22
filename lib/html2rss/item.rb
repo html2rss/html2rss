@@ -24,8 +24,8 @@ module Html2rss
     # @return [Array<Html2rss::Item>] list of items fetched.
     def self.from_url(url, config)
       ctx = RequestService::Context.new(url:, headers: config.headers)
-      body = RequestService.execute(ctx, strategy: :faraday).body
 
+      body = RequestService.execute(ctx, strategy: config.strategy).body
       body = ObjectToXmlConverter.new(JSON.parse(body)).call if config.json?
 
       Nokogiri.HTML(body)

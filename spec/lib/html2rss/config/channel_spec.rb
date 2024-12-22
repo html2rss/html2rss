@@ -38,4 +38,18 @@ RSpec.describe Html2rss::Config::Channel do
       end
     end
   end
+
+  describe '#strategy' do
+    context 'without channel strategy' do
+      subject { described_class.new({ url: '' }).strategy }
+
+      it { is_expected.to eq :faraday }
+    end
+
+    context 'with channel strategy' do
+      subject { described_class.new({ url: '', strategy: 'browserless' }).strategy }
+
+      it { is_expected.to eq :browserless }
+    end
+  end
 end
