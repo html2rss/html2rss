@@ -16,6 +16,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ListItem do
       schema_object[:item].delete(:@id)
       expect(list_item.id).to eq '/foobar'
     end
+
+    it 'converts symbols to strings' do
+      schema_object[:item][:@id] = :foo
+      expect(list_item.id).to eq('foo')
+    end
   end
 
   describe '#title' do
