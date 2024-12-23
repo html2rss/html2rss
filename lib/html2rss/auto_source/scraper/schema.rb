@@ -94,7 +94,11 @@ module Html2rss
             next unless (klass = self.class.scraper_for_schema_object(schema_object))
             next unless (results = klass.new(schema_object, url:).call)
 
-            results.is_a?(Array) ? results.each(&) : yield(results)
+            if results.is_a?(Array)
+              results.each { |result| yield(result) } # rubocop:disable Style/ExplicitBlockArgument
+            else
+              yield(results)
+            end
           end
         end
 
