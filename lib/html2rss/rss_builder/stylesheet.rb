@@ -47,6 +47,13 @@ module Html2rss
         @media = media
       end
       attr_reader :href, :type, :media
+
+      # @return [String] the XML representation of the stylesheet
+      def to_xml
+        <<~XML
+          <?xml-stylesheet href="#{href}" type="#{type}" media="#{media}"?>
+        XML
+      end
     end
   end
 end
