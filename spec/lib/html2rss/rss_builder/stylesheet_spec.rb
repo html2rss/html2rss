@@ -53,4 +53,26 @@ RSpec.describe Html2rss::RssBuilder::Stylesheet do
       end
     end
   end
+
+  describe '#to_xml' do
+    it 'returns the correct XML string' do
+      stylesheet = described_class.new(href: 'http://example.com/style.css', type: 'text/css')
+      expected_xml = <<~XML
+        <?xml-stylesheet href="http://example.com/style.css" type="text/css" media="all"?>
+      XML
+
+      expect(stylesheet.to_xml).to eq(expected_xml)
+    end
+
+    context 'with a different media' do
+      it 'returns the correct XML string with the specified media' do
+        stylesheet = described_class.new(href: 'http://example.com/style.css', type: 'text/css', media: 'screen')
+        expected_xml = <<~XML
+          <?xml-stylesheet href="http://example.com/style.css" type="text/css" media="screen"?>
+        XML
+
+        expect(stylesheet.to_xml).to eq(expected_xml)
+      end
+    end
+  end
 end
