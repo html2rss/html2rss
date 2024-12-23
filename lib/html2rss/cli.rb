@@ -2,7 +2,6 @@
 
 require_relative '../html2rss'
 require 'thor'
-require 'addressable'
 
 ##
 # The Html2rss namespace / command line interface.
@@ -35,10 +34,10 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: RequestService::STRATEGIES.keys.map(&:to_s),
-                  default: :faraday
+                  enum: RequestService.strategy_names,
+                  default: RequestService.default_strategy_name
     def auto(url)
-      strategy = (options[:strategy] || :faraday).to_sym
+      strategy = options.fetch(:strategy) { RequestService.default_strategy_name }.to_sym
 
       puts Html2rss.auto_source(url, strategy:)
     end

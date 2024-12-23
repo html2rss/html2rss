@@ -91,7 +91,7 @@ module Html2rss
       ##
       # @return [Symbol]
       def strategy
-        config.fetch(:strategy, RequestService::DEFAULT_STRATEGY).to_sym
+        config.fetch(:strategy) { RequestService.default_strategy_name }.to_sym
       end
 
       private
