@@ -9,7 +9,7 @@ module Html2rss
         # @see https://schema.org/ListItem
         class ListItem < Thing
           def id =          schema_object.dig(:item, :@id)  || super
-          def title =       schema_object.dig(:item, :name) || super || Utils.titleized_url(url)
+          def title =       schema_object.dig(:item, :name) || super || (url ? Utils.titleized_url(url) : nil)
           def description = schema_object.dig(:item, :description) || super
 
           # @return [Addressable::URI, nil]

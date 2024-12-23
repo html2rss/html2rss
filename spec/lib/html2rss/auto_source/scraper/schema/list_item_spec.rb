@@ -23,9 +23,17 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ListItem do
       expect(list_item.title).to eq('Test Item')
     end
 
-    it 'falls back to titleized url if title and super are not present', :aggregate_failures do
+    it 'falls back to titleized url if title and super are not present' do
       schema_object[:item].delete(:name)
       expect(list_item.title).to eq('Foobar')
+    end
+
+    it 'is nil when all params absent' do
+      schema_object[:item].delete(:name)
+      schema_object[:item].delete(:url)
+      schema_object[:item].delete(:description)
+
+      expect(list_item.title).to be_nil
     end
   end
 
