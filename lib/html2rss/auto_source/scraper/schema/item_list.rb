@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# require 'date'
-
 module Html2rss
   class AutoSource
     module Scraper
