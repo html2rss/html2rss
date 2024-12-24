@@ -21,6 +21,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ListItem do
       schema_object[:item][:@id] = :foo
       expect(list_item.id).to eq('foo')
     end
+
+    it 'is nil when string is empty' do
+      schema_object[:item][:@id] = ''
+      expect(list_item.id).to be_nil
+    end
   end
 
   describe '#title' do

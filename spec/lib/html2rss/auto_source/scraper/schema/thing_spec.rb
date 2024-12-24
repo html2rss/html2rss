@@ -17,6 +17,28 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
     end
   end
 
+  describe '#id' do
+    subject(:id) { instance.id }
+
+    context 'when schema_object contains an @id' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', '@id': 'https://example.com/123' }
+      end
+
+      it 'returns the @id' do
+        expect(id).to eq('https://example.com/123')
+      end
+    end
+
+    context 'when schema_object does not contain an @id or URL' do
+      let(:schema_object) { { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation' } }
+
+      it 'returns nil' do
+        expect(id).to be_nil
+      end
+    end
+  end
+
   describe '#image' do
     subject(:image) { instance.image }
 
