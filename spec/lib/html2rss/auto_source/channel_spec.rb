@@ -22,11 +22,20 @@ RSpec.describe Html2rss::AutoSource::Channel do
       end
     end
 
+    context 'with a title containing extra spaces' do
+      let(:parsed_body) { Nokogiri::HTML('<html><head><title>  Example   Title  </title></head></html>') }
+
+      it 'extracts and strips the title' do
+        expect(instance.title).to eq('Example Title')
+      end
+    end
+
     context 'without a title' do
       let(:parsed_body) { Nokogiri::HTML('<html><head></head></html>') }
 
-      it 'extracts nil' do
-        expect(instance.title).to be_nil
+      it 'generates a title from the URL' do
+        allow(Html2rss::Utils).to receive(:titleized_channel_url).and_return('Example.com')
+        expect(instance.title).to eq('Example.com')
       end
     end
   end
@@ -63,8 +72,8 @@ RSpec.describe Html2rss::AutoSource::Channel do
     context 'without a description' do
       let(:parsed_body) { Nokogiri::HTML('<head></head>') }
 
-      it 'extracts an empty string' do
-        expect(instance.description).to eq('')
+      it 'extracts nil' do
+        expect(instance.description).to be_nil
       end
     end
   end
