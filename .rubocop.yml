@@ -3,6 +3,7 @@ require:
   - rubocop-rspec
   - rubocop-md
   - rubocop-rake
+  - rubocop-thread_safety
 
 AllCops:
   DisplayCopNames: true
