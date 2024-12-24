@@ -186,6 +186,8 @@ GEM
       rubocop (~> 1.0)
     rubocop-rspec (3.2.0)
       rubocop (~> 1.61)
+    rubocop-thread_safety (0.6.0)
+      rubocop (>= 1.48.1)
     ruby-progressbar (1.13.0)
     sanitize (6.1.3)
       crass (~> 1.0.2)
@@ -235,6 +237,7 @@ DEPENDENCIES
   rubocop-performance
   rubocop-rake
   rubocop-rspec
+  rubocop-thread_safety
   simplecov
   vcr
   yard

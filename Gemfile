@@ -19,6 +19,7 @@ group :development, :test do
   gem 'rubocop-performance', require: false
   gem 'rubocop-rake', require: false
   gem 'rubocop-rspec', require: false
+  gem 'rubocop-thread_safety', require: false
 
   gem 'rspec', '~> 3.0', require: false
   gem 'rspec-instafail', require: false
