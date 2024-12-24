@@ -161,4 +161,66 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       expect(result).to be_nil
     end
   end
+
+  describe '#article_condition' do
+    let(:html) do
+      <<-HTML
+      <html>
+        <body>
+          <nav>
+            <a href="link1">Link 1</a>
+          </nav>
+          <div class="content">
+            <a href="link2">Link 2</a>
+            <article>
+              <a href="link3">Link 3</a>
+            </article>
+          </div>
+          <footer>
+            <a href="link4">Link 4</a>
+          </footer>
+          <div class="navigation">
+            <a href="link5">Link 5</a>
+          </div>
+        </body>
+      </html>
+      HTML
+    end
+
+    let(:parsed_body) { Nokogiri::HTML(html) }
+    let(:scraper) { described_class.new(parsed_body, url: 'http://example.com') }
+
+    it 'returns false for nodes within ignored tags' do
+      node = parsed_body.at_css('nav a')
+      expect(scraper.article_condition(node)).to be_falsey
+    end
+
+    it 'returns false for nodes within tags with ignored classes' do
+      node = parsed_body.at_css('.content a')
+      allow(scraper.class).to receive(:parent_until_condition).and_return(true)
+      expect(scraper.article_condition(node)).to be_falsey
+    end
+
+    it 'returns true for body and html tags', :aggregate_failures do
+      body_node = parsed_body.at_css('body')
+      html_node = parsed_body.at_css('html')
+      expect(scraper.article_condition(body_node)).to be_truthy
+      expect(scraper.article_condition(html_node)).to be_truthy
+    end
+
+    it 'returns true if parent has 2 or more anchor tags' do
+      node = parsed_body.at_css('article a')
+      expect(scraper.article_condition(node)).to be_falsey
+    end
+
+    it 'returns false if none of the conditions are met' do
+      node = parsed_body.at_css('footer a')
+      expect(scraper.article_condition(node)).to be_falsey
+    end
+
+    it 'returns false if parent class matches' do
+      node = parsed_body.at_css('.navigation a')
+      expect(scraper.article_condition(node)).to be_falsey
+    end
+  end
 end

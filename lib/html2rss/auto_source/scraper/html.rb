@@ -12,12 +12,14 @@ module Html2rss
       class Html
         include Enumerable
 
+        TAGS_TO_IGNORE = /(nav|footer|header)/i
+
         def self.articles?(parsed_body)
           new(parsed_body, url: '').any?
         end
 
         def self.parent_until_condition(node, condition)
-          return nil if !node || node.parent.name == 'html'
+          return nil if !node || node.document? || node.parent.name == 'html'
           return node if condition.call(node)
 
           parent_until_condition(node.parent, condition)
@@ -73,10 +75,17 @@ module Html2rss
           end
         end
 
-        private
-
         def article_condition(node)
+          # Ignore tags that are below a tag which is in TAGS_TO_IGNORE.
+          return false if node.path.match?(TAGS_TO_IGNORE)
+
+          # Ignore tags that are below a tag which has a class which matches TAGS_TO_IGNORE.
+          return false if self.class.parent_until_condition(node, proc do |current_node|
+            current_node.classes.any? { |klass| klass.match?(TAGS_TO_IGNORE) }
+          end)
+
           return true if %w[body html].include?(node.name)
+
           return true if node.parent.css('a').size > 1
 
           false
