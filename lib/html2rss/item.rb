@@ -138,8 +138,11 @@ module Html2rss
 
       raise 'An item.enclosure requires an absolute URL' unless url&.absolute?
 
+      type = config.selector_attributes_with_channel(:enclosure)[:content_type] ||
+             Html2rss::Utils.guess_content_type_from_url(url)
+
       Enclosure.new(
-        type: Html2rss::Utils.guess_content_type_from_url(url),
+        type:,
         bits_length: 0,
         url: url.to_s
       )

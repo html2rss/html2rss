@@ -5,6 +5,14 @@ RSpec.describe Html2rss::Config::Selectors do
 
   let(:config) { { items: { selector: '' }, categories: ['name', 'name', nil], name: {} } }
 
+  describe '::Selector' do
+    subject { described_class::Selector }
+
+    it 'has the expected attributes' do
+      expect(subject.members).to eq(%i[selector attribute extractor post_process order static content_type])
+    end
+  end
+
   describe '#category_selector_names' do
     subject { instance.category_selector_names }
 

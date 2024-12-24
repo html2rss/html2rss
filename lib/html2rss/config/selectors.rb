@@ -8,7 +8,8 @@ module Html2rss
       ITEMS_SELECTOR_NAME = :items
 
       # Struct to represent a selector with associated attributes for extraction and processing.
-      Selector = Struct.new(:selector, :attribute, :extractor, :post_process, :order, :static, keyword_init: true)
+      Selector = Struct.new(:selector, :attribute, :extractor, :post_process, :order, :static, :content_type,
+                            keyword_init: true)
 
       # raised when an invalid selector name is used
       class InvalidSelectorName < Html2rss::Error; end
