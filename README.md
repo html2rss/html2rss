@@ -115,7 +115,7 @@ channel:
 Command line usage example:
 
 ```sh
-bundle exec html2rss feed the_feed_config.yml id=42
+html2rss feed the_feed_config.yml id=42
 ```
 
 <details><summary>See a Ruby example</summary>
@@ -246,10 +246,10 @@ selectors:
 
 The post processor `gsub` makes use of Ruby's [`gsub`](https://apidock.com/ruby/String/gsub) method.
 
-| key           | type   | required | note                        |
-| ------------- | ------ | -------- | --------------------------- |
-| `pattern`     | String | yes      | Can be Regexp or String.    |
-| `replacement` | String | yes      | Can be a [backreference](). |
+| key           | type   | required | note                     |
+| ------------- | ------ | -------- | ------------------------ |
+| `pattern`     | String | yes      | Can be Regexp or String. |
+| `replacement` | String | yes      | Can be a backreference.  |
 
 <details><summary>See a Ruby example</summary>
 
@@ -377,7 +377,7 @@ The `enclosure` selector needs to return a URL of the content to enclose. If the
 
 Since `html2rss` does no further inspection of the enclosure, its support comes with trade-offs:
 
-1. The content-type is guessed from the file extension of the URL.
+1. The content-type is guessed from the file extension of the URL, unless one is specified in `content_type`.
 2. If the content-type guessing fails, it will default to `application/octet-stream`.
 3. The content-length will always be undetermined and therefore stated as `0` bytes.
 
@@ -390,7 +390,12 @@ Read the [RSS 2.0 spec](http://www.rssboard.org/rss-profile#element-channel-item
 Html2rss.feed(
   channel: {},
   selectors: {
-    enclosure: { selector: 'audio', extractor: 'attribute', attribute: 'src' }
+    enclosure: {
+      selector: 'audio',
+      extractor: 'attribute',
+      attribute: 'src',
+      content_type: 'audio/mp3'
+    }
   }
 )
 ```
@@ -409,17 +414,16 @@ selectors:
     selector: "audio"
     extractor: "attribute"
     attribute: "src"
+    content_type: "audio/mp3"
 ```
 
 </details>
+
 ## Scraping and handling JSON responses
 
-By default, `html2rss` assumes the URL responds with HTML. However, it can also handle JSON responses. The JSON must return an Array or Hash.
+By default, `html2rss` assumes the URL responds with HTML. However, it can also handle JSON responses. The JSON response must be an Array or Hash.
 
-| key        | required | default | note                                                 |
-| ---------- | -------- | ------- | ---------------------------------------------------- |
-| `json`     | optional | false   | If set to `true`, the response is parsed as JSON.    |
-| `jsonpath` | optional | $       | Use [JSONPath syntax]() to select nodes of interest. |
+The JSON is converted to XML which you can query using CSS selectors.
 
 <details><summary>See a Ruby example</summary>
 
@@ -678,5 +682,6 @@ To submit changes:
 
 1. `bin/setup`: installs dependencies and sets up the development environment.
 2. `bin/guard`: automatically runs rspec, rubocop and reek when a file changes.
-3. for a modern Ruby development experience: install [`ruby-lsp`](https://github.com/Shopify/ruby-lsp) and integrate it to your IDE:
-   a. [Ruby in Visual Studio Code](https://code.visualstudio.com/docs/languages/ruby)
+3. for a modern Ruby development experience: install [`ruby-lsp`](https://github.com/Shopify/ruby-lsp) and integrate it to your IDE.
+
+For example: [Ruby in Visual Studio Code](https://code.visualstudio.com/docs/languages/ruby).
