@@ -25,8 +25,16 @@ module Html2rss
       attr_reader :stylesheets
 
       def url = @url.normalize.to_s
-      def title = parsed_body.at_css('head > title')&.text
-      def description = parsed_body.at_css('meta[name="description"]')&.[]('content') || ''
+
+      def title
+        @title ||= if (title = parsed_body.at_css('head > title')&.text.to_s) && !title.empty?
+                     title.gsub(/\s+/, ' ').strip
+                   else
+                     Utils.titleized_channel_url(@url)
+                   end
+      end
+
+      def description = parsed_body.at_css('meta[name="description"]')&.[]('content')
       def last_build_date = headers['last-modified']
 
       def language
