@@ -47,5 +47,23 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
         expect(call).to contain_exactly(an_instance_of(Hash))
       end
     end
+
+    context 'when the schema_object contains a single itemListElement' do
+      let(:schema_object) do
+        {
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          itemListElement: {
+            '@type': 'ListItem',
+            position: 1,
+            url: 'https://www.example.com/breakdancerin-raygun-geht-weiter-110168077.html'
+          }
+        }
+      end
+
+      it 'returns an array with two hashes' do
+        expect(call).to contain_exactly(an_instance_of(Hash), an_instance_of(Hash))
+      end
+    end
   end
 end

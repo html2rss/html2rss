@@ -46,12 +46,21 @@ module Html2rss
             end
           end
 
-          def id = schema_object[:@id] || url&.path || title.to_s.downcase.gsub(/\s+/, '-')
+          def id
+            return @id if defined?(@id)
+
+            id = (schema_object[:@id] || url&.path).to_s
+
+            return if id.empty?
+
+            @id = id
+          end
+
           def title = schema_object[:title]
 
           def description
-            [schema_object[:description], schema_object[:schema_object_body], schema_object[:abstract]]
-              .max_by { |desc| desc.to_s.size }
+            schema_object.values_at(:description, :schema_object_body, :abstract)
+                         .max_by { |string| string.to_s.size }
           end
 
           # @return [Addressable::URI, nil] the URL of the schema object
