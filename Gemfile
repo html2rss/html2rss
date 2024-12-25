@@ -24,11 +24,6 @@ group :development, :test do
   gem 'rspec', '~> 3.0', require: false
   gem 'rspec-instafail', require: false
   gem 'vcr', require: false
-
-  gem 'guard', require: false
-  gem 'guard-reek', require: false
-  gem 'guard-rspec', require: false
-  gem 'guard-rubocop', require: false
 end
 
 group :test do
