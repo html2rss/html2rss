@@ -30,7 +30,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Base do
       expect do
         described_class.send(:assert_type, 123, String, 'test', context:)
       end.to raise_error(Html2rss::AttributePostProcessors::InvalidType,
-                         'The type of `test` must be String, but is: Integer in: {:file=>"base_spec.rb"}')
+                         /The type of `test` must be String, but is: Integer in: {.*"base_spec.rb"}/)
     end
 
     it 'supports multiple types', :aggregate_failures do

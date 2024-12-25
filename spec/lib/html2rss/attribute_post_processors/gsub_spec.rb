@@ -10,7 +10,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Gsub do
           described_class.new('hello',
                               options: { replacement: 'world' })
         end.to raise_error(Html2rss::AttributePostProcessors::MissingOption,
-                           'The `pattern` option is missing in: {:replacement=>"world"}')
+                           /The `pattern` option is missing in: {/)
       end
     end
 
@@ -20,7 +20,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Gsub do
           described_class.new('hello',
                               options: { pattern: 'world' })
         end.to raise_error(Html2rss::AttributePostProcessors::MissingOption,
-                           'The `replacement` option is missing in: {:pattern=>"world"}')
+                           /The `replacement` option is missing in: {/)
       end
     end
 
@@ -29,8 +29,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Gsub do
         expect do
           described_class.new('hello', options: { pattern: 'world', replacement: [] })
         end.to raise_error(Html2rss::AttributePostProcessors::InvalidType,
-                           'The type of `replacement` must be String or Hash, but is: ' \
-                           'Array in: {:pattern=>"world", :replacement=>[]}')
+                           /The type of `replacement` must be String or Hash, but is: Array in: {/)
       end
     end
   end
