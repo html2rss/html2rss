@@ -681,7 +681,6 @@ To submit changes:
 ## Development Helpers
 
 1. `bin/setup`: installs dependencies and sets up the development environment.
-2. `bin/guard`: automatically runs rspec, rubocop and reek when a file changes.
-3. for a modern Ruby development experience: install [`ruby-lsp`](https://github.com/Shopify/ruby-lsp) and integrate it to your IDE.
+2. for a modern Ruby development experience: install [`ruby-lsp`](https://github.com/Shopify/ruby-lsp) and integrate it to your IDE.
 
 For example: [Ruby in Visual Studio Code](https://code.visualstudio.com/docs/languages/ruby).
