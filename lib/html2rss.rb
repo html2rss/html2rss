@@ -30,6 +30,12 @@ module Html2rss
   # Key for the feeds configuration in the YAML file.
   CONFIG_KEY_FEEDS = :feeds
 
+  SelectorsScraperConfiguration = Data.define(:channel, :selectors, :global_config, :params) do
+    def url = channel[:url]
+    def headers = global_config[:headers].to_h
+    # TODO: implement the templating features
+  end
+
   ##
   # Returns an RSS object generated from the provided YAML file configuration.
   #
@@ -42,14 +48,19 @@ module Html2rss
   # @param name [String, Symbol, nil] Name of the feed in the YAML file.
   # @param global_config [Hash] Global options (e.g., HTTP headers).
   # @param params [Hash] Dynamic parameters for the feed configuration.
-  # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
+  # @return [SelectorScraperConfiguration]
+  def self.config_from_yaml_config(file, name = nil, global_config: {}, params: {})
+    raise "File '#{file}' does not exist" unless File.exist?(file)
+
     yaml = YAML.safe_load_file(file, symbolize_names: true)
     feeds = yaml[CONFIG_KEY_FEEDS] || {}
 
     feed_config = find_feed_config(yaml, feeds, name, global_config)
 
-    feed(Config.new(feed_config, global_config, params))
+    SelectorsScraperConfiguration.new(channel: feed_config[:channel],
+                                      selectors: feed_config[:selectors],
+                                      global_config:,
+                                      params:)
   end
 
   ##
@@ -67,11 +78,13 @@ module Html2rss
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
   #
-  # @param config [Hash<Symbol, Object>, Html2rss::Config] Feed configuration.
+  # @param config [Html2rss::SelectorScraperConfiguration] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed(config)
-    config = Config.new(config) unless config.is_a?(Config)
-    RssBuilder.build(config)
+  def self.feed(config, strategy: :faraday)
+    ctx = RequestService::Context.new(url: config.url, headers: config.headers)
+    response = RequestService.execute(ctx, strategy:)
+
+    SelectorsScraper.call(ctx.url, body: response.body, headers: response.headers, selectors: config.selectors)
   end
 
   ##

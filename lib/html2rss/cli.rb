@@ -22,13 +22,21 @@ module Html2rss
     # @param yaml_file [String] Path to the YAML configuration file.
     # @param options [Array<String>] Additional options including feed name and parameters.
     # @return [nil]
-    def feed(yaml_file, *options)
-      raise "File '#{yaml_file}' does not exist" unless File.exist?(yaml_file)
-
-      feed_name = options.shift unless options.first&.include?('=')
+    method_option :feed_name,
+                  type: :string,
+                  optional: true,
+                  default: nil
+    method_option :strategy,
+                  type: :string,
+                  desc: 'The strategy to request the URL',
+                  enum: RequestService.strategy_names,
+                  default: RequestService.default_strategy_name
+    def feed(yaml_file, strategy: :faraday, feed_name: nil, **options)
+      # feed_name = options.shift unless options.first&.include?('=')
       params = options.to_h { |opt| opt.split('=', 2) }
 
-      puts Html2rss.feed_from_yaml_config(yaml_file, feed_name, params:)
+      configuration = Html2rss.config_from_yaml_config(yaml_file, feed_name, params:)
+      puts Html2rss.feed(configuration, strategy:)
     end
 
     desc 'auto URL', 'Automatically sources an RSS feed from the URL'
