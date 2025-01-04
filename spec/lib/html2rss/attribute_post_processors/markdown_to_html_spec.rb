@@ -25,8 +25,8 @@ RSpec.describe Html2rss::AttributePostProcessors::MarkdownToHtml do
     MD
   end
   let(:config) do
-    Html2rss::Config.new(channel: { title: 'Example: questions', url: 'https://example.com/questions' },
-                         selectors: { items: {} })
+    { channel: { title: 'Example: questions', url: 'https://example.com/questions' },
+      selectors: { items: {} } }
   end
 
   it { expect(described_class).to be < Html2rss::AttributePostProcessors::Base }

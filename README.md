@@ -331,7 +331,7 @@ By default, html2rss generates a GUID from the `title` or `description`.
 If this does not work well, you can choose other attributes from which the GUID is build.
 The principle is the same as for the categories: pass an array of selectors names.
 
-In all cases, the GUID is a SHA1-encoded string.
+In all cases, the GUID is a base-36 encoded CRC32 checksum.
 
 <details><summary>See a Ruby example</summary>
 

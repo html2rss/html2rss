@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AttributePostProcessors::Template do
-  subject { described_class.new('Hi', options:, item:).get }
+  subject { described_class.new('Hi', options:, item:, scraper:).get }
 
-  # An instance_double does not work with method_missing.
-  # rubocop:disable RSpec/VerifiedDoubles
-  let(:item) { double(Html2rss::Item) }
-  # rubocop:enable RSpec/VerifiedDoubles
+  let(:item) { Object.new }
+  let(:scraper) { instance_double(Html2rss::SelectorsScraper) }
 
   before do
-    allow(item).to receive_messages(name: 'My name', author: 'Slim Shady', returns_nil: nil)
+    allow(scraper).to receive(:select).with(:name, item).and_return('My name')
+    allow(scraper).to receive(:select).with(:author, item).and_return('Slim Shady')
+    allow(scraper).to receive(:select).with(:returns_nil, item).and_return(nil)
   end
 
   it { expect(described_class).to be < Html2rss::AttributePostProcessors::Base }
@@ -17,8 +17,7 @@ RSpec.describe Html2rss::AttributePostProcessors::Template do
   context 'when the string is empty' do
     it 'raises an error' do
       expect do
-        described_class.new('',
-                            {})
+        described_class.new('', {})
       end.to raise_error(Html2rss::AttributePostProcessors::InvalidType, 'The `string` template is absent.')
     end
   end

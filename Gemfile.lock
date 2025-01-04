@@ -159,6 +159,7 @@ GEM
     simplecov-html (0.13.1)
     simplecov_json_formatter (0.1.4)
     thor (1.3.2)
+    timecop (0.9.10)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unicode-display_width (3.1.2)
@@ -195,6 +196,7 @@ DEPENDENCIES
   rubocop-rspec
   rubocop-thread_safety
   simplecov
+  timecop
   vcr
   yard
 

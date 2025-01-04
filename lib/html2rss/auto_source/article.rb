@@ -100,8 +100,24 @@ module Html2rss
       # Generates a unique identifier based on the URL and ID using CRC32.
       # @return [String]
       def guid
-        @guid ||= Zlib.crc32([url, id].join('#!/')).to_s(36).encode('utf-8')
+        @guid ||= begin
+          guid = @to_h[:guid].to_a.map { |o| o.to_s.strip }.reject(&:empty?).join('|')
+          guid = [url, id].join('#!/') if guid.empty?
+
+          Zlib.crc32(guid).to_s(36).encode('utf-8')
+        end
       end
+
+      # @return [Html2rss::Enclosure, nil]
+      def enclosure
+        if @to_h[:enclosure]
+          @to_h[:enclosure]
+        elsif image
+          Html2rss::Enclosure.new(url: image)
+        end
+      end
+
+      def categories = @to_h[:categories]
 
       # Parses and returns the published_at time.
       # @return [DateTime, nil]

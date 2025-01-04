@@ -46,6 +46,7 @@ module Html2rss
         super
 
         @options = context[:options] || {}
+        @scraper = context[:scraper]
         @item = context[:item]
         @string = @options[:string].to_s
       end
@@ -94,7 +95,8 @@ module Html2rss
       # @param method_name [String, Symbol]
       # @return [String]
       def item_value(method_name)
-        method_name.to_sym == :self ? value : @item.public_send(method_name).to_s
+        method_name = method_name.to_sym
+        method_name == :self ? value : @scraper.select(method_name, @item)
       end
     end
   end

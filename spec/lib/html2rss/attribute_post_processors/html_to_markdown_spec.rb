@@ -31,14 +31,14 @@ RSpec.describe Html2rss::AttributePostProcessors::HtmlToMarkdown do
     HTML
   end
   let(:config) do
-    Html2rss::Config.new(
+    {
       channel: { title: 'Example: questions', url: 'https://example.com/questions' },
       selectors: {
         items: { selector: '#questions > ul > li' },
         title: { selector: 'a' },
         link: { selector: 'a', extractor: 'href' }
       }
-    )
+    }
   end
 
   it { expect(described_class).to be < Html2rss::AttributePostProcessors::Base }

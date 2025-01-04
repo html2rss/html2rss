@@ -12,7 +12,7 @@ module Html2rss
   # Such an item provides dynamically defined attributes as methods.
   class Item
     # A context instance is passed to Item Extractors.
-    Context = Struct.new('Context', :options, :item, :config, keyword_init: true)
+    Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
     # Class to keep an Item's <enclosure>.
     Enclosure = Struct.new('Enclosure', :type, :bits_length, :url, keyword_init: true)
 

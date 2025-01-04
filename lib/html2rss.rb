@@ -30,12 +30,6 @@ module Html2rss
   # Key for the feeds configuration in the YAML file.
   CONFIG_KEY_FEEDS = :feeds
 
-  SelectorsScraperConfiguration = Data.define(:channel, :selectors, :global_config, :params) do
-    def url = channel[:url]
-    def headers = global_config[:headers].to_h
-    # TODO: implement the templating features
-  end
-
   ##
   # Returns an RSS object generated from the provided YAML file configuration.
   #
@@ -48,7 +42,7 @@ module Html2rss
   # @param name [String, Symbol, nil] Name of the feed in the YAML file.
   # @param global_config [Hash] Global options (e.g., HTTP headers).
   # @param params [Hash] Dynamic parameters for the feed configuration.
-  # @return [SelectorScraperConfiguration]
+  # @return [Hash<Symbol, Object>] Feed configuration.
   def self.config_from_yaml_config(file, name = nil, global_config: {}, params: {})
     raise "File '#{file}' does not exist" unless File.exist?(file)
 
@@ -57,10 +51,10 @@ module Html2rss
 
     feed_config = find_feed_config(yaml, feeds, name, global_config)
 
-    SelectorsScraperConfiguration.new(channel: feed_config[:channel],
-                                      selectors: feed_config[:selectors],
-                                      global_config:,
-                                      params:)
+    { channel: feed_config[:channel],
+      selectors: feed_config[:selectors],
+      global_config:,
+      params: }
   end
 
   ##
@@ -78,13 +72,17 @@ module Html2rss
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
   #
-  # @param config [Html2rss::SelectorScraperConfiguration] configuration.
+  # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed(config, strategy: :faraday)
-    ctx = RequestService::Context.new(url: config.url, headers: config.headers)
+    ctx = RequestService::Context.new(url: config.dig(:channel, :url),
+                                      headers: config.dig(:channel, :headers))
     response = RequestService.execute(ctx, strategy:)
 
-    SelectorsScraper.call(ctx.url, body: response.body, headers: response.headers, selectors: config.selectors)
+    SelectorsScraper.call(ctx.url, body: response.body,
+                                   headers: response.headers,
+                                   selectors: config[:selectors],
+                                   channel: config[:channel])
   end
 
   ##

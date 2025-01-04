@@ -28,7 +28,7 @@ module Html2rss
     class ParseTime < Base
       def self.validate_args!(value, context)
         assert_type(value, String, :value, context:)
-        assert_type(context[:config].time_zone, String, :time_zone, context:)
+        assert_type(context.dig(:config, :time_zone), String, :time_zone, context:)
       end
 
       ##
@@ -37,7 +37,7 @@ module Html2rss
       # @return [String] RFC822 formatted time
       # @raise [TZInfo::InvalidTimezoneIdentifier] if the configured time zone is invalid
       def get
-        time_zone = context[:config].time_zone
+        time_zone = context.dig(:config, :time_zone)
 
         Utils.use_zone(time_zone) { Time.parse(value).rfc822 }
       end

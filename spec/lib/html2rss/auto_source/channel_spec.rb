@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'timecop'
+
 RSpec.describe Html2rss::AutoSource::Channel do
   subject(:instance) { described_class.new(parsed_body, url:, headers:, articles: []) }
 
@@ -72,8 +74,8 @@ RSpec.describe Html2rss::AutoSource::Channel do
     context 'without a description' do
       let(:parsed_body) { Nokogiri::HTML('<head></head>') }
 
-      it 'extracts nil' do
-        expect(instance.description).to be_nil
+      it 'generates a default description' do
+        expect(instance.description).to eq 'Latest items from https://example.com/.'
       end
     end
   end
@@ -114,8 +116,10 @@ RSpec.describe Html2rss::AutoSource::Channel do
         }
       end
 
-      it 'extracts nil' do
-        expect(instance.last_build_date).to be_nil
+      it 'defaults to Time.now' do
+        Timecop.freeze(Time.now) do
+          expect(instance.last_build_date).to eq Time.now
+        end
       end
     end
   end

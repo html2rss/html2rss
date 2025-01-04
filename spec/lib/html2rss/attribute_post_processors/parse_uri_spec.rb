@@ -9,7 +9,7 @@ RSpec.describe Html2rss::AttributePostProcessors::ParseUri do
 
   let(:context) do
     Html2rss::Item::Context.new(
-      config: instance_double(Html2rss::Config, url: 'http://example.com')
+      config: { url: 'http://example.com' }
     )
   end
 

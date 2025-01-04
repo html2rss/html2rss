@@ -4,7 +4,6 @@ require 'addressable/uri'
 require 'json'
 require 'regexp_parser'
 require 'tzinfo'
-require 'mime/types'
 require_relative 'object_to_xml_converter'
 
 module Html2rss
@@ -96,18 +95,6 @@ module Html2rss
 
       string = string[1..-2] if string.start_with?('/') && string.end_with?('/')
       Regexp::Parser.parse(string, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
-    end
-
-    ##
-    # Guesses the content type based on the file extension of the URL.
-    #
-    # @param url [Addressable::URI]
-    # @return [String] guessed content type, defaults to 'application/octet-stream'
-    def self.guess_content_type_from_url(url)
-      url = url.path.split('?').first
-
-      content_type = MIME::Types.type_for(File.extname(url).delete('.'))
-      content_type.first&.to_s || 'application/octet-stream'
     end
   end
 end

@@ -7,14 +7,14 @@ RSpec.describe Html2rss::AttributePostProcessors::SanitizeHtml do
     subject { described_class.new(html, config:).get }
 
     let(:config) do
-      Html2rss::Config.new(
+      {
         channel: { title: 'Example: questions', url: 'https://example.com/questions' },
         selectors: {
           items: { selector: '#questions > ul > li' },
           title: { selector: 'a' },
           link: { selector: 'a', extractor: 'href' }
         }
-      )
+      }
     end
 
     let(:sanitzed_html) do

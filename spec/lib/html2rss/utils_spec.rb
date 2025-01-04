@@ -75,18 +75,4 @@ RSpec.describe Html2rss::Utils do
       it { expect(described_class.build_regexp_from_string(string)).to eq expected }
     end
   end
-
-  describe '.guess_content_type_from_url(url)' do
-    {
-      'https://example.com/image.jpg' => 'image/jpeg',
-      'https://example.com/image.png' => 'image/png',
-      'https://example.com/image.gif' => 'image/gif',
-      'https://example.com/image.svg' => 'image/svg+xml',
-      'https://example.com/image.webp' => 'image/webp',
-      'https://example.com/image' => 'application/octet-stream',
-      'https://api.PAGE.com/wp-content/photo.jpg?quality=85&w=925&h=617&crop=1&resize=925,617' => 'image/jpeg'
-    }.each_pair do |url, expected|
-      it { expect(described_class.guess_content_type_from_url(Addressable::URI.parse(url))).to eq expected }
-    end
-  end
 end

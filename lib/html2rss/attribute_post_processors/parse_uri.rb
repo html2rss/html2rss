@@ -26,7 +26,7 @@ module Html2rss
         url_types = [String, URI::HTTP, Addressable::URI].freeze
 
         assert_type(value, url_types, :value, context:)
-        assert_type(context.config.url, url_types, :url, context:)
+        assert_type(context.dig(:config, :url), url_types, :url, context:)
 
         raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
       end
@@ -34,7 +34,7 @@ module Html2rss
       ##
       # @return [String]
       def get
-        config_url = context.config.url
+        config_url = context.dig(:config, :url)
 
         Html2rss::Utils.build_absolute_url_from_relative(
           Html2rss::Utils.sanitize_url(value),

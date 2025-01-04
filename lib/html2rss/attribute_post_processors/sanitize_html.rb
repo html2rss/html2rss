@@ -48,10 +48,9 @@ module Html2rss
       # @param html [String]
       # @param url [String, Addressable::URI]
       def self.get(html, url)
-        raise ArgumentError, 'url must be a String or Addressable::URI' if url.to_s.empty?
         return nil if html.to_s.empty?
 
-        new(html, { config: Config::Channel.new({ url: }) }).get
+        new(html, config: { channel: { url: } }).get
       end
 
       ##
@@ -62,6 +61,8 @@ module Html2rss
       end
 
       private
+
+      def channel_url = context.dig(:config, :channel, :url)
 
       ##
       # @return [Sanitize::Config]
@@ -90,8 +91,6 @@ module Html2rss
           'audio' => { 'referrerpolicy' => 'no-referrer' }
         }
       end
-
-      def channel_url = context[:config].url
 
       ##
       # Wrapper for transform_urls_to_absolute_ones to pass the channel_url.

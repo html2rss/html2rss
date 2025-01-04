@@ -14,13 +14,11 @@ module Html2rss
         end
       end
 
-      def self.add_image(article, maker)
-        url = article.image || return
-
-        maker.enclosure.tap do |enclosure|
-          enclosure.url = url
-          enclosure.type = Html2rss::Utils.guess_content_type_from_url(url)
-          enclosure.length = 0
+      def self.add_enclosure(enclosure, maker)
+        maker.enclosure.tap do |enclosure_maker|
+          enclosure_maker.url = enclosure.url
+          enclosure_maker.type = enclosure.type
+          enclosure_maker.length = enclosure.bits_length
         end
       end
 
@@ -56,11 +54,15 @@ module Html2rss
         articles.each do |article|
           maker.items.new_item do |item_maker|
             RssBuilder.add_guid(article, item_maker)
-            RssBuilder.add_image(article, item_maker)
+            RssBuilder.add_enclosure(article.enclosure, item_maker) if article.enclosure
+
+            article.categories&.each do |category|
+              item_maker.categories.new_category.content = category unless category.to_s.empty?
+            end
 
             item_maker.title = article.title
             item_maker.description = article.description
-            item_maker.pubDate = article.published_at&.rfc2822
+            item_maker.pubDate = article.published_at.rfc2822 if article.published_at
             item_maker.link = article.url
           end
         end
