@@ -11,20 +11,17 @@ module Html2rss
       #
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
       # @param url [Addressable::URI] The URL of the channel.
-      # @param headers [Hash<String, String>] the http headers
-      # @param articles [Array<Html2rss::AutoSource::Article>] The articles.
-      def initialize(parsed_body, url:, headers:, time_zone: 'UTC', articles: [], stylesheets: [], overrides: {})
+      # @param headers [Hash<String, String>] the http response headers
+      def initialize(parsed_body, url:, headers:, time_zone: 'UTC', overrides: {})
         @parsed_body = parsed_body
         @url = url
         @headers = headers
-        @articles = articles
-        @stylesheets = stylesheets
         @time_zone = time_zone
         @overrides = overrides
       end
 
       attr_writer :articles
-      attr_reader :stylesheets, :time_zone, :overrides
+      attr_reader :time_zone, :overrides
 
       def url = @url.normalize.to_s
 
@@ -72,24 +69,9 @@ module Html2rss
         Html2rss::Utils.sanitize_url(url) if url
       end
 
-      def generator
-        "html2rss V. #{::Html2rss::VERSION} (using auto_source scrapers: #{scraper_counts})"
-      end
-
       private
 
       attr_reader :parsed_body, :headers
-
-      def scraper_counts
-        scraper_counts = +''
-
-        @articles.each_with_object(Hash.new(0)) { |article, counts| counts[article.scraper] += 1 }
-                 .each do |klass, count|
-          scraper_counts.concat("[#{klass.to_s.gsub('Html2rss::AutoSource::Scraper::', '')}=#{count}]")
-        end
-
-        scraper_counts
-      end
     end
   end
 end

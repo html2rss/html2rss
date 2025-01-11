@@ -1,7 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::RssBuilder do
-  subject(:instance) { described_class.new(channel:, articles:) }
+  subject(:instance) do
+    described_class.new(channel:,
+                        articles:,
+                        stylesheets: [
+                          Html2rss::RssBuilder::Stylesheet.new(href: 'rss.xsl', type: 'text/xsl')
+                        ])
+  end
 
   let(:articles) do
     [
@@ -27,13 +33,9 @@ RSpec.describe Html2rss::AutoSource::RssBuilder do
                     url: 'http://example.com',
                     description: 'A test channel',
                     language: 'en',
-                    generator: "html2rss V. #{Html2rss::VERSION} (using auto_source scrapers: [RSpec=2])",
                     image: 'http://example.com/image.jpg',
                     ttl: 12,
-                    last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT',
-                    stylesheets: [
-                      Html2rss::RssBuilder::Stylesheet.new(href: 'rss.xsl', type: 'text/xsl')
-                    ])
+                    last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT')
   end
 
   describe '#call' do
@@ -61,7 +63,7 @@ RSpec.describe Html2rss::AutoSource::RssBuilder do
           'title' => 'Test Channel',
           'link' => 'http://example.com',
           'description' => 'A test channel',
-          'generator' => "html2rss V. #{Html2rss::VERSION} (using auto_source scrapers: [RSpec=2])"
+          'generator' => "html2rss V. #{Html2rss::VERSION} (scrapers: [RSpec=2])"
         }
       end
 

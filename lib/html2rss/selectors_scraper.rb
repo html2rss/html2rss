@@ -33,7 +33,9 @@ module Html2rss
 
       articles = instance.to_a
 
-      channel = AutoSource::Channel.new(parsed_body, url:, headers:, articles:, stylesheets: [], overrides: channel,
+      channel = AutoSource::Channel.new(parsed_body, url:,
+                                                     headers:,
+                                                     overrides: channel,
                                                      time_zone:)
 
       AutoSource::RssBuilder.new(channel:, articles:).call

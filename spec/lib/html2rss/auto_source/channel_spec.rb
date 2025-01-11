@@ -3,7 +3,7 @@
 require 'timecop'
 
 RSpec.describe Html2rss::AutoSource::Channel do
-  subject(:instance) { described_class.new(parsed_body, url:, headers:, articles: []) }
+  subject(:instance) { described_class.new(parsed_body, url:, headers:) }
 
   let(:parsed_body) { Nokogiri::HTML('') }
   let(:url) { Addressable::URI.parse('https://example.com') }

@@ -17,10 +17,11 @@ module Html2rss
     # @param url [Addressable::URI] The URL to extract articles from.
     # @param body [String] The body of the response.
     # @param headers [Hash] The headers of the response.
-    def initialize(url, body:, headers: {})
+    def initialize(url, body:, headers: {}, stylesheets: [])
       @url = url
       @body = body
       @headers = headers
+      @stylesheets = stylesheets
     end
 
     def build
@@ -33,7 +34,8 @@ module Html2rss
 
       Html2rss::AutoSource::RssBuilder.new(
         channel:,
-        articles:
+        articles:,
+        stylesheets:
       ).call
     end
 
@@ -59,7 +61,7 @@ module Html2rss
 
     private
 
-    attr_reader :url
+    attr_reader :url, :stylesheets
 
     # @return [Nokogiri::HTML::Document]
     def parsed_body
