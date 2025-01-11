@@ -62,7 +62,7 @@ module Html2rss
 
       private
 
-      def channel_url = context.dig(:config, :channel, :url)
+      def channel_url = context.dig(:config, :url)
 
       ##
       # @return [Sanitize::Config]

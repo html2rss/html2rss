@@ -9,3 +9,6 @@ selectors:
     static: "Test string"
   description:
     selector: body
+    extractor: html
+    post_process:
+      name: 'sanitize_html'

@@ -23,6 +23,14 @@ module Html2rss
       end
 
       def self.add_item(article, item_maker)
+        %w[title description author].each do |attr|
+          if (value = article.public_send(attr))
+            item_maker.public_send(:"#{attr}=", value)
+          end
+        end
+
+        item_maker.link = article.url if article.url
+
         RssBuilder.add_guid(article, item_maker)
         RssBuilder.add_enclosure(article.enclosure, item_maker) if article.enclosure
 
@@ -30,11 +38,7 @@ module Html2rss
           item_maker.categories.new_category.content = category unless category.to_s.empty?
         end
 
-        item_maker.author = article.author
-        item_maker.title = article.title
-        item_maker.description = article.description
         item_maker.pubDate = article.published_at.rfc2822 if article.published_at
-        item_maker.link = article.url
       end
 
       def initialize(channel:, articles:, stylesheets: [])
