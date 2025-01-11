@@ -22,7 +22,7 @@ RSpec.describe Html2rss::AttributePostProcessors::SanitizeHtml do
         "Breaking news: I'm a deprecated tag ",
         '<div> ',
         '<a href="https://example.com/lol.gif" rel="nofollow noopener noreferrer" target="_blank">',
-        '<img src="https://example.com/lol.gif" alt="An animal looking cute" referrer-policy="no-referrer">',
+        '<img src="https://example.com/lol.gif" alt="An animal looking cute" referrerpolicy="no-referrer">',
         '</a> ',
         '<a href="http://example.com" title="foo" rel="nofollow noopener noreferrer" target="_blank">',
         'example.com</a> ',

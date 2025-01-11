@@ -77,10 +77,17 @@ module Html2rss
         )
       end
 
+      ##
+      # @return [Hash]
+      # @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
       def add_attributes
         {
           'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
-          'img' => { 'referrer-policy' => 'no-referrer' }
+          'area' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
+          'img' => { 'referrerpolicy' => 'no-referrer' },
+          'iframe' => { 'referrerpolicy' => 'no-referrer' },
+          'video' => { 'referrerpolicy' => 'no-referrer' },
+          'audio' => { 'referrerpolicy' => 'no-referrer' }
         }
       end
 
