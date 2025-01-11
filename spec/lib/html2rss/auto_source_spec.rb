@@ -56,8 +56,7 @@ RSpec.describe Html2rss::AutoSource do
         instance.build
 
         expect(described_class::RssBuilder).to have_received(:new).with(
-          channel: instance_of(described_class::Channel),
-          articles:
+          channel: instance_of(described_class::Channel), articles:, stylesheets: []
         )
       end
     end

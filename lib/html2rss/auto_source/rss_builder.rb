@@ -30,6 +30,7 @@ module Html2rss
           item_maker.categories.new_category.content = category unless category.to_s.empty?
         end
 
+        item_maker.author = article.author
         item_maker.title = article.title
         item_maker.description = article.description
         item_maker.pubDate = article.published_at.rfc2822 if article.published_at

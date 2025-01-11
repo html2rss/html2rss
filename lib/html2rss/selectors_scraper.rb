@@ -51,7 +51,10 @@ module Html2rss
         raise 'You must either use "url" or "link". Using both is not supported.'
       end
 
-      @selectors[:url] = selectors[:link] if !selectors[:url] && selectors.key?(:link)
+      if !selectors[:url] && selectors.key?(:link)
+        @selectors = @selectors.dup
+        @selectors[:url] = selectors[:link]
+      end
 
       RENAMED_ATTRIBUTES.each_pair do |new_name, old_names|
         old_names.each do |old_name|

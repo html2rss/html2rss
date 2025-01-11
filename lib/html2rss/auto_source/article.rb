@@ -97,6 +97,9 @@ module Html2rss
         @image ||= Html2rss::Utils.sanitize_url(@to_h[:image])
       end
 
+      # @return [String]
+      def author = @to_h[:author]
+
       # Generates a unique identifier based on the URL and ID using CRC32.
       # @return [String]
       def guid
