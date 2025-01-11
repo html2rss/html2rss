@@ -148,7 +148,7 @@ Your `selectors` hash can contain arbitrary named selectors, but only a few will
 | `category`    | `categories`       | See notes below.                            |
 | `guid`        | `guid`             | Default title/description. See notes below. |
 | `enclosure`   | `enclosure`        | See notes below.                            |
-| `pubDate`     | `updated`          | An instance of `Time`.                      |
+| `pubDate`     | `published_at`     | An instance of `Time`.                      |
 | `comments`    | `comments`         | A URL.                                      |
 | `source`      | ~~source~~         | Not yet supported.                          |
 

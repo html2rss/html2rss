@@ -41,7 +41,7 @@ feeds:
         extractor: 'html'
         post_process:
           name: 'sanitize_html'
-      updated:
+      published_at:
         selector: 'relative-time'
         extractor: 'attribute'
         attribute: 'datetime'
