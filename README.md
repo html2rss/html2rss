@@ -99,7 +99,6 @@ Alright, let's move on.
 | `language`    | optional     | String  | `'en'`         | Language code                              |
 | `author`      | optional     | String  |                | Format: `email (Name)`                     |
 | `headers`     | optional     | Hash    | `{}`           | Set HTTP request headers. See notes below. |
-| `json`        | optional     | Boolean | `false`        | Handle JSON response. See notes below.     |
 
 #### Dynamic parameters in `channel` attributes
 
@@ -421,15 +420,20 @@ selectors:
 
 ## Scraping and handling JSON responses
 
-By default, `html2rss` assumes the URL responds with HTML. However, it can also handle JSON responses. The JSON response must be an Array or Hash.
+When the requested website returns a application/json content-typed response, i.e. you specified an Accept header in the request, html2rss converts it to XML.
 
-The JSON is converted to XML which you can query using CSS selectors.
+That is XML you can query using CSS selectors. The JSON response must be an Array or Hash for this to work.
 
 <details><summary>See a Ruby example</summary>
 
 ```ruby
 Html2rss.feed(
-  channel: { url: 'http://domainname.tld/whatever.json', json: true },
+  channel: {
+    url: 'http://domainname.tld/whatever.json',
+    headers: {
+      Accept: 'application/json'
+    }
+  },
   selectors: { title: { selector: 'foo' } }
 )
 ```
@@ -441,11 +445,66 @@ Html2rss.feed(
 ```yml
 channel:
   url: "http://domainname.tld/whatever.json"
-  json: true
+  headers:
+    Accept: application/json
 selectors:
   title:
     selector: "foo"
 ```
+
+</details>
+
+<details>
+  <summary>See example of a converted JSON object</summary>
+
+This JSON object:
+
+```json
+{
+  "data": [{ "title": "Headline", "url": "https://example.com" }]
+}
+```
+
+converts to:
+
+```xml
+<object>
+  <data>
+    <array>
+      <object>
+        <title>Headline</title>
+        <url>https://example.com</url>
+      </object>
+    </array>
+  </data>
+</object>
+```
+
+Your items selector would be `array > object`, the item's `link` selector would be `url`.
+
+</details>
+
+<details>
+  <summary>See example of a converted JSON array</summary>
+
+This JSON array:
+
+```json
+[{ "title": "Headline", "url": "https://example.com" }]
+```
+
+converts to:
+
+```xml
+<array>
+  <object>
+    <title>Headline</title>
+    <url>https://example.com</url>
+  </object>
+</array>
+```
+
+Your items selector would be `array > object`, the item's `link` selector would be `url`.
 
 </details>
 

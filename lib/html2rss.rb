@@ -78,14 +78,18 @@ module Html2rss
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed(config)
-    url = Addressable::URI.parse(config.dig(:channel, :url))
     headers = config.dig(:channel, :headers)
     strategy = config[:strategy] || RequestService.default_strategy_name
-    selectors = config[:selectors]
-    channel = config[:channel]
     stylesheets = config[:stylesheets] || []
     params = config[:params]
+
+    channel = config[:channel]
+    selectors = config[:selectors]
+
     # global_config = config[:global_config] # TODO: get rid of this crutch in favor of proper "gem configuration"
+
+    channel = channel.transform_values { |value| value.is_a?(String) ? format(value, params) : value }
+    url = Addressable::URI.parse(channel[:url])
 
     response = RequestService.execute(RequestService::Context.new(url:, headers:), strategy:)
 

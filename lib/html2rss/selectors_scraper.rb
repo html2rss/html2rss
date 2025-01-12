@@ -26,12 +26,17 @@ module Html2rss
     # end
 
     def self.call(url, body:, headers:, selectors: {}, channel: {}, stylesheets: [], params: {})
-      parsed_body = Nokogiri::HTML(body)
+      parsed_body = if headers['content-type']&.include?('application/json')
+                      Nokogiri::HTML5.fragment Html2rss::ObjectToXmlConverter.new(JSON.parse(body)).call
+                    else
+                      Nokogiri::HTML(body)
+                    end
+
       time_zone = channel.fetch(:time_zone, 'UTC')
 
-      instance = new(parsed_body, url:, selectors:, time_zone:)
+      channel = channel.transform_values { |value| value.is_a?(String) ? format(value, params) : value }
 
-      articles = instance.to_a
+      articles = new(parsed_body, url:, selectors:, time_zone:).to_a
       articles.reverse! if selectors.dig(:items, :order) == 'reverse'
 
       channel = AutoSource::Channel.new(parsed_body, url:,
