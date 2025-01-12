@@ -25,20 +25,21 @@ module Html2rss
     #   new(parsed_body, url: '').any?
     # end
 
-    def self.call(url, body:, headers:, selectors: {}, channel: {})
+    def self.call(url, body:, headers:, selectors: {}, channel: {}, stylesheets: [], params: {})
       parsed_body = Nokogiri::HTML(body)
       time_zone = channel.fetch(:time_zone, 'UTC')
 
       instance = new(parsed_body, url:, selectors:, time_zone:)
 
       articles = instance.to_a
+      articles.reverse! if selectors.dig(:items, :order) == 'reverse'
 
       channel = AutoSource::Channel.new(parsed_body, url:,
                                                      headers:,
                                                      overrides: channel,
                                                      time_zone:)
 
-      AutoSource::RssBuilder.new(channel:, articles:).call
+      AutoSource::RssBuilder.new(channel:, articles:, stylesheets:).call
     end
 
     def initialize(parsed_body, url:, selectors:, time_zone:)
@@ -106,6 +107,11 @@ module Html2rss
     end
 
     def select_regular(name, item)
+      unless @selectors[name]
+        Log.warn "Selector `#{name}` is not defined. Skipping."
+        return
+      end
+
       value = ItemExtractors.item_extractor_factory(
         @selectors[name].merge(channel: { url: @url }),
         item

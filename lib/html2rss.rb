@@ -51,10 +51,13 @@ module Html2rss
 
     feed_config = find_feed_config(yaml, feeds, name, global_config)
 
-    { channel: feed_config[:channel],
+    stylesheets = yaml[:stylesheets].to_a.map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
+
+    {
+      channel: feed_config[:channel],
       selectors: feed_config[:selectors],
-      global_config:,
-      params: }
+      stylesheets:, global_config:, params:
+    }
   end
 
   ##
@@ -74,15 +77,20 @@ module Html2rss
   #
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed(config, strategy: :faraday)
-    ctx = RequestService::Context.new(url: config.dig(:channel, :url),
-                                      headers: config.dig(:channel, :headers))
-    response = RequestService.execute(ctx, strategy:)
+  def self.feed(config)
+    url = Addressable::URI.parse(config.dig(:channel, :url))
+    headers = config.dig(:channel, :headers)
+    strategy = config[:strategy] || RequestService.default_strategy_name
+    selectors = config[:selectors]
+    channel = config[:channel]
+    stylesheets = config[:stylesheets] || []
+    params = config[:params]
+    # global_config = config[:global_config] # TODO: get rid of this crutch in favor of proper "gem configuration"
 
-    SelectorsScraper.call(ctx.url, body: response.body,
-                                   headers: response.headers,
-                                   selectors: config[:selectors],
-                                   channel: config[:channel])
+    response = RequestService.execute(RequestService::Context.new(url:, headers:), strategy:)
+
+    SelectorsScraper.call(url, body: response.body, headers: response.headers,
+                               selectors:, channel:, stylesheets:, params:)
   end
 
   ##
@@ -94,15 +102,17 @@ module Html2rss
   # @param global_config [Hash] Global options (e.g., HTTP headers).
   # @return [Hash] Feed configuration.
   def self.find_feed_config(yaml, feeds, feed_name, global_config)
-    return yaml unless feed_name
+    global_config.merge!(yaml.reject { |key| key == CONFIG_KEY_FEEDS })
 
-    feed_name = feed_name.to_sym
-    if feeds.key?(feed_name)
-      global_config.merge!(yaml.reject { |key| key == CONFIG_KEY_FEEDS })
-      feeds[feed_name]
-    else
-      yaml
-    end
+    config = if !yaml.key?(CONFIG_KEY_FEEDS)
+               yaml
+             elsif feed_name
+               feeds[feed_name.to_sym]
+             end
+
+    raise "Feed '#{feed_name}' not found in the configuration" unless config
+
+    config.merge(global_config)
   end
 
   ##

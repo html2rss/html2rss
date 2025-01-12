@@ -115,7 +115,7 @@ channel:
 Command line usage example:
 
 ```sh
-html2rss feed the_feed_config.yml id=42
+html2rss feed the_feed_config.yml --params id:42 foo:bar
 ```
 
 <details><summary>See a Ruby example</summary>

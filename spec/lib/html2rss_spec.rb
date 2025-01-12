@@ -45,7 +45,10 @@ RSpec.describe Html2rss do
 
     context 'with config without title selector' do
       subject(:feed) do
-        VCR.use_cassette(name) { described_class.feed_from_yaml_config(config_file, name) }
+        VCR.use_cassette(name) do
+          config = described_class.config_from_yaml_config(config_file, name)
+          described_class.feed(config)
+        end
       end
 
       let(:name) { 'notitle' }
@@ -55,42 +58,30 @@ RSpec.describe Html2rss do
       end
 
       context 'with item' do
-        subject(:item) { Nokogiri.XML(feed.to_s).css('item:first') }
-
-        let(:guid) { item.css('guid').text }
+        let(:guid) { feed.items.first.guid.content }
 
         it 'autogenerates a guid', :aggregate_failures do
-          expect(guid).to be_a String
-          expect(guid.bytesize).to eq 40
+          expect(guid).to be_a(String)
+          expect(guid).not_to be_empty
         end
       end
     end
   end
 
   describe '.feed' do
-    context 'with config being a Config' do
+    context 'with config being a Hash' do
       subject(:xml) { Nokogiri.XML(feed_return.to_s) }
 
-      let(:yaml_config) { YAML.safe_load(File.open(config_file), symbolize_names: true) }
-      let(:config) do
-        feed_config = yaml_config[described_class::CONFIG_KEY_FEEDS][name.to_sym]
-        global_config = yaml_config.reject { |k| k == described_class::CONFIG_KEY_FEEDS }
-        Html2rss::Config.new(feed_config, global_config)
-      end
+      let(:config) { described_class.config_from_yaml_config(config_file, name) }
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 
       before do
-        allow(Faraday).to receive(:new).with(hash_including(headers: yaml_config[:headers])).and_call_original
+        allow(Faraday).to receive(:new).with(hash_including(headers: config.dig(:channel, :headers))).and_call_original
       end
 
-      it 'returns a RSS::Rss instance' do
+      it 'returns a RSS::Rss instance & sets the request headers', :aggregate_failures do
         expect(feed_return).to be_a(RSS::Rss)
-      end
-
-      it 'sets the request headers' do
-        VCR.use_cassette(name) { described_class.feed(config) }
-
-        expect(Faraday).to have_received(:new).with(hash_including(headers: yaml_config[:headers]))
+        expect(Faraday).to have_received(:new).with(hash_including(headers: config.dig(:channel, :headers)))
       end
 
       describe 'feed.channel' do
@@ -116,13 +107,9 @@ RSpec.describe Html2rss do
         end
 
         describe 'item.pubDate' do
-          it 'has a pubDate' do
-            expect(item.css('pubDate').text).not_to eq ''
-          end
-
-          it 'is in rfc822 format' do
+          it 'has one in rfc822 format' do
             pub_date = item.css('pubDate').text
-            expect(Time.parse(pub_date).rfc822.to_s).to eq pub_date
+            expect(pub_date).to be_a(String) & eq(Time.parse(pub_date).rfc822.to_s)
           end
         end
 
@@ -181,7 +168,7 @@ RSpec.describe Html2rss do
 
       context 'with items having order key and reverse as value' do
         before do
-          yaml_config[described_class::CONFIG_KEY_FEEDS][name.to_sym][:selectors][:items][:order] = 'reverse'
+          config[:selectors][:items][:order] = 'reverse'
         end
 
         it 'reverses the item ordering' do

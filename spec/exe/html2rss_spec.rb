@@ -27,7 +27,7 @@ RSpec.describe 'exe/html2rss', :slow do
         xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
         xmlns:trackback="http://madskills.com/public/xml/rss/module/trackback/">
         <channel>
-          <title>github.com: Nuxt Nuxt.js Releases</title>
+          <title>Releases · nuxt/nuxt · GitHub</title>
     RSS
   end
 
@@ -67,7 +67,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
   context 'with feed config: withparams' do
     it 'processes and escapes the params' do
-      expect(`#{executable} feed spec/fixtures/feeds.test.yml withparams param='<value>' sign=10`)
+      expect(`#{executable} feed spec/fixtures/feeds.test.yml withparams param='<value>' --params sign:10`)
         .to include('<description>The value of param is: &lt;value&gt;</description>',
                     'horoscope-general-daily-today.aspx?sign=10')
     end
