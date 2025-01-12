@@ -13,7 +13,7 @@ module Html2rss
       include Enumerable
       include Comparable
 
-      PROVIDED_KEYS = %i[id title description url image guid published_at scraper].freeze
+      PROVIDED_KEYS = %i[id title description url image author guid published_at enclosure categories scraper].freeze
 
       ##
       # Removes the specified pattern from the beginning of the text
