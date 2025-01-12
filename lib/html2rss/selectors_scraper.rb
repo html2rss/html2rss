@@ -32,9 +32,8 @@ module Html2rss
                       Nokogiri::HTML(body)
                     end
 
-      time_zone = channel.fetch(:time_zone, 'UTC')
-
       channel = channel.transform_values { |value| value.is_a?(String) ? format(value, params) : value }
+      time_zone = channel[:time_zone]
 
       articles = new(parsed_body, url:, selectors:, time_zone:).to_a
       articles.reverse! if selectors.dig(:items, :order) == 'reverse'
@@ -51,7 +50,7 @@ module Html2rss
       @parsed_body = parsed_body
       @url = url
       @selectors = selectors
-      @time_zone = time_zone
+      @time_zone = time_zone || 'UTC'
 
       if @selectors.key?(:url) && @selectors.key?(:link)
         raise 'You must either use "url" or "link". Using both is not supported.'
@@ -64,6 +63,8 @@ module Html2rss
 
       RENAMED_ATTRIBUTES.each_pair do |new_name, old_names|
         old_names.each do |old_name|
+          next unless @selectors.key?(old_name)
+
           Html2rss::Log.warn "Selector `#{old_name}` is deprecated. Please rename to `#{new_name}`."
           @selectors[new_name] ||= @selectors.delete(old_name)
         end
@@ -118,7 +119,7 @@ module Html2rss
       end
 
       value = ItemExtractors.item_extractor_factory(
-        @selectors[name].merge(channel: { url: @url }),
+        @selectors[name].merge(channel: { url: @url, time_zone: @time_zone }),
         item
       ).get
 
@@ -146,7 +147,7 @@ module Html2rss
       post_process.each do |object|
         object = [object].to_h unless object.is_a?(Hash)
 
-        context = Item::Context.new(config: { url: @url, time_zone: @time_zone },
+        context = Item::Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
                                     item:,
                                     scraper: self,
                                     options: object)

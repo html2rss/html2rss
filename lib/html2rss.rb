@@ -79,7 +79,7 @@ module Html2rss
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed(config)
     headers = config.dig(:channel, :headers)
-    strategy = config[:strategy] || RequestService.default_strategy_name
+    strategy = config.dig(:channel, :strategy) || RequestService.default_strategy_name
     stylesheets = config[:stylesheets] || []
     params = config[:params]
 
