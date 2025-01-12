@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'nokogiri'
+
 RSpec.describe Html2rss do
   let(:config_file) { File.join(%w[spec fixtures feeds.test.yml]) }
   let(:name) { 'nuxt-releases' }
@@ -72,7 +74,9 @@ RSpec.describe Html2rss do
     context 'with config being a Hash' do
       subject(:xml) { Nokogiri.XML(feed_return.to_s) }
 
-      let(:config) { described_class.config_from_yaml_config(config_file, name) }
+      let(:config) do
+        described_class.config_from_yaml_config(config_file, name)
+      end
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 
       before do
@@ -177,7 +181,7 @@ RSpec.describe Html2rss do
       end
     end
 
-    context 'with config having channel headers and json: true' do
+    context 'with config having channel headers and header accepts json' do
       let(:feed) do
         VCR.use_cassette('httpbin-headers') do
           described_class.feed(feed_config)
@@ -208,7 +212,7 @@ RSpec.describe Html2rss do
         }
       end
 
-      it 'has the headers' do
+      it 'converts response to xml which has the information', :aggregate_failures do
         expect(feed.items.size).to eq 1
         expect(feed.items.first.categories.map(&:content)).to include('httpbin.org', 'Foobar', 'Token deadbea7',
                                                                       'monster=MeWantCookie')
