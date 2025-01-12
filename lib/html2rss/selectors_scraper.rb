@@ -7,6 +7,8 @@ module Html2rss
   # Scrapes articles from a given HTML page using CSS selectors.
   # This selector parses the traditional 'feed configs' which html2rss was launched with.
   class SelectorsScraper
+    class InvalidSelectorName < Html2rss::Error; end
+
     include Enumerable
 
     ITEM_TAGS = %i[title url description author comments updated guid enclosure categories].freeze
@@ -113,10 +115,7 @@ module Html2rss
     end
 
     def select_regular(name, item)
-      unless @selectors[name]
-        Log.warn "Selector `#{name}` is not defined. Skipping."
-        return
-      end
+      raise InvalidSelectorName, "`#{name}` is not defined" unless @selectors[name]
 
       value = ItemExtractors.item_extractor_factory(
         @selectors[name].merge(channel: { url: @url, time_zone: @time_zone }),
