@@ -1,10 +1,27 @@
 # frozen_string_literal: true
 
 RSpec.describe 'issues/157', type: :system do
+  # https://github.com/html2rss/html2rss/issues/157
+
   subject do
     VCR.use_cassette('issues-157') do
-      config = Html2rss.config_from_yaml_config('spec/issues/157.yml')
-      Html2rss.feed(config)
+      Html2rss.feed(
+        channel: { url: 'https://google.com' },
+        selectors: {
+          items: { selector: 'html' },
+          title: {
+            extractor: 'static',
+            static: 'Test string'
+          },
+          description: {
+            selector: 'body',
+            extractor: 'html',
+            post_process: {
+              name: 'sanitize_html'
+            }
+          }
+        }
+      )
     end
   end
 
