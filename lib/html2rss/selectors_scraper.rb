@@ -9,6 +9,49 @@ module Html2rss
   class SelectorsScraper
     class InvalidSelectorName < Html2rss::Error; end
 
+    class DynamicParams
+      class ParamsMissing < Html2rss::Error; end
+
+      class << self
+        ##
+        # Traverse the given value and replace the format string with the given params.
+        #
+        # @param value [String, Hash, Enumerable, Object]
+        # @param params [Hash]
+        # @return returns the Object with its Strings being formatted with the given params.
+        def call(value, params = {}, getter: nil) # rubocop:disable Metrics/MethodLength
+          case value
+          when String
+            format_params = Hash.new do |hash, key|
+              hash[key] = params.fetch(key) { getter&.call(key) }.to_s
+            end
+
+            begin
+              format(value, format_params)
+            rescue KeyError => error
+              raise ParamsMissing, error.message
+            end
+          when Hash
+            from_hash(value, params, getter:)
+          when Enumerable
+            from_array(value, params, getter:)
+          else
+            value
+          end
+        end
+
+        private
+
+        def from_hash(hash, params, getter:)
+          hash.transform_values! { |value| call(value, params, getter:) }
+        end
+
+        def from_array(array, params, getter:)
+          array.map! { |value| call(value, params, getter:) }
+        end
+      end
+    end
+
     include Enumerable
 
     ITEM_TAGS = %i[title url description author comments updated guid enclosure categories].freeze
@@ -34,7 +77,7 @@ module Html2rss
                       Nokogiri::HTML(body)
                     end
 
-      channel = channel.transform_values { |value| value.is_a?(String) ? format(value, params) : value }
+      channel = DynamicParams.call(channel, params)
       time_zone = channel[:time_zone]
 
       articles = new(parsed_body, url:, selectors:, time_zone:).to_a

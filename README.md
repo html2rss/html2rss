@@ -104,7 +104,7 @@ Alright, let's move on.
 
 Sometimes there are structurally similar pages with different URLs. In such cases, you can add _dynamic parameters_ to the channel's attributes.
 
-Example of a dynamic `id` parameter in the channel URLs:
+Example of an dynamic parameter `id` in the channel URL:
 
 ```yml
 channel:

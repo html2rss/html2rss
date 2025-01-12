@@ -85,18 +85,15 @@ module Html2rss
       ##
       # @return [String]
       def format_string_with_dynamic_params
-        param_names = string.scan(/%[<|{](\w*)[>|}]/)
-        param_names.flatten!
-
-        format(string, param_names.to_h { |name| [name.to_sym, item_value(name)] })
+        SelectorsScraper::DynamicParams.call(string, {}, getter: method(:item_value))
       end
 
       ##
       # @param method_name [String, Symbol]
       # @return [String]
-      def item_value(method_name)
-        method_name = method_name.to_sym
-        method_name == :self ? value : @scraper.select(method_name, @item)
+      def item_value(key)
+        key = key.to_sym
+        key == :self ? value : @scraper.select(key, @item)
       end
     end
   end
