@@ -47,6 +47,7 @@ module Html2rss
       # Shorthand method to get the sanitized HTML.
       # @param html [String]
       # @param url [String, Addressable::URI]
+      # @return [String, nil]
       def self.get(html, url)
         return nil if html.to_s.empty?
 
@@ -62,7 +63,7 @@ module Html2rss
 
       private
 
-      def channel_url = context.dig(:config, :url)
+      def channel_url = context.dig(:config, :channel, :url)
 
       ##
       # @return [Sanitize::Config]
