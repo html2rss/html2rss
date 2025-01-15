@@ -49,9 +49,10 @@ module Html2rss
           frequent_selectors.each do |selector|
             parsed_body.xpath(selector).each do |selected_tag|
               article_tag = self.class.parent_until_condition(selected_tag, method(:article_condition))
-              article_hash = SemanticHtml::Extractor.new(article_tag, url: @url).call
 
-              yield article_hash if article_hash
+              if article_tag && (article_hash = SemanticHtml::Extractor.new(article_tag, url: @url).call)
+                yield article_hash
+              end
             end
           end
         end
