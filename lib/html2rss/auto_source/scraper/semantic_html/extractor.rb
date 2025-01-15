@@ -31,6 +31,8 @@ module Html2rss
           end
 
           def initialize(article_tag, url:)
+            raise ArgumentError, 'article_tag is required' unless article_tag
+
             @article_tag = article_tag
             @url = url
           end
