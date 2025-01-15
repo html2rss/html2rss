@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module RssBuilder
+  class RssBuilder
     ##
     # Represents a stylesheet.
     class Stylesheet

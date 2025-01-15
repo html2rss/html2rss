@@ -40,9 +40,9 @@ RSpec.describe Html2rss::AutoSource do
       before do
         allow(described_class::Reducer).to receive(:call)
         allow(described_class::Cleanup).to receive(:call)
-        allow(described_class::RssBuilder).to receive(:new).and_return(instance_double(
-                                                                         described_class::RssBuilder, call: nil
-                                                                       ))
+        allow(Html2rss::RssBuilder).to receive(:new).and_return(instance_double(
+                                                                  Html2rss::RssBuilder, call: nil
+                                                                ))
       end
 
       it 'calls Reducer twice and Cleanup once', :aggregate_failures do
@@ -55,7 +55,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'calls RssBuilder with the correct arguments' do
         instance.build
 
-        expect(described_class::RssBuilder).to have_received(:new).with(
+        expect(Html2rss::RssBuilder).to have_received(:new).with(
           channel: instance_of(described_class::Channel), articles:, stylesheets: []
         )
       end

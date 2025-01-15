@@ -32,7 +32,7 @@ module Html2rss
 
       channel.articles = articles
 
-      Html2rss::AutoSource::RssBuilder.new(
+      Html2rss::RssBuilder.new(
         channel:,
         articles:,
         stylesheets:

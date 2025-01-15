@@ -46,7 +46,7 @@ module Html2rss
                                                        overrides: channel,
                                                        time_zone:)
 
-        AutoSource::RssBuilder.new(channel:, articles:, stylesheets:).call
+        RssBuilder.new(channel:, articles:, stylesheets:).call
       end
 
       def initialize(parsed_body, url:, selectors:, time_zone:)
