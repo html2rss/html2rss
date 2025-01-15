@@ -28,7 +28,7 @@ RSpec.describe Html2rss::RssBuilder do
     ]
   end
   let(:channel) do
-    instance_double(Html2rss::AutoSource::Channel,
+    instance_double(Html2rss::RssBuilder::Channel,
                     title: 'Test Channel',
                     url: 'http://example.com',
                     description: 'A test channel',

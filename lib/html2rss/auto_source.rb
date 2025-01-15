@@ -56,7 +56,7 @@ module Html2rss
     end
 
     def channel
-      @channel ||= Channel.new(parsed_body, headers: @headers, url:)
+      @channel ||= RssBuilder::Channel.new(parsed_body, headers: @headers, url:)
     end
 
     private

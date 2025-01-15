@@ -41,7 +41,7 @@ module Html2rss
         articles = new(parsed_body, url:, selectors:, time_zone:).to_a
         articles.reverse! if selectors.dig(:items, :order) == 'reverse'
 
-        channel = AutoSource::Channel.new(parsed_body, url:,
+        channel = RssBuilder::Channel.new(parsed_body, url:,
                                                        headers:,
                                                        overrides: channel,
                                                        time_zone:)

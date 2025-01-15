@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  class AutoSource
+  class RssBuilder
     ##
     # Extracts channel information from
     # 1. the HTML document's <head>.

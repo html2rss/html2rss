@@ -2,7 +2,7 @@
 
 require 'timecop'
 
-RSpec.describe Html2rss::AutoSource::Channel do
+RSpec.describe Html2rss::RssBuilder::Channel do
   subject(:instance) { described_class.new(parsed_body, url:, headers:) }
 
   let(:parsed_body) { Nokogiri::HTML('') }
