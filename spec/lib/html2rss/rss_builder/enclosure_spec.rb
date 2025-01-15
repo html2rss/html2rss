@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Enclosure do
+RSpec.describe Html2rss::RssBuilder::Enclosure do
   describe '.guess_content_type_from_url(url)' do
     {
       'https://example.com/image.jpg' => 'image/jpeg',

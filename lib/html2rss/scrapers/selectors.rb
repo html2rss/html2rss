@@ -167,7 +167,7 @@ module Html2rss
         url = Html2rss::Utils.build_absolute_url_from_relative(item_url, @url)
         type = selector[:content_type]
 
-        Html2rss::Enclosure.new(url:, type:)
+        Html2rss::RssBuilder::Enclosure.new(url:, type:)
       end
     end
   end

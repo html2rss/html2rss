@@ -111,12 +111,12 @@ module Html2rss
         end
       end
 
-      # @return [Html2rss::Enclosure, nil]
+      # @return [Html2rss::RssBuilder::Enclosure, nil]
       def enclosure
         if @to_h[:enclosure]
           @to_h[:enclosure]
         elsif image
-          Html2rss::Enclosure.new(url: image)
+          Html2rss::RssBuilder::Enclosure.new(url: image)
         end
       end
 
