@@ -21,6 +21,20 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Image do
       end
     end
 
+    context 'when image source is present and image url contains commas' do
+      let(:html) do
+        <<~HTML
+          <article>
+            <img srcset="image,with,commas.jpg 256w, another,image,with,commas.jpg 1w" alt="Image with commas" />
+          </article>
+        HTML
+      end
+
+      it 'returns the absolute URL of the image source' do
+        expect(url).to eq('https://example.com/image,with,commas.jpg')
+      end
+    end
+
     context 'when image source is present in sourceset attribute' do
       let(:html) do
         <<~HTML
