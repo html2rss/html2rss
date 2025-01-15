@@ -6,7 +6,7 @@ RSpec.describe Html2rss::Scrapers::AttributePostProcessors::Base do
   let(:value) { 'test' }
 
   describe '.expect_options' do
-    let(:context) { Html2rss::Item::Context.new({ options: { key1: 'value1', key2: 'value2' } }) }
+    let(:context) { Html2rss::Scrapers::Selectors::Context.new({ options: { key1: 'value1', key2: 'value2' } }) }
 
     it 'does not raise an error if all keys are present' do
       expect { described_class.send(:expect_options, %i[key1 key2], context) }.not_to raise_error
@@ -44,7 +44,7 @@ RSpec.describe Html2rss::Scrapers::AttributePostProcessors::Base do
   describe '.validate_args!' do
     it 'raises NotImplementedError' do
       expect do
-        described_class.send(:validate_args!, '', Html2rss::Item::Context.new({}))
+        described_class.send(:validate_args!, '', Html2rss::Scrapers::Selectors::Context.new({}))
       end.to raise_error(NotImplementedError, 'You must implement the `validate_args!` method in the post processor')
     end
   end
@@ -53,7 +53,7 @@ RSpec.describe Html2rss::Scrapers::AttributePostProcessors::Base do
     before { allow(described_class).to receive(:validate_args!).with(value, context) }
 
     let(:value) { 'test' }
-    let(:context) { Html2rss::Item::Context.new({ options: { key1: 'value1' } }) }
+    let(:context) { Html2rss::Scrapers::Selectors::Context.new({ options: { key1: 'value1' } }) }
 
     it 'calls validate_args! with value and context' do
       described_class.new(value, context)
@@ -69,7 +69,7 @@ RSpec.describe Html2rss::Scrapers::AttributePostProcessors::Base do
     it 'raises NotImplementedError' do
       expect do
         described_class.new('value',
-                            Html2rss::Item::Context.new({ options: {} })).get
+                            Html2rss::Scrapers::Selectors::Context.new({ options: {} })).get
       end.to raise_error(NotImplementedError, 'You must implement the `get` method in the post processor')
     end
   end

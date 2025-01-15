@@ -11,6 +11,8 @@ module Html2rss
       class InvalidSelectorName < Html2rss::Error; end
 
       include Enumerable
+      # A context instance is passed to Item Extractors.
+      Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
 
       ITEM_TAGS = %i[title url description author comments updated guid enclosure categories].freeze
 
@@ -147,10 +149,10 @@ module Html2rss
         post_process.each do |object|
           object = [object].to_h unless object.is_a?(Hash)
 
-          context = Item::Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
-                                      item:,
-                                      scraper: self,
-                                      options: object)
+          context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
+                                item:,
+                                scraper: self,
+                                options: object)
 
           value = Html2rss::Scrapers::AttributePostProcessors.get_processor(object[:name])
                                                              .new(value, context)

@@ -8,7 +8,7 @@ RSpec.describe Html2rss::Scrapers::AttributePostProcessors::ParseUri do
   end
 
   let(:context) do
-    Html2rss::Item::Context.new(
+    Html2rss::Scrapers::Selectors::Context.new(
       config: { url: 'http://example.com' }
     )
   end

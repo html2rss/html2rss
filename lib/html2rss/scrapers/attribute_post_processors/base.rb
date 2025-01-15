@@ -27,7 +27,7 @@ module Html2rss
         # @param value [Object] the value to check
         # @param types [Array<Class>, Class] the expected type(s)
         # @param name [String] the name of the option being checked
-        # @param context [Item::Context] the context
+        # @param context [Scrapers::Selectors::Context] the context
         # @raise [InvalidType] if the value is not of the expected type(s)
         def self.assert_type(value, types = [], name, context:)
           types = [types] unless types.is_a?(Array)
@@ -51,11 +51,11 @@ module Html2rss
         # Initializes the post processor
         #
         # @param value [Object] the value to be processed
-        # @param context [Item::Context] the context
+        # @param context [Scrapers::Selectors::Context] the context
         def initialize(value, context)
           klass = self.class
           # TODO: get rid of Hash
-          klass.assert_type(context, [Item::Context, Hash], 'context', context:)
+          klass.assert_type(context, [Scrapers::Selectors::Context, Hash], 'context', context:)
           klass.validate_args!(value, context)
 
           @value = value

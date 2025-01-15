@@ -42,7 +42,7 @@ module Html2rss
 
         ##
         # @param value [String]
-        # @param context [Item::Context]
+        # @param context [Scrapers::Selectors::Context]
         def initialize(value, context)
           super
 
