@@ -48,7 +48,9 @@ RSpec.describe Html2rss::Scrapers::AttributePostProcessors::Substring do
       let(:options) { { end: 4 } }
 
       it 'raises an error' do
-        expect { subject.range }.to raise_error(Html2rss::Scrapers::AttributePostProcessors::InvalidType, /but is: NilClass in:/)
+        expect do
+          subject.range
+        end.to raise_error(Html2rss::Scrapers::AttributePostProcessors::InvalidType, /but is: NilClass in:/)
       end
     end
   end

@@ -93,8 +93,8 @@ module Html2rss
 
     response = RequestService.execute(RequestService::Context.new(url:, headers:), strategy:)
 
-    SelectorsScraper.call(url, body: response.body, headers: response.headers,
-                               selectors:, channel:, stylesheets:, params:)
+    Scrapers::Selectors.call(url, body: response.body, headers: response.headers,
+                                  selectors:, channel:, stylesheets:, params:)
   end
 
   ##

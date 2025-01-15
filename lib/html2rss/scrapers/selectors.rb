@@ -152,9 +152,9 @@ module Html2rss
                                       scraper: self,
                                       options: object)
 
-          value = Html2rss::AttributePostProcessors.get_processor(object[:name])
-                                                   .new(value, context)
-                                                   .get
+          value = Html2rss::Scrapers::AttributePostProcessors.get_processor(object[:name])
+                                                             .new(value, context)
+                                                             .get
         end
 
         value
