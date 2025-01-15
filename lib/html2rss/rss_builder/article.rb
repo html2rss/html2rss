@@ -5,7 +5,7 @@ require 'sanitize'
 require 'nokogiri'
 
 module Html2rss
-  class AutoSource
+  class RssBuilder
     ##
     # Article is a simple data object representing an article extracted from a page.
     # It is enumerable and responds to all keys specified in PROVIDED_KEYS.

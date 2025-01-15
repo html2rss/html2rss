@@ -73,7 +73,7 @@ module Html2rss
           end
         end
 
-        @rss_item_attributes = @selectors.keys & Html2rss::AutoSource::Article::PROVIDED_KEYS
+        @rss_item_attributes = @selectors.keys & Html2rss::RssBuilder::Article::PROVIDED_KEYS
       end
 
       ##
@@ -140,7 +140,7 @@ module Html2rss
           article_hash[key] = value if value
         end
 
-        Html2rss::AutoSource::Article.new(**article_hash, scraper: self.class)
+        Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
       end
 
       def post_process(item, value, post_process)

@@ -26,7 +26,7 @@ module Html2rss
               keep_longest_values(memo_object, article_hash, keep:)
             end
 
-            result << Article.new(**memo_object)
+            result << RssBuilder::Article.new(**memo_object)
           end
         end
 

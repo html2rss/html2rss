@@ -46,7 +46,7 @@ module Html2rss
         articles_in_thread = Parallel.map(instance.each) do |article_hash|
           Log.debug "Scraper: #{scraper} in worker: #{Parallel.worker_number} [#{article_hash[:url]}]"
 
-          Article.new(**article_hash, scraper:)
+          RssBuilder::Article.new(**article_hash, scraper:)
         end
 
         Reducer.call(articles_in_thread, url:)

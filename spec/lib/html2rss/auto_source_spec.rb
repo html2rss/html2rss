@@ -27,13 +27,13 @@ RSpec.describe Html2rss::AutoSource do
     context 'when articles are found' do
       let(:articles) do
         [
-          described_class::Article.new(title: 'Article 1',
-                                       url: Addressable::URI.parse('https://example.com/article1'),
-                                       id: 'article-1',
-                                       guid: '1qmp481',
-                                       description: 'Read more',
-                                       image: nil,
-                                       scraper: Html2rss::AutoSource::Scraper::SemanticHtml)
+          Html2rss::RssBuilder::Article.new(title: 'Article 1',
+                                            url: Addressable::URI.parse('https://example.com/article1'),
+                                            id: 'article-1',
+                                            guid: '1qmp481',
+                                            description: 'Read more',
+                                            image: nil,
+                                            scraper: Html2rss::AutoSource::Scraper::SemanticHtml)
         ]
       end
 
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::AutoSource do
     let(:parsed_body) { Nokogiri::HTML.parse(body) }
 
     it 'returns a list of articles', :aggregate_failures do
-      expect(instance.articles).to be_a(Array).and include(instance_of(described_class::Article))
+      expect(instance.articles).to be_a(Array).and include(instance_of(Html2rss::RssBuilder::Article))
     end
   end
 end

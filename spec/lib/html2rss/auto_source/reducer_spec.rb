@@ -6,9 +6,9 @@ RSpec.describe Html2rss::AutoSource::Reducer do
   let(:url) { Addressable::URI.parse('http://example.com') }
 
   describe '.call' do
-    let(:articles) { [Html2rss::AutoSource::Article.new(url: true)] }
+    let(:articles) { [Html2rss::RssBuilder::Article.new(url: true)] }
 
-    it 'returns an array of Html2rss::AutoSource::Articles' do
+    it 'returns an array of Html2rss::RssBuilder::Articles' do
       result = described_class.call(articles)
       expect(result).to be_an(Array)
     end
@@ -18,22 +18,22 @@ RSpec.describe Html2rss::AutoSource::Reducer do
 
       let(:articles) do
         [
-          Html2rss::AutoSource::Article.new(url:, id: 1,
+          Html2rss::RssBuilder::Article.new(url:, id: 1,
                                             title: 'Title 1',
                                             description: 'Longer Description 1 wins',
                                             scraper: RSpec),
-          Html2rss::AutoSource::Article.new(url:, id: 2,
+          Html2rss::RssBuilder::Article.new(url:, id: 2,
                                             title: 'Title wins',
                                             description: 'Description 2',
                                             scraper: RSpec),
-          Html2rss::AutoSource::Article.new(url:, id: 3,
+          Html2rss::RssBuilder::Article.new(url:, id: 3,
                                             title: 'Longer Title 3 wins',
                                             description: 'Description 3',
                                             scraper: RSpec)
         ]
       end
 
-      it 'keeps the longest attributes of Html2rss::AutoSource::Articles with the same URL', :aggregate_failures do
+      it 'keeps the longest attributes of Html2rss::RssBuilder::Articles with the same URL', :aggregate_failures do
         expect(result.size).to eq(1)
         expect(result[0].description).to eq('Longer Description 1 wins')
         expect(result[0].title).to eq('Longer Title 3 wins')
