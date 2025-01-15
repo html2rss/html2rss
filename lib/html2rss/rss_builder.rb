@@ -40,6 +40,11 @@ module Html2rss
       item_maker.pubDate = article.published_at.rfc2822 if article.published_at
     end
 
+    ##
+    # @param channel [RssBuilder::Channel] The channel information for the RSS feed.
+    # @param articles [Array<RssBuilder::Article>] The list of articles to include in the RSS feed.
+    # @param stylesheets [Array<RssBuilder::Stylesheet>] An optional array of stylesheet URLs to include in the RSS feed.
+    # @return [RSSBuilder] A new instance of the RSSBuilder class.
     def initialize(channel:, articles:, stylesheets: [])
       @channel = channel
       @articles = articles

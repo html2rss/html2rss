@@ -90,7 +90,7 @@ module Html2rss
         end
 
         ##
-        # @param method_name [String, Symbol]
+        # @param key [String, Symbol]
         # @return [String]
         def item_value(key)
           key = key.to_sym
