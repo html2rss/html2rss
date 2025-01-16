@@ -107,7 +107,7 @@ module Html2rss
         Html2rss::AutoSource::Cleanup.call(auto_source_articles, url:, keep_different_domain: true)
 
         articles.concat auto_source_articles
-      rescue Html2rss::AutoSource::Scraper::NoScraperFound, Html2rss::AutoSource::NoArticlesFound
+      rescue Html2rss::AutoSource::Scraper::NoScraperFound
         Log.debug 'No auto source scraper or articles found for the provided URL. Skipping auto source.'
       end
     end

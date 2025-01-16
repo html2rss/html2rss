@@ -11,8 +11,6 @@ module Html2rss
   # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
-    class NoArticlesFound < Html2rss::Error; end
-
     def initialize(response, time_zone:)
       @parsed_body = response.parsed_body
       @url = response.url
