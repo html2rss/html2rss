@@ -46,5 +46,18 @@ RSpec.describe Html2rss::AutoSource do
       expect(article).to be_a(Html2rss::RssBuilder::Article) & have_attributes(article_without_url)
       expect(article.url).to eq url
     end
+
+    context 'when no scrapers are found' do
+      before do
+        allow(Html2rss::AutoSource::Scraper).to receive(:from).and_raise(Html2rss::AutoSource::Scraper::NoScraperFound)
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'returns an empty array and logs a warning', :aggregate_failures do
+        expect(instance.articles).to eq []
+        expect(Html2rss::Log).to have_received(:warn)
+          .with('No auto source scraper found for the provided URL. Skipping auto source.')
+      end
+    end
   end
 end
