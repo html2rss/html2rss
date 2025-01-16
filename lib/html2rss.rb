@@ -95,13 +95,18 @@ module Html2rss
     # Step 3: Extract the articles
     articles = []
 
-    if (selectors = config[:selectors]).any?
+    if (selectors = config[:selectors])
       articles.concat Scrapers::Selectors.new(response, selectors:, time_zone:).articles
     end
 
     if config[:auto_source].is_a?(Hash)
       begin
-        articles.concat Html2rss::AutoSource.new(response, time_zone:).articles
+        auto_source_articles = Html2rss::AutoSource.new(response, time_zone:).articles
+
+        Html2rss::AutoSource::Reducer.call(auto_source_articles, url:)
+        Html2rss::AutoSource::Cleanup.call(auto_source_articles, url:, keep_different_domain: true)
+
+        articles.concat auto_source_articles
       rescue Html2rss::AutoSource::Scraper::NoScraperFound, Html2rss::AutoSource::NoArticlesFound
         Log.debug 'No auto source scraper or articles found for the provided URL. Skipping auto source.'
       end
@@ -149,10 +154,11 @@ module Html2rss
   # @param strategy [Symbol] the request strategy to use
   # @return [RSS::Rss]
   def self.auto_source(url, strategy: :faraday)
-    ctx = RequestService::Context.new(url:, headers: {})
-    response = RequestService.execute(ctx, strategy:)
-
-    Html2rss::AutoSource.new(response, time_zone: 'UTC').build
+    Html2rss.feed(
+      strategy:,
+      channel: { url: url },
+      auto_source: {}
+    )
   end
 
   private_class_method :find_feed_config

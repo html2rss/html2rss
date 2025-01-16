@@ -18,7 +18,7 @@ After the installation has finished, `html2rss help` will print usage informatio
 
 ### using automatic generation
 
-html2rss offers an automatic RSS generation feature. Try it with:
+html2rss offers an automatic RSS generation feature. Try it on CLI with:
 
 `html2rss auto https://unmatchedstyle.com/`
 
@@ -43,6 +43,7 @@ selectors:
     selector: ".post-content"
     post_process:
       - name: sanitize_html
+auto_source: # this enables auto_source additionally. Remove if you don't want that.
 ```
 
 Build the feed from this config with: `html2rss feed ./my_config_file.yml`.
@@ -62,15 +63,28 @@ Here's a minimal working example using Ruby:
 ```ruby
 require 'html2rss'
 
-rss =
-  Html2rss.feed(
-    channel: { url: 'https://stackoverflow.com/questions' },
-    selectors: {
-      items: { selector: '#hot-network-questions > ul > li' },
-      title: { selector: 'a' },
-      link: { selector: 'a', extractor: 'href' }
-    }
-  )
+rss = Html2rss.feed(
+  channel: { url: 'https://stackoverflow.com/questions' },
+  auto_source: {}
+)
+
+puts rss
+
+```
+
+and instead with `auto_source`, provide `selectors`:
+
+```ruby
+require 'html2rss'
+
+rss = Html2rss.feed(
+  channel: { url: 'https://stackoverflow.com/questions' },
+  selectors: {
+    items: { selector: '#hot-network-questions > ul > li' },
+    title: { selector: 'a' },
+    link: { selector: 'a', extractor: 'href' }
+  }
+)
 
 puts rss
 ```

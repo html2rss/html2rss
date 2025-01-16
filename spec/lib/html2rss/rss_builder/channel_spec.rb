@@ -6,8 +6,9 @@ RSpec.describe Html2rss::RssBuilder::Channel do
   subject(:instance) { described_class.new(response, time_zone: 'UTC') }
 
   let(:response) do
-    instance_double(Html2rss::RequestService::Response, body:, headers:, url: Addressable::URI.parse('https://example.com'),
-                                                        parsed_body: Nokogiri::HTML(body))
+    Html2rss::RequestService::Response.new body:,
+                                           headers:,
+                                           url: Addressable::URI.parse('https://example.com')
   end
 
   let(:body) { '' }
@@ -116,6 +117,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     context 'without a last-modified header' do
       let(:headers) do
         {
+          'content-type' => 'text/html',
           'cache-control' => 'max-age=120, private, must-revalidate'
         }
       end

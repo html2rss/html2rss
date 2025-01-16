@@ -6,34 +6,16 @@ require 'addressable'
 
 module Html2rss
   ##
-  # The AutoSource class is responsible for extracting channel and articles
+  # The AutoSource class is responsible for automatically extracting articles
   # from a given URL.
   # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
     class NoArticlesFound < Html2rss::Error; end
 
-    def initialize(response, time_zone:, stylesheets: [])
-      @response = response
+    def initialize(response, time_zone:)
+      @parsed_body = response.parsed_body
       @url = response.url
-      @headers = response.headers
-      @time_zone = time_zone
-      @stylesheets = stylesheets
-    end
-
-    def build
-      raise NoArticlesFound if articles.empty?
-
-      Reducer.call(articles, url:)
-      Cleanup.call(articles, url:, keep_different_domain: true)
-
-      channel.articles = articles
-
-      Html2rss::RssBuilder.new(
-        channel:,
-        articles:,
-        stylesheets:
-      ).call
     end
 
     def articles
@@ -52,14 +34,8 @@ module Html2rss
       end
     end
 
-    def channel
-      @channel ||= RssBuilder::Channel.new(@response, time_zone: @time_zone)
-    end
-
     private
 
-    attr_reader :url, :stylesheets
-
-    def parsed_body = @response.parsed_body
+    attr_reader :url, :parsed_body
   end
 end
