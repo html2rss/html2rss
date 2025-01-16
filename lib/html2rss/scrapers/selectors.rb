@@ -15,20 +15,13 @@ module Html2rss
       Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
 
       ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
-
       SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
 
       ##
       # Keep backward compatibility.
       #
       # key: new name, value: previous name
-      RENAMED_ATTRIBUTES = {
-        published_at: %i[updated pubDate]
-      }.freeze
-
-      # def self.articles?(parsed_body)
-      #   new(parsed_body, url: '').any?
-      # end
+      RENAMED_ATTRIBUTES = { published_at: %i[updated pubDate] }.freeze
 
       ##
       # Initializes a new Selectors instance.
@@ -42,7 +35,7 @@ module Html2rss
         @selectors = selectors
         @time_zone = time_zone
 
-        assert_url_and_link_not_simultaneously_defined!
+        validate_url_and_link_exclusivity!
         fix_url_and_link!
         handle_renamed_attributes!
 
@@ -50,11 +43,7 @@ module Html2rss
       end
 
       def articles
-        @articles ||= if @selectors.dig(:items, :order) == 'reverse'
-                        to_a.tap(&:reverse!)
-                      else
-                        to_a
-                      end
+        @articles ||= @selectors.dig(:items, :order) == 'reverse' ? to_a.tap(&:reverse!) : to_a
       end
 
       ##
@@ -75,6 +64,18 @@ module Html2rss
       # @return [String] the CSS selector for the items
       def items_selector = @selectors.dig(:items, :selector)
 
+      # @return [Html2rss::RssBuilder::Article] the extracted article.
+      def extract_article(item)
+        article_hash = {}
+
+        @rss_item_attributes.each_with_object(article_hash) do |key, hash|
+          value = select(key, item)
+          hash[key] = value
+        end.compact!
+
+        Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
+      end
+
       ##
       # Selects the value for a given attribute name from the item.
       #
@@ -83,27 +84,24 @@ module Html2rss
       # @return [Object, Array<Object>] The selected value(s) for the attribute.
       def select(name, item)
         name = name.to_sym
-        Log.debug "#{self.class}#select(#{name}, #{item.class})"
 
-        if SPECIAL_ATTRIBUTES.member?(name)
-          select_special(name, item)
-        else
-          select_regular(name, item)
-        end
+        raise InvalidSelectorName, "`#{name}` is not defined" unless @selectors[name]
+
+        SPECIAL_ATTRIBUTES.member?(name) ?  select_special(name, item) : select_regular(name, item)
       end
 
       private
 
       attr_reader :response
 
-      def assert_url_and_link_not_simultaneously_defined!
+      def validate_url_and_link_exclusivity!
         return unless @selectors.key?(:url) && @selectors.key?(:link)
 
-        raise InvalidSelectorName, 'You must either use "url" or "link". Using both is not supported.'
+        raise InvalidSelectorName, 'You must either use "url" or "link" your selectors. Using both is not supported.'
       end
 
       def fix_url_and_link!
-        return unless !@selectors[:url] && @selectors.key?(:link)
+        return if @selectors[:url] || !@selectors.key?(:link)
 
         @selectors = @selectors.dup
         @selectors[:url] = @selectors[:link]
@@ -136,49 +134,33 @@ module Html2rss
         when :enclosure
           enclosure(item, selector)
         when :guid, :categories
-          selector.map { |selector_name| select(selector_name, item) }
+          Array(selector).map { |selector_name| select(selector_name, item) }
         end
       end
 
       def select_regular(name, item)
-        raise InvalidSelectorName, "`#{name}` is not defined" unless @selectors[name]
+        selector = @selectors[name]
 
-        value = ItemExtractors.item_extractor_factory(
-          @selectors[name].merge(channel: { url: @url, time_zone: @time_zone }),
-          item
-        ).get
+        value = ItemExtractors.item_extractor_factory(selector.merge(channel: { url: @url, time_zone: @time_zone }),
+                                                      item).get
 
-        if value && (post_process = @selectors.dig(name, :post_process))
-          post_process = [post_process] unless post_process.is_a?(Array)
+        if value && (post_process_steps = @selectors.dig(name, :post_process))
+          post_process_steps = [post_process_steps] unless post_process_steps.is_a?(Array)
 
-          value = post_process(item, value, post_process)
+          value = post_process(item, value, post_process_steps)
         end
 
         value
       end
 
-      # @return [Html2rss::RssBuilder::Article] the extracted article.
-      def extract_article(item)
-        article_hash = {}
-
-        @rss_item_attributes.each do |key|
-          value = select(key, item)
-          article_hash[key] = value if value
-        end
-
-        Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
-      end
-
-      def post_process(item, value, post_process)
-        post_process.each do |object|
-          object = Hash.try_convert(object)
+      def post_process(item, value, post_process_steps)
+        post_process_steps.each do |options|
+          options = Hash.try_convert(options)
 
           context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
-                                item:, scraper: self, options: object)
+                                item:, scraper: self, options:)
 
-          value = Html2rss::Scrapers::AttributePostProcessors.get_processor(object[:name])
-                                                             .new(value, context)
-                                                             .get
+          value = Html2rss::Scrapers::AttributePostProcessors.get_processor(options[:name]).get(value, context)
         end
 
         value
