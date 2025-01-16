@@ -81,7 +81,7 @@ module Html2rss
         description = self.class.remove_pattern_from_start(description, title) if title
 
         @description = if self.class.contains_html?(description)
-                         Html2rss::Scrapers::AttributePostProcessors::SanitizeHtml.get(description, url)
+                         Html2rss::Selectors::AttributePostProcessors::SanitizeHtml.get(description, url)
                        else
                          description.strip
                        end

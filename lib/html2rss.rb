@@ -87,7 +87,7 @@ module Html2rss
     articles = []
 
     if (selectors = config[:selectors])
-      articles.concat Scrapers::Selectors.new(response, selectors:, time_zone:).articles
+      articles.concat Selectors.new(response, selectors:, time_zone:).articles
     end
 
     articles.concat Html2rss::AutoSource.new(response).articles if config[:auto_source].is_a?(Hash)

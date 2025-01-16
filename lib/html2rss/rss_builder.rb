@@ -71,7 +71,7 @@ module Html2rss
 
     def generator
       scraper_counts = articles.flat_map(&:scraper).tally.map do |klass, count|
-        scraper_name = klass.to_s.gsub(/(?<namespace>Html2rss|Scrapers|AutoSource)::/, '')
+        scraper_name = klass.to_s.gsub(/(?<namespace>Html2rss|Selectors|AutoSource)::/, '')
         "#{scraper_name} (#{count})"
       end
 
