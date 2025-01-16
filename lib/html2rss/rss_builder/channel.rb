@@ -9,9 +9,9 @@ module Html2rss
     class Channel
       ##
       #
-      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
-      # @param url [Addressable::URI] The URL of the channel.
-      # @param headers [Hash<String, String>] the http response headers
+      # @param response [Html2Rss::RequestService::Response]
+      # @param time_zone [String]
+      # @param overrides [Hash<Symbol, String>] - Optional, overrides for any channel attribute
       def initialize(response, time_zone:, overrides: {})
         @parsed_body = response.parsed_body
         @url = response.url
