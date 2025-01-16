@@ -114,6 +114,18 @@ RSpec.describe Html2rss::RssBuilder::Article do
     end
   end
 
+  describe '#categories' do
+    it 'returns an array of unique and present categories' do
+      instance = described_class.new(categories: ['Category 1', '', 'Category 2', 'Category 1 '])
+      expect(instance.categories).to eq(['Category 1', 'Category 2'])
+    end
+
+    it 'returns an empty array if no categories are present' do
+      instance = described_class.new
+      expect(instance.categories).to eq([])
+    end
+  end
+
   describe '#published_at' do
     it 'returns a Time object if published_at is present and valid' do
       instance = described_class.new(published_at: '2022-01-01T12:00:00Z')

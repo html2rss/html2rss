@@ -121,7 +121,13 @@ module Html2rss
         end
       end
 
-      def categories = @to_h[:categories]
+      def categories
+        @categories = @to_h[:categories].dup.to_a.tap do |categories|
+          categories.map! { |c| c.to_s.strip }
+          categories.reject!(&:empty?)
+          categories.uniq!
+        end
+      end
 
       # Parses and returns the published_at time.
       # @return [DateTime, nil]

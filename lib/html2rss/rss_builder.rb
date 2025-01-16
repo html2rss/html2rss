@@ -34,7 +34,7 @@ module Html2rss
       RssBuilder.add_enclosure(article.enclosure, item_maker) if article.enclosure
 
       article.categories&.each do |category|
-        item_maker.categories.new_category.content = category unless category.to_s.empty?
+        item_maker.categories.new_category.content = category
       end
 
       item_maker.pubDate = article.published_at.rfc2822 if article.published_at
