@@ -29,13 +29,11 @@ module Html2rss
                   enum: RequestService.strategy_names,
                   default: RequestService.default_strategy_name
     def feed(yaml_file, feed_name = nil)
-      params = options.fetch(:params) do
-        feed_name.nil? ? {} : feed_name.split.to_h { |param| param.split(':') }
-      end
-      params.transform_keys!(&:to_sym)
+      params = options.fetch(:params)
 
-      config = Html2rss.config_from_yaml_config(yaml_file, feed_name, params:)
+      config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
       config[:channel][:strategy] = options.fetch(:strategy) { config[:channel][:strategy] }.to_sym
+      config[:params] = params
 
       puts Html2rss.feed(config)
     end

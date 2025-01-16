@@ -18,10 +18,10 @@ RSpec.describe Html2rss do
     it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
   end
 
-  describe '.config_from_yaml_config' do
+  describe '.config_from_yaml_file' do
     context 'with html response' do
       subject(:feed) do
-        VCR.use_cassette(name) { described_class.config_from_yaml_config(config_file, name) }
+        VCR.use_cassette(name) { described_class.config_from_yaml_file(config_file, name) }
       end
 
       it { expect(feed).to be_a(Hash) }
@@ -30,7 +30,7 @@ RSpec.describe Html2rss do
     context 'with json response' do
       subject(:feed) do
         VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_config(config_file, name)
+          config = described_class.config_from_yaml_file(config_file, name)
           described_class.feed(config)
         end
       end
@@ -51,7 +51,7 @@ RSpec.describe Html2rss do
     context 'with config without title selector' do
       subject(:feed) do
         VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_config(config_file, name)
+          config = described_class.config_from_yaml_file(config_file, name)
           described_class.feed(config)
         end
       end
@@ -78,7 +78,7 @@ RSpec.describe Html2rss do
       subject(:xml) { Nokogiri.XML(feed_return.to_s) }
 
       let(:config) do
-        described_class.config_from_yaml_config(config_file, name)
+        described_class.config_from_yaml_file(config_file, name)
       end
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 

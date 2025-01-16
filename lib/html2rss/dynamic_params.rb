@@ -48,6 +48,7 @@ module Html2rss
       end
 
       def from_hash(hash, params, getter:, replace_missing_with:)
+        hash.transform_keys!(&:to_sym)
         hash.transform_values! { |value| call(value, params, getter:, replace_missing_with:) }
       end
 
