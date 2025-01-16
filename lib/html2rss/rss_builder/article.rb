@@ -104,8 +104,9 @@ module Html2rss
       # @return [String]
       def guid
         @guid ||= begin
-          guid = @to_h[:guid].to_a.map { |o| o.to_s.strip }.reject(&:empty?).join('|')
-          guid = [url, id].join('#!/') if guid.empty?
+          guid = @to_h[:guid]
+          guid = guid.map { |o| o.to_s.strip }.reject(&:empty?).join('|') if guid.is_a?(Array)
+          guid = [url, id].join('#!/') if !guid || guid.empty?
 
           Zlib.crc32(guid).to_s(36).encode('utf-8')
         end

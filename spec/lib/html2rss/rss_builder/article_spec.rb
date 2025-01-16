@@ -106,6 +106,12 @@ RSpec.describe Html2rss::RssBuilder::Article do
       instance2 = described_class.new(url: 'http://example.com/article', id: '123')
       expect(instance1.guid).to eq(instance2.guid)
     end
+
+    it 'returns the same identifier for the same url and id with different case' do
+      instance1 = described_class.new(url: 'http://example.com/article', id: '123')
+      instance2 = described_class.new(url: 'http://EXAMPLE.com/article', id: '123')
+      expect(instance1.guid).to eq(instance2.guid)
+    end
   end
 
   describe '#published_at' do
