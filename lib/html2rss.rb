@@ -70,47 +70,34 @@ module Html2rss
   #
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed(config)
-    # Step 1: Parse the configuration
+  def self.feed(config) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    # Step 1: Process the config
 
-    strategy = config.dig(:channel, :strategy) || RequestService.default_strategy_name
-    headers = config.dig(:channel, :headers)
+    strategy = config[:strategy] || config.dig(:channel, :strategy) || RequestService.default_strategy_name
+    headers = config[:headers] || config.dig(:channel, :headers)
 
     channel = DynamicParams.call(config[:channel], config[:params])
     url = Addressable::URI.parse(channel[:url])
     time_zone = channel[:time_zone] || 'UTC'
 
-    # Step 2: Execute the request and parse the response
+    # Step 2: Execute the request and get the response
     response = RequestService.execute(RequestService::Context.new(url:, headers:), strategy:)
 
-    # Step 3: Extract the articles
+    # Step 3: Feed the scrapers with response, their settings, and get the articles
     articles = []
 
     if (selectors = config[:selectors])
       articles.concat Scrapers::Selectors.new(response, selectors:, time_zone:).articles
     end
 
-    if config[:auto_source].is_a?(Hash)
-      begin
-        auto_source_articles = Html2rss::AutoSource.new(response, time_zone:).articles
+    articles.concat Html2rss::AutoSource.new(response).articles if config[:auto_source].is_a?(Hash)
 
-        Html2rss::AutoSource::Reducer.call(auto_source_articles, url:)
-        Html2rss::AutoSource::Cleanup.call(auto_source_articles, url:, keep_different_domain: true)
-
-        articles.concat auto_source_articles
-      rescue Html2rss::AutoSource::Scraper::NoScraperFound
-        Log.debug 'No auto source scraper or articles found for the provided URL. Skipping auto source.'
-      end
-    end
-
-    # Step 4: combine extracted articles
-
-    # Step 4.1: Reduce the articles
+    # Step 4: combine / reduce all the extracted articles to prevent duplicates
     articles = AutoSource::Reducer.call(articles, url:)
 
     # Step 5: Build the RSS feed
-    stylesheets = (config[:stylesheets] || []).map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
     channel = RssBuilder::Channel.new(response, overrides: channel, time_zone:)
+    stylesheets = (config[:stylesheets] || []).map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
 
     RssBuilder.new(channel:, articles:, stylesheets:).call
   end

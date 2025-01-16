@@ -11,13 +11,27 @@ module Html2rss
   # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
   # marking articles, e.g. schema, microdata, open graph, etc.
   class AutoSource
-    def initialize(response, time_zone:)
+    def initialize(response)
       @parsed_body = response.parsed_body
       @url = response.url
     end
 
     def articles
-      @articles ||= Scraper.from(parsed_body).flat_map do |scraper|
+      @articles ||= extract_articles.tap do |articles|
+        Html2rss::AutoSource::Reducer.call(articles, url:)
+        Html2rss::AutoSource::Cleanup.call(articles, url:, keep_different_domain: true)
+      end
+    rescue Html2rss::AutoSource::Scraper::NoScraperFound
+      Log.warn 'No auto source scraper found for the provided URL. Skipping auto source.'
+      []
+    end
+
+    private
+
+    attr_reader :url, :parsed_body
+
+    def extract_articles
+      Scraper.from(parsed_body).flat_map do |scraper|
         instance = scraper.new(parsed_body, url:)
 
         articles_in_thread = Parallel.map(instance.each) do |article_hash|
@@ -31,9 +45,5 @@ module Html2rss
         articles_in_thread
       end
     end
-
-    private
-
-    attr_reader :url, :parsed_body
   end
 end

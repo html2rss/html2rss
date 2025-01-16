@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource do
-  subject(:instance) { described_class.new(response, time_zone: 'UTC') }
+  subject(:instance) { described_class.new(response) }
 
   let(:response) do
     Html2rss::RequestService::Response.new body:, headers:, url:
