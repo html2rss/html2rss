@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService::Response do
   describe '#headers' do
-    subject(:returned_headers) { described_class.new(body: '', headers:).headers }
+    subject(:returned_headers) { described_class.new(body: '', headers:, url: Addressable::URI.parse('https://example.com')).headers }
 
     let(:headers) do
       { key: 42 }

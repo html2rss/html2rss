@@ -15,7 +15,7 @@ module Html2rss
 
     def self.add_enclosure(enclosure, maker)
       maker.enclosure.tap do |enclosure_maker|
-        enclosure_maker.url = enclosure.url
+        enclosure_maker.url = enclosure.url.to_s
         enclosure_maker.type = enclosure.type
         enclosure_maker.length = enclosure.bits_length
       end
@@ -28,7 +28,7 @@ module Html2rss
         end
       end
 
-      item_maker.link = article.url if article.url
+      item_maker.link = article.url.to_s if article.url
 
       RssBuilder.add_guid(article, item_maker)
       RssBuilder.add_enclosure(article.enclosure, item_maker) if article.enclosure
@@ -69,7 +69,7 @@ module Html2rss
         maker.public_send(:"#{key}=", channel.public_send(key))
       end
 
-      maker.link = channel.url
+      maker.link = channel.url.to_s
       maker.generator = generator
       maker.updated = channel.last_build_date
     end

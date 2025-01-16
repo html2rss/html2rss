@@ -3,10 +3,14 @@
 require 'timecop'
 
 RSpec.describe Html2rss::RssBuilder::Channel do
-  subject(:instance) { described_class.new(parsed_body, url:, headers:) }
+  subject(:instance) { described_class.new(response, time_zone: 'UTC') }
 
-  let(:parsed_body) { Nokogiri::HTML('') }
-  let(:url) { Addressable::URI.parse('https://example.com') }
+  let(:response) do
+    instance_double(Html2rss::RequestService::Response, body:, headers:, url: Addressable::URI.parse('https://example.com'),
+                                                        parsed_body: Nokogiri::HTML(body))
+  end
+
+  let(:body) { '' }
   let(:headers) do
     {
       'content-type' => 'text/html',
@@ -17,7 +21,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
 
   describe '#title' do
     context 'with a title' do
-      let(:parsed_body) { Nokogiri::HTML('<html><head><title>Example</title></head></html>') }
+      let(:body) { '<html><head><title>Example</title></head></html>' }
 
       it 'extracts the title' do
         expect(instance.title).to eq('Example')
@@ -25,7 +29,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     end
 
     context 'with a title containing extra spaces' do
-      let(:parsed_body) { Nokogiri::HTML('<html><head><title>  Example   Title  </title></head></html>') }
+      let(:body) { '<html><head><title>  Example   Title  </title></head></html>' }
 
       it 'extracts and strips the title' do
         expect(instance.title).to eq('Example Title')
@@ -33,7 +37,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     end
 
     context 'without a title' do
-      let(:parsed_body) { Nokogiri::HTML('<html><head></head></html>') }
+      let(:body) { '<html><head></head></html>' }
 
       it 'generates a title from the URL' do
         allow(Html2rss::Utils).to receive(:titleized_channel_url).and_return('Example.com')
@@ -44,7 +48,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
 
   describe '#language' do
     context 'with a language' do
-      let(:parsed_body) { Nokogiri::HTML('<!doctype html><html lang="fr"><body></body></html>') }
+      let(:body) { '<!doctype html><html lang="fr"><body></body></html>' }
 
       it 'extracts the language' do
         expect(instance.language).to eq('fr')
@@ -52,7 +56,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     end
 
     context 'without a language' do
-      let(:parsed_body) { Nokogiri::HTML('<html></html>') }
+      let(:body) { '<html></html>' }
 
       it 'extracts nil' do
         expect(instance.language).to be_nil
@@ -62,8 +66,8 @@ RSpec.describe Html2rss::RssBuilder::Channel do
 
   describe '#description' do
     context 'with a description' do
-      let(:parsed_body) do
-        Nokogiri::HTML('<head><meta name="description" content="Example"></head>')
+      let(:body) do
+        '<head><meta name="description" content="Example"></head>'
       end
 
       it 'extracts the description' do
@@ -72,19 +76,19 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     end
 
     context 'without a description' do
-      let(:parsed_body) { Nokogiri::HTML('<head></head>') }
+      let(:body) { '<head></head>' }
 
       it 'generates a default description' do
-        expect(instance.description).to eq 'Latest items from https://example.com/.'
+        expect(instance.description).to eq 'Latest items from https://example.com'
       end
     end
   end
 
   describe '#image' do
     context 'with a og:image' do
-      let(:parsed_body) do
-        Nokogiri::HTML('<head><meta property="og:image" content="https://example.com/images/rock.jpg" />
-</head>')
+      let(:body) do
+        '<head><meta property="og:image" content="https://example.com/images/rock.jpg" />
+</head>'
       end
 
       it 'extracts the url', :aggregate_failures do
@@ -94,7 +98,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     end
 
     context 'without a og:image' do
-      let(:parsed_body) { Nokogiri::HTML('<head></head>') }
+      let(:body) { '<head></head>' }
 
       it 'extracts nil' do
         expect(instance.image).to be_nil

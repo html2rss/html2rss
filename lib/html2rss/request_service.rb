@@ -13,6 +13,7 @@ module Html2rss
     class UnknownStrategy < Html2rss::Error; end
     class InvalidUrl < Html2rss::Error; end
     class UnsupportedUrlScheme < Html2rss::Error; end
+    class UnsupportedResponseContentType < Html2rss::Error; end
 
     class << self
       extend Forwardable

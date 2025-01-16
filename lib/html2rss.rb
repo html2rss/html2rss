@@ -7,6 +7,7 @@ loader.setup
 
 require 'addressable'
 require 'logger'
+require 'nokogiri'
 require 'yaml'
 
 ##
@@ -51,13 +52,13 @@ module Html2rss
 
     feed_config = find_feed_config(yaml, feeds, name, global_config)
 
-    stylesheets = yaml[:stylesheets].to_a.map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
-
     {
+      stylesheets: yaml[:stylesheets].to_a,
       channel: feed_config[:channel],
       selectors: feed_config[:selectors],
-      stylesheets:, global_config:, params:
-    }
+      auto_source: feed_config[:auto_source],
+      global_config:, params:
+    }.compact
   end
 
   ##
@@ -78,23 +79,44 @@ module Html2rss
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed(config)
-    headers = config.dig(:channel, :headers)
-    strategy = config.dig(:channel, :strategy) || RequestService.default_strategy_name
-    stylesheets = config[:stylesheets] || []
-    params = config[:params]
-
-    channel = config[:channel]
-    selectors = config[:selectors]
+    # Step 1: Parse the configuration
 
     # global_config = config[:global_config] # TODO: get rid of this crutch in favor of proper "gem configuration"
+    strategy = config.dig(:channel, :strategy) || RequestService.default_strategy_name
+    headers = config.dig(:channel, :headers)
 
-    channel = channel.transform_values { |value| value.is_a?(String) ? format(value, params) : value }
+    channel = DynamicParams.call(config[:channel], config[:params])
     url = Addressable::URI.parse(channel[:url])
+    time_zone = channel[:time_zone] || 'UTC'
 
+    # Step 2: Execute the request and parse the response
     response = RequestService.execute(RequestService::Context.new(url:, headers:), strategy:)
 
-    Scrapers::Selectors.call(url, body: response.body, headers: response.headers,
-                                  selectors:, channel:, stylesheets:, params:)
+    # Step 3: Extract the articles
+    articles = []
+
+    if (selectors = config[:selectors]).any?
+      articles.concat Scrapers::Selectors.new(response, selectors:, time_zone:).articles
+    end
+
+    if config[:auto_source].is_a?(Hash)
+      begin
+        articles.concat Html2rss::AutoSource.new(response, time_zone:).articles
+      rescue Html2rss::AutoSource::Scraper::NoScraperFound, Html2rss::AutoSource::NoArticlesFound
+        Log.debug 'No auto source scraper or articles found for the provided URL. Skipping auto source.'
+      end
+    end
+
+    # Step 4: combine extracted articles
+
+    # Step 4.1: Reduce the articles
+    articles = AutoSource::Reducer.call(articles, url:)
+
+    # Step 5: Build the RSS feed
+    stylesheets = (config[:stylesheets] || []).map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
+    channel = RssBuilder::Channel.new(response, overrides: channel, time_zone:)
+
+    RssBuilder.new(channel:, articles:, stylesheets:).call
   end
 
   ##
@@ -130,7 +152,7 @@ module Html2rss
     ctx = RequestService::Context.new(url:, headers: {})
     response = RequestService.execute(ctx, strategy:)
 
-    Html2rss::AutoSource.new(ctx.url, body: response.body, headers: response.headers).build
+    Html2rss::AutoSource.new(response, time_zone: 'UTC').build
   end
 
   private_class_method :find_feed_config

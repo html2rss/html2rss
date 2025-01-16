@@ -13,14 +13,11 @@ module Html2rss
   class AutoSource
     class NoArticlesFound < Html2rss::Error; end
 
-    ##
-    # @param url [Addressable::URI] The URL to extract articles from.
-    # @param body [String] The body of the response.
-    # @param headers [Hash] The headers of the response.
-    def initialize(url, body:, headers: {}, stylesheets: [])
-      @url = url
-      @body = body
-      @headers = headers
+    def initialize(response, time_zone:, stylesheets: [])
+      @response = response
+      @url = response.url
+      @headers = response.headers
+      @time_zone = time_zone
       @stylesheets = stylesheets
     end
 
@@ -56,20 +53,13 @@ module Html2rss
     end
 
     def channel
-      @channel ||= RssBuilder::Channel.new(parsed_body, headers: @headers, url:)
+      @channel ||= RssBuilder::Channel.new(@response, time_zone: @time_zone)
     end
 
     private
 
     attr_reader :url, :stylesheets
 
-    # @return [Nokogiri::HTML::Document]
-    def parsed_body
-      @parsed_body ||= Nokogiri.HTML(@body)
-                               .tap do |doc|
-        # Remove comments from the document
-        doc.xpath('//comment()').each(&:remove)
-      end.freeze
-    end
+    def parsed_body = @response.parsed_body
   end
 end

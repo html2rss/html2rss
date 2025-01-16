@@ -11,13 +11,13 @@ module Html2rss
     class FaradayStrategy < Strategy
       # return [Response]
       def execute
-        request = Faraday.new(url: ctx.url, headers: ctx.headers) do |faraday|
+        request = Faraday.new(url: ctx.url.to_s, headers: ctx.headers) do |faraday|
           faraday.use Faraday::FollowRedirects::Middleware
           faraday.adapter Faraday.default_adapter
         end
         response = request.get
 
-        Response.new(body: response.body, headers: response.headers)
+        Response.new(body: response.body, headers: response.headers, url: ctx.url)
       end
     end
   end

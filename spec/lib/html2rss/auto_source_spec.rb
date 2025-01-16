@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource do
-  subject(:instance) { described_class.new(url, body:, headers:) }
+  subject(:instance) { described_class.new(response, time_zone: 'UTC') }
+
+  let(:response) do
+    instance_double(Html2rss::RequestService::Response, body:, headers:, url:, parsed_body: Nokogiri::HTML.parse(body))
+  end
 
   let(:url) { Addressable::URI.parse('https://example.com') }
   let(:body) do
@@ -14,10 +18,10 @@ RSpec.describe Html2rss::AutoSource do
         </body>
     </html>'
   end
+
   let(:headers) { {} }
 
   describe '#build' do
-    let(:parsed_body) { Nokogiri::HTML.parse(response.body) }
     let(:articles) { [] }
 
     before do
@@ -73,11 +77,8 @@ RSpec.describe Html2rss::AutoSource do
   describe '#articles' do
     before do
       allow(Parallel).to receive(:flat_map)
-        .and_yield(Html2rss::AutoSource::Scraper::SemanticHtml.new(parsed_body,
-                                                                   url:).each)
+        .and_yield(Html2rss::AutoSource::Scraper::SemanticHtml.new(response.parsed_body, url:).each)
     end
-
-    let(:parsed_body) { Nokogiri::HTML.parse(body) }
 
     it 'returns a list of articles', :aggregate_failures do
       expect(instance.articles).to be_a(Array).and include(instance_of(Html2rss::RssBuilder::Article))

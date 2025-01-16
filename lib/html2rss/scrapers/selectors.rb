@@ -14,7 +14,7 @@ module Html2rss
       # A context instance is passed to Item Extractors.
       Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
 
-      ITEM_TAGS = %i[title url description author comments updated guid enclosure categories].freeze
+      ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
 
       SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
 
@@ -30,52 +30,25 @@ module Html2rss
       #   new(parsed_body, url: '').any?
       # end
 
-      def self.call(url, body:, headers:, selectors: {}, channel: {}, stylesheets: [], params: {})
-        parsed_body = if headers['content-type']&.include?('application/json')
-                        Nokogiri::HTML5.fragment Html2rss::ObjectToXmlConverter.new(JSON.parse(body)).call
-                      else
-                        Nokogiri::HTML(body)
-                      end
-
-        channel = DynamicParams.call(channel, params)
-        time_zone = channel[:time_zone]
-
-        articles = new(parsed_body, url:, selectors:, time_zone:).to_a
-        articles.reverse! if selectors.dig(:items, :order) == 'reverse'
-
-        channel = RssBuilder::Channel.new(parsed_body, url:,
-                                                       headers:,
-                                                       overrides: channel,
-                                                       time_zone:)
-
-        RssBuilder.new(channel:, articles:, stylesheets:).call
-      end
-
-      def initialize(parsed_body, url:, selectors:, time_zone:)
-        @parsed_body = parsed_body
-        @url = url
+      def initialize(response, selectors:, time_zone:)
+        @response = response
+        @url = response.url
         @selectors = selectors
-        @time_zone = time_zone || 'UTC'
+        @time_zone = time_zone
 
-        if @selectors.key?(:url) && @selectors.key?(:link)
-          raise 'You must either use "url" or "link". Using both is not supported.'
-        end
-
-        if !selectors[:url] && selectors.key?(:link)
-          @selectors = @selectors.dup
-          @selectors[:url] = selectors[:link]
-        end
-
-        RENAMED_ATTRIBUTES.each_pair do |new_name, old_names|
-          old_names.each do |old_name|
-            next unless @selectors.key?(old_name)
-
-            Html2rss::Log.warn "Selector `#{old_name}` is deprecated. Please rename to `#{new_name}`."
-            @selectors[new_name] ||= @selectors.delete(old_name)
-          end
-        end
+        assert_url_and_link_not_simultaneously_defined!
+        fix_url_and_link!
+        handle_renamed_attributes!
 
         @rss_item_attributes = @selectors.keys & Html2rss::RssBuilder::Article::PROVIDED_KEYS
+      end
+
+      def articles
+        @articles ||= if @selectors.dig(:items, :order) == 'reverse'
+                        to_a.tap(&:reverse!)
+                      else
+                        to_a
+                      end
       end
 
       ##
@@ -84,7 +57,7 @@ module Html2rss
       def each(&)
         enum_for(:each) unless block_given?
 
-        @parsed_body.css(items_selector).each do |item|
+        parsed_body.css(items_selector).each do |item|
           if (article = extract_article(item))
             yield article
           end
@@ -105,6 +78,43 @@ module Html2rss
       end
 
       private
+
+      attr_reader :response
+
+      def assert_url_and_link_not_simultaneously_defined!
+        return unless @selectors.key?(:url) && @selectors.key?(:link)
+
+        raise InvalidSelectorName, 'You must either use "url" or "link". Using both is not supported.'
+      end
+
+      def fix_url_and_link!
+        return unless !@selectors[:url] && @selectors.key?(:link)
+
+        @selectors = @selectors.dup
+        @selectors[:url] = @selectors[:link]
+      end
+
+      def handle_renamed_attributes!
+        RENAMED_ATTRIBUTES.each_pair do |new_name, old_names|
+          old_names.each do |old_name|
+            next unless @selectors.key?(old_name)
+
+            Html2rss::Log.warn "Selector `#{old_name}` is deprecated. Please rename to `#{new_name}`."
+            @selectors[new_name] ||= @selectors.delete(old_name)
+          end
+        end
+      end
+
+      def parsed_body
+        return response.parsed_body unless response.json_response?
+
+        # Converting JSON to XML is a feature that is limited to this scraper
+        converted_body = Html2rss::ObjectToXmlConverter.new(JSON.parse(response.body, symbolize_names: true)).call
+
+        Log.warn "Converted JSON response to XML. Excerpt:\n\t#{converted_body.to_s[..110]}…"
+
+        Nokogiri::HTML5.fragment converted_body
+      end
 
       def select_special(name, item)
         selector = @selectors[name]

@@ -14,13 +14,13 @@ module Html2rss
       # @param url [String, Addressable::URI] the URL to request
       # @param headers [Hash] HTTP request headers
       def initialize(url:, headers: {})
-        @url = Addressable::URI.parse(url)
+        @url = Addressable::URI.parse(url).normalize.freeze
         assert_valid_url!
 
         @headers = headers
       end
 
-      # @return [Addressable::URI] the parsed URL
+      # @return [Addressable::URI] the parsed and normalized URL
       attr_reader :url
 
       # @return [Hash] the HTTP request headers
