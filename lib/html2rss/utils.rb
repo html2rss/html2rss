@@ -4,7 +4,6 @@ require 'addressable/uri'
 require 'json'
 require 'regexp_parser'
 require 'tzinfo'
-require_relative 'object_to_xml_converter'
 
 module Html2rss
   ##

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::ObjectToXmlConverter do
+RSpec.describe Html2rss::Scrapers::ObjectToXmlConverter do
   describe '.call' do
     context 'with object being an object' do
       let(:object) { { 'data' => [{ 'title' => 'Headline', 'url' => 'https://example.com' }] } }

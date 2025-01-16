@@ -109,9 +109,7 @@ module Html2rss
         return response.parsed_body unless response.json_response?
 
         # Converting JSON to XML is a feature that is limited to this scraper
-        converted_body = Html2rss::ObjectToXmlConverter.new(JSON.parse(response.body, symbolize_names: true)).call
-
-        Log.warn "Converted JSON response to XML. Excerpt:\n\t#{converted_body.to_s[..110]}…"
+        converted_body = ObjectToXmlConverter.new(JSON.parse(response.body, symbolize_names: true)).call
 
         Nokogiri::HTML5.fragment converted_body
       end
