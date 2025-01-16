@@ -83,14 +83,12 @@ module Html2rss
     end
 
     def generator
-      scraper_counts = +''
-
-      @articles.each_with_object(Hash.new(0)) { |article, counts| counts[article.scraper] += 1 }
-               .each do |klass, count|
-        scraper_counts.concat("[#{klass.to_s.gsub('Html2rss::AutoSource::Scraper::', '')}=#{count}]")
+      scraper_counts = @articles.flat_map(&:scraper).tally.map do |klass, count|
+        scraper_name = klass.to_s.gsub(/(?<namespace>Html2rss|Scrapers|AutoSource)::/, '')
+        "#{scraper_name} (#{count})"
       end
 
-      "html2rss V. #{::Html2rss::VERSION} (scrapers: #{scraper_counts})"
+      "html2rss V. #{::Html2rss::VERSION} (scrapers: #{scraper_counts.join(', ')})"
     end
   end
 end

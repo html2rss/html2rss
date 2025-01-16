@@ -65,7 +65,7 @@ RSpec.describe Html2rss::RssBuilder do
           'title' => 'Test Channel',
           'link' => 'http://example.com',
           'description' => 'A test channel',
-          'generator' => "html2rss V. #{Html2rss::VERSION} (scrapers: [RSpec=2])"
+          'generator' => "html2rss V. #{Html2rss::VERSION} (scrapers: [RSpec (2)])"
         }
       end
 
