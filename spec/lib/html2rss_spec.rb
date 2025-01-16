@@ -27,9 +27,12 @@ RSpec.describe Html2rss do
       it { expect(feed).to be_a(Hash) }
     end
 
-    xcontext 'with json response' do
+    context 'with json response' do
       subject(:feed) do
-        VCR.use_cassette(name) { described_class.config_from_yaml_config(config_file, name) }
+        VCR.use_cassette(name) do
+          config = described_class.config_from_yaml_config(config_file, name)
+          described_class.feed(config)
+        end
       end
 
       let(:name) { 'json' }

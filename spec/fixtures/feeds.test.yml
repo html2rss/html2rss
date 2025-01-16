@@ -63,7 +63,8 @@ feeds:
       title: JSON
       url: https://api.cinemascore.com/guest/surveys
       ttl: 600
-      json: true
+      headers:
+        Accept: application/json
     selectors:
       items:
         selector: 'new > array > object, recent > array > object'
