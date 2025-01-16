@@ -30,6 +30,12 @@ module Html2rss
       #   new(parsed_body, url: '').any?
       # end
 
+      ##
+      # Initializes a new Selectors instance.
+      #
+      # @param response [RequestService::Response] The response object.
+      # @param selectors [Hash] The selectors hash.
+      # @param time_zone [String] The time zone to use for date parsing.
       def initialize(response, selectors:, time_zone:)
         @response = response
         @url = response.url
@@ -53,9 +59,9 @@ module Html2rss
 
       ##
       # @yield [Hash] Each scraped article_hash
-      # @return [Array<Article>] the scraped article_hashes
+      # @return [Array<Html2rss::RssBuilder::Article>] the scraped articles
       def each(&)
-        enum_for(:each) unless block_given?
+        return enum_for(:each) unless block_given?
 
         parsed_body.css(items_selector).each do |item|
           if (article = extract_article(item))
@@ -64,8 +70,17 @@ module Html2rss
         end
       end
 
+      ##
+      # Returns the CSS selector for the items.
+      # @return [String] the CSS selector for the items
       def items_selector = @selectors.dig(:items, :selector)
 
+      ##
+      # Selects the value for a given attribute name from the item.
+      #
+      # @param name [Symbol, String] The name of the attribute to select.
+      # @param item [Nokogiri::XML::Element] The item from which to select the attribute.
+      # @return [Object, Array<Object>] The selected value(s) for the attribute.
       def select(name, item)
         name = name.to_sym
         Log.debug "#{self.class}#select(#{name}, #{item.class})"
@@ -142,6 +157,7 @@ module Html2rss
         value
       end
 
+      # @return [Html2rss::RssBuilder::Article] the extracted article.
       def extract_article(item)
         article_hash = {}
 
@@ -155,12 +171,10 @@ module Html2rss
 
       def post_process(item, value, post_process)
         post_process.each do |object|
-          object = [object].to_h unless object.is_a?(Hash)
+          object = Hash.try_convert(object)
 
           context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
-                                item:,
-                                scraper: self,
-                                options: object)
+                                item:, scraper: self, options: object)
 
           value = Html2rss::Scrapers::AttributePostProcessors.get_processor(object[:name])
                                                              .new(value, context)
