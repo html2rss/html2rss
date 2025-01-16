@@ -22,6 +22,16 @@ module Html2rss
         content_type.first&.to_s || 'application/octet-stream'
       end
 
+      def self.add(enclosure, maker)
+        return unless enclosure
+
+        maker.enclosure.tap do |enclosure_maker|
+          enclosure_maker.url = enclosure.url.to_s
+          enclosure_maker.type = enclosure.type
+          enclosure_maker.length = enclosure.bits_length
+        end
+      end
+
       def initialize(url:, type: nil, bits_length: 0)
         raise ArgumentError, 'An Enclosure requires an absolute URL' if !url || !url.absolute?
 

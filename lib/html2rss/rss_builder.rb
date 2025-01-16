@@ -13,15 +13,7 @@ module Html2rss
       end
     end
 
-    def self.add_enclosure(enclosure, maker)
-      maker.enclosure.tap do |enclosure_maker|
-        enclosure_maker.url = enclosure.url.to_s
-        enclosure_maker.type = enclosure.type
-        enclosure_maker.length = enclosure.bits_length
-      end
-    end
-
-    def self.add_item(article, item_maker)
+    def self.add_item(article, item_maker) # rubocop:disable Metrics/AbcSize
       %w[title description author].each do |attr|
         if (value = article.public_send(attr))
           item_maker.public_send(:"#{attr}=", value)
@@ -29,22 +21,19 @@ module Html2rss
       end
 
       item_maker.link = article.url.to_s if article.url
+      item_maker.pubDate = article.published_at&.rfc2822
 
-      RssBuilder.add_guid(article, item_maker)
-      RssBuilder.add_enclosure(article.enclosure, item_maker) if article.enclosure
+      article.categories.each { |category| item_maker.categories.new_category.content = category }
 
-      article.categories&.each do |category|
-        item_maker.categories.new_category.content = category
-      end
-
-      item_maker.pubDate = article.published_at.rfc2822 if article.published_at
+      Enclosure.add(article.enclosure, item_maker)
+      add_guid(article, item_maker)
     end
 
     ##
-    # @param channel [RssBuilder::Channel] The channel information for the RSS feed.
-    # @param articles [Array<RssBuilder::Article>] The list of articles to include in the RSS feed.
-    # @param stylesheets [Array<RssBuilder::Stylesheet>] An optional array of stylesheet URLs to include in the RSS feed.
-    # @return [RSSBuilder] A new instance of the RSSBuilder class.
+    # @param channel [Html2rss::RssBuilder::Channel] The channel information for the RSS feed.
+    # @param articles [Array<Html2rss::RssBuilder::Article>] The list of articles to include in the RSS feed
+    # @param stylesheets [Array<Html2rss::RssBuilder::Stylesheet>] An optional array of stylesheet URLs
+    # @return [Html2rss::RssBuilder] A new instance of the RSSBuilder class
     def initialize(channel:, articles:, stylesheets: [])
       @channel = channel
       @articles = articles
@@ -76,19 +65,17 @@ module Html2rss
 
     def make_items(maker)
       articles.each do |article|
-        maker.items.new_item do |item_maker|
-          self.class.add_item(article, item_maker)
-        end
+        maker.items.new_item { |item_maker| self.class.add_item(article, item_maker) }
       end
     end
 
     def generator
-      scraper_counts = @articles.flat_map(&:scraper).tally.map do |klass, count|
+      scraper_counts = articles.flat_map(&:scraper).tally.map do |klass, count|
         scraper_name = klass.to_s.gsub(/(?<namespace>Html2rss|Scrapers|AutoSource)::/, '')
         "#{scraper_name} (#{count})"
       end
 
-      "html2rss V. #{::Html2rss::VERSION} (scrapers: #{scraper_counts.join(', ')})"
+      "html2rss V. #{Html2rss::VERSION} (scrapers: #{scraper_counts.join(', ')})"
     end
   end
 end
