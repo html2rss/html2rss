@@ -42,6 +42,30 @@ RSpec.describe Html2rss::RssBuilder::Article do
     end
   end
 
+  describe '#description' do
+    it 'returns the description if present', :aggregate_failures do
+      description = instance.description
+
+      expect(description).to eq('By John Doe')
+      expect(description.encoding).to eq(Encoding::UTF_8)
+    end
+
+    it 'returns nil if no description is present' do
+      instance = described_class.new(title: 'Sample instance')
+      expect(instance.description).to be_nil
+    end
+
+    it 'removes the title from the description if present' do
+      instance = described_class.new(title: 'Sample instance', description: ' Sample instance By John Doe ')
+      expect(instance.description).to eq('By John Doe')
+    end
+
+    it 'sanitizes the HTML in the description' do
+      instance = described_class.new(description: '<b>Some bold text</b><script>alert();</script>')
+      expect(instance.description).to eq('<b>Some bold text</b>')
+    end
+  end
+
   describe '#url' do
     it 'returns the url if present', :aggregate_failures do
       url = instance.url
