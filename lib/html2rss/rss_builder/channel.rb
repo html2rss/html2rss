@@ -20,20 +20,10 @@ module Html2rss
         @overrides = overrides
       end
 
-      attr_writer :articles
-
       attr_reader :url
 
       def title
-        @title ||= if overrides[:title]
-                     overrides[:title]
-                   elsif parsed_body.is_a?(Nokogiri::HTML::Document) &&
-                         (title = parsed_body.at_css('head > title')&.text.to_s) &&
-                         !title.empty?
-                     title.gsub(/\s+/, ' ').strip
-                   else
-                     Utils.titleized_channel_url(url)
-                   end
+        @title ||= fetch_title
       end
 
       def description
@@ -88,6 +78,22 @@ module Html2rss
       private
 
       attr_reader :parsed_body, :headers, :time_zone, :overrides
+
+      def fetch_title
+        return overrides[:title] if overrides[:title]
+        return parsed_title if parsed_title
+
+        Utils.titleized_channel_url(url)
+      end
+
+      def parsed_title
+        return unless parsed_body.is_a?(Nokogiri::HTML::Document)
+
+        title = parsed_body.at_css('head > title')&.text.to_s
+        return if title.empty?
+
+        title.gsub(/\s+/, ' ').strip
+      end
     end
   end
 end
