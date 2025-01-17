@@ -108,10 +108,10 @@ Alright, let's move on.
 | `url`         | **required** | String  |                |                                            |
 | `title`       | optional     | String  | auto-generated |                                            |
 | `description` | optional     | String  | auto-generated |                                            |
-| `ttl`         | optional     | Integer | `360`          | TTL in _minutes_                           |
-| `time_zone`   | optional     | String  | `'UTC'`        | TimeZone name                              |
-| `language`    | optional     | String  | `'en'`         | Language code                              |
 | `author`      | optional     | String  |                | Format: `email (Name)`                     |
+| `ttl`         | optional     | Integer | auto-generated | TTL in _minutes_, falls back to `360`      |
+| `language`    | optional     | String  | auto-generated | Language code                              |
+| `time_zone`   | optional     | String  | `'UTC'`        | TimeZone name                              |
 | `headers`     | optional     | Hash    | `{}`           | Set HTTP request headers. See notes below. |
 
 #### Dynamic parameters in `channel` attributes

@@ -146,5 +146,13 @@ RSpec.describe Html2rss::RssBuilder::Channel do
         expect(instance.ttl).to eq(2)
       end
     end
+
+    context 'without a cache-control header' do
+      let(:headers) { { 'content-type' => 'text/html' } }
+
+      it 'defaults to 360 minutes' do
+        expect(instance.ttl).to eq(360)
+      end
+    end
   end
 end

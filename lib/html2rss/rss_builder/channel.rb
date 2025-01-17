@@ -7,6 +7,7 @@ module Html2rss
     # 1. the HTML document's <head>.
     # 2. the HTTP response
     class Channel
+      DEFAULT_TTL_IN_MINUTES = 360
       ##
       #
       # @param response [Html2Rss::RequestService::Response]
@@ -33,10 +34,11 @@ module Html2rss
       def ttl
         return overrides[:ttl] if overrides[:ttl]
 
-        ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1)
-        return unless ttl
+        if (ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1))
+          return ttl.to_i.fdiv(60).ceil
+        end
 
-        ttl.to_i.fdiv(60).ceil
+        DEFAULT_TTL_IN_MINUTES
       end
 
       def language
