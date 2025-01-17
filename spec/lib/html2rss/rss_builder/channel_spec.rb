@@ -3,7 +3,7 @@
 require 'timecop'
 
 RSpec.describe Html2rss::RssBuilder::Channel do
-  subject(:instance) { described_class.new(response, time_zone: 'UTC') }
+  subject(:instance) { described_class.new(response) }
 
   let(:response) do
     Html2rss::RequestService::Response.new body:,

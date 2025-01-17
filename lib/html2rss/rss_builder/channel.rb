@@ -10,28 +10,22 @@ module Html2rss
       ##
       #
       # @param response [Html2Rss::RequestService::Response]
-      # @param time_zone [String]
       # @param overrides [Hash<Symbol, String>] - Optional, overrides for any channel attribute
-      def initialize(response, time_zone:, overrides: {})
-        @parsed_body = response.parsed_body
-        @url = response.url
-        @headers = response.headers
-        @time_zone = time_zone
+      def initialize(response, overrides: {})
+        @response = response
         @overrides = overrides
       end
-
-      attr_reader :url
 
       def title
         @title ||= fetch_title
       end
 
+      def url = @url ||= @response.url
+
       def description
         return overrides[:description] if overrides[:description]
 
-        if parsed_body.is_a?(Nokogiri::HTML::Document)
-          description = parsed_body.at_css('meta[name="description"]')&.[]('content')
-        end
+        description = parsed_body.at_css('meta[name="description"]')&.[]('content') if html_response?
 
         description || "Latest items from #{url}"
       end
@@ -48,21 +42,19 @@ module Html2rss
       def language
         return overrides[:language] if overrides[:language]
 
-        if (code = headers['content-language']&.match(/^([a-z]{2})/))
-          return code[0]
+        if (language_code = headers['content-language']&.match(/^([a-z]{2})/))
+          return language_code[0]
         end
 
-        return unless parsed_body.is_a?(Nokogiri::HTML::Document)
+        return unless html_response?
 
-        return parsed_body['lang'] if parsed_body.name == 'html' && parsed_body['lang']
-
-        parsed_body.at_css('[lang]')&.[]('lang')
+        parsed_body['lang'] || parsed_body.at_css('[lang]')&.[]('lang')
       end
 
       def author
         return overrides[:author] if overrides[:author]
 
-        return unless parsed_body.is_a?(Nokogiri::HTML::Document)
+        return unless html_response?
 
         parsed_body.at_css('meta[name="author"]')&.[]('content')
       end
@@ -72,7 +64,7 @@ module Html2rss
       def image
         return overrides[:image] if overrides[:image]
 
-        return unless parsed_body.is_a?(Nokogiri::HTML::Document)
+        return unless html_response?
 
         if (image_url = parsed_body.at_css('meta[property="og:image"]')&.[]('content'))
           Html2rss::Utils.sanitize_url(image_url)
@@ -81,7 +73,11 @@ module Html2rss
 
       private
 
-      attr_reader :parsed_body, :headers, :time_zone, :overrides
+      attr_reader :overrides
+
+      def parsed_body = @parsed_body ||= @response.parsed_body
+      def headers = @headers ||= @response.headers
+      def html_response? = @html_response ||= @response.html_response?
 
       def fetch_title
         return overrides[:title] if overrides[:title]
@@ -91,7 +87,7 @@ module Html2rss
       end
 
       def parsed_title
-        return unless parsed_body.is_a?(Nokogiri::HTML::Document)
+        return unless html_response?
 
         title = parsed_body.at_css('head > title')&.text.to_s
         return if title.empty?

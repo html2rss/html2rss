@@ -96,7 +96,7 @@ module Html2rss
     articles = AutoSource::Reducer.call(articles, url:)
 
     # Step 5: Build the RSS feed
-    channel = RssBuilder::Channel.new(response, overrides: channel, time_zone:)
+    channel = RssBuilder::Channel.new(response, overrides: channel)
     stylesheets = (config[:stylesheets] || []).map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
 
     RssBuilder.new(channel:, articles:, stylesheets:).call
