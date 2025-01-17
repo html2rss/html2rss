@@ -71,7 +71,7 @@ RSpec.describe Html2rss do
           expect(item.css('title').text).to eq 'v2.10.2 (pi)'
           expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2'
           expect(item.css('author').text).to eq 'pi'
-          expect(item.css('guid').text).to eq '1uh2tw4'
+          expect(item.css('guid').text).to eq '1yeig5l'
         end
 
         describe 'item.pubDate' do

@@ -39,7 +39,7 @@ module Html2rss
   # @param file [String] the YAML file.
   # @param feed_name [String] the feed name (only when feeds: is present).
   # @return [Hash<Symbol, Object>] the configuration.
-  def self.config_from_yaml_file(file, feed_name = nil) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength
+  def self.config_from_yaml_file(file, feed_name = nil)
     raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
     raise ArgumentError, "`#{CONFIG_KEY_FEEDS}` is a reserved feed name" if feed_name == CONFIG_KEY_FEEDS
 

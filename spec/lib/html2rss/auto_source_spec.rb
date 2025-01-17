@@ -30,7 +30,7 @@ RSpec.describe Html2rss::AutoSource do
     let(:article_without_url) do
       { title: 'Article 1',
         id: 'article-1',
-        guid: '1qmp481',
+        guid: '1mnvx08',
         description: 'Read more',
         image: nil,
         scraper: Html2rss::AutoSource::Scraper::SemanticHtml }

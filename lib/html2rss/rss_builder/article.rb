@@ -103,13 +103,7 @@ module Html2rss
       # Generates a unique identifier based on the URL and ID using CRC32.
       # @return [String]
       def guid
-        @guid ||= begin
-          guid = @to_h[:guid]
-          guid = guid.map { |o| o.to_s.strip }.reject(&:empty?).join('|') if guid.is_a?(Array)
-          guid = [url, id].join('#!/') if !guid || guid.empty?
-
-          Zlib.crc32(guid).to_s(36).encode('utf-8')
-        end
+        @guid ||= Zlib.crc32(fetch_guid).to_s(36).encode('utf-8')
       end
 
       # @return [Html2rss::RssBuilder::Enclosure, nil]
@@ -147,6 +141,15 @@ module Html2rss
         return nil unless other.is_a?(Article)
 
         0 if other.all? { |key, value| value == public_send(key) ? public_send(key) <=> value : false }
+      end
+
+      private
+
+      def fetch_guid
+        guid = @to_h[:guid].map { |s| s.to_s.strip }.reject(&:empty?).join if @to_h[:guid].is_a?(Array)
+        guid ||= [title, description].compact.first
+        guid ||= [url, id].join('#!/')
+        guid
       end
     end
   end
