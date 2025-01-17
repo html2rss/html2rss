@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::SanitizeHtml do
-  it { expect(described_class).to be < Html2rss::Selectors::AttributePostProcessors::Base }
+RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
+  it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   describe '#get' do
     subject { described_class.new(html, config:).get }

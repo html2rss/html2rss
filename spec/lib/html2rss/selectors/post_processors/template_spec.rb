@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::Template do
+RSpec.describe Html2rss::Selectors::PostProcessors::Template do
   subject { described_class.new('Hi', options:, item:, scraper:).get }
 
   let(:item) { Object.new }
@@ -12,13 +12,13 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::Template do
     allow(scraper).to receive(:select).with(:returns_nil, item).and_return(nil)
   end
 
-  it { expect(described_class).to be < Html2rss::Selectors::AttributePostProcessors::Base }
+  it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'when the string is empty' do
     it 'raises an error' do
       expect do
         described_class.new('', {})
-      end.to raise_error(Html2rss::Selectors::AttributePostProcessors::InvalidType, 'The `string` template is absent.')
+      end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, 'The `string` template is absent.')
     end
   end
 

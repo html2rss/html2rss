@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Returns the URI as String.
       # If the URL is relative, it builds an absolute one with the channel's URL as base.

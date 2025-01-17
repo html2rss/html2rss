@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Imagine this HTML:
       #    <h1>Foo bar and boo<h1>

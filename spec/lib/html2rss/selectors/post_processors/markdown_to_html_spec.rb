@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::MarkdownToHtml do
+RSpec.describe Html2rss::Selectors::PostProcessors::MarkdownToHtml do
   subject { described_class.new(markdown, config:).get }
 
   let(:html) do
@@ -29,7 +29,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::MarkdownToHtml do
       selectors: { items: {} } }
   end
 
-  it { expect(described_class).to be < Html2rss::Selectors::AttributePostProcessors::Base }
+  it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   it { is_expected.to eq html }
 end

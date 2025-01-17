@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::Substring do
-  it { expect(described_class).to be < Html2rss::Selectors::AttributePostProcessors::Base }
+RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
+  it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with end' do
     subject { described_class.new('Foo bar and baz', options: { start: 4, end: 6 }).get }
@@ -50,7 +50,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::Substring do
       it 'raises an error' do
         expect do
           subject.range
-        end.to raise_error(Html2rss::Selectors::AttributePostProcessors::InvalidType, /but is: NilClass in:/)
+        end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /but is: NilClass in:/)
       end
     end
   end

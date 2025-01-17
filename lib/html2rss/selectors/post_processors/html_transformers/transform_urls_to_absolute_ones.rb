@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       module HtmlTransformers
         ##
         # Transformer that converts relative URLs to absolute URLs within specified HTML elements.

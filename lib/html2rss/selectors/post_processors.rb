@@ -4,7 +4,7 @@ module Html2rss
   class Selectors
     ##
     # Provides a namespace for attribute post processors.
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Error raised when an unknown post processor name is requested.
       class UnknownPostProcessorName < Html2rss::Error; end

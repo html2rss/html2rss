@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Returns a formatted String according to the string pattern.
       #

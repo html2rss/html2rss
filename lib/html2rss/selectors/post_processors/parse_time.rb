@@ -4,7 +4,7 @@ require 'time'
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Returns the {https://www.w3.org/Protocols/rfc822/ RFC822} representation of a time.
       #

@@ -2,7 +2,7 @@
 
 require 'addressable'
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::ParseUri do
+RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
   subject do
     described_class.new(url, context).get
   end
@@ -13,7 +13,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::ParseUri do
     )
   end
 
-  it { expect(described_class).to be < Html2rss::Selectors::AttributePostProcessors::Base }
+  it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with URI value' do
     let(:url) { URI('http://example.com') }

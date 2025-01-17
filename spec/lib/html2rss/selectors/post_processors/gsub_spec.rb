@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::Gsub do
-  it { expect(described_class).to be < Html2rss::Selectors::AttributePostProcessors::Base }
+RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
+  it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with args validation' do
     context 'without pattern option' do
@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::Gsub do
         expect do
           described_class.new('hello',
                               options: { replacement: 'world' })
-        end.to raise_error(Html2rss::Selectors::AttributePostProcessors::MissingOption,
+        end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
                            /The `pattern` option is missing in: {/)
       end
     end
@@ -19,7 +19,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::Gsub do
         expect do
           described_class.new('hello',
                               options: { pattern: 'world' })
-        end.to raise_error(Html2rss::Selectors::AttributePostProcessors::MissingOption,
+        end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
                            /The `replacement` option is missing in: {/)
       end
     end
@@ -28,7 +28,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::Gsub do
       it do
         expect do
           described_class.new('hello', options: { pattern: 'world', replacement: [] })
-        end.to raise_error(Html2rss::Selectors::AttributePostProcessors::InvalidType,
+        end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType,
                            /The type of `replacement` must be String or Hash, but is: Array in: {/)
       end
     end

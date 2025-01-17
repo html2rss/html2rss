@@ -4,7 +4,7 @@ module Html2rss
   class Selectors
     ##
     # Provides a namespace for attribute post processors.
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # All post processors must inherit from this base class and implement `self.validate_args!` and `#get`.
       class Base

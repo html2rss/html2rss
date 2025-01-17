@@ -4,7 +4,7 @@ require 'reverse_markdown'
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Returns HTML code as Markdown formatted String.
       # Before converting to markdown, the HTML is sanitized with SanitizeHtml.

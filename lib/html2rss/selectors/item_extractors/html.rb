@@ -21,7 +21,7 @@ module Html2rss
       #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
       #
       # Always ensure to sanitize the HTML during post-processing with
-      # {AttributePostProcessors::SanitizeHtml}.
+      # {PostProcessors::SanitizeHtml}.
       class Html
         # The available options for the html extractor.
         Options = Struct.new('HtmlOptions', :selector, keyword_init: true)

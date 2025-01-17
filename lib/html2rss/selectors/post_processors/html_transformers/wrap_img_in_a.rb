@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       module HtmlTransformers
         ##
         # Transformer that wraps <img> tags into <a> tags linking to `img.src`.

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::Base do
+RSpec.describe Html2rss::Selectors::PostProcessors::Base do
   subject(:instance) { described_class.new(value, context) }
 
   let(:value) { 'test' }
@@ -15,7 +15,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::Base do
     it 'raises an error if a key is missing' do
       expect do
         described_class.send(:expect_options, %i[key1 key3], context)
-      end.to raise_error(Html2rss::Selectors::AttributePostProcessors::MissingOption,
+      end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
                          /The `key3` option is missing in:/)
     end
   end
@@ -30,7 +30,7 @@ RSpec.describe Html2rss::Selectors::AttributePostProcessors::Base do
     it 'raises an error if value is of the incorrect type' do
       expect do
         described_class.send(:assert_type, 123, String, 'test', context:)
-      end.to raise_error(Html2rss::Selectors::AttributePostProcessors::InvalidType,
+      end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType,
                          /The type of `test` must be String, but is: Integer in: {.*"base_spec.rb"}/)
     end
 

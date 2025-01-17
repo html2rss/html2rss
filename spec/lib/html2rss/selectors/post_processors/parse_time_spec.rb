@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::AttributePostProcessors::ParseTime do
-  it { expect(described_class).to be < Html2rss::Selectors::AttributePostProcessors::Base }
+RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
+  it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with known time_zone' do
     {

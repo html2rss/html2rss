@@ -159,7 +159,7 @@ module Html2rss
         context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
                               item:, scraper: self, options:)
 
-        value = Html2rss::Selectors::AttributePostProcessors.get_processor(options[:name]).get(value, context)
+        value = Html2rss::Selectors::PostProcessors.get_processor(options[:name]).get(value, context)
       end
 
       value

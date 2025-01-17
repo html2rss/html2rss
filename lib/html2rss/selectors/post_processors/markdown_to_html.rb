@@ -5,7 +5,7 @@ require_relative 'sanitize_html'
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Generates HTML from Markdown.
       #

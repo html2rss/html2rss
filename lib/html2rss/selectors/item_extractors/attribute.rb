@@ -22,7 +22,7 @@ module Html2rss
       #    '2019-07-01'
       #
       # In case you're extracting a date or a time, consider parsing it
-      # during post processing with {AttributePostProcessors::ParseTime}.
+      # during post processing with {PostProcessors::ParseTime}.
       class Attribute
         # The available options for the attribute extractor.
         Options = Struct.new('AttributeOptions', :selector, :attribute, keyword_init: true)

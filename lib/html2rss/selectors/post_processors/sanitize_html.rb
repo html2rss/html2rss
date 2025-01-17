@@ -6,7 +6,7 @@ require_relative 'html_transformers/wrap_img_in_a'
 
 module Html2rss
   class Selectors
-    module AttributePostProcessors
+    module PostProcessors
       ##
       # Returns sanitized HTML code as String.
       #
