@@ -10,13 +10,18 @@ RSpec.describe Html2rss::Selectors::PostProcessors do
     end
   end
 
-  describe '.get_processor' do
-    it { expect(described_class.get_processor(:gsub)).to be(Html2rss::Selectors::PostProcessors::Gsub) }
+  describe '.get' do
+    context 'with unknown post processor name' do
+      it do
+        expect { described_class.get('inexistent', nil, nil) }
+          .to raise_error described_class::UnknownPostProcessorName
+      end
+    end
 
-    it {
-      expect do
-        described_class.get_processor(:html_to_mark)
-      end.to raise_error(Html2rss::Selectors::PostProcessors::UnknownPostProcessorName)
-    }
+    context 'with known post processor name' do
+      it do
+        expect(described_class.get('parse_uri', 'http://example.com/', { config: { url: '' } })).to be_a(String)
+      end
+    end
   end
 end

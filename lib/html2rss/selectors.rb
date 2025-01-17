@@ -140,8 +140,7 @@ module Html2rss
     def select_regular(name, item)
       selector = @selectors[name]
 
-      value = Extractors.item_extractor_factory(selector.merge(channel: { url: @url, time_zone: @time_zone }),
-                                                item).get
+      value = Extractors.get(selector.merge(channel: { url: @url, time_zone: @time_zone }), item)
 
       if value && (post_process_steps = @selectors.dig(name, :post_process))
         post_process_steps = [post_process_steps] unless post_process_steps.is_a?(Array)
@@ -159,7 +158,7 @@ module Html2rss
         context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
                               item:, scraper: self, options:)
 
-        value = Html2rss::Selectors::PostProcessors.get_processor(options[:name]).get(value, context)
+        value = PostProcessors.get(options[:name], value, context)
       end
 
       value

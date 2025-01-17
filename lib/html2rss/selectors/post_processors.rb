@@ -33,13 +33,10 @@ module Html2rss
       }.freeze
 
       ##
-      # Retrieves the attribute post processor class based on the given name.
-      #
-      # @param name [Symbol] The name of the post processor.
-      # @return [Class] The attribute post processor class.
-      # @raise [UnknownPostProcessorName] If the requested name is not found in NAME_TO_CLASS.
-      def self.get_processor(name)
-        NAME_TO_CLASS[name.to_sym] || raise(UnknownPostProcessorName, "Can't find a post processor named '#{name}'")
+      # Shorthand method to instantiate the post processor and call `#get` on it
+      def self.get(name, value, context)
+        klass = NAME_TO_CLASS[name.to_sym] || raise(UnknownPostProcessorName, "Unknown name '#{name}'")
+        klass.new(value, context).get
       end
     end
   end

@@ -48,10 +48,6 @@ module Html2rss
           raise NotImplementedError, 'You must implement the `validate_args!` method in the post processor'
         end
 
-        ##
-        # Shorthand method to instantiate the post processor and call `#get` on it
-        def self.get(value, context) = new(value, context).get
-
         # Initializes the post processor
         #
         # @param value [Object] the value to be processed
