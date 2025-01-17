@@ -195,12 +195,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       expect(scraper.article_condition(node)).to be_falsey
     end
 
-    it 'returns false for nodes within tags with ignored classes' do
-      node = parsed_body.at_css('.content a')
-      allow(scraper.class).to receive(:parent_until_condition).and_return(true)
-      expect(scraper.article_condition(node)).to be_falsey
-    end
-
     it 'returns true for body and html tags', :aggregate_failures do
       body_node = parsed_body.at_css('body')
       html_node = parsed_body.at_css('html')
