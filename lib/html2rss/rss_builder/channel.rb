@@ -10,7 +10,7 @@ module Html2rss
       DEFAULT_TTL_IN_MINUTES = 360
       ##
       #
-      # @param response [Html2Rss::RequestService::Response]
+      # @param response [Html2rss::RequestService::Response]
       # @param overrides [Hash<Symbol, String>] - Optional, overrides for any channel attribute
       def initialize(response, overrides: {})
         @response = response
