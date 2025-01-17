@@ -4,7 +4,7 @@ module Html2rss
   class Selectors
     ##
     # Provides a namespace for item extractors.
-    module ItemExtractors
+    module Extractors
       ##
       # The Error class to be thrown when an unknown extractor name is requested.
       class UnknownExtractorName < Html2rss::Error; end

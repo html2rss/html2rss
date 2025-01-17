@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::ItemExtractors::Text do
+RSpec.describe Html2rss::Selectors::Extractors::Text do
   subject { described_class.new(xml, options).get }
 
   let(:xml) { Nokogiri.HTML('<p>Lorem <b>ipsum</b> dolor ...</p>') }

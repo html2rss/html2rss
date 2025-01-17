@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module ItemExtractors
+    module Extractors
       ##
       # Returns the HTML content of the specified element.
       #
@@ -32,7 +32,7 @@ module Html2rss
         # @param xml [Nokogiri::XML::Element]
         # @param options [Options]
         def initialize(xml, options)
-          @element = ItemExtractors.element(xml, options.selector)
+          @element = Extractors.element(xml, options.selector)
         end
 
         ##

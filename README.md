@@ -175,7 +175,7 @@ Every named selector (i.e. `title`, `description`, see table above) in your `sel
 | `extractor`    | Name of the extractor. See notes below.                  |
 | `post_process` | A hash or array of hashes. See notes below.              |
 
-#### Using extractors
+##### Using extractors
 
 Extractors help with extracting the information from the selected HTML tag.
 
@@ -184,15 +184,18 @@ Extractors help with extracting the information from the selected HTML tag.
 - The `href` extractor returns a URL from the tag's `href` attribute and corrects relative ones to absolute ones.
 - The `attribute` extractor returns the value of that tag's attribute.
 - The `static` extractor returns the configured static value (it doesn't extract anything).
-- [See file list of extractors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/item_extractors).
+- [See file list of extractors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/selectors/extractors).
 
-Extractors might need extra attributes on the selector hash. 👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+Extractors might need extra attributes on the selector hash. 👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/Selectors/Extractors).
 
 <details><summary>See a Ruby example</summary>
 
 ```ruby
 Html2rss.feed(
-  channel: {}, selectors: { link: { selector: 'a', extractor: 'href' } }
+  channel: {},
+  selectors: {
+    link: { selector: 'a', extractor: 'href' }
+  }
 )
 ```
 

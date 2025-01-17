@@ -3,7 +3,7 @@
 require 'nokogiri'
 require 'addressable'
 
-RSpec.describe Html2rss::Selectors::ItemExtractors::Href do
+RSpec.describe Html2rss::Selectors::Extractors::Href do
   subject { described_class.new(xml, options).get }
 
   let(:channel) { { url: 'https://example.com' } }

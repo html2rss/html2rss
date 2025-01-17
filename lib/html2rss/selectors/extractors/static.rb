@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module ItemExtractors
+    module Extractors
       ##
       # Returns a static value provided in the options.
       #

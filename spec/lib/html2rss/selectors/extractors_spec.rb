@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::ItemExtractors do
+RSpec.describe Html2rss::Selectors::Extractors do
   describe '.item_extractor_factory(attribute_options, xml)' do
     context 'with unknown extractor name' do
       it do

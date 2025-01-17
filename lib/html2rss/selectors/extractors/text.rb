@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module ItemExtractors
+    module Extractors
       ##
       # Return the text content of the attribute. This is the default extractor used,
       # when no extractor is explicitly given.
@@ -30,7 +30,7 @@ module Html2rss
         # @param xml [Nokogiri::XML::Element]
         # @param options [Options]
         def initialize(xml, options)
-          @element = ItemExtractors.element(xml, options.selector)
+          @element = Extractors.element(xml, options.selector)
         end
 
         ##

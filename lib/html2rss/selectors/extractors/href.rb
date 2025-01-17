@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module ItemExtractors
+    module Extractors
       ##
       # Returns the value of the +href+ attribute.
       # It always returns absolute URLs. If the extracted +href+ value is a
@@ -34,7 +34,7 @@ module Html2rss
         # @param options [Options]
         def initialize(xml, options)
           @options = options
-          @element = ItemExtractors.element(xml, options.selector)
+          @element = Extractors.element(xml, options.selector)
           @href = @element.attr('href').to_s
         end
 

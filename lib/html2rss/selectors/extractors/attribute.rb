@@ -2,7 +2,7 @@
 
 module Html2rss
   class Selectors
-    module ItemExtractors
+    module Extractors
       ##
       # Returns the value of the attribute.
       #
@@ -34,7 +34,7 @@ module Html2rss
         # @param options [Options]
         def initialize(xml, options)
           @options = options
-          @element = ItemExtractors.element(xml, options.selector)
+          @element = Extractors.element(xml, options.selector)
         end
 
         ##
