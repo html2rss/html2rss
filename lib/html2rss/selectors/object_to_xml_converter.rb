@@ -9,7 +9,7 @@ module Html2rss
     class ObjectToXmlConverter
       OBJECT_TO_XML_TAGS = {
         hash: ['<object>', '</object>'],
-        enumerable: ['<array>', '</array>']
+        array: ['<array>', '</array>']
       }.freeze
 
       ##
@@ -24,7 +24,7 @@ module Html2rss
       # @return [String] representing the object in XML
       def call
         object_to_xml(@object).tap do |converted|
-          Html2rss::Log.info "Converted to XML. Excerpt:\n\t#{converted.to_s[..110]}…"
+          Html2rss::Log.info "Converted to XML. Excerpt:\n\t#{converted.to_s[0..110]}…"
         end
       end
 
@@ -34,8 +34,8 @@ module Html2rss
         case object
         when Hash
           hash_to_xml(object)
-        when Enumerable
-          enumerable_to_xml(object)
+        when Array
+          array_to_xml(object)
         else
           CGI.escapeHTML(object.to_s)
         end
@@ -43,14 +43,16 @@ module Html2rss
 
       def hash_to_xml(object)
         prefix, suffix = OBJECT_TO_XML_TAGS[:hash]
-        inner_xml = object.map { |key, value| "<#{key}>#{object_to_xml(value)}</#{key}>" }.join
+        inner_xml = object.each_with_object(+'') do |(key, value), str|
+          str << "<#{key}>#{object_to_xml(value)}</#{key}>"
+        end
 
         "#{prefix}#{inner_xml}#{suffix}"
       end
 
-      def enumerable_to_xml(object)
-        prefix, suffix = OBJECT_TO_XML_TAGS[:enumerable]
-        inner_xml = object.map { |value| object_to_xml(value) }.join
+      def array_to_xml(object)
+        prefix, suffix = OBJECT_TO_XML_TAGS[:array]
+        inner_xml = object.each_with_object(+'') { |value, str| str << object_to_xml(value) }
 
         "#{prefix}#{inner_xml}#{suffix}"
       end

@@ -122,7 +122,7 @@ module Html2rss
       end
 
       def categories
-        @categories = @to_h[:categories].dup.to_a.tap do |categories|
+        @categories ||= @to_h[:categories].dup.to_a.tap do |categories|
           categories.map! { |c| c.to_s.strip }
           categories.reject!(&:empty?)
           categories.uniq!
