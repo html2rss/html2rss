@@ -48,6 +48,10 @@ module Html2rss
       def language
         return overrides[:language] if overrides[:language]
 
+        if (code = headers['content-language']&.match(/^([a-z]{2})/))
+          return code[0]
+        end
+
         return unless parsed_body.is_a?(Nokogiri::HTML::Document)
 
         return parsed_body['lang'] if parsed_body.name == 'html' && parsed_body['lang']

@@ -48,11 +48,21 @@ RSpec.describe Html2rss::RssBuilder::Channel do
   end
 
   describe '#language' do
+    let(:headers) { { 'content-language' => nil, 'content-type': 'text/html' } }
+
     context 'with a language' do
       let(:body) { '<!doctype html><html lang="fr"><body></body></html>' }
 
       it 'extracts the language' do
         expect(instance.language).to eq('fr')
+      end
+    end
+
+    context 'with a content-language header' do
+      let(:headers) { { 'content-language' => 'en-US', 'content-type': 'text/html' } }
+
+      it 'extracts the language' do
+        expect(instance.language).to eq('en')
       end
     end
 
