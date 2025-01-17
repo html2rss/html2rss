@@ -34,7 +34,7 @@ RSpec.describe Html2rss::RssBuilder do
                                         description: 'Description 2',
                                         published_at: '1969-12-31 23:59:59',
                                         image: 'http://example.com/image2.jpg',
-                                        scraper: RSpec)
+                                        scraper: Html2rss::AutoSource::Scraper::Html)
     ]
   end
 
@@ -65,7 +65,7 @@ RSpec.describe Html2rss::RssBuilder do
           'title' => 'Test Channel',
           'link' => 'http://example.com',
           'description' => 'A test channel',
-          'generator' => "html2rss V. #{Html2rss::VERSION} (scrapers: RSpec (2))"
+          'generator' => "html2rss V. #{Html2rss::VERSION} (scrapers: RSpec (1), AutoSource::Html (1))"
         }
       end
 
