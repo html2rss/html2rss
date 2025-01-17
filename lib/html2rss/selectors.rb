@@ -153,7 +153,7 @@ module Html2rss
 
     def post_process(item, value, post_process_steps)
       post_process_steps.each do |options|
-        options = Hash.try_convert(options)
+        options = Hash.try_convert(options) unless options.is_a?(Hash)
 
         context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
                               item:, scraper: self, options:)

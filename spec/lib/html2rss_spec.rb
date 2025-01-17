@@ -18,57 +18,18 @@ RSpec.describe Html2rss do
     it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
   end
 
-  describe '.config_from_yaml_file' do
-    context 'with html response' do
-      subject(:feed) do
-        VCR.use_cassette(name) { described_class.config_from_yaml_file(config_file, name) }
-      end
+  describe '.config_from_yaml_file(file, feed_name = nil)' do
+    subject(:feed) do
+      described_class.config_from_yaml_file(config_file, name)
+    end
 
+    context 'with known name' do
       it { expect(feed).to be_a(Hash) }
     end
 
-    context 'with json response' do
-      subject(:feed) do
-        VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_file(config_file, name)
-          described_class.feed(config)
-        end
-      end
-
-      let(:name) { 'json' }
-
-      context 'with returned config' do
-        subject(:xml) { Nokogiri.XML(feed.to_s) }
-
-        it 'has the description derived from markdown' do
-          expect(
-            xml.css('item > description').first.text
-          ).to eq '<h1>JUDAS AND THE BLACK MESSIAH</h1> <p>MPAA rating: R</p>'
-        end
-      end
-    end
-
-    context 'with config without title selector' do
-      subject(:feed) do
-        VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_file(config_file, name)
-          described_class.feed(config)
-        end
-      end
-
-      let(:name) { 'notitle' }
-
-      it 'returns a RSS:Rss instance' do
-        expect(feed).to be_a(RSS::Rss)
-      end
-
-      context 'with item' do
-        let(:guid) { feed.items.first.guid.content }
-
-        it 'autogenerates a guid', :aggregate_failures do
-          expect(guid).to be_a(String)
-          expect(guid).not_to be_empty
-        end
+    context 'with unknown name' do
+      it 'raises an ArgumentError' do
+        expect { described_class.config_from_yaml_file(config_file, 'unknown') }.to raise_error(ArgumentError)
       end
     end
   end
@@ -83,12 +44,12 @@ RSpec.describe Html2rss do
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 
       before do
-        allow(Faraday).to receive(:new).with(hash_including(headers: config.dig(:channel, :headers))).and_call_original
+        allow(Faraday).to receive(:new).with(Hash).and_call_original
       end
 
       it 'returns a RSS::Rss instance & sets the request headers', :aggregate_failures do
         expect(feed_return).to be_a(RSS::Rss)
-        expect(Faraday).to have_received(:new).with(hash_including(headers: config.dig(:channel, :headers)))
+        expect(Faraday).to have_received(:new).with(hash_including(headers: config[:headers]))
       end
 
       describe 'feed.channel' do
@@ -219,6 +180,51 @@ RSpec.describe Html2rss do
         expect(feed.items.size).to eq 1
         expect(feed.items.first.categories.map(&:content)).to include('httpbin.org', 'Foobar', 'Token deadbea7',
                                                                       'monster=MeWantCookie')
+      end
+    end
+
+    context 'with json response' do
+      subject(:feed) do
+        VCR.use_cassette(name) do
+          config = described_class.config_from_yaml_file(config_file, name)
+          described_class.feed(config)
+        end
+      end
+
+      let(:name) { 'json' }
+
+      context 'with returned config' do
+        subject(:xml) { Nokogiri.XML(feed.to_s) }
+
+        it 'has the description derived from markdown' do
+          expect(
+            xml.css('item > description').first.text
+          ).to eq '<h1>JUDAS AND THE BLACK MESSIAH</h1> <p>MPAA rating: R</p>'
+        end
+      end
+    end
+
+    context 'with config without title selector' do
+      subject(:feed) do
+        VCR.use_cassette(name) do
+          config = described_class.config_from_yaml_file(config_file, name)
+          described_class.feed(config)
+        end
+      end
+
+      let(:name) { 'notitle' }
+
+      it 'returns a RSS:Rss instance' do
+        expect(feed).to be_a(RSS::Rss)
+      end
+
+      context 'with item' do
+        let(:guid) { feed.items.first.guid.content }
+
+        it 'autogenerates a guid', :aggregate_failures do
+          expect(guid).to be_a(String)
+          expect(guid).not_to be_empty
+        end
       end
     end
   end

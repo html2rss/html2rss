@@ -72,7 +72,7 @@ puts rss
 
 ```
 
-and instead with `auto_source`, provide `selectors`:
+and instead with `auto_source`, provide `selectors` (you can use both simultaneously):
 
 ```ruby
 require 'html2rss'
@@ -134,8 +134,8 @@ html2rss feed the_feed_config.yml --params id:42 foo:bar
 <details><summary>See a Ruby example</summary>
 
 ```ruby
-config = Html2rss::Config.new({ channel: { url: 'http://domainname.tld/whatever/%<id>s.html' } }, {}, { id: 42 })
-Html2rss.feed(config)
+Html2rss.feed(channel: { url: 'http://domainname.tld/whatever/%<id>s.html' },
+              params: { id: 42 })
 ```
 
 </details>
@@ -165,7 +165,7 @@ Your `selectors` hash can contain arbitrary named selectors, but only a few will
 | `comments`    | `comments`         | A URL.                                      |
 | `source`      | ~~source~~         | Not yet supported.                          |
 
-### Build RSS 2.0 item attributes by specifying selectors
+#### Build RSS 2.0 item attributes by specifying selectors
 
 Every named selector (i.e. `title`, `description`, see table above) in your `selectors` hash can have these attributes:
 
@@ -215,7 +215,7 @@ selectors:
 
 </details>
 
-### Using post processors
+##### Using post processors
 
 Extracted information can be further manipulated with post processors.
 
@@ -232,7 +232,7 @@ Extracted information can be further manipulated with post processors.
 
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
-#### Chaining post processors
+###### Chaining post processors
 
 Pass an array to `post_process` to chain the post processors.
 
@@ -258,7 +258,7 @@ selectors:
 
 </details>
 
-##### Post processor `gsub`
+###### Post processor `gsub`
 
 The post processor `gsub` makes use of Ruby's [`gsub`](https://apidock.com/ruby/String/gsub) method.
 
@@ -297,7 +297,7 @@ selectors:
 
 </details>
 
-#### Adding `<category>` tags to an item
+##### Adding `<category>` tags to an item
 
 The `categories` selector takes an array of selector names. Each value of those
 selectors will become a `<category>` on the RSS item.
@@ -340,9 +340,9 @@ selectors:
 
 </details>
 
-#### Custom item GUID
+##### Custom item GUID
 
-By default, html2rss generates a GUID from the `title` or `description`.
+By default, html2rss generates a stable GUID automatically, based on the item's url, or ultimatively on `title` or `description`.
 
 If this does not work well, you can choose other attributes from which the GUID is build.
 The principle is the same as for the categories: pass an array of selectors names.
@@ -385,7 +385,7 @@ selectors:
 
 </details>
 
-#### Adding an `<enclosure>` tag to an item
+##### Adding an `<enclosure>` tag to an item
 
 An enclosure can be any file, e.g. a image, audio or video - think Podcast.
 
@@ -435,9 +435,9 @@ selectors:
 
 </details>
 
-## Scraping and handling JSON responses
+#### Scraping and handling JSON responses
 
-When the requested website returns a application/json content-typed response, i.e. you specified an Accept header in the request, html2rss converts it to XML.
+When the requested website returns a application/json content-typed response, i.e. you specified an `Accept` header in the request, html2rss converts it to XML.
 
 That is XML you can query using CSS selectors. The JSON response must be an Array or Hash for this to work.
 
@@ -471,14 +471,15 @@ selectors:
 
 </details>
 
-<details>
-  <summary>See example of a converted JSON object</summary>
+<details><summary>See example of a converted JSON object</summary>
 
 This JSON object:
 
 ```json
 {
-  "data": [{ "title": "Headline", "url": "https://example.com" }]
+  "data": [
+    { "title": "Headline", "url": "https://example.com" }
+  ]
 }
 ```
 
@@ -507,7 +508,9 @@ Your items selector would be `array > object`, the item's `link` selector would 
 This JSON array:
 
 ```json
-[{ "title": "Headline", "url": "https://example.com" }]
+[
+  { "title": "Headline", "url": "https://example.com" }
+]
 ```
 
 converts to:
@@ -529,7 +532,7 @@ Your items selector would be `array > object`, the item's `link` selector would 
 
 By default, html2rss issues a naiive HTTP request and extracts information from the response. That is performant and works for many websites.
 
-However, modern websites often do not render much HTML on the server, but evaluate JavaScript on the client to create the HTML. In such cases, the default strategy will not find the "juicy content".
+However, modern websites often do not render much HTML on the server, but evaluate JavaScript on the client to create the HTML. In such cases, the default _strategy_ will not find the "juicy content".
 
 ### Use Browserless.io
 
@@ -643,20 +646,18 @@ Find a full example of a `feeds.yml` at [`spec/fixtures/feeds.test.yml`](https:/
 
 Now you can build your feeds like this:
 
-<details>
-  <summary>Build feeds in Ruby</summary>
+<details><summary>Build feeds in Ruby</summary>
 
 ```ruby
 require 'html2rss'
 
-myfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myfeed')
-myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
+myfeed = Html2rss.config_from_yaml_file('feeds.yml', 'myfeed')
+myotherfeed = Html2rss.config_from_yaml_file('feeds.yml', 'myotherfeed')
 ```
 
 </details>
 
-<details>
-  <summary>Build feeds on the command line</summary>
+<details><summary>Build feeds on the command line</summary>
 
 ```sh
 html2rss feed feeds.yml myfeed
@@ -682,35 +683,26 @@ including using JavaScript and external resources.
 
 You can add as many stylesheets and types as you like. Just add them to your global configuration.
 
-<details>
-  <summary>Ruby: a stylesheet config example</summary>
+<details><summary>Ruby: a stylesheet config example</summary>
 
 ```ruby
-config = Html2rss::Config.new(
-  { channel: {}, selectors: {} }, # omitted
-  {
-    stylesheets: [
-      {
-        href: '/relative/base/path/to/style.xls',
-        media: :all,
-        type: 'text/xsl'
-      },
-      {
-        href: 'http://example.com/rss.css',
-        media: :all,
-        type: 'text/css'
-      }
-    ]
-  }
+Html2rss.feed(
+  stylesheets: [
+    {
+      href: '/relative/base/path/to/style.xls', media: :all, type: 'text/xsl'
+    },
+    {
+      href: 'http://example.com/rss.css', media: :all, type: 'text/css'
+    }
+  ],
+  channel: {},
+  selectors: {}
 )
-
-Html2rss.feed(config)
 ```
 
 </details>
 
-<details>
-  <summary>YAML: a stylesheet config example</summary>
+<details><summary>YAML: a stylesheet config example</summary>
 
 ```yml
 stylesheets:

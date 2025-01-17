@@ -50,7 +50,7 @@ module Html2rss
       return config.merge(stylesheets: yaml[:stylesheets], params: yaml[:params], strategy: yaml[:strategy])
     end
 
-    raise("Feed '#{feed_name}' not found in the yaml file. Available names: #{yaml[CONFIG_KEY_FEEDS].keys.join(', ')}")
+    raise ArgumentError, "Feed '#{feed_name}' not found."
   end
 
   ##
@@ -59,12 +59,15 @@ module Html2rss
   # Example:
   #
   #    feed = Html2rss.feed(
+  #      strategy: :faraday,
+  #      headers: { 'User-Agent' => 'Mozilla/5.0' },
   #      channel: { name: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com' },
   #      selectors: {
   #        items: { selector: '#hot-network-questions > ul > li' },
   #        title: { selector: 'a' },
   #        link: { selector: 'a', extractor: 'href' }
-  #      }
+  #      },
+  #      auto_source: {}
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
   #
