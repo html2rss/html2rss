@@ -14,13 +14,13 @@ module Html2rss
           # @param node [Nokogiri::XML::Node]
           # @return [nil]
           def call(node_name:, node:, **_env)
-            return unless already_wrapped?(node_name, node)
+            return if node_name != 'img'
 
-            wrap_image_in_anchor(node)
+            wrap_image_in_anchor(node) unless already_wrapped?(node_name, node)
           end
 
           def already_wrapped?(node_name, node)
-            node_name == 'img' && node.parent.name != 'a'
+            node_name == 'img' && node.parent.name == 'a'
           end
 
           private
