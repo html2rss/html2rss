@@ -4,8 +4,14 @@ require 'nokogiri'
 
 module Html2rss
   ##
-  # Scrapes articles from a given HTML page using CSS selectors.
-  # This selector parses the traditional 'feed configs' which html2rss was launched with.
+  # This scraper is designed to scrape articles from a given HTML page using CSS
+  # selectors defined in the feed config.
+  #
+  # It supports the traditional feed configs that html2rss originally provided,
+  # ensuring compatibility with existing setups.
+  #
+  # Additionally, it uniquely offers the capability to convert JSON into XML,
+  # extending its versatility for diverse data processing workflows.
   class Selectors
     class InvalidSelectorName < Html2rss::Error; end
 
@@ -120,10 +126,7 @@ module Html2rss
     def parsed_body
       return response.parsed_body unless response.json_response?
 
-      # Converting JSON to XML is a feature that is limited to this scraper
-      converted_body = ObjectToXmlConverter.new(JSON.parse(response.body, symbolize_names: true)).call
-
-      Nokogiri::HTML5.fragment converted_body
+      Nokogiri::HTML5.fragment ObjectToXmlConverter.new(response.parsed_body).call
     end
 
     def select_special(name, item)
@@ -166,12 +169,9 @@ module Html2rss
 
     # @return [Enclosure] enclosure details.
     def enclosure(item, selector)
-      item_url = select_regular(:enclosure, item)
+      url = Html2rss::Utils.build_absolute_url_from_relative(select_regular(:enclosure, item), @url)
 
-      url = Html2rss::Utils.build_absolute_url_from_relative(item_url, @url)
-      type = selector[:content_type]
-
-      Html2rss::RssBuilder::Enclosure.new(url:, type:)
+      Html2rss::RssBuilder::Enclosure.new(url:, type: selector[:content_type])
     end
   end
 end

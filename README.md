@@ -62,7 +62,7 @@ Build the feed from this config with: `html2rss feed ./my_config_file.yml`.
 
 ## The _feed config_ and its options
 
-A _feed config_ consists of a `channel`, `selectors`, `strategy`, `headers`, `stylesheets` and `auto_source`.
+Html2rss is configured using `channel`, `selectors`, `strategy`, `headers`, `stylesheets` and `auto_source`.
 The possible options of each are explained below.
 
 Good to know:
