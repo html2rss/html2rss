@@ -7,10 +7,17 @@ require 'addressable'
 module Html2rss
   ##
   # The AutoSource class automatically extracts articles from a given URL by
-  # utilizing a collection of ArticleExtractors. These extractors analyze and
+  # utilizing a collection of Scrapers. These scrapers analyze and
   # parse popular structured data formats—such as schema, microdata, and
-  # open graph — in order to identify relevant article elements accurately and
-  # compile them into a unified result.
+  # open graph—in order to identify relevant article elements accurately and
+  # compile them into unified articles.
+  # @see Html2rss::AutoSource::Scraper::Schema
+  # @see Html2rss::AutoSource::Scraper::SemanticHtml
+  #
+  # Its plain HTML scraping capabilities are designed to scrape websites
+  # without such popular structured data formats. However, the results may vary,
+  # depending on the website's structure and its markup.
+  # @see Html2rss::AutoSource::Scraper::Html
   class AutoSource
     def initialize(response, _opts = {})
       @parsed_body = response.parsed_body
