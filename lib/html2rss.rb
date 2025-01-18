@@ -90,11 +90,13 @@ module Html2rss
     # Step 3: Feed the scrapers with response, their settings, and get the articles
     articles = []
 
-    if (selectors = config[:selectors])
+    if (selectors = config[:selectors]).is_a?(Hash)
       articles.concat Selectors.new(response, selectors:, time_zone:).articles
     end
 
-    articles.concat Html2rss::AutoSource.new(response).articles if config[:auto_source].is_a?(Hash)
+    if (auto_source = config[:auto_source]).is_a?(Hash)
+      articles.concat AutoSource.new(response, auto_source).articles
+    end
 
     # Step 4: combine / reduce all the extracted articles to prevent duplicates
     articles = AutoSource::Reducer.call(articles, url:)

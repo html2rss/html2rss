@@ -6,12 +6,13 @@ require 'addressable'
 
 module Html2rss
   ##
-  # The AutoSource class is responsible for automatically extracting articles
-  # from a given URL.
-  # It uses a set of ArticleExtractors to extract articles, utilizing popular ways of
-  # marking articles, e.g. schema, microdata, open graph, etc.
+  # The AutoSource class automatically extracts articles from a given URL by
+  # utilizing a collection of ArticleExtractors. These extractors analyze and
+  # parse popular structured data formats—such as schema, microdata, and
+  # open graph — in order to identify relevant article elements accurately and
+  # compile them into a unified result.
   class AutoSource
-    def initialize(response)
+    def initialize(response, _opts = {})
       @parsed_body = response.parsed_body
       @url = response.url
     end
