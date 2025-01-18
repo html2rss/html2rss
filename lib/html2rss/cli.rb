@@ -6,8 +6,6 @@ require 'thor'
 ##
 # The Html2rss namespace / command line interface.
 module Html2rss
-  Log = Logger.new($stderr)
-
   ##
   # The Html2rss command line interface.
   class CLI < Thor
@@ -29,11 +27,9 @@ module Html2rss
                   enum: RequestService.strategy_names,
                   default: RequestService.default_strategy_name
     def feed(yaml_file, feed_name = nil)
-      params = options.fetch(:params)
-
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
-      config[:channel][:strategy] = options.fetch(:strategy) { config[:channel][:strategy] }.to_sym
-      config[:params] = params
+      config[:strategy] = options.fetch(:strategy) { config[:strategy] }.to_sym
+      config[:params] = options.fetch(:params)
 
       puts Html2rss.feed(config)
     end
