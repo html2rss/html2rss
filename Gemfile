@@ -7,8 +7,6 @@ git_source(:github) { |repo_name| "https://github.com/#{repo_name}" }
 # Specify your gem's dependencies in html2rss.gemspec
 gemspec
 
-gem 'nokogiri', '>= 1.18.0.rc1'
-
 group :development, :test do
   gem 'byebug'
   gem 'rake', require: false
