@@ -6,32 +6,35 @@ require 'thor'
 ##
 # The Html2rss namespace / command line interface.
 module Html2rss
-  Log = Logger.new($stderr)
-
   ##
   # The Html2rss command line interface.
   class CLI < Thor
+    check_unknown_options!
+
     def self.exit_on_failure?
       true
     end
 
-    desc 'feed YAML_FILE [FEED_NAME] [param=value ...]', 'Print RSS built from the YAML_FILE file to stdout'
-    ##
-    # Prints the feed to STDOUT.
-    #
-    # @param yaml_file [String] Path to the YAML configuration file.
-    # @param options [Array<String>] Additional options including feed name and parameters.
-    # @return [nil]
-    def feed(yaml_file, *options)
-      raise "File '#{yaml_file}' does not exist" unless File.exist?(yaml_file)
+    desc 'feed YAML_FILE [feed_name]', 'Print RSS built from the YAML_FILE file to stdout'
+    method_option :params,
+                  type: :hash,
+                  optional: true,
+                  required: false,
+                  default: {}
+    method_option :strategy,
+                  type: :string,
+                  desc: 'The strategy to request the URL',
+                  enum: RequestService.strategy_names,
+                  default: RequestService.default_strategy_name
+    def feed(yaml_file, feed_name = nil)
+      config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
+      config[:strategy] = options.fetch(:strategy) { config[:strategy] }.to_sym
+      config[:params] = options.fetch(:params)
 
-      feed_name = options.shift unless options.first&.include?('=')
-      params = options.to_h { |opt| opt.split('=', 2) }
-
-      puts Html2rss.feed_from_yaml_config(yaml_file, feed_name, params:)
+      puts Html2rss.feed(config)
     end
 
-    desc 'auto URL', 'Automatically sources an RSS feed from the URL'
+    desc 'auto [URL]', 'Automatically sources an RSS feed from the URL'
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
@@ -39,7 +42,6 @@ module Html2rss
                   default: RequestService.default_strategy_name
     def auto(url)
       strategy = options.fetch(:strategy) { RequestService.default_strategy_name }.to_sym
-
       puts Html2rss.auto_source(url, strategy:)
     end
   end

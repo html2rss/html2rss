@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource do
-  subject(:instance) { described_class.new(url, body:, headers:) }
+  subject(:instance) { described_class.new(response) }
+
+  let(:response) do
+    Html2rss::RequestService::Response.new body:, headers:, url:
+  end
 
   let(:url) { Addressable::URI.parse('https://example.com') }
   let(:body) do
@@ -14,74 +18,46 @@ RSpec.describe Html2rss::AutoSource do
         </body>
     </html>'
   end
-  let(:headers) { {} }
 
-  describe '#build' do
-    let(:parsed_body) { Nokogiri::HTML.parse(response.body) }
-    let(:articles) { [] }
-
-    before do
-      allow(Parallel).to receive(:map).and_return(articles)
-    end
-
-    context 'when articles are found' do
-      let(:articles) do
-        [
-          described_class::Article.new(title: 'Article 1',
-                                       url: Addressable::URI.parse('https://example.com/article1'),
-                                       id: 'article-1',
-                                       guid: '1qmp481',
-                                       description: 'Read more',
-                                       image: nil,
-                                       scraper: Html2rss::AutoSource::Scraper::SemanticHtml)
-        ]
-      end
-
-      before do
-        allow(described_class::Reducer).to receive(:call)
-        allow(described_class::Cleanup).to receive(:call)
-        allow(described_class::RssBuilder).to receive(:new).and_return(instance_double(
-                                                                         described_class::RssBuilder, call: nil
-                                                                       ))
-      end
-
-      it 'calls Reducer twice and Cleanup once', :aggregate_failures do
-        instance.build
-
-        expect(described_class::Reducer).to have_received(:call).with(articles, url:).at_least(:twice)
-        expect(described_class::Cleanup).to have_received(:call).with(articles, url:, keep_different_domain: true).once
-      end
-
-      it 'calls RssBuilder with the correct arguments' do
-        instance.build
-
-        expect(described_class::RssBuilder).to have_received(:new).with(
-          channel: instance_of(described_class::Channel),
-          articles:
-        )
-      end
-    end
-
-    context 'when no articles are found' do
-      let(:articles) { [] }
-
-      it 'raises NoArticlesFound error' do
-        expect { instance.build }.to raise_error(described_class::NoArticlesFound)
-      end
-    end
-  end
+  let(:headers) { { 'content-type': 'text/html' } }
 
   describe '#articles' do
     before do
       allow(Parallel).to receive(:flat_map)
-        .and_yield(Html2rss::AutoSource::Scraper::SemanticHtml.new(parsed_body,
-                                                                   url:).each)
+        .and_yield(Html2rss::AutoSource::Scraper::SemanticHtml.new(response.parsed_body, url:).each)
     end
 
-    let(:parsed_body) { Nokogiri::HTML.parse(body) }
+    let(:article_without_url) do
+      { title: 'Article 1',
+        id: 'article-1',
+        guid: '1mnvx08',
+        description: 'Read more',
+        image: nil,
+        scraper: Html2rss::AutoSource::Scraper::SemanticHtml }
+    end
+
+    let(:url) { Addressable::URI.parse('https://example.com/article1') }
 
     it 'returns a list of articles', :aggregate_failures do
-      expect(instance.articles).to be_a(Array).and include(instance_of(described_class::Article))
+      expect(instance.articles).to be_a(Array)
+      expect(instance.articles.size).to eq 1
+
+      article = instance.articles.first
+      expect(article).to be_a(Html2rss::RssBuilder::Article) & have_attributes(article_without_url)
+      expect(article.url).to eq url
+    end
+
+    context 'when no scrapers are found' do
+      before do
+        allow(Html2rss::AutoSource::Scraper).to receive(:from).and_raise(Html2rss::AutoSource::Scraper::NoScraperFound)
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'returns an empty array and logs a warning', :aggregate_failures do
+        expect(instance.articles).to eq []
+        expect(Html2rss::Log).to have_received(:warn)
+          .with('No auto source scraper found for the provided URL. Skipping auto source.')
+      end
     end
   end
 end

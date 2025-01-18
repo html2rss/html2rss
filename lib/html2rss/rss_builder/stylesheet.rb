@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module RssBuilder
+  class RssBuilder
     ##
     # Represents a stylesheet.
     class Stylesheet
@@ -10,7 +10,7 @@ module Html2rss
         # Adds the stylesheet XML tags to the RSS.
         #
         # @param maker [RSS::Maker::RSS20] RSS maker object.
-        # @param stylesheets [Array<Html2rss::Config::Stylesheet>] Array of stylesheet configurations.
+        # @param stylesheets [Array<Html2rss::RssBuilder::Stylesheet>] Array of stylesheet configurations.
         # @return [nil]
         def add(maker, stylesheets)
           stylesheets.each do |stylesheet|
@@ -24,7 +24,7 @@ module Html2rss
         # Adds a single Stylesheet to the RSS.
         #
         # @param maker [RSS::Maker::RSS20] RSS maker object.
-        # @param stylesheet [Html2rss::Config::Stylesheet] Stylesheet configuration.
+        # @param stylesheet [Html2rss::RssBuilder::Stylesheet] Stylesheet configuration.
         # @return [nil]
         def add_stylesheet(maker, stylesheet)
           maker.xml_stylesheets.new_xml_stylesheet do |xss|

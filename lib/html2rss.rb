@@ -7,6 +7,7 @@ loader.setup
 
 require 'addressable'
 require 'logger'
+require 'nokogiri'
 require 'yaml'
 
 ##
@@ -31,25 +32,26 @@ module Html2rss
   CONFIG_KEY_FEEDS = :feeds
 
   ##
-  # Returns an RSS object generated from the provided YAML file configuration.
+  # Returns the feed configuration from the YAML file.
   #
-  # Example:
+  # It supports multiple feeds under the feeds: key and a single feed configurations.
   #
-  #    feed = Html2rss.feed_from_yaml_config(File.join(['spec', 'config.test.yml']), 'nuxt-releases')
-  #    # => #<RSS::Rss:0x00007fb2f6331228
-  #
-  # @param file [String] Path to the YAML file.
-  # @param name [String, Symbol, nil] Name of the feed in the YAML file.
-  # @param global_config [Hash] Global options (e.g., HTTP headers).
-  # @param params [Hash] Dynamic parameters for the feed configuration.
-  # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed_from_yaml_config(file, name = nil, global_config: {}, params: {})
+  # @param file [String] the YAML file.
+  # @param feed_name [String] the feed name (only when feeds: is present).
+  # @return [Hash<Symbol, Object>] the configuration.
+  def self.config_from_yaml_file(file, feed_name = nil)
+    raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
+    raise ArgumentError, "`#{CONFIG_KEY_FEEDS}` is a reserved feed name" if feed_name == CONFIG_KEY_FEEDS
+
     yaml = YAML.safe_load_file(file, symbolize_names: true)
-    feeds = yaml[CONFIG_KEY_FEEDS] || {}
 
-    feed_config = find_feed_config(yaml, feeds, name, global_config)
+    return yaml unless yaml.key?(CONFIG_KEY_FEEDS)
 
-    feed(Config.new(feed_config, global_config, params))
+    if (config = yaml[CONFIG_KEY_FEEDS][feed_name.to_sym])
+      return config.merge(stylesheets: yaml[:stylesheets], params: yaml[:params], strategy: yaml[:strategy])
+    end
+
+    raise ArgumentError, "Feed '#{feed_name}' not found."
   end
 
   ##
@@ -58,40 +60,52 @@ module Html2rss
   # Example:
   #
   #    feed = Html2rss.feed(
+  #      strategy: :faraday,
+  #      headers: { 'User-Agent' => 'Mozilla/5.0' },
   #      channel: { name: 'StackOverflow: Hot Network Questions', url: 'https://stackoverflow.com' },
   #      selectors: {
   #        items: { selector: '#hot-network-questions > ul > li' },
   #        title: { selector: 'a' },
   #        link: { selector: 'a', extractor: 'href' }
-  #      }
+  #      },
+  #      auto_source: {}
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
   #
-  # @param config [Hash<Symbol, Object>, Html2rss::Config] Feed configuration.
+  # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed(config)
-    config = Config.new(config) unless config.is_a?(Config)
-    RssBuilder.build(config)
-  end
+  def self.feed(config) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
+    # Step 1: Process the config
 
-  ##
-  # Builds the feed configuration based on the provided parameters.
-  #
-  # @param yaml [Hash] Parsed YAML content.
-  # @param feeds [Hash] Feeds from the YAML content.
-  # @param feed_name [String, Symbol, nil] Name of the feed in the YAML file.
-  # @param global_config [Hash] Global options (e.g., HTTP headers).
-  # @return [Hash] Feed configuration.
-  def self.find_feed_config(yaml, feeds, feed_name, global_config)
-    return yaml unless feed_name
+    strategy = config[:strategy] || config.dig(:channel, :strategy) || RequestService.default_strategy_name
+    headers = config[:headers] || config.dig(:channel, :headers)
 
-    feed_name = feed_name.to_sym
-    if feeds.key?(feed_name)
-      global_config.merge!(yaml.reject { |key| key == CONFIG_KEY_FEEDS })
-      feeds[feed_name]
-    else
-      yaml
+    channel = DynamicParams.call(config[:channel], config[:params])
+    url = Addressable::URI.parse(channel[:url])
+    time_zone = channel[:time_zone] || 'UTC'
+
+    # Step 2: Execute the request and get the response
+    response = RequestService.execute(RequestService::Context.new(url:, headers:), strategy:)
+
+    # Step 3: Feed the scrapers with response, their settings, and get the articles
+    articles = []
+
+    if (selectors = config[:selectors]).is_a?(Hash)
+      articles.concat Selectors.new(response, selectors:, time_zone:).articles
     end
+
+    if (auto_source = config[:auto_source]).is_a?(Hash)
+      articles.concat AutoSource.new(response, auto_source).articles
+    end
+
+    # Step 4: combine / reduce all the extracted articles to prevent duplicates
+    articles = AutoSource::Reducer.call(articles, url:)
+
+    # Step 5: Build the RSS feed
+    channel = RssBuilder::Channel.new(response, overrides: channel)
+    stylesheets = (config[:stylesheets] || []).map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
+
+    RssBuilder.new(channel:, articles:, stylesheets:).call
   end
 
   ##
@@ -102,11 +116,10 @@ module Html2rss
   # @param strategy [Symbol] the request strategy to use
   # @return [RSS::Rss]
   def self.auto_source(url, strategy: :faraday)
-    ctx = RequestService::Context.new(url:, headers: {})
-    response = RequestService.execute(ctx, strategy:)
-
-    Html2rss::AutoSource.new(ctx.url, body: response.body, headers: response.headers).build
+    Html2rss.feed(
+      strategy:,
+      channel: { url: url },
+      auto_source: {}
+    )
   end
-
-  private_class_method :find_feed_config
 end

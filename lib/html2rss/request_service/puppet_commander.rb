@@ -25,7 +25,7 @@ module Html2rss
 
         response = navigate_to_destination(page, ctx.url)
 
-        Response.new(body: body(page), headers: response.headers)
+        Response.new(body: body(page), headers: response.headers, url: ctx.url)
       ensure
         page&.close
       end

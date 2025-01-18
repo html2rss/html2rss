@@ -1,20 +1,100 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module RssBuilder
+  class RssBuilder
     ##
-    # Builds the <channel> tag (with the provided maker).
+    # Extracts channel information from
+    # 1. the HTML document's <head>.
+    # 2. the HTTP response
     class Channel
+      DEFAULT_TTL_IN_MINUTES = 360
       ##
-      # @param maker [RSS::Maker::RSS20::Channel]
-      # @param config [Html2rss::Config]
-      # @param tags [Set<Symbol>]
-      # @return nil
-      def self.add(maker, config, tags)
-        tags.each { |tag| maker.public_send(:"#{tag}=", config.public_send(tag)) }
+      #
+      # @param response [Html2rss::RequestService::Response]
+      # @param overrides [Hash<Symbol, String>] - Optional, overrides for any channel attribute
+      def initialize(response, overrides: {})
+        @response = response
+        @overrides = overrides
+      end
 
-        maker.generator = "html2rss V. #{::Html2rss::VERSION}"
-        maker.lastBuildDate = Time.now
+      def title
+        @title ||= fetch_title
+      end
+
+      def url = @url ||= @response.url
+
+      def description
+        return overrides[:description] if overrides[:description]
+
+        description = parsed_body.at_css('meta[name="description"]')&.[]('content') if html_response?
+
+        description || "Latest items from #{url}"
+      end
+
+      def ttl
+        return overrides[:ttl] if overrides[:ttl]
+
+        if (ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1))
+          return ttl.to_i.fdiv(60).ceil
+        end
+
+        DEFAULT_TTL_IN_MINUTES
+      end
+
+      def language
+        return overrides[:language] if overrides[:language]
+
+        if (language_code = headers['content-language']&.match(/^([a-z]{2})/))
+          return language_code[0]
+        end
+
+        return unless html_response?
+
+        parsed_body['lang'] || parsed_body.at_css('[lang]')&.[]('lang')
+      end
+
+      def author
+        return overrides[:author] if overrides[:author]
+
+        return unless html_response?
+
+        parsed_body.at_css('meta[name="author"]')&.[]('content')
+      end
+
+      def last_build_date = headers['last-modified'] || Time.now
+
+      def image
+        return overrides[:image] if overrides[:image]
+
+        return unless html_response?
+
+        if (image_url = parsed_body.at_css('meta[property="og:image"]')&.[]('content'))
+          Html2rss::Utils.sanitize_url(image_url)
+        end
+      end
+
+      private
+
+      attr_reader :overrides
+
+      def parsed_body = @parsed_body ||= @response.parsed_body
+      def headers = @headers ||= @response.headers
+      def html_response? = @html_response ||= @response.html_response?
+
+      def fetch_title
+        return overrides[:title] if overrides[:title]
+        return parsed_title if parsed_title
+
+        Utils.titleized_channel_url(url)
+      end
+
+      def parsed_title
+        return unless html_response?
+
+        title = parsed_body.at_css('head > title')&.text.to_s
+        return if title.empty?
+
+        title.gsub(/\s+/, ' ').strip
       end
     end
   end

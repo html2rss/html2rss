@@ -2,23 +2,36 @@
 
 [![Gem Version](https://badge.fury.io/rb/html2rss.svg)](http://rubygems.org/gems/html2rss/) [![Yard Docs](http://img.shields.io/badge/yard-docs-blue.svg)](https://www.rubydoc.info/gems/html2rss) ![Retro Badge: valid RSS](https://validator.w3.org/feed/images/valid-rss-rogers.png)
 
-`html2rss` is a Ruby gem that generates RSS 2.0 feeds from websites automatically, and as a fallback via _feed config_.
+`html2rss` is a Ruby gem that generates RSS 2.0 feeds from websites.
 
-With the _feed config_, you provide a URL to scrape and CSS selectors for extracting information (like title, URL, etc.). The gem builds the RSS feed accordingly. [Extractors](#using-extractors) and chainable [post processors](#using-post-processors) make information extraction, processing, and sanitizing a breeze. The gem also supports [scraping JSON](#scraping-and-handling-json-responses) responses and [setting HTTP request headers](#set-any-http-header-in-the-request).
+Its `auto_source` scraper finds items for the RSS feed automatically. 🧙🏼
 
-**Looking for a ready-to-use app to serve generated feeds via HTTP?** [Check out `html2rss-web`](https://github.com/html2rss/html2rss-web)!
+Additionally, you can use the `selectors` scraper and control the information extraction.
+The `selectors` scraper takes plain old CSS selectors and extracts the information.
+It comes with handy [Extractors](#using-extractors) and chainable [post processors](#using-post-processors).
+Furthermore, it supports [scraping JSON](#scraping-and-handling-json-responses) responses.
 
-Support the development by sponsoring this project on GitHub. Thank you! 💓
+To scrape websites that require JavaScript, html2rss can request these using a headless browser (Puppeteer / browserless.io).
+Independently of the used request strategy, you can [set HTTP request headers](#the-headers-set-any-http-request-header).
 
-## Generating a feed on the CLI
+|                |                |
+| -------------- | -------------- |
+| 🤩 Like it? | Star it! ⭐️ |
+| 😍 Endorse it? | Sponsor it! 💓 |
+
+> [!TIP]
+> Want to retrieve your RSS feeds via HTTP?
+> [Check out `html2rss-web`](https://github.com/html2rss/html2rss-web)!
+
+## Getting started
 
 [Install Ruby](https://www.ruby-lang.org/en/documentation/installation/) (latest version is recommended) on your machine and run `gem install html2rss` in your terminal.
 
 After the installation has finished, `html2rss help` will print usage information.
 
-### using automatic generation
+### use automatic generation
 
-html2rss offers an automatic RSS generation feature. Try it with:
+html2rss offers an automatic RSS generation feature. Try it on CLI with:
 
 `html2rss auto https://unmatchedstyle.com/`
 
@@ -43,41 +56,15 @@ selectors:
     selector: ".post-content"
     post_process:
       - name: sanitize_html
+auto_source: # this enables auto_source additionally. Remove if you don't want that.
 ```
 
 Build the feed from this config with: `html2rss feed ./my_config_file.yml`.
 
-## Generating a feed with Ruby
-
-You can also install it as a dependency in your Ruby project:
-
-|                      🤩 Like it? | Star it! ⭐️         |
-| -------------------------------: | -------------------- |
-| Add this line to your `Gemfile`: | `gem 'html2rss'`     |
-|                    Then execute: | `bundle`             |
-|                    In your code: | `require 'html2rss'` |
-
-Here's a minimal working example using Ruby:
-
-```ruby
-require 'html2rss'
-
-rss =
-  Html2rss.feed(
-    channel: { url: 'https://stackoverflow.com/questions' },
-    selectors: {
-      items: { selector: '#hot-network-questions > ul > li' },
-      title: { selector: 'a' },
-      link: { selector: 'a', extractor: 'href' }
-    }
-  )
-
-puts rss
-```
-
 ## The _feed config_ and its options
 
-A _feed config_ consists of a `channel` and a `selectors` hash. The contents of both hashes are explained below.
+Html2rss is configured using `channel`, `selectors`, `strategy`, `headers`, `stylesheets` and `auto_source`.
+The possible options of each are explained below.
 
 Good to know:
 
@@ -85,7 +72,7 @@ Good to know:
 - See [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) for ready-made feed configs!
 - If you've created feed configs, you're invited to send a PR to [`html2rss-configs`](https://github.com/html2rss/html2rss-configs) to make your config available to the public.
 
-Alright, let's move on.
+Alright, let's dive in.
 
 ### The `channel`
 
@@ -94,18 +81,17 @@ Alright, let's move on.
 | `url`         | **required** | String  |                |                                            |
 | `title`       | optional     | String  | auto-generated |                                            |
 | `description` | optional     | String  | auto-generated |                                            |
-| `ttl`         | optional     | Integer | `360`          | TTL in _minutes_                           |
-| `time_zone`   | optional     | String  | `'UTC'`        | TimeZone name                              |
-| `language`    | optional     | String  | `'en'`         | Language code                              |
 | `author`      | optional     | String  |                | Format: `email (Name)`                     |
+| `ttl`         | optional     | Integer | auto-generated | TTL in _minutes_, falls back to `360`      |
+| `language`    | optional     | String  | auto-generated | Language code                              |
+| `time_zone`   | optional     | String  | `'UTC'`        | TimeZone name                              |
 | `headers`     | optional     | Hash    | `{}`           | Set HTTP request headers. See notes below. |
-| `json`        | optional     | Boolean | `false`        | Handle JSON response. See notes below.     |
 
 #### Dynamic parameters in `channel` attributes
 
 Sometimes there are structurally similar pages with different URLs. In such cases, you can add _dynamic parameters_ to the channel's attributes.
 
-Example of a dynamic `id` parameter in the channel URLs:
+Example of an dynamic parameter `id` in the channel URL:
 
 ```yml
 channel:
@@ -115,14 +101,14 @@ channel:
 Command line usage example:
 
 ```sh
-html2rss feed the_feed_config.yml id=42
+html2rss feed the_feed_config.yml --params id:42 foo:bar
 ```
 
 <details><summary>See a Ruby example</summary>
 
 ```ruby
-config = Html2rss::Config.new({ channel: { url: 'http://domainname.tld/whatever/%<id>s.html' } }, {}, { id: 42 })
-Html2rss.feed(config)
+Html2rss.feed(channel: { url: 'http://domainname.tld/whatever/%<id>s.html' },
+              params: { id: 42 })
 ```
 
 </details>
@@ -133,9 +119,17 @@ See the more complex formatting options of the [`sprintf` method](https://ruby-d
 
 First, you must give an **`items`** selector hash, which contains a CSS selector. The selector selects a collection of HTML tags from which the RSS feed items are built. Except for the `items` selector, all other keys are scoped to each item of the collection.
 
-To build a [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item), you need at least a `title` **or** a `description`. You can have both.
+To build a [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item), you need at least a `title` **or** a `description`. You can have both. Hence, having an `items` and a `title` selector is enough to build a simple feed:
 
-Having an `items` and a `title` selector is enough to build a simple feed.
+```yml
+channel:
+  url: "https://example.com"
+selectors:
+  items:
+    selector: ".article"
+  title:
+    selector: "h1"
+```
 
 Your `selectors` hash can contain arbitrary named selectors, but only a few will make it into the RSS feed (due to the RSS 2.0 specification):
 
@@ -148,13 +142,13 @@ Your `selectors` hash can contain arbitrary named selectors, but only a few will
 | `category`    | `categories`       | See notes below.                            |
 | `guid`        | `guid`             | Default title/description. See notes below. |
 | `enclosure`   | `enclosure`        | See notes below.                            |
-| `pubDate`     | `updated`          | An instance of `Time`.                      |
+| `pubDate`     | `published_at`     | An instance of `Time`.                      |
 | `comments`    | `comments`         | A URL.                                      |
 | `source`      | ~~source~~         | Not yet supported.                          |
 
-### Build RSS 2.0 item attributes by specifying selectors
+#### A selector and its Options
 
-Every named selector (i.e. `title`, `description`, see table above) in your `selectors` hash can have these attributes:
+Every named selector (i.e. `title`, `description`, see above) in your `selectors` can have these attributes:
 
 | name           | value                                                    |
 | -------------- | -------------------------------------------------------- |
@@ -162,7 +156,7 @@ Every named selector (i.e. `title`, `description`, see table above) in your `sel
 | `extractor`    | Name of the extractor. See notes below.                  |
 | `post_process` | A hash or array of hashes. See notes below.              |
 
-#### Using extractors
+##### Using extractors
 
 Extractors help with extracting the information from the selected HTML tag.
 
@@ -171,15 +165,18 @@ Extractors help with extracting the information from the selected HTML tag.
 - The `href` extractor returns a URL from the tag's `href` attribute and corrects relative ones to absolute ones.
 - The `attribute` extractor returns the value of that tag's attribute.
 - The `static` extractor returns the configured static value (it doesn't extract anything).
-- [See file list of extractors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/item_extractors).
+- [See file list of extractors](https://github.com/html2rss/html2rss/tree/master/lib/html2rss/selectors/extractors).
 
-Extractors might need extra attributes on the selector hash. 👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/ItemExtractors).
+Extractors might need extra attributes on the selector hash. 👉 [Read their docs for usage examples](https://www.rubydoc.info/gems/html2rss/Html2rss/Selectors/Extractors).
 
 <details><summary>See a Ruby example</summary>
 
 ```ruby
 Html2rss.feed(
-  channel: {}, selectors: { link: { selector: 'a', extractor: 'href' } }
+  channel: {},
+  selectors: {
+    link: { selector: 'a', extractor: 'href' }
+  }
 )
 ```
 
@@ -199,7 +196,7 @@ selectors:
 
 </details>
 
-### Using post processors
+##### Using post processors
 
 Extracted information can be further manipulated with post processors.
 
@@ -216,7 +213,7 @@ Extracted information can be further manipulated with post processors.
 
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
-#### Chaining post processors
+###### Chaining post processors
 
 Pass an array to `post_process` to chain the post processors.
 
@@ -242,7 +239,7 @@ selectors:
 
 </details>
 
-##### Post processor `gsub`
+###### Post processor `gsub`
 
 The post processor `gsub` makes use of Ruby's [`gsub`](https://apidock.com/ruby/String/gsub) method.
 
@@ -281,7 +278,7 @@ selectors:
 
 </details>
 
-#### Adding `<category>` tags to an item
+##### Adding `<category>` tags to an item
 
 The `categories` selector takes an array of selector names. Each value of those
 selectors will become a `<category>` on the RSS item.
@@ -324,14 +321,14 @@ selectors:
 
 </details>
 
-#### Custom item GUID
+##### Custom item GUID
 
-By default, html2rss generates a GUID from the `title` or `description`.
+By default, html2rss generates a stable GUID automatically, based on the item's url, or ultimatively on `title` or `description`.
 
-If this does not work well, you can choose other attributes from which the GUID is build.
+If this does is not stable, you can choose other attributes from which the GUID will be build.
 The principle is the same as for the categories: pass an array of selectors names.
 
-In all cases, the GUID is a SHA1-encoded string.
+In all cases, the GUID is a base-36 encoded CRC32 checksum.
 
 <details><summary>See a Ruby example</summary>
 
@@ -369,7 +366,7 @@ selectors:
 
 </details>
 
-#### Adding an `<enclosure>` tag to an item
+##### Adding an `<enclosure>` tag to an item
 
 An enclosure can be any file, e.g. a image, audio or video - think Podcast.
 
@@ -419,18 +416,83 @@ selectors:
 
 </details>
 
-## Scraping and handling JSON responses
+#### Scraping and handling JSON responses
 
-By default, `html2rss` assumes the URL responds with HTML. However, it can also handle JSON responses. The JSON response must be an Array or Hash.
+When the requested website returns a application/json content-typed response (i.e. you `Accept: application/json` header in the request), html2rss converts the JSON to XML. That XML you can query using CSS selectors.
 
-The JSON is converted to XML which you can query using CSS selectors.
+> [!NOTE]
+> The JSON response must be an Array or Hash for this to work.
+
+<details><summary>See example of a converted JSON object</summary>
+
+This JSON object:
+
+```json
+{
+  "data": [
+    { "title": "Headline", "url": "https://example.com" }
+  ]
+}
+```
+
+converts to:
+
+```xml
+<object>
+  <data>
+    <array>
+      <object>
+        <title>Headline</title>
+        <url>https://example.com</url>
+      </object>
+    </array>
+  </data>
+</object>
+```
+
+Your items selector would be `array > object`, the item's `link` selector would be `url`.
+
+</details>
+
+<details>
+  <summary>See example of a converted JSON array</summary>
+
+This JSON array:
+
+```json
+[
+  { "title": "Headline", "url": "https://example.com" }
+]
+```
+
+converts to:
+
+```xml
+<array>
+  <object>
+    <title>Headline</title>
+    <url>https://example.com</url>
+  </object>
+</array>
+```
+
+Your items selector would be `array > object`, the item's `link` selector would be `url`.
+
+</details>
 
 <details><summary>See a Ruby example</summary>
 
 ```ruby
 Html2rss.feed(
-  channel: { url: 'http://domainname.tld/whatever.json', json: true },
-  selectors: { title: { selector: 'foo' } }
+  headers: {
+    Accept: 'application/json'
+  },
+  channel: {
+    url: 'http://domainname.tld/whatever.json'
+  },
+  selectors: {
+    title: { selector: 'foo' }
+  }
 )
 ```
 
@@ -441,7 +503,8 @@ Html2rss.feed(
 ```yml
 channel:
   url: "http://domainname.tld/whatever.json"
-  json: true
+  headers:
+    Accept: application/json
 selectors:
   title:
     selector: "foo"
@@ -449,15 +512,17 @@ selectors:
 
 </details>
 
-## Customization of how requests to the channel URL are sent
+### The `strategy`: customization of how requests to the channel URL are sent
 
 By default, html2rss issues a naiive HTTP request and extracts information from the response. That is performant and works for many websites.
 
-However, modern websites often do not render much HTML on the server, but evaluate JavaScript on the client to create the HTML. In such cases, the default strategy will not find the "juicy content".
+However, modern websites often do not render much HTML on the server, but evaluate JavaScript on the client to create the HTML. Because the default strategy does not execute any JavaScript, this _strategy_ will not find the "juicy content". For this scenario, try `strategy: browserless`
 
-### Use Browserless.io
+You can also register your own RequestStrategy.
 
-You can use _Browserless.io_ to run a Chrome browser and return the website's source code after the website generated it.
+#### `strategy: browserless`: Browserless.io
+
+You can use _Browserless.io_ to run a headless Chrome browser and return the website's source code after the website generated it.
 For this, you can either run your own Browserless.io instance (Docker image available -- [read their license](https://github.com/browserless/browserless/pkgs/container/chromium#licensing)!) or pay them for a hosted instance.
 
 To run a local Browserless.io instance, you can use the following Docker command:
@@ -471,30 +536,32 @@ docker run \
   ghcr.io/browserless/chromium
 ```
 
-To make html2rss use your instance,
+To make html2rss use your instance, specify the `browserless` strategy..
 
-1. specify the environment variables accordingly, and
-2. use the `browserless` strategy for those websites.
-
-When running locally with commands from above, you can skip setting the environment variables, as they are aligned with the default values.
+When running locally with commands from above, you can skip setting the environment variables, as they are aligned with the default values from above example.
 
 ```sh
+# auto:
 BROWSERLESS_IO_WEBSOCKET_URL="ws://127.0.0.1:3000" BROWSERLESS_IO_API_TOKEN="6R0W53R135510" \
   html2rss auto --strategy=browserless https://example.com
+
+# feed:
+BROWSERLESS_IO_WEBSOCKET_URL="ws://127.0.0.1:3000" BROWSERLESS_IO_API_TOKEN="6R0W53R135510" \
+  html2rss feed --strategy=browserless the_the_config.yml
 ```
 
-When using traditional feed configs, inside your channel config set `strategy: browserless`.
+When using configs, set `strategy: browserless`.
 
 <details><summary>See a YAML feed config example</summary>
 
 ```yml
+strategy: browserless
+headers:
+  User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 channel:
   url: https://www.imdb.com/user/ur67728460/ratings
   time_zone: UTC
   ttl: 1440
-  strategy: browserless
-  headers:
-    User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 selectors:
   items:
     selector: "li.ipc-metadata-list-summary-item"
@@ -515,15 +582,15 @@ selectors:
 
 </details>
 
-### Set any HTTP header in the request
+### The `headers`: Set any HTTP request header
 
-To set HTTP request headers, you can add them to the channel's `headers` hash. This is useful for APIs that require an Authorization header.
+To set HTTP request headers, you can add them to `headers`. This is useful for i.e. APIs that require an Authorization header.
 
 ```yml
+headers:
+  Authorization: "Bearer YOUR_TOKEN"
 channel:
   url: "https://example.com/api/resource"
-  headers:
-    Authorization: "Bearer YOUR_TOKEN"
 selectors:
   # ... omitted
 ```
@@ -531,65 +598,16 @@ selectors:
 Or for setting a User-Agent:
 
 ```yml
+headers:
+  User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 channel:
   url: "https://example.com"
-  headers:
-    User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 selectors:
   # ... omitted
+auto_source:
 ```
 
-## Usage with a YAML config file
-
-This step is not required to work with this gem. If you're using
-[`html2rss-web`](https://github.com/html2rss/html2rss-web)
-and want to create your private feed configs, keep on reading!
-
-First, create a YAML file, e.g. `feeds.yml`. This file will contain your global config and multiple feed configs under the key `feeds`.
-
-Example:
-
-```yml
-headers:
-  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
-feeds:
-  myfeed:
-    channel:
-    selectors:
-  myotherfeed:
-    channel:
-    selectors:
-```
-
-Your feed configs go below `feeds`. Everything else is part of the global config.
-
-Find a full example of a `feeds.yml` at [`spec/fixtures/feeds.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/fixtures/feeds.test.yml).
-
-Now you can build your feeds like this:
-
-<details>
-  <summary>Build feeds in Ruby</summary>
-
-```ruby
-require 'html2rss'
-
-myfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myfeed')
-myotherfeed = Html2rss.feed_from_yaml_config('feeds.yml', 'myotherfeed')
-```
-
-</details>
-
-<details>
-  <summary>Build feeds on the command line</summary>
-
-```sh
-html2rss feed feeds.yml myfeed
-html2rss feed feeds.yml myotherfeed
-```
-
-</details>
-
-## Display the RSS feed nicely in a web browser
+### The `stylesheets`: Display the RSS feed nicely in a web browser
 
 To display RSS feeds nicely in a web browser, you can:
 
@@ -606,35 +624,26 @@ including using JavaScript and external resources.
 
 You can add as many stylesheets and types as you like. Just add them to your global configuration.
 
-<details>
-  <summary>Ruby: a stylesheet config example</summary>
+<details><summary>Ruby: a stylesheet config example</summary>
 
 ```ruby
-config = Html2rss::Config.new(
-  { channel: {}, selectors: {} }, # omitted
-  {
-    stylesheets: [
-      {
-        href: '/relative/base/path/to/style.xls',
-        media: :all,
-        type: 'text/xsl'
-      },
-      {
-        href: 'http://example.com/rss.css',
-        media: :all,
-        type: 'text/css'
-      }
-    ]
-  }
+Html2rss.feed(
+  stylesheets: [
+    {
+      href: '/relative/base/path/to/style.xls', media: :all, type: 'text/xsl'
+    },
+    {
+      href: 'http://example.com/rss.css', media: :all, type: 'text/css'
+    }
+  ],
+  channel: {},
+  selectors: {}
 )
-
-Html2rss.feed(config)
 ```
 
 </details>
 
-<details>
-  <summary>YAML: a stylesheet config example</summary>
+<details><summary>YAML: a stylesheet config example</summary>
 
 ```yml
 stylesheets:
@@ -656,11 +665,110 @@ Recommended further readings:
 - [XSLT: Extensible Stylesheet Language Transformations on MDN](https://developer.mozilla.org/en-US/docs/Web/XSLT)
 - [The XSLT used by html2rss-web](https://github.com/html2rss/html2rss-web/blob/master/public/rss.xsl)
 
+## Store feed configuration in YAML file
+
+This step is not required to work with this gem, but is helpful when you plan to use the CLI or [`html2rss-web`](https://github.com/html2rss/html2rss-web).
+
+First, create a YAML file, e.g. `feeds.yml`. This file will contain your multiple feed configs under the key `feeds`. Everything which you specify outside of this, will be applied to every feed you're building.
+
+Example:
+
+```yml
+headers:
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1"
+  "Accept": "text/html"
+feeds:
+  myfeed:
+    channel:
+    selectors:
+    auto_source:
+  myotherfeedwit:
+    headers:
+    strategy:
+    channel:
+    selectors:
+```
+
+Your feed configs go below `feeds`.
+
+Find a full example of a `feeds.yml` at [`spec/fixtures/feeds.test.yml`](https://github.com/html2rss/html2rss/blob/master/spec/fixtures/feeds.test.yml).
+
+If you prefer to have a single feed defined in a YAML, just omit the feeds. [Checkout the `single.test.yml`.](https://github.com/html2rss/html2rss/blob/master/spec/fixtures/single.test.yml).
+Now you can build your feeds like this:
+
+<details><summary>Build feeds in Ruby</summary>
+
+```ruby
+require 'html2rss'
+
+myfeed = Html2rss.config_from_yaml_file('feeds.yml', 'myfeed')
+Html2rss.feed(myfeed)
+
+myotherfeed = Html2rss.config_from_yaml_file('feeds.yml', 'myotherfeed')
+Html2rss.feed(myotherfeed)
+
+single = Html2rss.config_from_yaml_file('single.test.yml')
+Html2rss.feed(single)
+```
+
+</details>
+
+<details><summary>Build feeds on the command line</summary>
+
+```sh
+html2rss feed feeds.yml myfeed
+html2rss feed feeds.yml myotherfeed
+html2rss feed single.test.yml
+```
+
+</details>
+
+## Generating a feed with Ruby
+
+You can also install it as a dependency in your Ruby project:
+
+|                      🤩 Like it? | Star it! ⭐️         |
+| -------------------------------: | -------------------- |
+| Add this line to your `Gemfile`: | `gem 'html2rss'`     |
+|                    Then execute: | `bundle`             |
+|                    In your code: | `require 'html2rss'` |
+
+Here's a minimal working example using Ruby:
+
+```ruby
+require 'html2rss'
+
+rss = Html2rss.feed(
+  channel: { url: 'https://stackoverflow.com/questions' },
+  auto_source: {}
+)
+
+puts rss
+
+```
+
+and instead with `auto_source`, provide `selectors` (you can use both simultaneously):
+
+```ruby
+require 'html2rss'
+
+rss = Html2rss.feed(
+  channel: { url: 'https://stackoverflow.com/questions' },
+  selectors: {
+    items: { selector: '#hot-network-questions > ul > li' },
+    title: { selector: 'a' },
+    link: { selector: 'a', extractor: 'href' }
+  }
+)
+
+puts rss
+```
+
 ## Gotchas and tips & tricks
 
 - Check that the channel URL does not redirect to a mobile page with a different markup structure.
-- Do not rely on your web browser's developer console. `html2rss` does not execute JavaScript.
-- Fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
+- Do not rely on your web browser's developer console when using the standard strategy. It does not execute JavaScript.
+  In such cases, fiddling with [`curl`](https://github.com/curl/curl) and [`pup`](https://github.com/ericchiang/pup) to find the selectors seems efficient (`curl URL | pup`).
 - [CSS selectors are versatile. Here's an overview.](https://www.w3.org/TR/selectors-4/#overview)
 
 ## Contributing
