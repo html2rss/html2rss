@@ -14,6 +14,7 @@ Furthermore, it supports [scraping JSON](#scraping-and-handling-json-responses) 
 To scrape websites that require JavaScript, html2rss can request these using a headless browser (Puppeteer / browserless.io).
 Independently of the used request strategy, you can [set HTTP request headers](#the-headers-set-any-http-request-header).
 
+|                |                |
 | -------------- | -------------- |
 | 🤩 Like it? | Star it! ⭐️ |
 | 😍 Endorse it? | Sponsor it! 💓 |
@@ -22,13 +23,13 @@ Independently of the used request strategy, you can [set HTTP request headers](#
 > Want to retrieve your RSS feeds via HTTP?
 > [Check out `html2rss-web`](https://github.com/html2rss/html2rss-web)!
 
-## Generating a feed on the CLI
+## Getting started
 
 [Install Ruby](https://www.ruby-lang.org/en/documentation/installation/) (latest version is recommended) on your machine and run `gem install html2rss` in your terminal.
 
 After the installation has finished, `html2rss help` will print usage information.
 
-### using automatic generation
+### use automatic generation
 
 html2rss offers an automatic RSS generation feature. Try it on CLI with:
 
@@ -549,7 +550,7 @@ BROWSERLESS_IO_WEBSOCKET_URL="ws://127.0.0.1:3000" BROWSERLESS_IO_API_TOKEN="6R0
   html2rss feed --strategy=browserless the_the_config.yml
 ```
 
-When using traditional feed configs, set `strategy: browserless`.
+When using configs, set `strategy: browserless`.
 
 <details><summary>See a YAML feed config example</summary>
 
