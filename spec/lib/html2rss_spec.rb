@@ -154,16 +154,16 @@ RSpec.describe Html2rss do
 
       let(:feed_config) do
         {
+          headers: {
+            Accept: 'application/json',
+            'User-Agent': 'html2rss-request',
+            'X-Something': 'Foobar',
+            Authorization: 'Token deadbea7',
+            Cookie: 'monster=MeWantCookie'
+          },
           channel: {
             url: 'https://httpbin.org/headers',
-            title: 'httpbin headers',
-            headers: {
-              Accept: 'application/json',
-              'User-Agent': 'html2rss-request',
-              'X-Something': 'Foobar',
-              Authorization: 'Token deadbea7',
-              Cookie: 'monster=MeWantCookie'
-            }
+            title: 'httpbin headers'
           },
           selectors: {
             items: { selector: 'object > headers' },

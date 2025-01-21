@@ -154,7 +154,7 @@ Every named selector (i.e. `title`, `description`, see above) in your `selectors
 | -------------- | -------------------------------------------------------- |
 | `selector`     | The CSS selector to select the tag with the information. |
 | `extractor`    | Name of the extractor. See notes below.                  |
-| `post_process` | A hash or array of hashes. See notes below.              |
+| `post_process` | An array. See notes below.                               |
 
 ##### Using extractors
 

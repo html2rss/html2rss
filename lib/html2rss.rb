@@ -51,7 +51,7 @@ module Html2rss
       return config.merge(stylesheets: yaml[:stylesheets], params: yaml[:params], strategy: yaml[:strategy])
     end
 
-    raise ArgumentError, "Feed '#{feed_name}' not found."
+    raise ArgumentError, "Feed '#{feed_name}' not found under #{CONFIG_KEY_FEEDS} key."
   end
 
   ##
@@ -75,26 +75,29 @@ module Html2rss
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed(config) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
-    # Step 1: Process the config
+    # Step 1: Validate & Process the config
+    config[:strategy] = (config[:strategy] || config.dig(:channel, :strategy) || RequestService.default_strategy_name)
+    config[:headers] ||= config.dig(:channel, :headers) || {}
 
-    strategy = config[:strategy] || config.dig(:channel, :strategy) || RequestService.default_strategy_name
-    headers = config[:headers] || config.dig(:channel, :headers)
+    DynamicParams.call(config[:channel], config[:params])
 
-    channel = DynamicParams.call(config[:channel], config[:params])
-    url = Addressable::URI.parse(channel[:url])
-    time_zone = channel[:time_zone] || 'UTC'
+    config[:channel][:time_zone] ||= 'UTC'
+    config = ConfigValidator.call(config)
+
+    url = Addressable::URI.parse(config.dig(:channel, :url))
 
     # Step 2: Execute the request and get the response
-    response = RequestService.execute(RequestService::Context.new(url:, headers:), strategy:)
+    response = RequestService.execute(RequestService::Context.new(url:, headers: config[:headers]),
+                                      strategy: config[:strategy])
 
     # Step 3: Feed the scrapers with response, their settings, and get the articles
     articles = []
 
-    if (selectors = config[:selectors]).is_a?(Hash)
-      articles.concat Selectors.new(response, selectors:, time_zone:).articles
+    if (selectors = config[:selectors])
+      articles.concat Selectors.new(response, selectors:, time_zone: config[:channel][:time_zone]).articles
     end
 
-    if (auto_source = config[:auto_source]).is_a?(Hash)
+    if (auto_source = config[:auto_source])
       articles.concat AutoSource.new(response, auto_source).articles
     end
 
@@ -102,7 +105,7 @@ module Html2rss
     articles = AutoSource::Reducer.call(articles, url:)
 
     # Step 5: Build the RSS feed
-    channel = RssBuilder::Channel.new(response, overrides: channel)
+    channel = RssBuilder::Channel.new(response, overrides: config[:channel])
     stylesheets = (config[:stylesheets] || []).map { |style| Html2rss::RssBuilder::Stylesheet.new(**style) }
 
     RssBuilder.new(channel:, articles:, stylesheets:).call
