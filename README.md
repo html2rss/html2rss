@@ -7,16 +7,16 @@
 Its `auto_source` scraper finds items for the RSS feed automatically. 🧙🏼
 
 Additionally, you can use the `selectors` scraper and control the information extraction.
-The `selectors` scraper takes plain old CSS selectors and extracts the information.
-It comes with handy [Extractors](#using-extractors) and chainable [post processors](#using-post-processors).
-Furthermore, it supports [scraping JSON](#scraping-and-handling-json-responses) responses.
+It takes plain old CSS selectors and extracts the information with help from
+[Extractors](#using-extractors) and chainable [post processors](#using-post-processors).
+It supports [scraping JSON](#scraping-and-handling-json-responses) responses.
 
 To scrape websites that require JavaScript, html2rss can request these using a headless browser (Puppeteer / browserless.io).
 Independently of the used request strategy, you can [set HTTP request headers](#the-headers-set-any-http-request-header).
 
 |                |                |
 | -------------- | -------------- |
-| 🤩 Like it? | Star it! ⭐️ |
+| 🤩 Like it?    | Star it! ⭐️   |
 | 😍 Endorse it? | Sponsor it! 💓 |
 
 > [!TIP]
@@ -49,14 +49,12 @@ selectors:
     selector: "article[id^='post-']"
   title:
     selector: h2
-  link:
+  url:
     selector: a
     extractor: href
   description:
     selector: ".post-content"
-    post_process:
-      - name: sanitize_html
-auto_source: # this enables auto_source additionally. Remove if you don't want that.
+auto_source: {} # this enables auto_source additionally. Remove if you don't want that.
 ```
 
 Build the feed from this config with: `html2rss feed ./my_config_file.yml`.
@@ -76,50 +74,35 @@ Alright, let's dive in.
 
 ### The `channel`
 
-| attribute     |              | type    | default        | remark                                     |
-| ------------- | ------------ | ------- | -------------- | ------------------------------------------ |
-| `url`         | **required** | String  |                |                                            |
-| `title`       | optional     | String  | auto-generated |                                            |
-| `description` | optional     | String  | auto-generated |                                            |
-| `author`      | optional     | String  |                | Format: `email (Name)`                     |
-| `ttl`         | optional     | Integer | auto-generated | TTL in _minutes_, falls back to `360`      |
-| `language`    | optional     | String  | auto-generated | Language code                              |
-| `time_zone`   | optional     | String  | `'UTC'`        | TimeZone name                              |
-| `headers`     | optional     | Hash    | `{}`           | Set HTTP request headers. See notes below. |
+| attribute     |              | type    | default        | remark                                             |
+| ------------- | ------------ | ------- | -------------- | -------------------------------------------------- |
+| `url`         | **required** | String  |                |                                                    |
+| `title`       | optional     | String  | auto-generated |                                                    |
+| `description` | optional     | String  | auto-generated | Retrieved from meta description tags               |
+| `author`      | optional     | String  | blank          | Format: `email (Name)`                             |
+| `ttl`         | optional     | Integer | auto-generated | Responses max-age, falls back to `360` (_minutes_) |
+| `language`    | optional     | String  | auto-generated | Determined by `lang` attribute                     |
+| `time_zone`   | optional     | String  | `'UTC'`        | TimeZone name                                      |
 
-#### Dynamic parameters in `channel` attributes
+### The `auto_source`: automatically find the items
 
-Sometimes there are structurally similar pages with different URLs. In such cases, you can add _dynamic parameters_ to the channel's attributes.
+The `auto_source` scraper finds items automatically. To find them it searches the websites for:
 
-Example of an dynamic parameter `id` in the channel URL:
+1. `<script type="json/ld">` tags which contain Schema.org objects like [Article](https://schema.org/Article).
+2. [Semantic HTML](https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility/HTML), i.e. tags like `<article>`.
+3. As last resort, tries its luck by finding frequently repeated HTML patterns.
 
-```yml
-channel:
-  url: "http://domainname.tld/whatever/%<id>s.html"
-```
+It's a good idea to give `auto_source` a try, before starting to configure the `selectors` scraper.
 
-Command line usage example:
+### The `selectors`: specify CSS selectors
 
-```sh
-html2rss feed the_feed_config.yml --params id:42 foo:bar
-```
+The `selectors` scraper requires you to specify CSS selectors.
 
-<details><summary>See a Ruby example</summary>
+You must give an **`items`** selector hash, which contains the CSS selector. The items selector selects a collection of HTML tags from which the RSS feed items are built. Except for the `items` selector, all other keys are scoped to each item of the collection.
 
-```ruby
-Html2rss.feed(channel: { url: 'http://domainname.tld/whatever/%<id>s.html' },
-              params: { id: 42 })
-```
+To build a [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item), you need at least a `title` **or** a `description` in your item. You can, of course, have both.
 
-</details>
-
-See the more complex formatting options of the [`sprintf` method](https://ruby-doc.org/core/Kernel.html#method-i-sprintf).
-
-### The `selectors`
-
-First, you must give an **`items`** selector hash, which contains a CSS selector. The selector selects a collection of HTML tags from which the RSS feed items are built. Except for the `items` selector, all other keys are scoped to each item of the collection.
-
-To build a [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item), you need at least a `title` **or** a `description`. You can have both. Hence, having an `items` and a `title` selector is enough to build a simple feed:
+**Having an `items` and a `title` selector is enough** to build a simple feed:
 
 ```yml
 channel:
@@ -133,18 +116,18 @@ selectors:
 
 Your `selectors` hash can contain arbitrary named selectors, but only a few will make it into the RSS feed (due to the RSS 2.0 specification):
 
-| RSS 2.0 tag   | name in `html2rss` | remark                                      |
-| ------------- | ------------------ | ------------------------------------------- |
-| `title`       | `title`            |                                             |
-| `description` | `description`      | Supports HTML.                              |
-| `link`        | `link`             | A URL.                                      |
-| `author`      | `author`           |                                             |
-| `category`    | `categories`       | See notes below.                            |
-| `guid`        | `guid`             | Default title/description. See notes below. |
-| `enclosure`   | `enclosure`        | See notes below.                            |
-| `pubDate`     | `published_at`     | An instance of `Time`.                      |
-| `comments`    | `comments`         | A URL.                                      |
-| `source`      | ~~source~~         | Not yet supported.                          |
+| RSS 2.0 tag   | name in `html2rss` | remark                                    |
+| ------------- | ------------------ | ----------------------------------------- |
+| `title`       | `title`            |                                           |
+| `description` | `description`      | Will be sanitized when contains HTML      |
+| `link`        | `url`              | A URL.                                    |
+| `author`      | `author`           |                                           |
+| `category`    | `categories`       | See notes below.                          |
+| `guid`        | `guid`             | Generated automatically. See notes below. |
+| `enclosure`   | `enclosure`        | See notes below.                          |
+| `pubDate`     | `published_at`     | An instance of `Time`.                    |
+| `comments`    | `comments`         | A URL.                                    |
+| `source`      | ~~source~~         | Not yet supported.                        |
 
 #### A selector and its Options
 
@@ -175,7 +158,7 @@ Extractors might need extra attributes on the selector hash. 👉 [Read their do
 Html2rss.feed(
   channel: {},
   selectors: {
-    link: { selector: 'a', extractor: 'href' }
+    url: { selector: 'a', extractor: 'href' }
   }
 )
 ```
@@ -189,7 +172,7 @@ channel:
   # ... omitted
 selectors:
   # ... omitted
-  link:
+  url:
     selector: "a"
     extractor: "href"
 ```
@@ -199,6 +182,7 @@ selectors:
 ##### Using post processors
 
 Extracted information can be further manipulated with post processors.
+You can specify one or more post processors and they'll process in that order.
 
 | name               |                                                                                       |
 | ------------------ | ------------------------------------------------------------------------------------- |
@@ -213,9 +197,7 @@ Extracted information can be further manipulated with post processors.
 
 ⚠️ Always make use of the `sanitize_html` post processor for HTML content. _Never trust the internet!_ ⚠️
 
-###### Chaining post processors
-
-Pass an array to `post_process` to chain the post processors.
+If the `description` contains HTML, it will be sanitized automatically.
 
 <details><summary>YAML example: build the description from a template String (in Markdown) and convert that Markdown to HTML</summary>
 
@@ -325,10 +307,9 @@ selectors:
 
 By default, html2rss generates a stable GUID automatically, based on the item's url, or ultimatively on `title` or `description`.
 
-If this does is not stable, you can choose other attributes from which the GUID will be build.
+If this is not stable (i.e. your RSS reader shows already read articles as new/unread frequently),
+you can choose from which attributes the GUID will be build.
 The principle is the same as for the categories: pass an array of selectors names.
-
-In all cases, the GUID is a base-36 encoded CRC32 checksum.
 
 <details><summary>See a Ruby example</summary>
 
@@ -340,8 +321,8 @@ Html2rss.feed(
       # ... omitted
       selector: 'h1'
     },
-    link: { selector: 'a', extractor: 'href' },
-    guid: %i[link]
+    url: { selector: 'a', extractor: 'href' },
+    guid: %i[url]
   }
 )
 ```
@@ -357,12 +338,14 @@ selectors:
   # ... omitted
   title:
     selector: "h1"
-  link:
+  url:
     selector: "a"
     extractor: "href"
   guid:
-    - link
+    - url
 ```
+
+In all cases, the GUID is eventually encoded as base-36 CRC32 checksum.
 
 </details>
 
@@ -416,9 +399,11 @@ selectors:
 
 </details>
 
+See the more complex formatting options of the [`sprintf` method](https://ruby-doc.org/core/Kernel.html#method-i-sprintf).
+
 #### Scraping and handling JSON responses
 
-When the requested website returns a application/json content-typed response (i.e. you `Accept: application/json` header in the request), html2rss converts the JSON to XML. That XML you can query using CSS selectors.
+When the requested website returns a application/json content-typed response (i.e. you `Accept: application/json` header in the request), the selectors scraper converts that JSON to XML naiively. That XML you can query using CSS selectors.
 
 > [!NOTE]
 > The JSON response must be an Array or Hash for this to work.
@@ -429,9 +414,7 @@ This JSON object:
 
 ```json
 {
-  "data": [
-    { "title": "Headline", "url": "https://example.com" }
-  ]
+  "data": [{ "title": "Headline", "url": "https://example.com" }]
 }
 ```
 
@@ -450,7 +433,7 @@ converts to:
 </object>
 ```
 
-Your items selector would be `array > object`, the item's `link` selector would be `url`.
+Your items selector would be `array > object`, the item's URL selector would be `url`.
 
 </details>
 
@@ -460,9 +443,7 @@ Your items selector would be `array > object`, the item's `link` selector would 
 This JSON array:
 
 ```json
-[
-  { "title": "Headline", "url": "https://example.com" }
-]
+[{ "title": "Headline", "url": "https://example.com" }]
 ```
 
 converts to:
@@ -476,7 +457,7 @@ converts to:
 </array>
 ```
 
-Your items selector would be `array > object`, the item's `link` selector would be `url`.
+Your items selector would be `array > object`, the item's URL selector would be `url`.
 
 </details>
 
@@ -514,11 +495,11 @@ selectors:
 
 ### The `strategy`: customization of how requests to the channel URL are sent
 
-By default, html2rss issues a naiive HTTP request and extracts information from the response. That is performant and works for many websites.
+By default, html2rss issues a naiive HTTP request and extracts information from the response. That is performant and works for many websites. Under the hood, the [faraday gem](https://rubygems.org/gems/faraday) is used and gives the name to the default _strategy_: `faraday`.
 
-However, modern websites often do not render much HTML on the server, but evaluate JavaScript on the client to create the HTML. Because the default strategy does not execute any JavaScript, this _strategy_ will not find the "juicy content". For this scenario, try `strategy: browserless`
+Modern websites often do not render much HTML on the server, but evaluate JavaScript on the client to create the HTML. Because the default strategy does not execute any JavaScript, the faraday strategy will not find the "juicy content". For this scenario, try the browserless strategy.
 
-You can also register your own RequestStrategy.
+You can write your custom strategy and make use of it. Consult the docs of `Html2rss::RequestService.register_strategy()`.
 
 #### `strategy: browserless`: Browserless.io
 
@@ -536,9 +517,7 @@ docker run \
   ghcr.io/browserless/chromium
 ```
 
-To make html2rss use your instance, specify the `browserless` strategy..
-
-When running locally with commands from above, you can skip setting the environment variables, as they are aligned with the default values from above example.
+To make html2rss use your instance, specify the `browserless` strategy.
 
 ```sh
 # auto:
@@ -550,7 +529,10 @@ BROWSERLESS_IO_WEBSOCKET_URL="ws://127.0.0.1:3000" BROWSERLESS_IO_API_TOKEN="6R0
   html2rss feed --strategy=browserless the_the_config.yml
 ```
 
-When using configs, set `strategy: browserless`.
+> [!TIP]
+> When running locally with commands from above, you can skip setting the environment variables, as they are aligned with the default values from above example.
+
+In your config, set `strategy: browserless`.
 
 <details><summary>See a YAML feed config example</summary>
 
@@ -560,7 +542,6 @@ headers:
   User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 channel:
   url: https://www.imdb.com/user/ur67728460/ratings
-  time_zone: UTC
   ttl: 1440
 selectors:
   items:
@@ -573,7 +554,7 @@ selectors:
         replacement: ""
       - name: template
         string: "%{self} rated with: %{user_rating}"
-  link:
+  url:
     selector: "a.ipc-title-link-wrapper"
     extractor: "href"
   user_rating:
@@ -584,11 +565,12 @@ selectors:
 
 ### The `headers`: Set any HTTP request header
 
-To set HTTP request headers, you can add them to `headers`. This is useful for i.e. APIs that require an Authorization header.
+To set HTTP request headers, you can add them to `headers`. This is useful for i.e. APIs that require an `Authorization` header or you'd like to send `Accept: application/json`.
 
 ```yml
 headers:
   Authorization: "Bearer YOUR_TOKEN"
+  Accept: application/json
 channel:
   url: "https://example.com/api/resource"
 selectors:
@@ -604,8 +586,38 @@ channel:
   url: "https://example.com"
 selectors:
   # ... omitted
-auto_source:
+auto_source: {}
 ```
+
+### Dynamic parameters in `channel` and `headers` attributes
+
+Sometimes there are structurally similar pages with different URLs or you need to pass some values into the headers.
+In such cases, you can add _dynamic parameters_ to the `channel` and `headers` values.
+
+Example of an dynamic parameter `id` in the channel URL:
+
+```yml
+channel:
+  url: "http://domainname.tld/whatever/%<id>s.html"
+headers:
+  X-Something: "%<foo>s"
+```
+
+Command line usage example:
+
+```sh
+html2rss feed the_feed_config.yml --params id:42 foo:bar
+```
+
+<details><summary>See a Ruby example</summary>
+
+```ruby
+Html2rss.feed(channel: { url: 'http://domainname.tld/whatever/%<id>s.html' },
+              headers: { 'X-Something': '%<foo>s' },
+              params: { id: 42, foo: 'bar' })
+```
+
+</details>
 
 ### The `stylesheets`: Display the RSS feed nicely in a web browser
 
@@ -757,7 +769,7 @@ rss = Html2rss.feed(
   selectors: {
     items: { selector: '#hot-network-questions > ul > li' },
     title: { selector: 'a' },
-    link: { selector: 'a', extractor: 'href' }
+    url: { selector: 'a', extractor: 'href' }
   }
 )
 
