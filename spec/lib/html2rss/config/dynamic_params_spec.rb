@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::DynamicParams do
+RSpec.describe Html2rss::Config::DynamicParams do
   describe '.call' do
     let(:params) { { 'name' => 'John', 'age' => '30' } }
 
@@ -69,7 +69,7 @@ RSpec.describe Html2rss::DynamicParams do
         value = 'Hello, %<name>s. You are %<age>s years old. Your city is %<city>s.'
         expect do
           described_class.call(value, params)
-        end.to raise_error(Html2rss::DynamicParams::ParamsMissing)
+        end.to raise_error(described_class::ParamsMissing)
       end
     end
   end

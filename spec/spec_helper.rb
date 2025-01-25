@@ -13,9 +13,11 @@ if ENV['COVERAGE']
     minimum_coverage 95
     minimum_coverage_by_file 90
 
+    add_group 'Config', 'lib/html2rss/config'
+    add_group 'Request Service', 'lib/html2rss/request_service'
     add_group 'Auto Source', 'lib/html2rss/auto_source'
     add_group 'Selectors', 'lib/html2rss/selectors'
-    add_group 'Request Service', 'lib/html2rss/request_service'
+    add_group 'RSS Builder', 'lib/html2rss/rss_builder'
   end
 end
 

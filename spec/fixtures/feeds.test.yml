@@ -98,6 +98,11 @@ feeds:
               MPAA rating: %<mpaa_rating>s
           - name: markdown_to_html
   notitle:
+    headers:
+      Content-Language: en
+    stylesheets:
+      - href: '/special.css'
+        type: 'text/css'
     channel:
       url: https://www.horoscope.com/us/horoscopes/general/horoscope-general-daily-today.aspx?sign=10
       language: en
