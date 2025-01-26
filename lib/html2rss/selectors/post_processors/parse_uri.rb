@@ -37,10 +37,7 @@ module Html2rss
         def get
           config_url = context.dig(:config, :url)
 
-          Html2rss::Utils.build_absolute_url_from_relative(
-            Html2rss::Utils.sanitize_url(value),
-            config_url
-          ).to_s
+          Html2rss::Utils.build_absolute_url_from_relative(value, config_url).to_s
         end
       end
     end

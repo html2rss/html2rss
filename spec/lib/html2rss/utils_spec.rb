@@ -15,22 +15,21 @@ RSpec.describe Html2rss::Utils do
   end
 
   describe '.sanitize_url(url)' do
-    let(:examples) do
-      {
-        nil => nil,
-        ' ' => nil,
-        'http://example.com/ ' => 'http://example.com/',
-        'http://ex.ampl/page?sc=345s#abc' => 'http://ex.ampl/page?sc=345s#abc',
-        'https://example.com/sprite.svg#play' => 'https://example.com/sprite.svg#play',
-        'mailto:bogus@void.space' => 'mailto:bogus@void.space',
-        'http://übermedien.de' => 'http://xn--bermedien-p9a.de/',
-        'http://www.詹姆斯.com/' => 'http://www.xn--8ws00zhy3a.com/'
-      }
-    end
-
-    it 'sanitizes the url', :aggregate_failures do
-      examples.each_pair do |url, out|
-        expect(described_class.sanitize_url(Addressable::URI.parse(url))).to eq(Addressable::URI.parse(out)), url
+    {
+      nil => nil,
+      ' ' => nil,
+      'http://example.com/ ' => 'http://example.com/',
+      'http://ex.ampl/page?sc=345s#abc' => 'http://ex.ampl/page?sc=345s#abc',
+      'https://example.com/sprite.svg#play' => 'https://example.com/sprite.svg#play',
+      'mailto:bogus@void.space' => 'mailto:bogus@void.space',
+      'http://übermedien.de' => 'http://xn--bermedien-p9a.de/',
+      'http://www.詹姆斯.com/' => 'http://www.xn--8ws00zhy3a.com/',
+      ',https://wurstfing.er:4711' => 'https://wurstfing.er:4711/',
+      'feed:https://h2r.example.com/auto_source/aHR123' => 'https://h2r.example.com/auto_source/aHR123',
+      'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/' => 'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/'
+    }.each_pair do |url, out|
+      it "normalizes #{url}" do
+        expect(described_class.sanitize_url(url)).to eq(Addressable::URI.parse(out))
       end
     end
   end

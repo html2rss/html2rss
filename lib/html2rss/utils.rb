@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'addressable/uri'
-require 'json'
 require 'regexp_parser'
 require 'tzinfo'
 
@@ -14,7 +13,7 @@ module Html2rss
     # @param base_url [String, Addressable::URI]
     # @return [Addressable::URI]
     def self.build_absolute_url_from_relative(url, base_url)
-      url = Addressable::URI.parse(url)
+      url = Addressable::URI.parse(url.to_s.strip)
       return url if url.absolute?
 
       base_uri = Addressable::URI.parse(base_url)
@@ -28,10 +27,10 @@ module Html2rss
     # @param url [String]
     # @return [Addressable::URI, nil] normalized URL, or nil if input is empty
     def self.sanitize_url(url)
-      url = url.to_s.gsub(/\s+/, ' ').strip
-      return if url.empty?
+      matched_urls = url.to_s.scan(%r{(?:(?:https?|ftp|mailto)://|mailto:)[^\s<>"]+})
+      url = matched_urls.first.to_s.strip
 
-      Addressable::URI.parse(url).normalize
+      Addressable::URI.parse(url).normalize unless url.empty?
     end
 
     ##

@@ -18,20 +18,20 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
   context 'with URI value' do
     let(:url) { URI('http://example.com') }
 
-    it { is_expected.to eq 'http://example.com/' }
+    it { is_expected.to eq 'http://example.com' }
   end
 
   context 'with Addressable::URI value' do
     let(:url) { Addressable::URI.parse('http://example.com') }
 
-    it { is_expected.to eq 'http://example.com/' }
+    it { is_expected.to eq 'http://example.com' }
   end
 
   context 'with String value' do
     context 'with an absolute url containing a trailing space' do
       let(:url) { 'http://example.com ' }
 
-      it { is_expected.to eq 'http://example.com/' }
+      it { is_expected.to eq 'http://example.com' }
     end
 
     context 'with relative url' do
