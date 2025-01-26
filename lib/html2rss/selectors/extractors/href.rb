@@ -45,8 +45,7 @@ module Html2rss
         def get
           return nil unless @href
 
-          sanitized_href = Html2rss::Utils.sanitize_url(@href)
-          Html2rss::Utils.build_absolute_url_from_relative(sanitized_href, @options.channel[:url])
+          Html2rss::Utils.build_absolute_url_from_relative(@href, @options.channel[:url])
         end
       end
     end
