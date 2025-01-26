@@ -46,6 +46,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     }
   end
 
+  describe '.options_key' do
+    specify { expect(described_class.options_key).to eq(:schema) }
+  end
+
   describe '.articles?(parsed_body)' do
     subject(:articles?) { described_class.articles?(parsed_body) }
 

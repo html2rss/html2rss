@@ -35,6 +35,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     Nokogiri::HTML(html)
   end
 
+  describe '.options_key' do
+    specify { expect(described_class.options_key).to eq(:html) }
+  end
+
   describe '.articles?(parsed_body)' do
     subject(:articles?) { described_class.articles?(parsed_body) }
 

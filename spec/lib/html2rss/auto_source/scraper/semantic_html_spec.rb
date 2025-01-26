@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
+  describe '.options_key' do
+    specify { expect(described_class.options_key).to eq(:semantic_html) }
+  end
+
   describe '.articles?' do
     let(:parsed_body) do
       Nokogiri::HTML.parse <<~HTML

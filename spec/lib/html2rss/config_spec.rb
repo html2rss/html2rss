@@ -94,28 +94,63 @@ RSpec.describe Html2rss::Config do
   describe '#initialize' do
     subject(:instance) { described_class.new(config) }
 
-    let(:config) do
-      {
-        headers: { 'User-Agent': 'Agent-User', 'Content-Language': 'en' },
-        stylesheets: [{ href: '/style.xls', media: 'all', type: 'text/xsl' },
-                      { href: '/rss.css', media: 'all', type: 'text/css' },
-                      { href: '/special.css', type: 'text/css' }],
-        channel: { language: 'en', url: 'http://example.com' },
-        selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                     link: { extractor: 'href', selector: '#src-horo-today' } }
-      }
+    context 'when the configuration is valid' do
+      let(:config) do
+        {
+          headers: { 'User-Agent': 'Agent-User', 'Content-Language': 'en' },
+          stylesheets: [{ href: '/style.xls', media: 'all', type: 'text/xsl' },
+                        { href: '/rss.css', media: 'all', type: 'text/css' },
+                        { href: '/special.css', type: 'text/css' }],
+          channel: { language: 'en', url: 'http://example.com' },
+          selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
+                       link: { extractor: 'href', selector: '#src-horo-today' } }
+        }
+      end
+
+      it 'inits' do
+        expect { instance }.not_to raise_error
+      end
+
+      it 'leaves out auto_source' do
+        expect(instance.auto_source).to be_nil
+      end
+
+      it 'applies default configuration' do
+        expect(instance.time_zone).to eq('UTC')
+      end
+
+      it 'deep merges with the default configuration' do
+        expect(instance.url).to eq('http://example.com')
+      end
     end
 
-    it 'inits' do
-      expect { instance }.not_to raise_error
-    end
+    context 'when the configuration is valid with auto_source' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          auto_source: {
+            scraper: {
+              schema: { enabled: false },
+              html: { minimum_selector_frequency: 3 }
+            }
+          }
+        }
+      end
 
-    it 'applies default configuration' do
-      expect(instance.time_zone).to eq('UTC')
-    end
+      let(:expected_auto_source_config) do
+        {
+          scraper: {
+            semantic_html: { enabled: true },      # wasn't explicitly set -> default
+            schema: { enabled: false },            # keeps the value from the config
+            html: { enabled: true, minimum_selector_frequency: 3 } # merges with the default
+          },
+          cleanup: { keep_different_domain: true } # wasn't explicitly set -> default
+        }
+      end
 
-    it 'deep merges with the default configuration' do
-      expect(instance.url).to eq('http://example.com')
+      it 'applies default auto_source configuration' do
+        expect(instance.auto_source).to eq(expected_auto_source_config)
+      end
     end
 
     context 'when the configuration is invalid' do

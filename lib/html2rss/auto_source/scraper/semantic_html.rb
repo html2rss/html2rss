@@ -30,6 +30,8 @@ module Html2rss
           ]
         }.freeze
 
+        def self.options_key = :semantic_html
+
         # Check if the parsed_body contains articles
         # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document
         # @return [Boolean] True if articles are found, otherwise false.
@@ -90,9 +92,10 @@ module Html2rss
           end
         end
 
-        def initialize(parsed_body, url:)
+        def initialize(parsed_body, url:, **opts)
           @parsed_body = parsed_body
           @url = url
+          @opts = opts
         end
 
         attr_reader :parsed_body
