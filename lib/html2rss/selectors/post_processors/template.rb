@@ -5,9 +5,10 @@ module Html2rss
     module PostProcessors
       ##
       # Returns a formatted String according to the string pattern.
-      #
-      # If +self+ is used, the selectors extracted value will be used.
       # It uses [Kernel#format](https://ruby-doc.org/core/Kernel.html#method-i-format)
+      #
+      # It supports the format pattern `%<key>s` and `%{key}`, where `key` is the key of the selector.
+      # If `%{self}` is used, the selectors extracted value will be used.
       #
       # Imagine this HTML:
       #
@@ -28,7 +29,7 @@ module Html2rss
       #        selector: h1
       #        post_process:
       #          name: template
-      #          string: '%{self} (%{price})'
+      #          string: '%{self}s (%{price})'
       #
       # Would return:
       #    'Product (23,42€)'
@@ -55,41 +56,11 @@ module Html2rss
         ##
         # @return [String]
         def get
-          @options[:methods] ? format_string_with_methods : format_string_with_dynamic_params
+          Html2rss::Config::DynamicParams.call(@string, {}, getter: method(:item_value), replace_missing_with: '')
         end
 
         private
 
-        ##
-        # @return [String] the string containing the template
-        attr_reader :string
-
-        ##
-        # @return [Array<String>]
-        def methods
-          @methods ||= @options[:methods].map { |method_name| item_value(method_name) }
-        end
-
-        ##
-        # Formats a string using methods.
-        #
-        # @return [String]
-        # @deprecated Use %<id>s formatting instead. Will be removed in version 1.0.0. See README / Dynamic parameters.
-        def format_string_with_methods
-          Log.warn '[DEPRECATION] This method of using params is deprecated and \
-                  support for it will be removed in version 1.0.0.\
-                  Please use dynamic parameters (i.e. %<id>s, see README.md) instead.'
-
-          string % methods
-        end
-
-        ##
-        # @return [String]
-        def format_string_with_dynamic_params
-          Html2rss::Config::DynamicParams.call(string, {}, getter: method(:item_value), replace_missing_with: '')
-        end
-
-        ##
         # @param key [String, Symbol]
         # @return [String]
         def item_value(key)
