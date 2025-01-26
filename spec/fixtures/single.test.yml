@@ -10,8 +10,8 @@ selectors:
   title:
     selector: ".release-header .text-normal a"
     post_process:
-      name: "template"
-      string: "%{self} (%{author})"
+      - name: "template"
+        string: "%{self} (%{author})"
   author:
     selector: ".avatar"
     extractor: "attribute"
@@ -28,14 +28,12 @@ selectors:
   description:
     selector: ".markdown-body"
     extractor: "html"
-    post_process:
-      name: "sanitize_html"
   published_at:
     selector: "relative-time"
     extractor: "attribute"
     attribute: "datetime"
     post_process:
-      name: "parse_time"
+      - name: "parse_time"
   version:
     selector: ".v-align-top .css-truncate-target"
   categories:

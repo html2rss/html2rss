@@ -21,8 +21,8 @@ feeds:
       title:
         selector: '.release-header .text-normal a'
         post_process:
-          name: 'template'
-          string: '%{self} (%{author})'
+          - name: 'template'
+            string: '%{self} (%{author})'
       author:
         selector: '.avatar'
         extractor: 'attribute'
@@ -39,14 +39,12 @@ feeds:
       description:
         selector: '.markdown-body'
         extractor: 'html'
-        post_process:
-          name: 'sanitize_html'
       published_at:
         selector: 'relative-time'
         extractor: 'attribute'
         attribute: 'datetime'
         post_process:
-          name: 'parse_time'
+          - name: 'parse_time'
       version:
         selector: '.v-align-top .css-truncate-target'
       categories:
@@ -59,30 +57,28 @@ feeds:
       guid:
         - link
   json:
+    headers:
+      Accept: application/json
     channel:
       title: JSON
       url: https://api.cinemascore.com/guest/surveys
       ttl: 600
-      headers:
-        Accept: application/json
     selectors:
       items:
         selector: 'new > array > object, recent > array > object'
       title:
         selector: 'title'
         post_process:
-          name: 'template'
-          string: '%{self} (%{grade}) [Rated %{mpaa_rating}] (%{year})'
+          - name: 'template'
+            string: '%<self>s (%<grade>s) [Rated %<mpaa_rating>s] (%<year>s)'
       grade:
         selector: 'grade'
       movie_title:
         selector: 'movie_title'
       link:
         post_process:
-          name: 'template'
-          string: 'https://www.metacritic.com/search/movie/%s/results'
-          methods:
-            - movie_title
+          - name: 'template'
+            string: 'https://www.metacritic.com/search/movie/%<movie_title>s/results'
       mpaa_rating:
         selector: 'mpaa_rating'
       distributor:
@@ -97,11 +93,16 @@ feeds:
         post_process:
           - name: template
             string: |
-              # %{movie_title}
+              # %<movie_title>s
 
-              MPAA rating: %{mpaa_rating}
+              MPAA rating: %<mpaa_rating>s
           - name: markdown_to_html
   notitle:
+    headers:
+      Content-Language: en
+    stylesheets:
+      - href: '/special.css'
+        type: 'text/css'
     channel:
       url: https://www.horoscope.com/us/horoscopes/general/horoscope-general-daily-today.aspx?sign=10
       language: en

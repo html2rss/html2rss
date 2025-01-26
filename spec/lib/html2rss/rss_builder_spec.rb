@@ -5,7 +5,7 @@ RSpec.describe Html2rss::RssBuilder do
     described_class.new(channel:,
                         articles:,
                         stylesheets: [
-                          Html2rss::RssBuilder::Stylesheet.new(href: 'rss.xsl', type: 'text/xsl')
+                          { href: 'rss.xsl', type: 'text/xsl' }
                         ])
   end
 

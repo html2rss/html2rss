@@ -14,10 +14,6 @@ RSpec.describe Html2rss do
     expect(Html2rss::Error).to be < StandardError
   end
 
-  describe '::CONFIG_KEY_FEEDS' do
-    it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
-  end
-
   describe '.config_from_yaml_file(file, feed_name = nil)' do
     subject(:feed) do
       described_class.config_from_yaml_file(config_file, name)
@@ -154,16 +150,16 @@ RSpec.describe Html2rss do
 
       let(:feed_config) do
         {
+          headers: {
+            Accept: 'application/json',
+            'User-Agent': 'html2rss-request',
+            'X-Something': 'Foobar',
+            Authorization: 'Token deadbea7',
+            Cookie: 'monster=MeWantCookie'
+          },
           channel: {
             url: 'https://httpbin.org/headers',
-            title: 'httpbin headers',
-            headers: {
-              Accept: 'application/json',
-              'User-Agent': 'html2rss-request',
-              'X-Something': 'Foobar',
-              Authorization: 'Token deadbea7',
-              Cookie: 'monster=MeWantCookie'
-            }
+            title: 'httpbin headers'
           },
           selectors: {
             items: { selector: 'object > headers' },
@@ -183,7 +179,7 @@ RSpec.describe Html2rss do
       end
     end
 
-    context 'with json response' do
+    context 'with config having selectors and is json response' do
       subject(:feed) do
         VCR.use_cassette(name) do
           config = described_class.config_from_yaml_file(config_file, name)

@@ -42,7 +42,7 @@ module Html2rss
 
     def call
       RSS::Maker.make('2.0') do |maker|
-        Html2rss::RssBuilder::Stylesheet.add(maker, @stylesheets)
+        Stylesheet.add(maker, stylesheets)
 
         make_channel(maker.channel)
         make_items(maker)
@@ -52,6 +52,10 @@ module Html2rss
     private
 
     attr_reader :channel, :articles
+
+    def stylesheets
+      @stylesheets.map { |style| Stylesheet.new(**style) }
+    end
 
     def make_channel(maker)
       %i[language title description ttl].each do |key|

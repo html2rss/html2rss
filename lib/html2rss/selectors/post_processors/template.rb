@@ -86,7 +86,7 @@ module Html2rss
         ##
         # @return [String]
         def format_string_with_dynamic_params
-          DynamicParams.call(string, {}, getter: method(:item_value), replace_missing_with: '')
+          Html2rss::Config::DynamicParams.call(string, {}, getter: method(:item_value), replace_missing_with: '')
         end
 
         ##

@@ -3,6 +3,7 @@ PATH
   specs:
     html2rss (0.17.0)
       addressable (~> 2.7)
+      dry-validation
       faraday (> 2.0.1, < 3.0)
       faraday-follow_redirects
       kramdown
@@ -60,6 +61,12 @@ GEM
       dry-core (~> 1.0)
       dry-inflector (~> 1.0)
       dry-logic (~> 1.4)
+      zeitwerk (~> 2.6)
+    dry-validation (1.10.0)
+      concurrent-ruby (~> 1.0)
+      dry-core (~> 1.0, < 2)
+      dry-initializer (~> 3.0)
+      dry-schema (>= 1.12, < 2)
       zeitwerk (~> 2.6)
     faraday (2.12.2)
       faraday-net_http (>= 2.0, < 3.5)
@@ -220,6 +227,7 @@ CHECKSUMS
   dry-logic (1.6.0) sha256=da6fedbc0f90fc41f9b0cc7e6f05f5d529d1efaef6c8dcc8e0733f685745cea2
   dry-schema (1.13.4) sha256=caeb644de0be412d347eb4a6d91c56ceef8ec22cfceb98e80d03d354954b1d2a
   dry-types (1.8.0) sha256=bdf444e0d2ff83f500271c7d38cb29690c2654fa78e588f68349a7b1e7341131
+  dry-validation (1.10.0) sha256=352afd75629772570f54f03d3e7847ac345e628bf345874d49f1dabacc8ceaac
   faraday (2.12.2) sha256=157339c25c7b8bcb739f5cf1207cb0cefe8fa1c65027266bcbc34c90c84b9ad6
   faraday-follow_redirects (0.3.0) sha256=d92d975635e2c7fe525dd494fcd4b9bb7f0a4a0ec0d5f4c15c729530fdb807f9
   faraday-net_http (3.4.0) sha256=a1f1e4cd6a2cf21599c8221595e27582d9936819977bbd4089a601f24c64e54a

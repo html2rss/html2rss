@@ -19,6 +19,7 @@ module Html2rss
     # A context instance is passed to Item Extractors.
     Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
 
+    ITEMS_SELECTOR_KEY = :items
     ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
     SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
 
@@ -48,7 +49,7 @@ module Html2rss
     end
 
     def articles
-      @articles ||= @selectors.dig(:items, :order) == 'reverse' ? to_a.tap(&:reverse!) : to_a
+      @articles ||= @selectors.dig(ITEMS_SELECTOR_KEY, :order) == 'reverse' ? to_a.tap(&:reverse!) : to_a
     end
 
     ##
@@ -67,7 +68,7 @@ module Html2rss
     ##
     # Returns the CSS selector for the items.
     # @return [String] the CSS selector for the items
-    def items_selector = @selectors.dig(:items, :selector)
+    def items_selector = @selectors.dig(ITEMS_SELECTOR_KEY, :selector)
 
     # @return [Html2rss::RssBuilder::Article] the extracted article.
     def extract_article(item)
@@ -90,6 +91,7 @@ module Html2rss
     def select(name, item)
       name = name.to_sym
 
+      raise InvalidSelectorName, "`#{name}` is not an attribute selector" if name == ITEMS_SELECTOR_KEY
       raise InvalidSelectorName, "`#{name}` is not defined" unless @selectors[name]
 
       SPECIAL_ATTRIBUTES.member?(name) ?  select_special(name, item) : select_regular(name, item)
@@ -156,8 +158,6 @@ module Html2rss
 
     def post_process(item, value, post_process_steps)
       post_process_steps.each do |options|
-        options = Hash.try_convert(options) unless options.is_a?(Hash)
-
         context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
                               item:, scraper: self, options:)
 
