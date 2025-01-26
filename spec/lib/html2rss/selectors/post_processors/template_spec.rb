@@ -22,13 +22,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
     end
   end
 
-  context 'with methods present (simple formatting)' do
-    let(:options) { { string: '%s! %s is %s! %s', methods: %i[self name author returns_nil] } }
-
-    it { is_expected.to eq 'Hi! My name is Slim Shady! ' }
-  end
-
-  context 'with methods absent (complex formatting)' do
+  context 'with mixed complex formatting notation' do
     let(:options) { { string: '%{self}! %<name>s is %{author}! %{returns_nil}' } } # rubocop:disable Style/FormatStringToken
 
     it { is_expected.to eq 'Hi! My name is Slim Shady! ' }
