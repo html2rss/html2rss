@@ -86,7 +86,7 @@ Alright, let's dive in.
 
 ### The `auto_source`: automatically find the items
 
-The `auto_source` scraper finds items automatically. To find them its scrapers searches for:
+The `auto_source` scraper finds items automatically. To find them its scrapers search for:
 
 1. `schema`: parses `<script type="json/ld">` tags which contain Schema.org objects like [Article](https://schema.org/Article).
 2. `semantic_html` looks for [semantic HTML tags](https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility/HTML)
