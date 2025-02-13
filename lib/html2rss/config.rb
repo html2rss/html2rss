@@ -62,6 +62,7 @@ module Html2rss
     def initialize(config)
       config = handle_deprecated_channel_attributes(config)
       config = apply_default_config(config)
+      config = apply_default_auto_source_config(config) if config[:auto_source]
 
       validator = Validator.new.call(config)
 
@@ -101,6 +102,10 @@ module Html2rss
 
     def apply_default_config(config)
       deep_merge(self.class.default_config, config)
+    end
+
+    def apply_default_auto_source_config(config)
+      deep_merge({ auto_source: Html2rss::AutoSource::DEFAULT_CONFIG }, config)
     end
 
     def deep_merge(hash1, hash2)

@@ -19,6 +19,8 @@ module Html2rss
 
         TAG_SELECTOR = 'script[type="application/ld+json"]'
 
+        def self.options_key = :schema
+
         class << self
           def articles?(parsed_body)
             parsed_body.css(TAG_SELECTOR).any? do |script|
@@ -63,7 +65,7 @@ module Html2rss
             elsif ItemList::SUPPORTED_TYPES.member?(type)
               ItemList
             else
-              Log.warn("Schema#scraper_for_schema_object: Unsupported schema object @type: #{type}")
+              Log.debug("Schema#scraper_for_schema_object: Unsupported schema object @type: #{type}")
               nil
             end
           end
@@ -78,9 +80,10 @@ module Html2rss
           end
         end
 
-        def initialize(parsed_body, url:)
+        def initialize(parsed_body, url:, **opts)
           @parsed_body = parsed_body
           @url = url
+          @opts = opts
         end
 
         ##

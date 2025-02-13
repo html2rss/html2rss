@@ -6,7 +6,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   it { is_expected.to be_a(Module) }
   it { expect(described_class::SCRAPERS).to be_an(Array) }
 
-  describe '.from(parsed_body)' do
+  describe '.from(parsed_body, opts)' do
     context 'when suitable scraper is found' do
       let(:parsed_body) do
         Nokogiri::HTML('<html><body><article><a href="#"></a></article></body></html>')

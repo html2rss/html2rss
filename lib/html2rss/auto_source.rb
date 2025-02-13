@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
 require 'parallel'
-require 'addressable'
+require 'dry-validation'
 
 module Html2rss
   ##
@@ -19,15 +18,51 @@ module Html2rss
   # depending on the website's structure and its markup.
   # @see Html2rss::AutoSource::Scraper::Html
   class AutoSource
-    def initialize(response, _opts = {})
+    DEFAULT_CONFIG = {
+      scraper: {
+        schema: {
+          enabled: true
+        },
+        semantic_html: {
+          enabled: true
+        },
+        html: {
+          enabled: true,
+          minimum_selector_frequency: Scraper::Html::DEFAULT_MINIMUM_SELECTOR_FREQUENCY
+        }
+      },
+      cleanup: { keep_different_domain: true }
+    }.freeze
+
+    Config = Dry::Schema.Params do
+      optional(:scraper).hash do
+        optional(:schema).hash do
+          optional(:enabled).filled(:bool)
+        end
+        optional(:semantic_html).hash do
+          optional(:enabled).filled(:bool)
+        end
+        optional(:html).hash do
+          optional(:enabled).filled(:bool)
+          optional(:minimum_selector_frequency).filled(:integer, gt?: 0)
+        end
+      end
+
+      optional(:cleanup).hash do
+        optional(:keep_different_domain).filled(:bool)
+      end
+    end
+
+    def initialize(response, opts = DEFAULT_CONFIG)
       @parsed_body = response.parsed_body
       @url = response.url
+      @opts = opts
     end
 
     def articles
       @articles ||= extract_articles.tap do |articles|
         Html2rss::AutoSource::Reducer.call(articles, url:)
-        Html2rss::AutoSource::Cleanup.call(articles, url:, keep_different_domain: true)
+        Html2rss::AutoSource::Cleanup.call(articles, url:, **@opts[:cleanup])
       end
     rescue Html2rss::AutoSource::Scraper::NoScraperFound
       Log.warn 'No auto source scraper found for the provided URL. Skipping auto source.'
@@ -39,18 +74,23 @@ module Html2rss
     attr_reader :url, :parsed_body
 
     def extract_articles
-      Scraper.from(parsed_body).flat_map do |scraper|
-        instance = scraper.new(parsed_body, url:)
+      Scraper.from(parsed_body, @opts[:scraper]).flat_map do |scraper|
+        scraper_options = @opts.dig(:scraper, scraper.options_key)
 
-        articles_in_thread = Parallel.map(instance.each) do |article_hash|
-          Log.debug "Scraper: #{scraper} in worker: #{Parallel.worker_number} [#{article_hash[:url]}]"
+        instance = scraper.new(parsed_body, url:, **scraper_options)
 
-          RssBuilder::Article.new(**article_hash, scraper:)
+        run_scraper(instance).tap do |articles_in_thread|
+          Reducer.call(articles_in_thread, url:)
         end
+      end
+    end
 
-        Reducer.call(articles_in_thread, url:)
+    def run_scraper(instance)
+      Parallel.map(instance.each) do |article_hash|
+        scraper = instance.class
+        Log.debug "Scraper: #{scraper} in worker: #{Parallel.worker_number} [#{article_hash[:url]}]"
 
-        articles_in_thread
+        RssBuilder::Article.new(**article_hash, scraper:)
       end
     end
   end

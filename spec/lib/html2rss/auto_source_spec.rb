@@ -21,6 +21,18 @@ RSpec.describe Html2rss::AutoSource do
 
   let(:headers) { { 'content-type': 'text/html' } }
 
+  describe '::DEFAULT_CONFIG' do
+    it 'is a frozen Hash' do
+      expect(described_class::DEFAULT_CONFIG).to be_a(Hash) & be_frozen
+    end
+  end
+
+  describe '::Config' do
+    it 'validates default config' do
+      expect(described_class::Config.call(described_class::DEFAULT_CONFIG)).to be_success
+    end
+  end
+
   describe '#articles' do
     before do
       allow(Parallel).to receive(:flat_map)

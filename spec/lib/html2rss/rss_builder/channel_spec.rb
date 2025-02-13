@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require 'addressable'
 require 'timecop'
 
 RSpec.describe Html2rss::RssBuilder::Channel do
-  subject(:instance) { described_class.new(response) }
+  subject(:instance) { described_class.new(response, overrides:) }
 
+  let(:overrides) { {} }
   let(:response) do
     Html2rss::RequestService::Response.new body:,
                                            headers:,
@@ -50,7 +52,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
   describe '#language' do
     let(:headers) { { 'content-language' => nil, 'content-type': 'text/html' } }
 
-    context 'with a language' do
+    context 'with <html lang> attribute' do
       let(:body) { '<!doctype html><html lang="fr"><body></body></html>' }
 
       it 'extracts the language' do
@@ -76,7 +78,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
   end
 
   describe '#description' do
-    context 'with a description' do
+    context 'with html_response having a description' do
       let(:body) do
         '<head><meta name="description" content="Example"></head>'
       end
@@ -86,11 +88,19 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       end
     end
 
-    context 'without a description' do
+    context 'with html_response without having a description' do
       let(:body) { '<head></head>' }
 
       it 'generates a default description' do
         expect(instance.description).to eq 'Latest items from https://example.com'
+      end
+    end
+
+    context 'when overrides[:description] is present and not empty' do
+      let(:overrides) { { description: 'Overridden Description' } }
+
+      it 'returns the overridden description' do
+        expect(instance.description).to eq('Overridden Description')
       end
     end
   end

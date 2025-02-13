@@ -86,13 +86,31 @@ Alright, let's dive in.
 
 ### The `auto_source`: automatically find the items
 
-The `auto_source` scraper finds items automatically. To find them it searches the websites for:
+The `auto_source` scraper finds items automatically. To find them its scrapers search for:
 
-1. `<script type="json/ld">` tags which contain Schema.org objects like [Article](https://schema.org/Article).
-2. [Semantic HTML](https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility/HTML), i.e. tags like `<article>`.
-3. As last resort, tries its luck by finding frequently repeated HTML patterns.
+1. `schema`: parses `<script type="json/ld">` tags which contain Schema.org objects like [Article](https://schema.org/Article).
+2. `semantic_html` looks for [semantic HTML tags](https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility/HTML)
+3. `html`: tries to find articles by selecting frequently occuring selectors.
 
 It's a good idea to give `auto_source` a try, before starting to configure the `selectors` scraper.
+
+You can fine-tune the scraper settings like this:
+
+```yml
+channel:
+  url: https://example.com
+auto_source:
+  scraper:
+    schema:
+      enabled: false # default: true
+    semantic_html:
+      enabled: false # default: true
+    html:
+      enabled: true
+      minimum_selector_frequency: 3 # default: 2
+  cleanup:
+    keep_different_domain: false # default: true
+```
 
 ### The `selectors`: specify CSS selectors
 

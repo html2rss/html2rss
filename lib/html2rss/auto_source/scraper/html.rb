@@ -13,6 +13,10 @@ module Html2rss
 
         TAGS_TO_IGNORE = /(nav|footer|header)/i
 
+        DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
+
+        def self.options_key = :html
+
         def self.articles?(parsed_body)
           new(parsed_body, url: '').any?
         end
@@ -30,10 +34,11 @@ module Html2rss
           xpath.gsub(/\[\d+\]/, '')
         end
 
-        def initialize(parsed_body, url:)
+        def initialize(parsed_body, url:, **opts)
           @parsed_body = parsed_body
           @url = url
           @selectors = Hash.new(0)
+          @opts = opts
         end
 
         attr_reader :parsed_body
@@ -61,7 +66,7 @@ module Html2rss
         # Find all the anchors in root.
         # @param root [Nokogiri::XML::Node] The root node to search for anchors
         # @return [Set<String>] The set of XPath selectors which exist at least min_frequency times
-        def frequent_selectors(root = @parsed_body.at_css('body'), min_frequency: 2)
+        def frequent_selectors(root = @parsed_body.at_css('body'))
           @frequent_selectors ||= begin
             root.traverse do |node|
               next if !node.element? || node.name != 'a'
@@ -70,7 +75,7 @@ module Html2rss
             end
 
             @selectors.keys
-                      .select { |selector| (@selectors[selector]).to_i >= min_frequency }
+                      .select { |selector| (@selectors[selector]).to_i >= minimum_selector_frequency }
                       .to_set
           end
         end
@@ -90,6 +95,10 @@ module Html2rss
 
           false
         end
+
+        private
+
+        def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
       end
     end
   end

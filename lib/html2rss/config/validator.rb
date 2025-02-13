@@ -22,11 +22,6 @@ module Html2rss
         optional(:time_zone).filled(:string)
       end
 
-      AutoSourceConfig = Dry::Schema.Params do
-        optional(:test).filled(:string)
-        # TODO: #243 add real configuration options
-      end
-
       StylesheetConfig = Dry::Schema.Params do
         required(:href).filled(:string)
         required(:type).filled(:string, included_in?: STYLESHEET_TYPES)
@@ -40,7 +35,7 @@ module Html2rss
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)
 
-        optional(:auto_source).hash(AutoSourceConfig)
+        optional(:auto_source).hash(AutoSource::Config)
         optional(:selectors).hash
       end
 

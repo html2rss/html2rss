@@ -22,10 +22,13 @@ module Html2rss
       ##
       # Returns an array of scrapers that claim to find articles in the parsed body.
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
+      # @param opts [Hash] The options hash.
       # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
-      def self.from(parsed_body)
-        scrapers = SCRAPERS.select { |scraper| scraper.articles?(parsed_body) }
-        raise NoScraperFound, 'No suitable scraper found for URL.' if scrapers.empty?
+      def self.from(parsed_body, opts = Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
+        scrapers = SCRAPERS.select { |scraper| opts.dig(scraper.options_key, :enabled) }
+        scrapers.select! { |scraper| scraper.articles?(parsed_body) }
+
+        raise NoScraperFound, 'No scrapers found for URL.' if scrapers.empty?
 
         scrapers
       end
