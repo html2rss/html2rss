@@ -8,6 +8,8 @@ module Html2rss
     # 2. the HTTP response
     class Channel
       DEFAULT_TTL_IN_MINUTES = 360
+      DEFAULT_DESCRIPTION_TEMPLATE = 'Latest items from %<url>s'
+
       ##
       #
       # @param response [Html2rss::RequestService::Response]
@@ -24,11 +26,13 @@ module Html2rss
       def url = @url ||= @response.url
 
       def description
-        return overrides[:description] if overrides[:description]
+        return overrides[:description] unless overrides[:description].to_s.empty?
 
         description = parsed_body.at_css('meta[name="description"]')&.[]('content') if html_response?
 
-        description || "Latest items from #{url}"
+        return format(DEFAULT_DESCRIPTION_TEMPLATE, url: url) if description.to_s.empty?
+
+        description
       end
 
       def ttl
