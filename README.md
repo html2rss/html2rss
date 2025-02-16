@@ -47,14 +47,8 @@ channel:
 selectors:
   items:
     selector: "article[id^='post-']"
-  title:
-    selector: h2
-  url:
-    selector: a
-    extractor: href
-  description:
-    selector: ".post-content"
-auto_source: {} # this enables auto_source additionally. Remove if you don't want that.
+    enhance: true
+# auto_source: {} # Enables auto_source additionally when uncommented
 ```
 
 Build the feed from this config with: `html2rss feed ./my_config_file.yml`.
@@ -84,7 +78,7 @@ Alright, let's dive in.
 | `language`    | optional     | String  | auto-generated | Determined by `lang` attribute                     |
 | `time_zone`   | optional     | String  | `'UTC'`        | TimeZone name                                      |
 
-### The `auto_source`: automatically find the items
+### The scraper `auto_source`: automatically find the items
 
 The `auto_source` scraper finds items automatically. To find them its scrapers search for:
 
@@ -112,13 +106,14 @@ auto_source:
     keep_different_domain: false # default: true
 ```
 
-### The `selectors`: specify CSS selectors
+### The scraper `selectors`: more control
 
-The `selectors` scraper requires you to specify CSS selectors.
+> [!INFO]
+> To build a [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item), you need at least a `title` **or** a `description` in your item. You can, of course, have both.
+
+The `selectors` scraper allows you to specify CSS selectors and by this giving you full control of extraction.
 
 You must give an **`items`** selector hash, which contains the CSS selector. The items selector selects a collection of HTML tags from which the RSS feed items are built. Except for the `items` selector, all other keys are scoped to each item of the collection.
-
-To build a [valid RSS 2.0 item](http://www.rssboard.org/rss-profile#element-channel-item), you need at least a `title` **or** a `description` in your item. You can, of course, have both.
 
 **Having an `items` and a `title` selector is enough** to build a simple feed:
 
@@ -131,6 +126,23 @@ selectors:
   title:
     selector: "h1"
 ```
+
+#### Automatically enhance items
+
+Specifying the `title`, `url` or `image` selector in every config quickly becomes cumbersome.
+html2rss enhances every item automatically.
+However, if you specify a selector, its value will be used.
+
+```yml
+channel:
+  url: "https://example.com"
+selectors:
+  items:
+    selector: ".article"
+    enhance: true # default: true
+```
+
+#### Selectors which will be included in the the RSS feed
 
 Your `selectors` hash can contain arbitrary named selectors, but only a few will make it into the RSS feed (due to the RSS 2.0 specification):
 
