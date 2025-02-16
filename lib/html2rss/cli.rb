@@ -40,9 +40,11 @@ module Html2rss
                   desc: 'The strategy to request the URL',
                   enum: RequestService.strategy_names,
                   default: RequestService.default_strategy_name
+    method_option :items_selector, type: :string, desc: 'CSS selector for items (will be enhanced) (optional)'
     def auto(url)
       strategy = options.fetch(:strategy) { RequestService.default_strategy_name }.to_sym
-      puts Html2rss.auto_source(url, strategy:)
+
+      puts Html2rss.auto_source(url, strategy:, items_selector: options[:items_selector])
     end
   end
 end
