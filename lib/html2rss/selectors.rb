@@ -190,11 +190,11 @@ module Html2rss
       value
     end
 
-    # @return [Enclosure] enclosure details.
+    # @return [Hash] enclosure details.
     def enclosure(item, selector)
       url = Html2rss::Utils.build_absolute_url_from_relative(select_regular(:enclosure, item), @url)
 
-      Html2rss::RssBuilder::Enclosure.new(url:, type: selector[:content_type])
+      { url:, type: selector[:content_type] }
     end
   end
 end

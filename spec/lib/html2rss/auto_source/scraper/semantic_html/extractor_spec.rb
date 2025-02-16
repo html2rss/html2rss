@@ -16,6 +16,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
           <time datetime="2024-02-24T12:00-03:00">FCK PTN</time>
           <p>Sample description</p>
           <img src="image.jpg" alt="Image" />
+          <video> <source src="video.mp4" type="video/mp4"></video>
         </article>
       HTML
     end
@@ -30,7 +31,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
           url: an_instance_of(Addressable::URI),
-          image: an_instance_of(Addressable::URI)
+          image: an_instance_of(Addressable::URI),
+          enclosure: a_hash_including(
+            url: an_instance_of(Addressable::URI),
+            type: 'video/mp4'
+          )
         )
 
         expect(article_hash[:published_at].to_s).to eq '2024-02-24T12:00:00-03:00'
