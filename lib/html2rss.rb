@@ -83,12 +83,17 @@ module Html2rss
   #
   # @param url [String] the URL to automatically source the feed from
   # @param strategy [Symbol] the request strategy to use
+  # @param items_selector [String] CSS selector for items (will be enhanced) (optional)
   # @return [RSS::Rss]
-  def self.auto_source(url, strategy: :faraday)
-    Html2rss.feed(
+  def self.auto_source(url, strategy: :faraday, items_selector: nil)
+    config = {
       strategy:,
       channel: { url: url },
       auto_source: {}
-    )
+    }
+
+    config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
+
+    feed(config)
   end
 end

@@ -235,5 +235,20 @@ RSpec.describe Html2rss do
       expect(feed_return.channel.link).to eq 'https://www.welt.de/'
       expect(feed_return.items.size >= 29).to be true
     end
+
+    context 'with items_selector' do
+      before do
+        allow(described_class).to receive(:feed).and_return(nil)
+      end
+
+      let(:items_selector) { '.css.selector' }
+
+      it 'adds selectors.items selector and enhance to config' do
+        described_class.auto_source(url, items_selector:)
+        expect(described_class).to have_received(:feed).with(
+          hash_including(selectors: { items: { selector: items_selector, enhance: true } })
+        )
+      end
+    end
   end
 end

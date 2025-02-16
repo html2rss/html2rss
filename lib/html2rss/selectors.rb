@@ -12,12 +12,14 @@ module Html2rss
   #
   # Additionally, it uniquely offers the capability to convert JSON into XML,
   # extending its versatility for diverse data processing workflows.
-  class Selectors
+  class Selectors # rubocop:disable Metrics/ClassLength
     class InvalidSelectorName < Html2rss::Error; end
 
     include Enumerable
     # A context instance is passed to Item Extractors.
     Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
+
+    DEFAULT_CONFIG = { items: { enhance: true } }.freeze
 
     ITEMS_SELECTOR_KEY = :items
     ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
@@ -58,10 +60,14 @@ module Html2rss
     def each(&)
       return enum_for(:each) unless block_given?
 
+      enhance = enhance?
+
       parsed_body.css(items_selector).each do |item|
-        if (article = extract_article(item))
-          yield article
-        end
+        article_hash = extract_article(item)
+
+        enhance_article_hash(article_hash, item) if enhance
+
+        yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
       end
     end
 
@@ -70,16 +76,33 @@ module Html2rss
     # @return [String] the CSS selector for the items
     def items_selector = @selectors.dig(ITEMS_SELECTOR_KEY, :selector)
 
+    ## @return [Boolean] whether to enhance the article hash with auto_source's semantic HTML extraction.
+    def enhance? = !!@selectors.dig(ITEMS_SELECTOR_KEY, :enhance)
+
     # @return [Html2rss::RssBuilder::Article] the extracted article.
     def extract_article(item)
-      article_hash = {}
+      @rss_item_attributes.to_h { |key| [key, select(key, item)] }.compact
+    end
 
-      @rss_item_attributes.each_with_object(article_hash) do |key, hash|
-        value = select(key, item)
+    ##
+    # Enhances the article hash with auto_source's semantic HTML extraction.
+    # Keeps existing values and only adds new ones.
+    # This method is called only if the `enhance` option is set to true.
+    #
+    # @param article_hash [Hash] The article hash to enhance.
+    # @param item [Nokogiri::XML::Element] The item from which to extract additional attributes.
+    # @return [Hash] The enhanced article_hash.
+    def enhance_article_hash(article_hash, item)
+      extracted = AutoSource::Scraper::SemanticHtml::Extractor.new(item, url: @url).call
+
+      return article_hash unless extracted
+
+      extracted.each_with_object(article_hash) do |(key, value), hash|
+        next if value.nil?
+        next if article_hash.key?(key) && !hash[key].nil?
+
         hash[key] = value
-      end.compact!
-
-      Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
+      end
     end
 
     ##

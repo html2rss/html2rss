@@ -15,6 +15,7 @@ module Html2rss
         params do
           required(:selector).filled(:string)
           optional(:order).filled(included_in?: %w[reverse])
+          optional(:enhance).filled(:bool?)
         end
       end
 

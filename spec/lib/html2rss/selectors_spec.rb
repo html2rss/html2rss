@@ -17,8 +17,8 @@ RSpec.describe Html2rss::Selectors do
   let(:body) do
     <<~HTML
       <html><body>
-        <article><h1>article1</h1></article>
-        <article><h1>article2</h1></article>
+        <article><h1>article1</h1><a href="/article1">More</a></article>
+        <article><h1>article2</h1><a href="/article2">More</a></article>
       </body></html>
     HTML
   end
@@ -98,10 +98,47 @@ RSpec.describe Html2rss::Selectors do
         HTML
       end
 
-      it 'yields the articles with the static title and the sanitized <body> as description' do
-        expect(instance.extract_article(item)).to be_a(Html2rss::RssBuilder::Article).and(
-          an_object_having_attributes(title: 'Test string', description: %r{<main> <h1>article1</h1> </main>})
+      it 'yields the articles with the static title and the <body> as description' do
+        expect(instance.extract_article(item)).to a_hash_including(
+          title: 'Test string',
+          description: "<body>\n  <main>\n    <h1>article1</h1>\n    <script>alert('');</script>\n  </main>\n</body>"
         )
+      end
+    end
+  end
+
+  describe '#enhance_article_hash(article_hash, item)' do
+    subject(:enhanced_article) do
+      item = Nokogiri::HTML(body).at('article:first')
+
+      instance.enhance_article_hash(article_hash, item)
+    end
+
+    before { selectors[:items][:enhance] = true }
+
+    let(:article_hash) { {} }
+
+    it 'enhances the article_hash' do
+      expect(enhanced_article).to be(article_hash) & include(:title, :url)
+    end
+
+    context 'when selector/key is already present in article_hash' do
+      let(:article_hash) { { title: 'Selected Article1 Headline' } }
+
+      it 'does not override the existing value' do
+        expect(enhanced_article[:title]).to eq(article_hash[:title])
+      end
+    end
+
+    context 'when extractor returns nil' do
+      before do
+        extractor = Html2rss::AutoSource::Scraper::SemanticHtml::Extractor
+
+        allow(extractor).to receive(:new).and_return(instance_double(extractor, call: nil))
+      end
+
+      it 'returns article_hash' do
+        expect(enhanced_article).to be(article_hash)
       end
     end
   end
