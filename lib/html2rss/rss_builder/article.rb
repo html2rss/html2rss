@@ -108,10 +108,11 @@ module Html2rss
 
       # @return [Html2rss::RssBuilder::Enclosure, nil]
       def enclosure
-        if @to_h[:enclosure]
-          @to_h[:enclosure]
-        elsif image
-          Html2rss::RssBuilder::Enclosure.new(url: image)
+        case (object = @to_h[:enclosure])
+        when Hash
+          @enclosure ||= Html2rss::RssBuilder::Enclosure.new(object)
+        else
+          @enclosure ||= Html2rss::RssBuilder::Enclosure.new(url: image) if image
         end
       end
 
