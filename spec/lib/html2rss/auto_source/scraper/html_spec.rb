@@ -54,7 +54,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         image: nil,
         description: 'Article 1 Headline Teaser for article 1. Read more',
         id: '/article1/',
-        published_at: nil }
+        published_at: nil,
+        enclosure: nil }
     end
     let(:second_article) do
       { title: 'Article 2 Headline',
@@ -62,7 +63,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         image: nil,
         description: 'Article 2 Headline Teaser for article 2. Read more',
         id: '/article2/',
-        published_at: nil }
+        published_at: nil,
+        enclosure: nil }
     end
 
     it 'yields articles' do
@@ -94,7 +96,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
           image: nil,
           description: 'Bla bla bla',
           id: '/',
-          published_at: nil }
+          published_at: nil,
+          enclosure: nil }
       end
 
       let(:second_article) do
@@ -103,7 +106,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
           image: nil,
           description: '[Plonk]',
           id: '/',
-          published_at: nil }
+          published_at: nil,
+          enclosure: nil }
       end
 
       it 'contains the articles with same id', :aggregate_failures do
