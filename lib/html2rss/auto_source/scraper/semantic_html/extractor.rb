@@ -49,7 +49,8 @@ module Html2rss
               image: extract_image,
               description: extract_description,
               id: generate_id,
-              published_at: extract_published_at
+              published_at: extract_published_at,
+              enclosure: extract_enclosure
             }
           end
 
@@ -128,6 +129,21 @@ module Html2rss
             end
 
             times.min
+          end
+
+          def extract_enclosure = extract_enclosures.first
+
+          # @return [Hash, nil] The enclosure details or nil.
+          def extract_enclosures
+            article_tag.css('video source[src], audio[src]')
+                       .filter_map do |tag|
+              unless (src = String(tag['src'])).empty?
+                {
+                  url: Utils.build_absolute_url_from_relative(src, url),
+                  type: tag['type']
+                }.compact
+              end
+            end
           end
         end
       end

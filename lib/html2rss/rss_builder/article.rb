@@ -108,10 +108,15 @@ module Html2rss
 
       # @return [Html2rss::RssBuilder::Enclosure, nil]
       def enclosure
-        if @to_h[:enclosure]
-          @to_h[:enclosure]
-        elsif image
-          Html2rss::RssBuilder::Enclosure.new(url: image)
+        return @enclosure if defined?(@enclosure)
+
+        case (object = @to_h[:enclosure])
+        when Hash
+          @enclosure = Html2rss::RssBuilder::Enclosure.new(**object)
+        when nil
+          @enclosure = Html2rss::RssBuilder::Enclosure.new(url: image) if image
+        else
+          Log.warn "Article: unknown enclosure type: #{object.class}"
         end
       end
 
