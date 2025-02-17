@@ -49,10 +49,10 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          return if frequent_selectors.empty?
-
           frequent_selectors.each do |selector|
             parsed_body.xpath(selector).each do |selected_tag|
+              next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
+
               article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_condition))
 
               if article_tag && (article_hash = HtmlExtractor.new(article_tag, base_url: @url).call)
@@ -84,14 +84,11 @@ module Html2rss
           # Ignore tags that are below a tag which is in TAGS_TO_IGNORE.
           return false if node.path.match?(TAGS_TO_IGNORE)
 
-          # Ignore tags that are below a tag which has a class which matches TAGS_TO_IGNORE.
-          return false if HtmlNavigator.parent_until_condition(node, proc do |current_node|
-            current_node.classes.any? { |klass| klass.match?(TAGS_TO_IGNORE) }
-          end)
-
           return true if %w[body html].include?(node.name)
 
-          return true if node.parent.css('a').size > 1
+          count_of_anchors_below = node.name == 'a' ? 1 : node.css('a').size
+
+          return true if node.parent.css('a').size > count_of_anchors_below
 
           false
         end
