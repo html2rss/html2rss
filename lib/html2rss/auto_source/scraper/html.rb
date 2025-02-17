@@ -53,9 +53,9 @@ module Html2rss
 
           frequent_selectors.each do |selector|
             parsed_body.xpath(selector).each do |selected_tag|
-              article_tag = self.class.parent_until_condition(selected_tag, method(:article_condition))
+              article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_condition))
 
-              if article_tag && (article_hash = SemanticHtml::Extractor.new(article_tag, url: @url).call)
+              if article_tag && (article_hash = HtmlExtractor.new(article_tag, base_url: @url).call)
                 yield article_hash
               end
             end
@@ -85,7 +85,7 @@ module Html2rss
           return false if node.path.match?(TAGS_TO_IGNORE)
 
           # Ignore tags that are below a tag which has a class which matches TAGS_TO_IGNORE.
-          return false if self.class.parent_until_condition(node, proc do |current_node|
+          return false if HtmlNavigator.parent_until_condition(node, proc do |current_node|
             current_node.classes.any? { |klass| klass.match?(TAGS_TO_IGNORE) }
           end)
 

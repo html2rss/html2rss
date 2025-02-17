@@ -41,47 +41,8 @@ module Html2rss
           ANCHOR_TAG_SELECTORS.each_value do |selectors|
             return true if selectors.any? { |selector| parsed_body.at_css(selector) }
           end
+
           false
-        end
-
-        # Finds the closest ancestor tag matching the specified tag name
-        # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
-        # @param tag_name [String] The tag name to search for
-        # @param stop_tag [String] The tag name to stop searching at
-        # @return [Nokogiri::XML::Node] The found ancestor tag or the current tag if matched
-        def self.find_tag_in_ancestors(current_tag, tag_name, stop_tag: 'html')
-          return current_tag if current_tag.name == tag_name
-
-          stop_tags = Set[tag_name, stop_tag]
-
-          while current_tag.respond_to?(:parent) && !stop_tags.member?(current_tag.name)
-            current_tag = current_tag.parent
-          end
-
-          current_tag
-        end
-
-        # Finds the closest matching selector upwards in the DOM tree
-        # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
-        # @param selector [String] The CSS selector to search for
-        # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
-        def self.find_closest_selector(current_tag, selector: 'a[href]:not([href=""])')
-          current_tag.at_css(selector) || find_closest_selector_upwards(current_tag, selector:)
-        end
-
-        # Helper method to find a matching selector upwards
-        # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
-        # @param selector [String] The CSS selector to search for
-        # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
-        def self.find_closest_selector_upwards(current_tag, selector:)
-          while current_tag
-            found = current_tag.at_css(selector)
-            return found if found
-
-            return nil unless current_tag.respond_to?(:parent)
-
-            current_tag = current_tag.parent
-          end
         end
 
         # Returns an array of [tag_name, selector] pairs
@@ -108,9 +69,9 @@ module Html2rss
 
           SemanticHtml.anchor_tag_selector_pairs.each do |tag_name, selector|
             parsed_body.css(selector).each do |selected_tag|
-              article_tag = SemanticHtml.find_tag_in_ancestors(selected_tag, tag_name)
+              article_tag = HtmlNavigator.find_tag_in_ancestors(selected_tag, tag_name)
 
-              if article_tag && (article_hash = Extractor.new(article_tag, url: @url).call)
+              if article_tag && (article_hash = HtmlExtractor.new(article_tag, base_url: @url).call)
                 yield article_hash
               end
             end

@@ -79,9 +79,9 @@ module Html2rss
 
         instance = scraper.new(parsed_body, url:, **scraper_options)
 
-        run_scraper(instance).tap do |articles_in_thread|
-          Reducer.call(articles_in_thread, url:)
-        end
+        articles = run_scraper(instance)
+        Cleanup.call(articles, url: url, **@opts[:cleanup])
+        articles
       end
     end
 
