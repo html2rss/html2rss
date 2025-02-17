@@ -17,18 +17,13 @@ module Html2rss
 
         ##
         # Map of parent element names to CSS selectors for finding <a href> tags.
-        ANCHOR_TAG_SELECTORS = {
-          'section' => ['section :not(section) a[href]'],
-          'tr' => ['table tr :not(tr) a[href]'],
-          'article' => [
-            'article :not(article) a[href]',
-            'article a[href]'
-          ],
-          'li' => [
-            'ul > li :not(li) a[href]',
-            'ol > li :not(li) a[href]'
-          ]
-        }.freeze
+        ANCHOR_TAG_SELECTORS = [
+          ['article', 'article:not(:has(article)) a[href]'],
+          ['section', 'section:not(:has(section)) a[href]'],
+          ['li', 'li:not(:has(li)) a[href]'],
+          ['tr', 'tr:not(:has(tr)) a[href]'],
+          ['div', 'div:not(:has(div)) a[href]']
+        ].freeze
 
         def self.options_key = :semantic_html
 
@@ -38,19 +33,11 @@ module Html2rss
         def self.articles?(parsed_body)
           return false unless parsed_body
 
-          ANCHOR_TAG_SELECTORS.each_value do |selectors|
-            return true if selectors.any? { |selector| parsed_body.at_css(selector) }
+          ANCHOR_TAG_SELECTORS.each do |(_tag_name, selector)|
+            return true if parsed_body.at_css(selector)
           end
 
           false
-        end
-
-        # Returns an array of [tag_name, selector] pairs
-        # @return [Array<[String, String]>] Array of tag name and selector pairs
-        def self.anchor_tag_selector_pairs
-          ANCHOR_TAG_SELECTORS.flat_map do |tag_name, selectors|
-            selectors.map { |selector| [tag_name, selector] }
-          end
         end
 
         def initialize(parsed_body, url:, **opts)
@@ -67,8 +54,11 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          SemanticHtml.anchor_tag_selector_pairs.each do |tag_name, selector|
+          ANCHOR_TAG_SELECTORS.each do |(tag_name, selector)|
             parsed_body.css(selector).each do |selected_tag|
+              next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
+
+              # from the `selected_tag` (<a href>), go up the DOM until we reach `tag_name`
               article_tag = HtmlNavigator.find_tag_in_ancestors(selected_tag, tag_name)
 
               if article_tag && (article_hash = HtmlExtractor.new(article_tag, base_url: @url).call)

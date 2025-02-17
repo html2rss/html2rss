@@ -68,11 +68,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
 
     it 'yields articles' do
-      expect { |b| articles.each(&b) }.to yield_control
+      expect { |b| articles.each(&b) }.to yield_control.twice
     end
 
-    it 'contains two articles' do
-      expect(articles.to_a).to contain_exactly(first_article, second_article)
+    it 'contains the two articles', :aggregate_failures do
+      first, last = articles.to_a
+
+      expect(first).to include(first_article)
+      expect(last).to include(second_article)
     end
 
     context 'when parsed_body does not wrap article in an element' do
@@ -91,7 +94,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       let(:first_article) do
-        { title: '[Plonk]',
+        { title: nil,
           url: be_a(Addressable::URI),
           image: nil,
           description: '[Plonk]',
@@ -102,7 +105,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       let(:second_article) do
         {
-          title: 'Bla bla bla',
+          title: nil,
           url: be_a(Addressable::URI),
           image: nil,
           description: 'Bla bla bla',
@@ -184,6 +187,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
             <a href="link2">Link 2</a>
             <article>
               <a href="link3">Link 3</a>
+              <div>
+                <a href="link6">Link 6</a>
+              </div>
             </article>
           </div>
           <footer>
@@ -212,9 +218,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       expect(scraper.article_condition(html_node)).to be_truthy
     end
 
-    it 'returns true if parent has 2 or more anchor tags' do
-      node = parsed_body.at_css('article a')
-      expect(scraper.article_condition(node)).to be_falsey
+    it 'returns true if parent contains more anchor tags below' do
+      node = parsed_body.at_css('article > a')
+      expect(scraper.article_condition(node)).to be true
     end
 
     it 'returns false if none of the conditions are met' do

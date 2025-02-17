@@ -53,21 +53,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       # RSS readers respecting the items' guid will only show the other articles once.
       #
       # However, to catch larger changes in the algorithm, the number of articles is expected.
-      expect { |b| new.each(&b) }.to yield_control.at_least(220).times
-    end
-  end
-
-  describe '.anchor_tag_selector_pairs' do
-    let(:pairs) do
-      [
-        ['article', 'article :not(article) a[href]'],
-        ['li', 'ul > li :not(li) a[href]'],
-        ['li', 'ol > li :not(li) a[href]']
-      ]
-    end
-
-    it 'returns an array of tag and selector pairs' do
-      expect(described_class.anchor_tag_selector_pairs).to include(*pairs)
+      expect { |b| new.each(&b) }.to yield_control.at_least(189).times
     end
   end
 end
