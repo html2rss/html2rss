@@ -93,7 +93,7 @@ module Html2rss
     # @param item [Nokogiri::XML::Element] The item from which to extract additional attributes.
     # @return [Hash] The enhanced article_hash.
     def enhance_article_hash(article_hash, item)
-      extracted = AutoSource::Scraper::SemanticHtml::Extractor.new(item, url: @url).call
+      extracted = HtmlExtractor.new(item, base_url: @url).call
 
       return article_hash unless extracted
 

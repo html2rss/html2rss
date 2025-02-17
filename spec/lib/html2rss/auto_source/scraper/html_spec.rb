@@ -94,20 +94,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         { title: '[Plonk]',
           url: be_a(Addressable::URI),
           image: nil,
-          description: 'Bla bla bla',
+          description: '[Plonk]',
           id: '/',
           published_at: nil,
           enclosure: nil }
       end
 
       let(:second_article) do
-        { title: '[Plonk]',
+        {
+          title: 'Bla bla bla',
           url: be_a(Addressable::URI),
           image: nil,
-          description: '[Plonk]',
+          description: 'Bla bla bla',
           id: '/',
           published_at: nil,
-          enclosure: nil }
+          enclosure: nil
+        }
       end
 
       it 'contains the articles with same id', :aggregate_failures do

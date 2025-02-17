@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Image do
+require 'nokogiri'
+require 'addressable'
+
+RSpec.describe Html2rss::HtmlExtractor::ImageExtractor do
   let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
   describe '.call' do
-    subject(:url) { described_class.call(article_tag, url: 'https://example.com').to_s.encode('UTF-8') }
+    subject(:url) { described_class.call(article_tag, base_url: 'https://example.com').to_s.encode('UTF-8') }
 
     let(:html) do
       <<~HTML
@@ -78,7 +81,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Image do
       let(:html) { '<article></article>' }
 
       it 'returns nil' do
-        expect(described_class.call(article_tag, url:)).to be_nil
+        expect(described_class.call(article_tag, base_url: nil)).to be_nil
       end
     end
   end
