@@ -15,9 +15,10 @@ module Html2rss
 
     def self.add_item(article, item_maker) # rubocop:disable Metrics/AbcSize
       %w[title description author].each do |attr|
-        if (value = article.public_send(attr))
-          item_maker.public_send(:"#{attr}=", value)
-        end
+        next unless (value = article.public_send(attr))
+        next if value.is_a?(String) && value.empty?
+
+        item_maker.public_send(:"#{attr}=", value)
       end
 
       item_maker.link = article.url.to_s if article.url
