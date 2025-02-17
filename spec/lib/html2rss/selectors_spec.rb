@@ -132,9 +132,7 @@ RSpec.describe Html2rss::Selectors do
 
     context 'when extractor returns nil' do
       before do
-        extractor = Html2rss::AutoSource::Scraper::SemanticHtml::Extractor
-
-        allow(extractor).to receive(:new).and_return(instance_double(extractor, call: nil))
+        allow(Html2rss::HtmlExtractor).to receive(:new).and_return(instance_double(Html2rss::HtmlExtractor, call: nil))
       end
 
       it 'returns article_hash' do
