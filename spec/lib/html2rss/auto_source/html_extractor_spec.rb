@@ -148,7 +148,7 @@ RSpec.describe Html2rss::AutoSource::HtmlExtractor do
       let(:current_tag) { document.at_css('#span') }
 
       it 'returns the closest anchor in as sibling' do
-        anchor = described_class.find_closest_selector_upwards(current_tag, selector: 'a')
+        anchor = described_class.find_closest_selector_upwards(current_tag, 'a')
         expect(anchor).to eq(expected_anchor)
       end
     end
@@ -157,7 +157,7 @@ RSpec.describe Html2rss::AutoSource::HtmlExtractor do
       let(:current_tag) { document.at_css('p') }
 
       it 'returns the anchor upwards from current_tag' do
-        anchor = described_class.find_closest_selector_upwards(current_tag, selector: 'a')
+        anchor = described_class.find_closest_selector_upwards(current_tag, 'a')
         expect(anchor).to eq(expected_anchor)
       end
     end

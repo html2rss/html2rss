@@ -33,12 +33,10 @@ module Html2rss
       # @param tag_name [String] The tag name to search for
       # @param stop_tag [String] The tag name to stop searching at
       # @return [Nokogiri::XML::Node] The found ancestor tag or the current tag if matched
-      def self.find_tag_in_ancestors(current_tag, tag_name, stop_tag: 'html')
-        stop_tags = Set[tag_name, stop_tag]
+      def self.find_tag_in_ancestors(current_tag, tag_name)
+        return current_tag if current_tag.name == tag_name
 
-        current_tag = current_tag.parent while current_tag.respond_to?(:parent) && !stop_tags.member?(current_tag.name)
-
-        current_tag
+        current_tag.ancestors(tag_name).first
       end
 
       # Finds the closest matching selector upwards in the DOM tree
@@ -46,14 +44,14 @@ module Html2rss
       # @param selector [String] The CSS selector to search for
       # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
       def self.find_closest_selector(current_tag, selector: 'a[href]:not([href=""])')
-        current_tag.at_css(selector) || find_closest_selector_upwards(current_tag, selector:)
+        current_tag.at_css(selector) || find_closest_selector_upwards(current_tag, selector)
       end
 
       # Helper method to find a matching selector upwards
       # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
       # @param selector [String] The CSS selector to search for
       # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
-      def self.find_closest_selector_upwards(current_tag, selector:)
+      def self.find_closest_selector_upwards(current_tag, selector)
         while current_tag
           found = current_tag.at_css(selector)
           return found if found
