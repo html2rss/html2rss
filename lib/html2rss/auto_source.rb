@@ -60,10 +60,7 @@ module Html2rss
     end
 
     def articles
-      @articles ||= extract_articles.tap do |articles|
-        Html2rss::AutoSource::Reducer.call(articles, url:)
-        Html2rss::AutoSource::Cleanup.call(articles, url:, **@opts[:cleanup])
-      end
+      @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound
       Log.warn 'No auto source scraper found for the provided URL. Skipping auto source.'
       []
@@ -79,9 +76,7 @@ module Html2rss
 
         instance = scraper.new(parsed_body, url:, **scraper_options)
 
-        run_scraper(instance).tap do |articles_in_thread|
-          Reducer.call(articles_in_thread, url:)
-        end
+        run_scraper(instance)
       end
     end
 
