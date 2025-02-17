@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Image do
+RSpec.describe Html2rss::AutoSource::HtmlExtractor::Image do
   let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
   describe '.call' do

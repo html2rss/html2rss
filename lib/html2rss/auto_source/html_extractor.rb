@@ -94,7 +94,7 @@ module Html2rss
       end
 
       def extract_image
-        Scraper::SemanticHtml::Image.call(article_tag, url:)
+        Image.call(article_tag, url:)
       end
 
       def extract_description
