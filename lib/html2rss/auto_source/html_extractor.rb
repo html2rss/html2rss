@@ -28,6 +28,42 @@ module Html2rss
         sanitized_text
       end
 
+      # Finds the closest ancestor tag matching the specified tag name
+      # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
+      # @param tag_name [String] The tag name to search for
+      # @param stop_tag [String] The tag name to stop searching at
+      # @return [Nokogiri::XML::Node] The found ancestor tag or the current tag if matched
+      def self.find_tag_in_ancestors(current_tag, tag_name, stop_tag: 'html')
+        stop_tags = Set[tag_name, stop_tag]
+
+        current_tag = current_tag.parent while current_tag.respond_to?(:parent) && !stop_tags.member?(current_tag.name)
+
+        current_tag
+      end
+
+      # Finds the closest matching selector upwards in the DOM tree
+      # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
+      # @param selector [String] The CSS selector to search for
+      # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
+      def self.find_closest_selector(current_tag, selector: 'a[href]:not([href=""])')
+        current_tag.at_css(selector) || find_closest_selector_upwards(current_tag, selector:)
+      end
+
+      # Helper method to find a matching selector upwards
+      # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
+      # @param selector [String] The CSS selector to search for
+      # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
+      def self.find_closest_selector_upwards(current_tag, selector:)
+        while current_tag
+          found = current_tag.at_css(selector)
+          return found if found
+
+          return nil unless current_tag.respond_to?(:parent)
+
+          current_tag = current_tag.parent
+        end
+      end
+
       def initialize(article_tag, url:)
         raise ArgumentError, 'article_tag is required' unless article_tag
 
@@ -71,8 +107,8 @@ module Html2rss
       def visible_text_from_tag(tag, separator: ' ') = self.class.visible_text_from_tag(tag, separator:)
 
       def closest_anchor
-        Scraper::SemanticHtml.find_closest_selector(heading || article_tag,
-                                                    selector: 'a[href]:not([href=""])')
+        self.class.find_closest_selector(heading || article_tag,
+                                         selector: 'a[href]:not([href=""])')
       end
 
       def find_url
