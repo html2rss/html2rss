@@ -55,7 +55,7 @@ module Html2rss
             parsed_body.xpath(selector).each do |selected_tag|
               article_tag = self.class.parent_until_condition(selected_tag, method(:article_condition))
 
-              if article_tag && (article_hash = SemanticHtml::Extractor.new(article_tag, url: @url).call)
+              if article_tag && (article_hash = HtmlExtractor.new(article_tag, url: @url).call)
                 yield article_hash
               end
             end

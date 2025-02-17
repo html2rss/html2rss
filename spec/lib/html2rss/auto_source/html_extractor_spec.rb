@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
+RSpec.describe Html2rss::AutoSource::HtmlExtractor do
   subject(:article_hash) { described_class.new(article_tag, url:).call }
 
   let(:article_tag) { Nokogiri::HTML.fragment(html) }
