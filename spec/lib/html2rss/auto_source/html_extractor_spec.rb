@@ -79,7 +79,7 @@ RSpec.describe Html2rss::AutoSource::HtmlExtractor do
 
     context 'when the anchor is directly within the element' do
       it 'returns the anchor' do
-        anchor = described_class.find_closest_selector(container)
+        anchor = described_class.find_closest_selector(container, 'a')
         expect(anchor['id']).to eq('link')
       end
     end
@@ -101,7 +101,7 @@ RSpec.describe Html2rss::AutoSource::HtmlExtractor do
         nested_document = Nokogiri::HTML(nested_html)
         nested_container = nested_document.at_css('#container')
 
-        anchor = described_class.find_closest_selector(nested_container)
+        anchor = described_class.find_closest_selector(nested_container, 'a')
         expect(anchor['id']).to eq('nested-link')
       end
     end
@@ -120,7 +120,7 @@ RSpec.describe Html2rss::AutoSource::HtmlExtractor do
       end
 
       it 'returns nil' do
-        anchor = described_class.find_closest_selector(no_anchor_container)
+        anchor = described_class.find_closest_selector(no_anchor_container, 'a')
         expect(anchor).to be_nil
       end
     end
@@ -167,6 +167,7 @@ RSpec.describe Html2rss::AutoSource::HtmlExtractor do
     let(:html) do
       <<~HTML
         <article id="fck-ptn">
+          <a href="#">Scroll to top</a>
           <h1>
             <a href="/sample">Sample Heading</a>
           </h1>
@@ -185,10 +186,10 @@ RSpec.describe Html2rss::AutoSource::HtmlExtractor do
       it 'returns the article_hash', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(article_hash).to a_hash_including(
           title: 'Sample Heading',
-          description: 'Sample Heading FCK PTN Sample description',
+          description: 'Scroll to top Sample Heading FCK PTN Sample description',
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
-          url: an_instance_of(Addressable::URI),
+          url: Addressable::URI.parse('https://example.com/sample'),
           image: an_instance_of(Addressable::URI),
           enclosure: a_hash_including(
             url: an_instance_of(Addressable::URI),

@@ -43,7 +43,7 @@ module Html2rss
       # @param current_tag [Nokogiri::XML::Node] The current tag to start searching from
       # @param selector [String] The CSS selector to search for
       # @return [Nokogiri::XML::Node, nil] The closest matching tag or nil if not found
-      def self.find_closest_selector(current_tag, selector: 'a[href]:not([href=""])')
+      def self.find_closest_selector(current_tag, selector)
         current_tag.at_css(selector) || find_closest_selector_upwards(current_tag, selector)
       end
 
@@ -104,9 +104,10 @@ module Html2rss
 
       def visible_text_from_tag(tag, separator: ' ') = self.class.visible_text_from_tag(tag, separator:)
 
-      def closest_anchor
-        self.class.find_closest_selector(heading || article_tag,
-                                         selector: 'a[href]:not([href=""])')
+      def closest_anchor(excluded_hrefs: %w[# javascript: mailto: tel: file:// sms: data:])
+        selector = 'a[href]:not([href=""])' + excluded_hrefs.map { |href| ":not([href^=\"#{href}\"])" }.join
+
+        self.class.find_closest_selector(heading || article_tag, selector)
       end
 
       def find_url
