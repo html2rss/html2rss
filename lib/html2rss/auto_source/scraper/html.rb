@@ -14,18 +14,12 @@ module Html2rss
         TAGS_TO_IGNORE = /(nav|footer|header)/i
 
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
+        DEFAULT_USE_TOP_SELECTORS = 5
 
         def self.options_key = :html
 
         def self.articles?(parsed_body)
           new(parsed_body, url: '').any?
-        end
-
-        def self.parent_until_condition(node, condition)
-          return nil if !node || node.document? || node.parent.name == 'html'
-          return node if condition.call(node)
-
-          parent_until_condition(node.parent, condition)
         end
 
         ##
@@ -37,7 +31,6 @@ module Html2rss
         def initialize(parsed_body, url:, **opts)
           @parsed_body = parsed_body
           @url = url
-          @selectors = Hash.new(0)
           @opts = opts
         end
 
@@ -49,7 +42,7 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          frequent_selectors.each do |selector|
+          filtered_selectors.each do |selector|
             parsed_body.xpath(selector).each do |selected_tag|
               next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
 
@@ -59,24 +52,6 @@ module Html2rss
                 yield article_hash
               end
             end
-          end
-        end
-
-        ##
-        # Find all the anchors in root.
-        # @param root [Nokogiri::XML::Node] The root node to search for anchors
-        # @return [Set<String>] The set of XPath selectors which exist at least min_frequency times
-        def frequent_selectors(root = @parsed_body.at_css('body'))
-          @frequent_selectors ||= begin
-            root.traverse do |node|
-              next if !node.element? || node.name != 'a'
-
-              @selectors[self.class.simplify_xpath(node.path)] += 1
-            end
-
-            @selectors.keys
-                      .select { |selector| (@selectors[selector]).to_i >= minimum_selector_frequency }
-                      .to_set
           end
         end
 
@@ -95,7 +70,35 @@ module Html2rss
 
         private
 
+        ##
+        # Find all the anchors in root.
+        # @return [Set<String>] The set of XPath selectors which exist at least min_frequency times
+        def selectors
+          @selectors ||= Hash.new(0).tap do |selectors|
+            @parsed_body.at_css('body').traverse do |node|
+              next if !node.element? || node.name != 'a' || String(node['href']).empty?
+
+              path = self.class.simplify_xpath(node.path)
+              next if path.match?(TAGS_TO_IGNORE)
+
+              selectors[path] += 1
+            end
+          end
+        end
+
+        ##
+        # Filter the frequent selectors by the minimum_selector_frequency and use_top_selectors.
+        # @return [Array<String>] The filtered selectors
+        def filtered_selectors
+          selectors.keys.sort_by { |key| selectors[key] }
+                   .last(use_top_selectors)
+                   .filter_map do |key|
+            selectors[key] >= minimum_selector_frequency ? key : nil
+          end
+        end
+
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
+        def use_top_selectors = @opts[:use_top_selectors] || DEFAULT_USE_TOP_SELECTORS
       end
     end
   end

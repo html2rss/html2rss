@@ -134,47 +134,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
   end
 
-  describe '.parent_until_condition' do
-    let(:html) do
-      <<-HTML
-        <div>
-          <section>
-            <article>
-              <p id="target">Some text here</p>
-            </article>
-          </section>
-        </div>
-      HTML
-    end
-
-    let(:document) { Nokogiri::HTML(html) }
-    let(:target_node) { document.at_css('#target') }
-
-    it 'returns the node itself if the condition is met' do
-      condition = ->(node) { node.name == 'p' }
-      result = described_class.parent_until_condition(target_node, condition)
-      expect(result).to eq(target_node)
-    end
-
-    it 'returns the first parent that satisfies the condition' do
-      condition = ->(node) { node.name == 'article' }
-      result = described_class.parent_until_condition(target_node, condition)
-      expect(result.name).to eq('article')
-    end
-
-    it 'returns nil if the node has no parents that satisfy the condition' do
-      condition = ->(node) { node.name == 'footer' }
-      result = described_class.parent_until_condition(target_node, condition)
-      expect(result).to be_nil
-    end
-
-    it 'returns nil if target_node is nil' do
-      condition = ->(node) { node.name == 'article' }
-      result = described_class.parent_until_condition(nil, condition)
-      expect(result).to be_nil
-    end
-  end
-
   describe '#article_condition' do
     let(:html) do
       <<-HTML
@@ -218,8 +177,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       expect(scraper.article_condition(html_node)).to be_truthy
     end
 
-    it 'returns true if parent contains more anchor tags below' do
-      node = parsed_body.at_css('article > a')
+    it 'returns true if parent has 2 or more anchor tags' do
+      node = parsed_body.at_css('article a')
       expect(scraper.article_condition(node)).to be true
     end
 
