@@ -154,9 +154,16 @@ RSpec.describe Html2rss::Config do
           scraper: {
             semantic_html: { enabled: true },      # wasn't explicitly set -> default
             schema: { enabled: false },            # keeps the value from the config
-            html: { enabled: true, minimum_selector_frequency: 3 } # merges with the default
+            html: {
+              enabled: true,
+              minimum_selector_frequency: 3,       # was explicitly set -> overrides default
+              use_top_selectors: 5                 # wasn't explicitly set -> default
+            }
           },
-          cleanup: { keep_different_domain: true } # wasn't explicitly set -> default
+          cleanup: {
+            keep_different_domain: true,           # wasn't explicitly set -> default
+            min_words_title: 3                     # wasn't explicitly set -> default
+          }
         }
       end
 
