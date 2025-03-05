@@ -32,7 +32,7 @@ module Html2rss
           use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS
         }
       },
-      cleanup: { keep_different_domain: true }
+      cleanup: Cleanup::DEFAULT_CONFIG
     }.freeze
 
     Config = Dry::Schema.Params do
@@ -52,6 +52,7 @@ module Html2rss
 
       optional(:cleanup).hash do
         optional(:keep_different_domain).filled(:bool)
+        optional(:min_words_title).filled(:integer, gt?: 0)
       end
     end
 
