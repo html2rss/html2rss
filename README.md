@@ -105,6 +105,7 @@ auto_source:
       use_top_selectors: 3 # default: 5
   cleanup:
     keep_different_domain: false # default: true
+    min_words_title: 4 # default: 3
 ```
 
 ### The scraper `selectors`: more control
