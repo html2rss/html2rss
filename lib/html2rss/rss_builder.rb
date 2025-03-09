@@ -6,28 +6,38 @@ module Html2rss
   ##
   # Builds an RSS Feed by providing channel, articles and stylesheets.
   class RssBuilder
-    def self.add_guid(article, maker)
-      maker.guid.tap do |guid|
-        guid.content = article.guid
-        guid.isPermaLink = false
-      end
-    end
-
-    def self.add_item(article, item_maker) # rubocop:disable Metrics/AbcSize
-      %w[title description author].each do |attr|
-        next unless (value = article.public_send(attr))
-        next if value.is_a?(String) && value.empty?
-
-        item_maker.public_send(:"#{attr}=", value)
+    class << self
+      def add_item(article, item_maker)
+        add_item_string_values(article, item_maker)
+        add_item_categories(article, item_maker)
+        Enclosure.add(article.enclosure, item_maker)
+        add_item_guid(article, item_maker)
       end
 
-      item_maker.link = article.url.to_s if article.url
-      item_maker.pubDate = article.published_at&.rfc2822
+      private
 
-      article.categories.each { |category| item_maker.categories.new_category.content = category }
+      def add_item_string_values(article, item_maker)
+        %i[title description author].each do |attr|
+          next unless (value = article.send(attr))
+          next if value.empty?
 
-      Enclosure.add(article.enclosure, item_maker)
-      add_guid(article, item_maker)
+          item_maker.send(:"#{attr}=", value)
+        end
+
+        item_maker.link = article.url.to_s if article.url
+        item_maker.pubDate = article.published_at&.rfc2822
+      end
+
+      def add_item_categories(article, item_maker)
+        article.categories.each { |category| item_maker.categories.new_category.content = category }
+      end
+
+      def add_item_guid(article, maker)
+        maker.guid.tap do |guid|
+          guid.content = article.guid
+          guid.isPermaLink = false
+        end
+      end
     end
 
     ##
