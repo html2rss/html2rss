@@ -3,6 +3,8 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Config do
+  it { expect(described_class::InvalidConfig).to be < Html2rss::Error }
+
   describe Html2rss::Config::MultipleFeedsConfig do
     describe '::CONFIG_KEY_FEEDS' do
       it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
@@ -157,7 +159,7 @@ RSpec.describe Html2rss::Config do
       let(:config) { { headers: { 'User-Agent': nil, 'Content-Language': 0xBADF00D } } }
 
       it 'raises an ArgumentError' do
-        expect { instance }.to raise_error(ArgumentError, /Invalid configuration:/)
+        expect { instance }.to raise_error(described_class::InvalidConfig, /Invalid configuration:/)
       end
     end
 
