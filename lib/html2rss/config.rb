@@ -10,6 +10,8 @@ module Html2rss
   #
   # The provided configration is validated during initialization.
   class Config
+    class InvalidConfig < Html2rss::Error; end
+
     class << self
       ##
       # Returns the feed configuration from the YAML file.
@@ -67,7 +69,7 @@ module Html2rss
 
       validator = Validator.new.call(config)
 
-      raise ArgumentError, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
+      raise InvalidConfig, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
 
       @config = validator.to_h
     end
