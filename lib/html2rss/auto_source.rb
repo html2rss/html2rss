@@ -28,10 +28,11 @@ module Html2rss
         },
         html: {
           enabled: true,
-          minimum_selector_frequency: Scraper::Html::DEFAULT_MINIMUM_SELECTOR_FREQUENCY
+          minimum_selector_frequency: Scraper::Html::DEFAULT_MINIMUM_SELECTOR_FREQUENCY,
+          use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS
         }
       },
-      cleanup: { keep_different_domain: true }
+      cleanup: Cleanup::DEFAULT_CONFIG
     }.freeze
 
     Config = Dry::Schema.Params do
@@ -45,11 +46,13 @@ module Html2rss
         optional(:html).hash do
           optional(:enabled).filled(:bool)
           optional(:minimum_selector_frequency).filled(:integer, gt?: 0)
+          optional(:use_top_selectors).filled(:integer, gt?: 0)
         end
       end
 
       optional(:cleanup).hash do
         optional(:keep_different_domain).filled(:bool)
+        optional(:min_words_title).filled(:integer, gt?: 0)
       end
     end
 
@@ -60,10 +63,7 @@ module Html2rss
     end
 
     def articles
-      @articles ||= extract_articles.tap do |articles|
-        Html2rss::AutoSource::Reducer.call(articles, url:)
-        Html2rss::AutoSource::Cleanup.call(articles, url:, **@opts[:cleanup])
-      end
+      @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound
       Log.warn 'No auto source scraper found for the provided URL. Skipping auto source.'
       []
@@ -79,9 +79,9 @@ module Html2rss
 
         instance = scraper.new(parsed_body, url:, **scraper_options)
 
-        run_scraper(instance).tap do |articles_in_thread|
-          Reducer.call(articles_in_thread, url:)
-        end
+        articles = run_scraper(instance)
+        Cleanup.call(articles, url: url, **@opts[:cleanup])
+        articles
       end
     end
 

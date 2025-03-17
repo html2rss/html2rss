@@ -102,8 +102,10 @@ auto_source:
     html:
       enabled: true
       minimum_selector_frequency: 3 # default: 2
+      use_top_selectors: 3 # default: 5
   cleanup:
     keep_different_domain: false # default: true
+    min_words_title: 4 # default: 3
 ```
 
 ### The scraper `selectors`: more control

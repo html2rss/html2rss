@@ -68,10 +68,7 @@ module Html2rss
       articles.concat AutoSource.new(response, auto_source).articles
     end
 
-    # Step 4: combine / reduce all the extracted articles to prevent duplicates
-    articles = AutoSource::Reducer.call(articles, url: config.url)
-
-    # Step 5: Build the RSS feed
+    # Step 4: Build the RSS feed
     channel = RssBuilder::Channel.new(response, overrides: config.channel)
 
     RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
