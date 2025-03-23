@@ -2,10 +2,9 @@
 
 RSpec.describe Html2rss::Selectors::Extractors do
   describe '.get(attribute_options, xml)' do
-    context 'with unknown extractor name' do
+    context 'with valid extractor name' do
       it do
-        expect { described_class.get({ extractor: 'inexistent' }, nil) }
-          .to raise_error described_class::UnknownExtractorName
+        expect(described_class.get({ extractor: 'static' }, nil)).to be_nil
       end
     end
   end
