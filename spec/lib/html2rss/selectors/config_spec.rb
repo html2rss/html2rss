@@ -26,14 +26,6 @@ RSpec.describe Html2rss::Selectors::Config do
   end
 
   describe 'Selector' do
-    context 'when does not contain a selector defintion' do
-      let(:config) do
-        { description: nil }
-      end
-
-      it { expect { result }.to raise_error(/empty/) }
-    end
-
     context 'when contains a selector of type Hash' do
       let(:config) do
         { description: { selector: {} } }

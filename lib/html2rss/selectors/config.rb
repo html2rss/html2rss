@@ -31,14 +31,7 @@ module Html2rss
         end
 
         rule(:selector) do
-          unless value
-            if values[:post_process].nil? && values[:static].nil?
-              key(:selector).failure('`selector` can only be empty when `post_process` or `static` are used')
-            end
-            next
-          end
-
-          key(:selector).failure('`selector` must be a string') unless value.is_a?(String)
+          key(:selector).failure('`selector` must be a string') if value && !value.is_a?(String)
         end
 
         rule(:extractor) do
