@@ -6,10 +6,6 @@ module Html2rss
     # Provides a namespace for item extractors.
     module Extractors
       ##
-      # The Error class to be thrown when an unknown extractor name is requested.
-      class UnknownExtractorName < Html2rss::Error; end
-
-      ##
       # Maps the extractor name to the class implementing the extractor.
       #
       # The key is the name to use in the feed config.
@@ -45,49 +41,10 @@ module Html2rss
         # @param xml [Nokogiri::XML::Document]
         # @return [Object] instance of the specified item extractor class
         def get(attribute_options, xml)
-          item_extractor_factory(attribute_options, xml).get
-        end
+          extractor_class = NAME_TO_CLASS[attribute_options[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
+          options = ITEM_OPTION_CLASSES[extractor_class].new(attribute_options.slice(*extractor_class::Options.members))
 
-        private
-
-        def item_extractor_factory(attribute_options, xml)
-          extractor_name = attribute_options[:extractor]&.to_sym || DEFAULT_EXTRACTOR
-          extractor_class = find_extractor_class(extractor_name)
-          options_instance = build_options_instance(extractor_class, attribute_options)
-          create_extractor_instance(extractor_class, xml, options_instance)
-        end
-
-        ##
-        # Finds the extractor class based on the name.
-        #
-        # @param extractor_name [Symbol] the name of the extractor
-        # @return [Class] the class implementing the extractor
-        # @raise [UnknownExtractorName] if the extractor class is not found
-        def find_extractor_class(extractor_name)
-          NAME_TO_CLASS[extractor_name] || raise(UnknownExtractorName,
-                                                 "extractor '#{extractor_name}' requested in NAME_TO_CLASS")
-        end
-
-        ##
-        # Builds the options instance for the extractor class.
-        #
-        # @param extractor_class [Class] the class implementing the extractor
-        # @param attribute_options [Hash<Symbol, Object>] the attribute options
-        # @return [Object] an instance of the options class for the extractor
-        def build_options_instance(extractor_class, attribute_options)
-          options = attribute_options.slice(*extractor_class::Options.members)
-          ITEM_OPTION_CLASSES[extractor_class].new(options)
-        end
-
-        ##
-        # Creates an instance of the extractor class.
-        #
-        # @param extractor_class [Class] the class implementing the extractor
-        # @param xml [Nokogiri::XML::Document] the XML document
-        # @param options_instance [Object] the options instance
-        # @return [Object] an instance of the extractor class
-        def create_extractor_instance(extractor_class, xml, options_instance)
-          extractor_class.new(xml, options_instance)
+          extractor_class.new(xml, options).get
         end
       end
     end
