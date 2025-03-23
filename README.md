@@ -512,10 +512,10 @@ Html2rss.feed(
 <details><summary>See a YAML feed config example</summary>
 
 ```yml
+headers:
+  Accept: application/json
 channel:
   url: "http://domainname.tld/whatever.json"
-  headers:
-    Accept: application/json
 selectors:
   title:
     selector: "foo"
