@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
 
   let(:context) do
     Html2rss::Selectors::Context.new(
-      config: { url: 'http://example.com' }
+      config: { channel: { url: 'http://example.com' } }
     )
   end
 
