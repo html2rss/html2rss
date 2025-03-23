@@ -43,6 +43,8 @@ module Html2rss
       # @param params [Hash<Symbol, Object>] the dynamic parameters.
       # @return [Html2rss::Config] the configuration object.
       def from_hash(config, params: nil)
+        config = config.dup
+
         if params
           DynamicParams.call(config[:headers], params)
           DynamicParams.call(config[:channel], params)
@@ -61,7 +63,9 @@ module Html2rss
       end
     end
 
-    def initialize(config)
+    def initialize(config) # rubocop:disable Metrics/AbcSize
+      config = config.dup if config.frozen?
+
       config = handle_deprecated_channel_attributes(config)
       config = apply_default_config(config)
       config = apply_default_selectors_config(config) if config[:selectors]
@@ -71,7 +75,7 @@ module Html2rss
 
       raise InvalidConfig, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
 
-      @config = validator.to_h
+      @config = validator.to_h.freeze
     end
 
     def strategy = config[:strategy]

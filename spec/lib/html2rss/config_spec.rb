@@ -91,6 +91,12 @@ RSpec.describe Html2rss::Config do
     it 'returns the configuration' do
       expect(described_class.from_hash(hash)).to be_a(described_class)
     end
+
+    context 'with frozen hash' do
+      it 'returns the configuration' do
+        expect(described_class.from_hash(hash.freeze)).to be_a(described_class)
+      end
+    end
   end
 
   describe '#initialize' do
@@ -123,6 +129,10 @@ RSpec.describe Html2rss::Config do
 
       it 'deep merges with the default configuration' do
         expect(instance.url).to eq('http://example.com')
+      end
+
+      it 'freezes @config ivar' do
+        expect(instance.instance_variable_get(:@config)).to be_frozen
       end
     end
 
