@@ -93,7 +93,7 @@ module Html2rss
     # @param item [Nokogiri::XML::Element] The item from which to extract additional attributes.
     # @return [Hash] The enhanced article_hash.
     def enhance_article_hash(article_hash, item)
-      extracted = AutoSource::Scraper::SemanticHtml::Extractor.new(item, url: @url).call
+      extracted = HtmlExtractor.new(item, base_url: @url).call
 
       return article_hash unless extracted
 
@@ -190,11 +190,11 @@ module Html2rss
       value
     end
 
-    # @return [Enclosure] enclosure details.
+    # @return [Hash] enclosure details.
     def enclosure(item, selector)
       url = Html2rss::Utils.build_absolute_url_from_relative(select_regular(:enclosure, item), @url)
 
-      Html2rss::RssBuilder::Enclosure.new(url:, type: selector[:content_type])
+      { url:, type: selector[:content_type] }
     end
   end
 end

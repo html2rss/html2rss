@@ -18,6 +18,7 @@ if ENV['COVERAGE']
     add_group 'Auto Source', 'lib/html2rss/auto_source'
     add_group 'Selectors', 'lib/html2rss/selectors'
     add_group 'RSS Builder', 'lib/html2rss/rss_builder'
+    add_group 'Html Extractor', 'lib/html2rss/html_extractor'
   end
 end
 
