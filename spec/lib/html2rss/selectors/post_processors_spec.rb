@@ -20,7 +20,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors do
 
     context 'with known post processor name' do
       it do
-        expect(described_class.get('parse_uri', 'http://example.com/', { config: { url: '' } })).to be_a(String)
+        expect(described_class.get('parse_uri', 'http://example.com/',
+                                   { config: { channel: { url: '' } } })).to be_a(String)
       end
     end
   end
