@@ -32,8 +32,8 @@ module Html2rss
         article.categories.each { |category| item_maker.categories.new_category.content = category }
       end
 
-      def add_item_guid(article, maker)
-        maker.guid.tap do |guid|
+      def add_item_guid(article, item_maker)
+        item_maker.guid.tap do |guid|
           guid.content = article.guid
           guid.isPermaLink = false
         end
