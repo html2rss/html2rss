@@ -46,7 +46,7 @@ module Html2rss
             parsed_body.xpath(selector).each do |selected_tag|
               next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
 
-              article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_condition))
+              article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition))
 
               if article_tag && (article_hash = HtmlExtractor.new(article_tag, base_url: @url).call)
                 yield article_hash
@@ -55,7 +55,7 @@ module Html2rss
           end
         end
 
-        def article_condition(node)
+        def article_tag_condition(node)
           # Ignore tags that are below a tag which is in TAGS_TO_IGNORE.
           return false if node.path.match?(TAGS_TO_IGNORE)
 
