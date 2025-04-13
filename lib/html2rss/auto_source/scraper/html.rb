@@ -71,8 +71,8 @@ module Html2rss
         private
 
         ##
-        # Find all the anchors in root.
-        # @return [Set<String>] The set of XPath selectors which exist at least min_frequency times
+        # Find relevant anchors in root.
+        # @return [Set<String>] The set of XPath selectors
         def selectors
           @selectors ||= Hash.new(0).tap do |selectors|
             @parsed_body.at_css('body').traverse do |node|
