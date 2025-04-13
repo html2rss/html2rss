@@ -16,23 +16,33 @@ module Html2rss
       buf.freeze
     end
 
-    ##
-    # Extracts visible text from a given tag and its children.
-    #
-    # @param tag [Nokogiri::XML::Node] the tag from which to extract visible text
-    # @param separator [String] optional separator used to join visible text (default is a space)
-    # @return [String, nil] the sanitized visible text or nil if no visible text is found
-    def self.extract_visible_text(tag, separator: ' ')
-      return tag.text.strip if tag.children.empty?
+    class << self
+      ##
+      # Extracts visible text from a given tag and its children.
+      #
+      # @param tag [Nokogiri::XML::Node] the tag from which to extract visible text
+      # @param separator [String] optional separator used to join visible text (default is a space)
+      # @return [String, nil] the sanitized visible text or nil if no visible text is found
+      def extract_visible_text(tag, separator: ' ')
+        parts = tag.children.each_with_object([]) do |child, result|
+          next unless visible_child?(child)
 
-      visible_text = tag.children.filter_map do |child|
-        next if INVISIBLE_CONTENT_TAGS.include?(child.name)
+          raw_text = child.children.empty? ? child.text : extract_visible_text(child)
+          next unless raw_text
 
-        extract_visible_text(child)
-      end.join(separator)
+          text = raw_text.strip
+          result << text unless text.empty?
+        end
 
-      sanitized_visible_text = visible_text.gsub(/\s+/, ' ').strip
-      sanitized_visible_text.empty? ? nil : sanitized_visible_text
+        parts.join(separator).squeeze(' ').strip unless parts.empty?
+      end
+
+      private
+
+      def visible_child?(node)
+        !INVISIBLE_CONTENT_TAGS.include?(node.name) &&
+          !(node.name == 'a' && node['href']&.start_with?('#'))
+      end
     end
 
     def initialize(article_tag, base_url:)
