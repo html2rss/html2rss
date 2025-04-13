@@ -67,7 +67,16 @@ module Html2rss
         # @param articles [Array<Article>] The list of articles to process.
         # @param min_words_title [Integer] The minimum number of words in the title.
         def keep_only_with_min_words_title!(articles, min_words_title:)
-          articles.select! { |article| String(article.title).split.size >= min_words_title }
+          articles.select! { |article| word_count_at_least(article.title, min_words_title) }
+        end
+
+        def word_count_at_least(str, min_words)
+          count = 0
+          str.to_s.scan(/\b\w+\b/) do
+            count += 1
+            return true if count >= min_words
+          end
+          false
         end
       end
     end
