@@ -40,14 +40,6 @@ module Html2rss
 
         current_tag.ancestors(tag_name).first
       end
-
-      ##
-      # Searches for the closest parent anchor which is not in the linking to excluded_hrefs.
-      def find_main_anchor(tag, excluded_hrefs: %w[# javascript: mailto: tel: file:// sms: data:])
-        selector = +'a[href]:not([href=""])'
-        excluded_hrefs.each { |href| selector.concat ":not([href^=\"#{href}\"] )" }
-        HtmlNavigator.find_closest_selector_upwards(tag, selector)
-      end
     end
   end
 end

@@ -10,6 +10,12 @@ module Html2rss
     HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
     NON_HEADLINE_SELECTOR = (HEADING_TAGS.map { |s| ":not(#{s})" } + INVISIBLE_CONTENT_TAGS.to_a).freeze
 
+    MAIN_ANCHOR_SELECTOR = begin
+      buf = +'a[href]:not([href=""])'
+      %w[# javascript: mailto: tel: file:// sms: data:].each { |prefix| buf << %[:not([href^="#{prefix}"])] }
+      buf.freeze
+    end
+
     ##
     # Extracts visible text from a given tag and its children.
     #
@@ -54,10 +60,16 @@ module Html2rss
 
     def extract_url
       @extract_url ||= begin
-        href = HtmlNavigator.find_main_anchor(article_tag)&.[]('href').to_s
+        href = find_main_anchor&.[]('href').to_s
 
         Utils.build_absolute_url_from_relative(href.split('#').first.strip, base_url) unless href.empty?
       end
+    end
+
+    ##
+    # Searches for the closest parent anchor which is not in the linking to excluded_hrefs.
+    def find_main_anchor
+      HtmlNavigator.find_closest_selector_upwards(article_tag, MAIN_ANCHOR_SELECTOR)
     end
 
     def extract_title
