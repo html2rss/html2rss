@@ -134,7 +134,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
   end
 
-  describe '#article_condition' do
+  describe '#article_tag_condition' do
     let(:html) do
       <<-HTML
       <html>
@@ -167,29 +167,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
     it 'returns false for nodes within ignored tags' do
       node = parsed_body.at_css('nav a')
-      expect(scraper.article_condition(node)).to be_falsey
+      expect(scraper.article_tag_condition(node)).to be_falsey
     end
 
     it 'returns true for body and html tags', :aggregate_failures do
       body_node = parsed_body.at_css('body')
       html_node = parsed_body.at_css('html')
-      expect(scraper.article_condition(body_node)).to be_truthy
-      expect(scraper.article_condition(html_node)).to be_truthy
+      expect(scraper.article_tag_condition(body_node)).to be_truthy
+      expect(scraper.article_tag_condition(html_node)).to be_truthy
     end
 
     it 'returns true if parent has 2 or more anchor tags' do
       node = parsed_body.at_css('article a')
-      expect(scraper.article_condition(node)).to be true
+      expect(scraper.article_tag_condition(node)).to be true
     end
 
     it 'returns false if none of the conditions are met' do
       node = parsed_body.at_css('footer a')
-      expect(scraper.article_condition(node)).to be_falsey
+      expect(scraper.article_tag_condition(node)).to be_falsey
     end
 
     it 'returns false if parent class matches' do
       node = parsed_body.at_css('.navigation a')
-      expect(scraper.article_condition(node)).to be_falsey
+      expect(scraper.article_tag_condition(node)).to be_falsey
     end
   end
 end
