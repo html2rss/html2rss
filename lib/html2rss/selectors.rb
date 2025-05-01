@@ -114,8 +114,8 @@ module Html2rss
     def select(name, item)
       name = name.to_sym
 
-      raise InvalidSelectorName, "`#{name}` is not an attribute selector" if name == ITEMS_SELECTOR_KEY
-      raise InvalidSelectorName, "`#{name}` is not defined" unless @selectors[name]
+      raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
+      raise InvalidSelectorName, "Selector for '#{name}' is not defined." unless @selectors.key?(name)
 
       SPECIAL_ATTRIBUTES.member?(name) ?  select_special(name, item) : select_regular(name, item)
     end
@@ -142,7 +142,7 @@ module Html2rss
         old_names.each do |old_name|
           next unless @selectors.key?(old_name)
 
-          Html2rss::Log.warn "Selector `#{old_name}` is deprecated. Please rename to `#{new_name}`."
+          Html2rss::Log.warn("Selector '#{old_name}' is deprecated. Please rename to '#{new_name}'.")
           @selectors[new_name] ||= @selectors.delete(old_name)
         end
       end

@@ -96,9 +96,9 @@ module Html2rss
 
     def handle_deprecated_channel_attributes(config)
       { strategy: RequestService.default_strategy_name, headers: {} }.each_pair do |key, default_value|
-        if !config[key] && (values = config.dig(:channel, key))
-          Log.warn("The `channel.#{key}` key is deprecated. Please move definition of `#{key}` up to top level.")
-          config[key] = values
+        if !config[key] && (value = config.dig(:channel, key))
+          Log.warn("The `channel.#{key}` key is deprecated. Please move the definition of `#{key}` to the top level.")
+          config[key] = value
         end
 
         config[key] ||= default_value
