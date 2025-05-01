@@ -39,7 +39,7 @@ RSpec.describe Html2rss::Selectors do
 
       it 'handles renamed attributes', :aggregate_failures do
         expect(instance.instance_variable_get(:@selectors)).to include(:published_at)
-        expect(Html2rss::Log).to have_received(:warn).with(/deprecated. Please rename to `published_at`./)
+        expect(Html2rss::Log).to have_received(:warn).with(/deprecated. Please rename to 'published_at'./)
       end
     end
   end
@@ -150,11 +150,11 @@ RSpec.describe Html2rss::Selectors do
       expect(value).to eq('article1')
     end
 
-    context 'when name is not known' do
+    context 'when name is not a referencing a selector' do
       subject(:value) { instance.select(:unknown, item) }
 
       it 'raises an error' do
-        expect { value }.to raise_error(described_class::InvalidSelectorName, /`unknown` is not defined/)
+        expect { value }.to raise_error(described_class::InvalidSelectorName, "Selector for 'unknown' is not defined.")
       end
     end
   end

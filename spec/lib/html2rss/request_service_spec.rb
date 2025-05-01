@@ -129,7 +129,7 @@ RSpec.describe Html2rss::RequestService do
       it 'raises an ArgumentError' do
         expect do
           described_class.unregister_strategy(described_class.default_strategy_name)
-        end.to raise_error(ArgumentError, 'Cannot unregister the default strategy')
+        end.to raise_error(ArgumentError, 'Cannot unregister the default strategy.')
       end
     end
   end
