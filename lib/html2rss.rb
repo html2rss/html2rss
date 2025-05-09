@@ -83,8 +83,10 @@ module Html2rss
   # @param items_selector [String] CSS selector for items (will be enhanced) (optional)
   # @return [RSS::Rss]
   def self.auto_source(url, strategy: :faraday, items_selector: nil)
-    config = Html2rss::Config.default_config.merge!(strategy:, auto_source: {})
+    config = Html2rss::Config.default_config.merge!(strategy:)
     config[:channel][:url] = url
+
+    config[:auto_source] = Html2rss::AutoSource::DEFAULT_CONFIG
     config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
 
     feed(config)

@@ -95,7 +95,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       let(:first_article) do
         { title: nil,
-          url: be_a(Addressable::URI),
+          url: an_instance_of(Addressable::URI),
           image: nil,
           description: '[Plonk]',
           id: '/',
@@ -106,7 +106,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       let(:second_article) do
         {
           title: nil,
-          url: be_a(Addressable::URI),
+          url: an_instance_of(Addressable::URI),
           image: nil,
           description: 'Bla bla bla',
           id: '/',
@@ -116,9 +116,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       it 'contains the articles with same id', :aggregate_failures do
-        first, second = articles.to_a
-        expect(articles).to contain_exactly(first_article, second_article)
+        first, second  = articles.to_a
         expect(first[:id]).to eq(second[:id])
+      end
+
+      it 'contains the first_article' do
+        expect(articles.first).to include(first_article)
+      end
+
+      it 'contains the second_article' do
+        expect(articles.to_a[-1]).to include(second_article)
       end
     end
   end

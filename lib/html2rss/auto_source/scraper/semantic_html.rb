@@ -33,37 +33,49 @@ module Html2rss
         def self.articles?(parsed_body)
           return false unless parsed_body
 
-          ANCHOR_TAG_SELECTORS.each do |(_tag_name, selector)|
-            return true if parsed_body.at_css(selector)
+          ANCHOR_TAG_SELECTORS.any? do |(_tag_name, selector)|
+            parsed_body.at_css(selector)
           end
-
-          false
         end
 
-        def initialize(parsed_body, url:, **opts)
+        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
+        # @param url [String] The base URL.
+        # @param extractor [Class] (Optional) The extractor class to handle article extraction.
+        # @param opts [Hash] Additional options.
+        def initialize(parsed_body, url:, extractor: nil, **opts)
           @parsed_body = parsed_body
           @url = url
           @opts = opts
+          @extractor = extractor || HtmlExtractor
         end
 
         attr_reader :parsed_body
 
         ##
-        # @yieldparam [Hash] The scraped article hash
-        # @return [Enumerator] Enumerator for the scraped articles
+        # Yields article hashes extracted from the HTML.
+        # @yieldparam [Hash] The scraped article hash.
+        # @return [Enumerator] Enumerator for the scraped articles.
         def each
           return enum_for(:each) unless block_given?
 
-          ANCHOR_TAG_SELECTORS.each do |(tag_name, selector)|
-            parsed_body.css(selector).each do |selected_tag|
-              next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
+          each_candidate do |article_tag|
+            if (article_hash = @extractor.new(article_tag, base_url: @url).call)
+              yield article_hash
+            end
+          end
+        end
 
-              # from the `selected_tag` (<a href>), go up the DOM until we reach `tag_name`
-              article_tag = HtmlNavigator.find_tag_in_ancestors(selected_tag, tag_name)
+        private
 
-              if article_tag && (article_hash = HtmlExtractor.new(article_tag, base_url: @url).call)
-                yield article_hash
-              end
+        # @yield [Nokogiri::XML::Element] Gives each found article tag.
+        def each_candidate
+          ANCHOR_TAG_SELECTORS.each do |tag_name, selector|
+            parsed_body.css(selector).each do |anchor|
+              next if anchor.path.match?(Html::TAGS_TO_IGNORE)
+
+              # Traverse ancestors to find the parent tag matching tag_name
+              article_tag = HtmlNavigator.find_tag_in_ancestors(anchor, tag_name)
+              yield article_tag if article_tag
             end
           end
         end
