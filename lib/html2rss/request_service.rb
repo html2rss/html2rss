@@ -6,7 +6,7 @@ require 'forwardable'
 module Html2rss
   ##
   # Requests website URLs to retrieve their HTML for further processing.
-  # Provides strategies, i.e. to integrate Browserless.io.
+  # Provides strategies, e.g. integrating Browserless.io.
   class RequestService
     include Singleton
 
@@ -56,9 +56,12 @@ module Html2rss
     ##
     # Registers a new strategy.
     # @param name [Symbol] the name of the strategy
-    # @param strategy_class [Class] the class of the strategy
+    # @param strategy_class [Class] the class implementing the strategy
+    # @raise [ArgumentError] if strategy_class is not a Class
     def register_strategy(name, strategy_class)
-      raise ArgumentError, 'Strategy class must be a Class' unless strategy_class.is_a?(Class)
+      unless strategy_class.is_a?(Class)
+        raise ArgumentError, "Expected a Class for strategy, got #{strategy_class.class}"
+      end
 
       @strategies[name.to_sym] = strategy_class
     end
@@ -66,7 +69,7 @@ module Html2rss
     ##
     # Checks if a strategy is registered.
     # @param name [Symbol] the name of the strategy
-    # @return [Boolean] true if the strategy is registered, false otherwise
+    # @return [Boolean] true if the strategy is registered, false otherwise.
     def strategy_registered?(name)
       @strategies.key?(name.to_sym)
     end
@@ -74,24 +77,27 @@ module Html2rss
     ##
     # Unregisters a strategy.
     # @param name [Symbol] the name of the strategy
-    # @return [Boolean] true if the strategy was unregistered, false otherwise
+    # @return [Boolean] true if the strategy was unregistered, false otherwise.
+    # @raise [ArgumentError] if attempting to unregister the default strategy.
     def unregister_strategy(name)
-      raise ArgumentError, 'Cannot unregister the default strategy' if name.to_sym == @default_strategy_name
+      raise ArgumentError, 'Cannot unregister the default strategy.' if name.to_sym == @default_strategy_name
 
       !!@strategies.delete(name.to_sym)
     end
 
     ##
-    # Executes the request.
-    # @param ctx [Context] the context for the request
-    # @param strategy [Symbol] the strategy to use
-    # @return [Response] the response from the strategy
-    # @raise [UnknownStrategy] if the strategy is not known
+    # Executes the request using the specified strategy.
+    # @param ctx [Context] the context for the request.
+    # @param strategy [Symbol] the strategy to use (defaults to the default strategy).
+    # @return [Response] the response from the executed strategy.
+    # @raise [ArgumentError] if the context is nil.
+    # @raise [UnknownStrategy] if the strategy is not registered.
     def execute(ctx, strategy: default_strategy_name)
-      strategy_class = @strategies.fetch(strategy) do
+      strategy_class = @strategies.fetch(strategy.to_sym) do
         raise UnknownStrategy,
-              "The strategy '#{strategy}' is not known. Available strategies are: #{strategy_names.join(', ')}"
+              "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
       end
+
       strategy_class.new(ctx).execute
     end
   end

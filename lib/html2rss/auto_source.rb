@@ -8,14 +8,13 @@ module Html2rss
   # The AutoSource class automatically extracts articles from a given URL by
   # utilizing a collection of Scrapers. These scrapers analyze and
   # parse popular structured data formats—such as schema, microdata, and
-  # open graph—in order to identify relevant article elements accurately and
-  # compile them into unified articles.
+  # open graph—to identify and compile article elements into unified articles.
+  #
+  # Scrapers supporting plain HTML are also available for sites without structured data,
+  # though results may vary based on page markup.
+  #
   # @see Html2rss::AutoSource::Scraper::Schema
   # @see Html2rss::AutoSource::Scraper::SemanticHtml
-  #
-  # Its plain HTML scraping capabilities are designed to scrape websites
-  # without such popular structured data formats. However, the results may vary,
-  # depending on the website's structure and its markup.
   # @see Html2rss::AutoSource::Scraper::Html
   class AutoSource
     DEFAULT_CONFIG = {
