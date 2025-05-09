@@ -105,8 +105,7 @@ module Html2rss
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|
-        next if value.nil?
-        next if article_hash.key?(key) && !hash[key].nil?
+        next if value.nil? || (hash.key?(key) && !hash[key].nil?)
 
         hash[key] = value
       end
@@ -158,9 +157,12 @@ module Html2rss
     end
 
     def parsed_body
-      return response.parsed_body unless response.json_response?
-
-      Nokogiri::HTML5.fragment ObjectToXmlConverter.new(response.parsed_body).call
+      if response.json_response?
+        fragment = ObjectToXmlConverter.new(response.parsed_body).call
+        Nokogiri::HTML5.fragment(fragment)
+      else
+        response.parsed_body
+      end
     end
 
     def select_special(name, item)
