@@ -42,9 +42,8 @@ module Html2rss
 
     ##
     # @param channel [Html2rss::RssBuilder::Channel] The channel information for the RSS feed.
-    # @param articles [Array<Html2rss::RssBuilder::Article>] The list of articles to include in the RSS feed
-    # @param stylesheets [Array<Html2rss::RssBuilder::Stylesheet>] An optional array of stylesheet URLs
-    # @return [Html2rss::RssBuilder] A new instance of the RSSBuilder class
+    # @param articles [Array<Html2rss::RssBuilder::Article>] The list of articles to include in the RSS feed.
+    # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
     def initialize(channel:, articles:, stylesheets: [])
       @channel = channel
       @articles = articles

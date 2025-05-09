@@ -16,7 +16,8 @@ module Html2rss
     class InvalidSelectorName < Html2rss::Error; end
 
     include Enumerable
-    # A context instance is passed to Item Extractors.
+
+    # A context instance passed to item extractors and post-processors.
     Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
 
     DEFAULT_CONFIG = { items: { enhance: true } }.freeze
@@ -25,18 +26,15 @@ module Html2rss
     ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
     SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
 
-    ##
-    # Keep backward compatibility.
-    #
-    # key: new name, value: previous name
+    # Mapping of new attribute names to their legacy names for backward compatibility.
     RENAMED_ATTRIBUTES = { published_at: %i[updated pubDate] }.freeze
 
     ##
     # Initializes a new Selectors instance.
     #
     # @param response [RequestService::Response] The response object.
-    # @param selectors [Hash] The selectors hash.
-    # @param time_zone [String] The time zone to use for date parsing.
+    # @param selectors [Hash] A hash of CSS selectors.
+    # @param time_zone [String] Time zone string used for date parsing.
     def initialize(response, selectors:, time_zone:)
       @response = response
       @url = response.url
@@ -50,13 +48,20 @@ module Html2rss
       @rss_item_attributes = @selectors.keys & Html2rss::RssBuilder::Article::PROVIDED_KEYS
     end
 
+    ##
+    # Returns articles extracted from the response.
+    # Reverses order if config specifies reverse ordering.
+    #
+    # @return [Array<Html2rss::RssBuilder::Article>]
     def articles
       @articles ||= @selectors.dig(ITEMS_SELECTOR_KEY, :order) == 'reverse' ? to_a.tap(&:reverse!) : to_a
     end
 
     ##
-    # @yield [Hash] Each scraped article_hash
-    # @return [Array<Html2rss::RssBuilder::Article>] the scraped articles
+    # Iterates over each scraped article.
+    #
+    # @yield [article] Gives each article as an Html2rss::RssBuilder::Article.
+    # @return [Enumerator] An enumerator if no block is given.
     def each(&)
       return enum_for(:each) unless block_given?
 
@@ -79,22 +84,24 @@ module Html2rss
     ## @return [Boolean] whether to enhance the article hash with auto_source's semantic HTML extraction.
     def enhance? = !!@selectors.dig(ITEMS_SELECTOR_KEY, :enhance)
 
-    # @return [Html2rss::RssBuilder::Article] the extracted article.
+    ##
+    # Extracts an article hash for a given item element.
+    #
+    # @param item [Nokogiri::XML::Element] The element to extract from.
+    # @return [Hash] Hash of attributes for the article.
     def extract_article(item)
       @rss_item_attributes.to_h { |key| [key, select(key, item)] }.compact
     end
 
     ##
-    # Enhances the article hash with auto_source's semantic HTML extraction.
-    # Keeps existing values and only adds new ones.
-    # This method is called only if the `enhance` option is set to true.
+    # Enhances the article hash using semantic HTML extraction.
+    # Only adds keys that are missing from the original hash.
     #
-    # @param article_hash [Hash] The article hash to enhance.
-    # @param item [Nokogiri::XML::Element] The item from which to extract additional attributes.
-    # @return [Hash] The enhanced article_hash.
-    def enhance_article_hash(article_hash, item)
-      extracted = HtmlExtractor.new(item, base_url: @url).call
-
+    # @param article_hash [Hash] The original article hash.
+    # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
+    # @return [Hash] The enhanced article hash.
+    def enhance_article_hash(article_hash, article_tag)
+      extracted = HtmlExtractor.new(article_tag, base_url: @url).call
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|
@@ -106,15 +113,17 @@ module Html2rss
     end
 
     ##
-    # Selects the value for a given attribute name from the item.
+    # Selects the value for a given attribute from an HTML element.
     #
-    # @param name [Symbol, String] The name of the attribute to select.
-    # @param item [Nokogiri::XML::Element] The item from which to select the attribute.
-    # @return [Object, Array<Object>] The selected value(s) for the attribute.
+    # @param name [Symbol, String] Name of the attribute.
+    # @param item [Nokogiri::XML::Element] The HTML element to process.
+    # @return [Object, Array<Object>] The selected value(s).
+    # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
     def select(name, item)
       name = name.to_sym
 
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
+
       raise InvalidSelectorName, "Selector for '#{name}' is not defined." unless @selectors.key?(name)
 
       SPECIAL_ATTRIBUTES.member?(name) ?  select_special(name, item) : select_regular(name, item)

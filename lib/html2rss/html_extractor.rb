@@ -2,27 +2,28 @@
 
 module Html2rss
   ##
-  # HtmlExtractor is responsible for extracting
-  # details (headline, url, images, etc.)
+  # HtmlExtractor is responsible for extracting details (headline, url, images, etc.)
   # from an article_tag.
   class HtmlExtractor
     INVISIBLE_CONTENT_TAGS = %w[svg script noscript style template].to_set.freeze
     HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
-    NON_HEADLINE_SELECTOR = (HEADING_TAGS.map { |s| ":not(#{s})" } + INVISIBLE_CONTENT_TAGS.to_a).freeze
+    NON_HEADLINE_SELECTOR = (HEADING_TAGS.map { |tag| ":not(#{tag})" } + INVISIBLE_CONTENT_TAGS.to_a).freeze
 
     MAIN_ANCHOR_SELECTOR = begin
       buf = +'a[href]:not([href=""])'
-      %w[# javascript: mailto: tel: file:// sms: data:].each { |prefix| buf << %[:not([href^="#{prefix}"])] }
+      %w[# javascript: mailto: tel: file:// sms: data:].each do |prefix|
+        buf << %[:not([href^="#{prefix}"])]
+      end
       buf.freeze
     end
 
     class << self
       ##
-      # Extracts visible text from a given tag and its children.
+      # Extracts visible text from a given node and its children.
       #
-      # @param tag [Nokogiri::XML::Node] the tag from which to extract visible text
-      # @param separator [String] optional separator used to join visible text (default is a space)
-      # @return [String, nil] the sanitized visible text or nil if no visible text is found
+      # @param tag [Nokogiri::XML::Node] the node from which to extract visible text
+      # @param separator [String] separator used to join text fragments (default is a space)
+      # @return [String, nil] the concatenated visible text, or nil if none is found
       def extract_visible_text(tag, separator: ' ')
         parts = tag.children.each_with_object([]) do |child, result|
           next unless visible_child?(child)
@@ -76,8 +77,7 @@ module Html2rss
       end
     end
 
-    ##
-    # Searches for the closest parent anchor which is not in the linking to excluded_hrefs.
+    # Finds the closest ancestor anchor element matching the MAIN_ANCHOR_SELECTOR.
     def find_main_anchor
       HtmlNavigator.find_closest_selector_upwards(article_tag, MAIN_ANCHOR_SELECTOR)
     end
