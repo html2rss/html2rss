@@ -2,31 +2,23 @@
 
 module Html2rss
   class Config
-    ##
-    # Applies the params recursively to the given value.
+    # Processes and applies dynamic parameter formatting in configuration values.
     class DynamicParams
       class ParamsMissing < Html2rss::Error; end
 
       class << self
-        ##
-        # Traverse the given value and replace the format string with the given params.
+        # Recursively traverses the given value and formats any strings containing
+        # placeholders with values from the provided params.
         #
-        # @param value [String, Hash, Enumerable, Object]
-        # @param params [Hash]
-        # @return returns the Object with its Strings being formatted with the given params.
-        def call(value, params = {}, getter: nil, replace_missing_with: nil) # rubocop:disable Metrics/MethodLength
+        # @param value [String, Hash, Enumerable, Object] The value to process.
+        # @param params [Hash] The parameters for substitution.
+        # @param getter [Proc, nil] Optional proc to retrieve a key's value.
+        # @param replace_missing_with [Object, nil] Value to substitute if a key is missing.
+        # @return [Object] The processed value.
+        def call(value, params = {}, getter: nil, replace_missing_with: nil)
           case value
           when String
-            # Check if the string contains a format pattern like %{key} or %<key>
-            return value unless /%\{[^{}]*\}|%<[^<>]*>/.match?(value)
-
-            format_params = format_params(params, getter:, replace_missing_with:)
-
-            begin
-              format(value, format_params)
-            rescue KeyError => error
-              raise ParamsMissing, error.message if replace_missing_with.nil?
-            end
+            from_string(value, params, getter:, replace_missing_with:)
           when Hash
             from_hash(value, params, getter:, replace_missing_with:)
           when Enumerable
@@ -45,10 +37,21 @@ module Html2rss
                         else
                           params.fetch(key.to_sym) { params[key.to_s] }
                         end
-
-            hash[key] ||= replace_missing_with if replace_missing_with
+            hash[key] = replace_missing_with if hash[key].nil? && !replace_missing_with.nil?
             hash[key]
           end
+        end
+
+        def from_string(string, params, getter:, replace_missing_with:)
+          # Return the original string if no format placeholders are found.
+          return string unless /%\{[^{}]*\}|%<[^<>]*>/.match?(string)
+
+          mapping = format_params(params, getter:, replace_missing_with:)
+          format(string, mapping)
+        rescue KeyError => error
+          raise ParamsMissing, "Missing parameter for formatting: #{error.message}" if replace_missing_with.nil?
+
+          string
         end
 
         def from_hash(hash, params, getter:, replace_missing_with:)
