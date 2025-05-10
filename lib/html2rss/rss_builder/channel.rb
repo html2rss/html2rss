@@ -30,7 +30,7 @@ module Html2rss
 
         description = parsed_body.at_css('meta[name="description"]')&.[]('content') if html_response?
 
-        return format(DEFAULT_DESCRIPTION_TEMPLATE, url: url) if description.to_s.empty?
+        return format(DEFAULT_DESCRIPTION_TEMPLATE, url:) if description.to_s.empty?
 
         description
       end
