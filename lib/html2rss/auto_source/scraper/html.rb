@@ -11,7 +11,7 @@ module Html2rss
       class Html
         include Enumerable
 
-        TAGS_TO_IGNORE = /(nav|footer|header)/i
+        TAGS_TO_IGNORE = /(nav|footer|header|svg|script|style)/i
 
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
         DEFAULT_USE_TOP_SELECTORS = 5
@@ -28,9 +28,14 @@ module Html2rss
           xpath.gsub(/\[\d+\]/, '')
         end
 
-        def initialize(parsed_body, url:, **opts)
+        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
+        # @param url [String] The base URL.
+        # @param extractor [Class] The extractor class to handle article extraction.
+        # @param opts [Hash] Additional options.
+        def initialize(parsed_body, url:, extractor: HtmlExtractor, **opts)
           @parsed_body = parsed_body
           @url = url
+          @extractor = extractor
           @opts = opts
         end
 
@@ -48,7 +53,7 @@ module Html2rss
 
               article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition))
 
-              if article_tag && (article_hash = HtmlExtractor.new(article_tag, base_url: @url).call)
+              if article_tag && (article_hash = @extractor.new(article_tag, base_url: @url).call)
                 yield article_hash
               end
             end

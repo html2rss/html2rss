@@ -115,7 +115,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         }
       end
 
-      it 'contains the articles with same id', :aggregate_failures do
+      it 'contains the articles with same id' do
         first, second  = articles.to_a
         expect(first[:id]).to eq(second[:id])
       end
