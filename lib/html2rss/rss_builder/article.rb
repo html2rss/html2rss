@@ -152,9 +152,8 @@ module Html2rss
 
       def fetch_guid
         guid = @to_h[:guid].map { |s| s.to_s.strip }.reject(&:empty?).join if @to_h[:guid].is_a?(Array)
-        guid ||= [title, description].compact.first
-        guid ||= [url, id].join('#!/')
-        guid
+
+        guid || [url, id].join('#!/')
       end
     end
   end
