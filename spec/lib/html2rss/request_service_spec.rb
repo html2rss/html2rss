@@ -17,7 +17,7 @@ RSpec.describe Html2rss::RequestService do
   end
 
   describe '#execute' do
-    subject(:execute) { described_class.execute(ctx, strategy: strategy) }
+    subject(:execute) { described_class.execute(ctx, strategy:) }
 
     let(:strategy) { :faraday }
     let(:ctx) { instance_double(Html2rss::RequestService::Context) }

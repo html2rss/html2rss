@@ -18,7 +18,7 @@ RSpec.describe Html2rss::RssBuilder::Enclosure do
   end
 
   describe '#initialize' do
-    subject { described_class.new(url: url, type: type, bits_length: bits_length) }
+    subject { described_class.new(url:, type:, bits_length:) }
 
     let(:url) { Addressable::URI.parse('https://example.com/image.jpg') }
     let(:type) { 'image/jpeg' }

@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Selectors do
-  subject(:instance) { described_class.new(response, selectors: selectors, time_zone: time_zone) }
+  subject(:instance) { described_class.new(response, selectors:, time_zone:) }
 
   let(:response) { Html2rss::RequestService::Response.new url: 'http://example.com', headers: { 'content-type': 'text/html' }, body: }
   let(:selectors) do

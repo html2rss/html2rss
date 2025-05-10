@@ -6,7 +6,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::HtmlTransformers::WrapImgInA
   subject(:transformer) { described_class.new }
 
   describe '#call' do
-    subject(:call) { transformer.call(node_name: node_name, node: node) }
+    subject(:call) { transformer.call(node_name:, node:) }
 
     let(:node_name) { 'img' }
     let(:node) { Nokogiri::HTML('<html><p><img src="https://example.com/image.jpg"></p></html>').at('img') }
