@@ -54,7 +54,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         image: nil,
         description: 'Article 1 Headline Teaser for article 1. Read more',
         id: '/article1/',
-        published_at: nil }
+        published_at: nil,
+        enclosure: nil }
     end
     let(:second_article) do
       { title: 'Article 2 Headline',
@@ -62,15 +63,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         image: nil,
         description: 'Article 2 Headline Teaser for article 2. Read more',
         id: '/article2/',
-        published_at: nil }
+        published_at: nil,
+        enclosure: nil }
     end
 
     it 'yields articles' do
-      expect { |b| articles.each(&b) }.to yield_control
+      expect { |b| articles.each(&b) }.to yield_control.twice
     end
 
-    it 'contains two articles' do
-      expect(articles.to_a).to contain_exactly(first_article, second_article)
+    it 'contains the two articles', :aggregate_failures do
+      first, last = articles.to_a
+
+      expect(first).to include(first_article)
+      expect(last).to include(second_article)
     end
 
     context 'when parsed_body does not wrap article in an element' do
@@ -89,27 +94,38 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       let(:first_article) do
-        { title: '[Plonk]',
-          url: be_a(Addressable::URI),
-          image: nil,
-          description: 'Bla bla bla',
-          id: '/',
-          published_at: nil }
-      end
-
-      let(:second_article) do
-        { title: '[Plonk]',
-          url: be_a(Addressable::URI),
+        { title: nil,
+          url: an_instance_of(Addressable::URI),
           image: nil,
           description: '[Plonk]',
           id: '/',
-          published_at: nil }
+          published_at: nil,
+          enclosure: nil }
       end
 
-      it 'contains the articles with same id', :aggregate_failures do
-        first, second = articles.to_a
-        expect(articles).to contain_exactly(first_article, second_article)
+      let(:second_article) do
+        {
+          title: nil,
+          url: an_instance_of(Addressable::URI),
+          image: nil,
+          description: 'Bla bla bla',
+          id: '/',
+          published_at: nil,
+          enclosure: nil
+        }
+      end
+
+      it 'contains the articles with same id' do
+        first, second  = articles.to_a
         expect(first[:id]).to eq(second[:id])
+      end
+
+      it 'contains the first_article' do
+        expect(articles.first).to include(first_article)
+      end
+
+      it 'contains the second_article' do
+        expect(articles.to_a[-1]).to include(second_article)
       end
     end
   end
@@ -125,48 +141,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
   end
 
-  describe '.parent_until_condition' do
-    let(:html) do
-      <<-HTML
-        <div>
-          <section>
-            <article>
-              <p id="target">Some text here</p>
-            </article>
-          </section>
-        </div>
-      HTML
-    end
-
-    let(:document) { Nokogiri::HTML(html) }
-    let(:target_node) { document.at_css('#target') }
-
-    it 'returns the node itself if the condition is met' do
-      condition = ->(node) { node.name == 'p' }
-      result = described_class.parent_until_condition(target_node, condition)
-      expect(result).to eq(target_node)
-    end
-
-    it 'returns the first parent that satisfies the condition' do
-      condition = ->(node) { node.name == 'article' }
-      result = described_class.parent_until_condition(target_node, condition)
-      expect(result.name).to eq('article')
-    end
-
-    it 'returns nil if the node has no parents that satisfy the condition' do
-      condition = ->(node) { node.name == 'footer' }
-      result = described_class.parent_until_condition(target_node, condition)
-      expect(result).to be_nil
-    end
-
-    it 'returns nil if target_node is nil' do
-      condition = ->(node) { node.name == 'article' }
-      result = described_class.parent_until_condition(nil, condition)
-      expect(result).to be_nil
-    end
-  end
-
-  describe '#article_condition' do
+  describe '#article_tag_condition' do
     let(:html) do
       <<-HTML
       <html>
@@ -178,6 +153,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
             <a href="link2">Link 2</a>
             <article>
               <a href="link3">Link 3</a>
+              <div>
+                <a href="link6">Link 6</a>
+              </div>
             </article>
           </div>
           <footer>
@@ -196,29 +174,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
     it 'returns false for nodes within ignored tags' do
       node = parsed_body.at_css('nav a')
-      expect(scraper.article_condition(node)).to be_falsey
+      expect(scraper.article_tag_condition(node)).to be_falsey
     end
 
     it 'returns true for body and html tags', :aggregate_failures do
       body_node = parsed_body.at_css('body')
       html_node = parsed_body.at_css('html')
-      expect(scraper.article_condition(body_node)).to be_truthy
-      expect(scraper.article_condition(html_node)).to be_truthy
+      expect(scraper.article_tag_condition(body_node)).to be_truthy
+      expect(scraper.article_tag_condition(html_node)).to be_truthy
     end
 
     it 'returns true if parent has 2 or more anchor tags' do
       node = parsed_body.at_css('article a')
-      expect(scraper.article_condition(node)).to be_falsey
+      expect(scraper.article_tag_condition(node)).to be true
     end
 
     it 'returns false if none of the conditions are met' do
       node = parsed_body.at_css('footer a')
-      expect(scraper.article_condition(node)).to be_falsey
+      expect(scraper.article_tag_condition(node)).to be_falsey
     end
 
     it 'returns false if parent class matches' do
       node = parsed_body.at_css('.navigation a')
-      expect(scraper.article_condition(node)).to be_falsey
+      expect(scraper.article_tag_condition(node)).to be_falsey
     end
   end
 end

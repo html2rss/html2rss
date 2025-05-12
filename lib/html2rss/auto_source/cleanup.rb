@@ -7,8 +7,13 @@ module Html2rss
     # :reek:MissingSafeMethod { enabled: false }
     # It applies various strategies to filter and refine the article list.
     class Cleanup
+      DEFAULT_CONFIG = {
+        keep_different_domain: false,
+        min_words_title: 3
+      }.freeze
+
       class << self
-        def call(articles, url:, keep_different_domain: false)
+        def call(articles, url:, keep_different_domain:, min_words_title:)
           Log.debug "Cleanup: start with #{articles.size} articles"
 
           articles.select!(&:valid?)
@@ -17,6 +22,7 @@ module Html2rss
 
           keep_only_http_urls!(articles)
           reject_different_domain!(articles, url) unless keep_different_domain
+          keep_only_with_min_words_title!(articles, min_words_title:)
 
           Log.debug "Cleanup: end with #{articles.size} articles"
           articles
@@ -53,6 +59,24 @@ module Html2rss
         def reject_different_domain!(articles, base_url)
           base_host = base_url.host
           articles.select! { |article| article.url&.host == base_host }
+        end
+
+        ##
+        # Keeps only articles with a title that has at least `min_words_title` words.
+        #
+        # @param articles [Array<Article>] The list of articles to process.
+        # @param min_words_title [Integer] The minimum number of words in the title.
+        def keep_only_with_min_words_title!(articles, min_words_title:)
+          articles.select! { |article| word_count_at_least(article.title, min_words_title) }
+        end
+
+        def word_count_at_least(str, min_words)
+          count = 0
+          str.to_s.scan(/\b\w+\b/) do
+            count += 1
+            return true if count >= min_words
+          end
+          false
         end
       end
     end

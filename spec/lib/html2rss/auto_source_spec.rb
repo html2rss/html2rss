@@ -12,7 +12,7 @@ RSpec.describe Html2rss::AutoSource do
     '<html>
       <body>
         <article id="article-1">
-          <h2>Article 1 <!-- remove this --></h2>
+          <h2>Article 1 Title <!-- remove this --></h2>
           <a href="/article1">Read more</a>
         </article>
         </body>
@@ -31,6 +31,18 @@ RSpec.describe Html2rss::AutoSource do
     it 'validates default config' do
       expect(described_class::Config.call(described_class::DEFAULT_CONFIG)).to be_success
     end
+
+    describe 'optional(:cleanup)' do
+      let(:config) do
+        config = described_class::DEFAULT_CONFIG.dup
+        config[:auto_source] = { cleanup: described_class::Cleanup::DEFAULT_CONFIG }
+        config
+      end
+
+      it 'validates cleanup default config' do
+        expect(described_class::Config.call(config)).to be_success
+      end
+    end
   end
 
   describe '#articles' do
@@ -40,9 +52,9 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     let(:article_without_url) do
-      { title: 'Article 1',
+      { title: 'Article 1 Title',
         id: 'article-1',
-        guid: '1mnvx08',
+        guid: '1qmp481',
         description: 'Read more',
         image: nil,
         scraper: Html2rss::AutoSource::Scraper::SemanticHtml }
@@ -68,7 +80,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'returns an empty array and logs a warning', :aggregate_failures do
         expect(instance.articles).to eq []
         expect(Html2rss::Log).to have_received(:warn)
-          .with('No auto source scraper found for the provided URL. Skipping auto source.')
+          .with(/No auto source scraper found for URL: #{url}. Skipping auto source./)
       end
     end
   end

@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Selectors do
-  subject(:instance) { described_class.new(response, selectors: selectors, time_zone: time_zone) }
+  subject(:instance) { described_class.new(response, selectors:, time_zone:) }
 
   let(:response) { Html2rss::RequestService::Response.new url: 'http://example.com', headers: { 'content-type': 'text/html' }, body: }
   let(:selectors) do
@@ -39,7 +39,7 @@ RSpec.describe Html2rss::Selectors do
 
       it 'handles renamed attributes', :aggregate_failures do
         expect(instance.instance_variable_get(:@selectors)).to include(:published_at)
-        expect(Html2rss::Log).to have_received(:warn).with(/deprecated. Please rename to `published_at`./)
+        expect(Html2rss::Log).to have_received(:warn).with(/deprecated. Please rename to 'published_at'./)
       end
     end
   end
@@ -132,9 +132,7 @@ RSpec.describe Html2rss::Selectors do
 
     context 'when extractor returns nil' do
       before do
-        extractor = Html2rss::AutoSource::Scraper::SemanticHtml::Extractor
-
-        allow(extractor).to receive(:new).and_return(instance_double(extractor, call: nil))
+        allow(Html2rss::HtmlExtractor).to receive(:new).and_return(instance_double(Html2rss::HtmlExtractor, call: nil))
       end
 
       it 'returns article_hash' do
@@ -152,11 +150,11 @@ RSpec.describe Html2rss::Selectors do
       expect(value).to eq('article1')
     end
 
-    context 'when name is not known' do
+    context 'when name is not a referencing a selector' do
       subject(:value) { instance.select(:unknown, item) }
 
       it 'raises an error' do
-        expect { value }.to raise_error(described_class::InvalidSelectorName, /`unknown` is not defined/)
+        expect { value }.to raise_error(described_class::InvalidSelectorName, "Selector for 'unknown' is not defined.")
       end
     end
   end

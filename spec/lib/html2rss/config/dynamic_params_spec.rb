@@ -43,7 +43,7 @@ RSpec.describe Html2rss::Config::DynamicParams do
 
       it 'replaces format string with given params and getter' do
         value = 'Hello, %<name>s. You are %<age>s years old.'
-        result = described_class.call(value, params, getter: getter)
+        result = described_class.call(value, params, getter:)
         expect(result).to eq('Hello, Mr. Name. You are Mr. Age years old.')
       end
     end

@@ -6,34 +6,44 @@ module Html2rss
   ##
   # Builds an RSS Feed by providing channel, articles and stylesheets.
   class RssBuilder
-    def self.add_guid(article, maker)
-      maker.guid.tap do |guid|
-        guid.content = article.guid
-        guid.isPermaLink = false
+    class << self
+      def add_item(article, item_maker)
+        add_item_string_values(article, item_maker)
+        add_item_categories(article, item_maker)
+        Enclosure.add(article.enclosure, item_maker)
+        add_item_guid(article, item_maker)
       end
-    end
 
-    def self.add_item(article, item_maker) # rubocop:disable Metrics/AbcSize
-      %w[title description author].each do |attr|
-        if (value = article.public_send(attr))
-          item_maker.public_send(:"#{attr}=", value)
+      private
+
+      def add_item_string_values(article, item_maker)
+        %i[title description author].each do |attr|
+          next unless (value = article.send(attr))
+          next if value.empty?
+
+          item_maker.send(:"#{attr}=", value)
+        end
+
+        item_maker.link = article.url.to_s if article.url
+        item_maker.pubDate = article.published_at&.rfc2822
+      end
+
+      def add_item_categories(article, item_maker)
+        article.categories.each { |category| item_maker.categories.new_category.content = category }
+      end
+
+      def add_item_guid(article, item_maker)
+        item_maker.guid.tap do |guid|
+          guid.content = article.guid
+          guid.isPermaLink = false
         end
       end
-
-      item_maker.link = article.url.to_s if article.url
-      item_maker.pubDate = article.published_at&.rfc2822
-
-      article.categories.each { |category| item_maker.categories.new_category.content = category }
-
-      Enclosure.add(article.enclosure, item_maker)
-      add_guid(article, item_maker)
     end
 
     ##
     # @param channel [Html2rss::RssBuilder::Channel] The channel information for the RSS feed.
-    # @param articles [Array<Html2rss::RssBuilder::Article>] The list of articles to include in the RSS feed
-    # @param stylesheets [Array<Html2rss::RssBuilder::Stylesheet>] An optional array of stylesheet URLs
-    # @return [Html2rss::RssBuilder] A new instance of the RSSBuilder class
+    # @param articles [Array<Html2rss::RssBuilder::Article>] The list of articles to include in the RSS feed.
+    # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
     def initialize(channel:, articles:, stylesheets: [])
       @channel = channel
       @articles = articles

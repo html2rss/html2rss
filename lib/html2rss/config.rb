@@ -5,22 +5,24 @@ require 'yaml'
 module Html2rss
   ##
   # The provided configuration is used to generate the RSS feed.
-  # This class provides a method to load the configuration from a YAML file which
-  # can contain either a single or multiple feed configurations.
+  # This class provides methods to load and process configuration from a YAML file,
+  # supporting both single and multiple feed configurations.
   #
-  # The provided configration is validated during initialization.
+  # Configuration is validated during initialization.
   class Config
     class InvalidConfig < Html2rss::Error; end
 
     class << self
       ##
-      # Returns the feed configuration from the YAML file.
+      # Loads the feed configuration from a YAML file.
       #
-      # It supports multiple feeds under the feeds: key and a single feed configurations.
+      # Supports multiple feeds defined under the specified key (default :feeds).
       #
-      # @param file [String] the YAML file.
-      # @param feed_name [String] the feed name (only when feeds: is present).
-      # @return [Hash<Symbol, Object>] the configuration.
+      # @param file [String] the YAML file to load.
+      # @param feed_name [String, nil] the feed name when using multiple feeds.
+      # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
+      # @return [Hash<Symbol, Object>] the configuration hash.
+      # @raise [ArgumentError] if the file doesn't exist or feed is not found.
       def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
         raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
         raise ArgumentError, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
@@ -36,11 +38,11 @@ module Html2rss
       end
 
       ##
-      # Returns the configuration object from the provided hash.
-      # It also processes the dynamic parameters if provided.
+      # Processes the provided configuration hash, applying dynamic parameters if given,
+      # and returns a new configuration object.
       #
-      # @param config [Hash<Symbol, Object>] the configuration.
-      # @param params [Hash<Symbol, Object>] the dynamic parameters.
+      # @param config [Hash<Symbol, Object>] the configuration hash.
+      # @param params [Hash<Symbol, Object>, nil] dynamic parameters for string formatting.
       # @return [Html2rss::Config] the configuration object.
       def from_hash(config, params: nil)
         config = config.dup
@@ -53,6 +55,10 @@ module Html2rss
         new(config)
       end
 
+      ##
+      # Provides a default configuration.
+      #
+      # @return [Hash<Symbol, Object>] a hash with default configuration values.
       def default_config
         {
           strategy: RequestService.default_strategy_name,
@@ -63,6 +69,13 @@ module Html2rss
       end
     end
 
+    ##
+    # Initializes the configuration object.
+    #
+    # Processes deprecated attributes, applies default values, and validates the configuration.
+    #
+    # @param config [Hash<Symbol, Object>] the configuration hash.
+    # @raise [InvalidConfig] if the configuration fails validation.
     def initialize(config) # rubocop:disable Metrics/AbcSize
       config = config.dup if config.frozen?
 
@@ -96,9 +109,9 @@ module Html2rss
 
     def handle_deprecated_channel_attributes(config)
       { strategy: RequestService.default_strategy_name, headers: {} }.each_pair do |key, default_value|
-        if !config[key] && (values = config.dig(:channel, key))
-          Log.warn("The `channel.#{key}` key is deprecated. Please move definition of `#{key}` up to top level.")
-          config[key] = values
+        if !config[key] && (value = config.dig(:channel, key))
+          Log.warn("The `channel.#{key}` key is deprecated. Please move the definition of `#{key}` to the top level.")
+          config[key] = value
         end
 
         config[key] ||= default_value

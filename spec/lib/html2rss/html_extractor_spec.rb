@@ -1,26 +1,40 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
-  subject(:article_hash) { described_class.new(article_tag, url:).call }
+require 'nokogiri'
 
-  let(:article_tag) { Nokogiri::HTML.fragment(html) }
-  let(:url) { 'https://example.com' }
+RSpec.describe Html2rss::HtmlExtractor do
+  subject(:article_hash) { described_class.new(article_tag, base_url: 'https://example.com').call }
+
+  describe '.extract_visible_text' do
+    subject(:visible_text) { described_class.extract_visible_text(tag) }
+
+    let(:tag) do
+      Nokogiri::HTML.fragment('<div>Hello <span>World</span><script>App = {}</script></div>').at_css('div')
+    end
+
+    it 'returns the visible text from the tag and its children' do
+      expect(visible_text).to eq('Hello World')
+    end
+  end
 
   context 'when heading is present' do
     let(:html) do
       <<~HTML
         <article id="fck-ptn">
+          <a href="#">Scroll to top</a>
           <h1>
             <a href="/sample">Sample Heading</a>
           </h1>
           <time datetime="2024-02-24T12:00-03:00">FCK PTN</time>
           <p>Sample description</p>
           <img src="image.jpg" alt="Image" />
+          <video> <source src="video.mp4" type="video/mp4"></video>
         </article>
       HTML
     end
 
     describe '#call' do
+      let(:article_tag) { Nokogiri::HTML.fragment(html) }
       let(:heading) { article_tag.at_css('h1') }
 
       it 'returns the article_hash', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -29,8 +43,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
           description: 'Sample Heading FCK PTN Sample description',
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
-          url: an_instance_of(Addressable::URI),
-          image: an_instance_of(Addressable::URI)
+          url: Addressable::URI.parse('https://example.com/sample'),
+          image: an_instance_of(Addressable::URI),
+          enclosure: a_hash_including(
+            url: an_instance_of(Addressable::URI),
+            type: 'video/mp4'
+          )
         )
 
         expect(article_hash[:published_at].to_s).to eq '2024-02-24T12:00:00-03:00'
@@ -48,6 +66,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
           </article>
         HTML
       end
+      let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
       it 'returns the article_hash with a nil published_at' do
         expect(article_hash[:published_at]).to be_nil
@@ -66,25 +85,23 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
       HTML
     end
 
-    it 'returns nil' do
-      expect(article_hash).to be_nil
+    let(:article_tag) { Nokogiri::HTML.fragment(html) }
+    let(:details) do
+      { title: nil,
+        url: nil,
+        image: be_a(Addressable::URI),
+        description: 'FCK PTN Sample description',
+        id: nil,
+        published_at: be_a(DateTime), enclosure: nil }
+    end
+
+    it 'returns the details' do
+      expect(article_hash).to match(details)
     end
   end
 
-  describe '.visible_text_from_tag' do
-    subject(:visible_text) { described_class.visible_text_from_tag(tag) }
-
-    let(:tag) do
-      Nokogiri::HTML.fragment('<div>Hello <span>World</span><script>App = {}</script></div>').at_css('div')
-    end
-
-    it 'returns the visible text from the tag and its children' do
-      expect(visible_text).to eq('Hello World')
-    end
-  end
-
-  describe '#find_heading' do
-    subject(:find_heading) { described_class.new(article_tag, url: 'https://example.com').send(:find_heading) }
+  describe '#heading' do
+    subject(:heading) { described_class.new(article_tag, base_url: 'https://example.com').send(:heading) }
 
     let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
@@ -100,8 +117,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
       end
 
       it 'returns the smallest heading with the largest visible text', :aggregate_failures do
-        expect(find_heading.name).to eq('h1')
-        expect(find_heading.text).to eq('Heading 1')
+        expect(heading.name).to eq('h1')
+        expect(heading.text).to eq('Heading 1')
       end
     end
 
@@ -116,7 +133,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::Extractor do
       end
 
       it 'returns nil' do
-        expect(find_heading).to be_nil
+        expect(heading).to be_nil
       end
     end
   end
