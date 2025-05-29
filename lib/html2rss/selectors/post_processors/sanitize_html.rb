@@ -56,10 +56,12 @@ module Html2rss
         end
 
         ##
-        # @return [String]
+        # @return [String, nil]
         def get
-          sanitized_html = Sanitize.fragment(value, sanitize_config)
-          sanitized_html.to_s.gsub(/\s+/, ' ').strip
+          sanitized_html = Sanitize.fragment(value, sanitize_config).to_s
+          sanitized_html.gsub!(/\s+/, ' ')
+          sanitized_html.strip!
+          sanitized_html.empty? ? nil : sanitized_html
         end
 
         private
