@@ -21,10 +21,6 @@ module Html2rss
     "#{datetime} [#{severity}] #{msg}\n"
   end
 
-  ##
-  # The Html2rss::Error base class.
-  class Error < StandardError; end
-
   def self.config_from_yaml_file(file, feed_name = nil)
     Config.load_yaml(file, feed_name)
   end
@@ -92,3 +88,5 @@ module Html2rss
     feed(config)
   end
 end
+
+loader.eager_load

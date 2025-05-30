@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative '../html2rss'
 require 'thor'
 
 ##
@@ -28,8 +27,8 @@ module Html2rss
                   default: RequestService.default_strategy_name
     def feed(yaml_file, feed_name = nil)
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
-      config[:strategy] ||= options.fetch(:strategy).to_sym
-      config[:params] = options.fetch(:params)
+      config[:strategy] ||= options[:strategy]&.to_sym
+      config[:params] = options[:params]
 
       puts Html2rss.feed(config)
     end

@@ -10,10 +10,6 @@ RSpec.describe Html2rss do
     expect(Html2rss::VERSION).not_to be_nil
   end
 
-  it 'defines a Error class' do
-    expect(Html2rss::Error).to be < StandardError
-  end
-
   describe '.config_from_yaml_file(file, feed_name = nil)' do
     subject(:feed) do
       described_class.config_from_yaml_file(config_file, name)
