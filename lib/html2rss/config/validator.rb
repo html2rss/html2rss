@@ -9,7 +9,6 @@ module Html2rss
     class Validator < Dry::Validation::Contract
       URI_REGEXP = URI::DEFAULT_PARSER.make_regexp
       STYLESHEET_TYPES = RssBuilder::Stylesheet::TYPES
-      STRATEGY_NAMES = RequestService.strategy_names.map(&:to_sym).freeze
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
 
       ChannelConfig = Dry::Schema.Params do
@@ -28,7 +27,7 @@ module Html2rss
       end
 
       params do
-        required(:strategy).filled(:symbol, included_in?: STRATEGY_NAMES)
+        required(:strategy).filled(:symbol)
         required(:channel).hash(ChannelConfig)
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)
