@@ -22,7 +22,9 @@ if ENV['COVERAGE']
   end
 end
 
-require 'html2rss'
+require_relative '../lib/html2rss'
+
+Zeitwerk::Loader.eager_load_all # flush all potential loading issues
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
