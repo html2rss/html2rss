@@ -82,4 +82,56 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       expect(subject).not_to include(articles[5])
     end
   end
+
+  describe '.keep_only_with_min_words_title!' do
+    subject(:keep_only_with_min_words_title!) do
+      described_class.keep_only_with_min_words_title!(articles, min_words_title:)
+    end
+
+    let(:articles) do
+      [
+        instance_double(Html2rss::RssBuilder::Article, title: 'A valid title'),
+        instance_double(Html2rss::RssBuilder::Article, title: 'Short'),
+        instance_double(Html2rss::RssBuilder::Article, title: 'Another valid article title'),
+        instance_double(Html2rss::RssBuilder::Article, title: nil),
+        instance_double(Html2rss::RssBuilder::Article, title: ''),
+        instance_double(Html2rss::RssBuilder::Article, title: 'Two words')
+      ]
+    end
+
+    context 'when min_words_title is 3' do
+      let(:min_words_title) { 3 }
+
+      it 'keeps only articles with at least 3 words in the title or nil title', :aggregate_failures do
+        keep_only_with_min_words_title!
+        expect(articles.map(&:title)).to contain_exactly('A valid title', 'Another valid article title', nil)
+      end
+    end
+
+    context 'when min_words_title is 1' do
+      let(:min_words_title) { 1 }
+
+      it 'keeps all articles except those with empty string title', :aggregate_failures do
+        keep_only_with_min_words_title!
+        expect(articles.map(&:title)).to contain_exactly(
+          'A valid title', 'Short', 'Another valid article title', nil, 'Two words'
+        )
+      end
+    end
+
+    context 'when all titles are nil or empty' do
+      let(:articles) do
+        [
+          instance_double(Html2rss::RssBuilder::Article, title: nil),
+          instance_double(Html2rss::RssBuilder::Article, title: '')
+        ]
+      end
+      let(:min_words_title) { 2 }
+
+      it 'keeps only articles with nil title' do
+        keep_only_with_min_words_title!
+        expect(articles.map(&:title)).to contain_exactly(nil)
+      end
+    end
+  end
 end
