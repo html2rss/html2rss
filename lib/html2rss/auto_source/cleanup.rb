@@ -28,8 +28,6 @@ module Html2rss
           articles
         end
 
-        private
-
         ##
         # Deduplicates articles by a given key.
         #
@@ -62,13 +60,17 @@ module Html2rss
         end
 
         ##
-        # Keeps only articles with a title that has at least `min_words_title` words.
+        # Keeps only articles with a title that is present and has at least `min_words_title` words.
         #
         # @param articles [Array<Article>] The list of articles to process.
         # @param min_words_title [Integer] The minimum number of words in the title.
         def keep_only_with_min_words_title!(articles, min_words_title:)
-          articles.select! { |article| word_count_at_least(article.title, min_words_title) }
+          articles.select! do |article|
+            article.title ? word_count_at_least(article.title, min_words_title) : true
+          end
         end
+
+        private
 
         def word_count_at_least(str, min_words)
           count = 0
