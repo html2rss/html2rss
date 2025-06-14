@@ -38,7 +38,7 @@ RSpec.describe Html2rss::HtmlExtractor::ImageExtractor do
       end
     end
 
-    context 'when image source is present in sourceset attribute' do
+    context 'when image source is present in srcset attribute' do
       let(:html) do
         <<~HTML
           <article>
@@ -57,6 +57,18 @@ RSpec.describe Html2rss::HtmlExtractor::ImageExtractor do
       it 'returns the absolute URL of the "largest" image source' do
         expect(url).to eq('https://example.com/wirtschaft/Deutschland-muss-sich-technologisch-weiterentwickeln-schnell.2000w.jpg')
       end
+    end
+
+    context 'when [srcset] contains no spaces between sources' do
+      let(:html) do
+        <<~HTML
+          <picture>
+            <img srcset="https://example.com/image.88w.jpg 88w,https://example.com/image.175w.jpg 175w"/>
+          </picture>
+        HTML
+      end
+
+      it { is_expected.to eq('https://example.com/image.175w.jpg') }
     end
 
     context 'when image source is present in style attribute' do
