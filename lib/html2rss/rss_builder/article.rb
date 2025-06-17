@@ -76,15 +76,13 @@ module Html2rss
       def description
         return @description if defined?(@description)
 
-        return if (description = @to_h[:description]).to_s.empty?
-
-        description = self.class.remove_pattern_from_start(description, title) if title
-
-        @description = if self.class.contains_html?(description)
-                         Html2rss::Selectors::PostProcessors::SanitizeHtml.get(description, url)
-                       else
-                         description.strip
-                       end
+        @description = DescriptionBuilder.new(
+          base: @to_h[:description],
+          title:,
+          url:,
+          enclosure:,
+          image:
+        ).call
       end
 
       # @return [Addressable::URI, nil]
