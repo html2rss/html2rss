@@ -74,9 +74,7 @@ module Html2rss
       end
 
       def description
-        return @description if defined?(@description)
-
-        @description = DescriptionBuilder.new(
+        @description ||= Rendering::DescriptionBuilder.new(
           base: @to_h[:description],
           title:,
           url:,
