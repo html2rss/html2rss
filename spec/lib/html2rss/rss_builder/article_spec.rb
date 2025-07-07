@@ -44,12 +44,12 @@ RSpec.describe Html2rss::RssBuilder::Article do
 
   describe '#description' do
     before do
-      allow(Html2rss::RssBuilder::DescriptionBuilder).to receive(:new).and_call_original
+      allow(Html2rss::Rendering::DescriptionBuilder).to receive(:new).and_call_original
       instance.description
     end
 
     it 'calls the DescriptionBuilder' do
-      expect(Html2rss::RssBuilder::DescriptionBuilder).to have_received(:new)
+      expect(Html2rss::Rendering::DescriptionBuilder).to have_received(:new)
         .with(base: 'By John Doe', title: 'Sample instance', url: instance.url, enclosure: nil, image: nil)
     end
   end
