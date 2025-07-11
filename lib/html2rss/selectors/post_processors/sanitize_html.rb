@@ -40,6 +40,49 @@ module Html2rss
       # Would return:
       #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
       class SanitizeHtml < Base
+        # @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
+        TAG_ATTRIBUTES = {
+          'a' => {
+            'rel' => 'nofollow noopener noreferrer',
+            'target' => '_blank'
+          },
+
+          'area' => {
+            'rel' => 'nofollow noopener noreferrer',
+            'target' => '_blank'
+          },
+
+          'img' => {
+            'referrerpolicy' => 'no-referrer',
+            'crossorigin' => 'anonymous',
+            'loading' => 'lazy',
+            'decoding' => 'async'
+          },
+
+          'iframe' => {
+            'referrerpolicy' => 'no-referrer',
+            'crossorigin' => 'anonymous',
+            'loading' => 'lazy',
+            'sandbox' => 'allow-same-origin',
+            'src' => true,
+            'width' => true,
+            'height' => true
+          },
+
+          'video' => {
+            'referrerpolicy' => 'no-referrer',
+            'crossorigin' => 'anonymous',
+            'preload' => 'none',
+            'playsinline' => 'true',
+            'controls' => 'true'
+          },
+
+          'audio' => {
+            'referrerpolicy' => 'no-referrer',
+            'crossorigin' => 'anonymous',
+            'preload' => 'none'
+          }
+        }.freeze
         def self.validate_args!(value, context)
           assert_type value, String, :value, context:
         end
@@ -50,7 +93,7 @@ module Html2rss
         # @param url [String, Addressable::URI]
         # @return [String, nil]
         def self.get(html, url)
-          return nil if html.to_s.empty?
+          return nil if String(html).empty?
 
           new(html, config: { channel: { url: } }).get
         end
@@ -70,30 +113,18 @@ module Html2rss
 
         ##
         # @return [Sanitize::Config]
-        def sanitize_config
-          Sanitize::Config.merge(
+        def sanitize_config # rubocop:disable Metrics/MethodLength
+          config = Sanitize::Config.merge(
             Sanitize::Config::RELAXED,
             attributes: { all: %w[dir lang alt title translate] },
-            add_attributes:,
+            add_attributes: TAG_ATTRIBUTES,
             transformers: [
               method(:transform_urls_to_absolute_ones),
               method(:wrap_img_in_a)
             ]
           )
-        end
-
-        ##
-        # @return [Hash]
-        # @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
-        def add_attributes
-          {
-            'a' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
-            'area' => { 'rel' => 'nofollow noopener noreferrer', 'target' => '_blank' },
-            'img' => { 'referrerpolicy' => 'no-referrer' },
-            'iframe' => { 'referrerpolicy' => 'no-referrer' },
-            'video' => { 'referrerpolicy' => 'no-referrer' },
-            'audio' => { 'referrerpolicy' => 'no-referrer' }
-          }
+          config[:elements].push('audio', 'video', 'source')
+          config
         end
 
         ##

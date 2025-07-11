@@ -13,7 +13,7 @@ module Html2rss
       include Enumerable
       include Comparable
 
-      PROVIDED_KEYS = %i[id title description url image author guid published_at enclosure categories scraper].freeze
+      PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
 
       ##
       # Removes the specified pattern from the beginning of the text
@@ -78,7 +78,7 @@ module Html2rss
           base: @to_h[:description],
           title:,
           url:,
-          enclosure:,
+          enclosures:,
           image:
         ).call
       end
@@ -102,11 +102,16 @@ module Html2rss
         @guid ||= Zlib.crc32(fetch_guid).to_s(36).encode('utf-8')
       end
 
+      def enclosures
+        @enclosures ||= Array(@to_h[:enclosures])
+                        .map { |enclosure| Html2rss::RssBuilder::Enclosure.new(**enclosure) }
+      end
+
       # @return [Html2rss::RssBuilder::Enclosure, nil]
       def enclosure
         return @enclosure if defined?(@enclosure)
 
-        case (object = @to_h[:enclosure])
+        case (object = @to_h[:enclosures]&.first)
         when Hash
           @enclosure = Html2rss::RssBuilder::Enclosure.new(**object)
         when nil

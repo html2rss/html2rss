@@ -50,7 +50,7 @@ RSpec.describe Html2rss::RssBuilder::Article do
 
     it 'calls the DescriptionBuilder' do
       expect(Html2rss::Rendering::DescriptionBuilder).to have_received(:new)
-        .with(base: 'By John Doe', title: 'Sample instance', url: instance.url, enclosure: nil, image: nil)
+        .with(base: 'By John Doe', title: 'Sample instance', url: instance.url, enclosures: [], image: nil)
     end
   end
 

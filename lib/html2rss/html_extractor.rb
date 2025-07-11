@@ -61,7 +61,7 @@ module Html2rss
         description: extract_description,
         id: generate_id,
         published_at: extract_published_at,
-        enclosure: extract_enclosure
+        enclosures: extract_enclosures
       }
     end
 
@@ -83,9 +83,7 @@ module Html2rss
     end
 
     def extract_title
-      return unless heading && (heading.children.empty? || heading.text)
-
-      self.class.extract_visible_text(heading)
+      self.class.extract_visible_text(heading) if heading
     end
 
     def heading
@@ -121,6 +119,6 @@ module Html2rss
 
     def extract_image = ImageExtractor.call(article_tag, base_url:)
     def extract_published_at = DateExtractor.call(article_tag)
-    def extract_enclosure = EnclosureExtractor.call(article_tag, base_url).first
+    def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
   end
 end
