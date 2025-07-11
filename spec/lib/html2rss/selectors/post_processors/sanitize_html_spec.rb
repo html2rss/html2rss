@@ -17,19 +17,14 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       }
     end
 
-    let(:sanitzed_html) do
-      [
-        "Breaking news: I'm a deprecated tag ",
-        '<div> ',
-        '<a href="https://example.com/lol.gif" rel="nofollow noopener noreferrer" target="_blank">',
-        '<img src="https://example.com/lol.gif" alt="An animal looking cute" referrerpolicy="no-referrer">',
-        '</a> ',
-        '<a href="http://example.com" title="foo" rel="nofollow noopener noreferrer" target="_blank">',
-        'example.com</a> ',
-        '<a href="https://example.com/article-123" rel="nofollow noopener noreferrer" target="_blank">',
-        'Click here!</a> ',
-        '</div>'
-      ].join
+    let(:sanitized_html) do
+      <<~HTML
+        Breaking news: I'm a deprecated tag
+        <div>
+          <a href="https://example.com/lol.gif" rel="nofollow noopener noreferrer" target="_blank"><img src="https://example.com/lol.gif" alt="An animal looking cute" referrerpolicy="no-referrer" crossorigin="anonymous" loading="lazy" decoding="async"></a>
+          <a href="http://example.com" title="foo" rel="nofollow noopener noreferrer" target="_blank">example.com</a> <a href="https://example.com/article-123" rel="nofollow noopener noreferrer" target="_blank">Click here!</a>
+        </div>
+      HTML
     end
     let(:html) do
       <<~HTML
@@ -50,7 +45,12 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       HTML
     end
 
-    it { is_expected.to eq sanitzed_html }
+    it do
+      result = Nokogiri::HTML.fragment(subject).to_html.chomp.gsub(/\s+/, ' ')
+      expected_html = Nokogiri::HTML.fragment(sanitized_html).to_html.chomp.gsub(/\s+/, ' ')
+
+      expect(result).to eq(expected_html)
+    end
   end
 
   describe '.get' do

@@ -6,17 +6,16 @@ module Html2rss
   module Rendering
     # Builds a sanitized article description from the base text, title, and optional media.
     class DescriptionBuilder
-      def initialize(base:, title:, url:, enclosure:, image:)
+      def initialize(base:, title:, url:, enclosures:, image:)
         @base = base.to_s
         @title = title
         @url = url
-        @enclosure = enclosure
+        @enclosures = enclosures || []
         @image = image
       end
 
       def call
-        fragments = []
-        fragments << media_renderer&.to_html
+        fragments = Array(rendered_media)
         fragments << processed_base_description
 
         result = fragments.compact.join("\n").strip
@@ -25,8 +24,10 @@ module Html2rss
 
       private
 
-      def media_renderer
-        MediaRenderer.for(enclosure: @enclosure, image: @image, title: @title)
+      def rendered_media
+        @enclosures.filter_map do |enclosure|
+          MediaRenderer.for(enclosure:, image: @image, title: @title)&.to_html
+        end
       end
 
       def processed_base_description

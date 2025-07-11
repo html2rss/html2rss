@@ -45,10 +45,10 @@ RSpec.describe Html2rss::HtmlExtractor do
           published_at: an_instance_of(DateTime),
           url: Addressable::URI.parse('https://example.com/sample'),
           image: an_instance_of(Addressable::URI),
-          enclosure: a_hash_including(
+          enclosures: [a_hash_including(
             url: an_instance_of(Addressable::URI),
             type: 'video/mp4'
-          )
+          )]
         )
 
         expect(article_hash[:published_at].to_s).to eq '2024-02-24T12:00:00-03:00'
@@ -92,7 +92,7 @@ RSpec.describe Html2rss::HtmlExtractor do
         image: be_a(Addressable::URI),
         description: 'FCK PTN Sample description',
         id: nil,
-        published_at: be_a(DateTime), enclosure: nil }
+        published_at: be_a(DateTime), enclosures: [] }
     end
 
     it 'returns the details' do

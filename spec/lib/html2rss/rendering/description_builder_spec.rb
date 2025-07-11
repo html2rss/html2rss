@@ -6,7 +6,7 @@ require 'nokogiri'
 RSpec.describe Html2rss::Rendering::DescriptionBuilder do
   describe '#call' do
     context 'when base is plain text' do
-      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }
+      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil, image: nil).call }
 
       let(:base) { 'By John Doe' }
 
@@ -17,7 +17,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
 
     context 'when base contains HTML' do
       subject(:description) do
-        described_class.new(base:, title: 'Sample instance', url:, enclosure: nil, image: nil).call
+        described_class.new(base:, title: 'Sample instance', url:, enclosures: nil, image: nil).call
       end
 
       let(:base) { '<b>Some bold text</b>' }
@@ -34,7 +34,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
     end
 
     context 'when base starts with the title' do
-      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }
+      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil, image: nil).call }
 
       let(:base) { 'Sample instance By John Doe' }
 
@@ -44,7 +44,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
     end
 
     context 'when base is empty' do
-      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }
+      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil, image: nil).call }
 
       let(:base) { '' }
 
@@ -55,13 +55,13 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
 
     context 'when enclosure is an image' do
       subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure:,
+        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
         Nokogiri::HTML.fragment(html)
       end
 
       let(:base) { 'Caption' }
-      let(:enclosure) { instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/image.jpg', type: 'image/jpeg') }
+      let(:enclosures) { [instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/image.jpg', type: 'image/jpeg')] }
 
       it 'renders <img> with attributes', :aggregate_failures do
         img = doc.at_css('img')
@@ -73,7 +73,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
 
     context 'when fallback image is present' do
       subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil,
+        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil,
                                    image:).call
         Nokogiri::HTML.fragment(html)
       end
@@ -89,13 +89,13 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
 
     context 'when enclosure is a video' do
       subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure:,
+        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
         Nokogiri::HTML.fragment(html)
       end
 
       let(:base) { 'Watch this' }
-      let(:enclosure) { instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/video.mp4', type: 'video/mp4') }
+      let(:enclosures) { [instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/video.mp4', type: 'video/mp4')] }
 
       it 'renders <video> and <source>', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         video = doc.at_css('video')
@@ -109,13 +109,13 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
 
     context 'when enclosure is audio' do
       subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure:,
+        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
         Nokogiri::HTML.fragment(html)
       end
 
       let(:base) { 'Listen to this' }
-      let(:enclosure) { instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/audio.mp3', type: 'audio/mpeg') }
+      let(:enclosures) { [instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/audio.mp3', type: 'audio/mpeg')] }
 
       it 'renders <audio> and <source>', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         audio = doc.at_css('audio')
@@ -129,13 +129,13 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
 
     context 'when enclosure is a PDF' do
       subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure:,
+        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
         Nokogiri::HTML.fragment(html)
       end
 
       let(:base) { 'See this document' }
-      let(:enclosure) { instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/doc.pdf', type: 'application/pdf') }
+      let(:enclosures) { [instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/doc.pdf', type: 'application/pdf')] }
 
       it 'renders <iframe>', :aggregate_failures do
         iframe = doc.at_css('iframe')
