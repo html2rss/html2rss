@@ -8,7 +8,7 @@ This gem is the core of the [html2rss-web](https://github.com/html2rss/html2rss-
 
 ## Documentation
 
-The full documentation for the `html2rss` gem is available on the [project website](https://html2rss.github.io/ruby-gem').
+The full documentation for the `html2rss` gem is available on the [project website](https://html2rss.github.io/ruby-gem).
 
 ## Contributing
 
