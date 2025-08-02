@@ -12,7 +12,7 @@ The full documentation for the `html2rss` gem is available on the [project websi
 
 ## Contributing
 
-Please see the [contributing guide](https://html2rss.github.io//get-involved/contributing) for details on how to contribute.
+Please see the [contributing guide](https://html2rss.github.io/get-involved/contributing) for details on how to contribute.
 
 ## Sponsoring
 
