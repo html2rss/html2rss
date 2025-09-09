@@ -23,8 +23,8 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: RequestService.strategy_names,
-                  default: RequestService.default_strategy_name
+                  enum: %w[faraday browserless],
+                  default: 'faraday'
     def feed(yaml_file, feed_name = nil)
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
       config[:strategy] ||= options[:strategy]&.to_sym
@@ -37,11 +37,11 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: RequestService.strategy_names,
-                  default: RequestService.default_strategy_name
+                  enum: %w[faraday browserless],
+                  default: 'faraday'
     method_option :items_selector, type: :string, desc: 'CSS selector for items (will be enhanced) (optional)'
     def auto(url)
-      strategy = options.fetch(:strategy) { RequestService.default_strategy_name }.to_sym
+      strategy = options.fetch(:strategy, 'faraday').to_sym
 
       puts Html2rss.auto_source(url, strategy:, items_selector: options[:items_selector])
     end
