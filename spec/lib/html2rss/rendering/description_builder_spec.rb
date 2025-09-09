@@ -71,7 +71,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
       end
     end
 
-    context 'when fallback image is present' do
+    context 'when fallback image is present (rendering)' do
       subject(:doc) do
         html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil,
                                    image:).call

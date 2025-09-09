@@ -37,10 +37,12 @@ module Html2rss
       #
       # @return [String, nil] The complete description or nil if empty
       def call
-        fragments = Array(rendered_media)
+        fragments = []
+        fragments.concat(Array(rendered_media))
         fragments << processed_base_description
+        fragments << media_table_html
 
-        result = fragments.compact.join("\n").strip
+        result = fragments.compact.join("\n\n").strip
         result.empty? ? nil : result
       end
 
@@ -61,6 +63,10 @@ module Html2rss
 
       def render_fallback_image
         [MediaRenderer.for(enclosure: nil, image: @image, title: @title)&.to_html]
+      end
+
+      def media_table_html
+        MediaTableRenderer.new(enclosures: @enclosures, image: @image).to_html
       end
 
       def processed_base_description
