@@ -1,0 +1,21 @@
+# Reek configuration for html2rss
+# See https://github.com/troessner/reek for more information
+
+detectors:
+  IrresponsibleModule:
+    enabled: false
+  UtilityFunction:
+    enabled: false
+
+exclude_paths:
+  - spec/
+  - vendor/
+  - tmp/
+  - coverage/
+
+directories:
+  "lib/":
+    IrresponsibleModule:
+      enabled: false
+    UtilityFunction:
+      enabled: false

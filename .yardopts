@@ -1,6 +1,12 @@
---readme README.md
+--markup markdown
+--markup-provider redcarpet
+--main README.md
+--files README.md,LICENSE
 --charset utf-8
 --no-private
---exclude /coverage
---exclude /support
 --output-dir docs/
+--protected
+--exclude spec/
+--exclude vendor/
+--exclude tmp/
+--exclude coverage/

@@ -1,0 +1,47 @@
+{
+  "ruby.rubocop.executePath": "bundle exec rubocop",
+  "ruby.rubocop.onSave": true,
+  "ruby.format": "rubocop",
+  "ruby.lint": {
+    "rubocop": true,
+    "reek": true
+  },
+  "ruby.test.command": "bundle exec rspec",
+  "ruby.test.directory": "spec",
+  "ruby.test.filePattern": "**/*_spec.rb",
+  "files.associations": {
+    "*.yml": "yaml",
+    "*.yaml": "yaml",
+    "Rakefile": "ruby",
+    "Gemfile": "ruby",
+    "gemspec": "ruby"
+  },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.rubocop": "explicit"
+  },
+  "search.exclude": {
+    "**/coverage": true,
+    "**/tmp": true,
+    "**/vendor": true,
+    "**/.git": true,
+    "**/node_modules": true
+  },
+  "files.exclude": {
+    "**/coverage": true,
+    "**/tmp": true
+  },
+  "ruby.intellisense": "rubyLsp",
+  "ruby.useLanguageServer": true,
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": true,
+    "ruby": true,
+    "markdown": true
+  },
+  "github.copilot.advanced": {
+    "debug.overrideEngine": "gpt-4",
+    "debug.testOverrideProxyUrl": "",
+    "debug.overrideProxyUrl": ""
+  }
+}

@@ -1,38 +1,54 @@
 name: lint and test
 
-on: [push]
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: ["3.2", "3.3", "3.4"]
-    name: Ruby ${{ matrix.ruby }}
+        ruby-version: ["3.2", "3.3", "3.4"]
+    name: Ruby ${{ matrix.ruby-version }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-      - run: bundle exec rake
+      - name: Run tests
+        run: make test
         env:
-          COVERAGE: "true"
-  rubocop:
+          COVERAGE: true
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ruby
+          ruby-version: "3.4"
           bundler-cache: true
-      - run: bundle exec rubocop -F
+      - name: Run linting
+        run: make lint
   yard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ruby
+          ruby-version: "3.4"
           bundler-cache: true
-      - run: bundle exec yard doc --fail-on-warning --no-output
+      - run: gem install redcarpet
+      - name: Generate documentation
+        run: make docs
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: docs/

@@ -24,6 +24,10 @@ group :development, :test do
   gem 'rspec', '~> 3.0', require: false
   gem 'rspec-instafail', require: false
   gem 'vcr', require: false
+
+  # Development tools
+  gem 'debug', require: false
+  gem 'irb', require: false
 end
 
 group :test do

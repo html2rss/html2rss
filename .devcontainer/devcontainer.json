@@ -1,0 +1,68 @@
+{
+  "name": "html2rss Development",
+  "image": "mcr.microsoft.com/devcontainers/ruby:3.4",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+        "github.copilot",
+        "github.copilot-chat",
+        "shopify.ruby-lsp"
+      ],
+      "settings": {
+        "ruby.rubocop.executePath": "bundle exec rubocop",
+        "ruby.rubocop.onSave": true,
+        "ruby.format": "rubocop",
+        "ruby.lint": {
+          "rubocop": true,
+          "reek": true
+        },
+        "ruby.test.command": "bundle exec rspec",
+        "ruby.test.directory": "spec",
+        "ruby.test.filePattern": "**/*_spec.rb",
+        "files.associations": {
+          "*.yml": "yaml",
+          "*.yaml": "yaml",
+          "Rakefile": "ruby",
+          "Gemfile": "ruby",
+          "gemspec": "ruby"
+        },
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.rubocop": "explicit"
+        },
+        "github.copilot.enable": {
+          "*": true,
+          "yaml": true,
+          "ruby": true,
+          "markdown": true
+        }
+      }
+    }
+  },
+  "postCreateCommand": "bundle install",
+  "forwardPorts": [
+    3000,
+    4000,
+    8000
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Development Server",
+      "onAutoForward": "notify"
+    },
+    "4000": {
+      "label": "Documentation Server",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "Test Server",
+      "onAutoForward": "notify"
+    }
+  }
+}
