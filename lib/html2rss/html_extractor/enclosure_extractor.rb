@@ -7,6 +7,7 @@ module Html2rss
     class EnclosureExtractor
       def self.call(article_tag, base_url)
         [
+          Extractors::Image,
           Extractors::Media,
           Extractors::Pdf,
           Extractors::Iframe,
@@ -17,24 +18,26 @@ module Html2rss
 
     module Extractors
       # Extracts image enclosures from HTML tags.
-      # Uses the ImageExtractor to find the image source and returns it in a format suitable for RSS.
+      # Finds all image sources and returns them in a format suitable for RSS.
       class Image
         def self.call(article_tag, base_url:)
-          if (img_src = ImageExtractor.call(article_tag, base_url:))
+          article_tag.css('img[src]:not([src^="data"])').filter_map do |img|
+            src = img['src'].to_s
+            next if src.empty?
+
+            abs_url = Utils.build_absolute_url_from_relative(src, base_url)
             {
-              url: img_src,
-              type: RssBuilder::Enclosure.guess_content_type_from_url(img_src, default: 'image/jpeg')
+              url: abs_url,
+              type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'image/jpeg')
             }
-          else
-            []
           end
         end
       end
 
       # Extracts media enclosures (video/audio) from HTML tags.
       class Media
-        def self.call(tag, base_url:)
-          tag.css('video source[src], audio source[src], audio[src]').filter_map do |element|
+        def self.call(article_tag, base_url:)
+          article_tag.css('video source[src], audio source[src], audio[src]').filter_map do |element|
             src = element['src'].to_s
             next if src.empty?
 
@@ -48,8 +51,8 @@ module Html2rss
 
       # Extracts PDF enclosures from HTML tags.
       class Pdf
-        def self.call(tag, base_url:)
-          tag.css('a[href$=".pdf"]').map do |a|
+        def self.call(article_tag, base_url:)
+          article_tag.css('a[href$=".pdf"]').filter_map do |a|
             href = a['href'].to_s
             next if href.empty?
 
@@ -64,14 +67,15 @@ module Html2rss
 
       # Extracts iframe enclosures from HTML tags.
       class Iframe
-        def self.call(tag, base_url:)
-          tag.css('iframe[src]').map do |iframe|
+        def self.call(article_tag, base_url:)
+          article_tag.css('iframe[src]').filter_map do |iframe|
             src = iframe['src']
+            next if src.nil? || src.empty?
+
             abs_url = Utils.build_absolute_url_from_relative(src, base_url)
             {
               url: abs_url,
-              type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url,
-                                                                      default: 'text/html')
+              type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'text/html')
             }
           end
         end
@@ -79,13 +83,12 @@ module Html2rss
 
       # Extracts archive enclosures (zip, tar.gz, tgz) from HTML tags.
       class Archive
-        def self.call(tag, base_url:)
-          tag.css('a[href$=".zip"], a[href$=".tar.gz"], a[href$=".tgz"]').map do |a|
+        def self.call(article_tag, base_url:)
+          article_tag.css('a[href$=".zip"], a[href$=".tar.gz"], a[href$=".tgz"]').filter_map do |a|
             href = a['href'].to_s
             next if href.empty?
 
             abs_url = Utils.build_absolute_url_from_relative(href, base_url)
-
             {
               url: abs_url,
               type: 'application/zip'
