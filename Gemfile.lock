@@ -31,6 +31,10 @@ GEM
     climate_control (1.2.0)
     concurrent-ruby (1.3.5)
     crass (1.0.6)
+    date (3.4.1)
+    debug (1.11.0)
+      irb (~> 1.10)
+      reline (>= 0.3.8)
     diff-lcs (1.5.1)
     docile (1.4.1)
     dry-configurable (1.3.0)
@@ -68,6 +72,7 @@ GEM
       dry-initializer (~> 3.0)
       dry-schema (>= 1.12, < 2)
       zeitwerk (~> 2.6)
+    erb (5.0.2)
     faraday (2.12.2)
       faraday-net_http (>= 2.0, < 3.5)
       json
@@ -76,6 +81,11 @@ GEM
       faraday (>= 1, < 3)
     faraday-net_http (3.4.0)
       net-http (>= 0.5.0)
+    io-console (0.8.1)
+    irb (1.15.2)
+      pp (>= 0.6.0)
+      rdoc (>= 4.0.0)
+      reline (>= 0.4.2)
     json (2.9.1)
     kramdown (2.5.1)
       rexml (>= 3.3.9)
@@ -99,6 +109,12 @@ GEM
     parser (3.3.7.0)
       ast (~> 2.4.1)
       racc
+    pp (0.6.2)
+      prettyprint
+    prettyprint (0.2.0)
+    psych (5.2.6)
+      date
+      stringio
     public_suffix (6.0.1)
     puppeteer-ruby (0.45.6)
       concurrent-ruby (>= 1.1, < 1.4)
@@ -107,6 +123,9 @@ GEM
     racc (1.8.1)
     rainbow (3.1.1)
     rake (13.2.1)
+    rdoc (6.14.2)
+      erb
+      psych (>= 4.0.0)
     reek (6.4.0)
       dry-schema (~> 1.13.0)
       logger (~> 1.6)
@@ -114,6 +133,8 @@ GEM
       rainbow (>= 2.0, < 4.0)
       rexml (~> 3.1)
     regexp_parser (2.10.0)
+    reline (0.6.2)
+      io-console (~> 0.5)
     reverse_markdown (3.0.0)
       nokogiri
     rexml (3.4.0)
@@ -167,6 +188,7 @@ GEM
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.13.1)
     simplecov_json_formatter (0.1.4)
+    stringio (3.1.7)
     thor (1.3.2)
     timecop (0.9.10)
     tzinfo (2.0.6)
@@ -193,7 +215,9 @@ PLATFORMS
 DEPENDENCIES
   byebug
   climate_control
+  debug
   html2rss!
+  irb
   rake
   reek
   rspec (~> 3.0)
@@ -218,6 +242,8 @@ CHECKSUMS
   climate_control (1.2.0) sha256=36b21896193fa8c8536fa1cd843a07cf8ddbd03aaba43665e26c53ec1bd70aa5
   concurrent-ruby (1.3.5) sha256=813b3e37aca6df2a21a3b9f1d497f8cbab24a2b94cab325bffe65ee0f6cbebc6
   crass (1.0.6) sha256=dc516022a56e7b3b156099abc81b6d2b08ea1ed12676ac7a5657617f012bd45d
+  date (3.4.1) sha256=bf268e14ef7158009bfeaec40b5fa3c7271906e88b196d958a89d4b408abe64f
+  debug (1.11.0) sha256=1425db64cfa0130c952684e3dc974985be201dd62899bf4bbe3f8b5d6cf1aef2
   diff-lcs (1.5.1) sha256=273223dfb40685548436d32b4733aa67351769c7dea621da7d9dd4813e63ddfe
   docile (1.4.1) sha256=96159be799bfa73cdb721b840e9802126e4e03dfc26863db73647204c727f21e
   dry-configurable (1.3.0) sha256=882d862858567fc1210d2549d4c090f34370fc1bb7c5c1933de3fe792e18afa8
@@ -228,10 +254,13 @@ CHECKSUMS
   dry-schema (1.13.4) sha256=caeb644de0be412d347eb4a6d91c56ceef8ec22cfceb98e80d03d354954b1d2a
   dry-types (1.8.0) sha256=bdf444e0d2ff83f500271c7d38cb29690c2654fa78e588f68349a7b1e7341131
   dry-validation (1.10.0) sha256=352afd75629772570f54f03d3e7847ac345e628bf345874d49f1dabacc8ceaac
+  erb (5.0.2) sha256=d30f258143d4300fb4ecf430042ac12970c9bb4b33c974a545b8f58c1ec26c0f
   faraday (2.12.2) sha256=157339c25c7b8bcb739f5cf1207cb0cefe8fa1c65027266bcbc34c90c84b9ad6
   faraday-follow_redirects (0.3.0) sha256=d92d975635e2c7fe525dd494fcd4b9bb7f0a4a0ec0d5f4c15c729530fdb807f9
   faraday-net_http (3.4.0) sha256=a1f1e4cd6a2cf21599c8221595e27582d9936819977bbd4089a601f24c64e54a
   html2rss (0.17.0)
+  io-console (0.8.1) sha256=1e15440a6b2f67b6ea496df7c474ed62c860ad11237f29b3bd187f054b925fcb
+  irb (1.15.2) sha256=222f32952e278da34b58ffe45e8634bf4afc2dc7aa9da23fed67e581aa50fdba
   json (2.9.1) sha256=d2bdef4644052fad91c1785d48263756fe32fcac08b96a20bb15840e96550d11
   kramdown (2.5.1) sha256=87bbb6abd9d3cebe4fc1f33e367c392b4500e6f8fa19dd61c0972cf4afe7368c
   language_server-protocol (3.17.0.3) sha256=3d5c58c02f44a20d972957a9febe386d7e7468ab3900ce6bd2b563dd910c6b3f
@@ -245,13 +274,18 @@ CHECKSUMS
   nokogiri (1.18.8-x86_64-linux-gnu) sha256=4a747875db873d18a2985ee2c320a6070c4a414ad629da625fbc58d1a20e5ecc
   parallel (1.26.3) sha256=d86babb7a2b814be9f4b81587bf0b6ce2da7d45969fab24d8ae4bf2bb4d4c7ef
   parser (3.3.7.0) sha256=7449011771e3e7881297859b849de26a6f4fccd515bece9520a87e7d2116119b
+  pp (0.6.2) sha256=947ec3120c6f92195f8ee8aa25a7b2c5297bb106d83b41baa02983686577b6ff
+  prettyprint (0.2.0) sha256=2bc9e15581a94742064a3cc8b0fb9d45aae3d03a1baa6ef80922627a0766f193
+  psych (5.2.6) sha256=814328aa5dcb6d604d32126a20bc1cbcf05521a5b49dbb1a8b30a07e580f316e
   public_suffix (6.0.1) sha256=61d44e1cab5cbbbe5b31068481cf16976dd0dc1b6b07bd95617ef8c5e3e00c6f
   puppeteer-ruby (0.45.6) sha256=cb86f7b4f6f8658a709ae1a305e820bdb009548e6beff6675489926f9ceb5995
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
   rainbow (3.1.1) sha256=039491aa3a89f42efa1d6dec2fc4e62ede96eb6acd95e52f1ad581182b79bc6a
   rake (13.2.1) sha256=46cb38dae65d7d74b6020a4ac9d48afed8eb8149c040eccf0523bec91907059d
+  rdoc (6.14.2) sha256=9fdd44df130f856ae70cc9a264dfd659b9b40de369b16581f4ab746e42439226
   reek (6.4.0) sha256=80f9a14979aa3ffaecfb2b8b10bdf87fcd8a0fca47c36823e2a4e1e62f1ddd47
   regexp_parser (2.10.0) sha256=cb6f0ddde88772cd64bff1dbbf68df66d376043fe2e66a9ef77fcb1b0c548c61
+  reline (0.6.2) sha256=1dad26a6008872d59c8e05244b119347c9f2ddaf4a53dce97856cd5f30a02846
   reverse_markdown (3.0.0) sha256=ab228386765a0259835873cd07054b62939c40f620c77c247eafaaa3b23faca4
   rexml (3.4.0) sha256=efbea1efba7fa151158e0ee1e643525834da2d8eb4cf744aa68f6480bc9804b2
   rspec (3.13.0) sha256=d490914ac1d5a5a64a0e1400c1d54ddd2a501324d703b8cfe83f458337bab993
@@ -273,6 +307,7 @@ CHECKSUMS
   simplecov (0.22.0) sha256=fe2622c7834ff23b98066bb0a854284b2729a569ac659f82621fc22ef36213a5
   simplecov-html (0.13.1) sha256=5dab0b7ee612e60e9887ad57693832fdf4695b4c0c859eaea5f95c18791ef10b
   simplecov_json_formatter (0.1.4) sha256=529418fbe8de1713ac2b2d612aa3daa56d316975d307244399fa4838c601b428
+  stringio (3.1.7) sha256=5b78b7cb242a315fb4fca61a8255d62ec438f58da2b90be66048546ade4507fa
   thor (1.3.2) sha256=eef0293b9e24158ccad7ab383ae83534b7ad4ed99c09f96f1a6b036550abbeda
   timecop (0.9.10) sha256=12ba45ce57cdcf6b1043cb6cdffa6381fd89ce10d369c28a7f6f04dc1b0cd8eb
   tzinfo (2.0.6) sha256=8daf828cc77bcf7d63b0e3bdb6caa47e2272dcfaf4fbfe46f8c3a9df087a829b
