@@ -6,13 +6,28 @@
 
 This gem is the core of the [html2rss-web](https://github.com/html2rss/html2rss-web) application.
 
+## 🌐 Community & Resources
+
+| Resource                              | Description                                                 | Link                                                               |
+| ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ |
+| **📚 Documentation & Feed Directory** | Complete guides, tutorials, and browse 100+ pre-built feeds | [html2rss.github.io](https://html2rss.github.io)                   |
+| **💬 Community Discussions**          | Get help, share ideas, and connect with other users         | [GitHub Discussions](https://github.com/orgs/html2rss/discussions) |
+| **📋 Project Board**                  | Track development progress and upcoming features            | [View Project Board](https://github.com/orgs/html2rss/projects)    |
+| **💖 Support Development**            | Help fund ongoing development and maintenance               | [Sponsor on GitHub](https://github.com/sponsors/gildesmarais)      |
+
+**Quick Start Options:**
+
+- **New to RSS?** → Start with the [web application](https://html2rss.github.io/web-application)
+- **Ruby Developer?** → Check out the [Ruby gem documentation](https://html2rss.github.io/ruby-gem)
+- **Need a specific feed?** → Browse the [feed directory](https://html2rss.github.io/feed-directory)
+- **Want to contribute?** → See our [contributing guide](https://html2rss.github.io/get-involved/contributing)
+
 ## ✨ Features
 
 - 🎯 **CSS Selector Support** - Extract content using familiar CSS selectors
 - 🤖 **Auto-Detection** - Automatically detect content using Schema.org and semantic HTML
 - 🔄 **Multiple Request Strategies** - Faraday for static sites, Browserless for JS-heavy sites
 - 🛠️ **Post-Processing** - Template rendering, HTML sanitization, time parsing, and more
-- 📱 **Progressive Enhancement** - Works without JavaScript, enhanced with it
 - 🧪 **Comprehensive Testing** - 95%+ test coverage with RSpec
 - 📚 **Full Documentation** - YARD documentation and comprehensive guides
 
@@ -48,7 +63,7 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 
 ### Data Flow
 
-```
+```text
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
 
@@ -66,7 +81,6 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 - **Debug** for modern debugging and exploration
 - **YARD** for documentation generation
 - **GitHub Actions** for CI/CD
-- **Codecov** for coverage tracking
 
 ## 📄 License
 
