@@ -44,21 +44,18 @@ module Html2rss
         ##
         # @yieldparam [Hash] The scraped article hash
         # @return [Enumerator] Enumerator for the scraped articles
-        def each(&)
+        def each
           return enum_for(:each) unless block_given?
 
-          filtered_selectors.flat_map { |selector| process_selector(selector) }
-                            .each(&)
-        end
+          filtered_selectors.each do |selector|
+            parsed_body.xpath(selector).each do |selected_tag|
+              next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
 
-        def process_selector(selector)
-          parsed_body.xpath(selector).filter_map do |selected_tag|
-            next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
+              article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
 
-            article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
-
-            if article_tag && (article_hash = @extractor.new(article_tag, base_url: @url).call)
-              article_hash
+              if article_tag && (article_hash = @extractor.new(article_tag, base_url: @url).call)
+                yield article_hash
+              end
             end
           end
         end

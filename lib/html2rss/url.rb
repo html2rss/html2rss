@@ -25,7 +25,7 @@ module Html2rss
 
     # Regular expression for basic URI format validation
     URI_REGEXP = Addressable::URI::URIREGEX
-    SUPPORTED_SCHEMES = %w[http https].freeze
+    SUPPORTED_SCHEMES = %w[http https].to_set.freeze
 
     ##
     # Creates a URL from a relative path and base URL.

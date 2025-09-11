@@ -26,18 +26,17 @@ module Html2rss
       def url = @url ||= Html2rss::Url.from_relative(@response.url, @response.url)
 
       def description
-        override_description = overrides[:description]
-        return override_description unless override_description.to_s.empty?
+        return overrides[:description] unless overrides[:description].to_s.empty?
 
-        meta_description = extract_meta_description
-        return format(DEFAULT_DESCRIPTION_TEMPLATE, url:) if meta_description.to_s.empty?
+        description = parsed_body.at_css('meta[name="description"]')&.[]('content') if html_response?
 
-        meta_description
+        return format(DEFAULT_DESCRIPTION_TEMPLATE, url:) if description.to_s.empty?
+
+        description
       end
 
       def ttl
-        override_ttl = overrides[:ttl]
-        return override_ttl if override_ttl
+        return overrides[:ttl] if overrides[:ttl]
 
         if (ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1))
           return ttl.to_i.fdiv(60).ceil
@@ -47,29 +46,35 @@ module Html2rss
       end
 
       def language
-        override_language = overrides[:language]
-        return override_language if override_language
+        return overrides[:language] if overrides[:language]
 
-        header_language = extract_header_language
-        return header_language if header_language
+        if (language_code = headers['content-language']&.match(/^([a-z]{2})/))
+          return language_code[0]
+        end
 
-        extract_html_language
+        return unless html_response?
+
+        parsed_body['lang'] || parsed_body.at_css('[lang]')&.[]('lang')
       end
 
       def author
-        override_author = overrides[:author]
-        return override_author if override_author
+        return overrides[:author] if overrides[:author]
 
-        extract_meta_author
+        return unless html_response?
+
+        parsed_body.at_css('meta[name="author"]')&.[]('content')
       end
 
       def last_build_date = headers['last-modified'] || Time.now
 
       def image
-        override_image = overrides[:image]
-        return override_image if override_image
+        return overrides[:image] if overrides[:image]
 
-        extract_meta_image
+        return unless html_response?
+
+        if (image_url = parsed_body.at_css('meta[property="og:image"]')&.[]('content'))
+          Url.sanitize(image_url)
+        end
       end
 
       private
@@ -95,36 +100,6 @@ module Html2rss
         return if title.empty?
 
         title.gsub(/\s+/, ' ').strip
-      end
-
-      def extract_meta_description
-        return nil unless html_response?
-
-        parsed_body.at_css('meta[name="description"]')&.[]('content')
-      end
-
-      def extract_header_language
-        language_code = headers['content-language']&.match(/^([a-z]{2})/)
-        language_code&.[](0)
-      end
-
-      def extract_html_language
-        return nil unless html_response?
-
-        parsed_body['lang'] || parsed_body.at_css('[lang]')&.[]('lang')
-      end
-
-      def extract_meta_author
-        return nil unless html_response?
-
-        parsed_body.at_css('meta[name="author"]')&.[]('content')
-      end
-
-      def extract_meta_image
-        return nil unless html_response?
-
-        image_url = parsed_body.at_css('meta[property="og:image"]')&.[]('content')
-        Url.sanitize(image_url) if image_url
       end
     end
   end

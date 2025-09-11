@@ -12,15 +12,21 @@ module Html2rss
         min_words_title: 3
       }.freeze
 
-      VALID_SCHEMES = %w[http https].freeze
+      VALID_SCHEMES = %w[http https].to_set.freeze
 
       class << self
         def call(articles, url:, keep_different_domain:, min_words_title:)
-          log_cleanup_start(articles)
+          Log.debug "Cleanup: start with #{articles.size} articles"
 
-          apply_cleanup_filters(articles, url, keep_different_domain, min_words_title)
+          articles.select!(&:valid?)
 
-          log_cleanup_end(articles)
+          deduplicate_by!(articles, :url)
+
+          keep_only_http_urls!(articles)
+          reject_different_domain!(articles, url) unless keep_different_domain
+          keep_only_with_min_words_title!(articles, min_words_title:)
+
+          Log.debug "Cleanup: end with #{articles.size} articles"
           articles
         end
 
@@ -62,46 +68,11 @@ module Html2rss
         # @param min_words_title [Integer] The minimum number of words in the title.
         def keep_only_with_min_words_title!(articles, min_words_title:)
           articles.select! do |article|
-            title = article.title
-            title ? word_count_at_least?(title, min_words_title) : true
+            article.title ? word_count_at_least?(article.title, min_words_title) : true
           end
         end
 
         private
-
-        def log_cleanup_start(articles)
-          initial_size = articles.size
-          Log.debug "Cleanup: start with #{initial_size} articles"
-        end
-
-        def apply_cleanup_filters(articles, url, keep_different_domain, min_words_title)
-          filter_valid_articles(articles)
-          deduplicate_articles(articles)
-          filter_urls_and_domains(articles, url, keep_different_domain)
-          filter_by_title_length(articles, min_words_title)
-        end
-
-        def log_cleanup_end(articles)
-          final_size = articles.size
-          Log.debug "Cleanup: end with #{final_size} articles"
-        end
-
-        def filter_valid_articles(articles)
-          articles.select!(&:valid?)
-        end
-
-        def deduplicate_articles(articles)
-          deduplicate_by!(articles, :url)
-        end
-
-        def filter_urls_and_domains(articles, url, keep_different_domain)
-          keep_only_http_urls!(articles)
-          reject_different_domain!(articles, url) unless keep_different_domain
-        end
-
-        def filter_by_title_length(articles, min_words_title)
-          keep_only_with_min_words_title!(articles, min_words_title:)
-        end
 
         def word_count_at_least?(str, min_words)
           count = 0

@@ -39,9 +39,8 @@ module Html2rss
       def parsed_body
         @parsed_body ||= if html_response?
                            Nokogiri::HTML(body).tap do |doc|
-                             doc.css('*').each do |node|
-                               node.children.each { |child| child.remove if child.comment? }
-                             end
+                             # Remove comments from the document to avoid processing irrelevant content
+                             doc.xpath('//comment()').each(&:remove)
                            end.freeze
                          elsif json_response?
                            JSON.parse(body, symbolize_names: true).freeze

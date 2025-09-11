@@ -25,33 +25,20 @@ module Html2rss
       # @param separator [String] separator used to join text fragments (default is a space)
       # @return [String, nil] the concatenated visible text, or nil if none is found
       def extract_visible_text(tag, separator: ' ')
-        parts = collect_visible_text_parts(tag)
-        format_text_parts(parts, separator)
-      end
-
-      private
-
-      def collect_visible_text_parts(tag)
-        tag.children.each_with_object([]) do |child, result|
+        parts = tag.children.each_with_object([]) do |child, result|
           next unless visible_child?(child)
 
-          raw_text = extract_text_from_child(child)
+          raw_text = child.children.empty? ? child.text : extract_visible_text(child)
           next unless raw_text
 
           text = raw_text.strip
           result << text unless text.empty?
         end
+
+        parts.join(separator).squeeze(' ').strip unless parts.empty?
       end
 
-      def extract_text_from_child(child)
-        child.children.empty? ? child.text : extract_visible_text(child)
-      end
-
-      def format_text_parts(parts, separator)
-        return nil if parts.empty?
-
-        parts.join(separator).squeeze(' ').strip
-      end
+      private
 
       def visible_child?(node)
         !INVISIBLE_CONTENT_TAGS.include?(node.name) &&
