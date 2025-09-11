@@ -61,7 +61,8 @@ module Html2rss
         description: extract_description,
         id: generate_id,
         published_at: extract_published_at,
-        enclosures: extract_enclosures
+        enclosures: extract_enclosures,
+        categories: extract_categories
       }
     end
 
@@ -120,5 +121,6 @@ module Html2rss
     def extract_image = ImageExtractor.call(article_tag, base_url:)
     def extract_published_at = DateExtractor.call(article_tag)
     def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
+    def extract_categories = CategoryExtractor.call(article_tag)
   end
 end

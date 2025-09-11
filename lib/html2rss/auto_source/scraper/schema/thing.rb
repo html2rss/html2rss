@@ -32,7 +32,7 @@ module Html2rss
             TechArticle
           ].to_set.freeze
 
-          DEFAULT_ATTRIBUTES = %i[id title description url image published_at].freeze
+          DEFAULT_ATTRIBUTES = %i[id title description url image published_at categories].freeze
 
           def initialize(schema_object, url:)
             @schema_object = schema_object
@@ -82,7 +82,11 @@ module Html2rss
 
           def published_at = schema_object[:datePublished]
 
-          private
+          def categories
+            return @categories if defined?(@categories)
+
+            @categories = CategoryExtractor.call(schema_object)
+          end
 
           attr_reader :schema_object
 
