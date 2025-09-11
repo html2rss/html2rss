@@ -107,6 +107,100 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '.for_channel' do
+    context 'with valid absolute URLs' do
+      {
+        'https://example.com' => 'https://example.com/',
+        'http://example.com' => 'http://example.com/',
+        'https://www.example.com/path' => 'https://www.example.com/path',
+        'http://subdomain.example.com:8080/path?query=value#fragment' => 'http://subdomain.example.com:8080/path?query=value#fragment',
+        'https://example.com/path with spaces' => 'https://example.com/path%20with%20spaces'
+      }.each_pair do |input_url, expected_url|
+        it "accepts #{input_url.inspect} and returns normalized URL" do
+          result = described_class.for_channel(input_url)
+          expect(result).to be_a(described_class)
+        end
+
+        it "normalizes #{input_url.inspect} to #{expected_url.inspect}" do
+          result = described_class.for_channel(input_url)
+          expect(result.to_s).to eq(expected_url)
+        end
+      end
+    end
+
+    context 'with invalid relative URLs' do
+      [
+        '/relative/path',
+        'relative/path',
+        './relative/path',
+        '../relative/path'
+      ].each do |relative_url|
+        it "raises ArgumentError for relative URL #{relative_url.inspect}" do
+          expect { described_class.for_channel(relative_url) }
+            .to raise_error(ArgumentError, 'URL must be absolute')
+        end
+      end
+    end
+
+    context 'with URLs containing @ character' do
+      [
+        'https://user@example.com',
+        'https://example.com/path@fragment',
+        'https://example.com?param=value@test'
+      ].each do |url_with_at|
+        it "raises ArgumentError for URL with @ character: #{url_with_at.inspect}" do
+          expect { described_class.for_channel(url_with_at) }
+            .to raise_error(ArgumentError, 'URL must not contain an @ character')
+        end
+      end
+    end
+
+    context 'with unsupported schemes' do
+      [
+        'ftp://example.com',
+        'file:///path/to/file',
+        'javascript:alert("test")',
+        'data:text/plain,test'
+      ].each do |unsupported_url|
+        it "raises ArgumentError for unsupported scheme: #{unsupported_url.inspect}" do
+          expect { described_class.for_channel(unsupported_url) }
+            .to raise_error(ArgumentError, /URL scheme '[^']+' is not supported/)
+        end
+      end
+
+      it 'raises ArgumentError for mailto URL (contains @ character)' do
+        expect { described_class.for_channel('mailto:test@example.com') }
+          .to raise_error(ArgumentError, 'URL must not contain an @ character')
+      end
+    end
+
+    context 'with edge cases' do
+      it 'returns nil for nil input' do
+        expect(described_class.for_channel(nil)).to be_nil
+      end
+
+      it 'returns nil for empty string' do
+        expect(described_class.for_channel('')).to be_nil
+      end
+
+      it 'returns nil for whitespace-only string' do
+        expect(described_class.for_channel('   ')).to be_nil
+      end
+    end
+
+    context 'with malformed URLs' do
+      it 'raises ArgumentError for malformed URL' do
+        expect { described_class.for_channel('not-a-url') }
+          .to raise_error(ArgumentError, 'URL must be absolute')
+      end
+
+      it 'raises ArgumentError for URL with only scheme' do
+        expect { described_class.for_channel('https://') }
+          .to raise_error(ArgumentError, 'URL must be absolute')
+      end
+    end
+  end
+
   describe 'immutability' do
     let(:url) { described_class.from_relative('/path', 'https://example.com') }
 

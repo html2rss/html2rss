@@ -73,16 +73,42 @@ module Html2rss
     def self.for_channel(url_string)
       return nil if url_string.nil? || url_string.empty?
 
-      url = from_relative(url_string, url_string)
+      stripped = url_string.strip
+      return nil if stripped.empty?
 
+      url = parse_and_normalize_url(stripped)
+      validate_channel_url(url)
+      url
+    end
+
+    ##
+    # Parses and normalizes a URL string.
+    #
+    # @param url_string [String] the URL string to parse
+    # @return [Url] the parsed and normalized URL
+    # @raise [ArgumentError] if the URL cannot be parsed
+    def self.parse_and_normalize_url(url_string)
+      # Parse and normalize the URL directly since we expect absolute URLs
+      # Using from_relative with same parameter is confusing - this is clearer
+      new(Addressable::URI.parse(url_string).normalize)
+    rescue Addressable::URI::InvalidURIError
+      raise ArgumentError, 'URL must be absolute'
+    end
+
+    ##
+    # Validates that a URL meets channel requirements.
+    #
+    # @param url [Url] the URL to validate
+    # @raise [ArgumentError] if the URL doesn't meet channel requirements
+    def self.validate_channel_url(url)
       raise ArgumentError, 'URL must be absolute' unless url.absolute?
 
       raise ArgumentError, 'URL must not contain an @ character' if url.to_s.include?('@')
 
       raise ArgumentError, "URL scheme '#{url.scheme}' is not supported" unless %w[http https].include?(url.scheme)
-
-      url
     end
+
+    private_class_method :parse_and_normalize_url, :validate_channel_url
 
     ##
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
