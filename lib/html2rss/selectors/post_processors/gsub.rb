@@ -74,7 +74,9 @@ module Html2rss
         def parse_regexp_string(string)
           raise ArgumentError, 'must be a string!' unless string.is_a?(String)
 
-          string = string[1..-2] if string.start_with?('/') && string.end_with?('/')
+          # Only remove surrounding slashes if the string has at least 3 characters
+          # to avoid issues with single character strings like "/"
+          string = string[1..-2] if string.length >= 3 && string.start_with?('/') && string.end_with?('/')
           Regexp::Parser.parse(string, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
         end
       end
