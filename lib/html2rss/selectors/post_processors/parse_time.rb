@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'time'
+require 'tzinfo'
 
 module Html2rss
   class Selectors
@@ -28,7 +29,13 @@ module Html2rss
       class ParseTime < Base
         def self.validate_args!(value, context)
           assert_type(value, String, :value, context:)
-          assert_type(time_zone(context), String, :time_zone, context:)
+          time_zone_value = time_zone(context)
+
+          if time_zone_value.nil? || time_zone_value.empty?
+            raise ArgumentError, 'time_zone cannot be nil or empty', [], cause: nil
+          end
+
+          assert_type(time_zone_value, String, :time_zone, context:)
         end
 
         def self.time_zone(context) = context.dig(:config, :channel, :time_zone)
@@ -39,13 +46,26 @@ module Html2rss
         # @return [String] RFC822 formatted time
         # @raise [TZInfo::InvalidTimezoneIdentifier] if the configured time zone is invalid
         def get
-          Html2rss::Utils.use_zone(time_zone) { Time.parse(value).rfc822 }
+          with_timezone(time_zone) { Time.parse(value).rfc822 }
         end
 
         private
 
         def time_zone
           self.class.time_zone(context)
+        end
+
+        def with_timezone(time_zone)
+          return yield if time_zone.nil? || time_zone.empty?
+
+          # Validate timezone using TZInfo
+          TZInfo::Timezone.get(time_zone)
+
+          prev_tz = ENV.fetch('TZ', Time.now.getlocal.zone)
+          ENV['TZ'] = time_zone
+          yield
+        ensure
+          ENV['TZ'] = prev_tz if prev_tz
         end
       end
     end
