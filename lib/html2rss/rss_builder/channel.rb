@@ -29,11 +29,10 @@ module Html2rss
         override_description = overrides[:description]
         return override_description unless override_description.to_s.empty?
 
-        description = parsed_body.at_css('meta[name="description"]')&.[]('content') if html_response?
+        meta_description = extract_meta_description
+        return format(DEFAULT_DESCRIPTION_TEMPLATE, url:) if meta_description.to_s.empty?
 
-        return format(DEFAULT_DESCRIPTION_TEMPLATE, url:) if description.to_s.empty?
-
-        description
+        meta_description
       end
 
       def ttl
@@ -51,22 +50,17 @@ module Html2rss
         override_language = overrides[:language]
         return override_language if override_language
 
-        if (language_code = headers['content-language']&.match(/^([a-z]{2})/))
-          return language_code[0]
-        end
+        header_language = extract_header_language
+        return header_language if header_language
 
-        return unless html_response?
-
-        parsed_body['lang'] || parsed_body.at_css('[lang]')&.[]('lang')
+        extract_html_language
       end
 
       def author
         override_author = overrides[:author]
         return override_author if override_author
 
-        return unless html_response?
-
-        parsed_body.at_css('meta[name="author"]')&.[]('content')
+        extract_meta_author
       end
 
       def last_build_date = headers['last-modified'] || Time.now
@@ -75,11 +69,7 @@ module Html2rss
         override_image = overrides[:image]
         return override_image if override_image
 
-        return unless html_response?
-
-        if (image_url = parsed_body.at_css('meta[property="og:image"]')&.[]('content'))
-          Url.sanitize(image_url)
-        end
+        extract_meta_image
       end
 
       private
@@ -105,6 +95,36 @@ module Html2rss
         return if title.empty?
 
         title.gsub(/\s+/, ' ').strip
+      end
+
+      def extract_meta_description
+        return nil unless html_response?
+
+        parsed_body.at_css('meta[name="description"]')&.[]('content')
+      end
+
+      def extract_header_language
+        language_code = headers['content-language']&.match(/^([a-z]{2})/)
+        language_code&.[](0)
+      end
+
+      def extract_html_language
+        return nil unless html_response?
+
+        parsed_body['lang'] || parsed_body.at_css('[lang]')&.[]('lang')
+      end
+
+      def extract_meta_author
+        return nil unless html_response?
+
+        parsed_body.at_css('meta[name="author"]')&.[]('content')
+      end
+
+      def extract_meta_image
+        return nil unless html_response?
+
+        image_url = parsed_body.at_css('meta[property="og:image"]')&.[]('content')
+        Url.sanitize(image_url) if image_url
       end
     end
   end

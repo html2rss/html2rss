@@ -16,19 +16,11 @@ module Html2rss
 
       class << self
         def call(articles, url:, keep_different_domain:, min_words_title:)
-          initial_size = articles.size
-          Log.debug "Cleanup: start with #{initial_size} articles"
+          log_cleanup_start(articles)
 
-          articles.select!(&:valid?)
+          apply_cleanup_filters(articles, url, keep_different_domain, min_words_title)
 
-          deduplicate_by!(articles, :url)
-
-          keep_only_http_urls!(articles)
-          reject_different_domain!(articles, url) unless keep_different_domain
-          keep_only_with_min_words_title!(articles, min_words_title:)
-
-          final_size = articles.size
-          Log.debug "Cleanup: end with #{final_size} articles"
+          log_cleanup_end(articles)
           articles
         end
 
@@ -76,6 +68,40 @@ module Html2rss
         end
 
         private
+
+        def log_cleanup_start(articles)
+          initial_size = articles.size
+          Log.debug "Cleanup: start with #{initial_size} articles"
+        end
+
+        def apply_cleanup_filters(articles, url, keep_different_domain, min_words_title)
+          filter_valid_articles(articles)
+          deduplicate_articles(articles)
+          filter_urls_and_domains(articles, url, keep_different_domain)
+          filter_by_title_length(articles, min_words_title)
+        end
+
+        def log_cleanup_end(articles)
+          final_size = articles.size
+          Log.debug "Cleanup: end with #{final_size} articles"
+        end
+
+        def filter_valid_articles(articles)
+          articles.select!(&:valid?)
+        end
+
+        def deduplicate_articles(articles)
+          deduplicate_by!(articles, :url)
+        end
+
+        def filter_urls_and_domains(articles, url, keep_different_domain)
+          keep_only_http_urls!(articles)
+          reject_different_domain!(articles, url) unless keep_different_domain
+        end
+
+        def filter_by_title_length(articles, min_words_title)
+          keep_only_with_min_words_title!(articles, min_words_title:)
+        end
 
         def word_count_at_least(str, min_words)
           count = 0
