@@ -143,6 +143,7 @@ RSpec.describe Html2rss::Rendering::MediaTableRenderer do
 
         expect(row.at_css('td:first-child').text).to include('📎 File')
         expect(row.at_css('td:last-child').text).to include('Download')
+        expect(row.css('td:last-child a').attr('download').value).to be_a(String) & be_empty
       end
     end
   end
