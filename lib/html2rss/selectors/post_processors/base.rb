@@ -28,10 +28,16 @@ module Html2rss
         # @param context [Selectors::Context] the context
         # @raise [InvalidType] if the value is not of the expected type(s)
         def self.assert_type(value, types = [], name, context:)
-          assertion = TypeAssertion.new(value, types, name, context:, caller:)
-          return if assertion.valid_type?
+          return if Array(types).any? { |type| value.is_a?(type) }
 
-          raise InvalidType, assertion.error_message, [], cause: nil
+          options = if context.is_a?(Hash)
+                      context[:options]
+                    else
+                      { file: File.basename(caller(1..1).first.split(':').first) }
+                    end
+          message = "The type of `#{name}` must be #{Array(types).join(' or ')}, " \
+                    "but is: #{value.class} in: #{options.inspect}"
+          raise InvalidType, message, [], cause: nil
         end
 
         ##

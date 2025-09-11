@@ -123,7 +123,7 @@ module Html2rss
 
       def categories
         @categories ||= @to_h[:categories].dup.to_a.tap do |categories|
-          categories.map! { |c| c.to_s.strip }
+          categories.map! { |category| category.to_s.strip }
           categories.reject!(&:empty?)
           categories.uniq!
         end
@@ -156,7 +156,7 @@ module Html2rss
 
       def fetch_guid
         guid_array = @to_h[:guid]
-        guid = guid_array.map { |s| s.to_s.strip }.reject(&:empty?).join if guid_array.is_a?(Array)
+        guid = guid_array.map { |guid_part| guid_part.to_s.strip }.reject(&:empty?).join if guid_array.is_a?(Array)
 
         guid || [url, id].join('#!/')
       end

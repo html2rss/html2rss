@@ -147,7 +147,7 @@ module Html2rss
       nicer_path = CGI.unescapeURIComponent(path)
                       .split('/')
                       .flat_map do |part|
-        part.gsub(/[^a-zA-Z0-9\.]/, ' ').gsub(/\s+/, ' ').split
+        part.gsub(/[^a-zA-Z0-9.]/, ' ').gsub(/\s+/, ' ').split
       end
 
       nicer_path.map!(&:capitalize)

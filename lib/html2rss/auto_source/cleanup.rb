@@ -63,7 +63,7 @@ module Html2rss
         def keep_only_with_min_words_title!(articles, min_words_title:)
           articles.select! do |article|
             title = article.title
-            title ? word_count_at_least(title, min_words_title) : true
+            title ? word_count_at_least?(title, min_words_title) : true
           end
         end
 
@@ -103,7 +103,7 @@ module Html2rss
           keep_only_with_min_words_title!(articles, min_words_title:)
         end
 
-        def word_count_at_least(str, min_words)
+        def word_count_at_least?(str, min_words)
           count = 0
           str.to_s.scan(/\b\w+\b/) do
             count += 1

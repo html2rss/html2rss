@@ -105,7 +105,7 @@ module Html2rss
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|
-        next if value.nil? || (hash.key?(key) && !hash[key].nil?)
+        next if value.nil? || (hash.key?(key) && hash[key])
 
         hash[key] = value
       end

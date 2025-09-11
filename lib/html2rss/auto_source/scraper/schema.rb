@@ -23,11 +23,12 @@ module Html2rss
 
         class << self
           def articles?(parsed_body)
-            parsed_body.css(TAG_SELECTOR).any? do |script|
-              (Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES).any? do |type|
-                script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/)
-              end
-            end
+            parsed_body.css(TAG_SELECTOR).any? { |script| supported_schema_type?(script) }
+          end
+
+          def supported_schema_type?(script)
+            supported_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
+            supported_types.any? { |type| script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/) }
           end
 
           ##

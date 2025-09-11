@@ -68,14 +68,16 @@ module Html2rss
 
         # @yield [Nokogiri::XML::Element] Gives each found article tag.
         def each_candidate
-          ANCHOR_TAG_SELECTORS.each do |tag_name, selector|
-            parsed_body.css(selector).each do |anchor|
-              next if anchor.path.match?(Html::TAGS_TO_IGNORE)
+          ANCHOR_TAG_SELECTORS.flat_map { |tag_name, selector| process_anchor_selector(tag_name, selector) }
+                              .each { |article_tag| yield article_tag if article_tag }
+        end
 
-              # Traverse ancestors to find the parent tag matching tag_name
-              article_tag = HtmlNavigator.find_tag_in_ancestors(anchor, tag_name)
-              yield article_tag if article_tag
-            end
+        def process_anchor_selector(tag_name, selector)
+          parsed_body.css(selector).filter_map do |anchor|
+            next if anchor.path.match?(Html::TAGS_TO_IGNORE)
+
+            # Traverse ancestors to find the parent tag matching tag_name
+            HtmlNavigator.find_tag_in_ancestors(anchor, tag_name)
           end
         end
       end

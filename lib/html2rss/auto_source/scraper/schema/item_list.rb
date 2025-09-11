@@ -17,7 +17,7 @@ module Html2rss
           def call
             hashes = [super]
 
-            return hashes if (elements = @schema_object[:itemListElement]).nil?
+            return hashes unless (elements = @schema_object[:itemListElement])
 
             elements = [elements] unless elements.is_a?(Array)
 

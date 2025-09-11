@@ -74,7 +74,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       end
     end
 
-    include_examples 'returns overridden value', :title, :title, 'Custom Title'
+    it_behaves_like 'returns overridden value', :title, :title, 'Custom Title'
 
     context 'with empty title tag' do
       let(:body) { '<html><head><title></title></head></html>' }
@@ -112,7 +112,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       end
     end
 
-    include_examples 'returns overridden value', :language, :language, 'es'
+    it_behaves_like 'returns overridden value', :language, :language, 'es'
 
     context 'with lang attribute on a child element' do
       let(:body) { '<html><body><div lang="de">Content</div></body></html>' }
@@ -150,7 +150,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       end
     end
 
-    include_examples 'falls back to meta content', :description, 'description', 'Example'
+    it_behaves_like 'falls back to meta content', :description, 'description', 'Example'
 
     context 'when overrides[:description] is empty' do
       let(:overrides) { { description: '' } }
@@ -182,7 +182,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       end
     end
 
-    include_examples 'returns overridden value', :image, :image, 'https://example.com/override.jpg'
+    it_behaves_like 'returns overridden value', :image, :image, 'https://example.com/override.jpg'
 
     context 'with og:image meta tag' do
       let(:body) { build_html_with_property(property: 'og:image', content: 'https://example.com/image.jpg') }
@@ -240,12 +240,12 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       end
     end
 
-    include_examples 'returns overridden value', :ttl, :ttl, 60
+    it_behaves_like 'returns overridden value', :ttl, :ttl, 60
   end
 
   describe '#author' do
-    include_examples 'falls back to meta content', :author, 'author', 'John Doe'
-    include_examples 'returns overridden value', :author, :author, 'Jane Doe'
+    it_behaves_like 'falls back to meta content', :author, 'author', 'John Doe'
+    it_behaves_like 'returns overridden value', :author, :author, 'Jane Doe'
 
     context 'without html_response' do
       let(:body) { '' }

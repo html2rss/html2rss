@@ -81,11 +81,12 @@ module Html2rss
       def enclosure_row(enclosure)
         type_icon = type_icon(enclosure.type)
         type_label = type_label(enclosure.type)
+        escaped_url = escaped_url(enclosure.url)
 
         <<~HTML.strip
           <tr>
             <td>#{type_icon} #{type_label}</td>
-            <td><a href="#{escaped_url(enclosure.url)}" target="_blank" rel="nofollow noopener noreferrer">#{escaped_url(enclosure.url)}</a></td>
+            <td><a href="#{escaped_url}" target="_blank" rel="nofollow noopener noreferrer">#{escaped_url}</a></td>
             <td>#{action_links(enclosure)}</td>
           </tr>
         HTML
