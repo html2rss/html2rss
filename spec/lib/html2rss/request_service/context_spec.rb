@@ -8,7 +8,7 @@ RSpec.describe Html2rss::RequestService::Context do
   describe '#initialize' do
     subject(:instance) { described_class.new(url:) }
 
-    let(:url) { Addressable::URI.parse('http://example.com') }
+    let(:url) { Html2rss::Url.from_relative('http://example.com', 'http://example.com') }
 
     context 'with a valid URL (String)' do
       let(:url) { 'http://www.example.com' }
@@ -18,7 +18,7 @@ RSpec.describe Html2rss::RequestService::Context do
       end
     end
 
-    context 'with a valid URL (Addressable::URI)' do
+    context 'with a valid URL (Html2rss::Url)' do
       it 'does not raise an error' do
         expect { instance }.not_to raise_error
       end

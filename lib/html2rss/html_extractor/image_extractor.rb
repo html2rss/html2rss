@@ -10,7 +10,7 @@ module Html2rss
                   from_img(article_tag) ||
                   from_style(article_tag)
 
-        Utils.build_absolute_url_from_relative(img_src, base_url) if img_src
+        Url.from_relative(img_src, base_url) if img_src
       end
 
       def self.from_img(article_tag)

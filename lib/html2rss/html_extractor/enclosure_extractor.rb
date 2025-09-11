@@ -25,7 +25,7 @@ module Html2rss
             src = img['src'].to_s
             next if src.empty?
 
-            abs_url = Utils.build_absolute_url_from_relative(src, base_url)
+            abs_url = Url.from_relative(src, base_url)
             {
               url: abs_url,
               type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'image/jpeg')
@@ -42,7 +42,7 @@ module Html2rss
             next if src.empty?
 
             {
-              url: Utils.build_absolute_url_from_relative(src, base_url),
+              url: Url.from_relative(src, base_url),
               type: element['type']
             }
           end
@@ -56,7 +56,7 @@ module Html2rss
             href = a['href'].to_s
             next if href.empty?
 
-            abs_url = Utils.build_absolute_url_from_relative(href, base_url)
+            abs_url = Url.from_relative(href, base_url)
             {
               url: abs_url,
               type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url)
@@ -72,7 +72,7 @@ module Html2rss
             src = iframe['src']
             next if src.nil? || src.empty?
 
-            abs_url = Utils.build_absolute_url_from_relative(src, base_url)
+            abs_url = Url.from_relative(src, base_url)
             {
               url: abs_url,
               type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'text/html')
@@ -88,7 +88,7 @@ module Html2rss
             href = a['href'].to_s
             next if href.empty?
 
-            abs_url = Utils.build_absolute_url_from_relative(href, base_url)
+            abs_url = Url.from_relative(href, base_url)
             {
               url: abs_url,
               type: 'application/zip'

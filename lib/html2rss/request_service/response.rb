@@ -26,7 +26,7 @@ module Html2rss
       # @return [Hash<String, Object>] the headers of the response
       attr_reader :headers
 
-      # @return [Addressable::URI] the URL of the response
+      # @return [Html2rss::Url] the URL of the response
       attr_reader :url
 
       def content_type = headers['content-type'] || ''

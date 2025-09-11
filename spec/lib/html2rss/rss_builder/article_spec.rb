@@ -58,7 +58,7 @@ RSpec.describe Html2rss::RssBuilder::Article do
     it 'returns the url if present', :aggregate_failures do
       url = instance.url
 
-      expect(url).to be_a(Addressable::URI)
+      expect(url).to be_a(Html2rss::Url)
       expect(url.to_s).to eq('http://example.com/')
     end
 

@@ -63,7 +63,7 @@ module Html2rss
                          .max_by { |string| string.to_s.size }
           end
 
-          # @return [Addressable::URI, nil] the URL of the schema object
+          # @return [Html2rss::Url, nil] the URL of the schema object
           def url
             url = schema_object[:url]
             if url.to_s.empty?
@@ -71,12 +71,12 @@ module Html2rss
               return
             end
 
-            Utils.build_absolute_url_from_relative(url, @url)
+            Url.from_relative(url, @url)
           end
 
           def image
             if (image_url = image_urls.first)
-              Utils.build_absolute_url_from_relative(image_url, @url)
+              Url.from_relative(image_url, @url)
             end
           end
 

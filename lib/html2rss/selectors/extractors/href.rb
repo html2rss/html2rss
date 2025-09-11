@@ -45,7 +45,7 @@ module Html2rss
         def get
           return nil unless @href
 
-          Html2rss::Utils.build_absolute_url_from_relative(@href, @options.channel[:url])
+          Url.from_relative(@href, @options.channel[:url])
         end
       end
     end

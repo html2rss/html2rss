@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'nokogiri'
-require 'addressable'
 
 RSpec.describe Html2rss::Selectors::Extractors::Href do
   subject { described_class.new(xml, options).get }
@@ -13,8 +12,8 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
     let(:xml) { Nokogiri.HTML('<div><a href="/posts/latest-findings">...</a></div>') }
 
     specify(:aggregate_failures) do
-      expect(subject).to be_a(Addressable::URI)
-      expect(subject).to eq Addressable::URI.parse('https://example.com/posts/latest-findings')
+      expect(subject).to be_a(Html2rss::Url)
+      expect(subject).to eq Html2rss::Url.from_relative('https://example.com/posts/latest-findings', 'http://example.com')
     end
   end
 
@@ -22,8 +21,8 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
     let(:xml) { Nokogiri.HTML('<div><a href="http://example.com/posts/absolute">...</a></div>') }
 
     specify(:aggregate_failures) do
-      expect(subject).to be_a(Addressable::URI)
-      expect(subject).to eq Addressable::URI.parse('http://example.com/posts/absolute')
+      expect(subject).to be_a(Html2rss::Url)
+      expect(subject).to eq Html2rss::Url.from_relative('http://example.com/posts/absolute', 'http://example.com')
     end
   end
 end

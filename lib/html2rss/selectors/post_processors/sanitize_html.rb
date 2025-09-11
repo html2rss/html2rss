@@ -90,7 +90,7 @@ module Html2rss
         ##
         # Shorthand method to get the sanitized HTML.
         # @param html [String]
-        # @param url [String, Addressable::URI]
+        # @param url [String, Html2rss::Url]
         # @return [String, nil]
         def self.get(html, url)
           return nil if String(html).empty?

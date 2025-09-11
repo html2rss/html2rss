@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'addressable/uri'
-
 module Html2rss
   class RequestService
     ##
@@ -11,16 +9,16 @@ module Html2rss
       SUPPORTED_URL_SCHEMES = %w[http https].to_set.freeze
 
       ##
-      # @param url [String, Addressable::URI] the URL to request
+      # @param url [String, Html2rss::Url] the URL to request
       # @param headers [Hash] HTTP request headers
       def initialize(url:, headers: {})
-        @url = Addressable::URI.parse(url).normalize.freeze
+        @url = Html2rss::Url.from_relative(url, url)
         assert_valid_url!
 
         @headers = headers
       end
 
-      # @return [Addressable::URI] the parsed and normalized URL
+      # @return [Html2rss::Url] the parsed and normalized URL
       attr_reader :url
 
       # @return [Hash] the HTTP request headers

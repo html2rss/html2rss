@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'nokogiri'
-require 'addressable'
 
 RSpec.describe Html2rss::HtmlExtractor::ImageExtractor do
   let(:article_tag) { Nokogiri::HTML.fragment(html) }

@@ -40,7 +40,7 @@ module Html2rss
       }.freeze
 
       # @param enclosures [Array<Html2rss::RssBuilder::Enclosure>, nil] Media enclosures
-      # @param image [String, Addressable::URI, nil] Fallback image URL
+      # @param image [String, Html2rss::Url, nil] Fallback image URL
       def initialize(enclosures:, image:)
         @enclosures = Array(enclosures)
         @image = image
