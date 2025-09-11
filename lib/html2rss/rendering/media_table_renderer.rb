@@ -133,7 +133,7 @@ module Html2rss
 
       def download_link(url)
         <<~HTML.strip
-          <a href="#{escaped_url(url)}" target="_blank" rel="nofollow noopener noreferrer" download>Download</a>
+          <a href="#{escaped_url(url)}" target="_blank" rel="nofollow noopener noreferrer" download="">Download</a>
         HTML
       end
 
