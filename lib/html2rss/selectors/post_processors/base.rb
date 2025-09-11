@@ -33,7 +33,7 @@ module Html2rss
           options = if context.is_a?(Hash)
                       context[:options]
                     else
-                      { file: File.basename(caller(1..1).first.split(':').first) }
+                      { file: File.basename(caller(1, 1).first.split(':').first) }
                     end
           message = "The type of `#{name}` must be #{Array(types).join(' or ')}, " \
                     "but is: #{value.class} in: #{options.inspect}"
