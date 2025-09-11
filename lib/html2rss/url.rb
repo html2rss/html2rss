@@ -23,6 +23,9 @@ module Html2rss
   class Url
     include Comparable
 
+    # Regular expression for basic URI format validation
+    URI_REGEXP = Addressable::URI::URIREGEX
+
     ##
     # Creates a URL from a relative path and base URL.
     #
@@ -55,6 +58,33 @@ module Html2rss
     end
 
     ##
+    # Creates a URL for channel use with validation.
+    # Validates that the URL meets channel requirements (absolute, no @, supported schemes).
+    #
+    # @param url_string [String] the URL string to validate and parse
+    # @return [Url] the validated and parsed URL
+    # @raise [ArgumentError] if the URL doesn't meet channel requirements
+    # @example Creating a channel URL
+    #   Url.for_channel('https://example.com')
+    #   # => #<Html2rss::Url:... @uri=#<Addressable::URI:... URI:https://example.com>>
+    # @example Invalid channel URL
+    #   Url.for_channel('/relative/path')
+    #   # => raises ArgumentError: "URL must be absolute"
+    def self.for_channel(url_string)
+      return nil if url_string.nil? || url_string.empty?
+
+      url = from_relative(url_string, url_string)
+
+      raise ArgumentError, 'URL must be absolute' unless url.absolute?
+
+      raise ArgumentError, 'URL must not contain an @ character' if url.to_s.include?('@')
+
+      raise ArgumentError, "URL scheme '#{url.scheme}' is not supported" unless %w[http https].include?(url.scheme)
+
+      url
+    end
+
+    ##
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
     def initialize(uri)
       @uri = uri.freeze
@@ -73,11 +103,15 @@ module Html2rss
     ##
     # Returns a titleized representation of the URL path.
     # Converts the path to a human-readable title by cleaning and capitalizing words.
+    # Removes file extensions and special characters, then capitalizes each word.
     #
     # @return [String] the titleized path, or empty string if path is empty
-    # @example
-    #   url = Url.from_relative('/foo-bar/baz.txt', 'https://example.com')
+    # @example Basic titleization
+    #   url = Url.from_string('https://example.com/foo-bar/baz.txt')
     #   url.titleized # => "Foo Bar Baz"
+    # @example With URL encoding
+    #   url = Url.from_string('https://example.com/hello%20world/article.html')
+    #   url.titleized # => "Hello World Article"
     def titleized
       return '' if @uri.path.empty?
 
@@ -94,11 +128,15 @@ module Html2rss
     ##
     # Returns a titleized representation of the URL with prefixed host.
     # Creates a channel title by combining host and path information.
+    # Useful for RSS channel titles that need to identify the source.
     #
     # @return [String] the titleized channel URL
-    # @example
-    #   url = Url.from_relative('/foo-bar/baz', 'https://example.com')
+    # @example With path
+    #   url = Url.from_string('https://example.com/foo-bar/baz')
     #   url.channel_titleized # => "example.com: Foo Bar Baz"
+    # @example Without path (root URL)
+    #   url = Url.from_string('https://example.com')
+    #   url.channel_titleized # => "example.com"
     def channel_titleized
       nicer_path = CGI.unescapeURIComponent(@uri.path).split('/').reject(&:empty?)
       host = @uri.host
