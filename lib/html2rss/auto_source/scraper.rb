@@ -12,7 +12,8 @@ module Html2rss
       SCRAPERS = [
         Html,
         Schema,
-        SemanticHtml
+        SemanticHtml,
+        RssFeedDetector
       ].freeze
 
       ##

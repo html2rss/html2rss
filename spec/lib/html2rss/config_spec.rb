@@ -158,7 +158,8 @@ RSpec.describe Html2rss::Config do
               enabled: true,
               minimum_selector_frequency: 3,  # was explicitly set -> overrides default
               use_top_selectors: 5            # wasn't explicitly set -> default
-            }
+            },
+            rss_feed_detector: { enabled: true } # wasn't explicitly set -> default
           },
           cleanup: {
             keep_different_domain: false,     # wasn't explicitly set -> default
