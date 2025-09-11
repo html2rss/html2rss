@@ -52,8 +52,8 @@ module Html2rss
       # Extracts PDF enclosures from HTML tags.
       class Pdf
         def self.call(article_tag, base_url:)
-          article_tag.css('a[href$=".pdf"]').filter_map do |a|
-            href = a['href'].to_s
+          article_tag.css('a[href$=".pdf"]').filter_map do |link|
+            href = link['href'].to_s
             next if href.empty?
 
             abs_url = Url.from_relative(href, base_url)
@@ -84,8 +84,8 @@ module Html2rss
       # Extracts archive enclosures (zip, tar.gz, tgz) from HTML tags.
       class Archive
         def self.call(article_tag, base_url:)
-          article_tag.css('a[href$=".zip"], a[href$=".tar.gz"], a[href$=".tgz"]').filter_map do |a|
-            href = a['href'].to_s
+          article_tag.css('a[href$=".zip"], a[href$=".tar.gz"], a[href$=".tgz"]').filter_map do |link|
+            href = link['href'].to_s
             next if href.empty?
 
             abs_url = Url.from_relative(href, base_url)

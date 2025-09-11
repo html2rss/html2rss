@@ -22,10 +22,11 @@ module Html2rss
       # @return [Response]
       def call
         page = new_page
+        url = ctx.url
 
-        response = navigate_to_destination(page, ctx.url)
+        response = navigate_to_destination(page, url)
 
-        Response.new(body: body(page), headers: response.headers, url: ctx.url)
+        Response.new(body: body(page), headers: response.headers, url:)
       ensure
         page&.close
       end

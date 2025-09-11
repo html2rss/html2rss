@@ -35,7 +35,7 @@ module Html2rss
         end
       end
 
-      TYPES = ['text/css', 'text/xsl'].freeze
+      TYPES = ['text/css', 'text/xsl'].to_set.freeze
 
       def initialize(href:, type:, media: 'all')
         raise ArgumentError, 'stylesheet.href must be a String' unless href.is_a?(String)

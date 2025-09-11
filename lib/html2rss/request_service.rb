@@ -79,10 +79,11 @@ module Html2rss
     # @param name [Symbol] the name of the strategy
     # @return [Boolean] true if the strategy was unregistered, false otherwise.
     # @raise [ArgumentError] if attempting to unregister the default strategy.
-    def unregister_strategy(name)
-      raise ArgumentError, 'Cannot unregister the default strategy.' if name.to_sym == @default_strategy_name
+    def unregister_strategy(name) # rubocop:disable Naming/PredicateMethod
+      name_sym = name.to_sym
+      raise ArgumentError, 'Cannot unregister the default strategy.' if name_sym == @default_strategy_name
 
-      !!@strategies.delete(name.to_sym)
+      !!@strategies.delete(name_sym)
     end
 
     ##

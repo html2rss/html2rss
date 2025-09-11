@@ -86,7 +86,8 @@ module Html2rss
       def html_response? = @html_response ||= @response.html_response?
 
       def fetch_title
-        return overrides[:title] if overrides[:title]
+        override_title = overrides[:title]
+        return override_title if override_title
         return parsed_title if parsed_title
 
         url.channel_titleized

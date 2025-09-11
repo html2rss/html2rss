@@ -132,8 +132,8 @@ module Html2rss
       deep_merge({ auto_source: Html2rss::AutoSource::DEFAULT_CONFIG }, config)
     end
 
-    def deep_merge(hash1, hash2)
-      hash1.merge(hash2) do |_key, oldval, newval|
+    def deep_merge(base_config, override_config)
+      base_config.merge(override_config) do |_key, oldval, newval|
         oldval.is_a?(Hash) && newval.is_a?(Hash) ? deep_merge(oldval, newval) : newval
       end
     end
