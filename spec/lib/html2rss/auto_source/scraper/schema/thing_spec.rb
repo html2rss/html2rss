@@ -102,4 +102,90 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       end
     end
   end
+
+  describe '#categories' do
+    subject(:categories) { instance.categories }
+
+    context 'when schema_object has keywords as array' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', keywords: %w[Politics Society Analysis] }
+      end
+
+      it 'returns the keywords as categories' do
+        expect(categories).to eq(%w[Politics Society Analysis])
+      end
+    end
+
+    context 'when schema_object has keywords as string' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', keywords: 'Politics, Society, Analysis' }
+      end
+
+      it 'splits keywords by comma and returns as categories' do
+        expect(categories).to eq(%w[Politics Society Analysis])
+      end
+    end
+
+    context 'when schema_object has categories field' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', categories: %w[News Technology] }
+      end
+
+      it 'returns the categories' do
+        expect(categories).to eq(%w[News Technology])
+      end
+    end
+
+    context 'when schema_object has tags field' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', tags: %w[Science Research] }
+      end
+
+      it 'returns the tags as categories' do
+        expect(categories).to eq(%w[Science Research])
+      end
+    end
+
+    context 'when schema_object has about field with objects' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation',
+          about: [{ name: 'Politics' }, { name: 'Society' }] }
+      end
+
+      it 'extracts names from about objects' do
+        expect(categories).to eq(%w[Politics Society])
+      end
+    end
+
+    context 'when schema_object has mixed category sources' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', keywords: ['Politics'], categories: ['Society'],
+          tags: 'Science, Research' }
+      end
+
+      it 'combines all category sources' do
+        expect(categories).to eq(%w[Politics Society Science Research])
+      end
+    end
+
+    context 'when schema_object has no category fields' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation' }
+      end
+
+      it 'returns empty array' do
+        expect(categories).to eq([])
+      end
+    end
+
+    context 'when schema_object has empty category fields' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', keywords: [], categories: '', tags: nil }
+      end
+
+      it 'returns empty array' do
+        expect(categories).to eq([])
+      end
+    end
+  end
 end

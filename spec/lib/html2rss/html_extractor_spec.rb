@@ -45,6 +45,7 @@ RSpec.describe Html2rss::HtmlExtractor do
           published_at: an_instance_of(DateTime),
           url: Html2rss::Url.from_relative('https://example.com/sample', 'https://example.com'),
           image: be_a(Html2rss::Url),
+          categories: [],
           enclosures: contain_exactly(a_hash_including(
                                         url: be_a(Html2rss::Url),
                                         type: 'video/mp4'
@@ -96,6 +97,7 @@ RSpec.describe Html2rss::HtmlExtractor do
         description: 'FCK PTN Sample description',
         id: nil,
         published_at: be_a(DateTime),
+        categories: [],
         enclosures: [a_hash_including(
           url: be_a(Html2rss::Url),
           type: 'image/jpeg'
@@ -141,6 +143,42 @@ RSpec.describe Html2rss::HtmlExtractor do
 
       it 'returns nil' do
         expect(heading).to be_nil
+      end
+    end
+  end
+
+  describe 'category extraction' do
+    context 'when article has category classes' do
+      let(:html) do
+        <<~HTML
+          <article>
+            <h1>Sample Heading</h1>
+            <div class="category-news">News</div>
+            <span class="post-tag">Technology</span>
+            <div class="article-category">Science</div>
+          </article>
+        HTML
+      end
+      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+
+      it 'extracts categories from elements with category-related class names' do
+        expect(article_hash[:categories]).to contain_exactly('News', 'Technology', 'Science')
+      end
+    end
+
+    context 'when article has no category classes' do
+      let(:html) do
+        <<~HTML
+          <article>
+            <h1>Sample Heading</h1>
+            <p>Sample description</p>
+          </article>
+        HTML
+      end
+      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+
+      it 'returns empty categories array' do
+        expect(article_hash[:categories]).to eq([])
       end
     end
   end
