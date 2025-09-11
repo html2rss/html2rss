@@ -25,6 +25,7 @@ module Html2rss
 
     # Regular expression for basic URI format validation
     URI_REGEXP = Addressable::URI::URIREGEX
+    SUPPORTED_SCHEMES = %w[http https].freeze
 
     ##
     # Creates a URL from a relative path and base URL.
@@ -105,7 +106,8 @@ module Html2rss
 
       raise ArgumentError, 'URL must not contain an @ character' if url.to_s.include?('@')
 
-      raise ArgumentError, "URL scheme '#{url.scheme}' is not supported" unless %w[http https].include?(url.scheme)
+      scheme = url.scheme
+      raise ArgumentError, "URL scheme '#{scheme}' is not supported" unless SUPPORTED_SCHEMES.include?(scheme)
     end
 
     private_class_method :parse_and_normalize_url, :validate_channel_url
@@ -139,9 +141,10 @@ module Html2rss
     #   url = Url.from_string('https://example.com/hello%20world/article.html')
     #   url.titleized # => "Hello World Article"
     def titleized
-      return '' if @uri.path.empty?
+      path = @uri.path
+      return '' if path.empty?
 
-      nicer_path = CGI.unescapeURIComponent(@uri.path)
+      nicer_path = CGI.unescapeURIComponent(path)
                       .split('/')
                       .flat_map do |part|
         part.gsub(/[^a-zA-Z0-9\.]/, ' ').gsub(/\s+/, ' ').split

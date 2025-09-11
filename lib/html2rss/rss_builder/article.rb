@@ -146,13 +146,17 @@ module Html2rss
       def <=>(other)
         return nil unless other.is_a?(Article)
 
-        0 if other.all? { |key, value| value == public_send(key) ? public_send(key) <=> value : false }
+        0 if other.all? do |key, value|
+          my_value = public_send(key)
+          value == my_value ? my_value <=> value : false
+        end
       end
 
       private
 
       def fetch_guid
-        guid = @to_h[:guid].map { |s| s.to_s.strip }.reject(&:empty?).join if @to_h[:guid].is_a?(Array)
+        guid_array = @to_h[:guid]
+        guid = guid_array.map { |s| s.to_s.strip }.reject(&:empty?).join if guid_array.is_a?(Array)
 
         guid || [url, id].join('#!/')
       end

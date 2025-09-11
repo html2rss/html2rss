@@ -26,7 +26,8 @@ module Html2rss
       def url = @url ||= Html2rss::Url.from_relative(@response.url, @response.url)
 
       def description
-        return overrides[:description] unless overrides[:description].to_s.empty?
+        override_description = overrides[:description]
+        return override_description unless override_description.to_s.empty?
 
         description = parsed_body.at_css('meta[name="description"]')&.[]('content') if html_response?
 
@@ -36,7 +37,8 @@ module Html2rss
       end
 
       def ttl
-        return overrides[:ttl] if overrides[:ttl]
+        override_ttl = overrides[:ttl]
+        return override_ttl if override_ttl
 
         if (ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1))
           return ttl.to_i.fdiv(60).ceil
@@ -46,7 +48,8 @@ module Html2rss
       end
 
       def language
-        return overrides[:language] if overrides[:language]
+        override_language = overrides[:language]
+        return override_language if override_language
 
         if (language_code = headers['content-language']&.match(/^([a-z]{2})/))
           return language_code[0]
@@ -58,7 +61,8 @@ module Html2rss
       end
 
       def author
-        return overrides[:author] if overrides[:author]
+        override_author = overrides[:author]
+        return override_author if override_author
 
         return unless html_response?
 
@@ -68,7 +72,8 @@ module Html2rss
       def last_build_date = headers['last-modified'] || Time.now
 
       def image
-        return overrides[:image] if overrides[:image]
+        override_image = overrides[:image]
+        return override_image if override_image
 
         return unless html_response?
 
@@ -86,7 +91,8 @@ module Html2rss
       def html_response? = @html_response ||= @response.html_response?
 
       def fetch_title
-        return overrides[:title] if overrides[:title]
+        override_title = overrides[:title]
+        return override_title if override_title
         return parsed_title if parsed_title
 
         url.channel_titleized

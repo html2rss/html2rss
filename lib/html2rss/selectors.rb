@@ -157,12 +157,12 @@ module Html2rss
     end
 
     def parsed_body
-      if response.json_response?
-        fragment = ObjectToXmlConverter.new(response.parsed_body).call
-        Nokogiri::HTML5.fragment(fragment)
-      else
-        response.parsed_body
-      end
+      @parsed_body ||= if response.json_response?
+                         fragment = ObjectToXmlConverter.new(response.parsed_body).call
+                         Nokogiri::HTML5.fragment(fragment)
+                       else
+                         response.parsed_body
+                       end
     end
 
     def select_special(name, item)

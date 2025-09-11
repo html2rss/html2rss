@@ -12,9 +12,12 @@ module Html2rss
         min_words_title: 3
       }.freeze
 
+      VALID_SCHEMES = %w[http https].freeze
+
       class << self
         def call(articles, url:, keep_different_domain:, min_words_title:)
-          Log.debug "Cleanup: start with #{articles.size} articles"
+          initial_size = articles.size
+          Log.debug "Cleanup: start with #{initial_size} articles"
 
           articles.select!(&:valid?)
 
@@ -24,7 +27,8 @@ module Html2rss
           reject_different_domain!(articles, url) unless keep_different_domain
           keep_only_with_min_words_title!(articles, min_words_title:)
 
-          Log.debug "Cleanup: end with #{articles.size} articles"
+          final_size = articles.size
+          Log.debug "Cleanup: end with #{final_size} articles"
           articles
         end
 
@@ -46,7 +50,7 @@ module Html2rss
         #
         # @param articles [Array<Article>] The list of articles to process.
         def keep_only_http_urls!(articles)
-          articles.select! { |article| %w[http https].include?(article.url&.scheme) }
+          articles.select! { |article| VALID_SCHEMES.include?(article.url&.scheme) }
         end
 
         ##
@@ -66,7 +70,8 @@ module Html2rss
         # @param min_words_title [Integer] The minimum number of words in the title.
         def keep_only_with_min_words_title!(articles, min_words_title:)
           articles.select! do |article|
-            article.title ? word_count_at_least(article.title, min_words_title) : true
+            title = article.title
+            title ? word_count_at_least(title, min_words_title) : true
           end
         end
 
