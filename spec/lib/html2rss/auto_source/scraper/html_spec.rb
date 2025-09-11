@@ -186,7 +186,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
     it 'returns true if parent has 2 or more anchor tags' do
       node = parsed_body.at_css('article a')
-      expect(scraper.article_tag_condition?(node)).to be true
+      expect(scraper).to be_article_tag_condition(node)
     end
 
     it 'returns false if none of the conditions are met' do
