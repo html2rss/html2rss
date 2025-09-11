@@ -73,7 +73,7 @@ module Html2rss
       @extract_url ||= begin
         href = find_main_anchor&.[]('href').to_s
 
-        Utils.build_absolute_url_from_relative(href.split('#').first.strip, base_url) unless href.empty?
+        Url.from_relative(href.split('#').first.strip, base_url) unless href.empty?
       end
     end
 

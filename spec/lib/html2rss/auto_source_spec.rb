@@ -5,7 +5,7 @@ RSpec.describe Html2rss::AutoSource do
 
   let(:config) { described_class::DEFAULT_CONFIG }
   let(:response) { build_response(body:, headers:, url:) }
-  let(:url) { Addressable::URI.parse('https://example.com') }
+  let(:url) { Html2rss::Url.from_relative('https://example.com', 'https://example.com') }
   let(:body) { build_html_with_article('Article 1 Title', '/article1') }
   let(:headers) { { 'content-type': 'text/html' } }
 
@@ -81,7 +81,7 @@ RSpec.describe Html2rss::AutoSource do
 
     it 'returns articles with correct attributes', :aggregate_failures do
       article = instance.articles.first
-      expected_url = Addressable::URI.parse('https://example.com/article1')
+      expected_url = Html2rss::Url.from_relative('https://example.com/article1', 'https://example.com')
 
       expect(article).to be_a(Html2rss::RssBuilder::Article) & have_attributes(expected_article_data)
       expect(article.url).to eq expected_url

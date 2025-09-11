@@ -10,7 +10,7 @@ module Html2rss
       ##
       # Guesses the content type based on the file extension of the URL.
       #
-      # @param url [Addressable::URI]
+      # @param url [Html2rss::Url]
       # @param default [String] default content type
       # @return [String] guessed content type, or default
       def self.guess_content_type_from_url(url, default: 'application/octet-stream')

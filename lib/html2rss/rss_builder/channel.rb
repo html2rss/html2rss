@@ -23,7 +23,7 @@ module Html2rss
         @title ||= fetch_title
       end
 
-      def url = @url ||= @response.url
+      def url = @url ||= Html2rss::Url.from_relative(@response.url, @response.url)
 
       def description
         return overrides[:description] unless overrides[:description].to_s.empty?
@@ -73,7 +73,7 @@ module Html2rss
         return unless html_response?
 
         if (image_url = parsed_body.at_css('meta[property="og:image"]')&.[]('content'))
-          Html2rss::Utils.sanitize_url(image_url)
+          Url.sanitize(image_url)
         end
       end
 
@@ -89,7 +89,7 @@ module Html2rss
         return overrides[:title] if overrides[:title]
         return parsed_title if parsed_title
 
-        Utils.titleized_channel_url(url)
+        url.channel_titleized
       end
 
       def parsed_title

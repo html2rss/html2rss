@@ -83,14 +83,14 @@ module Html2rss
         ).call
       end
 
-      # @return [Addressable::URI, nil]
+      # @return [Url, nil]
       def url
-        @url ||= Html2rss::Utils.sanitize_url(@to_h[:url])
+        @url ||= Url.sanitize(@to_h[:url])
       end
 
-      # @return [Addressable::URI, nil]
+      # @return [Url, nil]
       def image
-        @image ||= Html2rss::Utils.sanitize_url(@to_h[:image])
+        @image ||= Url.sanitize(@to_h[:image])
       end
 
       # @return [String]

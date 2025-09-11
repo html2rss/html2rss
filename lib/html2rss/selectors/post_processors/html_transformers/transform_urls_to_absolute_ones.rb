@@ -26,7 +26,7 @@ module Html2rss
 
             url_attribute = URL_ELEMENTS_WITH_URL_ATTRIBUTE[node_name]
             url = node[url_attribute]
-            node[url_attribute] = Html2rss::Utils.build_absolute_url_from_relative(url, @channel_url)
+            node[url_attribute] = Url.from_relative(url, @channel_url).to_s
           end
         end
       end

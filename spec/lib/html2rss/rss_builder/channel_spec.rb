@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'addressable'
 require 'timecop'
 
 RSpec.describe Html2rss::RssBuilder::Channel do
@@ -10,7 +9,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
   let(:response) { build_response(body:, headers:, url:) }
   let(:body) { '' }
   let(:headers) { default_headers }
-  let(:url) { Addressable::URI.parse('https://example.com') }
+  let(:url) { Html2rss::Url.from_relative('https://example.com', 'https://example.com') }
 
   # Test factories and shared data
   def build_response(body:, headers:, url:)
@@ -71,8 +70,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       let(:body) { '<html><head></head></html>' }
 
       it 'generates a title from the URL' do
-        allow(Html2rss::Utils).to receive(:titleized_channel_url).and_return('Example.com')
-        expect(instance.title).to eq('Example.com')
+        expect(instance.title).to eq('example.com')
       end
     end
 
@@ -82,8 +80,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       let(:body) { '<html><head><title></title></head></html>' }
 
       it 'generates a title from the URL' do
-        allow(Html2rss::Utils).to receive(:titleized_channel_url).and_return('Example.com')
-        expect(instance.title).to eq('Example.com')
+        expect(instance.title).to eq('example.com')
       end
     end
   end
@@ -172,8 +169,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
 </head>'
       end
 
-      it 'extracts the url', :aggregate_failures do
-        expect(instance.image).to be_a(Addressable::URI)
+      it 'extracts the url' do
         expect(instance.image.to_s).to eq('https://example.com/images/rock.jpg')
       end
     end
@@ -191,8 +187,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     context 'with og:image meta tag' do
       let(:body) { build_html_with_property(property: 'og:image', content: 'https://example.com/image.jpg') }
 
-      it 'extracts the image URL', :aggregate_failures do
-        expect(instance.image).to be_a(Addressable::URI)
+      it 'extracts the image URL' do
         expect(instance.image.to_s).to eq('https://example.com/image.jpg')
       end
     end

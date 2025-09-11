@@ -53,5 +53,23 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
 
       it { is_expected.to eq 'h3ll*' }
     end
+
+    context 'with single character string' do
+      subject do
+        described_class.new('hello',
+                            options: { pattern: '/', replacement: 'X' }).get
+      end
+
+      it { is_expected.to eq 'hello' }
+    end
+
+    context 'with three character string with slashes' do
+      subject do
+        described_class.new('hello',
+                            options: { pattern: '/e/', replacement: 'X' }).get
+      end
+
+      it { is_expected.to eq 'hXllo' }
+    end
   end
 end

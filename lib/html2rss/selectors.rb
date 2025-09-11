@@ -203,7 +203,7 @@ module Html2rss
 
     # @return [Hash] enclosure details.
     def enclosure(item, selector)
-      url = Html2rss::Utils.build_absolute_url_from_relative(select_regular(:enclosure, item), @url)
+      url = Url.from_relative(select_regular(:enclosure, item), @url)
 
       { url:, type: selector[:content_type] }
     end

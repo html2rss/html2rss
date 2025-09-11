@@ -19,7 +19,7 @@ module Html2rss
       # Creates the appropriate media renderer.
       #
       # @param enclosure [Html2rss::RssBuilder::Enclosure, nil] The media enclosure
-      # @param image [String, Addressable::URI, nil] Fallback image URL
+      # @param image [String, Html2rss::Url, nil] Fallback image URL
       # @param title [String] Title for alt text and accessibility
       # @return [ImageRenderer, VideoRenderer, AudioRenderer, PdfRenderer, nil] The appropriate renderer
       def self.for(enclosure:, image:, title:)

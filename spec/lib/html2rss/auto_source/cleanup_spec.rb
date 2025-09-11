@@ -1,32 +1,32 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Cleanup do
-  let(:url) { Addressable::URI.parse('http://example.com') }
+  let(:url) { Html2rss::Url.from_relative('http://example.com', 'http://example.com') }
   let(:articles) do
     [
       instance_double(Html2rss::RssBuilder::Article,
                       valid?: true,
-                      url: Addressable::URI.parse('http://example.com/article0'),
+                      url: Html2rss::Url.from_relative('http://example.com/article0', 'http://example.com'),
                       title: 'Valid Article One'),
       instance_double(Html2rss::RssBuilder::Article,
                       valid?: true,
-                      url: Addressable::URI.parse('http://example.com/article1'),
+                      url: Html2rss::Url.from_relative('http://example.com/article1', 'http://example.com'),
                       title: 'Valid Article Two'),
       instance_double(Html2rss::RssBuilder::Article,
                       valid?: false,
-                      url: Addressable::URI.parse('http://example.com/article2'),
+                      url: Html2rss::Url.from_relative('http://example.com/article2', 'http://example.com'),
                       title: 'Invalid Article'),
       instance_double(Html2rss::RssBuilder::Article,
                       valid?: true,
-                      url: Addressable::URI.parse('http://otherdomain.com/article3'),
+                      url: Html2rss::Url.from_relative('http://otherdomain.com/article3', 'http://example.com'),
                       title: 'Different Domain Article'),
       instance_double(Html2rss::RssBuilder::Article,
                       valid?: true,
-                      url: Addressable::URI.parse('ftp://example.com/article4'),
+                      url: Html2rss::Url.from_relative('ftp://example.com/article4', 'http://example.com'),
                       title: 'Non-HTTP Article'),
       instance_double(Html2rss::RssBuilder::Article,
                       valid?: true,
-                      url: Addressable::URI.parse('http://example.com/article5'),
+                      url: Html2rss::Url.from_relative('http://example.com/article5', 'http://example.com'),
                       title: 'Short')
     ]
   end

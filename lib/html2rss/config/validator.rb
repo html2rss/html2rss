@@ -7,7 +7,7 @@ module Html2rss
     # Validates the configuration hash using Dry::Validation.
     # The configuration options adhere to the documented schema in README.md.
     class Validator < Dry::Validation::Contract
-      URI_REGEXP = URI::DEFAULT_PARSER.make_regexp
+      URI_REGEXP = Url::URI_REGEXP
       STYLESHEET_TYPES = RssBuilder::Stylesheet::TYPES
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
 
@@ -55,6 +55,20 @@ module Html2rss
 
         errors = Html2rss::Selectors::Config.call(value).errors
         errors.each { |error| key(:selectors).failure(error) } unless errors.empty?
+      end
+
+      # URL validation delegated to Url class
+      rule(:channel) do
+        next unless values[:channel]&.key?(:url)
+
+        url_string = values[:channel][:url]
+        next if url_string.nil? || url_string.empty?
+
+        begin
+          Html2rss::Url.for_channel(url_string)
+        rescue ArgumentError => error
+          key(%i[channel url]).failure(error.message)
+        end
       end
     end
   end

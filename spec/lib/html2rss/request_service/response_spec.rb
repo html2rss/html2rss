@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService::Response do
-  subject(:instance) { described_class.new(body:, headers:, url: Addressable::URI.parse('https://example.com')) }
+  subject(:instance) { described_class.new(body:, headers:, url: Html2rss::Url.from_relative('https://example.com', 'https://example.com')) }
 
   describe '#headers' do
     subject(:returned_headers) { instance.headers }

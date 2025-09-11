@@ -2,12 +2,11 @@
 
 require 'spec_helper'
 require 'puppeteer'
-require 'addressable'
 
 RSpec.describe Html2rss::RequestService::PuppetCommander do
   let(:ctx) do
     instance_double(Html2rss::RequestService::Context,
-                    url: Addressable::URI.parse('https://example.com'),
+                    url: Html2rss::Url.from_relative('https://example.com', 'https://example.com'),
                     headers: { 'User-Agent' => 'RSpec' })
   end
   let(:browser) { instance_double(Puppeteer::Browser, new_page: page) }

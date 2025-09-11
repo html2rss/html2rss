@@ -22,9 +22,9 @@ module Html2rss
     class DescriptionBuilder
       # @param base [String] The base text content for the description
       # @param title [String] The article title (used for alt text and title removal)
-      # @param url [String, Addressable::URI] The article URL (used for sanitization)
+      # @param url [String, Html2rss::Url] The article URL (used for sanitization)
       # @param enclosures [Array<Html2rss::RssBuilder::Enclosure>, nil] Media enclosures
-      # @param image [String, Addressable::URI, nil] Fallback image URL
+      # @param image [String, Html2rss::Url, nil] Fallback image URL
       def initialize(base:, title:, url:, enclosures:, image:)
         @base = base.to_s
         @title = title

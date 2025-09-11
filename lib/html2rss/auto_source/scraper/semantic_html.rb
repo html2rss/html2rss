@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'addressable'
 require 'parallel'
 
 module Html2rss

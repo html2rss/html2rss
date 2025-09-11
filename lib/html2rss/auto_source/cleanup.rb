@@ -53,7 +53,7 @@ module Html2rss
         # Rejects articles that have a URL not on the same domain as the source.
         #
         # @param articles [Array<Article>] The list of articles to process.
-        # @param base_url [Addressable::URI] The source URL to compare against.
+        # @param base_url [Html2rss::Url] The source URL to compare against.
         def reject_different_domain!(articles, base_url)
           base_host = base_url.host
           articles.select! { |article| article.url&.host == base_host }

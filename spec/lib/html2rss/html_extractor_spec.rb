@@ -43,13 +43,13 @@ RSpec.describe Html2rss::HtmlExtractor do
           description: 'Sample Heading FCK PTN Sample description',
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
-          url: Addressable::URI.parse('https://example.com/sample'),
-          image: an_instance_of(Addressable::URI),
+          url: Html2rss::Url.from_relative('https://example.com/sample', 'https://example.com'),
+          image: be_a(Html2rss::Url),
           enclosures: contain_exactly(a_hash_including(
-                                        url: an_instance_of(Addressable::URI),
+                                        url: be_a(Html2rss::Url),
                                         type: 'video/mp4'
                                       ), a_hash_including(
-                                           url: an_instance_of(Addressable::URI),
+                                           url: be_a(Html2rss::Url),
                                            type: 'image/jpeg'
                                          ))
         )
@@ -92,12 +92,12 @@ RSpec.describe Html2rss::HtmlExtractor do
     let(:details) do
       { title: nil,
         url: nil,
-        image: be_a(Addressable::URI),
+        image: be_a(Html2rss::Url),
         description: 'FCK PTN Sample description',
         id: nil,
         published_at: be_a(DateTime),
         enclosures: [a_hash_including(
-          url: an_instance_of(Addressable::URI),
+          url: be_a(Html2rss::Url),
           type: 'image/jpeg'
         )] }
     end

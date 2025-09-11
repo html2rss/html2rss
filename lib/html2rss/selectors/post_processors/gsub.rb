@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'regexp_parser'
+
 module Html2rss
   class Selectors
     module PostProcessors
@@ -58,7 +60,24 @@ module Html2rss
         ##
         # @return [Regexp]
         def pattern
-          @pattern.is_a?(String) ? Utils.build_regexp_from_string(@pattern) : @pattern
+          @pattern.is_a?(String) ? parse_regexp_string(@pattern) : @pattern
+        end
+
+        ##
+        # Parses the given String and builds a Regexp out of it.
+        #
+        # It will remove one pair of surrounding slashes ('/') from the String
+        # to maintain backwards compatibility before building the Regexp.
+        #
+        # @param string [String]
+        # @return [Regexp]
+        def parse_regexp_string(string)
+          raise ArgumentError, 'must be a string!' unless string.is_a?(String)
+
+          # Only remove surrounding slashes if the string has at least 3 characters
+          # to avoid issues with single character strings like "/"
+          string = string[1..-2] if string.length >= 3 && string.start_with?('/') && string.end_with?('/')
+          Regexp::Parser.parse(string, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
         end
       end
     end

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'addressable'
-
 module Html2rss
   class Selectors
     module PostProcessors
@@ -25,12 +23,7 @@ module Html2rss
       # Would return:
       #    'http://why-not-use-a-link.uh'
       class ParseUri < Base
-        def self.validate_args!(value, context)
-          url_types = [String, URI::HTTP, Addressable::URI].freeze
-
-          assert_type(value, url_types, :value, context:)
-          assert_type(context.dig(:config, :channel, :url), url_types, :url, context:)
-
+        def self.validate_args!(value, _context)
           raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
         end
 
@@ -39,7 +32,7 @@ module Html2rss
         def get
           config_url = context.dig(:config, :channel, :url)
 
-          Html2rss::Utils.build_absolute_url_from_relative(value, config_url).to_s
+          Url.from_relative(value, config_url).to_s
         end
       end
     end
