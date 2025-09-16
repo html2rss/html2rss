@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Content Site - News</title>
+  <style>
+    .article-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .article-card h2 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .article-card a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+
+    .article-card a:hover {
+      text-decoration: underline;
+    }
+
+    .excerpt {
+      color: #666;
+      line-height: 1.5;
+      margin: 10px 0;
+    }
+
+    .timestamp {
+      color: #888;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Dynamic Content News Site</h1>
+    <nav>
+      <a href="/news">News</a>
+      <a href="/sports">Sports</a>
+      <a href="/tech">Technology</a>
+      <a href="/business">Business</a>
+    </nav>
+  </header>
+
+  <main id="app">
+    <div class="loading" id="loading">Loading articles...</div>
+
+    <div id="content" style="display: none;">
+      <article class="article-card">
+        <h2>Revolutionary AI Breakthrough Changes Everything</h2>
+        <a href="/articles/ai-breakthrough-2024">Read more</a>
+        <div class="excerpt">
+          <p>Scientists have developed a new artificial intelligence system that can process natural language with
+            unprecedented accuracy. This breakthrough promises to revolutionize how we interact with technology.</p>
+          <p>The system uses advanced neural networks and machine learning algorithms to understand context and nuance
+            in human communication.</p>
+        </div>
+        <div class="timestamp">January 15, 2024 at 2:30 PM</div>
+      </article>
+
+      <article class="article-card">
+        <h2>Climate Change Summit Reaches Historic Agreement</h2>
+        <a href="/articles/climate-summit-2024">Read more</a>
+        <div class="excerpt">
+          <p>World leaders have reached a groundbreaking agreement on climate change mitigation strategies. The new
+            accord includes ambitious targets for carbon reduction and renewable energy adoption.</p>
+          <p>This historic agreement represents a turning point in global environmental policy and sets the stage for
+            significant changes in how nations approach sustainability.</p>
+        </div>
+        <div class="timestamp">January 14, 2024 at 9:15 AM</div>
+      </article>
+
+      <article class="article-card">
+        <h2>Space Exploration Mission Discovers New Planet</h2>
+        <a href="/articles/space-mission-discovery">Read more</a>
+        <div class="excerpt">
+          <p>NASA's latest space exploration mission has discovered a potentially habitable planet in a nearby star
+            system. The planet, designated Kepler-442b, shows promising signs of having liquid water and a stable
+            atmosphere.</p>
+          <p>This discovery opens up new possibilities for future space exploration and the search for extraterrestrial
+            life.</p>
+        </div>
+        <div class="timestamp">January 13, 2024 at 4:45 PM</div>
+      </article>
+
+      <article class="article-card">
+        <h2>Medical Breakthrough Offers Hope for Cancer Patients</h2>
+        <a href="/articles/cancer-treatment-breakthrough">Read more</a>
+        <div class="excerpt">
+          <p>Researchers have developed a new immunotherapy treatment that shows remarkable success in treating
+            previously untreatable forms of cancer. The treatment uses the patient's own immune system to target cancer
+            cells.</p>
+          <p>Clinical trials have shown a 75% success rate in patients with advanced-stage cancer, offering new hope for
+            millions of patients worldwide.</p>
+        </div>
+        <div class="timestamp">January 12, 2024 at 11:20 AM</div>
+      </article>
+
+      <article class="article-card">
+        <h2>Renewable Energy Reaches New Milestone</h2>
+        <a href="/articles/renewable-energy-milestone">Read more</a>
+        <div class="excerpt">
+          <p>Renewable energy sources now account for over 50% of global electricity generation for the first time in
+            history. This milestone represents a major shift towards sustainable energy production.</p>
+          <p>Solar and wind power have led this transformation, with costs dropping dramatically over the past decade
+            and efficiency continuing to improve.</p>
+        </div>
+        <div class="timestamp">January 11, 2024 at 3:10 PM</div>
+      </article>
+
+      <article class="article-card">
+        <h2>Cybersecurity Threats Reach All-Time High</h2>
+        <a href="/articles/cybersecurity-threats-2024">Read more</a>
+        <div class="excerpt">
+          <p>Cybersecurity experts report that cyber threats have reached unprecedented levels, with sophisticated
+            attacks targeting critical infrastructure and government systems worldwide.</p>
+          <p>Organizations are being urged to implement stronger security measures and invest in advanced threat
+            detection systems to protect against these evolving risks.</p>
+        </div>
+        <div class="timestamp">January 10, 2024 at 8:30 AM</div>
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2024 Dynamic Content Site. All rights reserved.</p>
+  </footer>
+
+  <script>
+    // Simulate dynamic content loading
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+      }, 1000);
+    });
+  </script>
+</body>
+
+</html>

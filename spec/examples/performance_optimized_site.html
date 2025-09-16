@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Performance-Optimized Site - News and Articles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <header>
+        <h1>Performance-Optimized Site</h1>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+        </nav>
+    </header>
+
+    <main class="main-content">
+        <!-- Regular post -->
+        <article class="post">
+            <h2>Breaking News: Technology Breakthrough</h2>
+            <time datetime="2024-01-15T10:30:00+00:00">January 15, 2024</time>
+            <div class="content">
+                <p>Scientists have achieved a major breakthrough in quantum computing technology. This advancement could
+                    revolutionize how we process information and solve complex problems.</p>
+                <p>The research team spent over three years developing this new approach to quantum error correction,
+                    which addresses one of the biggest challenges in quantum computing.</p>
+            </div>
+            <a href="/articles/technology-breakthrough">Read more</a>
+        </article>
+
+        <!-- Advertisement post (should be excluded) -->
+        <article class="post advertisement">
+            <h2>Sponsored Content: Buy Our Product</h2>
+            <time datetime="2024-01-15T11:00:00+00:00">January 15, 2024</time>
+            <div class="content">
+                <p>This is an advertisement that should be excluded from the RSS feed.</p>
+            </div>
+            <a href="/ads/product-promotion">Learn more</a>
+        </article>
+
+        <!-- Another regular post -->
+        <article class="post">
+            <h2>Environmental Research Update</h2>
+            <time datetime="2024-01-14T14:20:00+00:00">January 14, 2024</time>
+            <div class="content">
+                <p>New research reveals significant changes in global climate patterns. The study provides important
+                    insights into how climate change is affecting different regions around the world.</p>
+                <p>Researchers analyzed data from over 100 weather stations across five continents to reach these
+                    conclusions.</p>
+            </div>
+            <a href="/articles/environmental-research">Read full article</a>
+        </article>
+
+        <!-- Post with different time format -->
+        <article class="post">
+            <h2>Economic Analysis Report</h2>
+            <time datetime="2024-01-13T09:15:00+00:00">January 13, 2024</time>
+            <div class="content">
+                <p>Quarterly economic analysis shows positive trends in several key sectors. The report indicates steady
+                    growth in technology and renewable energy industries.</p>
+                <p>Market analysts predict continued expansion in these areas over the next fiscal year.</p>
+            </div>
+            <a href="/articles/economic-analysis">View report</a>
+        </article>
+
+        <!-- Post with time element -->
+        <article class="post">
+            <h2>Health and Wellness Tips</h2>
+            <time datetime="2024-01-12T08:30:00+00:00">January 12, 2024</time>
+            <div class="content">
+                <p>Expert recommendations for maintaining good health during the winter months. These tips can help
+                    boost your immune system and overall well-being.</p>
+                <p>Regular exercise, proper nutrition, and adequate sleep are the three pillars of good health.</p>
+            </div>
+            <a href="/articles/health-tips">Read tips</a>
+        </article>
+    </main>
+
+    <!-- Post outside main-content (should be excluded by selector) -->
+    <article class="post">
+        <h2>Sidebar Content</h2>
+        <time datetime="2024-01-12T16:45:00+00:00">January 12, 2024</time>
+        <div class="content">
+            <p>This content is outside the main-content area and should not be included.</p>
+        </div>
+        <a href="/sidebar/article">Read more</a>
+    </article>
+
+    <!-- Content outside main-content -->
+    <aside>
+        <article class="post">
+            <h2>Sidebar Article</h2>
+            <time datetime="2024-01-11T12:00:00+00:00">January 11, 2024</time>
+            <div class="content">
+                <p>This is sidebar content that should not be included in the RSS feed.</p>
+            </div>
+            <a href="/sidebar/sidebar-article">Read more</a>
+        </article>
+    </aside>
+
+    <footer>
+        <p>&copy; 2024 Performance-Optimized Site. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

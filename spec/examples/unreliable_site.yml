@@ -1,0 +1,22 @@
+---
+channel:
+  url: "https://unreliable-site.com"
+  ttl: 60 # Shorter TTL for unreliable sites
+
+selectors:
+  items:
+    selector: ".post, .article" # Multiple selectors as fallback
+  title:
+    selector: "h1, h2, .title" # Fallback selectors
+  description:
+    selector: ".content, .excerpt, p"
+    post_process:
+      - name: "sanitize_html"
+      - name: "substring"
+        start: 0
+        end: 499 # Limit description length
+  url:
+    selector: "a"
+    extractor: "href"
+    post_process:
+      - name: "parse_uri" # Validate URLs
