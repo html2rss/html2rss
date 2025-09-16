@@ -1,0 +1,29 @@
+---
+channel:
+  url: "https://performance-optimized-site.com"
+  title: "Performance-Optimized Site News"
+
+# Use specific selectors to reduce processing
+selectors:
+  items:
+    selector: ".main-content .post:not(.advertisement)"
+  title:
+    selector: "h2"
+  url:
+    selector: "a"
+    extractor: "href"
+  published_at:
+    selector: "time"
+    extractor: "attribute"
+    attribute: "datetime"
+    post_process:
+      - name: "parse_time"
+        # Note: parse_time doesn't accept format parameter, it auto-detects
+        # This will be empty for items without time elements, which is handled gracefully
+
+# Use auto-source as fallback (disabled for testing)
+# auto_source:
+#   scraper:
+#     html:
+#       minimum_selector_frequency: 3 # Higher threshold for reliability
+#       use_top_selectors: 3 # Fewer selectors for speed
