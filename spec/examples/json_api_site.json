@@ -4,8 +4,8 @@
   "data": [
     {
       "id": 1,
-      "title": "Revolutionary AI Breakthrough Changes Everything",
-      "content": "<p>Scientists have developed a new artificial intelligence system that can process natural language with unprecedented accuracy. This breakthrough promises to revolutionize how we interact with technology.</p><p>The system uses advanced neural networks and machine learning algorithms to understand context and nuance in human communication.</p>",
+      "title": "ACME Corp's Revolutionary AI Breakthrough Changes Everything",
+      "content": "<p>ACME Corp scientists have developed a new artificial intelligence system that can process natural language with unprecedented accuracy. This breakthrough promises to revolutionize how we interact with technology. It can finally understand 'it works on my machine' and translate it to 'it's broken in production'.</p><p>The system uses advanced neural networks and machine learning algorithms to understand context and nuance in human communication. It also knows when you're lying about your commit messages.</p>",
       "author": {
         "id": 101,
         "name": "Dr. Sarah Johnson",
@@ -37,14 +37,14 @@
       ],
       "featured_image": {
         "id": 201,
-        "url": "https://api.example.com/images/ai-breakthrough.jpg",
+        "url": "https://example.com/images/ai-breakthrough.jpg",
         "alt": "AI Breakthrough Image",
         "width": 1200,
         "height": 800
       },
       "audio_file": {
         "id": 301,
-        "url": "https://api.example.com/audio/ai-breakthrough-podcast.mp3",
+        "url": "https://example.com/audio/ai-breakthrough-podcast.mp3",
         "duration": 1800,
         "size": 25600000
       }
@@ -84,7 +84,7 @@
       ],
       "featured_image": {
         "id": 202,
-        "url": "https://api.example.com/images/climate-summit.jpg",
+        "url": "https://example.com/images/climate-summit.jpg",
         "alt": "Climate Summit Image",
         "width": 1200,
         "height": 800
@@ -126,14 +126,14 @@
       ],
       "featured_image": {
         "id": 203,
-        "url": "https://api.example.com/images/space-discovery.jpg",
+        "url": "https://example.com/images/space-discovery.jpg",
         "alt": "Space Discovery Image",
         "width": 1200,
         "height": 800
       },
       "audio_file": {
         "id": 302,
-        "url": "https://api.example.com/audio/space-discovery-podcast.mp3",
+        "url": "https://example.com/audio/space-discovery-podcast.mp3",
         "duration": 2100,
         "size": 32000000
       }
@@ -173,7 +173,7 @@
       ],
       "featured_image": {
         "id": 204,
-        "url": "https://api.example.com/images/cancer-research.jpg",
+        "url": "https://example.com/images/cancer-research.jpg",
         "alt": "Cancer Research Image",
         "width": 1200,
         "height": 800
@@ -215,14 +215,14 @@
       ],
       "featured_image": {
         "id": 205,
-        "url": "https://api.example.com/images/renewable-energy.jpg",
+        "url": "https://example.com/images/renewable-energy.jpg",
         "alt": "Renewable Energy Image",
         "width": 1200,
         "height": 800
       },
       "audio_file": {
         "id": 303,
-        "url": "https://api.example.com/audio/renewable-energy-podcast.mp3",
+        "url": "https://example.com/audio/renewable-energy-podcast.mp3",
         "duration": 1650,
         "size": 24000000
       }
@@ -262,7 +262,7 @@
       ],
       "featured_image": {
         "id": 206,
-        "url": "https://api.example.com/images/cybersecurity.jpg",
+        "url": "https://example.com/images/cybersecurity.jpg",
         "alt": "Cybersecurity Image",
         "width": 1200,
         "height": 800

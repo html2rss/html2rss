@@ -1,7 +1,7 @@
 ---
 channel:
-  url: "https://multilang-site.com"
-  title: "Multi-Language Site News"
+  url: "https://example.com"
+  title: "ACME Multi-Language Site News"
   language: "en"
   time_zone: "UTC"
 

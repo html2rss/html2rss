@@ -48,7 +48,7 @@ RSpec.describe 'Conditional Processing Configuration' do
       allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
         Html2rss::RequestService::Response.new(
           body: File.read(html_file),
-          url: 'https://conditional-processing-site.com',
+          url: 'https://example.com',
           headers: { 'content-type': 'text/html' }
         )
       )

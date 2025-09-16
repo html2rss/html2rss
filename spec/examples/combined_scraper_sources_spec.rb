@@ -46,7 +46,7 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
       allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
         Html2rss::RequestService::Response.new(
           body: File.read(html_file),
-          url: Html2rss::Url.from_relative('https://technews.com', 'https://technews.com'),
+          url: Html2rss::Url.from_relative('https://example.com', 'https://example.com'),
           headers: { 'content-type': 'text/html' }
         )
       )

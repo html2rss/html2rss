@@ -3,28 +3,31 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Conditional Processing Site - News and Articles</title>
+  <title>ACME Conditional Processing Site - News and Articles</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
 <body>
   <header>
-    <h1>Conditional Processing Site</h1>
+    <h1>ACME Conditional Processing Site</h1>
     <nav>
       <a href="/">Home</a>
       <a href="/about">About</a>
+      <a href="/debug">Debug Mode</a>
     </nav>
   </header>
 
   <main>
     <!-- Item 1: Published status -->
     <article class="item">
-      <h2>Breaking News: Technology Update</h2>
+      <h2>Breaking News: ACME Corp's New Debugging Tool</h2>
       <div class="status">Published</div>
       <div class="content">
-        <p>This is a published article about the latest technology updates. The content includes detailed information
-          about recent developments in the tech industry.</p>
-        <p>Additional content that provides more context and depth to the story.</p>
+        <p>This is a published article about ACME Corp's latest debugging tool that can find bugs before they're even
+          written. The content includes detailed information
+          about recent developments in the tech industry. It's so advanced, it can predict when you'll need coffee.</p>
+        <p>Additional content that provides more context and depth to the story. The tool also comes with a built-in
+          rubber duck that actually quacks when you're stuck.</p>
       </div>
       <div class="date">2024-01-15T10:30:00+00:00</div>
       <a href="/articles/technology-update">Read more</a>
@@ -32,12 +35,14 @@
 
     <!-- Item 2: Draft status -->
     <article class="item">
-      <h2>Draft Article: Environmental Research</h2>
+      <h2>Draft Article: ACME Corp's Green Coding Initiative</h2>
       <div class="status">Draft</div>
       <div class="content">
-        <p>This is a draft article about environmental research. It contains preliminary findings and is not yet ready
-          for publication.</p>
-        <p>More content that will be refined before the final publication.</p>
+        <p>This is a draft article about ACME Corp's environmental research into carbon-neutral coding practices. It
+          contains preliminary findings and is not yet ready
+          for publication. They're trying to make infinite loops actually infinite without using infinite energy.</p>
+        <p>More content that will be refined before the final publication. The research shows that using tabs instead of
+          spaces can reduce your carbon footprint by 0.0001%.</p>
       </div>
       <div class="date">2024-01-14T14:20:00+00:00</div>
       <a href="/articles/environmental-research">Read more</a>
@@ -45,12 +50,15 @@
 
     <!-- Item 3: Archived status -->
     <article class="item">
-      <h2>Archived Article: Economic Analysis</h2>
+      <h2>Archived Article: ACME Corp's Economic Analysis of Bug Fixes</h2>
       <div class="status">Archived</div>
       <div class="content">
-        <p>This is an archived article about economic analysis. It was previously published but is now archived for
-          historical reference.</p>
-        <p>Additional archived content that provides historical context.</p>
+        <p>This is an archived article about ACME Corp's economic analysis of bug fixes. It was previously published but
+          is now archived for
+          historical reference. The study found that 99% of bugs are caused by cosmic rays and the remaining 1% are
+          caused by developers.</p>
+        <p>Additional archived content that provides historical context. The research concluded that the most expensive
+          bug in history was a missing semicolon that cost $1.2 billion.</p>
       </div>
       <div class="date">2024-01-13T09:15:00+00:00</div>
       <a href="/articles/economic-analysis">Read more</a>
@@ -58,12 +66,14 @@
 
     <!-- Item 4: Published status with different content -->
     <article class="item">
-      <h2>Health and Wellness Guide</h2>
+      <h2>ACME Corp's Developer Health and Wellness Guide</h2>
       <div class="status">Published</div>
       <div class="content">
-        <p>This is a comprehensive health and wellness guide. It provides expert recommendations for maintaining good
-          health.</p>
-        <p>Additional health tips and recommendations for readers.</p>
+        <p>This is a comprehensive health and wellness guide for developers. It provides expert recommendations for
+          maintaining good
+          health while coding. Remember: coffee is not a food group, but it is a lifestyle choice.</p>
+        <p>Additional health tips and recommendations for readers. Pro tip: Standing desks are great, but standing on
+          your head while coding is not recommended.</p>
       </div>
       <div class="date">2024-01-12T08:30:00+00:00</div>
       <a href="/articles/health-wellness">Read more</a>
@@ -71,11 +81,13 @@
 
     <!-- Item 5: Pending status -->
     <article class="item">
-      <h2>Pending Article: Sports Update</h2>
+      <h2>Pending Article: ACME Corp's Annual Code Golf Tournament</h2>
       <div class="status">Pending</div>
       <div class="content">
-        <p>This is a pending article about sports updates. It's waiting for final approval before publication.</p>
-        <p>Content that will be reviewed and potentially modified before going live.</p>
+        <p>This is a pending article about ACME Corp's annual code golf tournament. It's waiting for final approval
+          before publication. The winner gets a lifetime supply of coffee and a rubber duck that never quacks.</p>
+        <p>Content that will be reviewed and potentially modified before going live. The tournament features events like
+          "Write a sorting algorithm in one line" and "Debug this code blindfolded".</p>
       </div>
       <div class="date">2024-01-11T16:45:00+00:00</div>
       <a href="/articles/sports-update">Read more</a>
@@ -83,10 +95,12 @@
 
     <!-- Item 6: No status (for testing fallback) -->
     <article class="item">
-      <h2>Article Without Status</h2>
+      <h2>ACME Corp's Article Without Status (Status: Unknown)</h2>
       <div class="content">
-        <p>This article doesn't have a status field, so it should use a fallback or empty value in the template.</p>
-        <p>This tests how the template handles missing values.</p>
+        <p>This article doesn't have a status field, so it should use a fallback or empty value in the template. It's
+          like a function that returns void but actually returns null.</p>
+        <p>This tests how the template handles missing values. In programming terms, this is the equivalent of a null
+          pointer exception waiting to happen.</p>
       </div>
       <div class="date">2024-01-10T12:00:00+00:00</div>
       <a href="/articles/no-status">Read more</a>
@@ -94,7 +108,8 @@
   </main>
 
   <footer>
-    <p>&copy; 2024 Conditional Processing Site. All rights reserved.</p>
+    <p>&copy; 2024 ACME Conditional Processing Site. All rights reserved. | Status: Working as intended (mostly) | Bug
+      reports: status@example.com</p>
   </footer>
 </body>
 

@@ -4,8 +4,8 @@ headers:
   Authorization: "Bearer YOUR_TOKEN"
 
 channel:
-  url: "https://api.example.com/posts"
-  title: "JSON API Site News"
+  url: "https://example.com/posts"
+  title: "ACME JSON API Site News"
 
 selectors:
   items:

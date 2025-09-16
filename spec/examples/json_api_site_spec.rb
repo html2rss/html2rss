@@ -67,7 +67,7 @@ RSpec.describe 'JSON API Site Configuration' do
       allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
         Html2rss::RequestService::Response.new(
           body: File.read(json_file),
-          url: 'https://api.example.com/posts',
+          url: 'https://example.com/posts',
           headers: { 'content-type': 'application/json' }
         )
       )

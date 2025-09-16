@@ -1,6 +1,6 @@
 ---
 channel:
-  url: "https://unreliable-site.com"
+  url: "https://example.com"
   ttl: 60 # Shorter TTL for unreliable sites
 
 selectors:

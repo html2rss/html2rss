@@ -1,7 +1,7 @@
 ---
 channel:
-  url: "https://technews.com"
-  title: "TechNews Daily"
+  url: "https://example.com"
+  title: "ACME Tech Daily"
 
 # Use auto-source for the main content
 auto_source: {}
