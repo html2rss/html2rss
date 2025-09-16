@@ -82,21 +82,21 @@ RSpec.describe 'Unreliable Site Configuration' do
 
       it 'extracts descriptions with proper post-processing' do
         descriptions = items.map(&:description)
-        
+
         # All descriptions should be strings
         expect(descriptions).to all(be_a(String))
-        
+
         # Descriptions should be sanitized (no script tags, etc.)
         descriptions.each do |desc|
           expect(desc).not_to include('<script')
           expect(desc).not_to include('javascript:')
         end
-        
+
         # Descriptions should be truncated to 500 characters
         descriptions.each do |desc|
           expect(desc.length).to be <= 500
         end
-        
+
         # Check that we have meaningful content
         expect(descriptions).to all(satisfy { |desc| desc.length > 10 })
       end
@@ -110,7 +110,7 @@ RSpec.describe 'Unreliable Site Configuration' do
       it 'handles multiple selector fallbacks for titles' do
         # Verify that h1, h2, and .title selectors all work
         titles = items.map(&:title)
-        
+
         # Should have titles from h1, h2, and .title elements
         expect(titles).to include('Science Discovery: New Findings') # h1
         expect(titles).to include('Breaking News: Technology Advances') # h2
@@ -120,10 +120,10 @@ RSpec.describe 'Unreliable Site Configuration' do
       it 'handles multiple selector fallbacks for descriptions' do
         # Verify that .content, .excerpt, and p selectors all work
         descriptions = items.map(&:description)
-        
+
         # All descriptions should have content
         expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
-        
+
         # Should have descriptions from different selector types
         # (This is harder to test specifically without knowing the exact order,
         # but we can verify that descriptions are being extracted)
