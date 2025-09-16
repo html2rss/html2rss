@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Conditional Processing Site - News and Articles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+  <header>
+    <h1>Conditional Processing Site</h1>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Item 1: Published status -->
+    <article class="item">
+      <h2>Breaking News: Technology Update</h2>
+      <div class="status">Published</div>
+      <div class="content">
+        <p>This is a published article about the latest technology updates. The content includes detailed information
+          about recent developments in the tech industry.</p>
+        <p>Additional content that provides more context and depth to the story.</p>
+      </div>
+      <div class="date">2024-01-15T10:30:00+00:00</div>
+      <a href="/articles/technology-update">Read more</a>
+    </article>
+
+    <!-- Item 2: Draft status -->
+    <article class="item">
+      <h2>Draft Article: Environmental Research</h2>
+      <div class="status">Draft</div>
+      <div class="content">
+        <p>This is a draft article about environmental research. It contains preliminary findings and is not yet ready
+          for publication.</p>
+        <p>More content that will be refined before the final publication.</p>
+      </div>
+      <div class="date">2024-01-14T14:20:00+00:00</div>
+      <a href="/articles/environmental-research">Read more</a>
+    </article>
+
+    <!-- Item 3: Archived status -->
+    <article class="item">
+      <h2>Archived Article: Economic Analysis</h2>
+      <div class="status">Archived</div>
+      <div class="content">
+        <p>This is an archived article about economic analysis. It was previously published but is now archived for
+          historical reference.</p>
+        <p>Additional archived content that provides historical context.</p>
+      </div>
+      <div class="date">2024-01-13T09:15:00+00:00</div>
+      <a href="/articles/economic-analysis">Read more</a>
+    </article>
+
+    <!-- Item 4: Published status with different content -->
+    <article class="item">
+      <h2>Health and Wellness Guide</h2>
+      <div class="status">Published</div>
+      <div class="content">
+        <p>This is a comprehensive health and wellness guide. It provides expert recommendations for maintaining good
+          health.</p>
+        <p>Additional health tips and recommendations for readers.</p>
+      </div>
+      <div class="date">2024-01-12T08:30:00+00:00</div>
+      <a href="/articles/health-wellness">Read more</a>
+    </article>
+
+    <!-- Item 5: Pending status -->
+    <article class="item">
+      <h2>Pending Article: Sports Update</h2>
+      <div class="status">Pending</div>
+      <div class="content">
+        <p>This is a pending article about sports updates. It's waiting for final approval before publication.</p>
+        <p>Content that will be reviewed and potentially modified before going live.</p>
+      </div>
+      <div class="date">2024-01-11T16:45:00+00:00</div>
+      <a href="/articles/sports-update">Read more</a>
+    </article>
+
+    <!-- Item 6: No status (for testing fallback) -->
+    <article class="item">
+      <h2>Article Without Status</h2>
+      <div class="content">
+        <p>This article doesn't have a status field, so it should use a fallback or empty value in the template.</p>
+        <p>This tests how the template handles missing values.</p>
+      </div>
+      <div class="date">2024-01-10T12:00:00+00:00</div>
+      <a href="/articles/no-status">Read more</a>
+    </article>
+  </main>
+
+  <footer>
+    <p>&copy; 2024 Conditional Processing Site. All rights reserved.</p>
+  </footer>
+</body>
+
+</html>
