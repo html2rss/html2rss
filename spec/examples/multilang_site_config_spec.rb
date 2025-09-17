@@ -7,8 +7,14 @@ RSpec.describe 'Multi-Language Site Configuration' do
   let(:html_file) { File.join(%w[spec fixtures multilang-site.html]) }
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
+  # Extract array literals to avoid Performance/CollectionLiteralInLoop violations
+  let(:expected_languages) { %w[en es fr de] }
+  let(:expected_topics) do
+    ['Technology', 'Tecnología', 'Technologie', 'Environment', 'Medio Ambiente', 'Santé', 'Health']
+  end
+
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:channel][:url]).to eq('https://multilang-site.com')
       expect(config[:channel][:title]).to eq('Multi-Language Site News')
@@ -39,7 +45,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
       )
     end
 
-    it 'includes language and topic in categories' do
+    it 'includes language and topic in categories', :aggregate_failures do
       expect(config[:selectors][:categories]).to include('language')
       expect(config[:selectors][:categories]).to include('topic')
     end
@@ -48,18 +54,12 @@ RSpec.describe 'Multi-Language Site Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://multilang-site.com',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('multilang_site', 'https://multilang-site.com')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to eq('Multi-Language Site News')
       expect(feed.channel.link).to eq('https://multilang-site.com')
@@ -72,24 +72,24 @@ RSpec.describe 'Multi-Language Site Configuration' do
     describe 'item extraction' do
       let(:items) { feed.items }
 
-      it 'extracts titles correctly using h1 selector' do
+      it 'extracts titles correctly using h1 selector', :aggregate_failures do
         titles = items.map(&:title)
         expect(titles).to all(be_a(String))
-        expect(titles).to include('[en] Breaking News: Technology Update')
-        expect(titles).to include('[es] Noticias: Actualización Tecnológica')
-        expect(titles).to include('[fr] Actualités: Mise à jour technologique')
-        expect(titles).to include('[de] Nachrichten: Technologie-Update')
+        expect(titles).to include('[en] Breaking News: ACME Corp\'s Technology Update')
+        expect(titles).to include('[es] Noticias: Actualización Tecnológica de ACME Corp')
+        expect(titles).to include('[fr] Actualités: Mise à jour technologique d\'ACME Corp')
+        expect(titles).to include('[de] Nachrichten: ACME Corp Technologie-Update')
         expect(titles).to include('[en] Environmental Research Update')
         expect(titles).to include('[es] Investigación Ambiental Actualizada')
         expect(titles).to include('[en] Health and Wellness Guide')
         expect(titles).to include('[fr] Guide Santé et Bien-être')
       end
 
-      it 'extracts language information as categories' do
+      it 'extracts language information as categories', :aggregate_failures do
         # All items should have language categories (using data-lang attribute values)
         items_with_language = items.select do |item|
           item.categories.any? do |cat|
-            %w[en es fr de].include?(cat.content)
+            expected_languages.include?(cat.content)
           end
         end
         expect(items_with_language.size).to eq(8) # All 8 items have language
@@ -97,18 +97,17 @@ RSpec.describe 'Multi-Language Site Configuration' do
         items_with_language.each do |item|
           expect(item.categories).not_to be_nil
           language_categories = item.categories.select do |cat|
-            %w[en es fr de].include?(cat.content)
+            expected_languages.include?(cat.content)
           end
           expect(language_categories).not_to be_empty
         end
       end
 
-      it 'extracts topic information as categories' do
+      it 'extracts topic information as categories', :aggregate_failures do
         # All items should have topic categories
         items_with_topic = items.select do |item|
           item.categories.any? do |cat|
-            ['Technology', 'Tecnología', 'Technologie', 'Environment', 'Medio Ambiente', 'Santé',
-             'Health'].include?(cat.content)
+            expected_topics.include?(cat.content)
           end
         end
         expect(items_with_topic.size).to eq(8) # All 8 items have topics
@@ -116,14 +115,13 @@ RSpec.describe 'Multi-Language Site Configuration' do
         items_with_topic.each do |item|
           expect(item.categories).not_to be_nil
           topic_categories = item.categories.select do |cat|
-            ['Technology', 'Tecnología', 'Technologie', 'Environment', 'Medio Ambiente', 'Santé',
-             'Health'].include?(cat.content)
+            expected_topics.include?(cat.content)
           end
           expect(topic_categories).not_to be_empty
         end
       end
 
-      it 'extracts descriptions correctly' do
+      it 'extracts descriptions correctly', :aggregate_failures do
         descriptions = items.map(&:description)
         expect(descriptions).to all(be_a(String))
         expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
@@ -139,7 +137,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
     describe 'multi-language processing with templates' do
       let(:items) { feed.items }
 
-      it 'applies template processing to titles with language prefixes' do
+      it 'applies template processing to titles with language prefixes', :aggregate_failures do
         titles = items.map(&:title)
 
         # All titles should be strings
@@ -149,7 +147,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
         expect(titles).to all(match(/^\[(en|es|fr|de)\]/))
       end
 
-      it 'includes correct language values in titles' do
+      it 'includes correct language values in titles', :aggregate_failures do
         # Find items by their expected language (using data-lang attribute values)
         english_items = items.select { |item| item.title.start_with?('[en]') }
         spanish_items = items.select { |item| item.title.start_with?('[es]') }
@@ -162,7 +160,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
         expect(german_items.size).to eq(1)  # 1 German item
       end
 
-      it 'preserves original content in template processing' do
+      it 'preserves original content in template processing', :aggregate_failures do
         items.each do |item|
           # The title should contain both the language prefix and original content
           expect(item.title).to match(/^\[(en|es|fr|de)\].+/)
@@ -176,11 +174,11 @@ RSpec.describe 'Multi-Language Site Configuration' do
     describe 'language-based categorization' do
       let(:items) { feed.items }
 
-      it 'includes language as categories' do
+      it 'includes language as categories', :aggregate_failures do
         # All items should have language categories (using data-lang attribute values)
         items_with_language = items.select do |item|
           item.categories.any? do |cat|
-            %w[en es fr de].include?(cat.content)
+            expected_languages.include?(cat.content)
           end
         end
         expect(items_with_language.size).to eq(8) # All 8 items have language
@@ -188,16 +186,16 @@ RSpec.describe 'Multi-Language Site Configuration' do
         items_with_language.each do |item|
           expect(item.categories).not_to be_nil
           language_categories = item.categories.select do |cat|
-            %w[en es fr de].include?(cat.content)
+            expected_languages.include?(cat.content)
           end
           expect(language_categories).not_to be_empty
         end
       end
 
-      it 'has different language values for different items' do
+      it 'has different language values for different items', :aggregate_failures do
         language_values = items.map do |item|
           language_cat = item.categories.find do |cat|
-            %w[en es fr de].include?(cat.content)
+            expected_languages.include?(cat.content)
           end
           language_cat ? language_cat.content : 'No Language'
         end
@@ -209,12 +207,11 @@ RSpec.describe 'Multi-Language Site Configuration' do
         expect(language_values).not_to include('No Language')
       end
 
-      it 'includes topic as categories' do
+      it 'includes topic as categories', :aggregate_failures do
         # All items should have topic categories
         items_with_topic = items.select do |item|
           item.categories.any? do |cat|
-            ['Technology', 'Tecnología', 'Technologie', 'Environment', 'Medio Ambiente', 'Santé',
-             'Health'].include?(cat.content)
+            expected_topics.include?(cat.content)
           end
         end
         expect(items_with_topic.size).to eq(8) # All 8 items have topics
@@ -222,8 +219,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
         items_with_topic.each do |item|
           expect(item.categories).not_to be_nil
           topic_categories = item.categories.select do |cat|
-            ['Technology', 'Tecnología', 'Technologie', 'Environment', 'Medio Ambiente', 'Santé',
-             'Health'].include?(cat.content)
+            expected_topics.include?(cat.content)
           end
           expect(topic_categories).not_to be_empty
         end
@@ -246,7 +242,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
         end
       end
 
-      it 'handles different language values in template' do
+      it 'handles different language values in template', :aggregate_failures do
         # Items should have different language prefixes based on their data-lang attribute
         english_items = items.select { |item| item.title.start_with?('[en]') }
         spanish_items = items.select { |item| item.title.start_with?('[es]') }
@@ -261,7 +257,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
     end
 
     describe 'configuration issues' do
-      it 'identifies the template parameter issue' do
+      it 'identifies the template parameter issue', :aggregate_failures do
         # The original config had: template: "[%{language}] %{self}"
         # But should be: string: "[%<language>s] %<self>s"
         template_config = config[:selectors][:title][:post_process].first
@@ -274,7 +270,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
         expect(template_config[:string]).to eq('[%<language>s] %<self>s')
       end
 
-      it 'validates that the configuration is complete' do
+      it 'validates that the configuration is complete', :aggregate_failures do
         # Should have all required sections
         expect(config[:channel]).not_to be_nil
         expect(config[:selectors]).not_to be_nil
@@ -292,7 +288,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
         expect(config[:selectors][:title][:post_process]).not_to be_nil
       end
 
-      it 'validates template post-processor configuration' do
+      it 'validates template post-processor configuration', :aggregate_failures do
         template_config = config[:selectors][:title][:post_process].first
         expect(template_config[:name]).to eq('template')
         expect(template_config[:string]).to be_a(String)
@@ -300,7 +296,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
         expect(template_config[:string]).to include('%<self>s')
       end
 
-      it 'validates language extractor configuration' do
+      it 'validates language extractor configuration', :aggregate_failures do
         language_config = config[:selectors][:language]
         expect(language_config[:extractor]).to eq('attribute')
         expect(language_config[:attribute]).to eq('data-lang')

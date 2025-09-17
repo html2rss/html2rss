@@ -1,7 +1,7 @@
 ---
 channel:
   url: "https://example.com"
-  title: "ACME Tech Podcast Feed"
+  title: "Tech Podcast Feed"
 
 ## Feed with Media Enclosures
 

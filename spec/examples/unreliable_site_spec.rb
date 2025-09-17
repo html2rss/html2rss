@@ -8,7 +8,7 @@ RSpec.describe 'Unreliable Site Configuration' do
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:channel]).to be_a(Hash)
       expect(config[:channel][:url]).to be_a(String)
@@ -25,7 +25,7 @@ RSpec.describe 'Unreliable Site Configuration' do
       expect(config[:selectors][:url][:extractor]).to eq('href')
     end
 
-    it 'has correct post-processing configuration' do
+    it 'has correct post-processing configuration', :aggregate_failures do
       description_post_process = config[:selectors][:description][:post_process]
       expect(description_post_process).to be_an(Array)
       expect(description_post_process.first).to include(:name)
@@ -40,30 +40,24 @@ RSpec.describe 'Unreliable Site Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://example.com',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('unreliable_site', 'https://example.com')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to be_a(String)
       expect(feed.channel.link).to be_a(String)
       expect(feed.channel.ttl).to be_a(Integer)
     end
 
-    it 'extracts the correct number of items' do
+    it 'extracts the correct number of items', :aggregate_failures do
       expect(feed.items).to be_an(Array)
       expect(feed.items.size).to be > 0
     end
 
-    it 'extracts titles correctly using fallback selectors' do
+    it 'extracts titles correctly using fallback selectors', :aggregate_failures do
       items = feed.items
       titles = items.map(&:title)
       expect(titles).to all(be_a(String))
@@ -76,7 +70,7 @@ RSpec.describe 'Unreliable Site Configuration' do
       expect(urls).to all(be_a(String))
     end
 
-    it 'extracts descriptions with proper post-processing' do
+    it 'extracts descriptions with proper post-processing', :aggregate_failures do
       items = feed.items
       descriptions = items.map(&:description)
       expect(descriptions).to all(be_a(String))
@@ -86,20 +80,6 @@ RSpec.describe 'Unreliable Site Configuration' do
     it 'handles multiple selector fallbacks for items' do
       items = feed.items
       expect(items.size).to be > 0
-    end
-
-    it 'handles multiple selector fallbacks for titles' do
-      items = feed.items
-      titles = items.map(&:title)
-      expect(titles).to all(be_a(String))
-      expect(titles).to all(satisfy { |title| !title.strip.empty? })
-    end
-
-    it 'handles multiple selector fallbacks for descriptions' do
-      items = feed.items
-      descriptions = items.map(&:description)
-      expect(descriptions).to all(be_a(String))
-      expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
     end
 
     it 'applies sanitize_html post-processing' do

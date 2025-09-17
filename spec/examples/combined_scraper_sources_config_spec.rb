@@ -11,46 +11,46 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
   let(:expected_articles) do
     [
       {
-        title: 'Apple Releases New MacBook Pro with M3 Chip',
-        url: 'https://technews.com/articles/apple-macbook-pro-m3-2024',
+        title: 'ACME Corp Releases New Laptop with M3 Chip',
+        url: 'https://technews.com/articles/acme-laptop-m3-2024',
         category: 'Breaking News', # After gsub replacement
-        tags: %w[Apple Laptops Processors]
+        tags: ['ACME Corp', 'Laptops', 'Processors']
       },
       {
-        title: 'Google Launches New AI Assistant Features',
-        url: 'https://technews.com/articles/google-ai-assistant-update',
+        title: 'ACME Corp Launches New AI Assistant Features',
+        url: 'https://technews.com/articles/acme-ai-assistant-update',
         category: 'Breaking News',
-        tags: ['Google', 'Artificial Intelligence', 'Voice Assistant']
+        tags: ['ACME Corp', 'Artificial Intelligence', 'Voice Assistant']
       },
       {
-        title: 'Tesla Announces New Electric Vehicle Model',
-        url: 'https://technews.com/articles/tesla-new-ev-model-2024',
+        title: 'ACME Motors Announces New Electric Vehicle Model',
+        url: 'https://technews.com/articles/acme-new-ev-model-2024',
         category: 'Breaking News',
-        tags: ['Tesla', 'Electric Vehicles', 'Autonomous Driving']
+        tags: ['ACME Motors', 'Electric Vehicles', 'Autonomous Driving']
       },
       {
-        title: 'Microsoft Updates Windows 12 Preview',
-        url: 'https://technews.com/articles/microsoft-windows-12-preview',
+        title: 'ACME Software Updates Operating System Preview',
+        url: 'https://technews.com/articles/acme-os-preview',
         category: 'Breaking News',
-        tags: ['Microsoft', 'Windows', 'Operating System']
+        tags: ['ACME Software', 'Operating System', 'Software']
       },
       {
-        title: 'Meta Introduces New VR Headset',
-        url: 'https://technews.com/articles/meta-vr-headset-2024',
+        title: 'ACME Reality Introduces New VR Headset',
+        url: 'https://technews.com/articles/acme-vr-headset-2024',
         category: 'Breaking News',
-        tags: ['Meta', 'Virtual Reality', 'Gaming']
+        tags: ['ACME Reality', 'Virtual Reality', 'Gaming']
       },
       {
-        title: 'Amazon Web Services Expands Cloud Services',
-        url: 'https://technews.com/articles/aws-cloud-services-expansion',
+        title: 'ACME Cloud Services Expands Cloud Services',
+        url: 'https://technews.com/articles/acme-cloud-services-expansion',
         category: 'Breaking News',
-        tags: ['AWS', 'Cloud Computing', 'Infrastructure']
+        tags: ['ACME Cloud', 'Cloud Computing', 'Infrastructure']
       }
     ]
   end
 
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:channel][:url]).to eq('https://technews.com')
       expect(config[:channel][:title]).to eq('TechNews Daily')
@@ -93,13 +93,13 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
 
   # Shared examples for maintainable testing
   shared_examples 'valid RSS feed' do
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to eq('TechNews Daily')
       expect(feed.channel.link).to eq('https://technews.com')
     end
 
-    it 'extracts items using combined auto-source and manual selectors' do
+    it 'extracts items using combined auto-source and manual selectors', :aggregate_failures do
       # Auto-source finds many items from JSON-LD and HTML, manual selectors provide additional processing
       expect(feed.items.size).to be > 6
       expect(feed.items.size).to be < 100 # Reasonable upper bound
@@ -107,8 +107,8 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
   end
 
   shared_examples 'article extraction' do
-    it 'extracts titles correctly using combined approach' do
-      titles = feed.items.map(&:title).compact
+    it 'extracts titles correctly using combined approach', :aggregate_failures do
+      titles = feed.items.filter_map(&:title)
       expected_titles = expected_articles.map { |article| article[:title] }
 
       expect(titles).to all(be_a(String))
@@ -116,8 +116,8 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
       expected_titles.each { |title| expect(titles).to include(title) }
     end
 
-    it 'extracts URLs correctly using combined approach' do
-      urls = feed.items.map(&:link).compact
+    it 'extracts URLs correctly using combined approach', :aggregate_failures do
+      urls = feed.items.filter_map(&:link)
       expected_urls = expected_articles.map { |article| article[:url] }
 
       expect(urls).to all(be_a(String))
@@ -125,8 +125,8 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
       expected_urls.each { |url| expect(urls).to include(url) }
     end
 
-    it 'extracts descriptions correctly using combined approach' do
-      descriptions = feed.items.map(&:description).compact
+    it 'extracts descriptions correctly using combined approach', :aggregate_failures do
+      descriptions = feed.items.filter_map(&:description)
       expect(descriptions).to all(be_a(String))
       expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
     end
@@ -135,24 +135,18 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: Html2rss::Url.from_relative('https://technews.com', 'https://technews.com'),
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('combined_scraper_sources', 'https://technews.com')
 
       Html2rss.feed(config)
     end
 
-    include_examples 'valid RSS feed'
-    include_examples 'article extraction'
+    it_behaves_like 'valid RSS feed'
+    it_behaves_like 'article extraction'
 
     describe 'category and tag processing' do
       let(:items) { feed.items }
 
-      it 'applies gsub replacement to categories' do
+      it 'applies gsub replacement to categories', :aggregate_failures do
         # Check that items have categories (more items due to combined approach)
         items_with_categories = items.select { |item| item.categories.any? }
         expect(items_with_categories.size).to be > 6
@@ -162,7 +156,7 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
         expect(all_categories.join(' ')).to include('News')
       end
 
-      it 'extracts tags correctly' do
+      it 'extracts tags correctly', :aggregate_failures do
         all_tags = items.flat_map { |item| item.categories.map(&:content) }.uniq
 
         # Check that we have tag categories
@@ -170,12 +164,11 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
 
         # Verify that tags are being extracted (they may be concatenated with newlines)
         tag_content = all_tags.join(' ')
-        expect(tag_content).to include('Apple')
-        expect(tag_content).to include('Google')
-        expect(tag_content).to include('Tesla')
-        expect(tag_content).to include('Microsoft')
-        expect(tag_content).to include('Meta')
-        expect(tag_content).to include('AWS')
+        expect(tag_content).to include('ACME Corp')
+        expect(tag_content).to include('ACME Motors')
+        expect(tag_content).to include('ACME Software')
+        expect(tag_content).to include('ACME Reality')
+        expect(tag_content).to include('ACME Cloud')
         expect(tag_content).to include('Laptops')
         expect(tag_content).to include('Virtual Reality')
       end
@@ -192,12 +185,12 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
         expect(config[:selectors][:items][:enhance]).to be true
       end
 
-      it 'enhances items with additional information' do
+      it 'enhances items with additional information', :aggregate_failures do
         items = feed.items
 
         # Enhanced items should have additional information extracted automatically
         # Some items may not have all fields due to auto-source detection
-        items_with_titles = items.select { |item| item.title }
+        items_with_titles = items.select(&:title)
         expect(items_with_titles.size).to be > 0
 
         items_with_titles.each do |item|
@@ -209,7 +202,7 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
     end
 
     describe 'custom GUID generation' do
-      it 'configures custom GUID generation correctly' do
+      it 'configures custom GUID generation correctly', :aggregate_failures do
         custom_guid_config = config[:selectors][:custom_guid]
         expect(custom_guid_config[:selector]).to eq('h2')
         expect(custom_guid_config[:post_process]).to include(
@@ -222,7 +215,7 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
         expect(guid_config).to eq(['custom_guid'])
       end
 
-      it 'generates GUIDs for items' do
+      it 'generates GUIDs for items', :aggregate_failures do
         items = feed.items
         guids = items.map(&:guid)
 
@@ -269,7 +262,7 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
         expect(post_process).to include({ name: 'template', string: '%<self>s-%<url>s', methods: %w[self url] })
       end
 
-      it 'generates custom GUIDs using template' do
+      it 'generates custom GUIDs using template', :aggregate_failures do
         items.each do |item|
           expect(item.guid).to be_a(RSS::Rss::Channel::Item::Guid)
           expect(item.guid.content).not_to be_empty
@@ -280,7 +273,7 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
     end
 
     describe 'configuration issues' do
-      it 'validates that the configuration is complete' do
+      it 'validates that the configuration is complete', :aggregate_failures do
         # Should have all required sections
         expect(config[:channel]).not_to be_nil
         expect(config[:auto_source]).to eq({}) # Disabled for testing
@@ -307,14 +300,14 @@ RSpec.describe 'Combined Scraper Sources Configuration' do
         expect(config[:selectors][:items][:enhance]).to be true
       end
 
-      it 'validates gsub post-processor configuration' do
+      it 'validates gsub post-processor configuration', :aggregate_failures do
         gsub_config = config[:selectors][:category][:post_process].first
         expect(gsub_config[:name]).to eq('gsub')
         expect(gsub_config[:pattern]).to eq('News')
         expect(gsub_config[:replacement]).to eq('Breaking News')
       end
 
-      it 'validates template post-processor configuration' do
+      it 'validates template post-processor configuration', :aggregate_failures do
         template_config = config[:selectors][:custom_guid][:post_process].first
         expect(template_config[:name]).to eq('template')
         expect(template_config[:string]).to eq('%<self>s-%<url>s')

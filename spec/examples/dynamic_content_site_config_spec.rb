@@ -8,7 +8,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:strategy]).to eq('browserless')
       expect(config[:channel][:url]).to eq('https://spa-example.com/news')
@@ -44,18 +44,12 @@ RSpec.describe 'Dynamic Content Site Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://spa-example.com/news',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('dynamic_content_site', 'https://spa-example.com/news')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to eq('Dynamic Content Site News')
       expect(feed.channel.link).to eq('https://spa-example.com/news')
@@ -68,18 +62,18 @@ RSpec.describe 'Dynamic Content Site Configuration' do
     describe 'item extraction' do
       let(:items) { feed.items }
 
-      it 'extracts titles correctly using h2 selector' do
+      it 'extracts titles correctly using h2 selector', :aggregate_failures do
         titles = items.map(&:title)
         expect(titles).to all(be_a(String))
-        expect(titles).to include('Revolutionary AI Breakthrough Changes Everything')
-        expect(titles).to include('Climate Change Summit Reaches Historic Agreement')
-        expect(titles).to include('Space Exploration Mission Discovers New Planet')
-        expect(titles).to include('Medical Breakthrough Offers Hope for Cancer Patients')
-        expect(titles).to include('Renewable Energy Reaches New Milestone')
-        expect(titles).to include('Cybersecurity Threats Reach All-Time High')
+        expect(titles).to include('ACME Corp\'s Revolutionary AI Breakthrough Changes Everything')
+        expect(titles).to include('ACME Corp\'s Green Coding Summit Reaches Historic Agreement')
+        expect(titles).to include('ACME Corp\'s Space Exploration Mission Discovers New Planet')
+        expect(titles).to include('ACME Corp\'s Medical Breakthrough Offers Hope for Bug Patients')
+        expect(titles).to include('ACME Corp\'s Renewable Energy Reaches New Milestone')
+        expect(titles).to include('ACME Corp\'s Cybersecurity Threats Reach All-Time High')
       end
 
-      it 'extracts URLs correctly using href extractor' do
+      it 'extracts URLs correctly using href extractor', :aggregate_failures do
         urls = items.map(&:link)
         expect(urls).to all(be_a(String))
         expect(urls).to include('https://spa-example.com/articles/ai-breakthrough-2024')
@@ -90,22 +84,22 @@ RSpec.describe 'Dynamic Content Site Configuration' do
         expect(urls).to include('https://spa-example.com/articles/cybersecurity-threats-2024')
       end
 
-      it 'extracts descriptions correctly' do
+      it 'extracts descriptions correctly', :aggregate_failures do
         descriptions = items.map(&:description)
         expect(descriptions).to all(be_a(String))
         expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
 
         # Check that descriptions contain expected content
         expect(descriptions).to include(match(/artificial intelligence system/i))
-        expect(descriptions).to include(match(/climate change mitigation/i))
+        expect(descriptions).to include(match(/green coding practices/i))
         expect(descriptions).to include(match(/potentially habitable planet/i))
-        expect(descriptions).to include(match(/immunotherapy treatment/i))
+        expect(descriptions).to include(match(/debugging treatment/i))
         expect(descriptions).to include(match(/renewable energy sources/i))
         expect(descriptions).to include(match(/cyber threats/i))
       end
 
-      it 'extracts published dates correctly' do
-        items_with_time = items.select { |item| item.pubDate }
+      it 'extracts published dates correctly', :aggregate_failures do
+        items_with_time = items.select(&:pubDate)
         expect(items_with_time.size).to eq(6) # All 6 items have timestamps
 
         # Check that dates are parsed correctly
@@ -122,7 +116,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
         expect(config[:strategy]).to eq('browserless')
       end
 
-      it 'handles dynamic content loading' do
+      it 'handles dynamic content loading', :aggregate_failures do
         # The HTML fixture simulates dynamic content loading
         # In a real scenario, browserless would handle the JavaScript execution
         items = feed.items
@@ -143,8 +137,8 @@ RSpec.describe 'Dynamic Content Site Configuration' do
         expect(config[:channel][:time_zone]).to eq('America/New_York')
       end
 
-      it 'parses timestamps in the correct format' do
-        items_with_time = feed.items.select { |item| item.pubDate }
+      it 'parses timestamps in the correct format', :aggregate_failures do
+        items_with_time = feed.items.select(&:pubDate)
 
         # All timestamps should be parsed correctly
         items_with_time.each do |item|
@@ -157,7 +151,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
     describe 'URL extraction with href extractor' do
       let(:items) { feed.items }
 
-      it 'uses href extractor for URL extraction' do
+      it 'uses href extractor for URL extraction', :aggregate_failures do
         url_config = config[:selectors][:url]
         expect(url_config[:extractor]).to eq('href')
         expect(url_config[:selector]).to eq('a')
@@ -185,7 +179,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
         expect(post_process).to include({ name: 'sanitize_html' })
       end
 
-      it 'sanitizes HTML content in descriptions' do
+      it 'sanitizes HTML content in descriptions', :aggregate_failures do
         descriptions = items.map(&:description)
 
         # Descriptions should be clean text without HTML tags
@@ -198,7 +192,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
     end
 
     describe 'configuration issues' do
-      it 'identifies the parse_time format parameter issue' do
+      it 'identifies the parse_time format parameter issue', :aggregate_failures do
         # The original config had: format: "%B %d, %Y at %I:%M %p"
         # But parse_time doesn't accept a format parameter
         published_at_config = config[:selectors][:published_at]
@@ -209,7 +203,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
         expect(post_process.first).to eq({ name: 'parse_time' })
       end
 
-      it 'validates that the configuration is complete' do
+      it 'validates that the configuration is complete', :aggregate_failures do
         # Should have all required sections
         expect(config[:strategy]).not_to be_nil
         expect(config[:channel]).not_to be_nil
@@ -227,12 +221,12 @@ RSpec.describe 'Dynamic Content Site Configuration' do
         expect(config[:selectors][:published_at][:post_process]).not_to be_nil
       end
 
-      it 'validates browserless strategy configuration' do
+      it 'validates browserless strategy configuration', :aggregate_failures do
         expect(config[:strategy]).to eq('browserless')
         expect(config[:strategy]).not_to be_nil
       end
 
-      it 'validates time parsing configuration' do
+      it 'validates time parsing configuration', :aggregate_failures do
         published_at_config = config[:selectors][:published_at]
         expect(published_at_config[:selector]).to eq('.timestamp')
         expect(published_at_config[:post_process]).to include({ name: 'parse_time' })

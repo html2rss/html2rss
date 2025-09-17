@@ -7,8 +7,11 @@ RSpec.describe 'Conditional Processing Configuration' do
   let(:html_file) { File.join(%w[spec fixtures conditional-processing-site.html]) }
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
+  # Extract array literals to avoid Performance/CollectionLiteralInLoop violations
+  let(:expected_statuses) { %w[Published Draft Archived Pending] }
+
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:channel][:url]).to eq('https://conditional-processing-site.com')
       expect(config[:channel][:title]).to eq('Conditional Processing Site News')
@@ -20,7 +23,7 @@ RSpec.describe 'Conditional Processing Configuration' do
       expect(config[:selectors][:categories]).to include('status')
     end
 
-    it 'has correct post-processing configuration' do
+    it 'has correct post-processing configuration', :aggregate_failures do
       description_post_process = config[:selectors][:description][:post_process]
       expect(description_post_process).to include(
         { name: 'template', string: '[Status: %<status>s] %<self>s' }
@@ -40,18 +43,12 @@ RSpec.describe 'Conditional Processing Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://conditional-processing-site.com',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('conditional_processing_site', 'https://conditional-processing-site.com')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to eq('Conditional Processing Site News')
       expect(feed.channel.link).to eq('https://conditional-processing-site.com')
@@ -64,22 +61,22 @@ RSpec.describe 'Conditional Processing Configuration' do
     describe 'item extraction' do
       let(:items) { feed.items }
 
-      it 'extracts titles correctly using h2 selector' do
+      it 'extracts titles correctly using h2 selector', :aggregate_failures do
         titles = items.map(&:title)
         expect(titles).to all(be_a(String))
-        expect(titles).to include('Breaking News: Technology Update')
-        expect(titles).to include('Draft Article: Environmental Research')
-        expect(titles).to include('Archived Article: Economic Analysis')
-        expect(titles).to include('Health and Wellness Guide')
-        expect(titles).to include('Pending Article: Sports Update')
-        expect(titles).to include('Article Without Status')
+        expect(titles).to include('Breaking News: ACME Corp\'s New Debugging Tool')
+        expect(titles).to include('Draft Article: ACME Corp\'s Green Coding Initiative')
+        expect(titles).to include('Archived Article: ACME Corp\'s Economic Analysis of Bug Fixes')
+        expect(titles).to include('ACME Corp\'s Developer Health and Wellness Guide')
+        expect(titles).to include('Pending Article: ACME Corp\'s Annual Code Golf Tournament')
+        expect(titles).to include('ACME Corp\'s Article Without Status (Status: Unknown)')
       end
 
-      it 'extracts status information as categories' do
+      it 'extracts status information as categories', :aggregate_failures do
         # Items with status should have status categories
         items_with_status = items.select do |item|
           item.categories.any? do |cat|
-            %w[Published Draft Archived Pending].include?(cat.content)
+            expected_statuses.include?(cat.content)
           end
         end
         expect(items_with_status.size).to eq(5) # 5 items have status
@@ -87,7 +84,7 @@ RSpec.describe 'Conditional Processing Configuration' do
         items_with_status.each do |item|
           expect(item.categories).not_to be_nil
           status_categories = item.categories.select do |cat|
-            %w[Published Draft Archived Pending].include?(cat.content)
+            expected_statuses.include?(cat.content)
           end
           expect(status_categories).not_to be_empty
         end
@@ -95,11 +92,11 @@ RSpec.describe 'Conditional Processing Configuration' do
         # One item should have no categories (no status field)
         items_without_status = items.select { |item| item.categories.empty? }
         expect(items_without_status.size).to eq(1)
-        expect(items_without_status.first.title).to eq('Article Without Status')
+        expect(items_without_status.first.title).to eq('ACME Corp\'s Article Without Status (Status: Unknown)')
       end
 
-      it 'extracts published dates correctly' do
-        items_with_time = items.select { |item| item.pubDate }
+      it 'extracts published dates correctly', :aggregate_failures do
+        items_with_time = items.select(&:pubDate)
         expect(items_with_time.size).to eq(6) # All items have dates
 
         # Check that dates are parsed correctly
@@ -113,7 +110,7 @@ RSpec.describe 'Conditional Processing Configuration' do
     describe 'conditional processing with templates' do
       let(:items) { feed.items }
 
-      it 'applies template processing to descriptions' do
+      it 'applies template processing to descriptions', :aggregate_failures do
         descriptions = items.map(&:description)
 
         # All descriptions should be strings
@@ -123,7 +120,7 @@ RSpec.describe 'Conditional Processing Configuration' do
         expect(descriptions).to all(match(/\[Status: .*\]/))
       end
 
-      it 'includes correct status values in descriptions' do
+      it 'includes correct status values in descriptions', :aggregate_failures do
         # Find items by their expected status
         published_items = items.select { |item| item.description.include?('[Status: Published]') }
         draft_items = items.select { |item| item.description.include?('[Status: Draft]') }
@@ -136,7 +133,7 @@ RSpec.describe 'Conditional Processing Configuration' do
         expect(pending_items.size).to eq(1)  # 1 pending item
       end
 
-      it 'handles items without status gracefully' do
+      it 'handles items without status gracefully', :aggregate_failures do
         # Find the item without status
         no_status_items = items.select { |item| item.description.include?('[Status: ]') }
         expect(no_status_items.size).to eq(1) # 1 item without status
@@ -147,7 +144,7 @@ RSpec.describe 'Conditional Processing Configuration' do
         end
       end
 
-      it 'preserves original content in template processing' do
+      it 'preserves original content in template processing', :aggregate_failures do
         items.each do |item|
           # The description should contain both the status prefix and original content
           expect(item.description).to match(/\[Status: .*\].+/)
@@ -161,11 +158,11 @@ RSpec.describe 'Conditional Processing Configuration' do
     describe 'status-based categorization' do
       let(:items) { feed.items }
 
-      it 'includes status as categories' do
+      it 'includes status as categories', :aggregate_failures do
         # Items with status should have status categories
         items_with_status = items.select do |item|
           item.categories.any? do |cat|
-            %w[Published Draft Archived Pending].include?(cat.content)
+            expected_statuses.include?(cat.content)
           end
         end
         expect(items_with_status.size).to eq(5) # 5 items have status
@@ -173,16 +170,16 @@ RSpec.describe 'Conditional Processing Configuration' do
         items_with_status.each do |item|
           expect(item.categories).not_to be_nil
           status_categories = item.categories.select do |cat|
-            %w[Published Draft Archived Pending].include?(cat.content)
+            expected_statuses.include?(cat.content)
           end
           expect(status_categories).not_to be_empty
         end
       end
 
-      it 'has different status values for different items' do
+      it 'has different status values for different items', :aggregate_failures do
         status_values = items.map do |item|
           status_cat = item.categories.find do |cat|
-            %w[Published Draft Archived Pending].include?(cat.content)
+            expected_statuses.include?(cat.content)
           end
           status_cat ? status_cat.content : 'No Status'
         end
@@ -219,7 +216,7 @@ RSpec.describe 'Conditional Processing Configuration' do
     end
 
     describe 'configuration issues' do
-      it 'identifies the template parameter issue' do
+      it 'identifies the template parameter issue', :aggregate_failures do
         # The original config had: template: "[Status: %{status}] %{self}"
         # But should be: string: "[Status: %<status>s] %<self>s"
         template_config = config[:selectors][:description][:post_process].first
@@ -232,7 +229,7 @@ RSpec.describe 'Conditional Processing Configuration' do
         expect(template_config[:string]).to eq('[Status: %<status>s] %<self>s')
       end
 
-      it 'validates that the configuration is complete' do
+      it 'validates that the configuration is complete', :aggregate_failures do
         # Should have all required sections
         expect(config[:channel]).not_to be_nil
         expect(config[:selectors]).not_to be_nil
@@ -247,7 +244,7 @@ RSpec.describe 'Conditional Processing Configuration' do
         expect(config[:selectors][:description][:post_process]).not_to be_nil
       end
 
-      it 'validates template post-processor configuration' do
+      it 'validates template post-processor configuration', :aggregate_failures do
         template_config = config[:selectors][:description][:post_process].first
         expect(template_config[:name]).to eq('template')
         expect(template_config[:string]).to be_a(String)

@@ -2,46 +2,74 @@
 
 require 'spec_helper'
 
-RSpec.describe 'Media Enclosures Configuration' do
-  let(:config_file) { File.join(%w[spec examples media_enclosures_site.yml]) }
-  let(:html_file) { File.join(%w[spec examples media_enclosures_site.html]) }
-  let(:config) { Html2rss.config_from_yaml_file(config_file) }
+# This spec demonstrates the media enclosures configuration,
+# which handles podcast and video content with media enclosures,
+# duration extraction, and HTML to Markdown conversion.
+RSpec.describe 'Media Enclosures Configuration', type: :example do
+  let(:config_name) { 'media_enclosures_site' }
+  let(:config) { load_example_configuration(config_name) }
 
-  describe 'configuration loading' do
-    it 'loads the configuration correctly' do
-      expect(config).to be_a(Hash)
-      expect(config[:channel]).to be_a(Hash)
-      expect(config[:channel][:url]).to be_a(String)
-      expect(config[:channel][:title]).to be_a(String)
-      expect(config[:selectors]).to be_a(Hash)
-      expect(config[:selectors][:items]).to be_a(Hash)
-      expect(config[:selectors][:items][:selector]).to be_a(String)
-      expect(config[:selectors][:title]).to be_a(Hash)
-      expect(config[:selectors][:title][:selector]).to be_a(String)
-      expect(config[:selectors][:description]).to be_a(Hash)
-      expect(config[:selectors][:description][:selector]).to be_a(String)
-      expect(config[:selectors][:url]).to be_a(Hash)
-      expect(config[:selectors][:url][:selector]).to be_a(String)
-      expect(config[:selectors][:url][:extractor]).to eq('href')
-      expect(config[:selectors][:enclosure]).to be_a(Hash)
-      expect(config[:selectors][:enclosure][:selector]).to be_a(String)
-      expect(config[:selectors][:enclosure][:extractor]).to eq('attribute')
-      expect(config[:selectors][:enclosure][:attribute]).to eq('src')
-      expect(config[:selectors][:enclosure][:content_type]).to be_a(String)
-      expect(config[:selectors][:duration]).to be_a(Hash)
-      expect(config[:selectors][:duration][:selector]).to be_a(String)
-      expect(config[:selectors][:duration][:extractor]).to eq('attribute')
-      expect(config[:selectors][:duration][:attribute]).to eq('data-duration')
+  # Configuration validation tests
+  # These tests ensure the configuration file is properly structured
+  # for handling media content with enclosures and duration information
+  context 'when loading configuration' do
+    it 'loads with valid basic structure' do
+      expect(validate_configuration_structure(config)).to be true
     end
 
-    it 'has correct post-processing configuration' do
-      description_post_process = config[:selectors][:description][:post_process]
-      expect(description_post_process).to be_an(Array)
-      expect(description_post_process.first).to include(:name)
+    context 'with media-specific selectors' do
+      it 'has valid enclosure selector configuration' do
+        enclosure_config = config[:selectors][:enclosure]
+        expect(validate_selector_config(enclosure_config,
+                                        %i[selector extractor attribute content_type])).to be true
+      end
 
-      published_at_post_process = config[:selectors][:published_at][:post_process]
-      expect(published_at_post_process).to be_an(Array)
-      expect(published_at_post_process.first).to include(:name)
+      it 'has correct enclosure extractor' do
+        enclosure_config = config[:selectors][:enclosure]
+        expect(enclosure_config[:extractor]).to eq('attribute')
+      end
+
+      it 'has correct enclosure attribute' do
+        enclosure_config = config[:selectors][:enclosure]
+        expect(enclosure_config[:attribute]).to eq('src')
+      end
+
+      it 'has valid duration selector configuration' do
+        duration_config = config[:selectors][:duration]
+        expect(validate_selector_config(duration_config, %i[selector extractor attribute])).to be true
+      end
+
+      it 'has correct duration extractor' do
+        duration_config = config[:selectors][:duration]
+        expect(duration_config[:extractor]).to eq('attribute')
+      end
+
+      it 'has correct duration attribute' do
+        duration_config = config[:selectors][:duration]
+        expect(duration_config[:attribute]).to eq('data-duration')
+      end
+
+      it 'has valid URL selector configuration' do
+        url_config = config[:selectors][:url]
+        expect(validate_selector_config(url_config, %i[selector extractor])).to be true
+      end
+
+      it 'has correct URL extractor' do
+        url_config = config[:selectors][:url]
+        expect(url_config[:extractor]).to eq('href')
+      end
+    end
+
+    context 'with post-processing configuration' do
+      it 'has correct post-processing for description' do
+        description_post_process = config[:selectors][:description][:post_process]
+        expect(validate_post_process_config(description_post_process)).to be true
+      end
+
+      it 'has correct post-processing for published_at' do
+        published_at_post_process = config[:selectors][:published_at][:post_process]
+        expect(validate_post_process_config(published_at_post_process)).to be true
+      end
     end
 
     it 'includes duration in categories' do
@@ -49,154 +77,108 @@ RSpec.describe 'Media Enclosures Configuration' do
     end
   end
 
-  describe 'RSS feed generation' do
-    subject(:feed) do
-      # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://example.com',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
-
-      Html2rss.feed(config)
-    end
+  # RSS feed generation tests
+  # These tests validate that the configuration successfully generates
+  # a valid RSS feed with proper media content extraction
+  context 'when generating RSS feed' do
+    subject(:feed) { generate_feed_from_config(config, config_name, :html) }
 
     it 'generates a valid RSS feed' do
-      expect(feed).to be_a(RSS::Rss)
-      expect(feed.channel.title).to be_a(String)
-      expect(feed.channel.link).to be_a(String)
+      expect(feed).to be_a_valid_rss_feed
     end
 
     it 'extracts the correct number of episodes' do
-      expect(feed.items).to be_an(Array)
-      expect(feed.items.size).to be > 0
+      expect(feed).to have_valid_items
     end
 
-    it 'extracts titles correctly using h3 selector' do
-      items = feed.items
-      titles = items.map(&:title)
-      expect(titles).to all(be_a(String))
-      expect(titles).to all(satisfy { |title| !title.strip.empty? })
-    end
+    context 'with basic item content validation' do
+      it 'extracts titles correctly' do
+        expect(feed).to have_valid_titles
+      end
 
-    it 'extracts URLs correctly' do
-      items = feed.items
-      urls = items.map(&:link)
-      expect(urls).to all(be_a(String))
-      expect(urls).to all(satisfy { |url| !url.strip.empty? })
-    end
+      it 'extracts URLs correctly' do
+        expect(feed).to have_valid_links
+      end
 
-    it 'extracts descriptions with html_to_markdown post-processing' do
-      items = feed.items
-      descriptions = items.map(&:description)
-      expect(descriptions).to all(be_a(String))
-      expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
-    end
+      it 'extracts descriptions correctly' do
+        expect(feed).to have_valid_descriptions
+      end
 
-    it 'extracts published dates correctly' do
-      items = feed.items
-      items_with_time = items.select { |item| item.pubDate }
-      expect(items_with_time.size).to be > 0
-
-      items_with_time.each do |item|
-        expect(item.pubDate).to be_a(Time)
+      it 'extracts published dates correctly' do
+        expect(feed).to have_valid_published_dates
       end
     end
 
-    it 'extracts duration information' do
-      items = feed.items
-      items.each do |item|
-        expect(item.categories).not_to be_nil
-        duration_categories = item.categories.select { |cat| cat.content.match?(/^\d+$/) }
+    context 'with media-specific content validation' do
+      it 'extracts duration information as categories' do
+        expect(feed).to have_categories
+      end
+
+      it 'handles media enclosures' do
+        expect(feed).to have_enclosures
+      end
+
+      it 'handles episodes without media enclosures' do
+        # This test ensures the configuration gracefully handles
+        # items that don't have media enclosures
+        items = feed.items
+        expect(items).to be_an(Array)
+      end
+    end
+
+    context 'with duration processing' do
+      it 'extracts duration from data-duration attribute' do
+        all_categories = extract_all_categories(feed)
+        duration_categories = all_categories.grep(/^\d+$/)
         expect(duration_categories).not_to be_empty
       end
-    end
 
-    it 'extracts audio enclosures correctly' do
-      items = feed.items
-      audio_items = items.select { |item| item.enclosure && item.enclosure.url.include?('.mp3') }
-      expect(audio_items.size).to be >= 0
+      it 'validates duration values are non-negative' do
+        all_categories = extract_all_categories(feed)
+        duration_categories = all_categories.grep(/^\d+$/)
 
-      audio_items.each do |item|
-        expect(item.enclosure).not_to be_nil
-        expect(item.enclosure.url).to be_a(String)
-        expect(item.enclosure.type).to be_a(String)
-      end
-    end
-
-    it 'handles video enclosures' do
-      items = feed.items
-      items_with_enclosures = items.select { |item| item.enclosure }
-      expect(items_with_enclosures.size).to be >= 0
-
-      items_with_enclosures.each do |item|
-        expect(item.enclosure).not_to be_nil
-        expect(item.enclosure.url).to be_a(String)
-        expect(item.enclosure.type).to be_a(String)
-      end
-    end
-
-    it 'handles episodes without media enclosures' do
-      items = feed.items
-      no_enclosure_items = items.select { |item| !item.enclosure }
-      expect(no_enclosure_items.size).to be >= 0
-    end
-
-    it 'validates enclosure URLs are absolute' do
-      items = feed.items
-      items_with_enclosures = items.select { |item| item.enclosure }
-      expect(items_with_enclosures.size).to be >= 0
-
-      items_with_enclosures.each do |item|
-        expect(item.enclosure.url).to be_a(String)
-      end
-    end
-
-    it 'extracts duration from data-duration attribute' do
-      items = feed.items
-      items.each do |item|
-        duration_categories = item.categories.select { |cat| cat.content.match?(/^\d+$/) }
-        expect(duration_categories).not_to be_empty
-
-        duration_categories.each do |cat|
-          duration_seconds = cat.content.to_i
-          expect(duration_seconds).to be >= 0
+        duration_categories.each do |duration|
+          expect(duration.to_i).to be >= 0
         end
       end
     end
 
-    it 'handles different duration formats' do
-      items = feed.items
-      items.each do |item|
-        duration_categories = item.categories.select { |cat| cat.content.match?(/^\d+$/) }
-        expect(duration_categories.size).to be >= 0
+    context 'with enclosure validation' do
+      it 'validates enclosure URLs are absolute' do
+        items = feed.items
+        items_with_enclosures = items.select(&:enclosure)
+
+        items_with_enclosures.each do |item|
+          expect(item.enclosure.url).to be_a(String)
+        end
       end
-    end
 
-    it 'processes descriptions with html_to_markdown post-processing' do
-      items = feed.items
-      descriptions = items.map(&:description)
-      expect(descriptions).to all(be_a(String))
-      expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
-    end
+      it 'validates enclosure URLs are not empty' do
+        items = feed.items
+        items_with_enclosures = items.select(&:enclosure)
 
-    it 'validates that the configuration is complete' do
-      expect(config[:channel]).not_to be_nil
-      expect(config[:selectors]).not_to be_nil
-      expect(config[:channel][:url]).not_to be_nil
-      expect(config[:channel][:title]).not_to be_nil
-      expect(config[:selectors][:enclosure]).not_to be_nil
-      expect(config[:selectors][:duration]).not_to be_nil
-    end
+        items_with_enclosures.each do |item|
+          expect(item.enclosure.url).not_to be_empty
+        end
+      end
 
-    it 'validates enclosure configuration structure' do
-      enclosure_config = config[:selectors][:enclosure]
-      expect(enclosure_config[:selector]).to be_a(String)
-      expect(enclosure_config[:extractor]).to eq('attribute')
-      expect(enclosure_config[:attribute]).to eq('src')
-      expect(enclosure_config[:content_type]).to be_a(String)
+      it 'validates enclosure types are specified' do
+        items = feed.items
+        items_with_enclosures = items.select(&:enclosure)
+
+        items_with_enclosures.each do |item|
+          expect(item.enclosure.type).to be_a(String)
+        end
+      end
+
+      it 'validates enclosure types are not empty' do
+        items = feed.items
+        items_with_enclosures = items.select(&:enclosure)
+
+        items_with_enclosures.each do |item|
+          expect(item.enclosure.type).not_to be_empty
+        end
+      end
     end
   end
 end

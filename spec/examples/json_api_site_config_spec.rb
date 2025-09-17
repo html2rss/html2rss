@@ -7,8 +7,10 @@ RSpec.describe 'JSON API Site Configuration' do
   let(:json_file) { File.join(%w[spec fixtures json-api-site.json]) }
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
+  let(:expected_categories) { %w[Technology Environment Science Health Energy Security] }
+
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:headers][:Accept]).to eq('application/json')
       expect(config[:headers][:Authorization]).to eq('Bearer YOUR_TOKEN')
@@ -40,12 +42,12 @@ RSpec.describe 'JSON API Site Configuration' do
       )
     end
 
-    it 'includes category and tags in categories' do
+    it 'includes category and tags in categories', :aggregate_failures do
       expect(config[:selectors][:categories]).to include('category')
       expect(config[:selectors][:categories]).to include('tags')
     end
 
-    it 'has correct headers configuration' do
+    it 'has correct headers configuration', :aggregate_failures do
       expect(config[:headers][:Accept]).to eq('application/json')
       expect(config[:headers][:Authorization]).to eq('Bearer YOUR_TOKEN')
     end
@@ -54,18 +56,12 @@ RSpec.describe 'JSON API Site Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our JSON fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(json_file),
-          url: 'https://api.example.com/posts',
-          headers: { 'content-type': 'application/json' }
-        )
-      )
+      mock_request_service_with_json_fixture('json_api_site', 'https://api.example.com/posts')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to eq('JSON API Site News')
       expect(feed.channel.link).to eq('https://api.example.com/posts')
@@ -78,10 +74,10 @@ RSpec.describe 'JSON API Site Configuration' do
     describe 'item extraction' do
       let(:items) { feed.items }
 
-      it 'extracts titles correctly' do
+      it 'extracts titles correctly', :aggregate_failures do
         titles = items.map(&:title)
         expect(titles).to all(be_a(String))
-        expect(titles).to include('Revolutionary AI Breakthrough Changes Everything')
+        expect(titles).to include('ACME Corp\'s Revolutionary AI Breakthrough Changes Everything')
         expect(titles).to include('Climate Change Summit Reaches Historic Agreement')
         expect(titles).to include('Space Exploration Mission Discovers New Planet')
         expect(titles).to include('Medical Breakthrough Offers Hope for Cancer Patients')
@@ -89,7 +85,7 @@ RSpec.describe 'JSON API Site Configuration' do
         expect(titles).to include('Cybersecurity Threats Reach All-Time High')
       end
 
-      it 'extracts descriptions correctly with HTML to Markdown conversion' do
+      it 'extracts descriptions correctly with HTML to Markdown conversion', :aggregate_failures do
         descriptions = items.map(&:description)
         expect(descriptions).to all(be_a(String))
         expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
@@ -110,8 +106,8 @@ RSpec.describe 'JSON API Site Configuration' do
         expect(author_config[:selector]).to eq('author name')
       end
 
-      it 'extracts published dates correctly' do
-        items_with_time = items.select { |item| item.pubDate }
+      it 'extracts published dates correctly', :aggregate_failures do
+        items_with_time = items.select(&:pubDate)
         expect(items_with_time.size).to eq(6) # All 6 items have timestamps
 
         # Check that dates are parsed correctly
@@ -122,11 +118,11 @@ RSpec.describe 'JSON API Site Configuration' do
         end
       end
 
-      it 'extracts category information as categories' do
+      it 'extracts category information as categories', :aggregate_failures do
         # All items should have category categories
         items_with_category = items.select do |item|
           item.categories.any? do |cat|
-            %w[Technology Environment Science Health Energy Security].include?(cat.content)
+            expected_categories.include?(cat.content)
           end
         end
         expect(items_with_category.size).to eq(6) # All 6 items have categories
@@ -134,13 +130,13 @@ RSpec.describe 'JSON API Site Configuration' do
         items_with_category.each do |item|
           expect(item.categories).not_to be_nil
           category_categories = item.categories.select do |cat|
-            %w[Technology Environment Science Health Energy Security].include?(cat.content)
+            expected_categories.include?(cat.content)
           end
           expect(category_categories).not_to be_empty
         end
       end
 
-      it 'extracts tag information as categories' do
+      it 'extracts tag information as categories', :aggregate_failures do
         # All items should have tag categories (as concatenated strings)
         items_with_tags = items.select do |item|
           item.categories.any? do |cat|
@@ -166,12 +162,12 @@ RSpec.describe 'JSON API Site Configuration' do
     end
 
     describe 'JSON API handling' do
-      it 'configures headers for JSON API requests' do
+      it 'configures headers for JSON API requests', :aggregate_failures do
         expect(config[:headers][:Accept]).to eq('application/json')
         expect(config[:headers][:Authorization]).to eq('Bearer YOUR_TOKEN')
       end
 
-      it 'handles complex JSON structure' do
+      it 'handles complex JSON structure', :aggregate_failures do
         # The JSON fixture contains nested objects and arrays
         items = feed.items
         expect(items.size).to eq(6)
@@ -184,7 +180,7 @@ RSpec.describe 'JSON API Site Configuration' do
         end
       end
 
-      it 'extracts nested object properties correctly' do
+      it 'extracts nested object properties correctly', :aggregate_failures do
         # Test that nested selectors work (author name, category name, etc.)
         author_config = config[:selectors][:author]
         expect(author_config[:selector]).to eq('author name')
@@ -211,7 +207,7 @@ RSpec.describe 'JSON API Site Configuration' do
         expect(post_process).to include({ name: 'html_to_markdown' })
       end
 
-      it 'converts HTML content to Markdown in descriptions' do
+      it 'converts HTML content to Markdown in descriptions', :aggregate_failures do
         descriptions = items.map(&:description)
 
         # Descriptions should be converted from HTML to Markdown
@@ -225,18 +221,18 @@ RSpec.describe 'JSON API Site Configuration' do
     end
 
     describe 'enclosure handling' do
-      it 'configures enclosure extraction correctly' do
+      it 'configures enclosure extraction correctly', :aggregate_failures do
         enclosure_config = config[:selectors][:enclosure]
         expect(enclosure_config[:selector]).to eq('audio_file url')
         expect(enclosure_config[:content_type]).to eq('audio/mpeg')
       end
 
-      it 'handles items with and without audio files' do
+      it 'handles items with and without audio files', :aggregate_failures do
         # Some items have audio files, others don't
         items = feed.items
 
         # All items should have enclosures (either audio or image)
-        items_with_enclosures = items.select { |item| item.enclosure }
+        items_with_enclosures = items.select(&:enclosure)
         expect(items_with_enclosures.size).to eq(6) # All 6 items have enclosures
 
         # Check that enclosures are properly configured
@@ -253,17 +249,10 @@ RSpec.describe 'JSON API Site Configuration' do
         image_config = config[:selectors][:image]
         expect(image_config[:selector]).to eq('featured_image url')
       end
-
-      it 'extracts image URLs correctly' do
-        # NOTE: Image URLs might not be directly available in RSS items
-        # This test verifies the configuration is correct
-        image_config = config[:selectors][:image]
-        expect(image_config[:selector]).to eq('featured_image url')
-      end
     end
 
     describe 'configuration issues' do
-      it 'identifies the parse_time format parameter issue' do
+      it 'identifies the parse_time format parameter issue', :aggregate_failures do
         # The original config had: format: "%Y-%m-%dT%H:%M:%S%z"
         # But parse_time doesn't accept a format parameter
         published_at_config = config[:selectors][:published_at]
@@ -274,7 +263,7 @@ RSpec.describe 'JSON API Site Configuration' do
         expect(post_process.first).to eq({ name: 'parse_time' })
       end
 
-      it 'validates that the configuration is complete' do
+      it 'validates that the configuration is complete', :aggregate_failures do
         # Should have all required sections
         expect(config[:headers]).not_to be_nil
         expect(config[:channel]).not_to be_nil
@@ -292,12 +281,12 @@ RSpec.describe 'JSON API Site Configuration' do
         expect(config[:selectors][:enclosure]).not_to be_nil
       end
 
-      it 'validates JSON API headers configuration' do
+      it 'validates JSON API headers configuration', :aggregate_failures do
         expect(config[:headers][:Accept]).to eq('application/json')
         expect(config[:headers][:Authorization]).to eq('Bearer YOUR_TOKEN')
       end
 
-      it 'validates complex selector syntax' do
+      it 'validates complex selector syntax', :aggregate_failures do
         # Test that the corrected selectors use proper syntax
         expect(config[:selectors][:author][:selector]).to eq('author name')
         expect(config[:selectors][:category][:selector]).to eq('category name')

@@ -8,7 +8,7 @@ RSpec.describe 'Performance-Optimized Configuration' do
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:channel][:url]).to eq('https://performance-optimized-site.com')
       expect(config[:channel][:title]).to eq('Performance-Optimized Site News')
@@ -36,18 +36,12 @@ RSpec.describe 'Performance-Optimized Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://performance-optimized-site.com',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('performance_optimized_site', 'https://performance-optimized-site.com')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to eq('Performance-Optimized Site News')
       expect(feed.channel.link).to eq('https://performance-optimized-site.com')
@@ -66,27 +60,27 @@ RSpec.describe 'Performance-Optimized Configuration' do
         expect(titles).not_to include('Sponsored Content: Buy Our Product')
       end
 
-      it 'excludes sidebar content' do
+      it 'excludes sidebar content', :aggregate_failures do
         titles = items.map(&:title)
         expect(titles).not_to include('Sidebar Content')
         expect(titles).not_to include('Sidebar Article')
       end
 
-      it 'includes only main-content posts' do
+      it 'includes only main-content posts', :aggregate_failures do
         titles = items.map(&:title)
-        expect(titles).to include('Breaking News: Technology Breakthrough')
-        expect(titles).to include('Environmental Research Update')
-        expect(titles).to include('Economic Analysis Report')
-        expect(titles).to include('Health and Wellness Tips')
+        expect(titles).to include('Breaking News: ACME Corp\'s Technology Breakthrough')
+        expect(titles).to include('ACME Corp\'s Environmental Research Update')
+        expect(titles).to include('ACME Corp\'s Economic Analysis Report')
+        expect(titles).to include('ACME Corp\'s Developer Health and Wellness Tips')
       end
 
-      it 'extracts titles correctly using h2 selector' do
+      it 'extracts titles correctly using h2 selector', :aggregate_failures do
         titles = items.map(&:title)
         expect(titles).to all(be_a(String))
         expect(titles).to all(satisfy { |title| !title.strip.empty? })
       end
 
-      it 'extracts URLs correctly' do
+      it 'extracts URLs correctly', :aggregate_failures do
         urls = items.map(&:link)
         expect(urls).to all(be_a(String))
         expect(urls).to include('https://performance-optimized-site.com/articles/technology-breakthrough')
@@ -95,9 +89,9 @@ RSpec.describe 'Performance-Optimized Configuration' do
         expect(urls).to include('https://performance-optimized-site.com/articles/health-tips')
       end
 
-      it 'extracts published dates correctly' do
+      it 'extracts published dates correctly', :aggregate_failures do
         # All items should have published_at since they all have time elements
-        items_with_time = items.select { |item| item.pubDate }
+        items_with_time = items.select(&:pubDate)
         expect(items_with_time.size).to eq(4) # All 4 items have time elements
 
         # Check that dates are parsed correctly
@@ -117,7 +111,7 @@ RSpec.describe 'Performance-Optimized Configuration' do
         expect(items.size).to eq(4) # 5 posts in main-content, minus 1 advertisement = 4
       end
 
-      it 'validates that the CSS selector works as expected' do
+      it 'validates that the CSS selector works as expected', :aggregate_failures do
         # This test verifies the selector logic by checking the HTML structure
         doc = Nokogiri::HTML(File.read(html_file))
 
@@ -142,9 +136,9 @@ RSpec.describe 'Performance-Optimized Configuration' do
     end
 
     describe 'time parsing' do
-      let(:items_with_time) { feed.items.select { |item| item.pubDate } }
+      let(:items_with_time) { feed.items.select(&:pubDate) }
 
-      it 'parses ISO 8601 datetime format correctly' do
+      it 'parses ISO 8601 datetime format correctly', :aggregate_failures do
         # The HTML contains times in format: 2024-01-15T10:30:00+00:00
         items_with_time.each do |item|
           expect(item.pubDate).to be_a(Time)
@@ -153,7 +147,7 @@ RSpec.describe 'Performance-Optimized Configuration' do
         end
       end
 
-      it 'handles different time formats' do
+      it 'handles different time formats', :aggregate_failures do
         # All our test times are in January 2024
         items_with_time.each do |item|
           expect(item.pubDate.year).to eq(2024)
@@ -165,7 +159,7 @@ RSpec.describe 'Performance-Optimized Configuration' do
   end
 
   describe 'configuration issues' do
-    it 'identifies the format parameter issue in parse_time' do
+    it 'identifies the format parameter issue in parse_time', :aggregate_failures do
       # The original config had: format: "%Y-%m-%dT%H:%M:%S%z"
       # But parse_time doesn't accept a format parameter
       published_at_config = config[:selectors][:published_at]
@@ -176,7 +170,7 @@ RSpec.describe 'Performance-Optimized Configuration' do
       expect(post_process.first).to eq({ name: 'parse_time' })
     end
 
-    it 'validates that the configuration is complete' do
+    it 'validates that the configuration is complete', :aggregate_failures do
       # Should have all required sections
       expect(config[:channel]).not_to be_nil
       expect(config[:selectors]).not_to be_nil

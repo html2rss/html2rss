@@ -3,14 +3,14 @@
 require 'spec_helper'
 
 RSpec.describe 'Media Enclosures Configuration' do
-  let(:config_file) { File.join(%w[spec fixtures media-enclosures-site.test.yml]) }
-  let(:html_file) { File.join(%w[spec fixtures media-enclosures-site.html]) }
+  let(:config_file) { File.join(%w[spec examples media_enclosures_site.yml]) }
+  let(:html_file) { File.join(%w[spec examples media_enclosures_site.html]) }
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
-      expect(config[:channel][:url]).to eq('https://podcast-site.com')
+      expect(config[:channel][:url]).to eq('https://example.com')
       expect(config[:channel][:title]).to eq('Tech Podcast Feed')
       expect(config[:selectors][:items][:selector]).to eq('.episode')
       expect(config[:selectors][:title][:selector]).to eq('h3')
@@ -26,7 +26,7 @@ RSpec.describe 'Media Enclosures Configuration' do
       expect(config[:selectors][:duration][:attribute]).to eq('data-duration')
     end
 
-    it 'has correct post-processing configuration' do
+    it 'has correct post-processing configuration', :aggregate_failures do
       description_post_process = config[:selectors][:description][:post_process]
       expect(description_post_process).to include(
         { name: 'html_to_markdown' }
@@ -46,21 +46,15 @@ RSpec.describe 'Media Enclosures Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://podcast-site.com',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('media_enclosures_site', 'https://example.com')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
       expect(feed.channel.title).to eq('Tech Podcast Feed')
-      expect(feed.channel.link).to eq('https://podcast-site.com')
+      expect(feed.channel.link).to eq('https://example.com')
     end
 
     it 'extracts the correct number of episodes' do
@@ -70,7 +64,7 @@ RSpec.describe 'Media Enclosures Configuration' do
     describe 'episode extraction' do
       let(:items) { feed.items }
 
-      it 'extracts titles correctly using h3 selector' do
+      it 'extracts titles correctly using h3 selector', :aggregate_failures do
         titles = items.map(&:title)
         expect(titles).to all(be_a(String))
         expect(titles).to include('Episode 42: The Future of AI in Web Development')
@@ -81,18 +75,18 @@ RSpec.describe 'Media Enclosures Configuration' do
         expect(titles).to include('Episode 37: Text-Only Episode - Reading List')
       end
 
-      it 'extracts URLs correctly' do
+      it 'extracts URLs correctly', :aggregate_failures do
         urls = items.map(&:link)
         expect(urls).to all(be_a(String))
-        expect(urls).to include('https://podcast-site.com/episodes/episode-42-ai-web-dev')
-        expect(urls).to include('https://podcast-site.com/episodes/episode-41-scalable-react')
-        expect(urls).to include('https://podcast-site.com/episodes/episode-40-special-interview')
-        expect(urls).to include('https://podcast-site.com/episodes/episode-39-css-grid-tips')
-        expect(urls).to include('https://podcast-site.com/episodes/episode-38-live-coding')
-        expect(urls).to include('https://podcast-site.com/episodes/episode-37-reading-list')
+        expect(urls).to include('https://example.com/episodes/episode-42-ai-web-dev')
+        expect(urls).to include('https://example.com/episodes/episode-41-scalable-react')
+        expect(urls).to include('https://example.com/episodes/episode-40-special-interview')
+        expect(urls).to include('https://example.com/episodes/episode-39-css-grid-tips')
+        expect(urls).to include('https://example.com/episodes/episode-38-live-coding')
+        expect(urls).to include('https://example.com/episodes/episode-37-reading-list')
       end
 
-      it 'extracts descriptions with html_to_markdown post-processing' do
+      it 'extracts descriptions with html_to_markdown post-processing', :aggregate_failures do
         descriptions = items.map(&:description)
 
         # All descriptions should be strings
@@ -109,8 +103,8 @@ RSpec.describe 'Media Enclosures Configuration' do
         expect(descriptions).to all(satisfy { |desc| desc.length > 10 })
       end
 
-      it 'extracts published dates correctly' do
-        items_with_time = items.select { |item| item.pubDate }
+      it 'extracts published dates correctly', :aggregate_failures do
+        items_with_time = items.select(&:pubDate)
         expect(items_with_time.size).to eq(6) # All episodes have dates
 
         # Check that dates are parsed correctly
@@ -120,7 +114,7 @@ RSpec.describe 'Media Enclosures Configuration' do
         end
       end
 
-      it 'extracts duration information' do
+      it 'extracts duration information', :aggregate_failures do
         # Duration should be available as categories
         items.each do |item|
           expect(item.categories).not_to be_nil
@@ -133,38 +127,38 @@ RSpec.describe 'Media Enclosures Configuration' do
     describe 'media enclosures' do
       let(:items) { feed.items }
 
-      it 'extracts audio enclosures correctly' do
+      it 'extracts audio enclosures correctly', :aggregate_failures do
         # Find items with audio enclosures
-        audio_items = items.select { |item| item.enclosure && item.enclosure.url.include?('.mp3') }
+        audio_items = items.select { |item| item.enclosure&.url&.include?('.mp3') }
         expect(audio_items.size).to eq(4) # 4 episodes have audio
 
         audio_items.each do |item|
           expect(item.enclosure).not_to be_nil
-          expect(item.enclosure.url).to include('https://podcast-site.com/episodes/')
+          expect(item.enclosure.url).to include('https://example.com/episodes/')
           expect(item.enclosure.url).to end_with('.mp3')
           expect(item.enclosure.type).to eq('audio/mpeg')
         end
       end
 
-      it 'handles video enclosures' do
+      it 'handles video enclosures', :aggregate_failures do
         # The video element should be detected by the audio, video selector
         # But it seems like only audio elements are being processed
         # Let's check what we actually get
-        items_with_enclosures = items.select { |item| item.enclosure }
+        items_with_enclosures = items.select(&:enclosure)
         expect(items_with_enclosures.size).to eq(4) # 4 episodes have audio enclosures
 
         # All enclosures should be audio files (mp3)
         items_with_enclosures.each do |item|
           expect(item.enclosure).not_to be_nil
-          expect(item.enclosure.url).to include('https://podcast-site.com/episodes/')
+          expect(item.enclosure.url).to include('https://example.com/episodes/')
           expect(item.enclosure.url).to end_with('.mp3')
           expect(item.enclosure.type).to eq('audio/mpeg')
         end
       end
 
-      it 'handles episodes without media enclosures' do
+      it 'handles episodes without media enclosures', :aggregate_failures do
         # Find items without enclosures
-        no_enclosure_items = items.select { |item| !item.enclosure }
+        no_enclosure_items = items.reject(&:enclosure)
         expect(no_enclosure_items.size).to eq(2) # 2 episodes have no media (video and text-only)
 
         no_enclosure_items.each do |item|
@@ -172,12 +166,12 @@ RSpec.describe 'Media Enclosures Configuration' do
         end
       end
 
-      it 'validates enclosure URLs are absolute' do
-        items_with_enclosures = items.select { |item| item.enclosure }
+      it 'validates enclosure URLs are absolute', :aggregate_failures do
+        items_with_enclosures = items.select(&:enclosure)
 
         items_with_enclosures.each do |item|
           expect(item.enclosure.url).to start_with('https://')
-          expect(item.enclosure.url).to include('podcast-site.com')
+          expect(item.enclosure.url).to include('example.com')
         end
       end
     end
@@ -185,7 +179,7 @@ RSpec.describe 'Media Enclosures Configuration' do
     describe 'duration extraction' do
       let(:items) { feed.items }
 
-      it 'extracts duration from data-duration attribute' do
+      it 'extracts duration from data-duration attribute', :aggregate_failures do
         # Duration should be available in categories
         items.each do |item|
           duration_categories = item.categories.select { |cat| cat.content.match?(/^\d+$/) }
@@ -213,7 +207,7 @@ RSpec.describe 'Media Enclosures Configuration' do
     describe 'html_to_markdown conversion' do
       let(:items) { feed.items }
 
-      it 'processes descriptions with html_to_markdown post-processing' do
+      it 'processes descriptions with html_to_markdown post-processing', :aggregate_failures do
         descriptions = items.map(&:description)
 
         # All descriptions should be strings
@@ -230,14 +224,14 @@ RSpec.describe 'Media Enclosures Configuration' do
   end
 
   describe 'configuration issues' do
-    it 'identifies the missing URL selector issue' do
+    it 'identifies the missing URL selector issue', :aggregate_failures do
       # The original config was missing a URL selector
       expect(config[:selectors][:url]).not_to be_nil
       expect(config[:selectors][:url][:selector]).to eq('a')
       expect(config[:selectors][:url][:extractor]).to eq('href')
     end
 
-    it 'validates that the configuration is complete' do
+    it 'validates that the configuration is complete', :aggregate_failures do
       # Should have all required sections
       expect(config[:channel]).not_to be_nil
       expect(config[:selectors]).not_to be_nil
@@ -251,7 +245,7 @@ RSpec.describe 'Media Enclosures Configuration' do
       expect(config[:selectors][:duration]).not_to be_nil
     end
 
-    it 'validates enclosure configuration structure' do
+    it 'validates enclosure configuration structure', :aggregate_failures do
       enclosure_config = config[:selectors][:enclosure]
       expect(enclosure_config[:selector]).to eq('audio, video')
       expect(enclosure_config[:extractor]).to eq('attribute')

@@ -30,6 +30,14 @@ end
 
 require_relative '../lib/html2rss'
 
+# Load custom matchers and helpers
+require_relative 'support/matchers/rss_matchers'
+require_relative 'support/helpers/configuration_helpers'
+require_relative 'support/helpers/example_helpers'
+
+# Load shared examples
+Dir[File.join(__dir__, 'support', 'shared_examples', '**', '*.rb')].each { |f| require f }
+
 Zeitwerk::Loader.eager_load_all # flush all potential loading issues
 
 RSpec.configure do |config|

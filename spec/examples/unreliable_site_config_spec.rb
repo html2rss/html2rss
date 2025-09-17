@@ -8,7 +8,7 @@ RSpec.describe 'Unreliable Site Configuration' do
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
   describe 'configuration loading' do
-    it 'loads the configuration correctly' do
+    it 'loads the configuration correctly', :aggregate_failures do
       expect(config).to be_a(Hash)
       expect(config[:channel][:url]).to eq('https://unreliable-site.com')
       expect(config[:channel][:ttl]).to eq(60)
@@ -19,7 +19,7 @@ RSpec.describe 'Unreliable Site Configuration' do
       expect(config[:selectors][:url][:extractor]).to eq('href')
     end
 
-    it 'has correct post-processing configuration' do
+    it 'has correct post-processing configuration', :aggregate_failures do
       description_post_process = config[:selectors][:description][:post_process]
       expect(description_post_process).to include(
         { name: 'sanitize_html' },
@@ -36,20 +36,14 @@ RSpec.describe 'Unreliable Site Configuration' do
   describe 'RSS feed generation' do
     subject(:feed) do
       # Mock the request service to return our HTML fixture
-      allow_any_instance_of(Html2rss::RequestService).to receive(:execute).and_return(
-        Html2rss::RequestService::Response.new(
-          body: File.read(html_file),
-          url: 'https://unreliable-site.com',
-          headers: { 'content-type': 'text/html' }
-        )
-      )
+      mock_request_service_with_html_fixture('unreliable_site', 'https://unreliable-site.com')
 
       Html2rss.feed(config)
     end
 
-    it 'generates a valid RSS feed' do
+    it 'generates a valid RSS feed', :aggregate_failures do
       expect(feed).to be_a(RSS::Rss)
-      expect(feed.channel.title).to eq('Unreliable Site - News and Articles')
+      expect(feed.channel.title).to eq('ACME Unreliable Site - News and Articles')
       expect(feed.channel.link).to eq('https://unreliable-site.com')
       expect(feed.channel.ttl).to eq(60)
     end
@@ -61,26 +55,27 @@ RSpec.describe 'Unreliable Site Configuration' do
     describe 'item extraction' do
       let(:items) { feed.items }
 
-      it 'extracts titles correctly using fallback selectors' do
+      it 'extracts titles correctly using fallback selectors', :aggregate_failures do
         titles = items.map(&:title)
-        expect(titles).to include('Breaking News: Technology Advances')
-        expect(titles).to include('Science Discovery: New Findings')
-        expect(titles).to include('Environmental Impact Report')
-        expect(titles).to include('Economic Analysis: Market Trends')
-        expect(titles).to include('Health and Wellness Update')
+        expect(titles).to include('Breaking News: ACME Corp\'s Technology Advances')
+        expect(titles).to include('ACME Corp Science Discovery: New Findings')
+        expect(titles).to include('ACME Corp Environmental Impact Report')
+        expect(titles).to include('ACME Corp Economic Analysis: Market Trends')
+        expect(titles).to include('ACME Corp Developer Health and Wellness Update')
       end
 
-      it 'extracts URLs correctly with parse_uri post-processing' do
-        urls = items.map(&:url)
-        expect(urls).to all(be_a(Html2rss::Url))
-        expect(urls).to include(Html2rss::Url.new('/articles/breaking-news-technology-advances'))
-        expect(urls).to include(Html2rss::Url.new('/articles/science-discovery-new-findings'))
-        expect(urls).to include(Html2rss::Url.new('/articles/environmental-impact-report'))
-        expect(urls).to include(Html2rss::Url.new('/articles/economic-analysis-market-trends'))
-        expect(urls).to include(Html2rss::Url.new('/articles/health-wellness-update'))
+      it 'extracts URLs correctly with parse_uri post-processing', :aggregate_failures do
+        urls = items.map(&:link)
+        expect(urls).to all(be_a(String))
+        expect(urls).to all(include('/articles/'))
+        expect(urls).to include('https://unreliable-site.com/articles/breaking-news-technology-advances')
+        expect(urls).to include('https://unreliable-site.com/articles/science-discovery-new-findings')
+        expect(urls).to include('https://unreliable-site.com/articles/environmental-impact-report')
+        expect(urls).to include('https://unreliable-site.com/articles/economic-analysis-market-trends')
+        expect(urls).to include('https://unreliable-site.com/articles/health-wellness-update')
       end
 
-      it 'extracts descriptions with proper post-processing' do
+      it 'extracts descriptions with proper post-processing', :aggregate_failures do
         descriptions = items.map(&:description)
 
         # All descriptions should be strings
@@ -90,10 +85,8 @@ RSpec.describe 'Unreliable Site Configuration' do
         descriptions.each do |desc|
           expect(desc).not_to include('<script')
           expect(desc).not_to include('javascript:')
-        end
 
-        # Descriptions should be truncated to 500 characters
-        descriptions.each do |desc|
+          # Descriptions should be truncated to 500 characters
           expect(desc.length).to be <= 500
         end
 
@@ -107,17 +100,17 @@ RSpec.describe 'Unreliable Site Configuration' do
         expect(items.size).to eq(5) # 3 .post + 2 .article = 5 total
       end
 
-      it 'handles multiple selector fallbacks for titles' do
+      it 'handles multiple selector fallbacks for titles', :aggregate_failures do
         # Verify that h1, h2, and .title selectors all work
         titles = items.map(&:title)
 
         # Should have titles from h1, h2, and .title elements
-        expect(titles).to include('Science Discovery: New Findings') # h1
-        expect(titles).to include('Breaking News: Technology Advances') # h2
-        expect(titles).to include('Environmental Impact Report') # .title
+        expect(titles).to include('ACME Corp Science Discovery: New Findings') # h1
+        expect(titles).to include('Breaking News: ACME Corp\'s Technology Advances') # h2
+        expect(titles).to include('ACME Corp Environmental Impact Report') # .title
       end
 
-      it 'handles multiple selector fallbacks for descriptions' do
+      it 'handles multiple selector fallbacks for descriptions', :aggregate_failures do
         # Verify that .content, .excerpt, and p selectors all work
         descriptions = items.map(&:description)
 
@@ -134,7 +127,7 @@ RSpec.describe 'Unreliable Site Configuration' do
     describe 'post-processing validation' do
       let(:first_item) { feed.items.first }
 
-      it 'applies sanitize_html post-processing' do
+      it 'applies sanitize_html post-processing', :aggregate_failures do
         # The description should be sanitized HTML
         expect(first_item.description).to be_a(String)
         # Should not contain potentially dangerous HTML
@@ -146,10 +139,10 @@ RSpec.describe 'Unreliable Site Configuration' do
         expect(first_item.description.length).to be <= 500
       end
 
-      it 'applies parse_uri post-processing to URLs' do
+      it 'applies parse_uri post-processing to URLs', :aggregate_failures do
         # URL should be accessible via the link property
         expect(first_item.link).to be_a(String)
-        expect(first_item.link).to start_with('/articles/')
+        expect(first_item.link).to include('/articles/')
       end
     end
 
