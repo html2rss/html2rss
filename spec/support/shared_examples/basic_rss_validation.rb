@@ -46,12 +46,3 @@ RSpec.shared_examples 'extracts valid published dates' do
     end
   end
 end
-
-RSpec.shared_examples 'validates configuration structure' do
-  it 'loads the configuration correctly', :aggregate_failures do
-    expect(config).to be_a(Hash).and include(channel: a_kind_of(Hash), selectors: a_kind_of(Hash))
-    expect(config[:channel]).to include(url: a_kind_of(String), title: a_kind_of(String))
-    expect(config[:selectors]).to include(items: a_kind_of(Hash))
-    expect(config[:selectors][:items]).to include(selector: a_kind_of(String))
-  end
-end

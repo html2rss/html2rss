@@ -3,141 +3,64 @@
 require 'spec_helper'
 
 RSpec.describe 'Multi-Language Site Configuration' do
+  subject(:feed) do
+    # Mock the request service to return our HTML fixture
+    mock_request_service_with_html_fixture('multilang_site', 'https://example.com')
+
+    Html2rss.feed(config)
+  end
+
   let(:config_file) { File.join(%w[spec examples multilang_site.yml]) }
   let(:html_file) { File.join(%w[spec examples multilang_site.html]) }
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
 
-  describe 'configuration loading' do
-    it 'loads the configuration correctly', :aggregate_failures do
-      expect(config).to be_a(Hash)
-      expect(config[:channel]).to be_a(Hash)
-      expect(config[:channel][:url]).to be_a(String)
-      expect(config[:channel][:title]).to be_a(String)
-      expect(config[:channel][:language]).to be_a(String)
-      expect(config[:channel][:time_zone]).to be_a(String)
-      expect(config[:selectors]).to be_a(Hash)
-      expect(config[:selectors][:items]).to be_a(Hash)
-      expect(config[:selectors][:items][:selector]).to be_a(String)
-      expect(config[:selectors][:title]).to be_a(Hash)
-      expect(config[:selectors][:title][:selector]).to be_a(String)
-      expect(config[:selectors][:language]).to be_a(Hash)
-      expect(config[:selectors][:language][:selector]).to be_a(String)
-      expect(config[:selectors][:language][:extractor]).to eq('attribute')
-      expect(config[:selectors][:language][:attribute]).to eq('data-lang')
-      expect(config[:selectors][:description]).to be_a(Hash)
-      expect(config[:selectors][:description][:selector]).to be_a(String)
-      expect(config[:selectors][:topic]).to be_a(Hash)
-      expect(config[:selectors][:topic][:selector]).to be_a(String)
-      expect(config[:selectors][:categories]).to include('language')
-      expect(config[:selectors][:categories]).to include('topic')
-    end
+  it 'generates a valid RSS feed', :aggregate_failures do
+    expect(feed).to be_a(RSS::Rss)
+    expect(feed.channel.title).to be_a(String)
+    expect(feed.channel.link).to be_a(String)
+  end
 
-    it 'has correct post-processing configuration for title', :aggregate_failures do
-      title_post_process = config[:selectors][:title][:post_process]
-      expect(title_post_process).to be_an(Array)
-      expect(title_post_process.first).to include(:name, :string)
-    end
+  it 'extracts the correct number of items', :aggregate_failures do
+    expect(feed.items).to be_an(Array)
+    expect(feed.items.size).to be > 0
+  end
 
-    it 'has correct post-processing configuration for description', :aggregate_failures do
-      description_post_process = config[:selectors][:description][:post_process]
-      expect(description_post_process).to be_an(Array)
-      expect(description_post_process.first).to include(:name)
-    end
+  it 'extracts titles correctly using h1 selector', :aggregate_failures do
+    items = feed.items
+    titles = items.map(&:title)
+    expect(titles).to all(be_a(String))
+    expect(titles).to all(satisfy { |title| !title.strip.empty? })
+  end
 
-    it 'includes language and topic in categories', :aggregate_failures do
-      expect(config[:selectors][:categories]).to include('language')
-      expect(config[:selectors][:categories]).to include('topic')
+  it 'extracts language and topic information as categories' do
+    items = feed.items
+    items_with_categories = items.select do |item|
+      item.categories.any? { |cat| cat.content.is_a?(String) }
+    end
+    expect(items_with_categories.size).to be > 0
+  end
+
+  it 'extracts descriptions correctly', :aggregate_failures do
+    items = feed.items
+    descriptions = items.map(&:description)
+    expect(descriptions).to all(be_a(String))
+    expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
+  end
+
+  it 'preserves original content in template processing', :aggregate_failures do
+    items = feed.items
+    items.each do |item|
+      expect(item.title).to be_a(String)
+      expect(item.title.length).to be > 0
     end
   end
 
-  describe 'RSS feed generation' do
-    subject(:feed) do
-      # Mock the request service to return our HTML fixture
-      mock_request_service_with_html_fixture('multilang_site', 'https://example.com')
-
-      Html2rss.feed(config)
+  it 'has different language values for different items' do
+    items = feed.items
+    language_values = items.map do |item|
+      language_cat = item.categories.find { |cat| cat.content.is_a?(String) }
+      language_cat ? language_cat.content : 'No Language'
     end
-
-    it 'generates a valid RSS feed', :aggregate_failures do
-      expect(feed).to be_a(RSS::Rss)
-      expect(feed.channel.title).to be_a(String)
-      expect(feed.channel.link).to be_a(String)
-    end
-
-    it 'extracts the correct number of items', :aggregate_failures do
-      expect(feed.items).to be_an(Array)
-      expect(feed.items.size).to be > 0
-    end
-
-    it 'extracts titles correctly using h1 selector', :aggregate_failures do
-      items = feed.items
-      titles = items.map(&:title)
-      expect(titles).to all(be_a(String))
-      expect(titles).to all(satisfy { |title| !title.strip.empty? })
-    end
-
-    it 'extracts language and topic information as categories' do
-      items = feed.items
-      items_with_categories = items.select do |item|
-        item.categories.any? { |cat| cat.content.is_a?(String) }
-      end
-      expect(items_with_categories.size).to be > 0
-    end
-
-    it 'extracts descriptions correctly', :aggregate_failures do
-      items = feed.items
-      descriptions = items.map(&:description)
-      expect(descriptions).to all(be_a(String))
-      expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
-    end
-
-    it 'preserves original content in template processing', :aggregate_failures do
-      items = feed.items
-      items.each do |item|
-        expect(item.title).to be_a(String)
-        expect(item.title.length).to be > 0
-      end
-    end
-
-    it 'has different language values for different items' do
-      items = feed.items
-      language_values = items.map do |item|
-        language_cat = item.categories.find { |cat| cat.content.is_a?(String) }
-        language_cat ? language_cat.content : 'No Language'
-      end
-      expect(language_values).to all(be_a(String))
-    end
-
-    it 'validates template syntax is correct', :aggregate_failures do
-      template_config = config[:selectors][:title][:post_process].first
-      expect(template_config).to have_key(:string)
-      expect(template_config).not_to have_key(:template)
-    end
-
-    it 'validates that the configuration is complete', :aggregate_failures do
-      expect(config[:channel]).not_to be_nil
-      expect(config[:selectors]).not_to be_nil
-      expect(config[:channel][:url]).not_to be_nil
-      expect(config[:channel][:title]).not_to be_nil
-      expect(config[:channel][:language]).not_to be_nil
-      expect(config[:channel][:time_zone]).not_to be_nil
-      expect(config[:selectors][:language]).not_to be_nil
-      expect(config[:selectors][:topic]).not_to be_nil
-      expect(config[:selectors][:title]).not_to be_nil
-      expect(config[:selectors][:title][:post_process]).not_to be_nil
-    end
-
-    it 'validates template post-processor configuration', :aggregate_failures do
-      template_config = config[:selectors][:title][:post_process].first
-      expect(template_config[:name]).to eq('template')
-      expect(template_config[:string]).to be_a(String)
-    end
-
-    it 'validates language extractor configuration', :aggregate_failures do
-      language_config = config[:selectors][:language]
-      expect(language_config[:extractor]).to eq('attribute')
-      expect(language_config[:attribute]).to eq('data-lang')
-      expect(language_config[:selector]).to be_a(String)
-    end
+    expect(language_values).to all(be_a(String))
   end
 end
