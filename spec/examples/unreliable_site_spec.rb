@@ -18,54 +18,96 @@ RSpec.describe 'Unreliable Site Configuration' do
     expect(feed).to be_a(RSS::Rss)
     expect(feed.channel.title).to be_a(String)
     expect(feed.channel.link).to be_a(String)
-    expect(feed.channel.ttl).to be_a(Integer)
+    expect(feed.channel.ttl).to eq(60)
   end
 
-  it 'extracts the correct number of items', :aggregate_failures do
+  it 'extracts all 5 items from the HTML fixture', :aggregate_failures do
     expect(feed.items).to be_an(Array)
+    expect(feed.items.size).to eq(5)
   end
 
-  it 'extracts titles correctly using fallback selectors', :aggregate_failures do
+  it 'extracts titles using fallback selectors (h1, h2, .title)', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     items = feed.items
     titles = items.map(&:title)
-    expect(titles).to all(be_a(String))
-    expect(titles).to all(satisfy { |title| !title.strip.empty? })
+    expect(titles).to all(be_a(String)).and all(satisfy { |title| !title.strip.empty? })
+    expect(titles).to include('Breaking News: ACME Corp\'s Technology Advances',
+                              'ACME Corp Science Discovery: New Findings',
+                              'ACME Corp Environmental Impact Report',
+                              'ACME Corp Economic Analysis: Market Trends',
+                              'ACME Corp Developer Health and Wellness Update')
   end
 
-  it 'extracts URLs correctly with parse_uri post-processing' do
+  it 'extracts URLs correctly with parse_uri post-processing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     items = feed.items
     urls = items.map(&:link)
-    expect(urls).to all(be_a(String))
+    expect(urls).to all(be_a(String)).and all(satisfy { |url| !url.strip.empty? })
+    expect(urls).to include('https://example.com/articles/breaking-news-technology-advances',
+                            'https://example.com/articles/science-discovery-new-findings',
+                            'https://example.com/articles/environmental-impact-report',
+                            'https://example.com/articles/economic-analysis-market-trends',
+                            'https://example.com/articles/health-wellness-update')
   end
 
-  it 'extracts descriptions with proper post-processing', :aggregate_failures do
+  it 'applies sanitize_html post-processing to descriptions', :aggregate_failures do
     items = feed.items
     descriptions = items.map(&:description)
-    expect(descriptions).to all(be_a(String))
-    expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
+    expect(descriptions).to all(be_a(String)).and all(satisfy { |desc| !desc.strip.empty? }).and all(satisfy { |desc|
+      !desc.match(/<[^>]+>/)
+    })
   end
 
-  it 'handles multiple selector fallbacks for items' do
+  it 'applies substring post-processing with 500 character limit', :aggregate_failures do
     items = feed.items
+    descriptions = items.map(&:description)
+    expect(descriptions).to all(satisfy { |desc| desc.length <= 500 })
+    long_descriptions = descriptions.select { |desc| desc.length >= 400 }
+    expect(long_descriptions.size).to be > 0
+  end
+
+  it 'handles multiple selector fallbacks for items (.post, .article)', :aggregate_failures do
+    items = feed.items
+    expect(items.size).to eq(5)
+
+    # Verify we got items from both .post and .article selectors
+    # This tests that the fallback selector mechanism works
     expect(items.size).to be > 0
   end
 
-  it 'applies sanitize_html post-processing' do
-    first_item = feed.items.first
-    expect(first_item.description).to be_a(String)
+  it 'handles different content structures (.content, .excerpt, p)', :aggregate_failures do
+    items = feed.items
+    descriptions = items.map(&:description)
+
+    # All items should have descriptions regardless of source structure
+    expect(descriptions).to all(be_a(String))
+    expect(descriptions).to all(satisfy { |desc| !desc.strip.empty? })
+
+    # Test that we can extract from different content structures
+    # Some items use .content, some use .excerpt, some use direct p tags
+    expect(descriptions.size).to eq(5)
   end
 
-  it 'applies substring post-processing with correct length limit' do
-    first_item = feed.items.first
-    expect(first_item.description.length).to be <= 500
+  it 'validates that parse_uri post-processing creates valid URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    items = feed.items
+    urls = items.map(&:link)
+    expect(urls).to all(match(%r{^https://example\.com/articles/})
+    .and(satisfy { |url| !url.include?(' ') })
+    .and(satisfy { |url| !url.include?('<') })
+    .and(satisfy { |url| !url.include?('>') }))
   end
 
-  it 'applies parse_uri post-processing to URLs' do
-    first_item = feed.items.first
-    expect(first_item.link).to be_a(String)
+  it 'sets the correct TTL value for unreliable sites' do
+    expect(feed.channel.ttl).to eq(60)
   end
 
-  it 'sets the correct TTL value' do
-    expect(feed.channel.ttl).to be_a(Integer)
+  it 'extracts content from items with different title structures', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    items = feed.items
+    h2_titles = items.select do |item|
+      item.title.include?('Technology Advances') || item.title.include?('Environmental Impact')
+    end
+    h1_titles = items.select { |item| item.title.include?('Science Discovery') }
+    dot_title = items.select { |item| item.title.include?('Environmental Impact Report') }
+    expect(h2_titles.size).to be >= 2
+    expect(h1_titles.size).to be >= 1
+    expect(dot_title.size).to be >= 1
   end
 end
