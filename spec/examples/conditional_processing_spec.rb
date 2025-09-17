@@ -25,6 +25,6 @@ RSpec.describe 'Conditional Processing Configuration' do
     items_with_status = items.select do |item|
       item.categories.any? { |cat| cat.content.is_a?(String) }
     end
-    expect(items_with_status.size).to be.positive?
+    expect(items_with_status.size).to be > 0
   end
 end
