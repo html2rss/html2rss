@@ -20,7 +20,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
   it_behaves_like 'extracts valid item content'
   it_behaves_like 'extracts valid published dates'
 
-  it 'handles dynamic content loading', :aggregate_failures do
+  it 'handles dynamic content loading', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     expect(items.size).to be > 0
 
     items.each do |item|

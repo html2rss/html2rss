@@ -55,7 +55,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
     end
   end
 
-  it 'has different language values for different items' do
+  it 'has different language values for different items' do # rubocop:disable RSpec/ExampleLength
     items = feed.items
     language_values = items.map do |item|
       language_cat = item.categories.find { |cat| cat.content.is_a?(String) }

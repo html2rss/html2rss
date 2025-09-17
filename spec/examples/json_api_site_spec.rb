@@ -25,7 +25,7 @@ RSpec.describe 'JSON API Site Configuration' do
     expect(items_with_categories.size).to be > 0
   end
 
-  it 'handles complex JSON structure', :aggregate_failures do
+  it 'handles complex JSON structure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     expect(items.size).to be > 0
 
     items.each do |item|
@@ -35,7 +35,7 @@ RSpec.describe 'JSON API Site Configuration' do
     end
   end
 
-  it 'handles items with and without audio files', :aggregate_failures do
+  it 'handles items with and without audio files', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     items_with_enclosures = items.select(&:enclosure)
     expect(items_with_enclosures.size).to be >= 0
 
