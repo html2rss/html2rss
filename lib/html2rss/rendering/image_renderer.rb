@@ -24,7 +24,7 @@ module Html2rss
       private
 
       def escaped_title
-        CGI.escapeHTML(@title)
+        CGI.escapeHTML(@title.to_s)
       end
     end
   end
