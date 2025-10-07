@@ -3,31 +3,36 @@
 require 'set'
 
 module Html2rss
-  module ArticlePipeline
+  class ArticlePipeline
     module Processors
       ##
       # Deduplicates a list of articles while preserving their original order.
       #
-      # The processor uses each article's guid when available to determine
-      # uniqueness and falls back to a composite of id and URL. When neither is
-      # present, it defaults to the article's hash so the original object is
-      # retained.
+      # The processor prefers each article's URL (combined with its ID when
+      # available) to determine uniqueness. When no URL is present, it falls
+      # back to the article ID, then to the GUID enriched with title and
+      # description metadata. If none of these identifiers are available it
+      # defaults to the article object's hash to preserve the original entry.
       class Deduplicator
         ##
-        # @param articles [Array<Html2rss::RssBuilder::Article>]
-        def initialize(articles)
-          @articles = Array(articles)
+        # @param articles [Array<Html2rss::RssBuilder::Article>, nil]
+        def initialize(articles = nil)
+          @articles = articles
         end
 
         ##
         # Returns the list of unique articles, preserving the order of the
         # original collection and keeping the first occurrence of a duplicate.
         #
+        # @param articles [Array<Html2rss::RssBuilder::Article>]
         # @return [Array<Html2rss::RssBuilder::Article>]
-        def call
+        def call(articles = nil)
+          collection = articles || @articles
+          raise ArgumentError, 'articles must be provided' unless collection
+
           seen = Set.new
 
-          articles.each_with_object([]) do |article, deduplicated|
+          collection.each_with_object([]) do |article, deduplicated|
             fingerprint = fingerprint_for(article)
             next if seen.include?(fingerprint)
 
@@ -41,13 +46,22 @@ module Html2rss
         attr_reader :articles
 
         def fingerprint_for(article)
-          return article.guid if article.respond_to?(:guid) && article.guid
+          if article.respond_to?(:url) && (url = article.url)
+            components = [url.to_s]
+            components << article.id if article.respond_to?(:id) && article.id
 
-          parts = []
-          parts << article.id if article.respond_to?(:id) && article.id
-          parts << article.url.to_s if article.respond_to?(:url) && article.url
+            return components.join('#!/')
+          end
 
-          return parts.join('#!/') unless parts.empty?
+          return article.id if article.respond_to?(:id) && article.id
+
+          if article.respond_to?(:guid) && article.guid
+            parts = [article.guid]
+            parts << article.title if article.respond_to?(:title) && article.title
+            parts << article.description if article.respond_to?(:description) && article.description
+
+            return parts.compact.join('#!/')
+          end
 
           article.hash
         end
