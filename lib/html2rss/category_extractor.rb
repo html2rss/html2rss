@@ -38,9 +38,7 @@ module Html2rss
       Set.new.tap do |categories|
         article_tag.css('*').each do |element|
           # Extract text categories from elements with category-related class names
-          if element['class']&.match?(CATEGORY_ATTR_PATTERN)
-            categories.merge(extract_text_categories(element))
-          end
+          categories.merge(extract_text_categories(element)) if element['class']&.match?(CATEGORY_ATTR_PATTERN)
 
           # Extract data categories from all elements
           categories.merge(extract_element_data_categories(element))
@@ -70,21 +68,15 @@ module Html2rss
     # @param element [Nokogiri::XML::Element] The element to process
     # @return [Set<String>] Set of category strings
     def self.extract_text_categories(element)
-      Set.new.tap do |categories|
-        text_nodes = element.css('a')
-
-        if text_nodes.any?
-          text_nodes.each do |node|
-            content = node.text&.strip
-            categories.add(content) if content && !content.empty?
-          end
-        else
-          element.text.to_s.split(/\n+/).each do |content|
-            content = content.strip
-            categories.add(content) unless content.empty?
-          end
-        end
+      anchor_values = element.css('a').filter_map do |node|
+        HtmlExtractor.extract_visible_text(node)
       end
+      return Set.new(anchor_values) if anchor_values.any?
+
+      text = HtmlExtractor.extract_visible_text(element)
+      return Set.new unless text
+
+      Set.new(text.split(/\n+/).map(&:strip).reject(&:empty?))
     end
   end
 end

@@ -210,23 +210,33 @@ module Html2rss
     end
 
     def extract_category_values(selector_name, item)
-      selector_name = selector_name.to_sym
-      selector_config = @selectors[selector_name]
-      return [] unless selector_config
+      selector_key = selector_name.to_sym
+      config = @selectors[selector_key]
+      return [] unless config
 
-      nodes = Extractors.element(item, selector_config[:selector])
+      nodes = Extractors.element(item, config[:selector])
+      return Array(select_regular(selector_key, item)) unless node_set_with_multiple_elements?(nodes)
 
-      return Array(select_regular(selector_name, item)) unless node_set_with_multiple_elements?(nodes)
+      Array(nodes).flat_map { |node| extract_categories_from_node(node, config, item) }
+    end
 
-      nodes.each_with_object([]) do |node, categories|
-        value = Extractors.get(category_node_options(selector_config), node)
-        value = apply_post_process_steps(item, value, selector_config[:post_process])
+    def extract_categories_from_node(node, config, item)
+      values = Extractors.get(category_node_options(config), node)
+      values = apply_post_process_steps(item, values, config[:post_process])
 
-        Array(value).each do |category|
-          category_string = category.to_s.strip
-          categories << category_string unless category_string.empty?
-        end
-      end
+      Array(values).filter_map { |category| extract_category_text(category) }
+    end
+
+    def extract_category_text(category)
+      text = case category
+             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
+               HtmlExtractor.extract_visible_text(category)
+             else
+               category&.to_s
+             end
+
+      stripped = text&.strip
+      stripped unless stripped.nil? || stripped.empty?
     end
 
     def node_set_with_multiple_elements?(nodes)
