@@ -64,10 +64,13 @@ module Html2rss
       articles.concat AutoSource.new(response, auto_source).articles
     end
 
-    # Step 4: Build the RSS feed
+    # Step 4: Deduplicate aggregated articles
+    unique_articles = Html2rss::ArticlePipeline::Processors::Deduplicator.new(articles).call
+
+    # Step 5: Build the RSS feed
     channel = RssBuilder::Channel.new(response, overrides: config.channel)
 
-    RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
+    RssBuilder.new(channel:, articles: unique_articles, stylesheets: config.stylesheets).call
   end
 
   ##
