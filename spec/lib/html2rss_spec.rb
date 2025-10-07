@@ -41,7 +41,9 @@ RSpec.describe Html2rss do
 
       it 'returns a RSS::Rss instance & sets the request headers', :aggregate_failures do
         expect(feed_return).to be_a(RSS::Rss)
-        expect(Faraday).to have_received(:new).with(hash_including(headers: config[:headers]))
+        expect(Faraday).to have_received(:new).with(
+          hash_including(headers: hash_including(config[:headers].transform_keys(&:to_s)))
+        )
       end
 
       describe 'feed.channel' do

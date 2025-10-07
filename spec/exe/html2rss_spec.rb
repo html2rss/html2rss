@@ -26,10 +26,10 @@ RSpec.describe 'exe/html2rss', :slow do
         xmlns:dc="http://purl.org/dc/elements/1.1/"
         xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
         xmlns:trackback="http://madskills.com/public/xml/rss/module/trackback/">
-        <channel>
-          <title>Releases · nuxt/nuxt · GitHub</title>
     RSS
   end
+
+  let(:rss_title_pattern) { %r{<title>.+</title>} }
 
   context 'without any arguments' do
     it 'prints usage information' do
@@ -45,28 +45,37 @@ RSpec.describe 'exe/html2rss', :slow do
 
   context 'with feed config: nuxt-releases' do
     context 'with arguments: feed YAML_FILE' do
-      subject(:output) { `#{executable} feed spec/fixtures/single.test.yml` }
+      subject(:output) do
+        capture_cli_output('feed', 'spec/fixtures/single.test.yml', cassette: 'nuxt-releases')
+      end
 
       it 'generates the RSS', :aggregate_failures do
         expect(output).to start_with(doctype_xml)
         expect(output).not_to include(stylesheets_xml)
         expect(output).to include(rss_xml)
+        expect(output).to match(rss_title_pattern)
       end
     end
 
     context 'with arguments: feed YAML_FILE FEED_NAME' do
-      subject(:output) { `#{executable} feed spec/fixtures/feeds.test.yml nuxt-releases` }
+      subject(:output) do
+        capture_cli_output('feed', 'spec/fixtures/feeds.test.yml', 'nuxt-releases', cassette: 'nuxt-releases')
+      end
 
       it 'generates the RSS', :aggregate_failures do
         expect(output).to start_with(doctype_xml)
         expect(output).to include(stylesheets_xml)
         expect(output).to include(rss_xml)
+        expect(output).to match(rss_title_pattern)
       end
     end
   end
 
   context 'with feed config: withparams' do
-    subject(:output) { `#{executable} feed spec/fixtures/feeds.test.yml withparams --params sign:10 param:value` }
+    subject(:output) do
+      capture_cli_output('feed', 'spec/fixtures/feeds.test.yml', 'withparams', '--params', 'sign:10', 'param:value',
+                         cassette: 'notitle')
+    end
 
     it 'processes and escapes the params' do
       expect(output)

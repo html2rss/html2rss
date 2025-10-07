@@ -27,12 +27,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
 
     let(:grouped_expected_articles) do
-      # rubocop:disable Metrics/LineLength
+      # rubocop:disable Layout/LineLength
       [
         { title: 'Brittney Griner: What I Endured in Russia', url: 'https://page.com/6972085/brittney-griner-book-coming-home/', image: 'https://api.PAGE.com/wp-content/uploads/2024/04/brittney-griner-basketball-russia.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: %(Chris Coduto—Getty Images Brittney Griner: What I Endured in Russia 17 MIN READ May 3, 2024 • 8:00 AM EDT "Prison is more than a place. It’s also a mindset," Brittney Griner writes in an excerpt from her book\n about surviving imprisonment in Russia.), id: '/6972085/brittney-griner-book-coming-home/' },
         { title: 'Driver Dies After Crashing Into White House Security Barrier', url: 'https://page.com/6974836/white-house-car-crash-driver-dies-security-barrier/', image: 'https://api.PAGE.com/wp-content/uploads/2024/05/AP24126237101577.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: 'Driver Dies After Crashing Into White House Security Barrier 1 MIN READ May 5, 2024 • 7:46 AM EDT', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
       ].group_by { |article| article[:id] }
-      # rubocop:enable Metrics/LineLength
+      # rubocop:enable Layout/LineLength
     end
 
     it 'yields and includes all expected articles', :aggregate_failures, :slow do # rubocop:disable RSpec/ExampleLength
