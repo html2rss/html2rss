@@ -45,40 +45,13 @@ module Html2rss
   #
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed(config)
-    # 1. Normalize the configuration so collaborators receive validated input.
-    config = Config.from_hash(config, params: config[:params])
+  def self.feed(raw_config)
+    config = Config.from_hash(raw_config, params: raw_config[:params])
+    response = perform_request(config)
+    articles = collect_articles(response, config)
+    processed_articles = Articles::Deduplicator.new(articles).call
 
-    # 2. Perform the HTTP request with the configured strategy and options.
-    response = RequestService.execute(
-      RequestService::Context.new(
-        url: config.url,
-        headers: config.headers,
-        options: config.request_options
-      ),
-      strategy: config.strategy
-    )
-
-    # 3. Extract articles using selectors and optional auto-source discovery.
-    articles = []
-
-    if (selectors = config.selectors)
-      selector_service = Selectors.new(response, selectors:, time_zone: config.time_zone)
-      articles.concat(selector_service.articles)
-    end
-
-    if (auto_source = config.auto_source)
-      auto_source_service = AutoSource.new(response, auto_source)
-      articles.concat(auto_source_service.articles)
-    end
-
-    # 4. Run the collected articles through the article pipeline for processing.
-    processed_articles = ArticlePipeline.new(articles).call
-
-    # 5. Build the RSS channel and final feed output.
-    channel = RssBuilder::Channel.new(response, overrides: config.channel)
-
-    RssBuilder.new(channel:, articles: processed_articles, stylesheets: config.stylesheets).call
+    build_feed(response, config, processed_articles)
   end
 
   ##
@@ -97,6 +70,41 @@ module Html2rss
     config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
 
     feed(config)
+  end
+
+  class << self
+    private
+
+    def perform_request(config)
+      RequestService.execute(
+        RequestService::Context.new(
+          url: config.url,
+          headers: config.headers,
+          options: config.request_options
+        ),
+        strategy: config.strategy
+      )
+    end
+
+    def collect_articles(response, config)
+      [].tap do |articles|
+        if (selectors = config.selectors)
+          selector_service = Selectors.new(response, selectors:, time_zone: config.time_zone)
+          articles.concat(selector_service.articles)
+        end
+
+        next unless (auto_source = config.auto_source)
+
+        auto_source_service = AutoSource.new(response, auto_source)
+        articles.concat(auto_source_service.articles)
+      end
+    end
+
+    def build_feed(response, config, articles)
+      channel = RssBuilder::Channel.new(response, overrides: config.channel)
+
+      RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
+    end
   end
 end
 
