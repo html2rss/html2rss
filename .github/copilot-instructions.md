@@ -41,6 +41,10 @@ Keep logic anchored to the correct stage. For example, default headers or strate
 
 - Use RSpec with clear `describe` and `context` blocks.
 - Express setup with `let`.
+- Do not define methods within RSpec blocks. If unavoidable, consider creating a shared example.
+- Never use `send(:method_name)`
+- Use of [rspec-matchers](https://rspec.info/features/3-13/rspec-expectations/built-in-matchers/) properly.
+- Multiple Examples shall be tagged with `:aggregate_failures`.
 - Prefer `expect(...).to eq(...)` and `expect(...).to have_received(...)` expectations.
 - Stub with `allow(...).to receive(...).and_return(...)`.
 - Share examples for common extractor or post-processor behaviours.

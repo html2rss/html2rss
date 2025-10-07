@@ -24,10 +24,12 @@ module Html2rss
         URL_KEYS = %w[url link href permalink slug path canonicalUrl shortUrl].freeze
         DESCRIPTION_KEYS = %w[description summary excerpt dek subheading].freeze
         IMAGE_KEYS = %w[image imageUrl thumbnailUrl thumbnail src featuredImage coverImage heroImage].freeze
-        PUBLISHED_AT_KEYS = %w[published_at publishedAt datePublished date publicationDate pubDate updatedAt updated_at createdAt created_at].freeze
+        PUBLISHED_AT_KEYS = %w[published_at publishedAt datePublished date publicationDate pubDate updatedAt updated_at
+                               createdAt created_at].freeze
         CATEGORY_KEYS = %w[categories tags section sections topic topics channel].freeze
         ID_KEYS = %w[id guid uuid slug key].freeze
 
+        # Scans DOM nodes for JSON payloads containing article data.
         module DocumentScanner
           module_function
 
@@ -74,6 +76,7 @@ module Html2rss
             text[start_index..stop_index] if stop_index
           end
 
+          # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
           def scan_for_json_end(text, start_index)
             stack = []
             in_string = false
@@ -108,6 +111,7 @@ module Html2rss
 
             nil
           end
+          # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
           def parse_json(payload)
             return unless payload
@@ -120,6 +124,7 @@ module Html2rss
         end
         private_constant :DocumentScanner
 
+        # Retrieves values from heterogeneous objects by probing multiple keys.
         module ValueFinder
           module_function
 
@@ -158,6 +163,7 @@ module Html2rss
         end
         private_constant :ValueFinder
 
+        # Identifies arrays that look like collections of article hashes.
         module CandidateDetector
           module_function
 
@@ -187,28 +193,33 @@ module Html2rss
         end
         private_constant :CandidateDetector
 
+        # Shapes raw entries into the structure required downstream.
         module ArticleNormalizer
           module_function
 
+          # rubocop:disable Metrics/MethodLength
           def normalise(entry, base_url:)
             return unless entry.is_a?(Hash)
 
             title = string(ValueFinder.fetch(entry, TITLE_KEYS))
             description = string(ValueFinder.fetch(entry, DESCRIPTION_KEYS))
-            article_url = resolve_link(entry, keys: URL_KEYS, base_url: base_url, log_key: 'JsonState: invalid URL encountered')
+            article_url = resolve_link(entry, keys: URL_KEYS, base_url:,
+                                              log_key: 'JsonState: invalid URL encountered')
             return unless article_url
             return if title.nil? && description.nil?
 
             {
-              title: title,
-              description: description,
+              title:,
+              description:,
               url: article_url,
-              image: resolve_link(entry, keys: IMAGE_KEYS, base_url: base_url, log_key: 'JsonState: invalid image URL encountered'),
+              image: resolve_link(entry, keys: IMAGE_KEYS, base_url:,
+                                         log_key: 'JsonState: invalid image URL encountered'),
               published_at: string(ValueFinder.fetch(entry, PUBLISHED_AT_KEYS)),
               categories: categories(entry),
               id: identifier(entry, article_url)
             }.compact
           end
+          # rubocop:enable Metrics/MethodLength
 
           def string(value)
             trimmed = value.to_s.strip
@@ -227,6 +238,7 @@ module Html2rss
             nil
           end
 
+          # rubocop:disable Metrics/MethodLength
           def categories(entry)
             raw = ValueFinder.fetch(entry, CATEGORY_KEYS)
             names = case raw
@@ -248,6 +260,7 @@ module Html2rss
             result.uniq!
             result unless result.empty?
           end
+          # rubocop:enable Metrics/MethodLength
 
           def identifier(entry, article_url)
             value = ValueFinder.fetch(entry, ID_KEYS)
@@ -302,7 +315,7 @@ module Html2rss
         def handle_array(array, &block)
           if CandidateDetector.array_of_articles?(array)
             array.each do |entry|
-              block.call(ArticleNormalizer.normalise(entry, base_url: url))
+              yield(ArticleNormalizer.normalise(entry, base_url: url))
             end
           else
             array.each { discover_articles(_1, &block) if traversable?(_1) }
