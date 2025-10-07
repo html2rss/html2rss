@@ -11,7 +11,7 @@ selectors:
     selector: ".release-header .text-normal a"
     post_process:
       - name: "template"
-        string: "%<self>s (%<author>)"
+        string: "%<self>s (%<author>s)"
   author:
     selector: ".avatar"
     extractor: "attribute"

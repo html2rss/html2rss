@@ -202,8 +202,46 @@ RSpec.describe Html2rss::Config do
         end
 
         it "moves deprecated #{key} to top level" do
-          expect(instance.public_send(key)).to eq(config.dig(:channel, key))
+          value = config.dig(:channel, key)
+          matcher = key == :headers ? include(value.transform_keys(&:to_s)) : eq(value)
+
+          expect(instance.public_send(key)).to matcher
         end
+      end
+    end
+  end
+
+  describe '#headers' do
+    subject(:headers) { described_class.new(config).headers }
+
+    let(:config) do
+      {
+        channel: { url: 'https://example.com/articles', language: channel_language },
+        selectors: { items: { selector: '.item' } },
+        headers: custom_headers
+      }
+    end
+
+    let(:custom_headers) { { 'accept' => 'application/json', 'x-custom-id' => '123' } }
+    let(:channel_language) { 'fr' }
+    let(:expected_headers) do
+      {
+        'Host' => 'example.com',
+        'Accept-Language' => 'fr',
+        'X-Custom-Id' => '123',
+        'Accept' => "application/json,#{Html2rss::Config::RequestHeaders::DEFAULT_ACCEPT}"
+      }
+    end
+
+    it 'normalizes caller provided headers and adds defaults' do
+      expect(headers).to include(expected_headers)
+    end
+
+    context 'when the channel language is missing' do
+      let(:channel_language) { nil }
+
+      it 'falls back to en-US for Accept-Language' do
+        expect(headers).to include('Accept-Language' => 'en-US,en;q=0.9')
       end
     end
   end

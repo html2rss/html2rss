@@ -63,7 +63,7 @@ module Html2rss
         {
           strategy: RequestService.default_strategy_name,
           channel: { time_zone: 'UTC' },
-          headers: {},
+          headers: RequestHeaders.browser_defaults,
           stylesheets: []
         }
       end
@@ -76,19 +76,22 @@ module Html2rss
     #
     # @param config [Hash<Symbol, Object>] the configuration hash.
     # @raise [InvalidConfig] if the configuration fails validation.
-    def initialize(config) # rubocop:disable Metrics/AbcSize
-      config = config.dup if config.frozen?
+    def initialize(config)
+      prepared_config = prepare_config(config)
 
-      config = handle_deprecated_channel_attributes(config)
-      config = apply_default_config(config)
-      config = apply_default_selectors_config(config) if config[:selectors]
-      config = apply_default_auto_source_config(config) if config[:auto_source]
-
-      validator = Validator.new.call(config)
+      validator = Validator.new.call(prepared_config)
 
       raise InvalidConfig, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
 
-      @config = validator.to_h.freeze
+      validated_config = validator.to_h
+
+      validated_config[:headers] = RequestHeaders.normalize(
+        validated_config[:headers],
+        channel_language: validated_config.dig(:channel, :language),
+        url: validated_config.dig(:channel, :url)
+      )
+
+      @config = validated_config.freeze
     end
 
     def strategy = config[:strategy]
@@ -130,6 +133,17 @@ module Html2rss
 
     def apply_default_auto_source_config(config)
       deep_merge({ auto_source: Html2rss::AutoSource::DEFAULT_CONFIG }, config)
+    end
+
+    def prepare_config(config)
+      config = config.dup if config.frozen?
+
+      config = handle_deprecated_channel_attributes(config)
+      config = apply_default_config(config)
+      config = apply_default_selectors_config(config) if config[:selectors]
+      config = apply_default_auto_source_config(config) if config[:auto_source]
+
+      config
     end
 
     def deep_merge(base_config, override_config)

@@ -29,6 +29,7 @@ if ENV['COVERAGE']
 end
 
 require_relative '../lib/html2rss'
+require_relative 'support/cli_helpers'
 
 Zeitwerk::Loader.eager_load_all # flush all potential loading issues
 
@@ -38,6 +39,8 @@ RSpec.configure do |config|
 
   # Disable RSpec exposing methods globally on `Module` and `main`
   config.disable_monkey_patching!
+
+  config.include CliHelpers
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
