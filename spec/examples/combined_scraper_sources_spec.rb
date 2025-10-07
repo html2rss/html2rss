@@ -45,9 +45,10 @@ RSpec.describe 'Combined Scraper Sources Configuration', type: :example do
       expect(feed).to have_categories
     end
 
-    it 'extracts tags correctly' do
-      all_tags = extract_all_categories(feed)
-      expect(all_tags).not_to be_empty
+    it 'exposes each HTML tag as its own RSS category' do
+      first_item_categories = feed.items.first.categories.map(&:content)
+
+      expect(first_item_categories).to contain_exactly('Hardware News', 'ACME Corp', 'Laptops', 'Processors')
     end
   end
 end

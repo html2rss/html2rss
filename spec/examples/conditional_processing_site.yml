@@ -18,7 +18,7 @@ selectors:
     selector: ".content"
     post_process:
       - name: "template"
-        string: "[Status: %<status>s] %<self>s"  # Fixed: use 'string' instead of 'template' and correct syntax
+        string: "[Status: %<status>s] %<self>s"
   published_at:
     selector: ".date"
     post_process:

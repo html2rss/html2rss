@@ -93,12 +93,11 @@ RSpec.describe 'Multi-Language Site Configuration' do
       language_category ? language_category.content : 'unknown'
     end
 
-    expect(items_by_language).to include(
-      'en' => array_including(a_kind_of(Object)).exactly(3).times,
-      'es' => array_including(a_kind_of(Object)).exactly(2).times,
-      'fr' => array_including(a_kind_of(Object)).exactly(2).times,
-      'de' => array_including(a_kind_of(Object)).exactly(1).times
-    )
+    expect(items_by_language.keys).to contain_exactly('de', 'en', 'es', 'fr')
+    expect(items_by_language.fetch('en').size).to eq(3)
+    expect(items_by_language.fetch('es').size).to eq(2)
+    expect(items_by_language.fetch('fr').size).to eq(2)
+    expect(items_by_language.fetch('de').size).to eq(1)
   end
 
   it 'validates that attribute extraction works for data-lang', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

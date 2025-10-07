@@ -21,4 +21,4 @@ selectors:
   published_at:
     selector: ".timestamp"
     post_process:
-      - name: "parse_time"  # Fixed: removed format parameter as parse_time auto-detects
+      - name: "parse_time"

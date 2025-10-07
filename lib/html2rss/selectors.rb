@@ -171,8 +171,10 @@ module Html2rss
       case name
       when :enclosure
         enclosure(item, selector)
-      when :guid, :categories
+      when :guid
         Array(selector).map { |selector_name| select(selector_name, item) }
+      when :categories
+        select_categories(selector, item)
       end
     end
 
@@ -199,6 +201,47 @@ module Html2rss
       end
 
       value
+    end
+
+    def select_categories(category_selectors, item)
+      Array(category_selectors).flat_map do |selector_name|
+        extract_category_values(selector_name, item)
+      end
+    end
+
+    def extract_category_values(selector_name, item)
+      selector_name = selector_name.to_sym
+      selector_config = @selectors[selector_name]
+      return [] unless selector_config
+
+      nodes = Extractors.element(item, selector_config[:selector])
+
+      return Array(select_regular(selector_name, item)) unless node_set_with_multiple_elements?(nodes)
+
+      nodes.each_with_object([]) do |node, categories|
+        value = Extractors.get(category_node_options(selector_config), node)
+        value = apply_post_process_steps(item, value, selector_config[:post_process])
+
+        Array(value).each do |category|
+          category_string = category.to_s.strip
+          categories << category_string unless category_string.empty?
+        end
+      end
+    end
+
+    def node_set_with_multiple_elements?(nodes)
+      nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
+    end
+
+    def category_node_options(selector_config)
+      selector_config.merge(channel: { url: @url, time_zone: @time_zone }, selector: nil)
+    end
+
+    def apply_post_process_steps(item, value, post_process_steps)
+      return value unless value && post_process_steps
+
+      steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
+      post_process(item, value, steps)
     end
 
     # @return [Hash] enclosure details.
