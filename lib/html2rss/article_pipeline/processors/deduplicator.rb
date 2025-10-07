@@ -1,46 +1,55 @@
 # frozen_string_literal: true
 
+require 'set'
+
 module Html2rss
-  class ArticlePipeline
+  module ArticlePipeline
     module Processors
       ##
-      # Removes duplicate articles while preserving the original order.
+      # Deduplicates a list of articles while preserving their original order.
+      #
+      # The processor uses each article's guid when available to determine
+      # uniqueness and falls back to a composite of id and URL. When neither is
+      # present, it defaults to the article's hash so the original object is
+      # retained.
       class Deduplicator
         ##
-        # @param articles [Array<Html2rss::Article>]
-        # @return [Array<Html2rss::Article>]
-        def call(articles)
-          seen_keys = {}
+        # @param articles [Array<Html2rss::RssBuilder::Article>]
+        def initialize(articles)
+          @articles = Array(articles)
+        end
 
-          articles.each_with_object([]) do |article, unique|
-            key = deduplication_key(article)
+        ##
+        # Returns the list of unique articles, preserving the order of the
+        # original collection and keeping the first occurrence of a duplicate.
+        #
+        # @return [Array<Html2rss::RssBuilder::Article>]
+        def call
+          seen = Set.new
 
-            next if key && seen_keys[key]
+          articles.each_with_object([]) do |article, deduplicated|
+            fingerprint = fingerprint_for(article)
+            next if seen.include?(fingerprint)
 
-            seen_keys[key] = true if key
-            unique << article
+            seen.add(fingerprint)
+            deduplicated << article
           end
         end
 
         private
 
-        def deduplication_key(article)
-          id = normalize(article.id)
-          return id if id
+        attr_reader :articles
 
-          url = normalize(article.url&.to_s)
-          return url if url
+        def fingerprint_for(article)
+          return article.guid if article.respond_to?(:guid) && article.guid
 
-          normalize(article.title)
-        end
+          parts = []
+          parts << article.id if article.respond_to?(:id) && article.id
+          parts << article.url.to_s if article.respond_to?(:url) && article.url
 
-        def normalize(value)
-          return if value.nil?
+          return parts.join('#!/') unless parts.empty?
 
-          string = value.respond_to?(:strip) ? value.strip : value.to_s
-          return if string.empty?
-
-          string
+          article.hash
         end
       end
     end

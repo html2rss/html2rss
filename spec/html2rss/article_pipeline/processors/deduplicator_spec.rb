@@ -1,33 +1,55 @@
 # frozen_string_literal: true
 
+require 'spec_helper'
+
 RSpec.describe Html2rss::ArticlePipeline::Processors::Deduplicator do
-  subject(:processor) { described_class.new }
+  subject(:deduplicated) { described_class.new(articles).call }
+
+  let(:scraper) { Class.new }
 
   describe '#call' do
-    let(:articles) { [first_article, duplicate_article, without_key] }
+    context 'when multiple sources provide overlapping articles' do
+      let(:articles) do
+        [article_a, article_b, duplicate_article_a, article_c, duplicate_article_b]
+      end
 
-    let(:first_url) { instance_double(Html2rss::Url, to_s: 'https://example.com/first') }
+      let(:article_a) { build_article(id: 'a', url: 'https://example.com/a', title: 'Alpha') }
+      let(:article_b) { build_article(id: 'b', url: 'https://example.com/b', title: 'Beta') }
+      let(:article_c) { build_article(id: 'c', url: 'https://example.com/c', title: 'Gamma') }
+      let(:duplicate_article_a) { build_article(id: 'a', url: 'https://example.com/a', title: 'Alpha (selectors)') }
+      let(:duplicate_article_b) { build_article(id: 'b', url: 'https://example.com/b', title: 'Beta (auto)') }
 
-    let(:first_article) do
-      instance_double(Html2rss::RssBuilder::Article, url: first_url, id: nil, title: 'First')
+      it 'removes duplicates while preserving order of first occurrences' do
+        expect(deduplicated).to eq([article_a, article_b, article_c])
+      end
+
+      it 'keeps articles in their original relative order' do
+        expect(deduplicated.map(&:id)).to eq(%w[a b c])
+      end
     end
 
-    let(:duplicate_article) do
-      instance_double(Html2rss::RssBuilder::Article, url: first_url, id: nil, title: 'First copy')
-    end
+    context 'when articles do not expose a guid' do
+      let(:url) { instance_double(Html2rss::Url, to_s: 'https://example.com/shared') }
+      let(:articles) do
+        [article_without_guid, duplicate_without_guid, unique_article]
+      end
+      let(:article_without_guid) do
+        instance_double('Html2rss::RssBuilder::Article', guid: nil, id: 'shared', url:, scraper:)
+      end
+      let(:duplicate_without_guid) do
+        instance_double('Html2rss::RssBuilder::Article', guid: nil, id: 'shared', url:, scraper:)
+      end
+      let(:unique_article) do
+        instance_double('Html2rss::RssBuilder::Article', guid: nil, id: 'unique', url: instance_double(Html2rss::Url, to_s: 'https://example.com/unique'), scraper:)
+      end
 
-    let(:without_key) do
-      instance_double(Html2rss::RssBuilder::Article, url: nil, id: nil, title: nil)
+      it 'falls back to the combination of id and URL to deduplicate' do
+        expect(deduplicated).to eq([article_without_guid, unique_article])
+      end
     end
+  end
 
-    it 'removes subsequent articles with an existing deduplication key' do
-      expect(processor.call(articles)).to eq([first_article, without_key])
-    end
-
-    it 'preserves the order of unique articles' do
-      result = processor.call([duplicate_article, first_article, without_key])
-
-      expect(result).to eq([duplicate_article, without_key])
-    end
+  def build_article(id:, url:, title:, description: 'Description')
+    Html2rss::RssBuilder::Article.new(id:, url:, title:, description:, scraper:)
   end
 end
