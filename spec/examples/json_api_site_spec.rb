@@ -68,14 +68,12 @@ RSpec.describe 'JSON API Site Configuration' do
     end
   end
 
-  it 'extracts category and tag information as categories', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items_with_categories = items.select { |item| item.categories.any? }
-    expect(items_with_categories.size).to eq(6)
-    all_categories = items.flat_map(&:categories).filter_map(&:content)
-    expect(all_categories).to include('Technology', 'Environment', 'Science', 'Health', 'Energy', 'Security')
-    expect(all_categories.join(' ')).to include('Artificial Intelligence', 'Machine Learning', 'Climate Change',
-                                                'Space Exploration', 'Cancer Research', 'Renewable Energy',
-                                                'Cybersecurity')
+  it 'keeps category and tag values as discrete RSS category entries', :aggregate_failures do
+    ai_article = items.find { |item| item.title.include?('AI Breakthrough') }
+    expect(ai_article).not_to be_nil
+
+    expect(ai_article.categories.map(&:content)).to contain_exactly('Technology', 'Artificial Intelligence',
+                                                                    'Machine Learning', 'Innovation')
   end
 
   it 'handles complex JSON structure with nested objects and arrays', :aggregate_failures do

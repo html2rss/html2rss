@@ -12,7 +12,7 @@ selectors:
     selector: "h1"
     post_process:
       - name: "template"
-        string: "[%<language>s] %<self>s"  # Fixed: use 'string' instead of 'template' and correct syntax
+        string: "[%<language>s] %<self>s"
   language:
     selector: ".lang"
     extractor: "attribute"

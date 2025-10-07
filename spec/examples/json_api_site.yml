@@ -22,7 +22,7 @@ selectors:
   published_at:
     selector: "created_at"
     post_process:
-      - name: "parse_time"  # Fixed: removed format parameter as parse_time auto-detects
+      - name: "parse_time"
   categories:
     - "category"
     - "tags"
