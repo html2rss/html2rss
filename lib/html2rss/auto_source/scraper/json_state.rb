@@ -169,8 +169,18 @@ module Html2rss
 
           def candidate_array?(document)
             case document
-            when Array then array_of_articles?(document)
+            when Array
+              return true if array_of_articles?(document)
+
+              document.any? { traversable_candidate?(_1) }
             when Hash then document.each_value.any? { candidate_array?(_1) }
+            else false
+            end
+          end
+
+          def traversable_candidate?(value)
+            case value
+            when Array, Hash then candidate_array?(value)
             else false
             end
           end

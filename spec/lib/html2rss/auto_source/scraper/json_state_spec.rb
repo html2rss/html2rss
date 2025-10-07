@@ -27,6 +27,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
       expect(described_class).to be_articles(parsed_body)
     end
 
+    it 'detects arrays containing nested article arrays' do
+      parsed_body = Nokogiri::HTML(load_fixture('nested_array.html'))
+
+      expect(described_class).to be_articles(parsed_body)
+    end
+
     it 'returns false when no JSON state is present' do
       parsed_body = Nokogiri::HTML('<html><body><script>console.log("hello")</script></body></html>')
 
@@ -88,6 +94,17 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
             id: 'state-post-42'
           )
         )
+      end
+    end
+
+    context 'with nested array data' do
+      let(:parsed_body) { Nokogiri::HTML(load_fixture('nested_array.html')) }
+
+      it 'finds articles nested inside array entries' do
+        expect(articles).to contain_exactly(a_hash_including(title: 'Nested article',
+                                                             url: Html2rss::Url.from_relative(
+                                                               '/nested/article', base_url
+                                                             )))
       end
     end
   end
