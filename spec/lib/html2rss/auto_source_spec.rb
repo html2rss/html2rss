@@ -55,6 +55,14 @@ RSpec.describe Html2rss::AutoSource do
       expect(described_class::Config.call(described_class::DEFAULT_CONFIG)).to be_success
     end
 
+    it 'allows toggling the json_state scraper' do
+      config = described_class::DEFAULT_CONFIG.merge(
+        scraper: described_class::DEFAULT_CONFIG[:scraper].merge(json_state: { enabled: false })
+      )
+
+      expect(described_class::Config.call(config)).to be_success
+    end
+
     describe 'optional(:cleanup)' do
       let(:config) do
         config = described_class::DEFAULT_CONFIG.dup

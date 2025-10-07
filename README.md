@@ -25,7 +25,7 @@ This gem is the core of the [html2rss-web](https://github.com/html2rss/html2rss-
 ## ✨ Features
 
 - 🎯 **CSS Selector Support** - Extract content using familiar CSS selectors
-- 🤖 **Auto-Detection** - Automatically detect content using Schema.org and semantic HTML
+- 🤖 **Auto-Detection** - Automatically detect content using Schema.org, JSON state, and semantic HTML
 - 🔄 **Multiple Request Strategies** - Faraday for static sites, Browserless for JS-heavy sites
 - 🛠️ **Post-Processing** - Template rendering, HTML sanitization, time parsing, and more
 - 🧪 **Comprehensive Testing** - 95%+ test coverage with RSpec
@@ -58,7 +58,7 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 1. **Config** - Loads and validates configuration (YAML/hash)
 2. **RequestService** - Fetches pages using Faraday or Browserless
 3. **Selectors** - Extracts content via CSS selectors with extractors/post-processors
-4. **AutoSource** - Auto-detects content using Schema.org, semantic HTML, and structural patterns
+4. **AutoSource** - Auto-detects content using Schema.org, JSON state blobs, semantic HTML, and structural patterns
 5. **RssBuilder** - Assembles Article objects and renders RSS 2.0
 
 ### Data Flow
