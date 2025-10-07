@@ -46,22 +46,11 @@ module Html2rss
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed(config)
-    config = build_config(config)
-    response = fetch_response(config)
-    articles = collect_articles(response, config)
+    # 1. Normalize the configuration so collaborators receive validated input.
+    config = Config.from_hash(config, params: config[:params])
 
-    channel = RssBuilder::Channel.new(response, overrides: config.channel)
-
-    RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
-  end
-
-  def self.build_config(config)
-    Config.from_hash(config, params: config[:params])
-  end
-  private_class_method :build_config
-
-  def self.fetch_response(config)
-    RequestService.execute(
+    # 2. Perform the HTTP request with the configured strategy and options.
+    response = RequestService.execute(
       RequestService::Context.new(
         url: config.url,
         headers: config.headers,
@@ -69,29 +58,28 @@ module Html2rss
       ),
       strategy: config.strategy
     )
-  end
-  private_class_method :fetch_response
 
-  def self.collect_articles(response, config)
+    # 3. Extract articles using selectors and optional auto-source discovery.
     articles = []
 
     if (selectors = config.selectors)
-      articles.concat Selectors.new(response, selectors:, time_zone: config.time_zone).articles
+      selector_service = Selectors.new(response, selectors:, time_zone: config.time_zone)
+      articles.concat(selector_service.articles)
     end
 
     if (auto_source = config.auto_source)
-      articles.concat AutoSource.new(response, auto_source).articles
+      auto_source_service = AutoSource.new(response, auto_source)
+      articles.concat(auto_source_service.articles)
     end
 
-    # Step 4: Deduplicate aggregated articles
-    unique_articles = Html2rss::ArticlePipeline::Processors::Deduplicator.new(articles).call
+    # 4. Run the collected articles through the article pipeline for processing.
+    processed_articles = ArticlePipeline.new(articles).call
 
-    # Step 5: Build the RSS feed
+    # 5. Build the RSS channel and final feed output.
     channel = RssBuilder::Channel.new(response, overrides: config.channel)
 
-    RssBuilder.new(channel:, articles: unique_articles, stylesheets: config.stylesheets).call
+    RssBuilder.new(channel:, articles: processed_articles, stylesheets: config.stylesheets).call
   end
-  private_class_method :collect_articles
 
   ##
   # Scrapes the provided URL and returns an RSS object.
