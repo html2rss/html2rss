@@ -13,6 +13,13 @@ selectors:
     post_process:
       - name: "template"
         string: "[%<language>s] %<self>s"
+  id:
+    selector: ".lang"
+    extractor: "attribute"
+    attribute: "data-lang"
+    post_process:
+      - name: "template"
+        string: "%<self>s-%<title>s"
   language:
     selector: ".lang"
     extractor: "attribute"
