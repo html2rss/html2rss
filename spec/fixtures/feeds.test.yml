@@ -115,6 +115,10 @@ feeds:
         selector: "#src-horo-today"
         extractor: "href"
   withparams:
+    strategy: fixture
+    request:
+      fixture: spec/examples/withparams.html
+      content_type: text/html
     channel:
       url: https://www.horoscope.com/us/horoscopes/general/horoscope-general-daily-today.aspx?sign=%<sign>s
       description: "The value of param is: %<param>s"

@@ -9,10 +9,12 @@ module Html2rss
       ##
       # @param url [String, Html2rss::Url] the URL to request
       # @param headers [Hash] HTTP request headers
-      def initialize(url:, headers: {})
+      # @param options [Hash] additional options for the request strategy
+      def initialize(url:, headers: {}, options: {})
         @url = Html2rss::Url.from_relative(url, url)
 
         @headers = headers
+        @options = options || {}
       end
 
       # @return [Html2rss::Url] the parsed and normalized URL
@@ -20,6 +22,9 @@ module Html2rss
 
       # @return [Hash] the HTTP request headers
       attr_reader :headers
+
+      # @return [Hash] strategy-specific options
+      attr_reader :options
     end
   end
 end
