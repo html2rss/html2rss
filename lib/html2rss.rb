@@ -61,8 +61,14 @@ module Html2rss
   private_class_method :build_config
 
   def self.fetch_response(config)
-    RequestService.execute(RequestService::Context.new(url: config.url, headers: config.headers),
-                           strategy: config.strategy)
+    RequestService.execute(
+      RequestService::Context.new(
+        url: config.url,
+        headers: config.headers,
+        options: config.request_options
+      ),
+      strategy: config.strategy
+    )
   end
   private_class_method :fetch_response
 

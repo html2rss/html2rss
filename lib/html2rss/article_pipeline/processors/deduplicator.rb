@@ -25,11 +25,22 @@ module Html2rss
         private
 
         def deduplication_key(article)
-          [article.url&.to_s, article.id, article.title].find do |candidate|
-            next if candidate.nil?
+          id = normalize(article.id)
+          return id if id
 
-            candidate.respond_to?(:empty?) ? !candidate.empty? : true
-          end
+          url = normalize(article.url&.to_s)
+          return url if url
+
+          normalize(article.title)
+        end
+
+        def normalize(value)
+          return if value.nil?
+
+          string = value.respond_to?(:strip) ? value.strip : value.to_s
+          return if string.empty?
+
+          string
         end
       end
     end
