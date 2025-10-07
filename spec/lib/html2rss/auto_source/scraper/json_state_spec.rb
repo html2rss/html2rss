@@ -101,10 +101,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
       let(:parsed_body) { Nokogiri::HTML(load_fixture('nested_array.html')) }
 
       it 'finds articles nested inside array entries' do
-        expect(articles).to contain_exactly(a_hash_including(title: 'Nested article',
-                                                             url: Html2rss::Url.from_relative(
-                                                               '/nested/article', base_url
-                                                             )))
+        expect(articles).to contain_exactly(a_hash_including(
+                                              title: 'Nested article',
+                                              url: Html2rss::Url.from_relative('/nested/article',
+                                                                               base_url)
+                                            ))
       end
     end
   end
