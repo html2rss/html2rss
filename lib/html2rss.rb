@@ -45,15 +45,28 @@ module Html2rss
   #
   # @param config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
-  def self.feed(config) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
-    # Step 1: Get the configuration
-    config = Config.from_hash(config, params: config[:params])
+  def self.feed(config)
+    config = build_config(config)
+    response = fetch_response(config)
+    articles = collect_articles(response, config)
 
-    # Step 2: Execute the request and get the response
-    response = RequestService.execute(RequestService::Context.new(url: config.url, headers: config.headers),
-                                      strategy: config.strategy)
+    channel = RssBuilder::Channel.new(response, overrides: config.channel)
 
-    # Step 3: Feed the scrapers with response, their settings, and get the articles
+    RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
+  end
+
+  def self.build_config(config)
+    Config.from_hash(config, params: config[:params])
+  end
+  private_class_method :build_config
+
+  def self.fetch_response(config)
+    RequestService.execute(RequestService::Context.new(url: config.url, headers: config.headers),
+                           strategy: config.strategy)
+  end
+  private_class_method :fetch_response
+
+  def self.collect_articles(response, config)
     articles = []
 
     if (selectors = config.selectors)
@@ -64,11 +77,9 @@ module Html2rss
       articles.concat AutoSource.new(response, auto_source).articles
     end
 
-    # Step 4: Build the RSS feed
-    channel = RssBuilder::Channel.new(response, overrides: config.channel)
-
-    RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
+    ArticlePipeline.new(articles).call
   end
+  private_class_method :collect_articles
 
   ##
   # Scrapes the provided URL and returns an RSS object.
