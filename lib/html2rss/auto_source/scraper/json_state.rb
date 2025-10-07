@@ -118,8 +118,38 @@ module Html2rss
 
             JSON.parse(payload, symbolize_names: true)
           rescue JSON::ParserError => error
-            Log.debug('JsonState: Failed to parse JSON payload', error: error.message)
+            parse_js_object(payload, error)
+          end
+
+          def parse_js_object(payload, _original_error)
+            coerced = coerce_javascript_object(payload)
+            return unless coerced
+
+            # Some sites emit JavaScript object literals (unquoted keys, trailing commas).
+            # Coerce those payloads into valid JSON so we keep the same parsing pipeline.
+            JSON.parse(coerced, symbolize_names: true)
+          rescue JSON::ParserError => error
+            Html2rss::Log.debug do
+              "fallback also failed (#{error.message})"
+            end
             nil
+          end
+
+          def coerce_javascript_object(payload)
+            string = payload.dup
+
+            # KISS approach: mutate common JS literal quirks instead of a full parser.
+            strip_trailing_commas(quote_unquoted_keys(string))
+          end
+
+          def quote_unquoted_keys(jsonish)
+            jsonish.gsub(/(\A\s*|[{,\[]\s*)([A-Za-z_]\w*)(\s*:)/) do
+              "#{Regexp.last_match(1)}\"#{Regexp.last_match(2)}\"#{Regexp.last_match(3)}"
+            end
+          end
+
+          def strip_trailing_commas(jsonish)
+            jsonish.gsub(/,(\s*[\]}])/, '\1')
           end
         end
         private_constant :DocumentScanner
