@@ -10,9 +10,10 @@ module Html2rss
     #
     module Scraper
       SCRAPERS = [
-        Html,
         Schema,
+        JsonState,
         SemanticHtml,
+        Html,
         RssFeedDetector
       ].freeze
 

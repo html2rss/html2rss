@@ -25,7 +25,7 @@ This gem is the core of the [html2rss-web](https://github.com/html2rss/html2rss-
 ## ✨ Features
 
 - 🎯 **CSS Selector Support** - Extract content using familiar CSS selectors
-- 🤖 **Auto-Detection** - Automatically detect content using Schema.org and semantic HTML
+- 🤖 **Auto-Detection** - Automatically detect content using Schema.org, JSON state, and semantic HTML
 - 🔄 **Multiple Request Strategies** - Faraday for static sites, Browserless for JS-heavy sites
 - 🛠️ **Post-Processing** - Template rendering, HTML sanitization, time parsing, and more
 - 🧪 **Comprehensive Testing** - 95%+ test coverage with RSpec
@@ -58,7 +58,7 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 1. **Config** - Loads and validates configuration (YAML/hash)
 2. **RequestService** - Fetches pages using Faraday or Browserless
 3. **Selectors** - Extracts content via CSS selectors with extractors/post-processors
-4. **AutoSource** - Auto-detects content using Schema.org, semantic HTML, and structural patterns
+4. **AutoSource** - Auto-detects content using Schema.org, JSON state blobs, semantic HTML, and structural patterns
 5. **RssBuilder** - Assembles Article objects and renders RSS 2.0
 
 ### Data Flow
@@ -66,6 +66,26 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 ```text
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
+
+### JSON-state scraper (AutoSource)
+
+Single-page applications often stash pre-rendered article data in `<script type="application/json">` tags or global variables
+such as `window.__NEXT_DATA__`, `window.__NUXT__`, or `window.STATE`. The JSON-state scraper walks those blobs, finds arrays with
+`title`/`url` pairs, and converts them into the same hashes produced by `HtmlExtractor`.
+
+```yaml
+auto_source:
+  scraper:
+    json_state:
+      enabled: true
+```
+
+The scraper is enabled by default when `auto_source` is configured. Explicitly enabling it is helpful when you rely only on the
+JSON output from frameworks like Next.js or Nuxt without any semantic HTML to fall back on. Disable it when a site exposes large
+non-article state payloads that could overwhelm the heuristics, or when it accidentally surfaces draft/private entries.
+
+**Limitations:** the scraper requires discoverable arrays of hashes containing clear `title` and `url` fields. Minified or
+obfuscated state objects, heavily encoded values, or blobs that require executing embedded functions are ignored.
 
 ## 🧪 Testing
 
