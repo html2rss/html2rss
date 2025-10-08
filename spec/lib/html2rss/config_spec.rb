@@ -165,6 +165,17 @@ RSpec.describe Html2rss::Config do
           cleanup: {
             keep_different_domain: false,     # wasn't explicitly set -> default
             min_words_title: 3                # wasn't explicitly set -> default
+          },
+          pagination: {
+            enabled: true,
+            max_pages: 1,
+            selectors: [
+              'link[rel="next"]',
+              'a[rel="next"]',
+              '.pagination a[rel~="next"]',
+              '.pagination a.next',
+              '.pagination a[href]'
+            ]
           }
         }
       end

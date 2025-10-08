@@ -87,15 +87,8 @@ module Html2rss
 
     def collect_articles(response, config)
       [].tap do |articles|
-        if (selectors = config.selectors)
-          selector_service = Selectors.new(response, selectors:, time_zone: config.time_zone)
-          articles.concat(selector_service.articles)
-        end
-
-        next unless (auto_source = config.auto_source)
-
-        auto_source_service = AutoSource.new(response, auto_source)
-        articles.concat(auto_source_service.articles)
+        append_selector_articles(articles, response, config)
+        append_auto_source_articles(articles, response, config)
       end
     end
 
@@ -103,6 +96,23 @@ module Html2rss
       channel = RssBuilder::Channel.new(response, overrides: config.channel)
 
       RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
+    end
+
+    def append_selector_articles(articles, response, config)
+      selectors = config.selectors
+      return unless selectors
+
+      selector_service = Selectors.new(response, selectors:, time_zone: config.time_zone)
+      articles.concat(selector_service.articles)
+    end
+
+    def append_auto_source_articles(articles, response, config)
+      auto_source = config.auto_source
+      return unless auto_source
+
+      request_config = { strategy: config.strategy, headers: config.headers }
+      auto_source_service = AutoSource.new(response, auto_source, request_config:)
+      articles.concat(auto_source_service.articles)
     end
   end
 end

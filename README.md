@@ -31,6 +31,23 @@ This gem is the core of the [html2rss-web](https://github.com/html2rss/html2rss-
 - 🧪 **Comprehensive Testing** - 95%+ test coverage with RSpec
 - 📚 **Full Documentation** - YARD documentation and comprehensive guides
 
+### AutoSource Pagination
+
+`Html2rss::AutoSource` now understands common pagination hints such as `<link rel="next">`, `.pagination a`, and any custom CSS selectors you provide. Pagination is **enabled by default** but ships with a safe `max_pages: 1`, so the auto-source will only scrape the first page unless you opt-in to deeper crawling.
+
+```yaml
+auto_source:
+  pagination:
+    max_pages: 3          # follow up to 3 pages total (including the first)
+    selectors:
+      - '.pagination a.next'
+      - '.load-more a'
+```
+
+- All additional page requests reuse the configured strategy (Faraday, Browserless, etc.) and headers from your feed config.
+- Visited URLs are tracked to prevent loops when sites point pagination links back to previously-seen pages.
+- Set `pagination.enabled: false` to skip pagination entirely.
+
 ## 🚀 Quick Start
 
 For installation and usage instructions, please visit the [project website](https://html2rss.github.io/ruby-gem).
