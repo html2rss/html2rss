@@ -33,9 +33,11 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'addressable', '~> 2.7'
+  spec.add_dependency 'brotli'
   spec.add_dependency 'dry-validation'
   spec.add_dependency 'faraday', '> 2.0.1', '< 3.0'
   spec.add_dependency 'faraday-follow_redirects'
+  spec.add_dependency 'faraday-gzip', '~> 3'
   spec.add_dependency 'kramdown'
   spec.add_dependency 'mime-types', '> 3.0'
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
