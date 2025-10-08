@@ -16,14 +16,6 @@ module Html2rss
       PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
       DEDUP_FINGERPRINT_SEPARATOR = '#!/'
 
-      ##
-      # Checks if the text contains HTML tags.
-      # @param text [String]
-      # @return [Boolean]
-      def self.contains_html?(text)
-        Nokogiri::HTML.fragment(text).children.any?(&:element?)
-      end
-
       # @param options [Hash<Symbol, String>]
       def initialize(**options)
         @to_h = {}

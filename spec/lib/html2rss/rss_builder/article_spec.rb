@@ -178,34 +178,4 @@ RSpec.describe Html2rss::RssBuilder::Article do
       expect(instance.published_at).to be_nil
     end
   end
-
-  describe '.contains_html?' do
-    it 'returns true for simple HTML tags' do
-      expect(described_class.contains_html?('<div>')).to be(true)
-    end
-
-    it 'returns true for HTML tags with attributes' do
-      expect(described_class.contains_html?('<a href="https://example.com">')).to be(true)
-    end
-
-    it 'returns true for nested HTML tags' do
-      expect(described_class.contains_html?('<div><span>Content</span></div>')).to be(true)
-    end
-
-    it 'returns false for text without HTML tags' do
-      expect(described_class.contains_html?('Just some text')).to be(false)
-    end
-
-    it 'returns false for text with angle brackets but no tags' do
-      expect(described_class.contains_html?('2 < 3 > 1')).to be(false)
-    end
-
-    it 'returns true for self-closing HTML tags' do
-      expect(described_class.contains_html?('<br/>')).to be(true)
-    end
-
-    it 'returns false for empty string' do
-      expect(described_class.contains_html?('')).to be(false)
-    end
-  end
 end
