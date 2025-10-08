@@ -179,50 +179,6 @@ RSpec.describe Html2rss::RssBuilder::Article do
     end
   end
 
-  describe '.remove_pattern_from_start' do
-    it 'removes the pattern when it is within the specified range' do
-      original_text = 'Hello world! Start here.'
-      pattern = 'world!'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq('Hello  Start here.')
-    end
-
-    it 'does not remove the pattern when it is outside the specified range' do
-      original_text = 'This is a test. Remove this part.'
-      pattern = 'part'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern, end_of_range: 10)
-      expect(sanitized_text).to eq(original_text)
-    end
-
-    it 'returns the original text if the pattern is not found' do
-      original_text = 'No match here.'
-      pattern = 'missing'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq(original_text)
-    end
-
-    it 'returns the original text if the text is empty' do
-      original_text = ''
-      pattern = 'any'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq(original_text)
-    end
-
-    it 'removes pattern at the beginning of the text' do
-      original_text = 'pattern should be removed from start'
-      pattern = 'pattern'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq(' should be removed from start')
-    end
-
-    it 'handles pattern appearing multiple times in the text' do
-      original_text = 'Repeat pattern and again pattern in text.'
-      pattern = 'pattern'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq('Repeat  and again pattern in text.')
-    end
-  end
-
   describe '.contains_html?' do
     it 'returns true for simple HTML tags' do
       expect(described_class.contains_html?('<div>')).to be(true)

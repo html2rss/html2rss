@@ -17,23 +17,6 @@ module Html2rss
       DEDUP_FINGERPRINT_SEPARATOR = '#!/'
 
       ##
-      # Removes the specified pattern from the beginning of the text
-      # within a given range if the pattern occurs before the range's end.
-      #
-      # @param text [String]
-      # @param pattern [String]
-      # @param end_of_range [Integer] - Optional, defaults to half the size of the text
-      # @return [String]
-      def self.remove_pattern_from_start(text, pattern, end_of_range: (text.size * 0.5).to_i)
-        return text unless text.is_a?(String) && pattern.is_a?(String)
-
-        index = text.index(pattern)
-        return text if index.nil? || index >= end_of_range
-
-        text.gsub(/^(.{0,#{end_of_range}})#{Regexp.escape(pattern)}/, '\1')
-      end
-
-      ##
       # Checks if the text contains HTML tags.
       # @param text [String]
       # @return [Boolean]
