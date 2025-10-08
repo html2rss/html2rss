@@ -25,7 +25,6 @@ module Html2rss
 
       DEFAULT_HEADERS = {
         'Accept' => DEFAULT_ACCEPT,
-        'Accept-Encoding' => 'gzip, deflate, br, zstd',
         'Cache-Control' => 'max-age=0',
         'Connection' => 'keep-alive',
         'Sec-Fetch-Dest' => 'document',

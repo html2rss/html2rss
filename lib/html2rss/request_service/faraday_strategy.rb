@@ -2,6 +2,7 @@
 
 require 'faraday'
 require 'faraday/follow_redirects'
+require 'faraday/gzip'
 
 module Html2rss
   class RequestService
@@ -14,6 +15,7 @@ module Html2rss
         url_string = ctx.url.to_s
         request = Faraday.new(url: url_string, headers: ctx.headers) do |faraday|
           faraday.use Faraday::FollowRedirects::Middleware
+          faraday.request :gzip
           faraday.adapter Faraday.default_adapter
         end
         response = request.get
