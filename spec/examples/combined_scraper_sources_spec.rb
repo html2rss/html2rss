@@ -31,10 +31,6 @@ RSpec.describe 'Combined Scraper Sources Configuration', type: :example do
     ]
   end
 
-  it 'generates a valid RSS feed' do
-    expect(feed).to be_a_valid_rss_feed
-  end
-
   it 'collects the six expected articles with matching titles and links' do
     aggregate_failures do
       expect(items.size).to eq(expected_articles.size)

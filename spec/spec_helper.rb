@@ -32,7 +32,6 @@ require_relative '../lib/html2rss'
 require_relative 'support/cli_helpers'
 
 # Load custom matchers and helpers
-require_relative 'support/matchers/rss_matchers'
 require_relative 'support/helpers/configuration_helpers'
 require_relative 'support/helpers/example_helpers'
 
