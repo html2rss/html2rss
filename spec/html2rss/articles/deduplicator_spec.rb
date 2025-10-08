@@ -7,6 +7,12 @@ RSpec.describe Html2rss::Articles::Deduplicator do
 
   let(:scraper) { Class.new }
 
+  describe '#initialize' do
+    it 'requires articles' do
+      expect { described_class.new(nil) }.to raise_error(ArgumentError, 'articles must be provided')
+    end
+  end
+
   describe '#call' do
     context 'when multiple sources provide overlapping articles' do
       let(:articles) do
