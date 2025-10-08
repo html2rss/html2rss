@@ -4,10 +4,14 @@
 # These methods provide common setup and validation patterns
 # to make tests more readable and maintainable.
 
+require 'time'
+
 require_relative 'configuration_helpers'
 
 module ExampleHelpers
   include ConfigurationHelpers
+
+  DEFAULT_CHANNEL_TIME_ZONE = Html2rss::Config.default_config.dig(:channel, :time_zone)
 
   # Loads an example HTML fixture from the spec/examples directory
   # @param fixture_name [String] The name of the HTML fixture file (without .html extension)
@@ -52,6 +56,55 @@ module ExampleHelpers
     json_content = load_json_fixture(fixture_name)
     url_object = create_url_object(url)
     mock_request_service(json_content, url_object, content_type)
+  end
+
+  # Builds a Selectors context that mirrors how post processors are invoked in production.
+  # @param channel_url [String]
+  # @param time_zone [String, nil]
+  # @return [Html2rss::Selectors::Context]
+  def build_post_processor_context(channel_url:, time_zone: nil)
+    Html2rss::Selectors::Context.new(
+      config: { channel: { url: channel_url, time_zone: time_zone || DEFAULT_CHANNEL_TIME_ZONE } }
+    )
+  end
+
+  # Applies the sanitize_html post processor to a fragment using the same configuration
+  # that the feed uses.
+  # @param fragment [String]
+  # @param channel_url [String]
+  # @return [String, nil]
+  def sanitize_fragment(fragment, channel_url:)
+    Html2rss::Selectors::PostProcessors::SanitizeHtml.get(fragment, channel_url)
+  end
+
+  # Applies the html_to_markdown post processor to a fragment using production settings.
+  # @param fragment [String]
+  # @param channel_url [String]
+  # @param time_zone [String, nil]
+  # @return [String]
+  def markdown_from_fragment(fragment, channel_url:, time_zone: nil)
+    context = build_post_processor_context(channel_url:, time_zone:)
+    Html2rss::Selectors::PostProcessors::HtmlToMarkdown.new(fragment, context).get
+  end
+
+  # Parses a human readable timestamp the same way parse_time post processor does and
+  # returns a Time instance for easier assertions.
+  # @param value [String]
+  # @param channel_url [String]
+  # @param time_zone [String, nil]
+  # @return [Time]
+  def parse_time_to_time(value, channel_url:, time_zone: nil)
+    context = build_post_processor_context(channel_url:, time_zone:)
+    parsed = Html2rss::Selectors::PostProcessors::ParseTime.new(value, context).get
+    Time.rfc2822(parsed)
+  end
+
+  # Resolves the provided relative URL against the supplied channel URL.
+  # @param href [String, nil]
+  # @param channel_url [String]
+  # @return [String]
+  def absolute_url_for(href, channel_url)
+    Html2rss::Url.from_relative(href, channel_url).to_s
   end
 
   # Generates an RSS feed from a configuration with mocked request service
@@ -130,6 +183,67 @@ module ExampleHelpers
     return [] unless feed.is_a?(RSS::Rss) && feed.items.is_a?(Array)
 
     feed.items.flat_map { |item| item.categories.map(&:content) }.compact.uniq
+  end
+
+  # Verifies a collection of RSS items against an array of expected attributes.
+  # @param items [Array<RSS::Rss::Channel::Item>]
+  # @param expected_items [Array<Hash>]
+  def expect_feed_items(items, expected_items)
+    expect(items.size).to eq(expected_items.size)
+
+    items.zip(expected_items).each_with_index do |(item, expected), index|
+      aggregate_failures("item ##{index + 1} - #{expected[:title] || item.title}") do
+        expect(item.title).to eq(expected[:title]) if expected.key?(:title)
+
+        if expected.key?(:link)
+          expected[:link].nil? ? expect(item.link).to(be_nil) : expect(item.link).to(eq(expected[:link]))
+        end
+
+        if expected.key?(:guid)
+          expected[:guid].nil? ? expect(item.guid).to(be_nil) : expect(item.guid.content).to(eq(expected[:guid]))
+        end
+
+        if expected.key?(:description)
+          expect(item.description).to eq(expected[:description])
+        end
+
+        Array(expected[:description_includes]).each do |snippet|
+          expect(item.description).to include(snippet)
+        end if expected[:description_includes]
+
+        if expected.key?(:description_starts_with)
+          expect(item.description).to start_with(expected[:description_starts_with])
+        end
+
+        if expected.key?(:categories)
+          expect(item.categories.map(&:content)).to eq(expected[:categories])
+        elsif expected.key?(:category_includes)
+          expected_categories = item.categories.map(&:content)
+          Array(expected[:category_includes]).each do |category|
+            expect(expected_categories).to include(category)
+          end
+        end
+
+        if expected.key?(:pub_date)
+          pub_date = item.pubDate&.rfc2822
+          expected[:pub_date].nil? ? expect(pub_date).to(be_nil) : expect(pub_date).to(eq(expected[:pub_date]))
+        end
+
+        next unless expected.key?(:enclosure)
+
+        enclosure = item.enclosure
+        if expected[:enclosure].nil?
+          expect(enclosure).to be_nil
+        else
+          expect(enclosure).not_to be_nil
+          expect(enclosure.url).to eq(expected[:enclosure][:url]) if expected[:enclosure].key?(:url)
+          expect(enclosure.type).to eq(expected[:enclosure][:type]) if expected[:enclosure].key?(:type)
+          if expected[:enclosure].key?(:length)
+            expect(enclosure.length).to eq(expected[:enclosure][:length])
+          end
+        end
+      end
+    end
   end
 
   # Validates that all strings in an array are non-empty

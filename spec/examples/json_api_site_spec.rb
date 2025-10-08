@@ -1,115 +1,100 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'json'
+require 'time'
 
 RSpec.describe 'JSON API Site Configuration' do
   subject(:feed) do
-    # Mock the request service to return our JSON fixture
     mock_request_service_with_json_fixture('json_api_site', 'https://example.com/posts')
-
     Html2rss.feed(config)
   end
 
   let(:config_file) { File.join(%w[spec examples json_api_site.yml]) }
-  let(:json_file) { File.join(%w[spec examples json_api_site.json]) }
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
-
   let(:items) { feed.items }
 
-  it 'generates a valid RSS feed', :aggregate_failures do
-    expect(feed).to be_a(RSS::Rss)
+  let(:expected_items) do
+    [
+      {
+        title: "ACME Corp's Revolutionary AI Breakthrough Changes Everything",
+        link: nil,
+        description_includes: [
+          '<img src="https://example.com/images/ai-breakthrough.jpg"',
+          "It can finally understand 'it works on my machine'"
+        ],
+        categories: ['Technology', 'Artificial Intelligence', 'Machine Learning', 'Innovation'],
+        pub_date: 'Mon, 15 Jan 2024 14:30:00 +0000',
+        enclosure: { url: 'https://example.com/images/ai-breakthrough.jpg', type: 'image/jpeg', length: 0 }
+      },
+      {
+        title: 'Climate Change Summit Reaches Historic Agreement',
+        link: nil,
+        description_includes: [
+          '<img src="https://example.com/images/climate-summit.jpg"',
+          'groundbreaking agreement on climate change mitigation'
+        ],
+        categories: ['Environment', 'Climate Change', 'Sustainability', 'Policy'],
+        pub_date: 'Sun, 14 Jan 2024 09:15:00 +0000',
+        enclosure: { url: 'https://example.com/images/climate-summit.jpg', type: 'image/jpeg', length: 0 }
+      },
+      {
+        title: 'Space Exploration Mission Discovers New Planet',
+        link: nil,
+        description_includes: [
+          '<img src="https://example.com/images/space-discovery.jpg"',
+          'This discovery opens up new possibilities for future space exploration'
+        ],
+        categories: ['Science', 'Space Exploration', 'Astronomy', 'Discovery'],
+        pub_date: 'Sat, 13 Jan 2024 16:45:00 +0000',
+        enclosure: { url: 'https://example.com/images/space-discovery.jpg', type: 'image/jpeg', length: 0 }
+      },
+      {
+        title: 'Medical Breakthrough Offers Hope for Cancer Patients',
+        link: nil,
+        description_includes: [
+          '<img src="https://example.com/images/cancer-research.jpg"',
+          'Clinical trials have shown a 75% success rate'
+        ],
+        categories: ['Health', 'Cancer Research', 'Immunotherapy', 'Medical Breakthrough'],
+        pub_date: 'Fri, 12 Jan 2024 11:20:00 +0000',
+        enclosure: { url: 'https://example.com/images/cancer-research.jpg', type: 'image/jpeg', length: 0 }
+      },
+      {
+        title: 'Renewable Energy Reaches New Milestone',
+        link: nil,
+        description_includes: [
+          '<img src="https://example.com/images/renewable-energy.jpg"',
+          'Solar and wind power have led this transformation'
+        ],
+        categories: ['Energy', 'Renewable Energy', 'Solar Power', 'Wind Power'],
+        pub_date: 'Thu, 11 Jan 2024 15:10:00 +0000',
+        enclosure: { url: 'https://example.com/images/renewable-energy.jpg', type: 'image/jpeg', length: 0 }
+      },
+      {
+        title: 'Cybersecurity Threats Reach All-Time High',
+        link: nil,
+        description_includes: [
+          '<img src="https://example.com/images/cybersecurity.jpg"',
+          'Organizations are being urged to implement stronger security measures'
+        ],
+        categories: ['Security', 'Cybersecurity', 'Threat Detection', 'Infrastructure Security'],
+        pub_date: 'Wed, 10 Jan 2024 08:30:00 +0000',
+        enclosure: { url: 'https://example.com/images/cybersecurity.jpg', type: 'image/jpeg', length: 0 }
+      }
+    ]
+  end
+
+  it 'loads channel metadata from the configuration file' do
     expect(feed.channel.title).to eq('ACME JSON API Site News')
     expect(feed.channel.link).to eq('https://example.com/posts')
   end
 
-  it 'extracts all 6 items from the JSON API response', :aggregate_failures do
-    expect(feed.items).to be_an(Array)
-    expect(feed.items.size).to eq(6)
+  it 'materialises feed items directly from the API payload' do
+    expect_feed_items(items, expected_items)
   end
 
-  it 'extracts titles correctly from JSON data', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    titles = items.map(&:title)
-    expect(titles).to all(be_a(String)).and all(satisfy { |title| !title.strip.empty? })
-    expect(titles).to include('ACME Corp\'s Revolutionary AI Breakthrough Changes Everything',
-                              'Climate Change Summit Reaches Historic Agreement',
-                              'Space Exploration Mission Discovers New Planet',
-                              'Medical Breakthrough Offers Hope for Cancer Patients',
-                              'Renewable Energy Reaches New Milestone',
-                              'Cybersecurity Threats Reach All-Time High')
-  end
-
-  it 'extracts descriptions correctly with HTML to Markdown conversion', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    descriptions = items.map(&:description)
-    expect(descriptions).to all(be_a(String)).and all(satisfy { |desc| !desc.strip.empty? }).and all(satisfy { |desc|
-      desc.length > 50
-    })
-    ai_article = items.find { |item| item.title.include?('AI Breakthrough') }
-    expect(ai_article.description).to include('ACME Corp scientists have developed', 'artificial intelligence system')
-  end
-
-  it 'handles URLs correctly (no URL selector configured)', :aggregate_failures do
-    urls = items.map(&:link)
-    # Since no URL selector is configured in the JSON API config, all URLs should be nil
-    expect(urls).to all(be_nil)
-  end
-
-  it 'extracts published dates correctly from ISO 8601 timestamps', :aggregate_failures do
-    items_with_time = items.select(&:pubDate)
-    expect(items_with_time.size).to eq(6)
-    expect(items_with_time).to all(have_attributes(pubDate: be_a(Time).and(have_attributes(year: 2024))))
-  end
-
-  it 'extracts author information correctly', :aggregate_failures do
-    items.each do |item|
-      # Author information should be available in the description or as a separate field
-      # Since the config doesn't specify author extraction, we test that items are valid
-      expect(item.title).to be_a(String)
-      expect(item.description).to be_a(String)
-    end
-  end
-
-  it 'keeps category and tag values as discrete RSS category entries', :aggregate_failures do
-    ai_article = items.find { |item| item.title.include?('AI Breakthrough') }
-    expect(ai_article).not_to be_nil
-
-    expect(ai_article.categories.map(&:content)).to contain_exactly('Technology', 'Artificial Intelligence',
-                                                                    'Machine Learning', 'Innovation')
-  end
-
-  it 'handles complex JSON structure with nested objects and arrays', :aggregate_failures do
-    expect(items.size).to eq(6)
-    expect(items).to all(have_attributes(title: be_a(String), description: be_a(String), pubDate: be_a(Time),
-                                         categories: be_an(Array)))
-  end
-
-  it 'handles enclosures correctly', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    expect(items).to all(have_attributes(title: be_a(String), description: be_a(String), pubDate: be_a(Time)))
-    items_with_enclosures = items.select(&:enclosure)
-    if items_with_enclosures.any?
-      expect(items_with_enclosures).to all(have_attributes(enclosure: have_attributes(url: be_a(String),
-                                                                                      type: be_a(String))))
-    end
-  end
-
-  it 'validates that JSON path selectors work correctly', :aggregate_failures do
-    # Test that the JSON path selectors are working
-    # data > array > object should select the items array
-    # title should select the title field
-    # content should select the content field
-    items.each do |item|
-      expect(item.title).to be_a(String)
-      expect(item.description).to be_a(String)
-      expect(item.pubDate).to be_a(Time)
-    end
-  end
-
-  it 'validates that HTML to Markdown conversion preserves content structure', :aggregate_failures do
-    items.each do |item|
-      # Content should be processed and have substantial content
-      expect(item.description.length).to be > 50
-
-      # Should contain some meaningful content (not all items mention ACME Corp)
-      expect(item.description).to be_a(String)
-    end
+  it 'omits item links when no selector is configured' do
+    expect(items.map(&:link)).to all(be_nil)
   end
 end
