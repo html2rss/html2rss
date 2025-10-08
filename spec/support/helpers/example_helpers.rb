@@ -4,10 +4,14 @@
 # These methods provide common setup and validation patterns
 # to make tests more readable and maintainable.
 
+require 'time'
+
 require_relative 'configuration_helpers'
 
 module ExampleHelpers
   include ConfigurationHelpers
+
+  DEFAULT_CHANNEL_TIME_ZONE = Html2rss::Config.default_config.dig(:channel, :time_zone)
 
   # Loads an example HTML fixture from the spec/examples directory
   # @param fixture_name [String] The name of the HTML fixture file (without .html extension)
@@ -52,6 +56,55 @@ module ExampleHelpers
     json_content = load_json_fixture(fixture_name)
     url_object = create_url_object(url)
     mock_request_service(json_content, url_object, content_type)
+  end
+
+  # Builds a Selectors context that mirrors how post processors are invoked in production.
+  # @param channel_url [String]
+  # @param time_zone [String, nil]
+  # @return [Html2rss::Selectors::Context]
+  def build_post_processor_context(channel_url:, time_zone: nil)
+    Html2rss::Selectors::Context.new(
+      config: { channel: { url: channel_url, time_zone: time_zone || DEFAULT_CHANNEL_TIME_ZONE } }
+    )
+  end
+
+  # Applies the sanitize_html post processor to a fragment using the same configuration
+  # that the feed uses.
+  # @param fragment [String]
+  # @param channel_url [String]
+  # @return [String, nil]
+  def sanitize_fragment(fragment, channel_url:)
+    Html2rss::Selectors::PostProcessors::SanitizeHtml.get(fragment, channel_url)
+  end
+
+  # Applies the html_to_markdown post processor to a fragment using production settings.
+  # @param fragment [String]
+  # @param channel_url [String]
+  # @param time_zone [String, nil]
+  # @return [String]
+  def markdown_from_fragment(fragment, channel_url:, time_zone: nil)
+    context = build_post_processor_context(channel_url:, time_zone:)
+    Html2rss::Selectors::PostProcessors::HtmlToMarkdown.new(fragment, context).get
+  end
+
+  # Parses a human readable timestamp the same way parse_time post processor does and
+  # returns a Time instance for easier assertions.
+  # @param value [String]
+  # @param channel_url [String]
+  # @param time_zone [String, nil]
+  # @return [Time]
+  def parse_time_to_time(value, channel_url:, time_zone: nil)
+    context = build_post_processor_context(channel_url:, time_zone:)
+    parsed = Html2rss::Selectors::PostProcessors::ParseTime.new(value, context).get
+    Time.rfc2822(parsed)
+  end
+
+  # Resolves the provided relative URL against the supplied channel URL.
+  # @param href [String, nil]
+  # @param channel_url [String]
+  # @return [String]
+  def absolute_url_for(href, channel_url)
+    Html2rss::Url.from_relative(href, channel_url).to_s
   end
 
   # Generates an RSS feed from a configuration with mocked request service

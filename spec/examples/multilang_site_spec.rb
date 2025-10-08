@@ -4,131 +4,80 @@ require 'spec_helper'
 
 RSpec.describe 'Multi-Language Site Configuration' do
   subject(:feed) do
-    # Mock the request service to return our HTML fixture
     mock_request_service_with_html_fixture('multilang_site', 'https://example.com')
-
     Html2rss.feed(config)
   end
 
   let(:config_file) { File.join(%w[spec examples multilang_site.yml]) }
-  let(:html_file) { File.join(%w[spec examples multilang_site.html]) }
   let(:config) { Html2rss.config_from_yaml_file(config_file) }
+  let(:channel_url) { config.dig(:channel, :url) }
+  let(:items) { feed.items }
+  let(:expected_titles) do
+    [
+      "[en] Breaking News: ACME Corp's Technology Update",
+      '[es] Noticias: Actualización Tecnológica de ACME Corp',
+      "[fr] Actualités: Mise à jour technologique d'ACME Corp",
+      '[de] Nachrichten: ACME Corp Technologie-Update',
+      '[en] Environmental Research Update',
+      '[es] Investigación Ambiental Actualizada',
+      '[en] Health and Wellness Guide',
+      '[fr] Guide Santé et Bien-être'
+    ]
+  end
 
-  it 'generates a valid RSS feed', :aggregate_failures do
-    expect(feed).to be_a(RSS::Rss)
+  let(:expected_descriptions) do
+    [
+      "This is a major technology breakthrough that will change everything. ACME Corp scientists have developed a new quantum computing algorithm that promises to revolutionize data processing. It can finally solve the halting problem... or can it? The new system can process complex calculations in seconds that would take traditional computers years to complete. It's so fast, it can compile Hello World before you finish typing it.",
+      "Esta es una gran innovación tecnológica que cambiará todo. Los científicos de ACME Corp han desarrollado un nuevo algoritmo de computación cuántica que promete revolucionar el procesamiento de datos. Es tan avanzado que puede debuggear código antes de que se escriba. El nuevo sistema puede procesar cálculos complejos en segundos que tomarían años a las computadoras tradicionales. También viene con una taza de café integrada.",
+      "Il s'agit d'une percée technologique majeure qui va tout changer. Les scientifiques d'ACME Corp ont développé un nouvel algorithme de calcul quantique qui promet de révolutionner le traitement des données. Il peut même comprendre le code français. Le nouveau système peut traiter des calculs complexes en quelques secondes qui prendraient des années aux ordinateurs traditionnels. Il est si rapide qu'il peut compiler \"Bonjour le monde\" avant que vous ne finissiez de le taper.",
+      "Dies ist ein wichtiger technologischer Durchbruch, der alles verändern wird. Wissenschaftler von ACME Corp haben einen neuen Quantencomputing-Algorithmus entwickelt, der die Datenverarbeitung revolutionieren soll. Er kann sogar deutsche Kommentare verstehen. Das neue System kann komplexe Berechnungen in Sekunden verarbeiten, für die herkömmliche Computer Jahre benötigen würden. Es ist so schnell, dass es \"Hallo Welt\" kompilieren kann, bevor Sie es fertig getippt haben.",
+      'New research shows that climate change is accelerating faster than previously predicted. The study, conducted by an international team of scientists, reveals alarming trends in global temperature rise. Immediate action is required to prevent catastrophic environmental damage within the next decade.',
+      'Nueva investigación muestra que el cambio climático se está acelerando más rápido de lo previsto. El estudio, realizado por un equipo internacional de científicos, revela tendencias alarmantes en el aumento de la temperatura global. Se requiere acción inmediata para prevenir daños ambientales catastróficos en la próxima década.',
+      'Maintaining good health requires a balanced approach to diet, exercise, and mental well-being. Recent studies have shown the importance of regular physical activity and proper nutrition. Experts recommend at least 30 minutes of moderate exercise daily, combined with a diet rich in fruits, vegetables, and whole grains.',
+      "Maintenir une bonne santé nécessite une approche équilibrée de l'alimentation, de l'exercice et du bien-être mental. Des études récentes ont montré l'importance de l'activité physique régulière et d'une nutrition appropriée. Les experts recommandent au moins 30 minutes d'exercice modéré quotidien, combiné avec un régime riche en fruits, légumes et céréales complètes."
+    ]
+  end
+
+  let(:expected_categories) do
+    [
+      ['en', 'Technology'],
+      ['es', 'Tecnología'],
+      ['fr', 'Technologie'],
+      ['de', 'Technologie'],
+      ['en', 'Environment'],
+      ['es', 'Medio Ambiente'],
+      ['en', 'Health'],
+      ['fr', 'Santé']
+    ]
+  end
+
+  it 'applies the configured channel metadata' do
     expect(feed.channel.title).to eq('ACME Multi-Language Site News')
     expect(feed.channel.link).to eq('https://example.com')
     expect(feed.channel.language).to eq('en')
   end
 
-  it 'extracts all 8 items from the multi-language HTML', :aggregate_failures do
-    expect(feed.items).to be_an(Array)
-    expect(feed.items.size).to eq(8)
+  it 'renders every post with language-prefixed titles and sanitised body copy', :aggregate_failures do
+    expect(items.size).to eq(expected_titles.size)
+    expect(items.map(&:title)).to eq(expected_titles)
+    expect(items.map(&:description)).to eq(expected_descriptions)
   end
 
-  it 'extracts titles correctly with language template processing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items = feed.items
-    titles = items.map(&:title)
-    expect(titles).to all(be_a(String)).and all(satisfy { |title| !title.strip.empty? }).and all(match(/^\[[a-z]{2}\]/))
-    expect(titles).to include('[en] Breaking News: ACME Corp\'s Technology Update',
-                              '[es] Noticias: Actualización Tecnológica de ACME Corp',
-                              '[fr] Actualités: Mise à jour technologique d\'ACME Corp',
-                              '[de] Nachrichten: ACME Corp Technologie-Update',
-                              '[en] Environmental Research Update',
-                              '[es] Investigación Ambiental Actualizada',
-                              '[en] Health and Wellness Guide',
-                              '[fr] Guide Santé et Bien-être')
+  it 'exposes language codes and translated topics as individual categories' do
+    expect(items.map { |item| item.categories.map(&:content) })
+      .to eq(expected_categories)
   end
 
-  it 'extracts language information correctly from data-lang attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items = feed.items
-    language_categories = items.flat_map(&:categories).select { |cat| cat.content.match?(/^[a-z]{2}$/) }
-    expect(language_categories.size).to eq(8)
-    language_codes = language_categories.map(&:content)
-    expect(language_codes).to include('en', 'es', 'fr', 'de')
-    expect(language_codes.count('en')).to eq(3)
-    expect(language_codes.count('es')).to eq(2)
-    expect(language_codes.count('fr')).to eq(2)
-    expect(language_codes.count('de')).to eq(1)
+  it 'keeps multilingual content grouped correctly' do
+    groups = items.group_by { |item| item.categories.first.content }
+    expect(groups.transform_values(&:count)).to eq('en' => 3, 'es' => 2, 'fr' => 2, 'de' => 1)
   end
 
-  it 'extracts topic information correctly as categories', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items = feed.items
-    topic_categories = items.flat_map(&:categories).select do |cat|
-      cat.content.match?(/^[A-Za-z\s]+$/) && !cat.content.match?(/^[a-z]{2}$/)
-    end
-    expect(topic_categories.size).to eq(6)
-    topic_names = topic_categories.map(&:content)
-    expect(topic_names).to include('Technology', 'Technologie', 'Environment', 'Medio Ambiente', 'Health')
-  end
+  it 'retains the source language copy within descriptions' do
+    spanish_item = items.find { |item| item.title.start_with?('[es]') }
+    french_item = items.find { |item| item.title.start_with?('[fr]') }
 
-  it 'extracts descriptions correctly with HTML sanitization', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items = feed.items
-    descriptions = items.map(&:description)
-    expect(descriptions).to all(be_a(String)).and all(satisfy { |desc| !desc.strip.empty? }).and all(satisfy { |desc|
-      !desc.match(/<[^>]+>/)
-    })
-    en_article = items.find { |item| item.title.include?('[en] Breaking News') }
-    expect(en_article.description).to include('ACME Corp scientists have developed', 'quantum computing algorithm')
-    es_article = items.find { |item| item.title.include?('[es] Noticias') }
-    expect(es_article.description).to include('Los científicos de ACME Corp han desarrollado',
-                                              'algoritmo de computación cuántica')
-  end
-
-  it 'validates that template processing works with language interpolation', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items = feed.items
-    items.each do |item|
-      expect(item.title).to match(/^\[[a-z]{2}\]/)
-      language_code = item.title.match(/^\[([a-z]{2})\]/)[1]
-      language_category = item.categories.find do |cat|
-        cat.content == language_code
-      end
-      expect(language_category).not_to be_nil
-    end
-  end
-
-  it 'handles multiple languages correctly in the same feed', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items_by_language = feed.items.group_by do |item|
-      language_category = item.categories.find { |cat| cat.content.match?(/^[a-z]{2}$/) }
-      language_category ? language_category.content : 'unknown'
-    end
-
-    expect(items_by_language.keys).to contain_exactly('de', 'en', 'es', 'fr')
-    expect(items_by_language.fetch('en').size).to eq(3)
-    expect(items_by_language.fetch('es').size).to eq(2)
-    expect(items_by_language.fetch('fr').size).to eq(2)
-    expect(items_by_language.fetch('de').size).to eq(1)
-  end
-
-  it 'validates that attribute extraction works for data-lang', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items = feed.items
-    items.each do |item|
-      language_category = item.categories.find do |cat|
-        cat.content.match?(/^[a-z]{2}$/)
-      end
-      expect(language_category).not_to be_nil
-      expect(language_category.content).to match(/^[a-z]{2}$/)
-    end
-  end
-
-  it 'preserves original content structure in template processing', :aggregate_failures do
-    items = feed.items
-    expect(items).to all(have_attributes(title: be_a(String).and(satisfy { |title|
-      title.length > 10
-    }).and(match(/^\[[a-z]{2}\] .+/))))
-  end
-
-  it 'handles different topic categories correctly', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    items = feed.items
-    technology_items = items.select { |item| item.categories.any? { |cat| cat.content.match?(/^[Tt]echnolog/) } }
-    expect(technology_items.size).to eq(3)
-    environment_items = items.select do |item|
-      item.categories.any? do |cat|
-        cat.content.match?(/^[Ee]nvironment|^[Mm]edio [Aa]mbiente/)
-      end
-    end
-    expect(environment_items.size).to eq(2)
-    health_items = items.select { |item| item.categories.any? { |cat| cat.content.match?(/^[Hh]ealth|^[Ss]anté/) } }
-    expect(health_items.size).to eq(2)
+    expect(spanish_item.description).to include('Los científicos de ACME Corp han desarrollado')
+    expect(french_item.description).to include("Les scientifiques d'ACME Corp ont développé")
   end
 end
