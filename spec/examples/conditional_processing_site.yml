@@ -24,4 +24,4 @@ selectors:
     post_process:
       - name: "parse_time"
   categories:
-    - status  # Include status as a category
+    - status # Include status as a category

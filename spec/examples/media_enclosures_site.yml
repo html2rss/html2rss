@@ -24,13 +24,13 @@ selectors:
     selector: "a"
     extractor: "href"
   enclosure:
-    selector: "audio, video"  # Support both audio and video
+    selector: "audio, video" # Support both audio and video
     extractor: "attribute"
     attribute: "src"
-    content_type: "audio/mpeg"  # Default content type
+    content_type: "audio/mpeg" # Default content type
   duration:
     selector: ".duration"
     extractor: "attribute"
     attribute: "data-duration"
   categories:
-    - duration  # Include duration as a category
+    - duration # Include duration as a category

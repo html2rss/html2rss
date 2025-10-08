@@ -20,7 +20,6 @@ selectors:
       - name: "parse_time"
         # Note: parse_time doesn't accept format parameter, it auto-detects
         # This will be empty for items without time elements, which is handled gracefully
-
 # Use auto-source as fallback (disabled for testing)
 # auto_source:
 #   scraper:
