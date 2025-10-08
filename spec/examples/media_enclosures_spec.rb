@@ -1,114 +1,92 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'time'
 
-# This spec demonstrates the media enclosures configuration,
-# which handles podcast and video content with media enclosures,
-# duration extraction, and HTML to Markdown conversion.
 RSpec.describe 'Media Enclosures Configuration', type: :example do
-  # RSS feed generation tests
-  # These tests validate that the configuration successfully generates
-  # a valid RSS feed with proper media content extraction
   subject(:feed) { generate_feed_from_config(config, config_name, :html) }
 
   let(:config_name) { 'media_enclosures_site' }
   let(:config) { load_example_configuration(config_name) }
+  let(:items) { feed.items }
 
-  it 'generates a valid RSS feed' do
-    expect(feed).to be_a_valid_rss_feed
+  let(:expected_items) do
+    [
+      {
+        title: 'Episode 42: The Future of AI in Web Development',
+        link: 'https://example.com/episodes/episode-42-ai-web-dev',
+        description_includes: [
+          '<audio controls',
+          'AI-assisted coding'
+        ],
+        categories: ['3240'],
+        pub_date: 'Mon, 15 Jan 2024 10:00:00 +0000',
+        enclosure: { url: 'https://example.com/episodes/episode-42-ai-web-dev.mp3', type: 'audio/mpeg', length: 0 }
+      },
+      {
+        title: 'Episode 41: Building Scalable React Applications',
+        link: 'https://example.com/episodes/episode-41-scalable-react',
+        description_includes: [
+          '<audio controls',
+          'performance optimization'
+        ],
+        categories: ['2880'],
+        pub_date: 'Mon, 08 Jan 2024 10:00:00 +0000',
+        enclosure: { url: 'https://example.com/episodes/episode-41-scalable-react.mp3', type: 'audio/mpeg', length: 0 }
+      },
+      {
+        title: 'Episode 40: Special - Interview with Tech Industry Leaders',
+        link: 'https://example.com/episodes/episode-40-special-interview',
+        description_includes: [
+          '<audio controls',
+          'tech industry leaders'
+        ],
+        categories: ['4500'],
+        pub_date: 'Mon, 01 Jan 2024 10:00:00 +0000',
+        enclosure: { url: 'https://example.com/episodes/episode-40-special-interview.mp3', type: 'audio/mpeg', length: 0 }
+      },
+      {
+        title: 'Episode 39: Quick Tips for CSS Grid',
+        link: 'https://example.com/episodes/episode-39-css-grid-tips',
+        description_includes: [
+          '<audio controls',
+          'essential CSS Grid tips'
+        ],
+        categories: ['1800'],
+        pub_date: 'Mon, 25 Dec 2023 10:00:00 +0000',
+        enclosure: { url: 'https://example.com/episodes/episode-39-css-grid-tips.mp3', type: 'audio/mpeg', length: 0 }
+      },
+      {
+        title: 'Episode 38: Live Coding Session - Building a Todo App',
+        link: 'https://example.com/episodes/episode-38-live-coding',
+        description_includes: [
+          'live coding session',
+          'Implementing core functionality'
+        ],
+        categories: ['5400'],
+        pub_date: 'Mon, 18 Dec 2023 10:00:00 +0000',
+        enclosure: nil
+      },
+      {
+        title: 'Episode 37: Text-Only Episode - Reading List',
+        link: 'https://example.com/episodes/episode-37-reading-list',
+        description_includes: [
+          'text-only episode',
+          "This month's recommendations include books on software architecture"
+        ],
+        categories: ['0'],
+        pub_date: 'Mon, 11 Dec 2023 10:00:00 +0000',
+        enclosure: nil
+      }
+    ]
   end
 
-  it 'extracts the correct number of episodes' do
-    expect(feed).to have_valid_items
+  it 'translates every episode into an RSS item with markdown summaries' do
+    expect_feed_items(items, expected_items)
   end
 
-  context 'with basic item content validation' do
-    it 'extracts titles correctly' do
-      expect(feed).to have_valid_titles
-    end
-
-    it 'extracts URLs correctly' do
-      expect(feed).to have_valid_links
-    end
-
-    it 'extracts descriptions correctly' do
-      expect(feed).to have_valid_descriptions
-    end
-
-    it 'extracts published dates correctly' do
-      expect(feed).to have_valid_published_dates
-    end
-  end
-
-  context 'with media-specific content validation' do
-    it 'extracts duration information as categories' do
-      expect(feed).to have_categories
-    end
-
-    it 'handles media enclosures' do
-      expect(feed).to have_enclosures
-    end
-
-    it 'handles episodes without media enclosures' do
-      # This test ensures the configuration gracefully handles
-      # items that don't have media enclosures
-      items = feed.items
-      expect(items).to be_an(Array)
-    end
-  end
-
-  context 'with duration processing' do
-    it 'extracts duration from data-duration attribute' do
-      all_categories = extract_all_categories(feed)
-      duration_categories = all_categories.grep(/^\d+$/)
-      expect(duration_categories).not_to be_empty
-    end
-
-    it 'validates duration values are non-negative' do
-      all_categories = extract_all_categories(feed)
-      duration_categories = all_categories.grep(/^\d+$/)
-
-      duration_categories.each do |duration|
-        expect(duration.to_i).to be >= 0
-      end
-    end
-  end
-
-  context 'with enclosure validation' do
-    it 'validates enclosure URLs are absolute' do
-      items = feed.items
-      items_with_enclosures = items.select(&:enclosure)
-
-      items_with_enclosures.each do |item|
-        expect(item.enclosure.url).to be_a(String)
-      end
-    end
-
-    it 'validates enclosure URLs are not empty' do
-      items = feed.items
-      items_with_enclosures = items.select(&:enclosure)
-
-      items_with_enclosures.each do |item|
-        expect(item.enclosure.url).not_to be_empty
-      end
-    end
-
-    it 'validates enclosure types are specified' do
-      items = feed.items
-      items_with_enclosures = items.select(&:enclosure)
-
-      items_with_enclosures.each do |item|
-        expect(item.enclosure.type).to be_a(String)
-      end
-    end
-
-    it 'validates enclosure types are not empty' do
-      items = feed.items
-      items_with_enclosures = items.select(&:enclosure)
-
-      items_with_enclosures.each do |item|
-        expect(item.enclosure.type).not_to be_empty
-      end
-    end
+  it 'emits absolute URLs for episode pages and media assets' do
+    urls = items.map(&:link)
+    expect(urls).to all(start_with('https://example.com/episodes/'))
   end
 end
