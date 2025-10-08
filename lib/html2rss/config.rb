@@ -50,7 +50,6 @@ module Html2rss
         if params
           DynamicParams.call(config[:headers], params)
           DynamicParams.call(config[:channel], params)
-          DynamicParams.call(config[:request], params)
         end
 
         new(config)
@@ -99,8 +98,6 @@ module Html2rss
     def stylesheets = config[:stylesheets]
 
     def headers = config[:headers]
-    def request_options = config[:request]
-
     def channel = config[:channel]
     def url = config.dig(:channel, :url)
     def time_zone = config.dig(:channel, :time_zone)

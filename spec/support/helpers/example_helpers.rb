@@ -9,14 +9,36 @@ module ExampleHelpers
 
   FIXTURE_ROOT = File.join('spec', 'examples').freeze
 
+  ##
+  # Stub the request service with an HTML fixture for a given URL.
+  #
+  # @param fixture_name [String] base name of the fixture in `spec/examples`
+  # @param url [String] URL the request service should return
+  # @param content_type [String] MIME type to expose on the response
+  # @return [void]
   def mock_request_service_with_html_fixture(fixture_name, url, content_type: 'text/html')
     stub_request_service(fixture_path(fixture_name, 'html'), url, content_type)
   end
 
+  ##
+  # Stub the request service with a JSON fixture for a given URL.
+  #
+  # @param fixture_name [String] base name of the fixture in `spec/examples`
+  # @param url [String] URL the request service should return
+  # @param content_type [String] MIME type to expose on the response
+  # @return [void]
   def mock_request_service_with_json_fixture(fixture_name, url, content_type: 'application/json')
     stub_request_service(fixture_path(fixture_name, 'json'), url, content_type)
   end
 
+  ##
+  # Build a feed by loading configuration and stubbing the HTTP layer with fixtures.
+  #
+  # @param config [Hash] feed configuration
+  # @param fixture_name [String] base name for the fixture files
+  # @param fixture_type [Symbol] either :html or :json to pick the transport stub
+  # @param url [String] URL to associate with the feed channel
+  # @return [RSS::Rss] rendered feed instance
   def generate_feed_from_config(config, fixture_name, fixture_type = :html, url = 'https://example.com')
     case fixture_type
     when :html
@@ -31,6 +53,12 @@ module ExampleHelpers
     Html2rss.feed(config.merge(channel: channel_config))
   end
 
+  ##
+  # Assert the shape of produced feed items against a declarative expectation hash.
+  #
+  # @param items [Array<RSS::Rss::Channel::Item>] actual RSS items
+  # @param expected_items [Array<Hash>] expectation descriptors
+  # @return [void]
   def expect_feed_items(items, expected_items)
     expect(items.size).to eq(expected_items.size)
     expected_items.each_with_index do |expected, index|

@@ -79,8 +79,7 @@ module Html2rss
       RequestService.execute(
         RequestService::Context.new(
           url: config.url,
-          headers: config.headers,
-          options: config.request_options
+          headers: config.headers
         ),
         strategy: config.strategy
       )

@@ -26,16 +26,10 @@ module Html2rss
         optional(:media).maybe(:string)
       end
 
-      RequestConfig = Dry::Schema.Params do
-        optional(:fixture).filled(:string)
-        optional(:content_type).maybe(:string)
-      end
-
       params do
         required(:strategy).filled(:symbol)
         required(:channel).hash(ChannelConfig)
         optional(:headers).hash
-        optional(:request).hash(RequestConfig)
         optional(:stylesheets).array(StylesheetConfig)
         optional(:auto_source).hash(AutoSource::Config)
         optional(:selectors).hash
