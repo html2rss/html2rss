@@ -4,10 +4,9 @@ RSpec.describe Html2rss::AutoSource do
   subject(:instance) { described_class.new(response, config) }
 
   let(:config) { described_class::DEFAULT_CONFIG }
-  let(:response) { build_response(body:, headers:, url:) }
+  let(:response) { build_response(body:, headers: { 'content-type': 'text/html' }, url:) }
   let(:url) { Html2rss::Url.from_relative('https://example.com', 'https://example.com') }
   let(:body) { build_html_with_article('Article 1 Title', '/article1') }
-  let(:headers) { { 'content-type': 'text/html' } }
 
   # Test factories for maintainability
   def build_response(body:, headers:, url:)
@@ -44,6 +43,10 @@ RSpec.describe Html2rss::AutoSource do
     }
   end
 
+  def scraper_class
+    Html2rss::AutoSource::Scraper::SemanticHtml
+  end
+
   describe '::DEFAULT_CONFIG' do
     it 'is a frozen Hash' do
       expect(described_class::DEFAULT_CONFIG).to be_a(Hash) & be_frozen
@@ -78,8 +81,9 @@ RSpec.describe Html2rss::AutoSource do
 
   describe '#articles' do
     before do
-      allow(Parallel).to receive(:flat_map)
-        .and_yield(Html2rss::AutoSource::Scraper::SemanticHtml.new(response.parsed_body, url:).each)
+      allow(Parallel).to receive(:flat_map) do |scrapers, **_kwargs, &block|
+        scrapers.flat_map(&block)
+      end
     end
 
     it 'returns an array of articles', :aggregate_failures do
@@ -151,30 +155,49 @@ RSpec.describe Html2rss::AutoSource do
   describe 'private methods' do
     describe '#extract_articles' do
       before do
-        allow(Html2rss::AutoSource::Scraper).to receive(:from).and_return([Html2rss::AutoSource::Scraper::SemanticHtml])
-        scraper_instance = instance_double(Html2rss::AutoSource::Scraper::SemanticHtml, each: [])
-        allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_return(scraper_instance)
+        semantic_html_test_scraper = Class.new do
+          def self.options_key = :semantic_html
+
+          def initialize(_parsed_body, url:, **_options)
+            @url = url
+          end
+
+          def each
+            []
+          end
+        end
+
+        allow(Html2rss::AutoSource::Scraper).to receive(:from).and_return([semantic_html_test_scraper])
         allow(Html2rss::AutoSource::Cleanup).to receive(:call)
+        allow(Parallel).to receive(:flat_map) do |scrapers, **_kwargs, &block|
+          scrapers.flat_map(&block)
+        end
       end
 
-      it 'calls scrapers and cleanup' do
+      it 'calls scrapers and cleanup', :aggregate_failures do
         instance.send(:extract_articles)
+        expect(Parallel).to have_received(:flat_map)
         expect(Html2rss::AutoSource::Cleanup).to have_received(:call)
       end
     end
 
     describe '#run_scraper' do
-      before do
-        allow(Parallel).to receive(:map).and_yield({ title: 'Test' }).and_return([instance_double(Object)])
-        allow(Html2rss::RssBuilder::Article).to receive(:new)
-        allow(Html2rss::Log).to receive(:debug)
+      let(:scraper_instance) do
+        instance_double(scraper_class, each: [{ title: 'Test' }])
       end
 
-      it 'processes articles in parallel', :aggregate_failures do
-        scraper_instance = double('TestScraper', class: 'TestScraper', each: [{ title: 'Test' }]) # rubocop:disable RSpec/VerifiedDoubles
-        instance.send(:run_scraper, scraper_instance)
-        expect(Parallel).to have_received(:map)
-        expect(Html2rss::Log).to have_received(:debug)
+      before do
+        allow(scraper_instance).to receive(:class).and_return(scraper_class)
+        allow(Html2rss::RssBuilder::Article).to receive(:new).and_return(:article)
+        allow(Parallel).to receive(:map)
+      end
+
+      it 'builds RSS articles from scraper output', :aggregate_failures do
+        result = instance.send(:run_scraper, scraper_instance)
+
+        expect(Parallel).not_to have_received(:map)
+        expect(Html2rss::RssBuilder::Article).to have_received(:new).with(title: 'Test', scraper: scraper_class)
+        expect(result).to eq [:article]
       end
     end
   end
