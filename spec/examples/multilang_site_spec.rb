@@ -81,7 +81,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
     ]
   end
 
-  it 'applies the configured channel metadata' do
+  it 'applies the configured channel metadata', :aggregate_failures do
     expect(feed.channel.title).to eq('ACME Multi-Language Site News')
     expect(feed.channel.link).to eq('https://example.com')
     expect(feed.channel.language).to eq('en')
@@ -96,7 +96,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
     expect(groups.transform_values(&:count)).to eq('en' => 3, 'es' => 2, 'fr' => 2, 'de' => 1)
   end
 
-  it 'retains the source language copy within descriptions' do
+  it 'retains the source language copy within descriptions', :aggregate_failures do
     spanish_item = items.find { |item| item.title.start_with?('[es]') }
     french_item = items.find { |item| item.title.start_with?('[fr]') }
 

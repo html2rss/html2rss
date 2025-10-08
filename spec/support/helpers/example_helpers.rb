@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-# Helper methods for HTML2RSS example specs
-# These helpers keep the specs focused on intent while staying close to the
-# production pipeline so the assertions remain trustworthy.
+# Helper methods for HTML2RSS example specs that keep assertions aligned with the production pipeline.
 
 require_relative 'configuration_helpers'
 
@@ -35,43 +33,8 @@ module ExampleHelpers
 
   def expect_feed_items(items, expected_items)
     expect(items.size).to eq(expected_items.size)
-
-    items.zip(expected_items).each_with_index do |(item, expected), index|
-      aggregate_failures("item ##{index + 1}") do
-        expect(item.title).to eq(expected[:title]) if expected.key?(:title)
-
-        if expected.key?(:link)
-          expected_link = expected[:link]
-          expected_link.nil? ? expect(item.link).to(be_nil) : expect(item.link).to(eq(expected_link))
-        end
-
-        Array(expected[:description_includes]).each do |snippet|
-          expect(item.description).to include(snippet)
-        end
-
-        if expected.key?(:description_starts_with)
-          expect(item.description).to start_with(expected[:description_starts_with])
-        end
-
-        expect(item.categories.map(&:content)).to eq(expected[:categories]) if expected.key?(:categories)
-
-        if expected.key?(:pub_date)
-          actual_pub_date = item.pubDate&.rfc2822
-          expected[:pub_date].nil? ? expect(actual_pub_date).to(be_nil) : expect(actual_pub_date).to(eq(expected[:pub_date]))
-        end
-
-        next unless expected.key?(:enclosure)
-
-        if expected[:enclosure].nil?
-          expect(item.enclosure).to be_nil
-        else
-          expect(item.enclosure).not_to be_nil
-          enclosure = item.enclosure
-          expect(enclosure.url).to eq(expected[:enclosure][:url]) if expected[:enclosure].key?(:url)
-          expect(enclosure.type).to eq(expected[:enclosure][:type]) if expected[:enclosure].key?(:type)
-          expect(enclosure.length).to eq(expected[:enclosure][:length]) if expected[:enclosure].key?(:length)
-        end
-      end
+    expected_items.each_with_index do |expected, index|
+      verify_item_expectations(items.fetch(index), expected, index)
     end
   end
 
@@ -92,6 +55,81 @@ module ExampleHelpers
         headers: { 'content-type': content_type }
       )
     )
+  end
+
+  def verify_item_expectations(item, expected, index)
+    aggregate_failures("item ##{index + 1}") do
+      expect_item_title(item, expected)
+      expect_item_link(item, expected)
+      expect_item_description(item, expected)
+      expect_item_categories(item, expected)
+      expect_item_pub_date(item, expected)
+      expect_item_enclosure(item, expected)
+    end
+  end
+
+  def expect_item_title(item, expected)
+    return unless expected.key?(:title)
+
+    expect(item.title).to eq(expected[:title])
+  end
+
+  def expect_item_link(item, expected)
+    return unless expected.key?(:link)
+
+    expect_optional_value(item.link, expected[:link])
+  end
+
+  def expect_item_description(item, expected)
+    Array(expected[:description_includes]).each do |snippet|
+      expect(item.description).to include(snippet)
+    end
+
+    return unless expected.key?(:description_starts_with)
+
+    expect(item.description).to start_with(expected[:description_starts_with])
+  end
+
+  def expect_item_categories(item, expected)
+    return unless expected.key?(:categories)
+
+    expect(item.categories.map(&:content)).to eq(expected[:categories])
+  end
+
+  def expect_item_pub_date(item, expected)
+    return unless expected.key?(:pub_date)
+
+    actual_pub_date = item.pubDate&.rfc2822
+    expect_optional_value(actual_pub_date, expected[:pub_date])
+  end
+
+  def expect_item_enclosure(item, expected)
+    return unless expected.key?(:enclosure)
+
+    expected_enclosure = expected[:enclosure]
+    if expected_enclosure.nil?
+      expect(item.enclosure).to be_nil
+      return
+    end
+
+    expect(item.enclosure).not_to be_nil
+    expect_enclosure_attributes(item.enclosure, expected_enclosure)
+  end
+
+  def expect_enclosure_attributes(enclosure, expected)
+    expect_enclosure_field(enclosure, expected, :url)
+    expect_enclosure_field(enclosure, expected, :type)
+    expect_enclosure_field(enclosure, expected, :length)
+  end
+
+  def expect_optional_value(actual, expected)
+    expected.nil? ? expect(actual).to(be_nil) : expect(actual).to(eq(expected))
+  end
+
+  def expect_enclosure_field(enclosure, expected, field)
+    return unless expected.key?(field)
+
+    expect(enclosure.public_send(field)).to eq(expected[field])
   end
 end
 

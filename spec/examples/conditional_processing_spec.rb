@@ -84,7 +84,7 @@ RSpec.describe 'Conditional Processing Configuration' do
     ]
   end
 
-  it 'publishes the configured channel metadata' do
+  it 'publishes the configured channel metadata', :aggregate_failures do
     expect(feed.channel.title).to eq('ACME Conditional Processing Site News')
     expect(feed.channel.link).to eq('https://example.com')
   end
@@ -93,7 +93,7 @@ RSpec.describe 'Conditional Processing Configuration' do
     expect_feed_items(items, expected_items)
   end
 
-  it 'gracefully handles missing statuses in both the template output and category list' do
+  it 'gracefully handles missing statuses in both the template output and category list', :aggregate_failures do
     empty_status_item = items.find { |item| item.title.include?('Without Status') }
     expect(empty_status_item.description).to start_with('[Status: ]')
     expect(empty_status_item.categories).to be_empty

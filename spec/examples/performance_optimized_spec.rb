@@ -54,7 +54,7 @@ RSpec.describe 'Performance-Optimized Configuration' do
     ]
   end
 
-  it 'applies the high-signal CSS selector and ignores adverts' do
+  it 'applies the high-signal CSS selector and ignores adverts', :aggregate_failures do
     expect(items.size).to eq(4)
     expect(items.map(&:title)).to all(include('ACME Corp'))
   end

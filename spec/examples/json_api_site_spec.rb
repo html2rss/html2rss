@@ -85,7 +85,7 @@ RSpec.describe 'JSON API Site Configuration' do
     ]
   end
 
-  it 'loads channel metadata from the configuration file' do
+  it 'loads channel metadata from the configuration file', :aggregate_failures do
     expect(feed.channel.title).to eq('ACME JSON API Site News')
     expect(feed.channel.link).to eq('https://example.com/posts')
   end

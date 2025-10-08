@@ -71,7 +71,7 @@ RSpec.describe 'Dynamic Content Site Configuration' do
     ]
   end
 
-  it 'builds the channel with the configured metadata' do
+  it 'builds the channel with the configured metadata', :aggregate_failures do
     expect(feed.channel.title).to eq('ACME Dynamic Content Site News')
     expect(feed.channel.link).to eq('https://example.com/news')
     expect(feed.channel.generator).to include('Selectors')
@@ -81,13 +81,13 @@ RSpec.describe 'Dynamic Content Site Configuration' do
     expect_feed_items(items, expected_items)
   end
 
-  it 'captures the long-form excerpts exactly as rendered on the site' do
+  it 'captures the long-form excerpts exactly as rendered on the site', :aggregate_failures do
     ai_article = items.find { |item| item.title.include?('AI Breakthrough') }
     expect(ai_article.description).to include("It also knows when you're lying about your commit messages.")
     expect(ai_article.description).to include('translate it to "it\'s broken in production".')
   end
 
-  it 'preserves temporal ordering using the configured time zone' do
+  it 'preserves temporal ordering using the configured time zone', :aggregate_failures do
     expect(items.map(&:pubDate)).to eq(items.map(&:pubDate).sort.reverse)
     expect(items.first.pubDate.utc_offset).to eq(-18_000)
   end
