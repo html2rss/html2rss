@@ -20,7 +20,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
           'quantum computing algorithm that promises to revolutionize data processing',
           "It's so fast, it can compile Hello World before you finish typing it."
         ],
-        categories: ['en', 'Technology']
+        categories: %w[en Technology]
       },
       {
         title: '[es] Noticias: Actualización Tecnológica de ACME Corp',
@@ -28,7 +28,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
           'gran innovación tecnológica',
           'También viene con una taza de café integrada.'
         ],
-        categories: ['es', 'Tecnología']
+        categories: %w[es Tecnología]
       },
       {
         title: "[fr] Actualités: Mise à jour technologique d'ACME Corp",
@@ -36,7 +36,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
           'percée technologique majeure',
           "Il est si rapide qu'il peut compiler \"Bonjour le monde\""
         ],
-        categories: ['fr', 'Technologie']
+        categories: %w[fr Technologie]
       },
       {
         title: '[de] Nachrichten: ACME Corp Technologie-Update',
@@ -44,7 +44,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
           'wichtiger technologischer Durchbruch',
           'Es ist so schnell, dass es "Hallo Welt" kompilieren kann'
         ],
-        categories: ['de', 'Technologie']
+        categories: %w[de Technologie]
       },
       {
         title: '[en] Environmental Research Update',
@@ -52,7 +52,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
           'climate change is accelerating faster than previously predicted',
           'Immediate action is required'
         ],
-        categories: ['en', 'Environment']
+        categories: %w[en Environment]
       },
       {
         title: '[es] Investigación Ambiental Actualizada',
@@ -68,15 +68,15 @@ RSpec.describe 'Multi-Language Site Configuration' do
           'Maintaining good health requires a balanced approach',
           'Experts recommend at least 30 minutes of moderate exercise daily'
         ],
-        categories: ['en', 'Health']
+        categories: %w[en Health]
       },
       {
         title: '[fr] Guide Santé et Bien-être',
         description_includes: [
-          "Maintenir une bonne santé nécessite une approche équilibrée",
+          'Maintenir une bonne santé nécessite une approche équilibrée',
           'Les experts recommandent au moins 30 minutes d\'exercice modéré quotidien'
         ],
-        categories: ['fr', 'Santé']
+        categories: %w[fr Santé]
       }
     ]
   end

@@ -20,7 +20,7 @@ RSpec.describe 'Conditional Processing Configuration' do
         link: 'https://example.com/articles/technology-update',
         description_starts_with: '[Status: Published]',
         description_includes: [
-          "latest debugging tool",
+          'latest debugging tool',
           'built-in rubber duck'
         ],
         categories: ['Published'],

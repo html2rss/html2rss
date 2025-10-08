@@ -53,9 +53,7 @@ module ExampleHelpers
           expect(item.description).to start_with(expected[:description_starts_with])
         end
 
-        if expected.key?(:categories)
-          expect(item.categories.map(&:content)).to eq(expected[:categories])
-        end
+        expect(item.categories.map(&:content)).to eq(expected[:categories]) if expected.key?(:categories)
 
         if expected.key?(:pub_date)
           actual_pub_date = item.pubDate&.rfc2822
@@ -71,9 +69,7 @@ module ExampleHelpers
           enclosure = item.enclosure
           expect(enclosure.url).to eq(expected[:enclosure][:url]) if expected[:enclosure].key?(:url)
           expect(enclosure.type).to eq(expected[:enclosure][:type]) if expected[:enclosure].key?(:type)
-          if expected[:enclosure].key?(:length)
-            expect(enclosure.length).to eq(expected[:enclosure][:length])
-          end
+          expect(enclosure.length).to eq(expected[:enclosure][:length]) if expected[:enclosure].key?(:length)
         end
       end
     end
@@ -91,7 +87,7 @@ module ExampleHelpers
 
     allow(Html2rss::RequestService).to receive(:execute).and_return(
       Html2rss::RequestService::Response.new(
-        body: body,
+        body:,
         url: response_url,
         headers: { 'content-type': content_type }
       )

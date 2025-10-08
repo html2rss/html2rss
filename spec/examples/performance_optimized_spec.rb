@@ -56,7 +56,7 @@ RSpec.describe 'Performance-Optimized Configuration' do
 
   it 'applies the high-signal CSS selector and ignores adverts' do
     expect(items.size).to eq(4)
-    expect(items.map(&:title)).to all(include("ACME Corp"))
+    expect(items.map(&:title)).to all(include('ACME Corp'))
   end
 
   it 'converts relative article links to absolute URLs and preserves editorial tone' do

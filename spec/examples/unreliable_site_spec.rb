@@ -18,7 +18,7 @@ RSpec.describe 'Unreliable Site Configuration' do
         title: "Breaking News: ACME Corp's Technology Advances",
         link: 'https://example.com/articles/breaking-news-technology-advances',
         description_includes: [
-          "latest technology advances",
+          'latest technology advances',
           'Warning: May contain traces of bugs.'
         ]
       },
