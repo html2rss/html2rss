@@ -182,6 +182,56 @@ RSpec.describe Html2rss::Config do
       end
     end
 
+    context 'when configuration includes browserless preload options' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: 'article' } },
+          request: {
+            browserless: {
+              preload: {
+                wait_for_network_idle: { timeout_ms: 2_000 },
+                click_selectors: [
+                  { selector: '.load-more', max_clicks: 2, delay_ms: 100 }
+                ],
+                scroll_down: {
+                  iterations: 4,
+                  wait_for_network_idle: { timeout_ms: 1_000 }
+                }
+              }
+            }
+          }
+        }
+      end
+
+      it 'exposes the request options', :aggregate_failures do
+        expect(instance.request.dig(:browserless, :preload, :wait_for_network_idle, :timeout_ms)).to eq(2_000)
+        expect(instance.request.dig(:browserless, :preload, :click_selectors).first[:max_clicks]).to eq(2)
+      end
+    end
+
+    context 'when browserless preload configuration is invalid' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: 'article' } },
+          request: {
+            browserless: {
+              preload: {
+                click_selectors: [
+                  { selector: '.load-more', max_clicks: 0 }
+                ]
+              }
+            }
+          }
+        }
+      end
+
+      it 'raises an InvalidConfig error' do
+        expect { instance }.to raise_error(described_class::InvalidConfig, /max_clicks/)
+      end
+    end
+
     context 'when configuration uses deprecated channel attributes' do
       before do
         allow(Html2rss::Log).to receive(:warn).and_return(nil)

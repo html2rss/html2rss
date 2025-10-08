@@ -67,6 +67,42 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
 
+## 🌐 Browserless Strategy Configuration
+
+The Browserless request strategy can execute additional page interactions before the HTML is captured. Configure these options in
+your feed under the `request.browserless.preload` key:
+
+```yaml
+request:
+  browserless:
+    preload:
+      wait_for_network_idle:
+        timeout_ms: 5000
+      click_selectors:
+        - selector: '.load-more'
+          max_clicks: 3
+          delay_ms: 250
+          wait_for_network_idle:
+            timeout_ms: 4000
+      scroll_down:
+        iterations: 5
+        delay_ms: 200
+        wait_for_network_idle:
+          timeout_ms: 3000
+```
+
+- **`wait_for_network_idle`** – Waits for the network to become idle before and after preload actions. If no `timeout_ms` is
+  provided the default of 5000 ms is used. Browserless exposes this as a timeout
+  wait, so html2rss simply pauses the page for the configured milliseconds to let
+  pending requests finish.
+- **`click_selectors`** – Repeatedly clicks matching elements (e.g. “Load more”) until the element disappears or `max_clicks` is
+  reached. Provide per-click `wait_for_network_idle` blocks to avoid racing requests and to stay within Browserless rate limits.
+- **`scroll_down`** – Scrolls to the bottom of the page. The loop stops early once the document height stops increasing. Combine
+  with `wait_for_network_idle` or `delay_ms` to give JavaScript time to append new content.
+
+Each step increases overall runtime. Browserless sessions have execution limits, so favour conservative values for `max_clicks`,
+`iterations`, and timeouts to prevent premature session termination.
+
 ## 🧪 Testing
 
 - **RSpec** for comprehensive testing
