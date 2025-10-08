@@ -74,8 +74,8 @@ RSpec::Matchers.define :have_valid_items do |expected_count: nil|
         sample_invalid = invalid_items.first
         <<~MSG
           expected all RSS items to be valid, but found #{invalid_items.size} invalid items.
-          Sample invalid item: title=#{sample_invalid.title.inspect},#{' '}
-          description=#{sample_invalid.description.inspect},#{' '}
+          Sample invalid item: title=#{sample_invalid.title.inspect},
+          description=#{sample_invalid.description.inspect},
           class=#{sample_invalid.class}
         MSG
       else
@@ -117,7 +117,7 @@ RSpec::Matchers.define :have_valid_titles do
         item.title.is_a?(String) && !item.title.strip.empty?
       end
       <<~MSG
-        expected all RSS items with titles to have valid titles,#{' '}
+        expected all RSS items with titles to have valid titles,
         but found #{invalid_titles.size} items with invalid titles
       MSG
     end
@@ -152,7 +152,7 @@ RSpec::Matchers.define :have_valid_descriptions do
         item.description.is_a?(String) && !item.description.strip.empty?
       end
       <<~MSG
-        expected all RSS items with descriptions to have valid descriptions,#{' '}
+        expected all RSS items with descriptions to have valid descriptions,
         but found #{invalid_descriptions.size} items with invalid descriptions
       MSG
     end
@@ -214,7 +214,7 @@ RSpec::Matchers.define :have_valid_published_dates do
         item.pubDate.nil? || item.pubDate.is_a?(Time)
       end
       <<~MSG
-        expected all RSS items to have valid published dates (Time or nil),#{' '}
+        expected all RSS items to have valid published dates (Time or nil),
         but found #{invalid_dates.size} items with invalid dates
       MSG
     end
