@@ -39,7 +39,7 @@ RSpec.describe Html2rss::CLI do
 
       cli.invoke(:feed, ['example.yml'], { max_redirects: 8 })
 
-      expect(Html2rss).to have_received(:feed).with(hash_including(max_redirects: 8))
+      expect(Html2rss).to have_received(:feed).with(hash_including(request: hash_including(max_redirects: 8)))
     end
 
     it 'passes the max_requests option to the config' do
@@ -47,7 +47,7 @@ RSpec.describe Html2rss::CLI do
 
       cli.invoke(:feed, ['example.yml'], { max_requests: 8 })
 
-      expect(Html2rss).to have_received(:feed).with(hash_including(max_requests: 8))
+      expect(Html2rss).to have_received(:feed).with(hash_including(request: hash_including(max_requests: 8)))
     end
 
     it 'passes the params option to the config' do
@@ -61,14 +61,16 @@ RSpec.describe Html2rss::CLI do
     it 'applies CLI defaults when the YAML config uses nil request overrides' do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss).to receive(:config_from_yaml_file).and_return(
         strategy: nil,
-        max_redirects: nil,
-        max_requests: nil
+        request: {
+          max_redirects: nil,
+          max_requests: nil
+        }
       )
 
       cli.feed('example.yml')
 
       expect(Html2rss).to have_received(:feed).with(
-        hash_excluding(:strategy, :max_redirects, :max_requests)
+        hash_excluding(:strategy, :request)
       )
     end
 
@@ -77,7 +79,7 @@ RSpec.describe Html2rss::CLI do
 
       cli.feed('example.yml')
 
-      expect(Html2rss).to have_received(:feed).with(hash_excluding(:max_requests, :max_redirects))
+      expect(Html2rss).to have_received(:feed).with(hash_excluding(:request))
     end
   end
 
@@ -234,10 +236,10 @@ RSpec.describe Html2rss::CLI do
 
     it 'raises a CLI error with an increased retry hint' do
       expect { cli.feed('example.yml') }
-        .to raise_error(
-          Thor::Error,
-          /retry with --max-requests 2 or increase top-level max_requests in the config/
-        )
+          .to raise_error(
+            Thor::Error,
+            /retry with --max-requests 2 or increase request.max_requests in the config/
+          )
     end
   end
 end

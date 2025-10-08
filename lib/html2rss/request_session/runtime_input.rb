@@ -12,6 +12,7 @@ module Html2rss
         new(
           url: config.url,
           headers: config.headers,
+          request: config.request,
           strategy: config.strategy,
           request_policy: RuntimePolicy.from_config(config)
         )
@@ -20,11 +21,13 @@ module Html2rss
       ##
       # @param url [String, Html2rss::Url] initial request URL
       # @param headers [Hash] normalized request headers
+      # @param request [Hash] validated request options for strategies
       # @param strategy [Symbol] request strategy to use for the session
       # @param request_policy [RequestService::Policy] request policy for the session
-      def initialize(url:, headers:, strategy:, request_policy:)
+      def initialize(url:, headers:, request:, strategy:, request_policy:)
         @url = Html2rss::Url.from_absolute(url)
         @headers = headers.freeze
+        @request = request.freeze
         @strategy = strategy
         @request_policy = request_policy
         freeze
@@ -37,6 +40,10 @@ module Html2rss
       ##
       # @return [Hash] normalized request headers
       attr_reader :headers
+
+      ##
+      # @return [Hash] validated request options for strategies
+      attr_reader :request
 
       ##
       # @return [Symbol] request strategy to use for the session

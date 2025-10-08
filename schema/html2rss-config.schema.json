@@ -7,20 +7,6 @@
         "type": "null"
       }
     },
-    "max_redirects": {
-      "type": "integer",
-      "not": {
-        "type": "null"
-      },
-      "minimum": 0
-    },
-    "max_requests": {
-      "type": "integer",
-      "not": {
-        "type": "null"
-      },
-      "exclusiveMinimum": 0
-    },
     "channel": {
       "type": "object",
       "properties": {
@@ -389,6 +375,126 @@
         }
       },
       "additionalProperties": true
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "max_redirects": {
+          "type": "integer",
+          "not": {
+            "type": "null"
+          },
+          "minimum": 0
+        },
+        "max_requests": {
+          "type": "integer",
+          "not": {
+            "type": "null"
+          },
+          "exclusiveMinimum": 0
+        },
+        "browserless": {
+          "type": "object",
+          "properties": {
+            "preload": {
+              "type": "object",
+              "properties": {
+                "wait_for_network_idle": {
+                  "type": "object",
+                  "properties": {
+                    "timeout_ms": {
+                      "type": "integer",
+                      "not": {
+                        "type": "null"
+                      },
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": []
+                },
+                "click_selectors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "selector": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "max_clicks": {
+                        "type": "integer",
+                        "not": {
+                          "type": "null"
+                        },
+                        "exclusiveMinimum": 0
+                      },
+                      "delay_ms": {
+                        "type": "integer",
+                        "not": {
+                          "type": "null"
+                        },
+                        "minimum": 0
+                      },
+                      "wait_for_network_idle": {
+                        "type": "object",
+                        "properties": {
+                          "timeout_ms": {
+                            "type": "integer",
+                            "not": {
+                              "type": "null"
+                            },
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": []
+                      }
+                    },
+                    "required": [
+                      "selector"
+                    ]
+                  }
+                },
+                "scroll_down": {
+                  "type": "object",
+                  "properties": {
+                    "iterations": {
+                      "type": "integer",
+                      "not": {
+                        "type": "null"
+                      },
+                      "exclusiveMinimum": 0
+                    },
+                    "delay_ms": {
+                      "type": "integer",
+                      "not": {
+                        "type": "null"
+                      },
+                      "minimum": 0
+                    },
+                    "wait_for_network_idle": {
+                      "type": "object",
+                      "properties": {
+                        "timeout_ms": {
+                          "type": "integer",
+                          "not": {
+                            "type": "null"
+                          },
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": []
+                    }
+                  },
+                  "required": []
+                }
+              },
+              "required": []
+            }
+          },
+          "required": []
+        }
+      },
+      "required": []
     }
   },
   "required": [

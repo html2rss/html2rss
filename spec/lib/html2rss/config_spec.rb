@@ -145,7 +145,7 @@ RSpec.describe Html2rss::Config do
 
     it 'tracks explicit request budgets as explicit' do # rubocop:disable RSpec/ExampleLength
       config = described_class.from_hash({
-                                           max_requests: 4,
+                                           request: { max_requests: 4 },
                                            channel: { url: 'https://example.com' },
                                            selectors: {
                                              items: { selector: '.item' },
@@ -173,8 +173,7 @@ RSpec.describe Html2rss::Config do
 
     it 'builds a top-level auto-source feed config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       expect(config[:strategy]).to eq(:browserless)
-      expect(config[:max_redirects]).to eq(8)
-      expect(config[:max_requests]).to eq(5)
+      expect(config[:request]).to eq(max_redirects: 8, max_requests: 5)
       expect(config.dig(:channel, :url)).to eq('https://example.com/blog')
       expect(config[:auto_source]).to eq(Html2rss::AutoSource::DEFAULT_CONFIG)
       expect(config[:selectors]).to eq(items: { selector: '.post', enhance: true })
@@ -183,8 +182,7 @@ RSpec.describe Html2rss::Config do
     it 'leaves optional request overrides unset so runtime config can apply defaults', :aggregate_failures do
       config = described_class.auto_source_config(url: 'https://example.com/blog')
 
-      expect(config).not_to have_key(:max_redirects)
-      expect(config).not_to have_key(:max_requests)
+      expect(config).not_to have_key(:request)
       expect(config[:selectors]).to be_nil
     end
   end
@@ -378,6 +376,56 @@ RSpec.describe Html2rss::Config do
 
       it 'raises an ArgumentError' do
         expect { instance }.to raise_error(described_class::InvalidConfig, /Invalid configuration:/)
+      end
+    end
+
+    context 'when configuration includes browserless preload options' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: 'article' } },
+          request: {
+            browserless: {
+              preload: {
+                wait_for_network_idle: { timeout_ms: 2_000 },
+                click_selectors: [
+                  { selector: '.load-more', max_clicks: 2, delay_ms: 100 }
+                ],
+                scroll_down: {
+                  iterations: 4,
+                  wait_for_network_idle: { timeout_ms: 1_000 }
+                }
+              }
+            }
+          }
+        }
+      end
+
+      it 'exposes the request options', :aggregate_failures do
+        expect(instance.request.dig(:browserless, :preload, :wait_for_network_idle, :timeout_ms)).to eq(2_000)
+        expect(instance.request.dig(:browserless, :preload, :click_selectors).first[:max_clicks]).to eq(2)
+      end
+    end
+
+    context 'when browserless preload configuration is invalid' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: 'article' } },
+          request: {
+            browserless: {
+              preload: {
+                click_selectors: [
+                  { selector: '.load-more', max_clicks: 0 }
+                ]
+              }
+            }
+          }
+        }
+      end
+
+      it 'raises an InvalidConfig error' do
+        expect { instance }.to raise_error(described_class::InvalidConfig, /max_clicks/)
       end
     end
 

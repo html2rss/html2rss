@@ -127,9 +127,15 @@ module Html2rss
     end
 
     def clear_blank_request_overrides!(config)
-      %i[strategy max_redirects max_requests].each do |key|
-        config.delete(key) if config[key].nil?
+      config.delete(:strategy) if config[:strategy].nil?
+
+      request_config = config[:request]
+      return unless request_config.is_a?(Hash)
+
+      %i[max_redirects max_requests].each do |key|
+        request_config.delete(key) if request_config[key].nil?
       end
+      config.delete(:request) if request_config.empty?
     end
 
     def request_controls
@@ -177,7 +183,7 @@ module Html2rss
     rescue Html2rss::RequestService::RequestBudgetExceeded => error
       raise Thor::Error,
             "#{error.message}. retry with --max-requests #{suggested_max_requests} " \
-            'or increase top-level max_requests in the config.'
+            'or increase request.max_requests in the config.'
     end
   end
 end

@@ -247,7 +247,7 @@ RSpec.describe Html2rss do
         let(:config) do
           {
             strategy: :faraday,
-            max_redirects: 8,
+            request: { max_redirects: 8 },
             channel: { url: 'https://example.com/news', title: 'Example News' },
             selectors: {
               items: { selector: 'article' },
@@ -273,7 +273,7 @@ RSpec.describe Html2rss do
         let(:config) do
           {
             strategy: :faraday,
-            max_requests: 8,
+            request: { max_requests: 8 },
             channel: { url: 'https://example.com/news', title: 'Example News' },
             selectors: {
               items: { selector: 'article' },
@@ -466,7 +466,7 @@ RSpec.describe Html2rss do
       it 'adds max_redirects to the generated config' do
         described_class.auto_source(url, max_redirects: 8)
 
-        expect(described_class).to have_received(:feed).with(hash_including(max_redirects: 8))
+        expect(described_class).to have_received(:feed).with(hash_including(request: hash_including(max_redirects: 8)))
       end
     end
 
@@ -478,7 +478,7 @@ RSpec.describe Html2rss do
       it 'adds max_requests to the generated config' do
         described_class.auto_source(url, max_requests: 8)
 
-        expect(described_class).to have_received(:feed).with(hash_including(max_requests: 8))
+        expect(described_class).to have_received(:feed).with(hash_including(request: hash_including(max_requests: 8)))
       end
     end
 
@@ -487,7 +487,7 @@ RSpec.describe Html2rss do
 
       described_class.auto_source(url)
 
-      expect(described_class).to have_received(:feed).with(hash_excluding(:max_requests))
+      expect(described_class).to have_received(:feed).with(hash_excluding(:request))
     end
   end
 
@@ -530,7 +530,7 @@ RSpec.describe Html2rss do
       it 'adds max_redirects to the generated config' do
         described_class.auto_json_feed(url, max_redirects: 8)
 
-        expect(described_class).to have_received(:json_feed).with(hash_including(max_redirects: 8))
+        expect(described_class).to have_received(:json_feed).with(hash_including(request: hash_including(max_redirects: 8)))
       end
     end
 
@@ -542,7 +542,7 @@ RSpec.describe Html2rss do
       it 'adds max_requests to the generated config' do
         described_class.auto_json_feed(url, max_requests: 8)
 
-        expect(described_class).to have_received(:json_feed).with(hash_including(max_requests: 8))
+        expect(described_class).to have_received(:json_feed).with(hash_including(request: hash_including(max_requests: 8)))
       end
     end
 
@@ -551,7 +551,7 @@ RSpec.describe Html2rss do
 
       described_class.auto_json_feed(url)
 
-      expect(described_class).to have_received(:json_feed).with(hash_excluding(:max_requests))
+      expect(described_class).to have_received(:json_feed).with(hash_excluding(:request))
     end
   end
 end

@@ -10,6 +10,7 @@ RSpec.describe Html2rss::RequestSession::RuntimeInput do
       {
         strategy: :browserless,
         channel: { url: 'https://example.com/blog' },
+        request: { browserless: { preload: { wait_for_network_idle: { timeout_ms: 500 } } } },
         selectors: {
           items: { selector: 'article' },
           title: { selector: 'h2' }
@@ -27,6 +28,7 @@ RSpec.describe Html2rss::RequestSession::RuntimeInput do
     it 'packages the runtime request inputs for the session', :aggregate_failures do
       expect(runtime_input.url.to_s).to eq('https://example.com/blog')
       expect(runtime_input.headers).to eq(config.headers)
+      expect(runtime_input.request).to eq(config.request)
       expect(runtime_input.strategy).to eq(:browserless)
       expect(runtime_input.request_policy).to eq(request_policy)
     end
