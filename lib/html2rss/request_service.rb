@@ -32,8 +32,7 @@ module Html2rss
     def initialize
       @strategies = {
         faraday: FaradayStrategy,
-        browserless: BrowserlessStrategy,
-        fixture: FixtureStrategy
+        browserless: BrowserlessStrategy
       }
       @default_strategy_name = :faraday
     end
