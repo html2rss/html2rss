@@ -71,7 +71,7 @@ module Html2rss
       anchor_values = element.css('a').filter_map do |node|
         HtmlExtractor.extract_visible_text(node)
       end
-      return Set.new(anchor_values) if anchor_values.any?
+      return Set.new(anchor_values.reject(&:empty?)) if anchor_values.any?
 
       text = HtmlExtractor.extract_visible_text(element)
       return Set.new unless text
