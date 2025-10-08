@@ -27,6 +27,7 @@ RSpec/NestedGroups:
 RSpec/DescribeClass:
   Exclude:
     - spec/exe/**/*_spec.rb
+    - spec/examples/**/*_spec.rb
 
 RSpec/NamedSubject:
   Enabled: false

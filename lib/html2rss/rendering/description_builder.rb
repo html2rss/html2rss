@@ -20,6 +20,23 @@ module Html2rss
     #   description = builder.call
     #
     class DescriptionBuilder
+      ##
+      # Removes the specified pattern from the beginning of the text
+      # within a given range if the pattern occurs before the range's end.
+      #
+      # @param text [String]
+      # @param pattern [String]
+      # @param end_of_range [Integer] Optional, defaults to half the text length
+      # @return [String]
+      def self.remove_pattern_from_start(text, pattern, end_of_range: (text.size * 0.5).to_i)
+        return text unless text.is_a?(String) && pattern.is_a?(String)
+
+        index = text.index(pattern)
+        return text if index.nil? || index >= end_of_range
+
+        text.gsub(/^(.{0,#{end_of_range}})#{Regexp.escape(pattern)}/, '\1')
+      end
+
       # @param base [String] The base text content for the description
       # @param title [String] The article title (used for alt text and title removal)
       # @param url [String, Html2rss::Url] The article URL (used for sanitization)
@@ -70,7 +87,7 @@ module Html2rss
       end
 
       def processed_base_description
-        text = RssBuilder::Article.remove_pattern_from_start(@base, @title)
+        text = self.class.remove_pattern_from_start(@base, @title)
         Html2rss::Selectors::PostProcessors::SanitizeHtml.get(text, @url)
       end
     end

@@ -14,31 +14,7 @@ module Html2rss
       include Comparable
 
       PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
-
-      ##
-      # Removes the specified pattern from the beginning of the text
-      # within a given range if the pattern occurs before the range's end.
-      #
-      # @param text [String]
-      # @param pattern [String]
-      # @param end_of_range [Integer] - Optional, defaults to half the size of the text
-      # @return [String]
-      def self.remove_pattern_from_start(text, pattern, end_of_range: (text.size * 0.5).to_i)
-        return text unless text.is_a?(String) && pattern.is_a?(String)
-
-        index = text.index(pattern)
-        return text if index.nil? || index >= end_of_range
-
-        text.gsub(/^(.{0,#{end_of_range}})#{Regexp.escape(pattern)}/, '\1')
-      end
-
-      ##
-      # Checks if the text contains HTML tags.
-      # @param text [String]
-      # @return [Boolean]
-      def self.contains_html?(text)
-        Nokogiri::HTML.fragment(text).children.any?(&:element?)
-      end
+      DEDUP_FINGERPRINT_SEPARATOR = '#!/'
 
       # @param options [Hash<Symbol, String>]
       def initialize(**options)
@@ -102,6 +78,14 @@ module Html2rss
         @guid ||= Zlib.crc32(fetch_guid).to_s(36).encode('utf-8')
       end
 
+      ##
+      # Returns a deterministic fingerprint used to detect duplicate articles.
+      #
+      # @return [String, Integer]
+      def deduplication_fingerprint
+        dedup_from_url || dedup_from_id || dedup_from_guid || hash
+      end
+
       def enclosures
         @enclosures ||= Array(@to_h[:enclosures])
                         .map { |enclosure| Html2rss::RssBuilder::Enclosure.new(**enclosure) }
@@ -150,6 +134,25 @@ module Html2rss
       end
 
       private
+
+      def dedup_from_url
+        return unless (value = url)
+
+        [value.to_s, id].compact.join(DEDUP_FINGERPRINT_SEPARATOR)
+      end
+
+      def dedup_from_id
+        return if id.to_s.empty?
+
+        id
+      end
+
+      def dedup_from_guid
+        value = guid
+        return if value.to_s.empty?
+
+        [value, title, description].compact.join(DEDUP_FINGERPRINT_SEPARATOR)
+      end
 
       def fetch_guid
         guid = @to_h[:guid].map { |s| s.to_s.strip }.reject(&:empty?).join if @to_h[:guid].is_a?(Array)

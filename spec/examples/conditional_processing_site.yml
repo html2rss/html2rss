@@ -1,0 +1,27 @@
+---
+channel:
+  url: "https://example.com"
+  title: "ACME Conditional Processing Site News"
+
+## Conditional Processing
+
+Use post-processors for conditional logic:
+
+selectors:
+  items:
+    selector: ".item"
+  title:
+    selector: "h2"
+  status:
+    selector: ".status"
+  description:
+    selector: ".content"
+    post_process:
+      - name: "template"
+        string: "[Status: %<status>s] %<self>s"
+  published_at:
+    selector: ".date"
+    post_process:
+      - name: "parse_time"
+  categories:
+    - status # Include status as a category

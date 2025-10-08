@@ -1,0 +1,35 @@
+---
+channel:
+  url: "https://example.com"
+  title: "ACME Multi-Language Site News"
+  language: "en"
+  time_zone: "UTC"
+
+selectors:
+  items:
+    selector: ".post"
+  title:
+    selector: "h1"
+    post_process:
+      - name: "template"
+        string: "[%<language>s] %<self>s"
+  id:
+    selector: ".lang"
+    extractor: "attribute"
+    attribute: "data-lang"
+    post_process:
+      - name: "template"
+        string: "%<self>s-%<title>s"
+  language:
+    selector: ".lang"
+    extractor: "attribute"
+    attribute: "data-lang"
+  description:
+    selector: ".content"
+    post_process:
+      - name: "sanitize_html"
+  categories:
+    - "language"
+    - "topic"
+  topic:
+    selector: ".topic"

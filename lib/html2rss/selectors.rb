@@ -123,9 +123,13 @@ module Html2rss
 
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
 
-      raise InvalidSelectorName, "Selector for '#{name}' is not defined." unless @selectors.key?(name)
+      selector_key, config = selector_config_for(name)
 
-      SPECIAL_ATTRIBUTES.member?(name) ?  select_special(name, item) : select_regular(name, item)
+      if SPECIAL_ATTRIBUTES.member?(selector_key)
+        select_special(selector_key, item:, config:)
+      else
+        select_regular(selector_key, item:, config:)
+      end
     end
 
     private
@@ -165,26 +169,23 @@ module Html2rss
                        end
     end
 
-    def select_special(name, item)
-      selector = @selectors[name]
-
+    def select_special(name, item:, config:)
       case name
       when :enclosure
-        enclosure(item, selector)
-      when :guid, :categories
-        Array(selector).map { |selector_name| select(selector_name, item) }
+        enclosure(item:, config:)
+      when :guid
+        Array(config).map { |selector_name| select(selector_name, item) }
+      when :categories
+        select_categories(category_selectors: config, item:)
       end
     end
 
-    def select_regular(name, item)
-      selector = @selectors[name]
+    def select_regular(_name, item:, config:)
+      value = Extractors.get(config.merge(channel: channel_context), item)
 
-      value = Extractors.get(selector.merge(channel: { url: @url, time_zone: @time_zone }), item)
-
-      if value && (post_process_steps = @selectors.dig(name, :post_process))
-        post_process_steps = [post_process_steps] unless post_process_steps.is_a?(Array)
-
-        value = post_process(item, value, post_process_steps)
+      if value && (post_process_steps = config[:post_process])
+        steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
+        value = post_process(item, value, steps)
       end
 
       value
@@ -201,11 +202,80 @@ module Html2rss
       value
     end
 
-    # @return [Hash] enclosure details.
-    def enclosure(item, selector)
-      url = Url.from_relative(select_regular(:enclosure, item), @url)
+    def select_categories(category_selectors:, item:)
+      Array(category_selectors).flat_map do |selector_name|
+        extract_category_values(selector_name, item:)
+      end
+    end
 
-      { url:, type: selector[:content_type] }
+    def extract_category_values(selector_name, item:)
+      selector_key, config = selector_config_for(selector_name, allow_nil: true)
+      return [] unless config
+
+      nodes = extract_nodes(item:, config:)
+      return Array(select_regular(selector_key, item:, config:)) unless node_set_with_multiple_elements?(nodes)
+
+      Array(nodes).flat_map { |node| extract_categories_from_node(node, item:, config:) }
+    end
+
+    def extract_categories_from_node(node, item:, config:)
+      values = Extractors.get(category_node_options(config), node)
+      values = apply_post_process_steps(item:, value: values, post_process_steps: config[:post_process])
+
+      Array(values).filter_map { |category| extract_category_text(category) }
+    end
+
+    def extract_category_text(category)
+      text = case category
+             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
+               HtmlExtractor.extract_visible_text(category)
+             else
+               category&.to_s
+             end
+
+      stripped = text&.strip
+      stripped unless stripped.nil? || stripped.empty?
+    end
+
+    def node_set_with_multiple_elements?(nodes)
+      nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
+    end
+
+    def category_node_options(selector_config)
+      selector_config.merge(channel: channel_context, selector: nil)
+    end
+
+    def apply_post_process_steps(item:, value:, post_process_steps:)
+      return value unless value && post_process_steps
+
+      steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
+      post_process(item, value, steps)
+    end
+
+    def selector_config_for(name, allow_nil: false)
+      selector_key = name.to_sym
+
+      return [selector_key, @selectors[selector_key]] if @selectors.key?(selector_key)
+      return [selector_key, nil] if allow_nil
+
+      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
+    end
+
+    def extract_nodes(item:, config:)
+      return unless config.respond_to?(:[]) && config[:selector]
+
+      Extractors.element(item, config[:selector])
+    end
+
+    def channel_context
+      { url: @url, time_zone: @time_zone }
+    end
+
+    # @return [Hash] enclosure details.
+    def enclosure(item:, config:)
+      url = Url.from_relative(select_regular(:enclosure, item:, config:), @url)
+
+      { url:, type: config[:content_type] }
     end
   end
 end

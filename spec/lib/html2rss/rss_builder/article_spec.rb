@@ -126,6 +126,30 @@ RSpec.describe Html2rss::RssBuilder::Article do
     end
   end
 
+  describe '#deduplication_fingerprint' do
+    let(:separator) { described_class::DEDUP_FINGERPRINT_SEPARATOR }
+
+    it 'prefers the sanitized URL combined with the id' do
+      article = described_class.new(url: 'http://example.com/article', id: '123')
+      expected = [article.url.to_s, '123'].join(separator)
+
+      expect(article.deduplication_fingerprint).to eq(expected)
+    end
+
+    it 'falls back to the id when the URL is missing' do
+      article = described_class.new(id: 'only-id')
+
+      expect(article.deduplication_fingerprint).to eq('only-id')
+    end
+
+    it 'falls back to the guid enriched with metadata', :aggregate_failures do
+      article = described_class.new(title: 'Alpha', description: 'Beta', guid: ['custom-guid'])
+      expected = [article.guid, article.title, article.description].join(separator)
+
+      expect(article.deduplication_fingerprint).to eq(expected)
+    end
+  end
+
   describe '#categories' do
     it 'returns an array of unique and present categories' do
       instance = described_class.new(categories: ['Category 1', '', 'Category 2', 'Category 1 '])
@@ -152,80 +176,6 @@ RSpec.describe Html2rss::RssBuilder::Article do
     it 'returns nil if published_at is invalid' do
       instance = described_class.new(published_at: 'invalid_date')
       expect(instance.published_at).to be_nil
-    end
-  end
-
-  describe '.remove_pattern_from_start' do
-    it 'removes the pattern when it is within the specified range' do
-      original_text = 'Hello world! Start here.'
-      pattern = 'world!'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq('Hello  Start here.')
-    end
-
-    it 'does not remove the pattern when it is outside the specified range' do
-      original_text = 'This is a test. Remove this part.'
-      pattern = 'part'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern, end_of_range: 10)
-      expect(sanitized_text).to eq(original_text)
-    end
-
-    it 'returns the original text if the pattern is not found' do
-      original_text = 'No match here.'
-      pattern = 'missing'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq(original_text)
-    end
-
-    it 'returns the original text if the text is empty' do
-      original_text = ''
-      pattern = 'any'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq(original_text)
-    end
-
-    it 'removes pattern at the beginning of the text' do
-      original_text = 'pattern should be removed from start'
-      pattern = 'pattern'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq(' should be removed from start')
-    end
-
-    it 'handles pattern appearing multiple times in the text' do
-      original_text = 'Repeat pattern and again pattern in text.'
-      pattern = 'pattern'
-      sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
-      expect(sanitized_text).to eq('Repeat  and again pattern in text.')
-    end
-  end
-
-  describe '.contains_html?' do
-    it 'returns true for simple HTML tags' do
-      expect(described_class.contains_html?('<div>')).to be(true)
-    end
-
-    it 'returns true for HTML tags with attributes' do
-      expect(described_class.contains_html?('<a href="https://example.com">')).to be(true)
-    end
-
-    it 'returns true for nested HTML tags' do
-      expect(described_class.contains_html?('<div><span>Content</span></div>')).to be(true)
-    end
-
-    it 'returns false for text without HTML tags' do
-      expect(described_class.contains_html?('Just some text')).to be(false)
-    end
-
-    it 'returns false for text with angle brackets but no tags' do
-      expect(described_class.contains_html?('2 < 3 > 1')).to be(false)
-    end
-
-    it 'returns true for self-closing HTML tags' do
-      expect(described_class.contains_html?('<br/>')).to be(true)
-    end
-
-    it 'returns false for empty string' do
-      expect(described_class.contains_html?('')).to be(false)
     end
   end
 end

@@ -98,7 +98,6 @@ module Html2rss
     def stylesheets = config[:stylesheets]
 
     def headers = config[:headers]
-
     def channel = config[:channel]
     def url = config.dig(:channel, :url)
     def time_zone = config.dig(:channel, :time_zone)

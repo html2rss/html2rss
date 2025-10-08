@@ -1,0 +1,37 @@
+---
+headers:
+  Accept: "application/json"
+  Authorization: "Bearer YOUR_TOKEN"
+
+channel:
+  url: "https://example.com/posts"
+  title: "ACME JSON API Site News"
+
+selectors:
+  items:
+    selector: "data > array > object"
+    enhance: false
+  title:
+    selector: "title"
+  description:
+    selector: "content"
+    post_process:
+      - name: "html_to_markdown"
+  author:
+    selector: "author name"
+  published_at:
+    selector: "created_at"
+    post_process:
+      - name: "parse_time"
+  categories:
+    - "category"
+    - "tags"
+  category:
+    selector: "category name"
+  tags:
+    selector: "tags array object name"
+  image:
+    selector: "featured_image url"
+  enclosure:
+    selector: "audio_file url"
+    content_type: "audio/mpeg"

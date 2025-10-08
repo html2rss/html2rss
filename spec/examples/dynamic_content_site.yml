@@ -1,0 +1,24 @@
+---
+strategy: browserless
+
+channel:
+  url: "https://example.com/news"
+  title: "ACME Dynamic Content Site News"
+  time_zone: "America/New_York"
+
+selectors:
+  items:
+    selector: ".article-card"
+  title:
+    selector: "h2"
+  url:
+    selector: "a"
+    extractor: "href"
+  description:
+    selector: ".excerpt"
+    post_process:
+      - name: "sanitize_html"
+  published_at:
+    selector: ".timestamp"
+    post_process:
+      - name: "parse_time"

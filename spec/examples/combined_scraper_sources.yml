@@ -1,0 +1,49 @@
+---
+channel:
+  url: "https://example.com"
+  title: "ACME Tech Daily"
+
+# Use auto-source for the main content
+auto_source:
+  scraper:
+    semantic_html:
+      enabled: false
+    html:
+      enabled: false
+    rss_feed_detector:
+      enabled: false
+
+# Add additional selectors for extra data
+selectors:
+  items:
+    selector: ".news-item"
+    enhance: true
+  title:
+    selector: "h2"
+  url:
+    selector: "a"
+    extractor: "href"
+  description:
+    selector: ".content"
+  category:
+    selector: ".category"
+    post_process:
+      - name: "gsub"
+        pattern: "News"
+        replacement: "Breaking News"
+  tags:
+    selector: ".tags a"
+    extractor: "text"
+  categories:
+    - category
+    - tags
+  custom_guid:
+    selector: "h2"
+    post_process:
+      - name: "template"
+        string: "%<self>s-%<url>s"
+        methods:
+          - self
+          - url
+  guid:
+    - custom_guid

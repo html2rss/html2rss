@@ -72,4 +72,46 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       it { is_expected.to eq 'hXllo' }
     end
   end
+
+  context 'with whitespace and empty string patterns' do
+    context 'with empty string' do
+      subject do
+        described_class.new('', options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+      end
+
+      it { is_expected.to eq 'Untitled' }
+    end
+
+    context 'with whitespace only string' do
+      subject do
+        described_class.new('   ', options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+      end
+
+      it { is_expected.to eq 'Untitled' }
+    end
+
+    context 'with mixed whitespace string' do
+      subject do
+        described_class.new(" \t\n ", options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+      end
+
+      it { is_expected.to eq 'Untitled' }
+    end
+
+    context 'with non-empty string containing whitespace' do
+      subject do
+        described_class.new('  hello  ', options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+      end
+
+      it { is_expected.to eq '  hello  ' }
+    end
+
+    context 'with newlines and tabs only' do
+      subject do
+        described_class.new("\n\t\n", options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+      end
+
+      it { is_expected.to eq 'Untitled' }
+    end
+  end
 end

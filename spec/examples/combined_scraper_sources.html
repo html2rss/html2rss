@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ACME Tech Daily - Latest Technology News</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "ACME Tech Daily",
+        "description": "Latest technology news and updates",
+        "url": "https://example.com",
+        "numberOfItems": 6,
+        "itemListElement": [
+          {
+            "@type": "NewsArticle",
+            "position": 1,
+            "headline": "ACME Corp Releases New Laptop with M3 Chip",
+            "url": "https://example.com/articles/acme-laptop-m3-2024",
+            "description": "ACME Corp has unveiled its latest laptop featuring the powerful M3 processor, offering significant performance improvements for professional users. It's so fast, it can compile Hello World in under 0.001 seconds!",
+            "datePublished": "2024-01-15T14:30:00+00:00",
+            "author": {
+              "@type": "Organization",
+              "name": "ACME News"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "ACME Tech Daily"
+            }
+          },
+          {
+            "@type": "NewsArticle",
+            "position": 2,
+            "headline": "ACME Corp Launches New AI Assistant Features",
+            "url": "https://example.com/articles/acme-ai-assistant-update",
+            "description": "ACME Corp has introduced advanced AI capabilities to its assistant, including better natural language understanding and task automation. It can now understand 'it works on my machine' and translate it to 'it's broken in production'.",
+            "datePublished": "2024-01-15T12:15:00+00:00",
+            "author": {
+              "@type": "Organization",
+              "name": "ACME News"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "ACME Tech Daily"
+            }
+          },
+          {
+            "@type": "NewsArticle",
+            "position": 3,
+            "headline": "ACME Motors Announces New Electric Vehicle Model",
+            "url": "https://example.com/articles/acme-new-ev-model-2024",
+            "description": "ACME Motors has revealed its latest electric vehicle with improved battery technology and autonomous driving capabilities. The car comes with a built-in debugger that automatically fixes bugs in your code while you drive.",
+            "datePublished": "2024-01-15T10:45:00+00:00",
+            "author": {
+              "@type": "Organization",
+              "name": "ACME News"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "ACME Tech Daily"
+            }
+          },
+          {
+            "@type": "NewsArticle",
+            "position": 4,
+            "headline": "ACME Software Updates Operating System Preview",
+            "url": "https://example.com/articles/acme-os-preview",
+            "description": "ACME Software has released a new preview build of their operating system with enhanced security features and improved user interface. The new version finally fixes the issue where it would randomly restart during important presentations.",
+            "datePublished": "2024-01-15T08:20:00+00:00",
+            "author": {
+              "@type": "Organization",
+              "name": "ACME News"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "ACME Tech Daily"
+            }
+          },
+          {
+            "@type": "NewsArticle",
+            "position": 5,
+            "headline": "ACME Reality Introduces New VR Headset",
+            "url": "https://example.com/articles/acme-vr-headset-2024",
+            "description": "ACME Reality has launched its latest virtual reality headset with improved display resolution and more comfortable design. The headset includes a 'reality check' feature that reminds you to take breaks every 2 hours.",
+            "datePublished": "2024-01-15T04:10:00+00:00",
+            "author": {
+              "@type": "Organization",
+              "name": "ACME News"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "ACME Tech Daily"
+            }
+          },
+          {
+            "@type": "NewsArticle",
+            "position": 6,
+            "headline": "ACME Cloud Services Expands Cloud Services",
+            "url": "https://example.com/articles/acme-cloud-services-expansion",
+            "description": "ACME Cloud Services has announced new cloud computing services and data centers to meet growing demand for cloud infrastructure. Their new 'Infinite Loop' service promises to handle recursive operations without stack overflow errors.",
+            "datePublished": "2024-01-14T20:30:00+00:00",
+            "author": {
+              "@type": "Organization",
+              "name": "ACME News"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "ACME Tech Daily"
+            }
+          }
+        ]
+      }
+    </script>
+    <style>
+      .news-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        background: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .news-item h2 {
+        margin: 0 0 10px 0;
+        color: #333;
+      }
+
+      .news-item a {
+        color: #0066cc;
+        text-decoration: none;
+      }
+
+      .news-item a:hover {
+        text-decoration: underline;
+      }
+
+      .content {
+        color: #666;
+        line-height: 1.5;
+        margin: 10px 0;
+      }
+
+      .category {
+        display: inline-block;
+        background: #f0f0f0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        margin: 10px 0;
+      }
+
+      .tags {
+        margin: 10px 0;
+      }
+
+      .tags a {
+        display: inline-block;
+        background: #e8f4f8;
+        color: #0066cc;
+        padding: 2px 6px;
+        margin: 2px;
+        border-radius: 3px;
+        font-size: 0.8em;
+        text-decoration: none;
+      }
+
+      .tags a:hover {
+        background: #d0e8f0;
+      }
+
+      .meta {
+        font-size: 0.8em;
+        color: #888;
+        margin-top: 10px;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>ACME Tech Daily</h1>
+      <p>Latest technology news and updates (now with 99.9% fewer bugs!)</p>
+    </header>
+
+    <main>
+      <article class="news-item">
+        <h2>ACME Corp Releases New Laptop with M3 Chip</h2>
+        <a href="/articles/acme-laptop-m3-2024">Read more</a>
+        <div class="content">
+          <p>
+            ACME Corp has unveiled its latest laptop featuring the powerful M3
+            processor, offering significant performance improvements for
+            professional users. The new chip delivers up to 20% faster CPU
+            performance and 30% better graphics performance. It's so fast, it
+            can compile Hello World in under 0.001 seconds!
+          </p>
+          <p>
+            The laptop now features improved battery life, enhanced thermal
+            management, and support for up to 24GB of unified memory, making it
+            ideal for demanding creative and professional workflows. Plus, it
+            comes with a built-in coffee maker!
+          </p>
+        </div>
+        <div class="category">Hardware News</div>
+        <div class="tags">
+          <a href="/tag/acme">ACME Corp</a>
+          <a href="/tag/laptops">Laptops</a>
+          <a href="/tag/processors">Processors</a>
+        </div>
+        <div class="meta">Published 2 hours ago</div>
+      </article>
+
+      <article class="news-item">
+        <h2>ACME Corp Launches New AI Assistant Features</h2>
+        <a href="/articles/acme-ai-assistant-update">Read more</a>
+        <div class="content">
+          <p>
+            ACME Corp has introduced advanced AI capabilities to its assistant,
+            including better natural language understanding and task automation.
+            The new features allow users to have more natural conversations and
+            automate complex workflows. It can now understand 'it works on my
+            machine' and translate it to 'it's broken in production'.
+          </p>
+          <p>
+            The updated assistant can now understand context better, remember
+            previous conversations, and perform multi-step tasks with minimal
+            user input, making it more useful for both personal and professional
+            use. It also knows when you're lying about your commit messages.
+          </p>
+        </div>
+        <div class="category">AI News</div>
+        <div class="tags">
+          <a href="/tag/acme">ACME Corp</a>
+          <a href="/tag/ai">Artificial Intelligence</a>
+          <a href="/tag/assistant">Voice Assistant</a>
+        </div>
+        <div class="meta">Published 4 hours ago</div>
+      </article>
+
+      <article class="news-item">
+        <h2>ACME Motors Announces New Electric Vehicle Model</h2>
+        <a href="/articles/acme-new-ev-model-2024">Read more</a>
+        <div class="content">
+          <p>
+            ACME Motors has revealed its latest electric vehicle with improved
+            battery technology and autonomous driving capabilities. The new
+            model features a 500-mile range and advanced self-driving features.
+            The car comes with a built-in debugger that automatically fixes bugs
+            in your code while you drive.
+          </p>
+          <p>
+            The vehicle includes ACME's latest Full Self-Driving (FSD) software,
+            improved charging speeds, and a more spacious interior design,
+            setting new standards for electric vehicle performance and
+            convenience. It also has a coffee holder that never spills, even
+            during sharp turns.
+          </p>
+        </div>
+        <div class="category">Automotive News</div>
+        <div class="tags">
+          <a href="/tag/acme">ACME Motors</a>
+          <a href="/tag/electric">Electric Vehicles</a>
+          <a href="/tag/autonomous">Autonomous Driving</a>
+        </div>
+        <div class="meta">Published 6 hours ago</div>
+      </article>
+
+      <article class="news-item">
+        <h2>ACME Software Updates Operating System Preview</h2>
+        <a href="/articles/acme-os-preview">Read more</a>
+        <div class="content">
+          <p>
+            ACME Software has released a new preview build of their operating
+            system with enhanced security features and improved user interface.
+            The update includes better performance optimization and new
+            productivity tools. The new version finally fixes the issue where it
+            would randomly restart during important presentations.
+          </p>
+          <p>
+            Key improvements include advanced threat protection, redesigned
+            Start menu, improved multitasking capabilities, and better
+            integration with ACME 365 services, making it more efficient for
+            both personal and business use. It also includes a built-in rubber
+            duck for debugging sessions.
+          </p>
+        </div>
+        <div class="category">Software News</div>
+        <div class="tags">
+          <a href="/tag/acme">ACME Software</a>
+          <a href="/tag/operating-system">Operating System</a>
+          <a href="/tag/software">Software</a>
+        </div>
+        <div class="meta">Published 8 hours ago</div>
+      </article>
+
+      <article class="news-item">
+        <h2>ACME Reality Introduces New VR Headset</h2>
+        <a href="/articles/acme-vr-headset-2024">Read more</a>
+        <div class="content">
+          <p>
+            ACME Reality has launched its latest virtual reality headset with
+            improved display resolution and more comfortable design. The new
+            headset features 4K displays and advanced hand tracking technology.
+            The headset includes a 'reality check' feature that reminds you to
+            take breaks every 2 hours.
+          </p>
+          <p>
+            The VR headset offers enhanced immersive experiences for gaming,
+            social interaction, and professional applications, with improved
+            battery life and wireless connectivity options for greater freedom
+            of movement. It also comes with a built-in snack dispenser for those
+            long coding sessions in VR.
+          </p>
+        </div>
+        <div class="category">VR News</div>
+        <div class="tags">
+          <a href="/tag/acme">ACME Reality</a>
+          <a href="/tag/vr">Virtual Reality</a>
+          <a href="/tag/gaming">Gaming</a>
+        </div>
+        <div class="meta">Published 12 hours ago</div>
+      </article>
+
+      <article class="news-item">
+        <h2>ACME Cloud Services Expands Cloud Services</h2>
+        <a href="/articles/acme-cloud-services-expansion">Read more</a>
+        <div class="content">
+          <p>
+            ACME Cloud Services has announced new cloud computing services and
+            data centers to meet growing demand for cloud infrastructure. The
+            expansion includes new regions and enhanced security features. Their
+            new 'Infinite Loop' service promises to handle recursive operations
+            without stack overflow errors.
+          </p>
+          <p>
+            The new services offer improved performance, better cost
+            optimization tools, and enhanced compliance features, making it
+            easier for businesses to scale their cloud operations while
+            maintaining security and reliability. They also offer a 'Null
+            Pointer Exception' insurance policy.
+          </p>
+        </div>
+        <div class="category">Cloud News</div>
+        <div class="tags">
+          <a href="/tag/acme">ACME Cloud</a>
+          <a href="/tag/cloud">Cloud Computing</a>
+          <a href="/tag/infrastructure">Infrastructure</a>
+        </div>
+        <div class="meta">Published 1 day ago</div>
+      </article>
+    </main>
+
+    <footer>
+      <p>
+        &copy; 2024 ACME Tech Daily. All rights reserved. | Made with &lt;3 and
+        lots of coffee | Bug reports: bugs@example.com
+      </p>
+    </footer>
+  </body>
+</html>
