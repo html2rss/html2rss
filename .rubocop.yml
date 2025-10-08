@@ -16,6 +16,10 @@ Metrics/BlockLength:
     - "spec/**/*_spec.rb"
     - html2rss.gemspec
 
+Metrics/MethodLength:
+  CountAsOne:
+    - heredoc
+
 RSpec/NestedGroups:
   Exclude:
     - spec/lib/html2rss_spec.rb
