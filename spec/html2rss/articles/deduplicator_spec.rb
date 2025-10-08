@@ -31,24 +31,33 @@ RSpec.describe Html2rss::Articles::Deduplicator do
 
     context 'when articles do not expose a guid' do
       let(:rss_article_class) { Html2rss::RssBuilder::Article }
+      let(:shared_url) { instance_double(Html2rss::Url, to_s: 'https://example.com/shared') }
+      let(:unique_url) { instance_double(Html2rss::Url, to_s: 'https://example.com/unique') }
+      let(:shared_fingerprint) { 'https://example.com/shared#!/shared' }
+      let(:unique_fingerprint) { 'https://example.com/unique#!/unique' }
+      let(:first_article) { instance_double(rss_article_class, guid: nil, id: 'shared', url: shared_url, scraper:) }
+      let(:second_article) { instance_double(rss_article_class, guid: nil, id: 'shared', url: shared_url, scraper:) }
+      let(:third_article) { instance_double(rss_article_class, guid: nil, id: 'unique', url: unique_url, scraper:) }
       let(:articles) do
-        shared_url = instance_double(Html2rss::Url, to_s: 'https://example.com/shared')
+        [first_article, second_article, third_article]
+      end
 
-        [
-          instance_double(rss_article_class, guid: nil, id: 'shared', url: shared_url, scraper:),
-          instance_double(rss_article_class, guid: nil, id: 'shared', url: shared_url, scraper:),
-          instance_double(
-            rss_article_class,
-            guid: nil,
-            id: 'unique',
-            url: instance_double(Html2rss::Url, to_s: 'https://example.com/unique'),
-            scraper:
-          )
-        ]
+      before do
+        allow(first_article).to receive(:deduplication_fingerprint).and_return(shared_fingerprint)
+        allow(second_article).to receive(:deduplication_fingerprint).and_return(shared_fingerprint)
+        allow(third_article).to receive(:deduplication_fingerprint).and_return(unique_fingerprint)
       end
 
       it 'falls back to the combination of id and URL to deduplicate' do
         expect(deduplicated.map(&:id)).to eq(%w[shared unique])
+      end
+
+      it 'delegates fingerprint calculation to the article', :aggregate_failures do
+        deduplicated
+
+        expect(first_article).to have_received(:deduplication_fingerprint)
+        expect(second_article).to have_received(:deduplication_fingerprint)
+        expect(third_article).to have_received(:deduplication_fingerprint)
       end
     end
   end

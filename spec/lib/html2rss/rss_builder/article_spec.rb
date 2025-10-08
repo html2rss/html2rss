@@ -126,6 +126,30 @@ RSpec.describe Html2rss::RssBuilder::Article do
     end
   end
 
+  describe '#deduplication_fingerprint' do
+    let(:separator) { described_class::DEDUP_FINGERPRINT_SEPARATOR }
+
+    it 'prefers the sanitized URL combined with the id' do
+      article = described_class.new(url: 'http://example.com/article', id: '123')
+      expected = [article.url.to_s, '123'].join(separator)
+
+      expect(article.deduplication_fingerprint).to eq(expected)
+    end
+
+    it 'falls back to the id when the URL is missing' do
+      article = described_class.new(id: 'only-id')
+
+      expect(article.deduplication_fingerprint).to eq('only-id')
+    end
+
+    it 'falls back to the guid enriched with metadata', :aggregate_failures do
+      article = described_class.new(title: 'Alpha', description: 'Beta', guid: ['custom-guid'])
+      expected = [article.guid, article.title, article.description].join(separator)
+
+      expect(article.deduplication_fingerprint).to eq(expected)
+    end
+  end
+
   describe '#categories' do
     it 'returns an array of unique and present categories' do
       instance = described_class.new(categories: ['Category 1', '', 'Category 2', 'Category 1 '])

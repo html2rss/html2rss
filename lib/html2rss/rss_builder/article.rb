@@ -14,6 +14,7 @@ module Html2rss
       include Comparable
 
       PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
+      DEDUP_FINGERPRINT_SEPARATOR = '#!/'
 
       ##
       # Removes the specified pattern from the beginning of the text
@@ -102,6 +103,14 @@ module Html2rss
         @guid ||= Zlib.crc32(fetch_guid).to_s(36).encode('utf-8')
       end
 
+      ##
+      # Returns a deterministic fingerprint used to detect duplicate articles.
+      #
+      # @return [String, Integer]
+      def deduplication_fingerprint
+        dedup_from_url || dedup_from_id || dedup_from_guid || hash
+      end
+
       def enclosures
         @enclosures ||= Array(@to_h[:enclosures])
                         .map { |enclosure| Html2rss::RssBuilder::Enclosure.new(**enclosure) }
@@ -150,6 +159,25 @@ module Html2rss
       end
 
       private
+
+      def dedup_from_url
+        return unless (value = url)
+
+        [value.to_s, id].compact.join(DEDUP_FINGERPRINT_SEPARATOR)
+      end
+
+      def dedup_from_id
+        return if id.to_s.empty?
+
+        id
+      end
+
+      def dedup_from_guid
+        value = guid
+        return if value.to_s.empty?
+
+        [value, title, description].compact.join(DEDUP_FINGERPRINT_SEPARATOR)
+      end
 
       def fetch_guid
         guid = @to_h[:guid].map { |s| s.to_s.strip }.reject(&:empty?).join if @to_h[:guid].is_a?(Array)

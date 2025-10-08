@@ -40,39 +40,18 @@ module Html2rss
         seen = Set.new
 
         collection.each_with_object([]) do |article, deduplicated|
-          fingerprint = fingerprint_for(article)
+          fingerprint = deduplication_fingerprint_for(article)
+          fingerprint ||= article.hash
           next unless seen.add?(fingerprint)
 
           deduplicated << article
         end
       end
 
-      def fingerprint_for(article)
-        fingerprint_from_url(article) || fingerprint_from_id(article) || fingerprint_from_guid(article) || article.hash
-      end
+      def deduplication_fingerprint_for(article)
+        return unless article.respond_to?(:deduplication_fingerprint)
 
-      def fingerprint_from_url(article)
-        url = safe_property(article, :url)
-        return unless url
-
-        [url.to_s, safe_property(article, :id)].compact.join('#!/')
-      end
-
-      def fingerprint_from_id(article)
-        safe_property(article, :id)
-      end
-
-      def fingerprint_from_guid(article)
-        guid = safe_property(article, :guid)
-        return unless guid
-
-        [guid, safe_property(article, :title), safe_property(article, :description)].compact.join('#!/')
-      end
-
-      def safe_property(article, property)
-        return unless article.respond_to?(property)
-
-        article.public_send(property)
+        article.deduplication_fingerprint
       end
     end
   end
