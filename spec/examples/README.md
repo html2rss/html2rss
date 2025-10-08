@@ -13,8 +13,8 @@ Each example consists of three files:
 
 ### Combined Scraper Sources
 - **Files**: `combined_scraper_sources_spec.rb`, `combined_scraper_sources.yml`, `combined_scraper_sources.html`
-- **Purpose**: Demonstrates combining auto-source detection with manual selectors
-- **Features**: Auto-source enhancement, custom GUID generation, gsub post-processing
+- **Purpose**: Demonstrates enriched manual selectors with computed metadata
+- **Features**: Semantic enhancement of items, template-based GUID generation, gsub category normalisation
 
 ### Conditional Processing
 - **Files**: `conditional_processing_spec.rb`, `conditional_processing_site.yml`, `conditional_processing_site.html`
@@ -24,12 +24,12 @@ Each example consists of three files:
 ### Dynamic Content Site
 - **Files**: `dynamic_content_site_spec.rb`, `dynamic_content_site.yml`, `dynamic_content_site.html`
 - **Purpose**: Handles JavaScript-heavy sites using browserless strategy
-- **Features**: Browserless strategy, HTML sanitization, time zone handling
+- **Features**: Browserless strategy, HTML sanitization, time zone aware parsing
 
 ### JSON API Site
 - **Files**: `json_api_site_spec.rb`, `json_api_site.yml`, `json_api_site.json`
 - **Purpose**: Scrapes data from JSON APIs
-- **Features**: JSON parsing, nested selectors, HTML to Markdown conversion
+- **Features**: JSON parsing with nested selectors, HTML to Markdown conversion, media enclosure extraction
 
 ### Media Enclosures
 - **Files**: `media_enclosures_spec.rb`, `media_enclosures_site.yml`, `media_enclosures_site.html`
@@ -73,6 +73,5 @@ bundle exec rspec spec/examples/combined_scraper_sources_spec.rb
 
 ## Notes
 
-- All spec files have been cleaned to focus on configuration structure rather than specific content values
 - The examples demonstrate best practices for HTML2RSS configuration
 - Each example is self-contained and can be run independently
