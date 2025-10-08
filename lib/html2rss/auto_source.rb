@@ -85,24 +85,35 @@ module Html2rss
     attr_reader :url, :parsed_body
 
     def extract_articles
-      Scraper.from(parsed_body, @opts[:scraper]).flat_map do |scraper|
-        scraper_options = @opts.dig(:scraper, scraper.options_key)
+      scrapers = Scraper.from(parsed_body, @opts[:scraper])
+      return [] if scrapers.empty?
 
-        instance = scraper.new(parsed_body, url:, **scraper_options)
+      Parallel.flat_map(scrapers, in_threads: thread_count_for(scrapers)) do |scraper|
+        instance = scraper.new(parsed_body, url:, **scraper_options_for(scraper))
 
         articles = run_scraper(instance)
-        Cleanup.call(articles, url:, **@opts[:cleanup])
+        Cleanup.call(articles, url:, **cleanup_options)
         articles
       end
     end
 
     def run_scraper(instance)
-      Parallel.map(instance.each) do |article_hash|
-        scraper = instance.class
-        Log.debug "Scraper: #{scraper} in worker: #{Parallel.worker_number} [#{article_hash[:url]}]"
-
-        RssBuilder::Article.new(**article_hash, scraper:)
+      instance.each.map do |article_hash|
+        RssBuilder::Article.new(**article_hash, scraper: instance.class)
       end
+    end
+
+    def scraper_options_for(scraper)
+      @opts.fetch(:scraper, {}).fetch(scraper.options_key, {})
+    end
+
+    def cleanup_options
+      @opts.fetch(:cleanup, {})
+    end
+
+    def thread_count_for(scrapers)
+      count = [scrapers.size, Parallel.processor_count].min
+      count.zero? ? 1 : count
     end
   end
 end
