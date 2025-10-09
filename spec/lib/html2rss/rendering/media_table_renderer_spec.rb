@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
-require 'nokogiri'
 
 RSpec.describe Html2rss::Rendering::MediaTableRenderer do
   describe '#to_html' do
@@ -14,7 +13,7 @@ RSpec.describe Html2rss::Rendering::MediaTableRenderer do
     end
 
     context 'when only enclosures are present' do
-      subject(:doc) { Nokogiri::HTML.fragment(html) }
+      subject(:doc) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       let(:html) { renderer.to_html }
 
@@ -61,7 +60,7 @@ RSpec.describe Html2rss::Rendering::MediaTableRenderer do
     end
 
     context 'when only fallback image is present' do
-      subject(:doc) { Nokogiri::HTML.fragment(html) }
+      subject(:doc) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       let(:html) { renderer.to_html }
 
@@ -80,7 +79,7 @@ RSpec.describe Html2rss::Rendering::MediaTableRenderer do
     end
 
     context 'when both enclosures and fallback image are present' do
-      subject(:doc) { Nokogiri::HTML.fragment(html) }
+      subject(:doc) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       let(:html) { renderer.to_html }
 
@@ -102,7 +101,7 @@ RSpec.describe Html2rss::Rendering::MediaTableRenderer do
     end
 
     context 'when fallback image duplicates an image enclosure' do
-      subject(:doc) { Nokogiri::HTML.fragment(html) }
+      subject(:doc) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       let(:html) { renderer.to_html }
 
@@ -124,7 +123,7 @@ RSpec.describe Html2rss::Rendering::MediaTableRenderer do
     end
 
     context 'with unknown file types' do
-      subject(:doc) { Nokogiri::HTML.fragment(html) }
+      subject(:doc) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       let(:html) { renderer.to_html }
 

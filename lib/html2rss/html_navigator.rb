@@ -9,9 +9,9 @@ module Html2rss
       # Returns the first parent that satisfies the condition.
       # If the condition is met, it returns the node itself.
       #
-      # @param node [Nokogiri::XML::Node] The node to start the search from.
+      # @param node [Object] The node to start the search from.
       # @param condition [Proc] The condition to be met.
-      # @return [Nokogiri::XML::Node, nil] The first parent that satisfies the condition.
+      # @return [Object, nil] The first parent that satisfies the condition.
       def parent_until_condition(node, condition)
         while node && !node.document? && node.name != 'html'
           return node if condition.call(node)

@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::AutoSource::Scraper::Schema do
   # Test factories for maintainability
   def build_script_tag(json_content)
-    Nokogiri::HTML("<script type=\"application/ld+json\">#{json_content}</script>")
+    Html2rss::HtmlParser.parse_html("<script type=\"application/ld+json\">#{json_content}</script>")
   end
 
   def mock_logging
@@ -68,30 +68,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     subject(:articles?) { described_class.articles?(parsed_body) }
 
     context 'with a NewsArticle' do
-      let(:parsed_body) do
-        Nokogiri::HTML("<script type=\"application/ld+json\">#{news_article_schema_object.to_json}</script>")
-      end
+      let(:parsed_body) { build_script_tag(news_article_schema_object.to_json) }
 
       it { is_expected.to be_truthy }
     end
 
     context 'with an Article' do
-      let(:parsed_body) do
-        Nokogiri::HTML("<script type=\"application/ld+json\">#{article_schema_object.to_json}</script>")
-      end
+      let(:parsed_body) { build_script_tag(article_schema_object.to_json) }
 
       it { is_expected.to be_truthy }
     end
 
     context 'with an empty body' do
-      let(:parsed_body) { Nokogiri::HTML.fragment('') }
+      let(:parsed_body) { Html2rss::HtmlParser.parse_html_fragment('') }
 
       it { is_expected.to be_falsey }
     end
 
     context 'with excessive spacing in JSON and supported @type' do
       let(:parsed_body) do
-        Nokogiri::HTML('<script type="application/ld+json">{"@type"  :  "NewsArticle"  }</script>')
+        Html2rss::HtmlParser.parse_html('<script type="application/ld+json">{"@type"  :  "NewsArticle"  }</script>')
       end
 
       it { is_expected.to be_truthy }
@@ -167,7 +163,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
   describe '#each' do
     subject(:new) { described_class.new(parsed_body, url: '') }
 
-    let(:parsed_body) { Nokogiri::HTML('') }
+    let(:parsed_body) { Html2rss::HtmlParser.parse_html('') }
 
     context 'without a block' do
       it 'returns an enumerator' do
@@ -176,9 +172,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with a NewsArticle' do
-      let(:parsed_body) do
-        Nokogiri::HTML("<script type=\"application/ld+json\">#{news_article_schema_object.to_json}</script>")
-      end
+      let(:parsed_body) { build_script_tag(news_article_schema_object.to_json) }
 
       it 'scrapes the article_hash' do
         expect { |b| new.each(&b) }.to yield_with_args(
@@ -190,9 +184,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with an Article' do
-      let(:parsed_body) do
-        Nokogiri::HTML("<script type=\"application/ld+json\">#{article_schema_object.to_json}</script>")
-      end
+      let(:parsed_body) { build_script_tag(article_schema_object.to_json) }
 
       it 'scrapes the article' do
         expect do |b|
@@ -208,7 +200,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with an unsupported @type' do
-      let(:parsed_body) { Nokogiri::HTML('<script type="application/ld+json">{"@type": "foo"}</script>') }
+      let(:parsed_body) { Html2rss::HtmlParser.parse_html('<script type="application/ld+json">{"@type": "foo"}</script>') }
 
       it 'returns an empty array' do
         expect { |b| new.each(&b) }.not_to yield_with_args
@@ -309,7 +301,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
   end
 
   describe '.from' do
-    context 'with a Nokogiri::XML::Element' do
+    context 'with an HTML parser element' do
       let(:script_tag) { build_script_tag('{"@type": "Article"}').at_css('script') }
 
       it 'parses the script tag and returns schema objects' do

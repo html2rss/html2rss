@@ -9,7 +9,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   describe '.from(parsed_body, opts)' do
     context 'when suitable scraper is found' do
       let(:parsed_body) do
-        Nokogiri::HTML('<html><body><article><a href="#"></a></article></body></html>')
+        Html2rss::HtmlParser.parse_html('<html><body><article><a href="#"></a></article></body></html>')
       end
 
       it 'returns an array of scrapers' do
@@ -18,7 +18,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     end
 
     context 'when no suitable scraper is found' do
-      let(:parsed_body) { Nokogiri::HTML('<html><body></body></html>') }
+      let(:parsed_body) { Html2rss::HtmlParser.parse_html('<html><body></body></html>') }
 
       it 'raises NoScraperFound error' do
         expect do

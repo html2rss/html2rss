@@ -22,7 +22,7 @@ module Html2rss
         ##
         # Initializes the Static extractor.
         #
-        # @param _xml [nil, Nokogiri::XML::Element] Unused parameter for compatibility with other extractors.
+        # @param _xml [nil, Object] Unused parameter for compatibility with other extractors.
         # @param options [Options] Options containing the static value.
         def initialize(_xml, options)
           @options = options

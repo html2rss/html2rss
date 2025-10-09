@@ -39,7 +39,7 @@ module Html2rss
         ##
         # Check if the parsed_body contains RSS feed link tags.
         # This scraper should only be used as a fallback when other scrapers fail.
-        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document
+        # @param parsed_body [Object] The parsed HTML document
         # @return [Boolean] True if RSS feeds are found, otherwise false.
         def self.articles?(parsed_body)
           return false unless parsed_body
@@ -47,7 +47,7 @@ module Html2rss
           parsed_body.css(FEED_LINK_SELECTOR).any?
         end
 
-        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
+        # @param parsed_body [Object] The parsed HTML document.
         # @param url [String, Html2rss::Url] The base URL.
         # @param opts [Hash] Additional options (unused but kept for consistency).
         def initialize(parsed_body, url:, **opts)

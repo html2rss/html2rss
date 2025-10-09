@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::HtmlExtractor::ImageExtractor do
-  let(:article_tag) { Nokogiri::HTML.fragment(html) }
+  let(:article_tag) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
   describe '.call' do
     subject(:url) { described_class.call(article_tag, base_url: 'https://example.com').to_s.encode('UTF-8') }

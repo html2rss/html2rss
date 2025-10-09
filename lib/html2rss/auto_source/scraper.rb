@@ -23,7 +23,7 @@ module Html2rss
 
       ##
       # Returns an array of scrapers that claim to find articles in the parsed body.
-      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
+      # @param parsed_body [Object] The parsed HTML body.
       # @param opts [Hash] The options hash.
       # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
       def self.from(parsed_body, opts = Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])

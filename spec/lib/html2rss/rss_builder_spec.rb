@@ -57,7 +57,7 @@ RSpec.describe Html2rss::RssBuilder do
     end
 
     context 'with <channel> tag' do
-      subject(:channel_tag) { Nokogiri::XML(rss.to_s).css('channel').first }
+      subject(:channel_tag) { Html2rss::HtmlParser.parse_xml(rss.to_s).css('channel').first }
 
       let(:tags) do
         {
@@ -77,7 +77,7 @@ RSpec.describe Html2rss::RssBuilder do
     end
 
     context 'with the <item> tags' do
-      let(:items) { Nokogiri::XML(rss.to_s).css('item') }
+      let(:items) { Html2rss::HtmlParser.parse_xml(rss.to_s).css('item') }
 
       it 'has the correct number of items' do
         expect(items.size).to eq(articles.size)
@@ -85,7 +85,7 @@ RSpec.describe Html2rss::RssBuilder do
     end
 
     context 'with one <item> tags' do
-      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
+      let(:item) { Html2rss::HtmlParser.parse_xml(rss.to_s).css('item').first }
       let(:article) { articles.first }
 
       it 'has tags with correct values', :aggregate_failures do

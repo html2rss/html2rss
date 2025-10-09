@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::Selectors::Extractors::Href do
   subject { described_class.new(xml, options).get }
 
@@ -9,7 +7,7 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
   let(:options) { instance_double(Struct::HrefOptions, selector: 'a', channel:) }
 
   context 'with relative href url' do
-    let(:xml) { Nokogiri.HTML('<div><a href="/posts/latest-findings">...</a></div>') }
+    let(:xml) { Html2rss::HtmlParser.parse_html('<div><a href="/posts/latest-findings">...</a></div>') }
 
     specify(:aggregate_failures) do
       expect(subject).to be_a(Html2rss::Url)
@@ -18,7 +16,7 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
   end
 
   context 'with absolute href url' do
-    let(:xml) { Nokogiri.HTML('<div><a href="http://example.com/posts/absolute">...</a></div>') }
+    let(:xml) { Html2rss::HtmlParser.parse_html('<div><a href="http://example.com/posts/absolute">...</a></div>') }
 
     specify(:aggregate_failures) do
       expect(subject).to be_a(Html2rss::Url)

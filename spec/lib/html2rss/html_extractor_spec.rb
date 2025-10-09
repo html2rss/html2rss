@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::HtmlExtractor do
   subject(:article_hash) { described_class.new(article_tag, base_url: 'https://example.com').call }
 
@@ -9,7 +7,9 @@ RSpec.describe Html2rss::HtmlExtractor do
     subject(:visible_text) { described_class.extract_visible_text(tag) }
 
     let(:tag) do
-      Nokogiri::HTML.fragment('<div>Hello <span>World</span><script>App = {}</script></div>').at_css('div')
+      Html2rss::HtmlParser.parse_html_fragment(
+        '<div>Hello <span>World</span><script>App = {}</script></div>'
+      ).at_css('div')
     end
 
     it 'returns the visible text from the tag and its children' do
@@ -34,7 +34,7 @@ RSpec.describe Html2rss::HtmlExtractor do
     end
 
     describe '#call' do
-      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+      let(:article_tag) { Html2rss::HtmlParser.parse_html_fragment(html) }
       let(:heading) { article_tag.at_css('h1') }
 
       it 'returns the article_hash', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -70,7 +70,7 @@ RSpec.describe Html2rss::HtmlExtractor do
           </article>
         HTML
       end
-      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+      let(:article_tag) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       it 'returns the article_hash with a nil published_at' do
         expect(article_hash[:published_at]).to be_nil
@@ -89,7 +89,7 @@ RSpec.describe Html2rss::HtmlExtractor do
       HTML
     end
 
-    let(:article_tag) { Nokogiri::HTML.fragment(html) }
+    let(:article_tag) { Html2rss::HtmlParser.parse_html_fragment(html) }
     let(:details) do
       { title: nil,
         url: nil,
@@ -112,7 +112,7 @@ RSpec.describe Html2rss::HtmlExtractor do
   describe '#heading' do
     subject(:heading) { described_class.new(article_tag, base_url: 'https://example.com').send(:heading) }
 
-    let(:article_tag) { Nokogiri::HTML.fragment(html) }
+    let(:article_tag) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
     context 'when heading is present' do
       let(:html) do
@@ -159,7 +159,7 @@ RSpec.describe Html2rss::HtmlExtractor do
           </article>
         HTML
       end
-      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+      let(:article_tag) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       it 'extracts categories from elements with category-related class names' do
         expect(article_hash[:categories]).to contain_exactly('News', 'Technology', 'Science')
@@ -175,7 +175,7 @@ RSpec.describe Html2rss::HtmlExtractor do
           </article>
         HTML
       end
-      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+      let(:article_tag) { Html2rss::HtmlParser.parse_html_fragment(html) }
 
       it 'returns empty categories array' do
         expect(article_hash[:categories]).to eq([])

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
-require 'nokogiri'
 
 RSpec.describe Html2rss::Rendering::DescriptionBuilder do
   describe '#call' do
@@ -57,7 +56,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
       subject(:doc) do
         html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
-        Nokogiri::HTML.fragment(html)
+        Html2rss::HtmlParser.parse_html_fragment(html)
       end
 
       let(:base) { 'Caption' }
@@ -75,7 +74,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
       subject(:doc) do
         html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil,
                                    image:).call
-        Nokogiri::HTML.fragment(html)
+        Html2rss::HtmlParser.parse_html_fragment(html)
       end
 
       let(:base) { 'Something' }
@@ -91,7 +90,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
       subject(:doc) do
         html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
-        Nokogiri::HTML.fragment(html)
+        Html2rss::HtmlParser.parse_html_fragment(html)
       end
 
       let(:base) { 'Watch this' }
@@ -111,7 +110,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
       subject(:doc) do
         html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
-        Nokogiri::HTML.fragment(html)
+        Html2rss::HtmlParser.parse_html_fragment(html)
       end
 
       let(:base) { 'Listen to this' }
@@ -131,7 +130,7 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
       subject(:doc) do
         html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
                                    image: nil).call
-        Nokogiri::HTML.fragment(html)
+        Html2rss::HtmlParser.parse_html_fragment(html)
       end
 
       let(:base) { 'See this document' }

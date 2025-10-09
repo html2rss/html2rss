@@ -27,18 +27,18 @@ module Html2rss
 
       class << self
         ##
-        # Retrieves an element from Nokogiri XML based on the selector.
+        # Retrieves elements from the configured HTML backend based on the selector.
         #
-        # @param xml [Nokogiri::XML::Document]
+        # @param xml [Object]
         # @param selector [String, nil]
-        # @return [Nokogiri::XML::ElementSet] selected XML elements
+        # @return [Object] selected elements
         def element(xml, selector)
           selector ? xml.css(selector) : xml
         end
 
         # @param attribute_options [Hash<Symbol, Object>]
         #   Should contain at least `:extractor` (the name) and required options for that extractor.
-        # @param xml [Nokogiri::XML::Document]
+        # @param xml [Object]
         # @return [Object] instance of the specified item extractor class
         def get(attribute_options, xml)
           extractor_class = NAME_TO_CLASS[attribute_options[:extractor]&.to_sym || DEFAULT_EXTRACTOR]

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 module Html2rss
   ##
   # This scraper is designed to scrape articles from a given HTML page using CSS
@@ -87,7 +85,7 @@ module Html2rss
     ##
     # Extracts an article hash for a given item element.
     #
-    # @param item [Nokogiri::XML::Element] The element to extract from.
+    # @param item [Object] The element to extract from.
     # @return [Hash] Hash of attributes for the article.
     def extract_article(item)
       @rss_item_attributes.to_h { |key| [key, select(key, item)] }.compact
@@ -98,7 +96,7 @@ module Html2rss
     # Only adds keys that are missing from the original hash.
     #
     # @param article_hash [Hash] The original article hash.
-    # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
+    # @param article_tag [Object] HTML element to extract additional info from.
     # @return [Hash] The enhanced article hash.
     def enhance_article_hash(article_hash, article_tag)
       extracted = HtmlExtractor.new(article_tag, base_url: @url).call
@@ -115,7 +113,7 @@ module Html2rss
     # Selects the value for a given attribute from an HTML element.
     #
     # @param name [Symbol, String] Name of the attribute.
-    # @param item [Nokogiri::XML::Element] The HTML element to process.
+    # @param item [Object] The HTML element to process.
     # @return [Object, Array<Object>] The selected value(s).
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
     def select(name, item)
@@ -163,7 +161,7 @@ module Html2rss
     def parsed_body
       @parsed_body ||= if response.json_response?
                          fragment = ObjectToXmlConverter.new(response.parsed_body).call
-                         Nokogiri::HTML5.fragment(fragment)
+                         HtmlParser.parse_html5_fragment(fragment)
                        else
                          response.parsed_body
                        end
@@ -227,7 +225,7 @@ module Html2rss
 
     def extract_category_text(category)
       text = case category
-             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
+             when HtmlParser.node_class, HtmlParser.node_set_class
                HtmlExtractor.extract_visible_text(category)
              else
                category&.to_s
@@ -238,7 +236,7 @@ module Html2rss
     end
 
     def node_set_with_multiple_elements?(nodes)
-      nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
+      nodes.is_a?(HtmlParser.node_set_class) && nodes.length > 1
     end
 
     def category_node_options(selector_config)

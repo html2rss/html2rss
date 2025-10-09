@@ -32,7 +32,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     HTML
   end
   let(:parsed_body) do
-    Nokogiri::HTML(html)
+    Html2rss::HtmlParser.parse_html(html)
   end
 
   describe '.options_key' do
@@ -169,7 +169,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       HTML
     end
 
-    let(:parsed_body) { Nokogiri::HTML(html) }
+    let(:parsed_body) { Html2rss::HtmlParser.parse_html(html) }
     let(:scraper) { described_class.new(parsed_body, url: 'http://example.com') }
 
     it 'returns false for nodes within ignored tags' do

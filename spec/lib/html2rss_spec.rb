@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss do
   let(:config_file) { File.join(%w[spec fixtures feeds.test.yml]) }
   let(:name) { 'nuxt-releases' }
@@ -28,7 +26,7 @@ RSpec.describe Html2rss do
 
   describe '.feed' do
     context 'with config being a Hash' do
-      subject(:xml) { Nokogiri.XML(feed_return.to_s) }
+      subject(:xml) { Html2rss::HtmlParser.parse_xml(feed_return.to_s) }
 
       let(:config) do
         described_class.config_from_yaml_file(config_file, name)
@@ -101,13 +99,13 @@ RSpec.describe Html2rss do
           end
 
           it 'adds rel="nofollow noopener noreferrer" to all anchor elements' do
-            Nokogiri.HTML(description).css('a').each do |anchor|
+            Html2rss::HtmlParser.parse_html(description).css('a').each do |anchor|
               expect(anchor.attr('rel')).to eq 'nofollow noopener noreferrer'
             end
           end
 
           it 'changes target="_blank" on all anchor elements' do
-            Nokogiri.HTML(description).css('a').each { |anchor| expect(anchor.attr('target')).to eq '_blank' }
+            Html2rss::HtmlParser.parse_html(description).css('a').each { |anchor| expect(anchor.attr('target')).to eq '_blank' }
           end
         end
 
@@ -188,7 +186,7 @@ RSpec.describe Html2rss do
       let(:name) { 'json' }
 
       context 'with returned config' do
-        subject(:xml) { Nokogiri.XML(feed.to_s) }
+        subject(:xml) { Html2rss::HtmlParser.parse_xml(feed.to_s) }
 
         it 'has the description derived from markdown' do
           expect(

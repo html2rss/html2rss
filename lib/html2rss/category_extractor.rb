@@ -18,7 +18,7 @@ module Html2rss
     # Extracts categories from the given article tag by looking for elements
     # with class names containing common category-related terms.
     #
-    # @param article_tag [Nokogiri::XML::Element] The article element to extract categories from
+    # @param article_tag [Object] The article element to extract categories from
     # @return [Array<String>] Array of category strings, empty if none found
     def self.call(article_tag)
       return [] unless article_tag
@@ -32,7 +32,7 @@ module Html2rss
     ##
     # Optimized single DOM traversal that extracts all category types.
     #
-    # @param article_tag [Nokogiri::XML::Element] The article element
+    # @param article_tag [Object] The article element
     # @return [Set<String>] Set of category strings
     def self.extract_all_categories(article_tag)
       Set.new.tap do |categories|
@@ -49,7 +49,7 @@ module Html2rss
     ##
     # Extracts categories from data attributes of a single element.
     #
-    # @param element [Nokogiri::XML::Element] The element to process
+    # @param element [Object] The element to process
     # @return [Set<String>] Set of category strings
     def self.extract_element_data_categories(element)
       Set.new.tap do |categories|
@@ -65,7 +65,7 @@ module Html2rss
     ##
     # Extracts text-based categories from elements, splitting content into discrete values.
     #
-    # @param element [Nokogiri::XML::Element] The element to process
+    # @param element [Object] The element to process
     # @return [Set<String>] Set of category strings
     def self.extract_text_categories(element)
       anchor_values = element.css('a').filter_map do |node|

@@ -10,31 +10,31 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
 
   describe '.articles?' do
     it 'detects Next.js JSON state' do
-      parsed_body = Nokogiri::HTML(load_fixture('next.html'))
+      parsed_body = Html2rss::HtmlParser.parse_html(load_fixture('next.html'))
 
       expect(described_class).to be_articles(parsed_body)
     end
 
     it 'detects Nuxt JSON state' do
-      parsed_body = Nokogiri::HTML(load_fixture('nuxt.html'))
+      parsed_body = Html2rss::HtmlParser.parse_html(load_fixture('nuxt.html'))
 
       expect(described_class).to be_articles(parsed_body)
     end
 
     it 'detects custom window state blobs' do
-      parsed_body = Nokogiri::HTML(load_fixture('state.html'))
+      parsed_body = Html2rss::HtmlParser.parse_html(load_fixture('state.html'))
 
       expect(described_class).to be_articles(parsed_body)
     end
 
     it 'detects arrays containing nested article arrays' do
-      parsed_body = Nokogiri::HTML(load_fixture('nested_array.html'))
+      parsed_body = Html2rss::HtmlParser.parse_html(load_fixture('nested_array.html'))
 
       expect(described_class).to be_articles(parsed_body)
     end
 
     it 'returns false when no JSON state is present' do
-      parsed_body = Nokogiri::HTML('<html><body><script>console.log("hello")</script></body></html>')
+      parsed_body = Html2rss::HtmlParser.parse_html('<html><body><script>console.log("hello")</script></body></html>')
 
       expect(described_class).not_to be_articles(parsed_body)
     end
@@ -44,7 +44,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
     subject(:articles) { described_class.new(parsed_body, url: base_url).each.to_a }
 
     context 'with Next.js data' do
-      let(:parsed_body) { Nokogiri::HTML(load_fixture('next.html')) }
+      let(:parsed_body) { Html2rss::HtmlParser.parse_html(load_fixture('next.html')) }
 
       it 'normalises the article data' do # rubocop:disable RSpec/ExampleLength
         expect(articles).to contain_exactly(
@@ -62,7 +62,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
     end
 
     context 'with Nuxt data' do
-      let(:parsed_body) { Nokogiri::HTML(load_fixture('nuxt.html')) }
+      let(:parsed_body) { Html2rss::HtmlParser.parse_html(load_fixture('nuxt.html')) }
 
       it 'extracts relative URLs and nested categories' do # rubocop:disable RSpec/ExampleLength
         expect(articles).to contain_exactly(
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
     end
 
     context 'with custom window state' do
-      let(:parsed_body) { Nokogiri::HTML(load_fixture('state.html')) }
+      let(:parsed_body) { Html2rss::HtmlParser.parse_html(load_fixture('state.html')) }
 
       it 'handles bespoke globals' do # rubocop:disable RSpec/ExampleLength
         expect(articles).to contain_exactly(
@@ -98,7 +98,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
     end
 
     context 'with nested array data' do
-      let(:parsed_body) { Nokogiri::HTML(load_fixture('nested_array.html')) }
+      let(:parsed_body) { Html2rss::HtmlParser.parse_html(load_fixture('nested_array.html')) }
 
       it 'finds articles nested inside array entries' do
         expect(articles).to contain_exactly(a_hash_including(

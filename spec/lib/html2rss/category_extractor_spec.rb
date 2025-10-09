@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::CategoryExtractor do
   describe '.call' do
-    let(:html) { Nokogiri::HTML.fragment(html_content) }
+    let(:html) { Html2rss::HtmlParser.parse_html_fragment(html_content) }
     let(:article_tag) { html.at_css('article') }
 
     context 'when article has category classes' do
