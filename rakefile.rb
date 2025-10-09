@@ -14,3 +14,5 @@ desc 'Run all examples'
 RSpec::Core::RakeTask.new(:spec) do |t|
   t.ruby_opts = %w[-w]
 end
+
+Dir.glob('lib/tasks/**/*.rake').sort.each { |file| import file }
