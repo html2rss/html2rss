@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "strategy": {
+      "not": {
+        "type": "null"
+      }
+    },
+    "channel": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "description": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "language": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "ttl": {
+          "type": [
+            "null",
+            "integer"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "time_zone": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "description": "HTTP headers applied to every request.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "stylesheets": {
+      "type": "array",
+      "description": "Collection of stylesheets to attach to the RSS feed.",
+      "items": {
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "text/css",
+              "text/xsl"
+            ]
+          },
+          "media": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "href",
+          "type"
+        ]
+      }
+    },
+    "auto_source": {
+      "$schema": "http://json-schema.org/draft-06/schema#",
+      "type": "object",
+      "properties": {
+        "scraper": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            },
+            "json_state": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            },
+            "semantic_html": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            },
+            "html": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "minimum_selector_frequency": {
+                  "type": "integer",
+                  "not": {
+                    "type": "null"
+                  },
+                  "exclusiveMinimum": 0
+                },
+                "use_top_selectors": {
+                  "type": "integer",
+                  "not": {
+                    "type": "null"
+                  },
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": []
+            },
+            "rss_feed_detector": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            }
+          },
+          "required": []
+        },
+        "cleanup": {
+          "type": "object",
+          "properties": {
+            "keep_different_domain": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
+            "min_words_title": {
+              "type": "integer",
+              "not": {
+                "type": "null"
+              },
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": []
+        }
+      },
+      "required": [],
+      "default": {
+        "scraper": {
+          "schema": {
+            "enabled": true
+          },
+          "json_state": {
+            "enabled": true
+          },
+          "semantic_html": {
+            "enabled": true
+          },
+          "html": {
+            "enabled": true,
+            "minimum_selector_frequency": 2,
+            "use_top_selectors": 5
+          },
+          "rss_feed_detector": {
+            "enabled": true
+          }
+        },
+        "cleanup": {
+          "keep_different_domain": false,
+          "min_words_title": 3
+        }
+      }
+    },
+    "selectors": {
+      "type": "object",
+      "description": "Selectors used to extract article attributes.",
+      "properties": {
+        "items": {
+          "$schema": "http://json-schema.org/draft-06/schema#",
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "order": {
+              "enum": [
+                "reverse"
+              ],
+              "not": {
+                "type": "null"
+              }
+            },
+            "enhance": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            }
+          },
+          "required": [
+            "selector"
+          ],
+          "description": "Defines the items selector and optional enhancement settings."
+        },
+        "enclosure": {
+          "$schema": "http://json-schema.org/draft-06/schema#",
+          "type": "object",
+          "properties": {
+            "extractor": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attribute": {
+              "type": "string",
+              "minLength": 1
+            },
+            "static": {
+              "type": "string",
+              "minLength": 1
+            },
+            "post_process": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "content_type": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [],
+          "description": "Describes enclosure extraction settings."
+        },
+        "guid": {
+          "type": "array",
+          "description": "List of selector keys used to build the GUID.",
+          "items": {
+            "type": "string",
+            "description": "Selector key defined elsewhere in this object."
+          }
+        },
+        "categories": {
+          "type": "array",
+          "description": "List of selector keys whose values will be used as categories.",
+          "items": {
+            "type": "string",
+            "description": "Selector key defined elsewhere in this object."
+          }
+        }
+      },
+      "patternProperties": {
+        "^(?!items$|enclosure$|guid$|categories$).+$": {
+          "$schema": "http://json-schema.org/draft-06/schema#",
+          "type": "object",
+          "properties": {
+            "extractor": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attribute": {
+              "type": "string",
+              "minLength": 1
+            },
+            "static": {
+              "type": "string",
+              "minLength": 1
+            },
+            "post_process": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "required": [],
+          "description": "Dynamic selector definition keyed by attribute name."
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "strategy",
+    "channel"
+  ],
+  "anyOf": [
+    {
+      "required": [
+        "selectors"
+      ]
+    },
+    {
+      "required": [
+        "auto_source"
+      ]
+    }
+  ]
+}

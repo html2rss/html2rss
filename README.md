@@ -82,6 +82,10 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 - **YARD** for documentation generation
 - **GitHub Actions** for CI/CD
 
+### Config schema workflow
+
+Run `bundle exec rake config:schema` before committing to regenerate `schema/html2rss-config.schema.json` and keep the checked-in JSON Schema in sync with the validators.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
