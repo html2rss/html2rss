@@ -12,7 +12,7 @@ namespace :config do
     destination = File.expand_path('../../schema/html2rss-config.schema.json', __dir__)
 
     FileUtils.mkdir_p(File.dirname(destination))
-    File.write(destination, JSON.pretty_generate(schema))
+    File.write(destination, "#{JSON.pretty_generate(schema)}\n")
 
     puts "Generated config schema at #{destination}"
   end

@@ -13,12 +13,8 @@ RSpec.describe Html2rss::Config::Schema do
     end
 
     it 'enforces presence of selectors or auto_source' do
-      expect(json_schema.fetch('anyOf')).to match_array(
-        [
-          include('required' => include('selectors')),
-          include('required' => include('auto_source'))
-        ]
-      )
+      expect(json_schema.fetch('anyOf'))
+        .to contain_exactly({ 'required' => ['selectors'] }, { 'required' => ['auto_source'] })
     end
 
     it 'embeds the AutoSource defaults' do
