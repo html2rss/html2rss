@@ -36,6 +36,10 @@ jobs:
           bundler-cache: true
       - name: Run linting
         run: make lint
+      - name: Generate config schema
+        run: bundle exec rake config:schema
+      - name: Ensure config schema is committed
+        run: git diff --exit-code schema/html2rss-config.schema.json
   yard:
     runs-on: ubuntu-latest
     steps:
