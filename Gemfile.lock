@@ -11,6 +11,7 @@ PATH
       kramdown
       mime-types (> 3.0)
       nokogiri (>= 1.10, < 2.0)
+      nokolexbor (~> 0.6)
       parallel
       puppeteer-ruby
       regexp_parser
@@ -112,6 +113,9 @@ GEM
       racc (~> 1.4)
     nokogiri (1.18.10-x86_64-linux-gnu)
       racc (~> 1.4)
+    nokolexbor (0.6.2)
+    nokolexbor (0.6.2-x86_64-darwin)
+    nokolexbor (0.6.2-x86_64-linux)
     parallel (1.27.0)
     parser (3.3.9.0)
       ast (~> 2.4.1)
@@ -294,6 +298,9 @@ CHECKSUMS
   nokogiri (1.18.10) sha256=d5cc0731008aa3b3a87b361203ea3d19b2069628cb55e46ac7d84a0445e69cc1
   nokogiri (1.18.10-x86_64-darwin) sha256=536e74bed6db2b5076769cab5e5f5af0cd1dccbbd75f1b3e1fa69d1f5c2d79e2
   nokogiri (1.18.10-x86_64-linux-gnu) sha256=ff5ba26ba2dbce5c04b9ea200777fd225061d7a3930548806f31db907e500f72
+  nokolexbor (0.6.2) sha256=5f010bc33e3810961ecefd291d97ec02bd2fbc12653c583ba08e2afbaa00a62b
+  nokolexbor (0.6.2-x86_64-darwin) sha256=60869e2b7a0f40fc8d3834d4c6274c527c721b1107941c76a75e42e1aada9a50
+  nokolexbor (0.6.2-x86_64-linux) sha256=8d0fbebf17a7a027c5c6adc3c68bb798ce84bdfb00e880c186c7b448f7fd8298
   parallel (1.27.0) sha256=4ac151e1806b755fb4e2dc2332cbf0e54f2e24ba821ff2d3dcf86bf6dc4ae130
   parser (3.3.9.0) sha256=94d6929354b1a6e3e1f89d79d4d302cc8f5aa814431a6c9c7e0623335d7687f2
   pp (0.6.3) sha256=2951d514450b93ccfeb1df7d021cae0da16e0a7f95ee1e2273719669d0ab9df6

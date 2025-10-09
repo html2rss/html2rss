@@ -2,6 +2,7 @@
 
 require 'concurrent/atomic/atomic_reference'
 require 'nokogiri'
+require 'nokolexbor'
 
 module Html2rss
   ##
@@ -174,6 +175,75 @@ module Html2rss
         # @return [Nokogiri::XML::Node]
         def create_node(name, document)
           ::Nokogiri::XML::Node.new(name, document)
+        end
+      end
+
+      ##
+      # Alternative backend powered by Nokolexbor.
+      class Nokolexbor
+        ##
+        # Parses an HTML document string.
+        #
+        # @param html [String]
+        # @return [::Nokolexbor::Document]
+        def parse_html(html)
+          ::Nokolexbor::HTML(html)
+        end
+
+        ##
+        # Parses an HTML fragment string.
+        #
+        # @param html [String]
+        # @return [::Nokolexbor::DocumentFragment]
+        def parse_html_fragment(html)
+          ::Nokolexbor::DocumentFragment.parse(html)
+        end
+
+        ##
+        # Parses an HTML5 fragment string.
+        #
+        # @param html [String]
+        # @return [::Nokolexbor::DocumentFragment]
+        def parse_html5_fragment(html)
+          ::Nokolexbor::DocumentFragment.parse(html)
+        end
+
+        ##
+        # @return [Class]
+        def document_class
+          ::Nokolexbor::Document
+        end
+
+        ##
+        # @return [Class]
+        def fragment_class
+          ::Nokolexbor::DocumentFragment
+        end
+
+        ##
+        # @return [Class]
+        def element_class
+          ::Nokolexbor::Element
+        end
+
+        ##
+        # @return [Class]
+        def node_class
+          ::Nokolexbor::Node
+        end
+
+        ##
+        # @return [Class]
+        def node_set_class
+          ::Nokolexbor::NodeSet
+        end
+
+        ##
+        # @param name [String]
+        # @param document [::Nokolexbor::Document]
+        # @return [::Nokolexbor::Element]
+        def create_node(name, document)
+          document.create_element(name)
         end
       end
     end
