@@ -46,8 +46,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     end
 
     it do
-      result = Nokogiri::HTML.fragment(subject).to_html.chomp.gsub(/\s+/, ' ')
-      expected_html = Nokogiri::HTML.fragment(sanitized_html).to_html.chomp.gsub(/\s+/, ' ')
+      result = Html2rss::HtmlParser.parse_html_fragment(subject).to_html.chomp.gsub(/\s+/, ' ')
+      expected_html = Html2rss::HtmlParser.parse_html_fragment(sanitized_html).to_html.chomp.gsub(/\s+/, ' ')
 
       expect(result).to eq(expected_html)
     end

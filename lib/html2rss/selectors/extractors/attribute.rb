@@ -30,7 +30,7 @@ module Html2rss
         ##
         # Initializes the Attribute extractor.
         #
-        # @param xml [Nokogiri::XML::Element]
+        # @param xml [Object]
         # @param options [Options]
         def initialize(xml, options)
           @options = options

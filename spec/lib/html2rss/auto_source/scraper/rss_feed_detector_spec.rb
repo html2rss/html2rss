@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::RssFeedDetector do
   subject(:instance) { described_class.new(parsed_body, url:) }
 
   let(:url) { 'https://example.com' }
-  let(:parsed_body) { Nokogiri::HTML(html) }
+  let(:parsed_body) { Html2rss::HtmlParser.parse_html(html) }
 
   describe '.articles?' do
     context 'when RSS feed links are present' do
@@ -166,7 +166,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::RssFeedDetector do
       end
 
       it 'sanitizes HTML in feed titles for security', :aggregate_failures do
-        xss_instance = described_class.new(Nokogiri::HTML(html_with_xss), url:)
+        xss_instance = described_class.new(Html2rss::HtmlParser.parse_html(html_with_xss), url:)
         first_article = xss_instance.first
 
         expect(first_article[:description]).to include 'RSS Feed'

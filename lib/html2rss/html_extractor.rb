@@ -21,7 +21,7 @@ module Html2rss
       ##
       # Extracts visible text from a given node and its children.
       #
-      # @param tag [Nokogiri::XML::Node] the node from which to extract visible text
+      # @param tag [Object] the node from which to extract visible text
       # @param separator [String] separator used to join text fragments (default is a space)
       # @return [String, nil] the concatenated visible text, or nil if none is found
       def extract_visible_text(tag, separator: ' ')

@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::HtmlTransformers::WrapImgInA
     subject(:call) { transformer.call(node_name:, node:) }
 
     let(:node_name) { 'img' }
-    let(:node) { Nokogiri::HTML('<html><p><img src="https://example.com/image.jpg"></p></html>').at('img') }
+    let(:node) { Html2rss::HtmlParser.parse_html('<html><p><img src="https://example.com/image.jpg"></p></html>').at('img') }
 
     it 'wraps the image in an anchor tag', :aggregate_failures do
       expect { call }.to change { node.parent.name }.from('p').to('a')

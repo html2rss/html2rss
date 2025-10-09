@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'json'
-require 'nokogiri'
 
 module Html2rss
   class AutoSource
@@ -36,12 +35,12 @@ module Html2rss
           # of all supported schema objects
           # by recursively traversing the given `object`.
           #
-          # @param object [Hash, Array, Nokogiri::XML::Element]
+          # @param object [Hash, Array, Object]
           # @return [Array<Hash>] the schema_objects, or an empty array
           # :reek:DuplicateMethodCall
           def from(object)
             case object
-            when Nokogiri::XML::Element
+            when HtmlParser.element_class
               from(parse_script_tag(object))
             when Hash
               supported_schema_object?(object) ? [object] : object.values.flat_map { |item| from(item) }

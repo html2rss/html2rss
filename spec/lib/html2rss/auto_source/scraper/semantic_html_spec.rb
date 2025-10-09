@@ -7,7 +7,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
   describe '.articles?' do
     let(:parsed_body) do
-      Nokogiri::HTML.parse <<~HTML
+      Html2rss::HtmlParser.parse_html <<~HTML
         <html><body><article><a href="">Article 1</a></article></body></html>
       HTML
     end
@@ -24,7 +24,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe '#each' do
     subject(:new) { described_class.new(parsed_body, url: 'https://page.com') }
 
-    let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
+    let(:parsed_body) { Html2rss::HtmlParser.parse_html(File.read('spec/fixtures/page_1.html')) }
 
     let(:grouped_expected_articles) do
       # rubocop:disable Layout/LineLength

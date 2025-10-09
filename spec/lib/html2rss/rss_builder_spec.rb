@@ -43,7 +43,8 @@ RSpec.describe Html2rss::RssBuilder do
   describe '#call' do
     subject(:rss) { instance.call }
 
-    let(:rss_feed) do
+    let(:rss_doc) { Nokogiri::XML(rss.to_s) }
+    let(:expected_prefix) do
       <<~RSS.strip
         <?xml version="1.0" encoding="UTF-8"?>
         <?xml-stylesheet href="rss.xsl" type="text/xsl" media="all"?>
@@ -53,11 +54,11 @@ RSpec.describe Html2rss::RssBuilder do
 
     it 'returns an RSS 2.0 Rss object', :aggregate_failures do
       expect(rss).to be_a(RSS::Rss)
-      expect(rss.to_s).to start_with(rss_feed)
+      expect(rss.to_s).to start_with(expected_prefix)
     end
 
     context 'with <channel> tag' do
-      subject(:channel_tag) { Nokogiri::XML(rss.to_s).css('channel').first }
+      subject(:channel_tag) { rss_doc.css('channel').first }
 
       let(:tags) do
         {
@@ -77,7 +78,7 @@ RSpec.describe Html2rss::RssBuilder do
     end
 
     context 'with the <item> tags' do
-      let(:items) { Nokogiri::XML(rss.to_s).css('item') }
+      let(:items) { rss_doc.css('item') }
 
       it 'has the correct number of items' do
         expect(items.size).to eq(articles.size)
@@ -85,19 +86,22 @@ RSpec.describe Html2rss::RssBuilder do
     end
 
     context 'with one <item> tags' do
-      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
-      let(:article) { articles.first }
+      let(:item) { rss_doc.css('item').first }
 
-      it 'has tags with correct values', :aggregate_failures do
+      it 'matches textual fields', :aggregate_failures do
         %i[title description guid].each do |tag|
-          expect(item.css(tag).text).to eq(article.public_send(tag).to_s), tag
+          expect(item.css(tag).text).to eq(articles.first.public_send(tag).to_s), tag
         end
+      end
 
+      it 'matches link and published date', :aggregate_failures do
+        article = articles.first
         expect(item.css('link').text).to eq(article.url.to_s), 'link'
         expect(item.css('pubDate').text).to eq(article.published_at.rfc822), 'pubDate'
       end
 
       it 'has an enclosure tag with the correct attributes' do
+        article = articles.first
         enclosure = item.css('enclosure').first
 
         expect(enclosure[:url]).to match(article.image.to_s)

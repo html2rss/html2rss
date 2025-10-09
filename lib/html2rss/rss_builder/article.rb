@@ -2,7 +2,6 @@
 
 require 'zlib'
 require 'sanitize'
-require 'nokogiri'
 
 module Html2rss
   class RssBuilder

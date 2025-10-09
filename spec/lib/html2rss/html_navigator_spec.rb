@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::HtmlNavigator do
   describe '.parent_until_condition' do
     let(:html) do
@@ -16,7 +14,7 @@ RSpec.describe Html2rss::HtmlNavigator do
       HTML
     end
 
-    let(:document) { Nokogiri::HTML(html) }
+    let(:document) { Html2rss::HtmlParser.parse_html(html) }
     let(:target_node) { document.at_css('#target') }
 
     it 'returns the node itself if the condition is met' do
@@ -58,7 +56,7 @@ RSpec.describe Html2rss::HtmlNavigator do
       HTML
     end
 
-    let(:document) { Nokogiri::HTML(html) }
+    let(:document) { Html2rss::HtmlParser.parse_html(html) }
 
     let(:expected_anchor) { document.at_css('a') }
 
@@ -94,7 +92,7 @@ RSpec.describe Html2rss::HtmlNavigator do
       HTML
     end
 
-    let(:document) { Nokogiri::HTML(html) }
+    let(:document) { Html2rss::HtmlParser.parse_html(html) }
     let(:current_tag) { document.at_css('#link') }
 
     context 'when the anchor is inside the specified tag' do

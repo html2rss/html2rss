@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 module Html2rss
   class RequestService
     ##
@@ -34,11 +32,11 @@ module Html2rss
       def html_response? = content_type.include?('text/html')
 
       ##
-      # @return [Nokogiri::HTML::Document, Hash] the parsed body of the response, frozen object
+      # @return [HtmlParser.document_class, Hash] the parsed body of the response, frozen object
       # @raise [UnsupportedResponseContentType] if the content type is not supported
       def parsed_body
         @parsed_body ||= if html_response?
-                           Nokogiri::HTML(body).tap do |doc|
+                           HtmlParser.parse_html(body).tap do |doc|
                              # Remove comments from the document to avoid processing irrelevant content
                              doc.xpath('//comment()').each(&:remove)
                            end.freeze

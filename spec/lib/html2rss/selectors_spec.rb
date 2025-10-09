@@ -76,7 +76,7 @@ RSpec.describe Html2rss::Selectors do
   describe '#extract_article(item)' do
     subject(:article) { instance.extract_article(item) }
 
-    let(:item) { Nokogiri::HTML(body).at('html') }
+    let(:item) { Html2rss::HtmlParser.parse_html(body).at('html') }
 
     context 'when title is static and description the html of <body>' do
       # Issue was reported at: https://github.com/html2rss/html2rss/issues/157
@@ -109,7 +109,7 @@ RSpec.describe Html2rss::Selectors do
 
   describe '#enhance_article_hash(article_hash, item)' do
     subject(:enhanced_article) do
-      item = Nokogiri::HTML(body).at('article:first')
+      item = Html2rss::HtmlParser.parse_html(body).at('article:first')
 
       instance.enhance_article_hash(article_hash, item)
     end
@@ -144,7 +144,7 @@ RSpec.describe Html2rss::Selectors do
   describe '#select' do
     subject(:value) { instance.select(:title, item) }
 
-    let(:item) { Nokogiri::HTML(body).at('article:first') }
+    let(:item) { Html2rss::HtmlParser.parse_html(body).at('article:first') }
 
     it 'returns the selected value' do
       expect(value).to eq('article1')

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 module Html2rss
   class AutoSource
     module Scraper
@@ -28,7 +26,7 @@ module Html2rss
           xpath.gsub(/\[\d+\]/, '')
         end
 
-        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
+        # @param parsed_body [Object] The parsed HTML document.
         # @param url [String] The base URL.
         # @param extractor [Class] The extractor class to handle article extraction.
         # @param opts [Hash] Additional options.

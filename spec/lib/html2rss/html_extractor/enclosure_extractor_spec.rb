@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
   describe '.call' do
     subject(:enclosures) { described_class.call(article_tag, base_url) }
@@ -10,7 +8,7 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
     # Helper method to create article tag from HTML
     def article_tag_from(html)
-      Nokogiri::HTML(html).at('article')
+      Html2rss::HtmlParser.parse_html(html).at('article')
     end
 
     # Helper method to create expected enclosure hash

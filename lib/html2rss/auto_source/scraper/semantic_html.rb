@@ -27,7 +27,7 @@ module Html2rss
         def self.options_key = :semantic_html
 
         # Check if the parsed_body contains articles
-        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document
+        # @param parsed_body [Object] The parsed HTML document
         # @return [Boolean] True if articles are found, otherwise false.
         def self.articles?(parsed_body)
           return false unless parsed_body
@@ -37,7 +37,7 @@ module Html2rss
           end
         end
 
-        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
+        # @param parsed_body [Object] The parsed HTML document.
         # @param url [String] The base URL.
         # @param extractor [Class] The extractor class to handle article extraction.
         # @param opts [Hash] Additional options.
@@ -66,7 +66,7 @@ module Html2rss
 
         private
 
-        # @yield [Nokogiri::XML::Element] Gives each found article tag.
+        # @yield [Object] Gives each found article tag.
         def each_candidate
           ANCHOR_TAG_SELECTORS.each do |tag_name, selector|
             parsed_body.css(selector).each do |anchor|

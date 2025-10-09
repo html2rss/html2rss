@@ -11,7 +11,7 @@ module Html2rss
           # Wraps <img> tags into <a> tags that link to `img.src`.
           #
           # @param node_name [String]
-          # @param node [Nokogiri::XML::Node]
+          # @param node [Object]
           # @return [nil]
           def call(node_name:, node:, **_env)
             return unless should_process?(node_name)
@@ -32,10 +32,10 @@ module Html2rss
           ##
           # Wraps the <img> node in an <a> tag.
           #
-          # @param node [Nokogiri::XML::Node]
+          # @param node [Object]
           # @return [nil]
           def wrap_image_in_anchor(node)
-            anchor = Nokogiri::XML::Node.new('a', node.document)
+            anchor = HtmlParser.create_node('a', node.document)
             anchor['href'] = node['src']
             node.add_next_sibling(anchor)
             anchor.add_child(node.remove)
