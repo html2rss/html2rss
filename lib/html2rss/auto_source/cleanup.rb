@@ -76,7 +76,7 @@ module Html2rss
 
         def word_count_at_least?(str, min_words)
           count = 0
-          str.to_s.scan(/\b\w+\b/) do
+          str.to_s.scan(/\p{Alnum}+/) do
             count += 1
             return true if count >= min_words
           end
