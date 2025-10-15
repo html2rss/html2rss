@@ -116,6 +116,7 @@ module Html2rss
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
     def initialize(uri)
       @uri = uri.freeze
+      @normalized_url = build_normalized_uri(@uri).to_s.delete_suffix('/').freeze
       freeze
     end
 
@@ -201,11 +202,49 @@ module Html2rss
     end
 
     ##
+    # Returns a normalized string representation suitable for comparisons.
+    # Normalization leverages Addressable's `normalize` while ensuring fragments
+    # are stripped, trailing slashes removed, and query parameters sorted so that
+    # semantically equivalent URLs compare equal.
+    #
+    # @return [String] the normalized representation used for comparison
+    def normalized_for_comparison
+      @normalized_url
+    end
+
+    ##
     # Returns a string representation of the URL for debugging.
     #
     # @return [String] the debug representation
     def inspect
       "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
+    end
+
+    private
+
+    def build_normalized_uri(uri)
+      normalized = uri.dup
+      normalized.fragment = nil
+      normalized.host = normalized.host&.downcase
+      normalized.path = normalize_path(normalized.path)
+      normalize_query(normalized)
+      normalized.normalize
+    end
+
+    def normalize_path(path)
+      return if path.nil?
+
+      trimmed = path.sub(%r{/+\z}, '')
+      trimmed.empty? ? nil : trimmed
+    end
+
+    def normalize_query(uri)
+      query_values = uri.query_values(Array)
+      return unless query_values
+
+      sorted = query_values.sort_by { |key, value| [key.to_s, value.to_s] }
+      uri.query = nil if sorted.empty?
+      uri.query_values = sorted unless sorted.empty?
     end
   end
 end

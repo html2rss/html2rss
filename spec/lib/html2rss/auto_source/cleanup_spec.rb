@@ -59,6 +59,27 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with normalized URL duplicates' do
+      let(:articles) do
+        [
+          instance_double(Html2rss::RssBuilder::Article,
+                          valid?: true,
+                          url: Html2rss::Url.sanitize('https://Example.com/posts/1/?b=2&a=1#frag'),
+                          title: 'Valid Article Title'),
+          instance_double(Html2rss::RssBuilder::Article,
+                          valid?: true,
+                          url: Html2rss::Url.sanitize('https://example.com/posts/1?a=1&b=2'),
+                          title: 'Another Valid Title')
+        ]
+      end
+      let(:min_words_title) { 1 }
+      let(:keep_different_domain) { true }
+
+      it 'removes duplicates based on normalized URL' do
+        expect(subject.size).to eq(1)
+      end
+    end
+
     it 'keeps only HTTP and HTTPS articles' do
       expect(subject).not_to include(articles[4])
     end

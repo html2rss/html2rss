@@ -107,6 +107,18 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#normalized_for_comparison' do
+    it 'normalizes host casing, fragments, trailing slash, and query order' do
+      url = described_class.sanitize('https://Example.com/path/?b=2&a=1#fragment')
+      expect(url.normalized_for_comparison).to eq('https://example.com/path?a=1&b=2')
+    end
+
+    it 'treats root URLs with trailing slash and fragment as identical' do
+      url = described_class.sanitize('https://example.com/#top')
+      expect(url.normalized_for_comparison).to eq('https://example.com')
+    end
+  end
+
   describe '.for_channel' do
     context 'with valid absolute URLs' do
       {

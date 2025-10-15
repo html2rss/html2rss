@@ -20,7 +20,7 @@ module Html2rss
 
           articles.select!(&:valid?)
 
-          deduplicate_by!(articles, :url)
+          deduplicate_by!(articles, :url) { |url| normalize_url_for_deduplication(url) }
 
           keep_only_http_urls!(articles)
           reject_different_domain!(articles, url) unless keep_different_domain
@@ -39,7 +39,10 @@ module Html2rss
           seen = {}
           articles.reject! do |article|
             value = article.public_send(key)
-            value.nil? || seen.key?(value).tap { seen[value] = true }
+            normalized = block_given? ? yield(value) : value
+            next true if normalized.nil?
+
+            seen.key?(normalized).tap { seen[normalized] = true }
           end
         end
 
@@ -73,6 +76,10 @@ module Html2rss
         end
 
         private
+
+        def normalize_url_for_deduplication(url)
+          url&.normalized_for_comparison
+        end
 
         def word_count_at_least?(str, min_words)
           count = 0
