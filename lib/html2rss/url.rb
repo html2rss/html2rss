@@ -208,7 +208,14 @@ module Html2rss
     #
     # @return [String] the normalized representation used for comparison
     def normalized_for_comparison
-      @normalized_url
+      @normalized_url ||= begin
+        normalized = @uri.dup
+        normalized.fragment = nil
+        normalized.host = normalized.host&.downcase
+        normalized.path = normalize_path(normalized.path)
+        normalize_query(normalized)
+        normalized.normalize
+      end
     end
 
     ##
@@ -220,15 +227,6 @@ module Html2rss
     end
 
     private
-
-    def build_normalized_uri(uri)
-      normalized = uri.dup
-      normalized.fragment = nil
-      normalized.host = normalized.host&.downcase
-      normalized.path = normalize_path(normalized.path)
-      normalize_query(normalized)
-      normalized.normalize
-    end
 
     def normalize_path(path)
       return if path.nil?
