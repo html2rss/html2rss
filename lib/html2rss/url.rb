@@ -116,7 +116,6 @@ module Html2rss
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
     def initialize(uri)
       @uri = uri.freeze
-      @normalized_url = build_normalized_uri(@uri).to_s.delete_suffix('/').freeze
       freeze
     end
 
