@@ -26,6 +26,37 @@ module Html2rss
         optional(:media).maybe(:string)
       end
 
+      WaitForNetworkIdleConfig = Dry::Schema.Params do
+        optional(:timeout_ms).filled(:integer, gt?: 0)
+      end
+
+      BrowserlessPreloadClickSelectorConfig = Dry::Schema.Params do
+        required(:selector).filled(:string)
+        optional(:max_clicks).filled(:integer, gt?: 0)
+        optional(:delay_ms).filled(:integer, gteq?: 0)
+        optional(:wait_for_network_idle).hash(WaitForNetworkIdleConfig)
+      end
+
+      BrowserlessPreloadScrollConfig = Dry::Schema.Params do
+        optional(:iterations).filled(:integer, gt?: 0)
+        optional(:delay_ms).filled(:integer, gteq?: 0)
+        optional(:wait_for_network_idle).hash(WaitForNetworkIdleConfig)
+      end
+
+      BrowserlessPreloadConfig = Dry::Schema.Params do
+        optional(:wait_for_network_idle).hash(WaitForNetworkIdleConfig)
+        optional(:click_selectors).array(BrowserlessPreloadClickSelectorConfig)
+        optional(:scroll_down).hash(BrowserlessPreloadScrollConfig)
+      end
+
+      BrowserlessRequestConfig = Dry::Schema.Params do
+        optional(:preload).hash(BrowserlessPreloadConfig)
+      end
+
+      RequestConfig = Dry::Schema.Params do
+        optional(:browserless).hash(BrowserlessRequestConfig)
+      end
+
       params do
         required(:strategy).filled(:symbol)
         required(:channel).hash(ChannelConfig)
@@ -33,6 +64,7 @@ module Html2rss
         optional(:stylesheets).array(StylesheetConfig)
         optional(:auto_source).hash(AutoSource::Config)
         optional(:selectors).hash
+        optional(:request).hash(RequestConfig)
       end
 
       rule(:headers) do
