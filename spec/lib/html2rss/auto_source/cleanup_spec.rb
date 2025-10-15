@@ -133,5 +133,23 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(articles.map(&:title)).to contain_exactly(nil)
       end
     end
+
+    context 'with non-Latin titles' do
+      let(:articles) do
+        [
+          instance_double(Html2rss::RssBuilder::Article, title: 'Привет мир'),
+          instance_double(Html2rss::RssBuilder::Article, title: 'مرحبا بالعالم'),
+          instance_double(Html2rss::RssBuilder::Article, title: '你好 世界'),
+          instance_double(Html2rss::RssBuilder::Article, title: '你好世界'),
+          instance_double(Html2rss::RssBuilder::Article, title: nil)
+        ]
+      end
+      let(:min_words_title) { 2 }
+
+      it 'counts Unicode words correctly', :aggregate_failures do
+        keep_only_with_min_words_title!
+        expect(articles.map(&:title)).to contain_exactly('Привет мир', 'مرحبا بالعالم', '你好 世界', nil)
+      end
+    end
   end
 end
