@@ -193,6 +193,15 @@ module Html2rss
     end
 
     ##
+    # Supports hash-based comparisons by ensuring equality semantics match `hash`.
+    #
+    # @param other [Object] the other object to compare with
+    # @return [Boolean] true if the URLs are considered equal
+    def eql?(other)
+      other.is_a?(Url) && to_s == other.to_s
+    end
+
+    ##
     # Returns the hash code for this URL.
     #
     # @return [Integer] the hash code
