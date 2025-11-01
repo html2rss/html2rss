@@ -91,8 +91,7 @@ module Html2rss
       articles = Parallel.flat_map(scrapers, in_threads: thread_count_for(scrapers)) do |scraper|
         instance = scraper.new(parsed_body, url:, **scraper_options_for(scraper))
 
-        articles = run_scraper(instance)
-        articles
+        run_scraper(instance)
       end
 
       Cleanup.call(articles, url:, **cleanup_options)
