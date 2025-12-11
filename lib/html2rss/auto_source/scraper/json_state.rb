@@ -278,29 +278,36 @@ module Html2rss
             nil
           end
 
-          # rubocop:disable Metrics/MethodLength
           def categories(entry)
             raw = ValueFinder.fetch(entry, CATEGORY_KEYS)
-            names = case raw
-                    when Array then raw
-                    when Hash then raw.values
-                    when String then [raw]
-                    else []
-                    end
-
-            result = names.flat_map do |value|
-              case value
-              when Hash
-                string(ValueFinder.fetch(value, %w[name title label]))
-              else
-                string(value)
-              end
-            end.compact
-
-            result.uniq!
-            result unless result.empty?
+            normalize_category_names(raw)
           end
-          # rubocop:enable Metrics/MethodLength
+
+          def normalize_category_names(raw)
+            labels = category_value_list(raw).each_with_object(Set.new) do |value, acc|
+              label = category_label(value)
+              acc << label if label
+            end
+
+            return if labels.empty?
+
+            labels.to_a
+          end
+
+          def category_value_list(raw)
+            case raw
+            when Array then raw
+            when Hash then raw.values
+            when String then [raw]
+            else []
+            end
+          end
+
+          def category_label(value)
+            candidate = value
+            candidate = ValueFinder.fetch(value, %w[name title label]) if value.is_a?(Hash)
+            string(candidate)
+          end
 
           def identifier(entry, article_url)
             value = ValueFinder.fetch(entry, ID_KEYS)

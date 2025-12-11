@@ -203,9 +203,15 @@ module Html2rss
     end
 
     def select_categories(category_selectors:, item:)
-      Array(category_selectors).flat_map do |selector_name|
-        extract_category_values(selector_name, item:)
-      end
+      return [] unless category_selectors
+
+      Array(category_selectors).each_with_object(Set.new) do |selector_name, accumulator|
+        accumulator.merge(category_values_for(selector_name, item:))
+      end.to_a
+    end
+
+    def category_values_for(selector_name, item:)
+      Set.new(Array(extract_category_values(selector_name, item:)))
     end
 
     def extract_category_values(selector_name, item:)

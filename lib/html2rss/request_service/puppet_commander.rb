@@ -9,13 +9,15 @@ module Html2rss
       # @param browser [Puppeteer::Browser]
       # @param skip_request_resources [Set<String>] the resource types not to request
       # @param referer [String] the referer to use for the request
+      DEFAULT_SKIP_RESOURCES = Set.new(%w[stylesheet image media font]).freeze
+
       def initialize(ctx,
                      browser,
-                     skip_request_resources: %w[stylesheet image media font].to_set,
+                     skip_request_resources: DEFAULT_SKIP_RESOURCES,
                      referer: [ctx.url.scheme, ctx.url.host].join('://'))
         @ctx = ctx
         @browser = browser
-        @skip_request_resources = skip_request_resources
+        @raw_skip_request_resources = skip_request_resources
         @referer = referer
       end
 
@@ -56,7 +58,18 @@ module Html2rss
 
       private
 
-      attr_reader :ctx, :browser, :skip_request_resources, :referer
+      attr_reader :ctx, :browser, :referer
+
+      def skip_request_resources
+        @skip_request_resources ||= coerce_skip_request_resources(@raw_skip_request_resources)
+      end
+
+      def coerce_skip_request_resources(resources)
+        return DEFAULT_SKIP_RESOURCES if resources.equal?(DEFAULT_SKIP_RESOURCES)
+        return Set.new unless resources
+
+        (resources.is_a?(Set) ? resources : Set.new(Array(resources))).freeze
+      end
     end
   end
 end

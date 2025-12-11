@@ -65,7 +65,13 @@ module Html2rss
         # @return [String]
         def item_value(key)
           key = key.to_sym
-          key == :self ? value : @scraper.select(key, @item)
+          return value if key == :self
+
+          memoized_values[key] ||= @scraper.select(key, @item)
+        end
+
+        def memoized_values
+          @memoized_values ||= {}
         end
       end
     end

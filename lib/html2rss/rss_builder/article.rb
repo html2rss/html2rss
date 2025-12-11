@@ -106,11 +106,7 @@ module Html2rss
       end
 
       def categories
-        @categories ||= @to_h[:categories].dup.to_a.tap do |categories|
-          categories.map! { |category| category.to_s.strip }
-          categories.reject!(&:empty?)
-          categories.uniq!
-        end
+        @categories ||= normalize_categories(@to_h[:categories])
       end
 
       # Parses and returns the published_at time.
@@ -135,6 +131,15 @@ module Html2rss
 
       private
 
+      def normalize_categories(values)
+        return [] unless values
+
+        Array(values).each_with_object(Set.new) do |category, set|
+          stripped = category.to_s.strip
+          set << stripped unless stripped.empty?
+        end.to_a
+      end
+
       def dedup_from_url
         return unless (value = url)
 
@@ -142,16 +147,13 @@ module Html2rss
       end
 
       def dedup_from_id
-        return if id.to_s.empty?
-
-        id
+        id.to_s.empty? ? nil : id
       end
 
       def dedup_from_guid
-        value = guid
-        return if value.to_s.empty?
+        return if (value = guid).to_s.empty?
 
-        [value, title, description].compact.join(DEDUP_FINGERPRINT_SEPARATOR)
+        Set[value, title, description].join(DEDUP_FINGERPRINT_SEPARATOR)
       end
 
       def fetch_guid
