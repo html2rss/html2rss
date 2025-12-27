@@ -1,6 +1,6 @@
 {
   "name": "html2rss Development",
-  "image": "mcr.microsoft.com/devcontainers/ruby:3.4",
+  "image": "mcr.microsoft.com/devcontainers/ruby:4",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}

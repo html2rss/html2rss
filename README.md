@@ -41,7 +41,7 @@ You can develop html2rss directly in your browser using GitHub Codespaces:
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?repo=html2rss/html2rss)
 
-The Codespace comes pre-configured with Ruby 3.4, all dependencies, and VS Code extensions ready to go!
+The Codespace comes pre-configured with Ruby 3.4 (compatible with Ruby 4.0), all dependencies, and VS Code extensions ready to go!
 
 ## 📚 Documentation
 
