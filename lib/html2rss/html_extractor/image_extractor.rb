@@ -27,13 +27,13 @@ module Html2rss
       def self.from_source(article_tag) # rubocop:disable Metrics/AbcSize
         hash = article_tag.css('img[srcset], picture > source[srcset]')
                           .flat_map do |source|
-          source['srcset'].to_s.scan(/(\S+)\s+(\d+w|\d+h)[\s,]?/).map do |url, width|
-            next if url.nil? || url.start_with?('data:')
+                            source['srcset'].to_s.scan(/(\S+)\s+(\d+w|\d+h)[\s,]?/).map do |url, width|
+                              next if url.nil? || url.start_with?('data:')
 
-            width_value = width.to_i.zero? ? 0 : width.scan(/\d+/).first.to_i
+                              width_value = width.to_i.zero? ? 0 : width.scan(/\d+/).first.to_i
 
-            [width_value, url.strip]
-          end
+                              [width_value, url.strip]
+                            end
         end.compact.to_h
 
         hash[hash.keys.max]

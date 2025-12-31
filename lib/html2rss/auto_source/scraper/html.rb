@@ -98,7 +98,7 @@ module Html2rss
           selectors.keys.sort_by { |key| selectors[key] }
                    .last(use_top_selectors)
                    .filter_map do |key|
-            selectors[key] >= minimum_selector_frequency ? key : nil
+                     selectors[key] >= minimum_selector_frequency ? key : nil
           end
         end
 
