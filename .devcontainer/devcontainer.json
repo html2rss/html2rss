@@ -1,6 +1,6 @@
 {
   "name": "html2rss Development",
-  "image": "mcr.microsoft.com/devcontainers/ruby:4",
+  "image": "mcr.microsoft.com/devcontainers/ruby:3.4",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
@@ -10,7 +10,6 @@
       "extensions": [
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
-        "github.copilot",
         "github.copilot-chat",
         "shopify.ruby-lsp"
       ],
@@ -45,24 +44,5 @@
       }
     }
   },
-  "postCreateCommand": "bundle install",
-  "forwardPorts": [
-    3000,
-    4000,
-    8000
-  ],
-  "portsAttributes": {
-    "3000": {
-      "label": "Development Server",
-      "onAutoForward": "notify"
-    },
-    "4000": {
-      "label": "Documentation Server",
-      "onAutoForward": "notify"
-    },
-    "8000": {
-      "label": "Test Server",
-      "onAutoForward": "notify"
-    }
-  }
+  "postCreateCommand": "bundle install --jobs 4 --retry 3"
 }
