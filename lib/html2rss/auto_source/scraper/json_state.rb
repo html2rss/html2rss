@@ -17,7 +17,15 @@ module Html2rss
         GLOBAL_ASSIGNMENT_PATTERNS = [
           /(?:window|self|globalThis)\.__NEXT_DATA__\s*=\s*/m,
           /(?:window|self|globalThis)\.__NUXT__\s*=\s*/m,
-          /(?:window|self|globalThis)\.STATE\s*=\s*/m
+          /(?:window|self|globalThis)\.STATE\s*=\s*/m,
+          /(?:window|self|globalThis)\.__REDUX_STATE__\s*=\s*/m,
+          /(?:window|self|globalThis)\.__PRELOADED_STATE__\s*=\s*/m,
+          /(?:window|self|globalThis)\.__APOLLO_STATE__\s*=\s*/m,
+          /(?:window|self|globalThis)\.__remixContext\s*=\s*/m,
+          /(?:window|self|globalThis)\.__sveltekit_data\s*=\s*/m,
+          /(?:window|self|globalThis)\.GATSBY_STATE\s*=\s*/m,
+          /(?:window|self|globalThis)\.__ember_meta\s*=\s*/m,
+          /(?:window|self|globalThis)\.angular\s*=\s*/m
         ].freeze
 
         TITLE_KEYS = %w[title headline name text].freeze
