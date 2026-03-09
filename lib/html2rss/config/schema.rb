@@ -39,11 +39,8 @@ module Html2rss
       end
 
       def load_json_schema_extension!
-        return if @json_schema_extension_loaded
-
         require 'dry/schema/extensions/json_schema'
         Dry::Schema.load_extensions(:json_schema)
-        @json_schema_extension_loaded = true
       end
     end
   end

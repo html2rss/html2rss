@@ -62,6 +62,7 @@ module Html2rss
       # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
       # @return [Hash<Symbol, Object>] the configuration hash.
       # @raise [ArgumentError] if the file doesn't exist or feed is not found.
+      # rubocop:disable Metrics/MethodLength
       def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
         raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
         raise ArgumentError, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
@@ -72,7 +73,8 @@ module Html2rss
 
         unless feed_name
           available_feeds = yaml.fetch(multiple_feeds_key).keys.join(', ')
-          raise ArgumentError, "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{available_feeds}"
+          raise ArgumentError,
+                "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{available_feeds}"
         end
 
         config = yaml.dig(multiple_feeds_key, feed_name.to_sym)
@@ -80,6 +82,7 @@ module Html2rss
 
         MultipleFeedsConfig.to_single_feed(config, yaml, multiple_feeds_key:)
       end
+      # rubocop:enable Metrics/MethodLength
 
       ##
       # Processes the provided configuration hash, applying dynamic parameters if given,
@@ -118,11 +121,12 @@ module Html2rss
         allocate.send(:prepare_config, deep_dup(config))
       end
 
+      # rubocop:disable Metrics/MethodLength
       def deep_dup(object)
         case object
         when Hash
-          object.each_with_object({}) do |(key, value), result|
-            result[key] = deep_dup(value)
+          object.transform_values do |value|
+            deep_dup(value)
           end
         when Array
           object.map { |value| deep_dup(value) }
@@ -134,6 +138,7 @@ module Html2rss
           end
         end
       end
+      # rubocop:enable Metrics/MethodLength
     end
   end
 end
