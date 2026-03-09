@@ -54,6 +54,15 @@ RSpec.describe Html2rss::Config do
       end
     end
 
+    context 'when the file exists with multiple feeds & the feed name is omitted' do
+      let(:file) { 'spec/fixtures/feeds.test.yml' }
+
+      it 'raises an ArgumentError listing the available feeds' do
+        expect { described_class.load_yaml(file) }
+          .to raise_error(ArgumentError, /Feed name is required under `feeds`\. Available feeds:/)
+      end
+    end
+
     context 'when the file exists with multiple feeds & the feed name is found' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
@@ -125,6 +134,14 @@ RSpec.describe Html2rss::Config do
       config[:selectors][:guid] = ['missing']
 
       expect(described_class.validate(config)).to be_failure
+    end
+
+    it 'does not mutate the caller config hash' do
+      original_config = Marshal.load(Marshal.dump(config))
+
+      described_class.validate(config)
+
+      expect(config).to eq(original_config)
     end
   end
 

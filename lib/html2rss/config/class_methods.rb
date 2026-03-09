@@ -70,6 +70,11 @@ module Html2rss
 
         return yaml unless yaml.key?(multiple_feeds_key)
 
+        unless feed_name
+          available_feeds = yaml.fetch(multiple_feeds_key).keys.join(', ')
+          raise ArgumentError, "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{available_feeds}"
+        end
+
         config = yaml.dig(multiple_feeds_key, feed_name.to_sym)
         raise ArgumentError, "Feed '#{feed_name}' not found under `#{multiple_feeds_key}` key." unless config
 
@@ -110,8 +115,24 @@ module Html2rss
       private
 
       def prepare_for_validation(config)
-        config = config.dup if config.frozen?
-        allocate.send(:prepare_config, config)
+        allocate.send(:prepare_config, deep_dup(config))
+      end
+
+      def deep_dup(object)
+        case object
+        when Hash
+          object.each_with_object({}) do |(key, value), result|
+            result[key] = deep_dup(value)
+          end
+        when Array
+          object.map { |value| deep_dup(value) }
+        else
+          begin
+            object.dup
+          rescue TypeError
+            object
+          end
+        end
       end
     end
   end

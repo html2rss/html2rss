@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require 'dry/schema/extensions/json_schema'
-
-Dry::Schema.load_extensions(:json_schema)
-
 module Html2rss
   class Config
     ##
@@ -18,6 +14,7 @@ module Html2rss
       #
       # @return [Hash<String, Object>] JSON Schema represented as a Ruby hash
       def json_schema
+        load_json_schema_extension!
         Builder.call
       end
 
@@ -39,6 +36,14 @@ module Html2rss
         end
 
         File.expand_path("../../../schema/#{SCHEMA_FILENAME}", __dir__)
+      end
+
+      def load_json_schema_extension!
+        return if @json_schema_extension_loaded
+
+        require 'dry/schema/extensions/json_schema'
+        Dry::Schema.load_extensions(:json_schema)
+        @json_schema_extension_loaded = true
       end
     end
   end
