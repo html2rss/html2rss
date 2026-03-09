@@ -17,6 +17,16 @@ module Html2rss
         content = content_fields
         return if content.empty?
 
+        item_payload.merge(content).compact
+      end
+
+      private
+
+      attr_reader :article
+
+      ##
+      # @return [Hash]
+      def item_payload
         {
           id: article.guid,
           url: article.url&.to_s,
@@ -24,14 +34,10 @@ module Html2rss
           image: article.image&.to_s,
           date_published: article.published_at&.iso8601,
           authors: author_array,
-          tags: tags,
-          attachments: attachments
-        }.merge(content).compact
+          tags:,
+          attachments:
+        }
       end
-
-      private
-
-      attr_reader :article
 
       ##
       # @return [Array<Hash>, nil]
@@ -45,8 +51,11 @@ module Html2rss
       # JSON Feed items must include content_html or content_text.
       # @return [Hash]
       def content_fields
-        return { content_html: article.description } if article.description
-        return { content_text: article.title } if article.title
+        description = article.description
+        return { content_html: description } if description
+
+        title = article.title
+        return { content_text: title } if title
 
         {}
       end
@@ -65,11 +74,20 @@ module Html2rss
         enclosures = article.enclosures
         return nil if enclosures.empty?
 
-        enclosures.map do |enc|
-          attachment = { url: enc.url.to_s, mime_type: enc.type }
-          attachment[:size_in_bytes] = enc.bits_length if enc.bits_length&.positive?
-          attachment.compact
-        end
+        enclosures.map { |enc| attachment_hash(enc) }
+      end
+
+      ##
+      # @param enclosure [Html2rss::RssBuilder::Article::Enclosure]
+      # @return [Hash]
+      def attachment_hash(enclosure)
+        size = enclosure.bits_length
+
+        {
+          url: enclosure.url.to_s,
+          mime_type: enclosure.type,
+          size_in_bytes: size&.positive? ? size : nil
+        }.compact
       end
     end
   end

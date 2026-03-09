@@ -43,15 +43,20 @@ module Html2rss
   #    )
   #    # => #<RSS::Rss:0x00007fb2f48d14a0 ...>
   #
-  # @param config [Hash<Symbol, Object>] configuration.
+  # @param raw_config [Hash<Symbol, Object>] configuration.
   # @return [RSS::Rss] RSS object generated from the configuration.
   def self.feed(raw_config)
-    config = Config.from_hash(raw_config, params: raw_config[:params])
-    response = perform_request(config)
-    articles = collect_articles(response, config)
-    processed_articles = Articles::Deduplicator.new(articles).call
+    build_pipeline(raw_config) { |response, config, articles| build_rss_feed(response, config, articles) }
+  end
 
-    build_feed(response, config, processed_articles)
+  ##
+  # Returns a JSONFeed 1.1 hash generated from the provided configuration.
+  #
+  # @param raw_config [Hash<Symbol, Object>] configuration.
+  # @return [Hash] JSONFeed-compliant hash.
+  # @see https://www.jsonfeed.org/version/1.1/
+  def self.json_feed(raw_config)
+    build_pipeline(raw_config) { |response, config, articles| build_json_feed(response, config, articles) }
   end
 
   ##
@@ -63,17 +68,40 @@ module Html2rss
   # @param items_selector [String] CSS selector for items (will be enhanced) (optional)
   # @return [RSS::Rss]
   def self.auto_source(url, strategy: :faraday, items_selector: nil)
-    config = Html2rss::Config.default_config.merge!(strategy:)
-    config[:channel][:url] = url
+    feed(auto_source_config(url, strategy:, items_selector:))
+  end
 
-    config[:auto_source] = Html2rss::AutoSource::DEFAULT_CONFIG
-    config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
-
-    feed(config)
+  ##
+  # Scrapes the provided URL and returns a JSONFeed 1.1 hash.
+  # No need for a "feed config".
+  #
+  # @param url [String] the URL to automatically source the feed from
+  # @param strategy [Symbol] the request strategy to use
+  # @param items_selector [String] CSS selector for items (will be enhanced) (optional)
+  # @return [Hash] JSONFeed-compliant hash.
+  def self.auto_json_feed(url, strategy: :faraday, items_selector: nil)
+    json_feed(auto_source_config(url, strategy:, items_selector:))
   end
 
   class << self
     private
+
+    def build_pipeline(raw_config)
+      config = Config.from_hash(raw_config, params: raw_config[:params])
+      response = perform_request(config)
+      articles = collect_articles(response, config)
+      processed_articles = Articles::Deduplicator.new(articles).call
+
+      yield response, config, processed_articles
+    end
+
+    def auto_source_config(url, strategy:, items_selector:)
+      Html2rss::Config.default_config.merge!(strategy:).tap do |config|
+        config[:channel][:url] = url
+        config[:auto_source] = Html2rss::AutoSource::DEFAULT_CONFIG
+        config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
+      end
+    end
 
     def perform_request(config)
       RequestService.execute(
@@ -99,10 +127,16 @@ module Html2rss
       end
     end
 
-    def build_feed(response, config, articles)
+    def build_rss_feed(response, config, articles)
       channel = RssBuilder::Channel.new(response, overrides: config.channel)
 
       RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
+    end
+
+    def build_json_feed(response, config, articles)
+      channel = RssBuilder::Channel.new(response, overrides: config.channel)
+
+      JsonFeedBuilder.new(channel:, articles:).call
     end
   end
 end

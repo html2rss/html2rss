@@ -3,7 +3,8 @@
 RSpec.describe Html2rss::JsonFeedBuilder::Item do
   subject(:item_hash) { described_class.new(article).to_h }
 
-  let(:article) { Html2rss::RssBuilder::Article.new(**attributes) }
+  let(:build_article) { ->(**attrs) { Html2rss::RssBuilder::Article.new(**attrs) } }
+  let(:article) { build_article.call(**attributes) }
   let(:attributes) do
     {
       id: 'article-1',
@@ -21,42 +22,39 @@ RSpec.describe Html2rss::JsonFeedBuilder::Item do
   end
 
   it 'falls back to content_text when only a title is available', :aggregate_failures do
-    article = Html2rss::RssBuilder::Article.new(id: 'article-1', title: 'Sample title', url: 'https://example.com/articles/1')
+    article = build_article.call(id: 'article-1', title: 'Sample title', url: 'https://example.com/articles/1')
 
     expect(described_class.new(article).to_h[:content_text]).to eq('Sample title')
     expect(described_class.new(article).to_h).not_to have_key(:content_html)
   end
 
   it 'returns nil when the article has no usable content' do
-    article = Html2rss::RssBuilder::Article.new(id: 'article-1', url: 'https://example.com/articles/1')
+    article = build_article.call(id: 'article-1', url: 'https://example.com/articles/1')
 
     expect(described_class.new(article).to_h).to be_nil
   end
 
-  it 'omits blank author values' do
-    article = Html2rss::RssBuilder::Article.new(
-      id: 'article-1',
-      title: 'Sample title',
-      description: '<p>Sample description</p>',
-      url: 'https://example.com/articles/1',
-      author: ' '
-    )
+  context 'with a blank author' do
+    let(:attributes) { super().merge(author: ' ') }
 
-    expect(described_class.new(article).to_h).not_to have_key(:authors)
+    it 'omits author values' do
+      expect(item_hash).not_to have_key(:authors)
+    end
   end
 
-  it 'preserves enclosure size as size_in_bytes', :aggregate_failures do
-    article = Html2rss::RssBuilder::Article.new(
-      id: 'article-1',
-      title: 'Sample title',
-      description: '<p>Sample description</p>',
-      url: 'https://example.com/articles/1',
-      enclosures: [{ url: Html2rss::Url.sanitize('https://example.com/audio.mp3'), bits_length: 123, type: 'audio/mpeg' }]
-    )
+  context 'with an enclosure' do
+    let(:attributes) do
+      super().merge(
+        enclosures: [{ url: Html2rss::Url.sanitize('https://example.com/audio.mp3'), bits_length: 123,
+                       type: 'audio/mpeg' }]
+      )
+    end
 
-    attachment = described_class.new(article).to_h[:attachments].first
+    it 'preserves enclosure size as size_in_bytes', :aggregate_failures do
+      attachment = item_hash[:attachments].first
 
-    expect(attachment[:mime_type]).to eq('audio/mpeg')
-    expect(attachment[:size_in_bytes]).to eq(123)
+      expect(attachment[:mime_type]).to eq('audio/mpeg')
+      expect(attachment[:size_in_bytes]).to eq(123)
+    end
   end
 end

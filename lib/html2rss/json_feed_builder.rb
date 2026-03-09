@@ -21,21 +21,31 @@ module Html2rss
     #
     # @return [Hash] the JSONFeed-compliant hash
     def call
+      base_payload.merge(authors: author_array, items: item_hashes).compact
+    end
+
+    private
+
+    attr_reader :channel, :articles
+
+    ##
+    # @return [Hash]
+    def base_payload
       {
         version: VERSION_URL,
         title: channel.title,
         home_page_url: channel.url.to_s,
         description: channel.description,
         language: channel.language,
-        icon: channel.image&.to_s,
-        authors: author_array,
-        items: articles.filter_map { |article| Item.new(article).to_h }
-      }.compact
+        icon: channel.image&.to_s
+      }
     end
 
-    private
-
-    attr_reader :channel, :articles
+    ##
+    # @return [Array<Hash>]
+    def item_hashes
+      articles.filter_map { |article| Item.new(article).to_h }
+    end
 
     ##
     # @return [Array<Hash>, nil]
