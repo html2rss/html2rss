@@ -64,7 +64,8 @@ module Html2rss
           strategy: RequestService.default_strategy_name,
           channel: { time_zone: 'UTC' },
           headers: RequestHeaders.browser_defaults,
-          stylesheets: []
+          stylesheets: [],
+          request: {}
         }
       end
     end
@@ -101,6 +102,8 @@ module Html2rss
     def channel = config[:channel]
     def url = config.dig(:channel, :url)
     def time_zone = config.dig(:channel, :time_zone)
+
+    def request = config[:request]
 
     def selectors = config[:selectors]
     def auto_source = config[:auto_source]
