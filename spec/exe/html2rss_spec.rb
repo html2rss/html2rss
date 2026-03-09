@@ -90,4 +90,26 @@ RSpec.describe 'exe/html2rss', :slow do
       expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
     end
   end
+
+  context 'with argument: validate YAML_FILE' do
+    it 'validates a good config file' do
+      output = `#{executable} validate spec/fixtures/single.test.yml`
+
+      expect(output).to include('Configuration is valid')
+    end
+
+    it 'validates a named feed from a multi-feed config file' do
+      output = `#{executable} validate spec/fixtures/feeds.test.yml notitle`
+
+      expect(output).to include('Configuration is valid')
+    end
+
+    it 'exits with an error for invalid selector references', :aggregate_failures do
+      output = `#{executable} validate spec/fixtures/invalid_selectors.test.yml 2>&1`
+
+      expect(output).to include('Invalid configuration')
+      expect(output).to include('`guid` references unspecified `missing_selector`')
+      expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
+    end
+  end
 end

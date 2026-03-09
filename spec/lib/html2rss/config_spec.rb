@@ -54,6 +54,15 @@ RSpec.describe Html2rss::Config do
       end
     end
 
+    context 'when the file exists with multiple feeds & the feed name is omitted' do
+      let(:file) { 'spec/fixtures/feeds.test.yml' }
+
+      it 'raises an ArgumentError listing the available feeds' do
+        expect { described_class.load_yaml(file) }
+          .to raise_error(ArgumentError, /Feed name is required under `feeds`\. Available feeds:/)
+      end
+    end
+
     context 'when the file exists with multiple feeds & the feed name is found' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
@@ -96,6 +105,49 @@ RSpec.describe Html2rss::Config do
       it 'returns the configuration' do
         expect(described_class.from_hash(hash.freeze)).to be_a(described_class)
       end
+    end
+  end
+
+  describe '.validate' do
+    let(:config) do
+      {
+        channel: { url: 'http://example.com' },
+        selectors: {
+          items: { selector: '.item' },
+          title: { selector: 'h2' },
+          guid: ['title']
+        }
+      }
+    end
+
+    it 'returns a successful validation result for valid config' do
+      expect(described_class.validate(config)).to be_success
+    end
+
+    it 'applies runtime defaults before validation' do
+      result = described_class.validate(config)
+
+      expect(result.to_h.dig(:channel, :time_zone)).to eq('UTC')
+    end
+
+    it 'fails when guid references an unknown selector' do
+      config[:selectors][:guid] = ['missing']
+
+      expect(described_class.validate(config)).to be_failure
+    end
+
+    it 'does not mutate the caller config hash' do
+      original_config = Marshal.load(Marshal.dump(config))
+
+      described_class.validate(config)
+
+      expect(config).to eq(original_config)
+    end
+  end
+
+  describe '.validate_yaml' do
+    it 'validates a YAML config file' do
+      expect(described_class.validate_yaml('spec/fixtures/single.test.yml')).to be_success
     end
   end
 

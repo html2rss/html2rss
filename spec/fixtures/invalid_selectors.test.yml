@@ -1,0 +1,9 @@
+channel:
+  url: "https://example.com"
+selectors:
+  items:
+    selector: ".item"
+  title:
+    selector: "h2"
+  guid:
+    - missing_selector

@@ -82,6 +82,28 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 - **YARD** for documentation generation
 - **GitHub Actions** for CI/CD
 
+### Config schema workflow
+
+The config schema is generated from the runtime `dry-validation` contracts and exported for client-side tooling.
+
+- Ruby API: `Html2rss::Config.json_schema`
+- CLI: `html2rss schema`
+- CLI options:
+  - `html2rss schema --write tmp/html2rss-config.schema.json`
+  - `html2rss schema --no-pretty`
+- Runtime validation API: `Html2rss::Config.validate(config_hash)`
+- Runtime validation CLI: `html2rss validate config.yml`
+- Packaged JSON file: `schema/html2rss-config.schema.json`
+
+If you are an editor integration, automation script, or AI tool, prefer these stable discovery points:
+
+- call `html2rss schema` to read the current exported schema
+- read `schema/html2rss-config.schema.json` when working from the repository or installed gem
+- use `Html2rss::Config.schema_path` if you already have Ruby loaded
+- use `Html2rss::Config.validate` or `html2rss validate config.yml` when you need authoritative runtime validation of selector references
+
+Run `bundle exec rake config:schema` before committing to regenerate `schema/html2rss-config.schema.json` and keep the checked-in JSON Schema in sync with the validators. The exported schema covers client-side validation, while runtime validation remains authoritative for dynamic cross-field checks such as selector-key references.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

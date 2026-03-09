@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'json'
 require 'yaml'
 
 module Html2rss
@@ -11,63 +12,7 @@ module Html2rss
   # Configuration is validated during initialization.
   class Config
     class InvalidConfig < Html2rss::Error; end
-
-    class << self
-      ##
-      # Loads the feed configuration from a YAML file.
-      #
-      # Supports multiple feeds defined under the specified key (default :feeds).
-      #
-      # @param file [String] the YAML file to load.
-      # @param feed_name [String, nil] the feed name when using multiple feeds.
-      # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
-      # @return [Hash<Symbol, Object>] the configuration hash.
-      # @raise [ArgumentError] if the file doesn't exist or feed is not found.
-      def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
-        raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
-        raise ArgumentError, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
-
-        yaml = YAML.safe_load_file(file, symbolize_names: true)
-
-        return yaml unless yaml.key?(multiple_feeds_key)
-
-        config = yaml.dig(multiple_feeds_key, feed_name.to_sym)
-        raise ArgumentError, "Feed '#{feed_name}' not found under `#{multiple_feeds_key}` key." unless config
-
-        MultipleFeedsConfig.to_single_feed(config, yaml, multiple_feeds_key:)
-      end
-
-      ##
-      # Processes the provided configuration hash, applying dynamic parameters if given,
-      # and returns a new configuration object.
-      #
-      # @param config [Hash<Symbol, Object>] the configuration hash.
-      # @param params [Hash<Symbol, Object>, nil] dynamic parameters for string formatting.
-      # @return [Html2rss::Config] the configuration object.
-      def from_hash(config, params: nil)
-        config = config.dup
-
-        if params
-          DynamicParams.call(config[:headers], params)
-          DynamicParams.call(config[:channel], params)
-        end
-
-        new(config)
-      end
-
-      ##
-      # Provides a default configuration.
-      #
-      # @return [Hash<Symbol, Object>] a hash with default configuration values.
-      def default_config
-        {
-          strategy: RequestService.default_strategy_name,
-          channel: { time_zone: 'UTC' },
-          headers: RequestHeaders.browser_defaults,
-          stylesheets: []
-        }
-      end
-    end
+    extend ClassMethods
 
     ##
     # Initializes the configuration object.
