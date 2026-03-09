@@ -72,5 +72,20 @@ module Html2rss
 
       puts schema_json
     end
+
+    desc 'validate YAML_FILE [feed_name]', 'Validate a YAML config with the runtime validator'
+    ##
+    # Validates a YAML config and prints the result.
+    #
+    # @param yaml_file [String] the YAML file to validate
+    # @param feed_name [String, nil] optional feed name for multi-feed files
+    # @return [void]
+    def validate(yaml_file, feed_name = nil)
+      result = Html2rss::Config.validate_yaml(yaml_file, feed_name)
+
+      raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
+
+      puts 'Configuration is valid'
+    end
   end
 end

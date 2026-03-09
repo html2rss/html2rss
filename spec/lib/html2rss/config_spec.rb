@@ -99,6 +99,41 @@ RSpec.describe Html2rss::Config do
     end
   end
 
+  describe '.validate' do
+    let(:config) do
+      {
+        channel: { url: 'http://example.com' },
+        selectors: {
+          items: { selector: '.item' },
+          title: { selector: 'h2' },
+          guid: ['title']
+        }
+      }
+    end
+
+    it 'returns a successful validation result for valid config' do
+      expect(described_class.validate(config)).to be_success
+    end
+
+    it 'applies runtime defaults before validation' do
+      result = described_class.validate(config)
+
+      expect(result.to_h.dig(:channel, :time_zone)).to eq('UTC')
+    end
+
+    it 'fails when guid references an unknown selector' do
+      config[:selectors][:guid] = ['missing']
+
+      expect(described_class.validate(config)).to be_failure
+    end
+  end
+
+  describe '.validate_yaml' do
+    it 'validates a YAML config file' do
+      expect(described_class.validate_yaml('spec/fixtures/single.test.yml')).to be_success
+    end
+  end
+
   describe '#initialize' do
     subject(:instance) { described_class.new(config) }
 

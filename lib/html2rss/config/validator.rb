@@ -54,7 +54,7 @@ module Html2rss
         next unless value
 
         errors = Html2rss::Selectors::Config.call(value).errors
-        errors.each { |error| key(:selectors).failure(error) } unless errors.empty?
+        errors.each { |error| key(:selectors).failure(error.text) } unless errors.empty?
       end
 
       # URL validation delegated to Url class

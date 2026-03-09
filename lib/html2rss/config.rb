@@ -32,11 +32,33 @@ module Html2rss
       end
 
       ##
+      # Validates a configuration hash with the runtime validator.
+      #
+      # @param config [Hash<Symbol, Object>] the configuration hash
+      # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
+      def validate(config)
+        prepared_config = prepare_for_validation(config)
+
+        Validator.new.call(prepared_config)
+      end
+
+      ##
       # Returns the packaged JSON Schema file path.
       #
       # @return [String] absolute path to the packaged JSON Schema file
       def schema_path
         Schema.path
+      end
+
+      ##
+      # Loads and validates a YAML configuration file.
+      #
+      # @param file [String] the YAML file to load
+      # @param feed_name [String, nil] optional feed name for multi-feed files
+      # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
+      # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
+      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
+        validate(load_yaml(file, feed_name, multiple_feeds_key:))
       end
 
       ##
@@ -92,6 +114,13 @@ module Html2rss
           headers: RequestHeaders.browser_defaults,
           stylesheets: []
         }
+      end
+
+      private
+
+      def prepare_for_validation(config)
+        config = config.dup if config.frozen?
+        allocate.send(:prepare_config, config)
       end
     end
 
@@ -170,7 +199,6 @@ module Html2rss
 
       config
     end
-
     def deep_merge(base_config, override_config)
       base_config.merge(override_config) do |_key, oldval, newval|
         oldval.is_a?(Hash) && newval.is_a?(Hash) ? deep_merge(oldval, newval) : newval

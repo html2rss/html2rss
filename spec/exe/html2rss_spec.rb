@@ -90,4 +90,12 @@ RSpec.describe 'exe/html2rss', :slow do
       expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
     end
   end
+
+  context 'with argument: validate YAML_FILE' do
+    it 'validates a good config file' do
+      output = `#{executable} validate spec/fixtures/single.test.yml`
+
+      expect(output).to include('Configuration is valid')
+    end
+  end
 end

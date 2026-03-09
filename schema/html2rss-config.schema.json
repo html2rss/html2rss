@@ -299,7 +299,7 @@
         },
         "guid": {
           "type": "array",
-          "description": "List of selector keys used to build the GUID.",
+          "description": "List of selector keys used to build the GUID. Each entry must reference a sibling selector key; runtime validation enforces those references.",
           "minItems": 1,
           "items": {
             "type": "string",
@@ -308,7 +308,7 @@
         },
         "categories": {
           "type": "array",
-          "description": "List of selector keys whose values will be used as categories.",
+          "description": "List of selector keys whose values will be used as categories. Each entry must reference a sibling selector key; runtime validation enforces those references.",
           "minItems": 1,
           "items": {
             "type": "string",

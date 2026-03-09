@@ -44,6 +44,13 @@ RSpec.describe Html2rss::Config::Schema do
       expect(selectors_schema.dig('guid', 'minItems')).to eq(1)
       expect(selectors_schema.dig('categories', 'minItems')).to eq(1)
     end
+
+    it 'documents runtime enforcement of selector references', :aggregate_failures do
+      selectors_schema = json_schema.dig('properties', 'selectors', 'properties')
+
+      expect(selectors_schema.dig('guid', 'description')).to include('runtime validation enforces those references')
+      expect(selectors_schema.dig('categories', 'description')).to include('runtime validation enforces those references')
+    end
   end
 
   describe '.path' do

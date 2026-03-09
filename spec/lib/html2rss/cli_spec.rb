@@ -95,4 +95,30 @@ RSpec.describe Html2rss::CLI do
       end
     end
   end
+
+  describe '#validate' do
+    let(:result) { instance_double(Dry::Validation::Result, success?: success, errors: errors) }
+    let(:errors) { instance_double(Dry::Validation::MessageSet, to_h: { selectors: ['bad config'] }) }
+
+    before do
+      allow(Html2rss::Config).to receive(:validate_yaml).and_return(result)
+    end
+
+    context 'when the config is valid' do
+      let(:success) { true }
+
+      it 'prints a success message' do
+        expect { cli.validate('config.yml') }.to output("Configuration is valid\n").to_stdout
+      end
+    end
+
+    context 'when the config is invalid' do
+      let(:success) { false }
+
+      it 'raises a CLI error with runtime validation details' do
+        expect { cli.validate('config.yml') }
+          .to raise_error(Thor::Error, "Invalid configuration: #{errors.to_h}")
+      end
+    end
+  end
 end
