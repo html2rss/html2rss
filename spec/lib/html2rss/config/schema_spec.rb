@@ -49,7 +49,8 @@ RSpec.describe Html2rss::Config::Schema do
       selectors_schema = json_schema.dig('properties', 'selectors', 'properties')
 
       expect(selectors_schema.dig('guid', 'description')).to include('runtime validation enforces those references')
-      expect(selectors_schema.dig('categories', 'description')).to include('runtime validation enforces those references')
+      expect(selectors_schema.dig('categories',
+                                  'description')).to include('runtime validation enforces those references')
     end
   end
 

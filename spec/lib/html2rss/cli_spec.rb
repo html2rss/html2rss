@@ -97,7 +97,7 @@ RSpec.describe Html2rss::CLI do
   end
 
   describe '#validate' do
-    let(:result) { instance_double(Dry::Validation::Result, success?: success, errors: errors) }
+    let(:result) { instance_double(Dry::Validation::Result, success?: success, errors:) }
     let(:errors) { instance_double(Dry::Validation::MessageSet, to_h: { selectors: ['bad config'] }) }
 
     before do

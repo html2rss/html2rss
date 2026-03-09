@@ -97,5 +97,13 @@ RSpec.describe 'exe/html2rss', :slow do
 
       expect(output).to include('Configuration is valid')
     end
+
+    it 'exits with an error for invalid selector references', :aggregate_failures do
+      output = `#{executable} validate spec/fixtures/invalid_selectors.test.yml 2>&1`
+
+      expect(output).to include('Invalid configuration')
+      expect(output).to include('`guid` references unspecified `missing_selector`')
+      expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
+    end
   end
 end
