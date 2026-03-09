@@ -27,6 +27,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
       expect(described_class).to be_articles(parsed_body)
     end
 
+    it 'detects additional framework globals' do
+      parsed_body = Nokogiri::HTML(load_fixture('redux.html'))
+
+      expect(described_class).to be_articles(parsed_body)
+    end
+
     it 'detects arrays containing nested article arrays' do
       parsed_body = Nokogiri::HTML(load_fixture('nested_array.html'))
 
@@ -106,6 +112,24 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
                                               url: Html2rss::Url.from_relative('/nested/article',
                                                                                base_url)
                                             ))
+      end
+    end
+
+    context 'with Redux preloaded state' do
+      let(:parsed_body) { Nokogiri::HTML(load_fixture('redux.html')) }
+
+      it 'extracts article-like hashes from additional framework globals' do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'Redux article',
+            description: 'State embedded via a Redux convention.',
+            url: Html2rss::Url.from_relative('/redux/article', base_url),
+            image: Html2rss::Url.from_relative('/images/redux/article.jpg', base_url),
+            published_at: '2024-04-04T09:00:00Z',
+            categories: %w[redux spa],
+            id: 'redux-article-1'
+          )
+        )
       end
     end
   end
