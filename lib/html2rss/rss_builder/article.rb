@@ -65,7 +65,7 @@ module Html2rss
         @image ||= Url.sanitize(@to_h[:image])
       end
 
-      # @return [String]
+      # @return [String, nil]
       def author = blank_string_to_nil(@to_h[:author])
 
       # Generates a unique identifier based on the URL and ID using CRC32.

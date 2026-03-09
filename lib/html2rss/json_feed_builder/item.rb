@@ -12,7 +12,7 @@ module Html2rss
       end
 
       ##
-      # @return [Hash] the JSONFeed-compliant item hash
+      # @return [Hash, nil] the JSONFeed-compliant item hash
       def to_h
         content = content_fields
         return if content.empty?
