@@ -41,13 +41,9 @@ module Html2rss
         PROVIDED_KEYS.each { |key| yield(key, public_send(key)) }
       end
 
-      def id
-        @to_h[:id]
-      end
+      def id = blank_string_to_nil(@to_h[:id])
 
-      def title
-        @to_h[:title]
-      end
+      def title = blank_string_to_nil(@to_h[:title])
 
       def description
         @description ||= Rendering::DescriptionBuilder.new(
@@ -69,8 +65,8 @@ module Html2rss
         @image ||= Url.sanitize(@to_h[:image])
       end
 
-      # @return [String]
-      def author = @to_h[:author]
+      # @return [String, nil]
+      def author = blank_string_to_nil(@to_h[:author])
 
       # Generates a unique identifier based on the URL and ID using CRC32.
       # @return [String]
@@ -158,6 +154,12 @@ module Html2rss
         guid = @to_h[:guid].map { |s| s.to_s.strip }.reject(&:empty?).join if @to_h[:guid].is_a?(Array)
 
         guid || [url, id].join('#!/')
+      end
+
+      def blank_string_to_nil(value)
+        return if value.is_a?(String) && value.strip.empty?
+
+        value
       end
     end
   end

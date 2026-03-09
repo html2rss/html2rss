@@ -223,6 +223,35 @@ RSpec.describe Html2rss do
     end
   end
 
+  describe '.json_feed' do
+    context 'with config being a Hash' do
+      let(:config) do
+        described_class.config_from_yaml_file(config_file, name)
+      end
+      let(:feed_return) { VCR.use_cassette(name) { described_class.json_feed(config) } }
+      let(:first_item) { feed_return[:items].first }
+
+      it 'returns the channel metadata' do
+        expect(feed_return).to include(
+          version: 'https://jsonfeed.org/version/1.1',
+          title: 'Releases · nuxt/nuxt.js · GitHub',
+          home_page_url: 'https://github.com/nuxt/nuxt.js/releases'
+        )
+      end
+
+      it 'returns items' do
+        expect(feed_return[:items]).not_to be_empty
+      end
+
+      it 'serializes the first item' do
+        expect(first_item).to include(
+          title: 'v2.10.2 (pi)',
+          url: 'https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2'
+        )
+      end
+    end
+  end
+
   describe '.auto_source' do
     let(:url) { 'https://www.welt.de/' }
     let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source(url) } }
@@ -244,6 +273,38 @@ RSpec.describe Html2rss do
       it 'adds selectors.items selector and enhance to config' do
         described_class.auto_source(url, items_selector:)
         expect(described_class).to have_received(:feed).with(
+          hash_including(selectors: { items: { selector: items_selector, enhance: true } })
+        )
+      end
+    end
+  end
+
+  describe '.auto_json_feed' do
+    let(:url) { 'https://www.welt.de/' }
+    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_json_feed(url) } }
+
+    it 'returns the channel metadata', :aggregate_failures, :slow do
+      expect(feed_return).to include(
+        version: 'https://jsonfeed.org/version/1.1',
+        title: 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos',
+        home_page_url: 'https://www.welt.de/'
+      )
+    end
+
+    it 'returns items', :slow do
+      expect(feed_return[:items].size >= 29).to be true
+    end
+
+    context 'with items_selector' do
+      before do
+        allow(described_class).to receive(:json_feed).and_return(nil)
+      end
+
+      let(:items_selector) { '.css.selector' }
+
+      it 'adds selectors.items selector and enhance to config' do
+        described_class.auto_json_feed(url, items_selector:)
+        expect(described_class).to have_received(:json_feed).with(
           hash_including(selectors: { items: { selector: items_selector, enhance: true } })
         )
       end

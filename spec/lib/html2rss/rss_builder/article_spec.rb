@@ -68,6 +68,26 @@ RSpec.describe Html2rss::RssBuilder::Article do
     end
   end
 
+  describe 'blank scalar normalization' do
+    it 'returns nil for a blank title' do
+      instance = described_class.new(title: '   ')
+
+      expect(instance.title).to be_nil
+    end
+
+    it 'returns nil for a blank author' do
+      instance = described_class.new(author: "\n\t")
+
+      expect(instance.author).to be_nil
+    end
+
+    it 'returns nil for a blank id' do
+      instance = described_class.new(id: ' ')
+
+      expect(instance.id).to be_nil
+    end
+  end
+
   describe '#valid?' do
     context 'when url, title, and id are present' do
       let(:options) { { url: 'http://example.com', title: 'Sample Title', id: 'foobar' } }
