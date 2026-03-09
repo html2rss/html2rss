@@ -43,6 +43,14 @@ RSpec.describe Html2rss::AutoSource do
       expect(schema.call(toggled_config)).to be_success
     end
 
+    it 'allows toggling the microdata scraper' do
+      toggled_config = described_class::DEFAULT_CONFIG.merge(
+        scraper: described_class::DEFAULT_CONFIG[:scraper].merge(microdata: { enabled: false })
+      )
+
+      expect(schema.call(toggled_config)).to be_success
+    end
+
     describe 'optional(:cleanup)' do
       let(:config) do
         config = described_class::DEFAULT_CONFIG.dup
@@ -173,6 +181,49 @@ RSpec.describe Html2rss::AutoSource do
 
       it 're-raises the error' do
         expect { articles }.to raise_error(StandardError, 'Test error')
+      end
+    end
+
+    context 'with microdata-only content' do
+      subject(:article) { articles.first }
+
+      let(:body) do
+        <<~HTML
+          <html>
+            <body>
+              <article itemscope itemtype="https://schema.org/NewsArticle" itemid="story-1">
+                <h1 itemprop="headline">Microdata only story</h1>
+                <a itemprop="url" href="/microdata-only-story">Read more</a>
+                <p itemprop="description">Short summary.</p>
+              </article>
+            </body>
+          </html>
+        HTML
+      end
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          scraper: {
+            schema: { enabled: false },
+            microdata: { enabled: true },
+            json_state: { enabled: false },
+            semantic_html: { enabled: false },
+            html: {
+              enabled: false,
+              minimum_selector_frequency: described_class::DEFAULT_CONFIG.dig(:scraper, :html,
+                                                                              :minimum_selector_frequency),
+              use_top_selectors: described_class::DEFAULT_CONFIG.dig(:scraper, :html, :use_top_selectors)
+            },
+            rss_feed_detector: { enabled: false }
+          }
+        )
+      end
+
+      it 'returns RssBuilder::Article objects from the Microdata scraper', :aggregate_failures do
+        expect(articles.size).to eq(1)
+        expect(article.title).to eq('Microdata only story')
+        expect(article.id).to eq('story-1')
+        expect(article.url.to_s).to eq('https://example.com/microdata-only-story')
+        expect(article.scraper).to eq(Html2rss::AutoSource::Scraper::Microdata)
       end
     end
   end

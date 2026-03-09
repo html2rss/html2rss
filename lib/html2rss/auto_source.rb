@@ -22,6 +22,9 @@ module Html2rss
         schema: {
           enabled: true
         },
+        microdata: {
+          enabled: true
+        },
         json_state: {
           enabled: true
         },
@@ -40,26 +43,32 @@ module Html2rss
       cleanup: Cleanup::DEFAULT_CONFIG
     }.freeze
 
-    Config = Dry::Schema.Params do
-      optional(:scraper).hash do
-        optional(:schema).hash do
-          optional(:enabled).filled(:bool)
-        end
-        optional(:json_state).hash do
-          optional(:enabled).filled(:bool)
-        end
-        optional(:semantic_html).hash do
-          optional(:enabled).filled(:bool)
-        end
-        optional(:html).hash do
-          optional(:enabled).filled(:bool)
-          optional(:minimum_selector_frequency).filled(:integer, gt?: 0)
-          optional(:use_top_selectors).filled(:integer, gt?: 0)
-        end
-        optional(:rss_feed_detector).hash do
-          optional(:enabled).filled(:bool)
-        end
+    SCRAPER_CONFIG = proc do
+      optional(:schema).hash do
+        optional(:enabled).filled(:bool)
       end
+      optional(:microdata).hash do
+        optional(:enabled).filled(:bool)
+      end
+      optional(:json_state).hash do
+        optional(:enabled).filled(:bool)
+      end
+      optional(:semantic_html).hash do
+        optional(:enabled).filled(:bool)
+      end
+      optional(:html).hash do
+        optional(:enabled).filled(:bool)
+        optional(:minimum_selector_frequency).filled(:integer, gt?: 0)
+        optional(:use_top_selectors).filled(:integer, gt?: 0)
+      end
+      optional(:rss_feed_detector).hash do
+        optional(:enabled).filled(:bool)
+      end
+    end.freeze
+    private_constant :SCRAPER_CONFIG
+
+    Config = Dry::Schema.Params do
+      optional(:scraper).hash(&SCRAPER_CONFIG)
 
       optional(:cleanup).hash do
         optional(:keep_different_domain).filled(:bool)
