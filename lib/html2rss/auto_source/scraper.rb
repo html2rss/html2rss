@@ -11,6 +11,7 @@ module Html2rss
     module Scraper
       SCRAPERS = [
         Schema,
+        Microdata,
         JsonState,
         SemanticHtml,
         Html,

@@ -22,6 +22,9 @@ module Html2rss
         schema: {
           enabled: true
         },
+        microdata: {
+          enabled: true
+        },
         json_state: {
           enabled: true
         },
@@ -43,6 +46,9 @@ module Html2rss
     Config = Dry::Schema.Params do
       optional(:scraper).hash do
         optional(:schema).hash do
+          optional(:enabled).filled(:bool)
+        end
+        optional(:microdata).hash do
           optional(:enabled).filled(:bool)
         end
         optional(:json_state).hash do
