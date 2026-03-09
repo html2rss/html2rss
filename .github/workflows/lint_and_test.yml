@@ -40,6 +40,11 @@ jobs:
         run: bundle exec rake config:schema
       - name: Ensure config schema is committed
         run: git diff --exit-code schema/html2rss-config.schema.json
+      - name: Validate fixture configs
+        run: |
+          bundle exec exe/html2rss validate spec/fixtures/single.test.yml
+          bundle exec exe/html2rss validate spec/fixtures/feeds.test.yml notitle
+          ! bundle exec exe/html2rss validate spec/fixtures/invalid_selectors.test.yml
   yard:
     runs-on: ubuntu-latest
     steps:

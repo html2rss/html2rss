@@ -98,6 +98,12 @@ RSpec.describe 'exe/html2rss', :slow do
       expect(output).to include('Configuration is valid')
     end
 
+    it 'validates a named feed from a multi-feed config file' do
+      output = `#{executable} validate spec/fixtures/feeds.test.yml notitle`
+
+      expect(output).to include('Configuration is valid')
+    end
+
     it 'exits with an error for invalid selector references', :aggregate_failures do
       output = `#{executable} validate spec/fixtures/invalid_selectors.test.yml 2>&1`
 
