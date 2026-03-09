@@ -10,7 +10,6 @@ module Html2rss
         ITEM_SELECTOR = '[itemscope][itemtype]'
         SUPPORTED_TYPES = (Schema::Thing::SUPPORTED_TYPES | Set['Product']).freeze
         VALUE_ATTRIBUTES = %w[content datetime href src data value].freeze
-        CATEGORY_FIELDS = %i[keywords categories tags].freeze
 
         def self.options_key = :microdata
 
@@ -22,7 +21,9 @@ module Html2rss
           def supported_roots(parsed_body)
             return [] unless parsed_body
 
-            parsed_body.css(ITEM_SELECTOR).select { supported_root?(_1) }
+            parsed_body.css(ITEM_SELECTOR).each_with_object([]) do |node, roots|
+              roots << node if supported_root?(node)
+            end
           end
 
           def supported_root?(node)
@@ -34,9 +35,9 @@ module Html2rss
           end
 
           def normalized_types(itemtype)
-            itemtype.to_s.split.filter_map do |value|
+            itemtype.to_s.split.each_with_object([]) do |value, types|
               type = value.split('/').last.to_s.split('#').last.to_s
-              type unless type.empty?
+              types << type unless type.empty?
             end
           end
 
@@ -47,11 +48,24 @@ module Html2rss
           end
         end
 
+        ##
+        # Builds a Microdata scraper for an already parsed response body.
+        #
+        # @param parsed_body [Nokogiri::HTML5::Document, Nokogiri::HTML4::Document, Nokogiri::XML::Node, nil]
+        #   the parsed response body to inspect for top-level Microdata items.
+        # @param url [Html2rss::Url] the absolute page URL used to resolve relative links.
+        # @param _opts [Hash] unused scraper-specific options.
+        # @return [void]
         def initialize(parsed_body, url:, **_opts)
           @parsed_body = parsed_body
           @url = url
         end
 
+        ##
+        # Iterates over normalized article hashes extracted from supported Microdata roots.
+        #
+        # @yieldparam article [Hash<Symbol, Object>] the normalized article attributes.
+        # @return [Enumerator, void] an enumerator when no block is given.
         def each
           return enum_for(:each) unless block_given?
 
@@ -70,10 +84,15 @@ module Html2rss
           return unless schema_object
 
           article = Schema::Thing.new(schema_object, url:).call.compact
-          return if article[:url].nil?
-          return if article[:title].nil? && article[:description].nil?
+          return unless valid_article?(article)
 
           article
+        end
+
+        def valid_article?(article)
+          return false unless article[:url]
+
+          article[:title] || article[:description]
         end
 
         # Extracts direct Microdata itemprop values for a single item root.
@@ -82,14 +101,23 @@ module Html2rss
 
           def call(root)
             direct_properties(root).each_with_object({}) do |node, properties|
-              property_names(node).each do |name|
-                append(properties, name.to_sym, property_value(node))
-              end
+              append_properties!(properties, node)
+            end
+          end
+
+          def append_properties!(properties, node)
+            value = property_value(node)
+            return if blank_value?(value)
+
+            property_names(node).each do |name|
+              append(properties, name.to_sym, value)
             end
           end
 
           def direct_properties(root)
-            root.css('[itemprop]').select { direct_property?(root, _1) }
+            root.css('[itemprop]').each_with_object([]) do |node, properties|
+              properties << node if direct_property?(root, node)
+            end
           end
 
           def direct_property?(root, node)
@@ -99,9 +127,9 @@ module Html2rss
           end
 
           def property_names(node)
-            node['itemprop'].to_s.split.filter_map do |name|
+            node['itemprop'].to_s.split.each_with_object([]) do |name, names|
               stripped = name.strip
-              stripped unless stripped.empty?
+              names << stripped unless stripped.empty?
             end
           end
 
@@ -117,8 +145,10 @@ module Html2rss
 
           def nested_item(node)
             item = call(node)
-            item[:@type] = Microdata.normalized_types(node['itemtype']).first if node['itemtype']
-            item[:@id] = node['itemid'] if present?(node['itemid'])
+            itemtype = node['itemtype']
+            itemid = node['itemid']
+            item[:@type] = Microdata.normalized_types(itemtype).first if itemtype
+            item[:@id] = itemid if present?(itemid)
             item
           end
 
@@ -139,11 +169,12 @@ module Html2rss
           def append(properties, key, value)
             return if blank_value?(value)
 
-            properties[key] = if properties.key?(key)
-                                Array(properties[key]) << value
-                              else
-                                value
-                              end
+            unless properties.key?(key)
+              properties[key] = value
+              return
+            end
+
+            properties[key] = Array(properties[key]) << value
           end
 
           def blank_value?(value)
@@ -166,12 +197,21 @@ module Html2rss
           module_function
 
           def url_value(*values)
-            value = values.lazy.map { extract_nested_value(_1, :url, :@id) }.find { present?(_1) }
-            value.to_s if present?(value)
+            values.each do |value|
+              candidate = extract_nested_value(value, :url, :@id)
+              return candidate.to_s if present?(candidate)
+            end
+
+            nil
           end
 
           def image_value(*values)
-            values.lazy.map { normalize_image(_1) }.find { present?(_1) }
+            values.each do |value|
+              candidate = normalize_image(value)
+              return candidate if present?(candidate)
+            end
+
+            nil
           end
 
           def normalize_image(value)
@@ -186,41 +226,53 @@ module Html2rss
           def normalize_about(value)
             candidate = unwrap(value)
             items = candidate.is_a?(Array) ? candidate : [candidate]
-
-            values = items.filter_map do |item|
-              case item
-              when Hash then item[:name] ? { name: item[:name].to_s } : nil
-              when String then item
-              end
-            end
-
+            values = items.each_with_object([]) { |item, result| append_about_item(result, item) }
             values unless values.empty?
+          end
+
+          def append_about_item(result, item)
+            case item
+            when Hash
+              name = item[:name]
+              result << { name: name.to_s } if name
+            when String
+              result << item
+            end
           end
 
           def string_or_array(value)
             candidate = unwrap(value)
             return unless present?(candidate)
 
-            if candidate.is_a?(Array)
-              result = candidate.filter_map { stringify(_1) }
-              result unless result.empty?
-            else
-              stringify(candidate)
-            end
+            return stringify(candidate) unless candidate.is_a?(Array)
+
+            result = string_values(candidate)
+            result unless result.empty?
           end
 
           def array_value(*values)
-            result = values.flat_map do |value|
-              candidate = unwrap(value)
-              Array(candidate).filter_map { stringify(_1) }
+            result = values.each_with_object([]) do |value, items|
+              items.concat(string_values(Array(unwrap(value))))
             end
 
             result.uniq!
             result unless result.empty?
           end
 
+          def string_values(values)
+            values.each_with_object([]) do |value, items|
+              string = stringify(value)
+              items << string if string
+            end
+          end
+
           def first_string(*values)
-            values.lazy.map { stringify(unwrap(_1)) }.find { present?(_1) }
+            values.each do |value|
+              candidate = stringify(unwrap(value))
+              return candidate if present?(candidate)
+            end
+
+            nil
           end
 
           def extract_nested_value(value, *keys)
@@ -228,7 +280,8 @@ module Html2rss
             return candidate unless candidate.is_a?(Hash)
 
             keys.each do |key|
-              return candidate[key] if present?(candidate[key])
+              nested_value = candidate[key]
+              return nested_value if present?(nested_value)
             end
 
             nil
@@ -240,7 +293,7 @@ module Html2rss
 
           def stringify(value)
             return unless present?(value)
-            return value.to_s if value.is_a?(String)
+            return value if value.is_a?(String)
             return if value.is_a?(Hash) || value.is_a?(Array)
 
             value.to_s
@@ -267,7 +320,10 @@ module Html2rss
             type = Microdata.supported_type_name(root)
             return unless type
 
-            properties = ItemParser.call(root)
+            compact_object(type, root, ItemParser.call(root))
+          end
+
+          def compact_object(type, root, properties)
             object = base_attributes(type, root, properties)
             merge_categories!(object, properties)
             object.compact
@@ -311,7 +367,20 @@ module Html2rss
           end
 
           def url(properties, fallback_id)
-            url_value(properties.delete(:url), properties.delete(:mainEntityOfPage), fallback_id)
+            url_value(
+              properties.delete(:url),
+              properties.delete(:mainEntityOfPage),
+              url_fallback(fallback_id)
+            )
+          end
+
+          def url_fallback(fallback_id)
+            value = first_string(fallback_id)
+            return unless value
+            return value if value.start_with?('/')
+            return value if value.match?(%r{\Ahttps?://})
+
+            nil
           end
 
           def published_at(properties)
@@ -325,16 +394,14 @@ module Html2rss
 
           def merge_categories!(object, properties)
             categories = array_value(properties.delete(:categories), properties.delete(:articleSection))
-            object[:categories] = categories if categories
+            assign_if_present(object, :categories, categories)
+            assign_if_present(object, :keywords, string_or_array(properties.delete(:keywords)))
+            assign_if_present(object, :tags, string_or_array(properties.delete(:tags)))
+            assign_if_present(object, :about, normalize_about(properties.delete(:about)))
+          end
 
-            keywords = string_or_array(properties.delete(:keywords))
-            object[:keywords] = keywords if keywords
-
-            tags = string_or_array(properties.delete(:tags))
-            object[:tags] = tags if tags
-
-            about = normalize_about(properties.delete(:about))
-            object[:about] = about if about
+          def assign_if_present(object, key, value)
+            object[key] = value if value
           end
         end
         private_constant :SchemaObjectBuilder

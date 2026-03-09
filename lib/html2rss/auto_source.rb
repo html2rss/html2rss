@@ -43,7 +43,7 @@ module Html2rss
       cleanup: Cleanup::DEFAULT_CONFIG
     }.freeze
 
-    ScraperConfig = proc do
+    SCRAPER_CONFIG = proc do
       optional(:schema).hash do
         optional(:enabled).filled(:bool)
       end
@@ -64,10 +64,11 @@ module Html2rss
       optional(:rss_feed_detector).hash do
         optional(:enabled).filled(:bool)
       end
-    end
+    end.freeze
+    private_constant :SCRAPER_CONFIG
 
     Config = Dry::Schema.Params do
-      optional(:scraper).hash(&ScraperConfig)
+      optional(:scraper).hash(&SCRAPER_CONFIG)
 
       optional(:cleanup).hash do
         optional(:keep_different_domain).filled(:bool)

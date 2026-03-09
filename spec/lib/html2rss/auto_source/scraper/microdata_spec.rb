@@ -124,6 +124,43 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
       end
     end
 
+    context 'with an opaque itemid and no explicit url' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <section itemscope itemtype="https://schema.org/Product" itemid="sku-123">
+            <h2 itemprop="name">Microdata Product</h2>
+            <meta itemprop="description" content="Useful product description.">
+          </section>
+        HTML
+      end
+
+      it 'filters the item out instead of treating itemid as a URL' do
+        expect(articles).to eq([])
+      end
+    end
+
+    context 'with a root-relative itemid and no explicit url' do
+      let(:expected_article) do
+        a_hash_including(
+          id: '/stories/fallback-id',
+          url: Html2rss::Url.from_relative('/stories/fallback-id', base_url)
+        )
+      end
+
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/Article" itemid="/stories/fallback-id">
+            <h2 itemprop="headline">Fallback item id</h2>
+            <p itemprop="description">Uses itemid as a relative URL fallback.</p>
+          </article>
+        HTML
+      end
+
+      it 'uses the itemid as a URL fallback when it is URL-like' do
+        expect(articles).to contain_exactly(expected_article)
+      end
+    end
+
     context 'with nested supported microdata inside another item property' do
       let(:parsed_body) do
         Nokogiri::HTML(<<~HTML)
