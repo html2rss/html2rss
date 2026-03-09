@@ -7,12 +7,38 @@ Dry::Schema.load_extensions(:json_schema)
 module Html2rss
   class Config
     ##
-    # Provides development helpers for generating the configuration JSON schema.
+    # Builds the exported configuration JSON Schema from the runtime validators.
     module Schema
       module_function
 
+      SCHEMA_FILENAME = 'html2rss-config.schema.json'
+
+      ##
+      # Returns the exported configuration JSON Schema.
+      #
+      # @return [Hash<String, Object>] JSON Schema represented as a Ruby hash
       def json_schema
         Builder.call
+      end
+
+      ##
+      # Resolves the packaged schema path used by downstream tools.
+      #
+      # @return [String] absolute path to the packaged JSON schema file
+      def path
+        search_path = File.expand_path(__dir__)
+
+        loop do
+          candidate = File.join(search_path, 'schema', SCHEMA_FILENAME)
+          return candidate if File.exist?(candidate)
+
+          parent_path = File.dirname(search_path)
+          break if parent_path == search_path
+
+          search_path = parent_path
+        end
+
+        File.expand_path("../../../schema/#{SCHEMA_FILENAME}", __dir__)
       end
     end
   end
@@ -22,8 +48,8 @@ module Html2rss
   class Config
     module Schema
       ##
-      # Orchestrates the assembly of the JSON schema using the runtime validator
-      # contracts.
+      # Orchestrates schema assembly from runtime validator contracts plus
+      # client-facing overlays.
       class Builder
         class << self
           def call
@@ -152,10 +178,14 @@ module Html2rss
           )
         end
 
+        # JSON Schema can enforce non-empty reference arrays, while runtime
+        # validation remains authoritative for checking that each entry points
+        # to an existing sibling selector key.
         def reference_array(description)
           {
             type: 'array',
             description:,
+            minItems: 1,
             items: {
               type: 'string',
               description: 'Selector key defined elsewhere in this object.'

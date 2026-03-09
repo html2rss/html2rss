@@ -108,6 +108,18 @@
               },
               "required": []
             },
+            "microdata": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            },
             "json_state": {
               "type": "object",
               "properties": {
@@ -199,6 +211,9 @@
           "schema": {
             "enabled": true
           },
+          "microdata": {
+            "enabled": true
+          },
           "json_state": {
             "enabled": true
           },
@@ -285,6 +300,7 @@
         "guid": {
           "type": "array",
           "description": "List of selector keys used to build the GUID.",
+          "minItems": 1,
           "items": {
             "type": "string",
             "description": "Selector key defined elsewhere in this object."
@@ -293,6 +309,7 @@
         "categories": {
           "type": "array",
           "description": "List of selector keys whose values will be used as categories.",
+          "minItems": 1,
           "items": {
             "type": "string",
             "description": "Selector key defined elsewhere in this object."

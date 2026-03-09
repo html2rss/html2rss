@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'json'
 require 'yaml'
 
 module Html2rss
@@ -13,6 +14,31 @@ module Html2rss
     class InvalidConfig < Html2rss::Error; end
 
     class << self
+      ##
+      # Returns the exported JSON Schema for html2rss configuration.
+      #
+      # @return [Hash<String, Object>] JSON Schema represented as a Ruby hash
+      def json_schema
+        Schema.json_schema
+      end
+
+      ##
+      # Returns the exported JSON Schema as JSON.
+      #
+      # @param pretty [Boolean] whether to pretty-print the JSON output
+      # @return [String] serialized JSON Schema
+      def json_schema_json(pretty: true)
+        pretty ? JSON.pretty_generate(json_schema) : JSON.generate(json_schema)
+      end
+
+      ##
+      # Returns the packaged JSON Schema file path.
+      #
+      # @return [String] absolute path to the packaged JSON Schema file
+      def schema_path
+        Schema.path
+      end
+
       ##
       # Loads the feed configuration from a YAML file.
       #

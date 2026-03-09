@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
 
 RSpec.describe Html2rss::CLI do
   subject(:cli) { described_class.new }
@@ -65,6 +66,33 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :faraday, items_selector: '.item')
+    end
+  end
+
+  describe '#schema' do
+    let(:schema_hash) { { 'type' => 'object', 'title' => 'html2rss' } }
+
+    before do
+      allow(Html2rss::Config).to receive(:json_schema).and_return(schema_hash)
+      allow(Html2rss::Config).to receive(:json_schema_json).and_call_original
+    end
+
+    it 'prints the schema JSON to stdout' do
+      expect { cli.schema }.to output("#{JSON.pretty_generate(schema_hash)}\n").to_stdout
+    end
+
+    it 'supports compact output' do
+      expect { cli.invoke(:schema, [], { pretty: false }) }
+        .to output("#{JSON.generate(schema_hash)}\n").to_stdout
+    end
+
+    it 'writes the schema to the requested file path', :aggregate_failures do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'nested', 'schema.json')
+
+        expect { cli.invoke(:schema, [], { write: path }) }.to output("#{path}\n").to_stdout
+        expect(JSON.parse(File.read(path))).to eq(schema_hash)
+      end
     end
   end
 end

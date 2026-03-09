@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   end
 
   spec.files = `git ls-files -z`.split("\x0").select do |f|
-    f.match(%r{^(lib/|exe/|README.md|LICENSE|html2rss.gemspec)})
+    f.match(%r{^(lib/|exe/|schema/|README.md|LICENSE|html2rss.gemspec)})
   end
   spec.bindir        = 'exe'
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
