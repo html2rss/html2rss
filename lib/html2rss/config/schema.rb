@@ -151,8 +151,16 @@ module Html2rss
           {
             items: items_schema,
             enclosure: enclosure_schema,
-            guid: reference_array('List of selector keys used to build the GUID. Each entry must reference a sibling selector key; runtime validation enforces those references.'),
-            categories: reference_array('List of selector keys whose values will be used as categories. Each entry must reference a sibling selector key; runtime validation enforces those references.')
+            guid: reference_array(
+              'List of selector keys used to build the GUID. ' \
+              'Each entry must reference a sibling selector key; ' \
+              'runtime validation enforces those references.'
+            ),
+            categories: reference_array(
+              'List of selector keys whose values will be used as categories. ' \
+              'Each entry must reference a sibling selector key; ' \
+              'runtime validation enforces those references.'
+            )
           }
         end
 
