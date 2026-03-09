@@ -147,22 +147,16 @@ module Html2rss
           }
         end
 
+        # rubocop:disable Layout/LineLength
         def selector_properties
           {
             items: items_schema,
             enclosure: enclosure_schema,
-            guid: reference_array(
-              'List of selector keys used to build the GUID. ' \
-              'Each entry must reference a sibling selector key; ' \
-              'runtime validation enforces those references.'
-            ),
-            categories: reference_array(
-              'List of selector keys whose values will be used as categories. ' \
-              'Each entry must reference a sibling selector key; ' \
-              'runtime validation enforces those references.'
-            )
+            guid: reference_array('List of selector keys used to build the GUID. Each entry must reference a sibling selector key; runtime validation enforces those references.'),
+            categories: reference_array('List of selector keys whose values will be used as categories. Each entry must reference a sibling selector key; runtime validation enforces those references.')
           }
         end
+        # rubocop:enable Layout/LineLength
 
         def pattern_properties
           { RESERVED_SELECTOR_PATTERN => dynamic_selector_schema }
