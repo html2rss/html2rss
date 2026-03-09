@@ -76,6 +76,7 @@ module Html2rss
           article
         end
 
+        # Extracts direct Microdata itemprop values for a single item root.
         module ItemParser
           module_function
 
@@ -138,11 +139,11 @@ module Html2rss
           def append(properties, key, value)
             return if blank_value?(value)
 
-            if properties.key?(key)
-              properties[key] = Array(properties[key]) << value
-            else
-              properties[key] = value
-            end
+            properties[key] = if properties.key?(key)
+                                Array(properties[key]) << value
+                              else
+                                value
+                              end
           end
 
           def blank_value?(value)
@@ -160,45 +161,9 @@ module Html2rss
         end
         private_constant :ItemParser
 
-        module SchemaObjectBuilder
+        # Shared value normalization helpers for Microdata property conversion.
+        module ValueNormalizer
           module_function
-
-          def call(root)
-            type = Microdata.supported_type_name(root)
-            return unless type
-
-            properties = ItemParser.call(root)
-            object = { '@type': type }
-            object[:@id] = first_string(root['itemid'], properties.delete(:identifier))
-            object[:title] = first_string(properties.delete(:headline), properties.delete(:title), properties.delete(:name))
-            object[:url] = url_value(properties.delete(:url), properties.delete(:mainEntityOfPage), object[:@id])
-            object[:description] = first_string(properties.delete(:description))
-            object[:schema_object_body] = first_string(properties.delete(:articleBody))
-            object[:abstract] = first_string(properties.delete(:abstract))
-            object[:image] = image_value(properties.delete(:image), properties.delete(:thumbnailUrl))
-            object[:datePublished] = first_string(
-              properties.delete(:datePublished),
-              properties.delete(:dateCreated),
-              properties.delete(:dateModified),
-              properties.delete(:uploadDate)
-            )
-            merge_categories!(object, properties)
-            object.compact
-          end
-
-          def merge_categories!(object, properties)
-            categories = array_value(properties.delete(:categories), properties.delete(:articleSection))
-            object[:categories] = categories if categories
-
-            keywords = string_or_array(properties.delete(:keywords))
-            object[:keywords] = keywords if keywords
-
-            tags = string_or_array(properties.delete(:tags))
-            object[:tags] = tags if tags
-
-            about = normalize_about(properties.delete(:about))
-            object[:about] = about if about
-          end
 
           def url_value(*values)
             value = values.lazy.map { extract_nested_value(_1, :url, :@id) }.find { present?(_1) }
@@ -213,8 +178,7 @@ module Html2rss
             candidate = unwrap(value)
             return unless present?(candidate)
 
-            return candidate if candidate.is_a?(String)
-            return candidate if candidate.is_a?(Hash)
+            return candidate if candidate.is_a?(String) || candidate.is_a?(Hash)
 
             candidate.to_s
           end
@@ -289,6 +253,88 @@ module Html2rss
             when Array, Hash then !value.empty?
             else true
             end
+          end
+        end
+        private_constant :ValueNormalizer
+
+        # Normalizes raw Microdata properties into the schema-like shape used downstream.
+        module SchemaObjectBuilder
+          module_function
+
+          extend ValueNormalizer
+
+          def call(root)
+            type = Microdata.supported_type_name(root)
+            return unless type
+
+            properties = ItemParser.call(root)
+            object = base_attributes(type, root, properties)
+            merge_categories!(object, properties)
+            object.compact
+          end
+
+          def base_attributes(type, root, properties)
+            identifier = first_string(root['itemid'], properties.delete(:identifier))
+
+            {
+              '@type': type,
+              '@id': identifier
+            }.merge(text_attributes(properties))
+              .merge(link_attributes(properties, identifier))
+              .merge(media_attributes(properties))
+          end
+
+          def title(properties)
+            first_string(properties.delete(:headline), properties.delete(:title), properties.delete(:name))
+          end
+
+          def text_attributes(properties)
+            {
+              title: title(properties),
+              description: first_string(properties.delete(:description)),
+              schema_object_body: first_string(properties.delete(:articleBody)),
+              abstract: first_string(properties.delete(:abstract)),
+              datePublished: published_at(properties)
+            }
+          end
+
+          def link_attributes(properties, identifier)
+            {
+              url: url(properties, identifier)
+            }
+          end
+
+          def media_attributes(properties)
+            {
+              image: image_value(properties.delete(:image), properties.delete(:thumbnailUrl))
+            }
+          end
+
+          def url(properties, fallback_id)
+            url_value(properties.delete(:url), properties.delete(:mainEntityOfPage), fallback_id)
+          end
+
+          def published_at(properties)
+            first_string(
+              properties.delete(:datePublished),
+              properties.delete(:dateCreated),
+              properties.delete(:dateModified),
+              properties.delete(:uploadDate)
+            )
+          end
+
+          def merge_categories!(object, properties)
+            categories = array_value(properties.delete(:categories), properties.delete(:articleSection))
+            object[:categories] = categories if categories
+
+            keywords = string_or_array(properties.delete(:keywords))
+            object[:keywords] = keywords if keywords
+
+            tags = string_or_array(properties.delete(:tags))
+            object[:tags] = tags if tags
+
+            about = normalize_about(properties.delete(:about))
+            object[:about] = about if about
           end
         end
         private_constant :SchemaObjectBuilder

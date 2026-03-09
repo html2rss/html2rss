@@ -57,6 +57,18 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
     subject(:articles) { scraper.each.to_a }
 
     context 'with article microdata' do
+      let(:expected_article) do
+        {
+          id: 'https://example.com/stories/microdata-headline',
+          title: 'Microdata headline',
+          description: 'Longer body copy for the story.',
+          url: Html2rss::Url.from_relative('/stories/microdata-headline', base_url),
+          image: Html2rss::Url.from_relative('/images/microdata-headline.jpg', base_url),
+          published_at: '2024-03-09T10:30:00Z',
+          categories: %w[Politics Europe World Elections]
+        }
+      end
+
       let(:parsed_body) do
         Nokogiri::HTML(<<~HTML)
           <article itemscope itemtype="https://schema.org/NewsArticle" itemid="https://example.com/stories/microdata-headline">
@@ -78,22 +90,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
         HTML
       end
 
-      it 'extracts a normalized article hash', :aggregate_failures do
-        expect(articles).to contain_exactly(
-          a_hash_including(
-            id: 'https://example.com/stories/microdata-headline',
-            title: 'Microdata headline',
-            description: 'Longer body copy for the story.',
-            url: Html2rss::Url.from_relative('/stories/microdata-headline', base_url),
-            image: Html2rss::Url.from_relative('/images/microdata-headline.jpg', base_url),
-            published_at: '2024-03-09T10:30:00Z',
-            categories: %w[Politics Europe World Elections]
-          )
-        )
+      it 'extracts a normalized article hash' do
+        expect(articles).to contain_exactly(a_hash_including(expected_article))
       end
     end
 
     context 'with product microdata' do
+      let(:expected_product) do
+        {
+          id: 'sku-123',
+          title: 'Microdata Product',
+          description: 'Useful product description.',
+          url: Html2rss::Url.from_relative('/products/microdata-product', base_url),
+          image: Html2rss::Url.from_relative('https://cdn.example.com/microdata-product.jpg', base_url)
+        }
+      end
+
       let(:parsed_body) do
         Nokogiri::HTML(<<~HTML)
           <section itemscope itemtype="https://schema.org/Product" itemid="sku-123">
@@ -107,16 +119,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
         HTML
       end
 
-      it 'supports Product roots as article-like results', :aggregate_failures do
-        expect(articles).to contain_exactly(
-          a_hash_including(
-            id: 'sku-123',
-            title: 'Microdata Product',
-            description: 'Useful product description.',
-            url: Html2rss::Url.from_relative('/products/microdata-product', base_url),
-            image: Html2rss::Url.from_relative('https://cdn.example.com/microdata-product.jpg', base_url)
-          )
-        )
+      it 'supports Product roots as article-like results' do
+        expect(articles).to contain_exactly(a_hash_including(expected_product))
       end
     end
 

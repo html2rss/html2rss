@@ -160,6 +160,7 @@ RSpec.describe Html2rss::Config do
               use_top_selectors: 5            # wasn't explicitly set -> default
             },
             json_state: { enabled: true },    # wasn't explicitly set -> default
+            microdata: { enabled: true },     # wasn't explicitly set -> default
             rss_feed_detector: { enabled: true } # wasn't explicitly set -> default
           },
           cleanup: {
