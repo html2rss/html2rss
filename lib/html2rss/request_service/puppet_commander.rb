@@ -4,7 +4,7 @@ module Html2rss
   class RequestService
     ##
     # Commands the Puppeteer Browser to the website and builds the Response.
-    class PuppetCommander
+    class PuppetCommander # rubocop:disable Metrics/ClassLength
       # @param ctx [Context]
       # @param browser [Puppeteer::Browser]
       # @param skip_request_resources [Set<String>] the resource types not to request
@@ -19,14 +19,15 @@ module Html2rss
         @referer = referer
       end
 
-      # @return [Response]
+      ##
+      # Visits the request URL and normalizes the page into a response object.
+      #
+      # @return [Response] rendered page response
       def call
         page = new_page
-        url = ctx.url
-
-        response = navigate_to_destination(page, url)
-
-        Response.new(body: body(page), headers: response.headers, url:)
+        navigation_response = navigate_to_destination(page, ctx.url)
+        validate_navigation_response!(navigation_response)
+        build_response(page, navigation_response)
       ensure
         page&.close
       end
@@ -36,27 +37,138 @@ module Html2rss
       # @see https://yusukeiwaki.github.io/puppeteer-ruby-docs/Puppeteer/Page.html
       def new_page
         page = browser.new_page
-        page.extra_http_headers = ctx.headers
-
-        return page if skip_request_resources.empty?
-
-        page.request_interception = true
-        page.on('request') do |request|
-          skip_request_resources.member?(request.resource_type) ? request.abort : request.continue
-        end
-
+        configure_page(page)
+        configure_navigation_guards(page)
         page
       end
 
-      def navigate_to_destination(page, url)
-        page.goto(url, wait_until: 'networkidle0', referer:)
+      ##
+      # @param page [Puppeteer::Page]
+      # @return [void]
+      def configure_page(page)
+        page.extra_http_headers = ctx.headers
+        page.default_navigation_timeout = navigation_timeout_ms
+        page.default_timeout = navigation_timeout_ms
       end
 
+      ##
+      # @param page [Puppeteer::Page]
+      # @return [void]
+      def configure_navigation_guards(page)
+        page.request_interception = true
+        page.on('request') do |request|
+          handle_request(request)
+        end
+        page.on('response') { |response| handle_response(response) }
+      end
+
+      ##
+      # @param page [Puppeteer::Page] browser page
+      # @param url [Html2rss::Url] target URL
+      # @return [Puppeteer::HTTPResponse, nil] the navigation response if one was produced
+      def navigate_to_destination(page, url)
+        @navigation_error = nil
+        page.goto(url, wait_until: 'networkidle0', referer:, timeout: navigation_timeout_ms).tap do
+          raise @navigation_error if @navigation_error
+        end
+      rescue StandardError
+        raise @navigation_error if @navigation_error
+
+        raise
+      end
+
+      ##
+      # @param page [Puppeteer::Page] browser page
+      # @return [String] rendered HTML content
       def body(page) = page.content
 
       private
 
       attr_reader :ctx, :browser, :skip_request_resources, :referer
+
+      def navigation_timeout_ms
+        ctx.policy.total_timeout_seconds * 1000
+      end
+
+      def handle_request(request)
+        validate_request!(request)
+
+        skip_request_resources.member?(request.resource_type) ? request.abort : request.continue
+      rescue Html2rss::Error => error
+        @navigation_error ||= error
+        request.abort
+      end
+
+      def handle_response(response)
+        return unless response.request.navigation_request?
+
+        validate_navigation_response!(response)
+      rescue Html2rss::Error => error
+        @navigation_error ||= error
+      end
+
+      def validate_navigation_request!(request)
+        validate_navigation_redirect_chain!(request)
+        validate_navigation_target!(request)
+      end
+
+      def validate_request!(request)
+        validate_navigation_redirect_chain!(request) if request.navigation_request?
+        validate_navigation_target!(request)
+      end
+
+      def build_response(page, navigation_response)
+        page_body = body(page)
+        ResponseGuard.new(policy: ctx.policy).inspect_body!(page_body)
+
+        Response.new(
+          body: page_body,
+          headers: navigation_response&.headers || {},
+          url: response_url(navigation_response, ctx.url)
+        )
+      end
+
+      def validate_navigation_response!(navigation_response)
+        final_url = response_url(navigation_response, ctx.url)
+        ctx.policy.validate_remote_ip!(ip: remote_ip(navigation_response), url: final_url)
+      end
+
+      def response_url(navigation_response, fallback_url)
+        raw_url = navigation_response&.url || fallback_url.to_s
+        Html2rss::Url.from_relative(raw_url, raw_url)
+      end
+
+      def remote_ip(navigation_response)
+        navigation_response.remote_address&.ip
+      end
+
+      def request_url(request)
+        raw_url = request.url
+        Html2rss::Url.from_relative(raw_url, raw_url)
+      end
+
+      def validate_navigation_redirect_chain!(request)
+        previous_url = nil
+        request.redirect_chain.each do |entry|
+          current_url = request_url(entry)
+          validate_redirect_hop!(from_url: previous_url, to_url: current_url)
+          previous_url = current_url
+        end
+
+        current_url = request_url(request)
+        validate_redirect_hop!(from_url: previous_url, to_url: current_url)
+      end
+
+      def validate_navigation_target!(request)
+        url = request_url(request)
+        ctx.policy.validate_request!(url:, origin_url: ctx.origin_url, relation: ctx.relation)
+      end
+
+      def validate_redirect_hop!(from_url:, to_url:)
+        return unless from_url
+
+        ctx.policy.validate_redirect!(from_url:, to_url:, origin_url: ctx.origin_url, relation: ctx.relation)
+      end
     end
   end
 end

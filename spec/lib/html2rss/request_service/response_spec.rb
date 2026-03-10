@@ -64,4 +64,13 @@ RSpec.describe Html2rss::RequestService::Response do
       end
     end
   end
+
+  describe '#url' do
+    let(:body) { '' }
+    let(:headers) { {} }
+
+    it 'returns the request URL' do
+      expect(instance.url.to_s).to eq('https://example.com')
+    end
+  end
 end
