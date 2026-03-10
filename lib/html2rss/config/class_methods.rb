@@ -5,6 +5,8 @@ module Html2rss
     ##
     # Public class-level helpers for loading, validating, and exporting config.
     module ClassMethods
+      UNSET = Object.new.freeze
+
       ##
       # Returns the exported JSON Schema for html2rss configuration.
       #
@@ -26,9 +28,15 @@ module Html2rss
       # Validates a configuration hash with the runtime validator.
       #
       # @param config [Hash<Symbol, Object>] the configuration hash
+      # @param params [Hash<Symbol, Object>, Hash<String, Object>, nil] dynamic parameters for string formatting
       # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
-      def validate(config)
-        prepared_config = prepare_for_validation(config)
+      def validate(config, params: UNSET)
+        prepared_config = prepare_for_validation(resolve_effective_config(config, params:))
+
+        Validator.new.call(prepared_config)
+      rescue DynamicParams::ParamsMissing => error
+        prepared_config = prepare_for_validation(deep_dup(config))
+        prepared_config[:dynamic_params_error] = error.message
 
         Validator.new.call(prepared_config)
       end
@@ -47,9 +55,10 @@ module Html2rss
       # @param file [String] the YAML file to load
       # @param feed_name [String, nil] optional feed name for multi-feed files
       # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
+      # @param params [Hash<Symbol, Object>, Hash<String, Object>, nil] dynamic parameters for string formatting
       # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
-      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
-        validate(load_yaml(file, feed_name, multiple_feeds_key:))
+      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
+        validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
       end
 
       ##
@@ -89,17 +98,10 @@ module Html2rss
       # and returns a new configuration object.
       #
       # @param config [Hash<Symbol, Object>] the configuration hash.
-      # @param params [Hash<Symbol, Object>, nil] dynamic parameters for string formatting.
+      # @param params [Hash<Symbol, Object>, Hash<String, Object>, nil] dynamic parameters for string formatting.
       # @return [Html2rss::Config] the configuration object.
-      def from_hash(config, params: nil)
-        config = config.dup
-
-        if params
-          DynamicParams.call(config[:headers], params)
-          DynamicParams.call(config[:channel], params)
-        end
-
-        new(config)
+      def from_hash(config, params: UNSET)
+        new(resolve_effective_config(config, params:))
       end
 
       ##
@@ -116,6 +118,25 @@ module Html2rss
       end
 
       private
+
+      def resolve_effective_config(config, params:)
+        effective_config = deep_dup(config)
+        resolved_params = parameter_defaults(effective_config)
+        resolved_params.merge!(params) unless params.equal?(UNSET) || params.nil?
+
+        DynamicParams.call(effective_config[:headers], resolved_params)
+        DynamicParams.call(effective_config[:channel], resolved_params)
+
+        effective_config
+      end
+
+      def parameter_defaults(config)
+        config.fetch(:parameters, {}).each_with_object({}) do |(name, definition), defaults|
+          next unless definition.is_a?(Hash) && definition.key?(:default)
+
+          defaults[name] = definition[:default]
+        end
+      end
 
       def prepare_for_validation(config)
         allocate.send(:prepare_config, deep_dup(config))

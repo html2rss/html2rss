@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+parameters:
+  query:
+    type: string
+
+headers:
+  X-Query: "%<query>s"
+
+channel:
+  url: "https://example.com/search?q=%<query>s"
+
+selectors:
+  items:
+    selector: ".item"
+  title:
+    selector: "h2"
