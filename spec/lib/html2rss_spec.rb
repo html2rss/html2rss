@@ -198,6 +198,90 @@ RSpec.describe Html2rss do
       end
     end
 
+    context 'with selectors.items pagination enabled' do
+      subject(:feed) { described_class.feed(config) }
+
+      let(:config) do
+        {
+          strategy: :faraday,
+          channel: { url: 'https://example.com/news', title: 'Example News' },
+          selectors: {
+            items: { selector: 'article', pagination: { max_pages: 3 } },
+            title: { selector: 'h1' }
+          }
+        }
+      end
+
+      before do
+        allow(described_class).to receive(:build_rss_feed).and_call_original
+        allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
+          ctx.budget.consume!
+
+          case ctx.url.to_s
+          when 'https://example.com/news'
+            Html2rss::RequestService::Response.new(
+              body: <<~HTML,
+                <html><head><link rel="next" href="/news?page=2"></head><body><article><h1>page1</h1></article></body></html>
+              HTML
+              url: ctx.url,
+              headers: { 'content-type' => 'text/html' }
+            )
+          when 'https://example.com/news?page=2'
+            Html2rss::RequestService::Response.new(
+              body: '<html><body><article><h1>page2</h1></article></body></html>',
+              url: ctx.url,
+              headers: { 'content-type' => 'text/html' }
+            )
+          else
+            raise "Unexpected URL #{ctx.url}"
+          end
+        end
+      end
+
+      it 'collects items from pagination follow-up pages', :aggregate_failures do
+        expect(feed.items.map(&:title)).to eq(%w[page1 page2])
+        expect(Html2rss::RequestService).to have_received(:execute).twice
+      end
+
+      context 'when max_pages exceeds the system pagination ceiling' do
+        let(:config) do
+          {
+            strategy: :faraday,
+            channel: { url: 'https://example.com/news', title: 'Example News' },
+            selectors: {
+              items: { selector: 'article', pagination: { max_pages: 20 } },
+              title: { selector: 'h1' }
+            }
+          }
+        end
+
+        before do
+          allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
+            ctx.budget.consume!
+
+            page_number = ctx.url.query.to_s[/((?:^|&)page=)(\d+)/, 2] || '1'
+            next_page = page_number.to_i + 1
+            next_link = next_page <= 20 ? %(<link rel="next" href="/news?page=#{next_page}">) : ''
+
+            Html2rss::RequestService::Response.new(
+              body: "<html><head>#{next_link}</head><body><article><h1>page#{page_number}</h1></article></body></html>",
+              url: ctx.url,
+              headers: { 'content-type' => 'text/html' }
+            )
+          end
+        end
+
+        it 'caps follow-up requests at the system budget ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+          expect(feed.items.map(&:title)).to eq(
+            %w[page1 page2 page3 page4 page5 page6 page7 page8 page9 page10]
+          )
+          expect(Html2rss::RequestService).to have_received(:execute).exactly(
+            Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING + 1
+          ).times
+        end
+      end
+    end
+
     context 'with config without title selector' do
       subject(:feed) do
         VCR.use_cassette(name) do

@@ -35,16 +35,23 @@ module Html2rss
     # @param response [RequestService::Response] The response object.
     # @param selectors [Hash] A hash of CSS selectors.
     # @param time_zone [String] Time zone string used for date parsing.
-    def initialize(response, selectors:, time_zone:)
+    # @param request_context [RequestService::Context, nil] request context for follow-up page loads
+    # @param strategy [Symbol] request strategy to reuse for follow-up page loads
+    def initialize(
+      response,
+      selectors:,
+      time_zone:,
+      request_context: nil,
+      strategy: RequestService.default_strategy_name
+    )
       @response = response
       @url = response.url
       @selectors = selectors
       @time_zone = time_zone
+      @request_context = request_context
+      @strategy = strategy
 
-      validate_url_and_link_exclusivity!
-      fix_url_and_link!
-      handle_renamed_attributes!
-
+      prepare_selectors!
       @rss_item_attributes = @selectors.keys & Html2rss::RssBuilder::Article::PROVIDED_KEYS
     end
 
@@ -67,12 +74,14 @@ module Html2rss
 
       enhance = enhance?
 
-      parsed_body.css(items_selector).each do |item|
-        article_hash = extract_article(item)
+      each_response do |page_response|
+        parsed_body_for(page_response).css(items_selector).each do |item|
+          article_hash = extract_article(item, page_response)
 
-        enhance_article_hash(article_hash, item) if enhance
+          enhance_article_hash(article_hash, item, page_response.url) if enhance
 
-        yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
+          yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
+        end
       end
     end
 
@@ -89,8 +98,8 @@ module Html2rss
     #
     # @param item [Nokogiri::XML::Element] The element to extract from.
     # @return [Hash] Hash of attributes for the article.
-    def extract_article(item)
-      @rss_item_attributes.to_h { |key| [key, select(key, item)] }.compact
+    def extract_article(item, page_response = response)
+      @rss_item_attributes.to_h { |key| [key, select(key, item, base_url: page_response.url)] }.compact
     end
 
     ##
@@ -100,8 +109,8 @@ module Html2rss
     # @param article_hash [Hash] The original article hash.
     # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
     # @return [Hash] The enhanced article hash.
-    def enhance_article_hash(article_hash, article_tag)
-      extracted = HtmlExtractor.new(article_tag, base_url: @url).call
+    def enhance_article_hash(article_hash, article_tag, base_url = @url)
+      extracted = HtmlExtractor.new(article_tag, base_url:).call
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|
@@ -118,7 +127,7 @@ module Html2rss
     # @param item [Nokogiri::XML::Element] The HTML element to process.
     # @return [Object, Array<Object>] The selected value(s).
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
-    def select(name, item)
+    def select(name, item, base_url: @url)
       name = name.to_sym
 
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
@@ -126,15 +135,88 @@ module Html2rss
       selector_key, config = selector_config_for(name)
 
       if SPECIAL_ATTRIBUTES.member?(selector_key)
-        select_special(selector_key, item:, config:)
+        select_special(selector_key, item:, config:, base_url:)
       else
-        select_regular(selector_key, item:, config:)
+        select_regular(selector_key, item:, config:, base_url:)
       end
     end
 
     private
 
     attr_reader :response
+
+    def each_response(&)
+      yield response
+
+      return unless paginated?
+
+      follow_up_pages.each(&)
+    end
+
+    def paginated?
+      @selectors.dig(ITEMS_SELECTOR_KEY, :pagination) ? true : false
+    end
+
+    def pagination_max_pages
+      @selectors.dig(ITEMS_SELECTOR_KEY, :pagination, :max_pages) || 1
+    end
+
+    def next_page_url(page_response)
+      href = parsed_body_for(page_response).at_css('link[rel~="next"][href], a[rel~="next"][href]')&.[]('href')
+      return nil if href.nil? || href.empty?
+
+      Html2rss::Url.from_relative(href, page_response.url)
+    end
+
+    def fetch_follow_up_response(next_url)
+      RequestService.execute(
+        @request_context.follow_up(url: next_url, relation: :pagination),
+        strategy: @strategy
+      )
+    end
+
+    def prepare_selectors!
+      validate_url_and_link_exclusivity!
+      fix_url_and_link!
+      handle_renamed_attributes!
+      validate_pagination_context!
+    end
+
+    def follow_up_pages # rubocop:disable Metrics/MethodLength
+      return enum_for(:follow_up_pages) unless block_given?
+
+      visited = Set[response.url]
+      current_response = response
+
+      pagination_max_pages.pred.times do
+        next_url = next_page_url(current_response)
+        break unless follow_up_allowed?(next_url, visited)
+
+        visited << next_url
+        current_response = fetch_follow_up_response_or_stop(next_url)
+        break unless current_response
+
+        yield current_response
+      end
+    end
+
+    def fetch_follow_up_response_or_stop(next_url)
+      fetch_follow_up_response(next_url)
+    rescue RequestService::RequestBudgetExceeded => error
+      Html2rss::Log.warn("#{self.class}: pagination stopped at #{next_url} - #{error.message}")
+      nil
+    end
+
+    def follow_up_allowed?(next_url, visited)
+      next_url && !visited.include?(next_url)
+    end
+
+    def validate_pagination_context!
+      return unless paginated?
+      return if @request_context
+
+      raise ArgumentError, 'Pagination requires a request_context'
+    end
 
     def validate_url_and_link_exclusivity!
       return unless @selectors.key?(:url) && @selectors.key?(:link)
@@ -161,39 +243,44 @@ module Html2rss
     end
 
     def parsed_body
-      @parsed_body ||= if response.json_response?
-                         fragment = ObjectToXmlConverter.new(response.parsed_body).call
-                         Nokogiri::HTML5.fragment(fragment)
-                       else
-                         response.parsed_body
-                       end
+      parsed_body_for(response)
     end
 
-    def select_special(name, item:, config:)
+    def parsed_body_for(page_response)
+      @parsed_bodies ||= {}
+      @parsed_bodies[page_response.url] ||= if page_response.json_response?
+                                              fragment = ObjectToXmlConverter.new(page_response.parsed_body).call
+                                              Nokogiri::HTML5.fragment(fragment)
+                                            else
+                                              page_response.parsed_body
+                                            end
+    end
+
+    def select_special(name, item:, config:, base_url:)
       case name
       when :enclosure
-        enclosure(item:, config:)
+        enclosure(item:, config:, base_url:)
       when :guid
-        Array(config).map { |selector_name| select(selector_name, item) }
+        Array(config).map { |selector_name| select(selector_name, item, base_url:) }
       when :categories
-        select_categories(category_selectors: config, item:)
+        select_categories(category_selectors: config, item:, base_url:)
       end
     end
 
-    def select_regular(_name, item:, config:)
-      value = Extractors.get(config.merge(channel: channel_context), item)
+    def select_regular(_name, item:, config:, base_url:)
+      value = Extractors.get(config.merge(channel: channel_context(base_url)), item)
 
       if value && (post_process_steps = config[:post_process])
         steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-        value = post_process(item, value, steps)
+        value = post_process(item, value, steps, base_url:)
       end
 
       value
     end
 
-    def post_process(item, value, post_process_steps)
+    def post_process(item, value, post_process_steps, base_url:)
       post_process_steps.each do |options|
-        context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
+        context = Context.new(config: { channel: { url: base_url, time_zone: @time_zone } },
                               item:, scraper: self, options:)
 
         value = PostProcessors.get(options[:name], value, context)
@@ -202,25 +289,27 @@ module Html2rss
       value
     end
 
-    def select_categories(category_selectors:, item:)
+    def select_categories(category_selectors:, item:, base_url:)
       Array(category_selectors).flat_map do |selector_name|
-        extract_category_values(selector_name, item:)
+        extract_category_values(selector_name, item:, base_url:)
       end
     end
 
-    def extract_category_values(selector_name, item:)
+    def extract_category_values(selector_name, item:, base_url:)
       selector_key, config = selector_config_for(selector_name, allow_nil: true)
       return [] unless config
 
       nodes = extract_nodes(item:, config:)
-      return Array(select_regular(selector_key, item:, config:)) unless node_set_with_multiple_elements?(nodes)
+      unless node_set_with_multiple_elements?(nodes)
+        return Array(select_regular(selector_key, item:, config:, base_url:))
+      end
 
-      Array(nodes).flat_map { |node| extract_categories_from_node(node, item:, config:) }
+      Array(nodes).flat_map { |node| extract_categories_from_node(node, item:, config:, base_url:) }
     end
 
-    def extract_categories_from_node(node, item:, config:)
-      values = Extractors.get(category_node_options(config), node)
-      values = apply_post_process_steps(item:, value: values, post_process_steps: config[:post_process])
+    def extract_categories_from_node(node, item:, config:, base_url:)
+      values = Extractors.get(category_node_options(config, base_url:), node)
+      values = apply_post_process_steps(item:, value: values, post_process_steps: config[:post_process], base_url:)
 
       Array(values).filter_map { |category| extract_category_text(category) }
     end
@@ -241,15 +330,15 @@ module Html2rss
       nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
     end
 
-    def category_node_options(selector_config)
-      selector_config.merge(channel: channel_context, selector: nil)
+    def category_node_options(selector_config, base_url:)
+      selector_config.merge(channel: channel_context(base_url), selector: nil)
     end
 
-    def apply_post_process_steps(item:, value:, post_process_steps:)
+    def apply_post_process_steps(item:, value:, post_process_steps:, base_url:)
       return value unless value && post_process_steps
 
       steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-      post_process(item, value, steps)
+      post_process(item, value, steps, base_url:)
     end
 
     def selector_config_for(name, allow_nil: false)
@@ -267,13 +356,13 @@ module Html2rss
       Extractors.element(item, config[:selector])
     end
 
-    def channel_context
-      { url: @url, time_zone: @time_zone }
+    def channel_context(base_url)
+      { url: base_url, time_zone: @time_zone }
     end
 
     # @return [Hash] enclosure details.
-    def enclosure(item:, config:)
-      url = Url.from_relative(select_regular(:enclosure, item:, config:), @url)
+    def enclosure(item:, config:, base_url:)
+      url = Url.from_relative(select_regular(:enclosure, item:, config:, base_url:), base_url)
 
       { url:, type: config[:content_type] }
     end

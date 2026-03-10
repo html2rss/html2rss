@@ -16,6 +16,9 @@ module Html2rss
           required(:selector).filled(:string)
           optional(:order).filled(included_in?: %w[reverse])
           optional(:enhance).filled(:bool?)
+          optional(:pagination).hash do
+            required(:max_pages).filled(:integer, gt?: 0)
+          end
         end
       end
 

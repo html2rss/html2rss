@@ -67,6 +67,12 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
 
+## 📄 Configuration Notes
+
+See the Ruby gem documentation on the project website for configuration guides and reference material, including paginated feeds:
+
+- [Selectors reference](https://html2rss.github.io/ruby-gem/reference/selectors/)
+
 ## 🧪 Testing
 
 - **RSpec** for comprehensive testing

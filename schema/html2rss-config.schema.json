@@ -260,6 +260,21 @@
               "not": {
                 "type": "null"
               }
+            },
+            "pagination": {
+              "type": "object",
+              "properties": {
+                "max_pages": {
+                  "type": "integer",
+                  "not": {
+                    "type": "null"
+                  },
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "max_pages"
+              ]
             }
           },
           "required": [

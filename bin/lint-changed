@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+files="$(mktemp)"
+trap 'rm -f "$files"' EXIT
+
+bin/list-changed-paths \
+  '*.rb' \
+  '*.rake' \
+  'Gemfile' \
+  'Rakefile' \
+  'exe/*' \
+  'spec/*' >"$files"
+
+if [ -s "$files" ]; then
+  xargs -0 mise exec -- bundle exec rubocop <"$files"
+else
+  echo "No changed Ruby files to lint"
+fi

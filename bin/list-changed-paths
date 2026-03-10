@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -eq 0 ]; then
+  echo "usage: $0 <git-pathspec>..." >&2
+  exit 1
+fi
+
+git diff --name-only --cached -z -- "$@"
+git diff --name-only -z -- "$@"
+git ls-files -o --exclude-standard -z -- "$@"
