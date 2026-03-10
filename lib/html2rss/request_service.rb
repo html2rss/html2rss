@@ -14,6 +14,11 @@ module Html2rss
     class InvalidUrl < Html2rss::Error; end
     class UnsupportedUrlScheme < Html2rss::Error; end
     class UnsupportedResponseContentType < Html2rss::Error; end
+    class RequestBudgetExceeded < Html2rss::Error; end
+    class PrivateNetworkDenied < Html2rss::Error; end
+    class CrossOriginFollowUpDenied < Html2rss::Error; end
+    class ResponseTooLarge < Html2rss::Error; end
+    class RequestTimedOut < Html2rss::Error; end
 
     class << self
       extend Forwardable
