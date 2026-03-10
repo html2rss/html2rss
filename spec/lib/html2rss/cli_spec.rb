@@ -110,6 +110,12 @@ RSpec.describe Html2rss::CLI do
       it 'prints a success message' do
         expect { cli.validate('config.yml') }.to output("Configuration is valid\n").to_stdout
       end
+
+      it 'passes the params option to runtime validation' do
+        cli.invoke(:validate, ['config.yml'], { params: { 'query' => 'ruby' } })
+
+        expect(Html2rss::Config).to have_received(:validate_yaml).with('config.yml', nil, params: { 'query' => 'ruby' })
+      end
     end
 
     context 'when the config is invalid' do

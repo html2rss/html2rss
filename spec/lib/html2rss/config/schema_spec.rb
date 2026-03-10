@@ -52,6 +52,10 @@ RSpec.describe Html2rss::Config::Schema do
       expect(selectors_schema.dig('categories',
                                   'description')).to include('runtime validation enforces those references')
     end
+
+    it 'does not expose internal validation helper properties' do
+      expect(json_schema.fetch('properties')).not_to include('dynamic_params_error')
+    end
   end
 
   describe '.path' do

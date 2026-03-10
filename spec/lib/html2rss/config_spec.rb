@@ -106,6 +106,30 @@ RSpec.describe Html2rss::Config do
         expect(described_class.from_hash(hash.freeze)).to be_a(described_class)
       end
     end
+
+    context 'with parameter defaults' do
+      let(:hash) do
+        {
+          parameters: {
+            query: { type: 'string', default: 'ruby' },
+            locale: { type: 'string', default: 'en' }
+          },
+          headers: { 'X-Query': '%<query>s' },
+          channel: { url: 'https://example.com/search?q=%<query>s&locale=%<locale>s' },
+          selectors: {
+            items: { selector: '.item' },
+            title: { selector: 'h2' }
+          }
+        }
+      end
+
+      it 'applies parameter defaults when params are omitted', :aggregate_failures do
+        config = described_class.from_hash(hash)
+
+        expect(config.url).to eq('https://example.com/search?q=ruby&locale=en')
+        expect(config.headers).to include('X-Query' => 'ruby')
+      end
+    end
   end
 
   describe '.validate' do
@@ -143,11 +167,75 @@ RSpec.describe Html2rss::Config do
 
       expect(config).to eq(original_config)
     end
+
+    context 'with parameter defaults' do
+      let(:config) do
+        {
+          parameters: {
+            query: { type: 'string', default: 'ruby' },
+            locale: { type: 'string', default: 'en' }
+          },
+          headers: { 'X-Query': '%<query>s' },
+          channel: { url: 'https://example.com/search?q=%<query>s&locale=%<locale>s' },
+          selectors: {
+            items: { selector: '.item' },
+            title: { selector: 'h2' }
+          }
+        }
+      end
+
+      it 'validates the effective config after applying parameter defaults', :aggregate_failures do
+        result = described_class.validate(config)
+
+        expect(result).to be_success
+        expect(result.to_h.dig(:channel, :url)).to eq('https://example.com/search?q=ruby&locale=en')
+        expect(result.to_h.dig(:headers, :'X-Query')).to eq('ruby')
+      end
+
+      it 'resolves the same url and headers as runtime config building', :aggregate_failures do
+        result = described_class.validate(config)
+        runtime_config = described_class.from_hash(config)
+
+        expect(result.to_h.dig(:channel, :url)).to eq(runtime_config.url)
+        expect(result.to_h.dig(:headers, :'X-Query')).to eq(runtime_config.headers.fetch('X-Query'))
+      end
+    end
+
+    context 'with unresolved placeholders and no defaults' do
+      let(:config) do
+        {
+          parameters: {
+            query: { type: 'string' }
+          },
+          headers: { 'X-Query': '%<query>s' },
+          channel: { url: 'https://example.com/search?q=%<query>s' },
+          selectors: {
+            items: { selector: '.item' },
+            title: { selector: 'h2' }
+          }
+        }
+      end
+
+      it 'fails validation with the dynamic params error', :aggregate_failures do
+        result = described_class.validate(config)
+
+        expect(result).to be_failure
+        expect(result.errors.to_h.fetch(nil)).to include('Missing parameter for formatting: key<query> not found')
+      end
+    end
   end
 
   describe '.validate_yaml' do
     it 'validates a YAML config file' do
       expect(described_class.validate_yaml('spec/fixtures/single.test.yml')).to be_success
+    end
+
+    it 'validates a parameterized YAML config file using parameter defaults' do
+      expect(described_class.validate_yaml('spec/fixtures/parameterized.test.yml')).to be_success
+    end
+
+    it 'fails a parameterized YAML config file when placeholders remain unresolved' do
+      expect(described_class.validate_yaml('spec/fixtures/parameterized_missing_default.test.yml')).to be_failure
     end
   end
 

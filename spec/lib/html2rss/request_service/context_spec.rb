@@ -41,5 +41,44 @@ RSpec.describe Html2rss::RequestService::Context do
         expect(instance.headers).to eq(headers)
       end
     end
+
+    context 'when policy is explicitly nil' do
+      subject(:instance) { described_class.new(url:, policy: nil) }
+
+      it 'raises an argument error' do
+        expect { instance }.to raise_error(ArgumentError, 'policy must not be nil')
+      end
+    end
+
+    context 'when budget is explicitly nil' do
+      subject(:instance) { described_class.new(url:, budget: nil) }
+
+      it 'raises an argument error' do
+        expect { instance }.to raise_error(ArgumentError, 'budget must not be nil')
+      end
+    end
+  end
+
+  describe '#follow_up' do
+    subject(:follow_up) { instance.follow_up(url: 'https://example.com/page/2', relation: :pagination) }
+
+    let(:policy) { Html2rss::RequestService::Policy.new }
+    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 2) }
+    let(:instance) do
+      described_class.new(
+        url: 'https://example.com',
+        headers: { 'User-Agent' => 'Custom Agent' },
+        policy:,
+        budget:
+      )
+    end
+
+    it 'shares origin, policy, and budget with the derived context', :aggregate_failures do
+      expect(follow_up.origin_url).to eq(instance.origin_url)
+      expect(follow_up.policy).to eq(policy)
+      expect(follow_up.budget).to eq(budget)
+      expect(follow_up.relation).to eq(:pagination)
+      expect(follow_up.headers).to eq(instance.headers)
+    end
   end
 end
