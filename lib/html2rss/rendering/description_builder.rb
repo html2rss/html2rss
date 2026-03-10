@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'cgi'
-
 module Html2rss
   module Rendering
     # Builds a sanitized article description from the base text, title, and optional media.
@@ -20,7 +18,6 @@ module Html2rss
     #   description = builder.call
     #
     class DescriptionBuilder
-      ##
       # Removes the specified pattern from the beginning of the text
       # within a given range if the pattern occurs before the range's end.
       #
@@ -57,7 +54,6 @@ module Html2rss
         fragments = []
         fragments.concat(Array(rendered_media))
         fragments << processed_base_description
-        fragments << media_table_html
 
         result = fragments.compact.join("\n\n").strip
         result.empty? ? nil : result
@@ -66,7 +62,8 @@ module Html2rss
       private
 
       def rendered_media
-        return render_enclosures if @enclosures.any?
+        rendered = render_enclosures
+        return rendered if rendered.any?
         return render_fallback_image if @image
 
         []
@@ -80,10 +77,6 @@ module Html2rss
 
       def render_fallback_image
         [MediaRenderer.for(enclosure: nil, image: @image, title: @title)&.to_html]
-      end
-
-      def media_table_html
-        MediaTableRenderer.new(enclosures: @enclosures, image: @image).to_html
       end
 
       def processed_base_description
