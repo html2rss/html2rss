@@ -271,11 +271,13 @@ RSpec.describe Html2rss do
           end
         end
 
-        it 'caps follow-up requests at the system budget ceiling', :aggregate_failures do
+        it 'caps follow-up requests at the system budget ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
           expect(feed.items.map(&:title)).to eq(
             %w[page1 page2 page3 page4 page5 page6 page7 page8 page9 page10]
           )
-          expect(Html2rss::RequestService).to have_received(:execute).exactly(Html2rss::MAX_PAGINATION_REQUESTS).times
+          expect(Html2rss::RequestService).to have_received(:execute).exactly(
+            Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING + 1
+          ).times
         end
       end
     end

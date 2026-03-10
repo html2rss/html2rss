@@ -9,6 +9,7 @@ module Html2rss
     ##
     # Describes the runtime request envelope for a single feed build.
     class Policy # rubocop:disable Metrics/ClassLength
+      MAX_REQUESTS_CEILING = 10
       LOCAL_HOSTS = %w[localhost localhost.localdomain metadata.google.internal].to_set.freeze
       BLOCKED_IP_RANGES = [
         IPAddr.new('0.0.0.0/8'),
@@ -63,7 +64,7 @@ module Html2rss
         @max_redirects = validate_non_negative_integer!(:max_redirects, max_redirects)
         @max_response_bytes = validate_positive_integer!(:max_response_bytes, max_response_bytes)
         @max_decompressed_bytes = validate_positive_integer!(:max_decompressed_bytes, max_decompressed_bytes)
-        @max_requests = validate_positive_integer!(:max_requests, max_requests)
+        @max_requests = [validate_positive_integer!(:max_requests, max_requests), MAX_REQUESTS_CEILING].min
         @allow_private_networks = allow_private_networks ? true : false
         @allow_cross_origin_followups = allow_cross_origin_followups ? true : false
         @resolver = resolver
