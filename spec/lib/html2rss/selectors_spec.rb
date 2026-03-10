@@ -157,7 +157,9 @@ RSpec.describe Html2rss::Selectors do
 
       it 'stops pagination without raising and logs the stop', :aggregate_failures do
         expect(titles).to eq(%w[article1 article2 article3])
-        expect(Html2rss::Log).to have_received(:warn).with(/Pagination stopped: Request budget exhausted/)
+        expect(Html2rss::Log).to have_received(:warn).with(
+          %r{Html2rss::Selectors: pagination stopped at http://example.com/page/\d+ - Request budget exhausted}
+        )
       end
     end
   end

@@ -203,7 +203,7 @@ module Html2rss
     def fetch_follow_up_response_or_stop(next_url)
       fetch_follow_up_response(next_url)
     rescue RequestService::RequestBudgetExceeded => error
-      Html2rss::Log.warn("Pagination stopped: #{error.message} for #{next_url}")
+      Html2rss::Log.warn("#{self.class}: pagination stopped at #{next_url} - #{error.message}")
       nil
     end
 
