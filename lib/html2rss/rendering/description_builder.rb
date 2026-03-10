@@ -18,7 +18,6 @@ module Html2rss
     #   description = builder.call
     #
     class DescriptionBuilder
-      ##
       # Removes the specified pattern from the beginning of the text
       # within a given range if the pattern occurs before the range's end.
       #
