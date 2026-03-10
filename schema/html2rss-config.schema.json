@@ -345,6 +345,12 @@
         }
       },
       "additionalProperties": true
+    },
+    "dynamic_params_error": {
+      "type": [
+        "null",
+        "string"
+      ]
     }
   },
   "required": [

@@ -33,6 +33,7 @@ module Html2rss
         optional(:stylesheets).array(StylesheetConfig)
         optional(:auto_source).hash(AutoSource::Config)
         optional(:selectors).hash
+        optional(:dynamic_params_error).maybe(:string)
       end
 
       rule(:headers) do
@@ -41,6 +42,10 @@ module Html2rss
             key([:headers, key]).failure("must be a String, but got #{header_value.class}")
           end
         end
+      end
+
+      rule(:dynamic_params_error) do
+        base.failure(value) if value
       end
 
       # Ensure at least one of :selectors or :auto_source is present.
