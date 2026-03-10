@@ -41,6 +41,22 @@ RSpec.describe Html2rss::RequestService::Context do
         expect(instance.headers).to eq(headers)
       end
     end
+
+    context 'when policy is explicitly nil' do
+      subject(:instance) { described_class.new(url:, policy: nil) }
+
+      it 'raises an argument error' do
+        expect { instance }.to raise_error(ArgumentError, 'policy must not be nil')
+      end
+    end
+
+    context 'when budget is explicitly nil' do
+      subject(:instance) { described_class.new(url:, budget: nil) }
+
+      it 'raises an argument error' do
+        expect { instance }.to raise_error(ArgumentError, 'budget must not be nil')
+      end
+    end
   end
 
   describe '#follow_up' do

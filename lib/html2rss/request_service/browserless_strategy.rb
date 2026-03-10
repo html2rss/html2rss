@@ -47,8 +47,8 @@ module Html2rss
       # @return [String] the Browserless websocket endpoint with token query param
       def browser_ws_endpoint
         @browser_ws_endpoint ||= begin
-          api_token = ENV.fetch('BROWSERLESS_IO_API_TOKEN', '6R0W53R135510')
           ws_url = ENV.fetch('BROWSERLESS_IO_WEBSOCKET_URL', 'ws://127.0.0.1:3000')
+          api_token = browserless_api_token(ws_url)
 
           "#{ws_url}?token=#{api_token}"
         end
@@ -71,6 +71,14 @@ module Html2rss
 
       def protocol_timeout_ms
         ctx.policy.total_timeout_seconds * 1000
+      end
+
+      def browserless_api_token(ws_url)
+        ENV.fetch('BROWSERLESS_IO_API_TOKEN') do
+          return '6R0W53R135510' if ws_url == 'ws://127.0.0.1:3000'
+
+          raise ArgumentError, 'BROWSERLESS_IO_API_TOKEN is required for custom Browserless endpoints'
+        end
       end
     end
   end

@@ -59,8 +59,11 @@ module Html2rss
       def assign_request_options(request_options)
         @relation = request_options.fetch(:relation, :initial)
         @policy = request_options.fetch(:policy, Policy.default)
+        raise ArgumentError, 'policy must not be nil' if @policy.nil?
+
         @origin_url = normalized_origin_url(request_options[:origin_url])
         @budget = request_options.fetch(:budget) { Budget.new(max_requests: policy.max_requests) }
+        raise ArgumentError, 'budget must not be nil' if @budget.nil?
       end
 
       def normalized_origin_url(origin_url)

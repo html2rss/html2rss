@@ -21,6 +21,7 @@ module Html2rss
         IPAddr.new('::/128'),
         IPAddr.new('::1/128'),
         IPAddr.new('fe80::/10'),
+        IPAddr.new('fc00::/7'),
         IPAddr.new('ff00::/8')
       ].freeze
 

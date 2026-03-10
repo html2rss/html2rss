@@ -115,6 +115,27 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       expect(request).to have_received(:continue)
     end
 
+    it 'validates non-navigation requests before continuing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      background_request = instance_double(
+        Puppeteer::HTTPRequest,
+        navigation_request?: false,
+        resource_type: 'fetch',
+        url: 'https://api.example.com/articles',
+        redirect_chain: []
+      )
+      allow(background_request).to receive(:continue)
+      allow(background_request).to receive(:abort)
+
+      event_handlers.fetch('request').call(background_request)
+
+      expect(policy).to have_received(:validate_request!).with(
+        url: Html2rss::Url.from_relative('https://api.example.com/articles', 'https://api.example.com/articles'),
+        origin_url: ctx.origin_url,
+        relation: :initial
+      )
+      expect(background_request).to have_received(:continue)
+    end
+
     it 'validates redirect hops from the request chain' do # rubocop:disable RSpec/ExampleLength
       redirect_request = instance_double(Puppeteer::HTTPRequest, url: 'https://example.com/redirect')
       allow(request).to receive_messages(
@@ -132,18 +153,24 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       )
     end
 
-    it 'aborts skipped resources without validating navigation policy', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'validates skipped resources before aborting them', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       asset_request = instance_double(
         Puppeteer::HTTPRequest,
         navigation_request?: false,
-        resource_type: 'image'
+        resource_type: 'image',
+        url: 'https://cdn.example.com/logo.png',
+        redirect_chain: []
       )
       allow(asset_request).to receive(:abort)
 
       event_handlers.fetch('request').call(asset_request)
 
+      expect(policy).to have_received(:validate_request!).with(
+        url: Html2rss::Url.from_relative('https://cdn.example.com/logo.png', 'https://cdn.example.com/logo.png'),
+        origin_url: ctx.origin_url,
+        relation: :initial
+      )
       expect(asset_request).to have_received(:abort)
-      expect(policy).not_to have_received(:validate_request!)
     end
 
     it 'raises stored navigation policy errors from goto', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

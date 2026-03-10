@@ -91,7 +91,7 @@ module Html2rss
       end
 
       def handle_request(request)
-        validate_navigation_request!(request) if request.navigation_request?
+        validate_request!(request)
 
         skip_request_resources.member?(request.resource_type) ? request.abort : request.continue
       rescue Html2rss::Error => error
@@ -109,6 +109,11 @@ module Html2rss
 
       def validate_navigation_request!(request)
         validate_navigation_redirect_chain!(request)
+        validate_navigation_target!(request)
+      end
+
+      def validate_request!(request)
+        validate_navigation_redirect_chain!(request) if request.navigation_request?
         validate_navigation_target!(request)
       end
 

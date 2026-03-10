@@ -88,6 +88,18 @@ RSpec.describe Html2rss::RequestService::Policy do
       end
     end
 
+    context 'when the host resolves to an IPv6 unique local address' do
+      let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+
+      before do
+        allow(resolver).to receive(:each_address).with('example.com').and_yield('fd12:3456:789a::1')
+      end
+
+      it 'rejects the request' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /example.com/)
+      end
+    end
+
     context 'when private networks are allowed' do
       let(:options) { { allow_private_networks: true } }
       let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }

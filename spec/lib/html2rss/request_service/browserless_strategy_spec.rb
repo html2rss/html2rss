@@ -70,5 +70,20 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
         expect(instance.browser_ws_endpoint).to eq 'wss://host.tld?token=foobar'
       end
     end
+
+    context 'with a custom websocket URL but no API token' do
+      around do |example|
+        ClimateControl.modify(
+          BROWSERLESS_IO_API_TOKEN: nil,
+          BROWSERLESS_IO_WEBSOCKET_URL: 'wss://host.tld'
+        ) { example.run }
+      end
+
+      it 'raises a clear error' do
+        expect do
+          instance.browser_ws_endpoint
+        end.to raise_error(ArgumentError, 'BROWSERLESS_IO_API_TOKEN is required for custom Browserless endpoints')
+      end
+    end
   end
 end
