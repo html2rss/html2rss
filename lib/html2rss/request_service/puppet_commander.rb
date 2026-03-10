@@ -91,7 +91,7 @@ module Html2rss
       end
 
       def handle_request(request)
-        validate_request!(request)
+        validate_navigation_request!(request) if request.navigation_request?
 
         skip_request_resources.member?(request.resource_type) ? request.abort : request.continue
       rescue Html2rss::Error => error
@@ -109,11 +109,6 @@ module Html2rss
 
       def validate_navigation_request!(request)
         validate_navigation_redirect_chain!(request)
-        validate_navigation_target!(request)
-      end
-
-      def validate_request!(request)
-        validate_navigation_redirect_chain!(request) if request.navigation_request?
         validate_navigation_target!(request)
       end
 
@@ -142,32 +137,22 @@ module Html2rss
         navigation_response.remote_address&.ip
       end
 
+      def request_chain(request)
+        (request.redirect_chain + [request]).map { |entry| request_url(entry) }
+      end
+
       def request_url(request)
-        raw_url = request.url
-        Html2rss::Url.from_relative(raw_url, raw_url)
+        Html2rss::Url.from_relative(request.url, request.url)
       end
 
       def validate_navigation_redirect_chain!(request)
-        previous_url = nil
-        request.redirect_chain.each do |entry|
-          current_url = request_url(entry)
-          validate_redirect_hop!(from_url: previous_url, to_url: current_url)
-          previous_url = current_url
+        request_chain(request).each_cons(2) do |from_url, to_url|
+          ctx.policy.validate_redirect!(from_url:, to_url:, origin_url: ctx.origin_url, relation: ctx.relation)
         end
-
-        current_url = request_url(request)
-        validate_redirect_hop!(from_url: previous_url, to_url: current_url)
       end
 
       def validate_navigation_target!(request)
-        url = request_url(request)
-        ctx.policy.validate_request!(url:, origin_url: ctx.origin_url, relation: ctx.relation)
-      end
-
-      def validate_redirect_hop!(from_url:, to_url:)
-        return unless from_url
-
-        ctx.policy.validate_redirect!(from_url:, to_url:, origin_url: ctx.origin_url, relation: ctx.relation)
+        ctx.policy.validate_request!(url: request_url(request), origin_url: ctx.origin_url, relation: ctx.relation)
       end
     end
   end
