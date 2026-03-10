@@ -4,7 +4,7 @@ module Html2rss
   class RequestService
     ##
     # Commands the Puppeteer Browser to the website and builds the Response.
-    class PuppetCommander
+    class PuppetCommander # rubocop:disable Metrics/ClassLength
       # @param ctx [Context]
       # @param browser [Puppeteer::Browser]
       # @param skip_request_resources [Set<String>] the resource types not to request
@@ -38,7 +38,7 @@ module Html2rss
       def new_page
         page = browser.new_page
         configure_page(page)
-        configure_request_interception(page)
+        configure_navigation_guards(page)
         page
       end
 
@@ -54,13 +54,12 @@ module Html2rss
       ##
       # @param page [Puppeteer::Page]
       # @return [void]
-      def configure_request_interception(page)
-        return if skip_request_resources.empty?
-
+      def configure_navigation_guards(page)
         page.request_interception = true
         page.on('request') do |request|
-          skip_request_resources.member?(request.resource_type) ? request.abort : request.continue
+          handle_request(request)
         end
+        page.on('response') { |response| handle_response(response) }
       end
 
       ##
@@ -68,7 +67,14 @@ module Html2rss
       # @param url [Html2rss::Url] target URL
       # @return [Puppeteer::HTTPResponse, nil] the navigation response if one was produced
       def navigate_to_destination(page, url)
-        page.goto(url, wait_until: 'networkidle0', referer:, timeout: navigation_timeout_ms)
+        @navigation_error = nil
+        page.goto(url, wait_until: 'networkidle0', referer:, timeout: navigation_timeout_ms).tap do
+          raise @navigation_error if @navigation_error
+        end
+      rescue StandardError
+        raise @navigation_error if @navigation_error
+
+        raise
       end
 
       ##
@@ -84,6 +90,28 @@ module Html2rss
         ctx.policy.total_timeout_seconds * 1000
       end
 
+      def handle_request(request)
+        validate_navigation_request!(request) if request.navigation_request?
+
+        skip_request_resources.member?(request.resource_type) ? request.abort : request.continue
+      rescue Html2rss::Error => error
+        @navigation_error ||= error
+        request.abort
+      end
+
+      def handle_response(response)
+        return unless response.request.navigation_request?
+
+        validate_navigation_response!(response)
+      rescue Html2rss::Error => error
+        @navigation_error ||= error
+      end
+
+      def validate_navigation_request!(request)
+        validate_navigation_redirect_chain!(request)
+        validate_navigation_target!(request)
+      end
+
       def build_response(page, navigation_response)
         page_body = body(page)
         ResponseGuard.new(policy: ctx.policy).inspect_body!(page_body)
@@ -96,10 +124,7 @@ module Html2rss
       end
 
       def validate_navigation_response!(navigation_response)
-        return unless navigation_response
-
         final_url = response_url(navigation_response, ctx.url)
-        validate_redirect!(final_url)
         ctx.policy.validate_remote_ip!(ip: remote_ip(navigation_response), url: final_url)
       end
 
@@ -108,17 +133,26 @@ module Html2rss
         Html2rss::Url.from_relative(raw_url, raw_url)
       end
 
-      def validate_redirect!(final_url)
-        ctx.policy.validate_redirect!(
-          from_url: ctx.url,
-          to_url: final_url,
-          origin_url: ctx.origin_url,
-          relation: ctx.relation
-        )
-      end
-
       def remote_ip(navigation_response)
         navigation_response.remote_address&.ip
+      end
+
+      def request_chain(request)
+        (request.redirect_chain + [request]).map { |entry| request_url(entry) }
+      end
+
+      def request_url(request)
+        Html2rss::Url.from_relative(request.url, request.url)
+      end
+
+      def validate_navigation_redirect_chain!(request)
+        request_chain(request).each_cons(2) do |from_url, to_url|
+          ctx.policy.validate_redirect!(from_url:, to_url:, origin_url: ctx.origin_url, relation: ctx.relation)
+        end
+      end
+
+      def validate_navigation_target!(request)
+        ctx.policy.validate_request!(url: request_url(request), origin_url: ctx.origin_url, relation: ctx.relation)
       end
     end
   end
