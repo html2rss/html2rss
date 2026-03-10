@@ -97,7 +97,7 @@ module Html2rss
       # @return [Policy] a default, frozen policy instance
       # rubocop:disable Layout/ClassStructure
       def self.default
-        new
+        DEFAULT_POLICY
       end
       # rubocop:enable Layout/ClassStructure
 
@@ -185,7 +185,7 @@ module Html2rss
       def enforce_public_network!(url)
         host = url.host
         return if allow_private_networks?
-        return unless blocked_host?(host) || resolved_ip_addresses(host).any? { |address| blocked_ip?(address) }
+        return unless blocked_host?(host) || blocked_resolved_address?(host)
 
         raise PrivateNetworkDenied, "Private network target denied for #{url}"
       end
@@ -194,31 +194,31 @@ module Html2rss
         LOCAL_HOSTS.include?(host.to_s.downcase)
       end
 
-      def resolved_ip_addresses(host)
+      def blocked_resolved_address?(host)
         literal = parse_ip(host)
-        return [literal] if literal
+        return blocked_ip?(literal) if literal
 
         if resolver.respond_to?(:each_address)
-          addresses_from_each_address(host)
+          blocked_address_from_each_address?(host)
         else
-          addresses_from_getaddrinfo(host)
+          blocked_address_from_getaddrinfo?(host)
         end
       rescue Resolv::ResolvError, SocketError, SystemCallError
-        []
+        false
       end
 
-      def addresses_from_each_address(host)
-        [].tap do |addresses|
-          resolver.each_address(host) do |address|
-            parsed = parse_ip(address)
-            addresses << parsed if parsed
-          end
+      def blocked_address_from_each_address?(host)
+        resolver.each_address(host) do |address|
+          parsed = parse_ip(address)
+          return true if parsed && blocked_ip?(parsed)
         end
+
+        false
       end
 
-      def addresses_from_getaddrinfo(host)
-        resolver.getaddrinfo(host, nil).filter_map do |entry|
-          parse_ip(entry[3])
+      def blocked_address_from_getaddrinfo?(host)
+        resolver.getaddrinfo(host, nil).any? do |entry|
+          (parsed = parse_ip(entry[3])) && blocked_ip?(parsed)
         end
       end
 
@@ -232,5 +232,7 @@ module Html2rss
         BLOCKED_IP_RANGES.any? { |range| range.include?(address) }
       end
     end
+
+    Policy::DEFAULT_POLICY = Policy.new
   end
 end
