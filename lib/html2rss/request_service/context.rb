@@ -12,7 +12,8 @@ module Html2rss
       # @param relation [Symbol] why this request is being made
       # @param origin_url [String, Html2rss::Url, nil] the originating URL for same-origin checks
       # @param policy [Policy] runtime request policy
-      # @param budget [Budget, nil] shared request budget for the feed build
+      # @param budget [Budget] shared request budget for the feed build
+      # @raise [ArgumentError] if policy or budget is explicitly nil
       def initialize(url:, headers: {}, **request_options)
         @url = Html2rss::Url.from_relative(url, url)
         @headers = headers

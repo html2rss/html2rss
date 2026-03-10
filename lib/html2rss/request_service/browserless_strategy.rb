@@ -45,6 +45,7 @@ module Html2rss
 
       ##
       # @return [String] the Browserless websocket endpoint with token query param
+      # @raise [ArgumentError] if a custom endpoint is configured without an API token
       def browser_ws_endpoint
         @browser_ws_endpoint ||= begin
           ws_url = ENV.fetch('BROWSERLESS_IO_WEBSOCKET_URL', 'ws://127.0.0.1:3000')
