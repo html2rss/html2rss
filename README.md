@@ -69,32 +69,9 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 
 ## 📄 Configuration Notes
 
-### Paginated feeds
+See the Ruby gem documentation on the project website for configuration guides and reference material, including paginated feeds:
 
-`html2rss` can follow a single `rel="next"` pagination chain when you configure `selectors.items.pagination.max_pages`.
-
-```yaml
-channel:
-  url: https://example.com/news
-
-selectors:
-  items:
-    selector: article
-    pagination:
-      max_pages: 3
-  title:
-    selector: h1
-  url:
-    selector: a
-    extractor: href
-```
-
-Behavior:
-
-- `max_pages` is the total page budget for the item selector chain, including the initial page.
-- Pagination follows strict `link[rel~=next]` or `a[rel~=next]` targets only.
-- Follow-up pages stay on the original origin by default and stop when the shared request budget is exhausted.
-- The same request safeguards apply to pagination and Browserless navigation: timeout limits, redirect limits, response-size guards, and private-network denial.
+- [Selectors reference](https://html2rss.github.io/ruby-gem/reference/selectors/)
 
 ## 🧪 Testing
 
