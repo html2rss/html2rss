@@ -31,15 +31,20 @@ module Html2rss
     # are aligned with the default values.
     # @see https://github.com/browserless/browserless/pkgs/container/chromium
     class BrowserlessStrategy < Strategy
-      # return [Response]
+      ##
+      # Executes a Browserless-backed request with the shared request policy.
+      #
+      # @return [Response] normalized request response
+      # @raise [RequestTimedOut] if the browser session exceeds the configured timeout
       def execute
-        Puppeteer.connect(browser_ws_endpoint:) do |browser|
-          PuppetCommander.new(ctx, browser).call
-        ensure
-          browser.disconnect
-        end
+        validate_request!
+        execute_browserless_request
+      rescue Puppeteer::TimeoutError => error
+        raise RequestTimedOut, error.message
       end
 
+      ##
+      # @return [String] the Browserless websocket endpoint with token query param
       def browser_ws_endpoint
         @browser_ws_endpoint ||= begin
           api_token = ENV.fetch('BROWSERLESS_IO_API_TOKEN', '6R0W53R135510')
@@ -47,6 +52,25 @@ module Html2rss
 
           "#{ws_url}?token=#{api_token}"
         end
+      end
+
+      private
+
+      def validate_request!
+        ctx.budget.consume!
+        ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
+      end
+
+      def execute_browserless_request
+        Puppeteer.connect(browser_ws_endpoint:, protocol_timeout: protocol_timeout_ms) do |browser|
+          PuppetCommander.new(ctx, browser).call
+        ensure
+          browser.disconnect
+        end
+      end
+
+      def protocol_timeout_ms
+        ctx.policy.total_timeout_seconds * 1000
       end
     end
   end
