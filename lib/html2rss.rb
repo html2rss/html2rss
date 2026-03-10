@@ -11,8 +11,6 @@ require 'logger'
 ##
 # The Html2rss namespace.
 module Html2rss
-  MAX_PAGINATION_REQUESTS = 10
-
   ##
   # The logger instance.
   Log = Logger.new($stdout)
@@ -107,18 +105,15 @@ module Html2rss
     end
 
     def request_context_for(config)
-      policy = RequestService::Policy.new(max_requests: max_requests_for(config))
-
       RequestService::Context.new(
         url: config.url,
         headers: config.headers,
-        policy:
+        policy: RequestService::Policy.new(max_requests: requested_pages_for(config))
       )
     end
 
-    def max_requests_for(config)
-      requested_pages = config.selectors&.dig(:items, :pagination, :max_pages) || 1
-      [requested_pages, MAX_PAGINATION_REQUESTS].min
+    def requested_pages_for(config)
+      config.selectors&.dig(:items, :pagination, :max_pages) || 1
     end
 
     def perform_request(request_context, config)

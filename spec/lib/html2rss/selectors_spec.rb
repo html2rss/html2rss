@@ -151,8 +151,13 @@ RSpec.describe Html2rss::Selectors do
       let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 1) }
       let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 1) }
 
-      it 'stops pagination without raising' do
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'stops pagination without raising and logs the stop', :aggregate_failures do
         expect(titles).to eq(%w[article1 article2 article3])
+        expect(Html2rss::Log).to have_received(:warn).with(/Pagination stopped: Request budget exhausted/)
       end
     end
   end

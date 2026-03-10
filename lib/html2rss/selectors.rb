@@ -202,12 +202,13 @@ module Html2rss
 
     def fetch_follow_up_response_or_stop(next_url)
       fetch_follow_up_response(next_url)
-    rescue RequestService::RequestBudgetExceeded
+    rescue RequestService::RequestBudgetExceeded => error
+      Html2rss::Log.warn("Pagination stopped: #{error.message} for #{next_url}")
       nil
     end
 
     def follow_up_allowed?(next_url, visited)
-      next_url && !visited.include?(next_url) && @request_context.budget.remaining.positive?
+      next_url && !visited.include?(next_url)
     end
 
     def validate_pagination_context!
