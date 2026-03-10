@@ -98,8 +98,8 @@ module Html2rss
     #
     # @param item [Nokogiri::XML::Element] The element to extract from.
     # @return [Hash] Hash of attributes for the article.
-    def extract_article(item, _page_response = response)
-      @rss_item_attributes.to_h { |key| [key, select(key, item)] }.compact
+    def extract_article(item, page_response = response)
+      @rss_item_attributes.to_h { |key| [key, select(key, item, base_url: page_response.url)] }.compact
     end
 
     ##
@@ -127,7 +127,7 @@ module Html2rss
     # @param item [Nokogiri::XML::Element] The HTML element to process.
     # @return [Object, Array<Object>] The selected value(s).
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
-    def select(name, item)
+    def select(name, item, base_url: @url)
       name = name.to_sym
 
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
@@ -135,9 +135,9 @@ module Html2rss
       selector_key, config = selector_config_for(name)
 
       if SPECIAL_ATTRIBUTES.member?(selector_key)
-        select_special(selector_key, item:, config:)
+        select_special(selector_key, item:, config:, base_url:)
       else
-        select_regular(selector_key, item:, config:)
+        select_regular(selector_key, item:, config:, base_url:)
       end
     end
 
@@ -255,31 +255,31 @@ module Html2rss
                                             end
     end
 
-    def select_special(name, item:, config:)
+    def select_special(name, item:, config:, base_url:)
       case name
       when :enclosure
-        enclosure(item:, config:)
+        enclosure(item:, config:, base_url:)
       when :guid
-        Array(config).map { |selector_name| select(selector_name, item) }
+        Array(config).map { |selector_name| select(selector_name, item, base_url:) }
       when :categories
-        select_categories(category_selectors: config, item:)
+        select_categories(category_selectors: config, item:, base_url:)
       end
     end
 
-    def select_regular(_name, item:, config:)
-      value = Extractors.get(config.merge(channel: channel_context), item)
+    def select_regular(_name, item:, config:, base_url:)
+      value = Extractors.get(config.merge(channel: channel_context(base_url)), item)
 
       if value && (post_process_steps = config[:post_process])
         steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-        value = post_process(item, value, steps)
+        value = post_process(item, value, steps, base_url:)
       end
 
       value
     end
 
-    def post_process(item, value, post_process_steps)
+    def post_process(item, value, post_process_steps, base_url:)
       post_process_steps.each do |options|
-        context = Context.new(config: { channel: { url: @url, time_zone: @time_zone } },
+        context = Context.new(config: { channel: { url: base_url, time_zone: @time_zone } },
                               item:, scraper: self, options:)
 
         value = PostProcessors.get(options[:name], value, context)
@@ -288,25 +288,27 @@ module Html2rss
       value
     end
 
-    def select_categories(category_selectors:, item:)
+    def select_categories(category_selectors:, item:, base_url:)
       Array(category_selectors).flat_map do |selector_name|
-        extract_category_values(selector_name, item:)
+        extract_category_values(selector_name, item:, base_url:)
       end
     end
 
-    def extract_category_values(selector_name, item:)
+    def extract_category_values(selector_name, item:, base_url:)
       selector_key, config = selector_config_for(selector_name, allow_nil: true)
       return [] unless config
 
       nodes = extract_nodes(item:, config:)
-      return Array(select_regular(selector_key, item:, config:)) unless node_set_with_multiple_elements?(nodes)
+      unless node_set_with_multiple_elements?(nodes)
+        return Array(select_regular(selector_key, item:, config:, base_url:))
+      end
 
-      Array(nodes).flat_map { |node| extract_categories_from_node(node, item:, config:) }
+      Array(nodes).flat_map { |node| extract_categories_from_node(node, item:, config:, base_url:) }
     end
 
-    def extract_categories_from_node(node, item:, config:)
-      values = Extractors.get(category_node_options(config), node)
-      values = apply_post_process_steps(item:, value: values, post_process_steps: config[:post_process])
+    def extract_categories_from_node(node, item:, config:, base_url:)
+      values = Extractors.get(category_node_options(config, base_url:), node)
+      values = apply_post_process_steps(item:, value: values, post_process_steps: config[:post_process], base_url:)
 
       Array(values).filter_map { |category| extract_category_text(category) }
     end
@@ -327,15 +329,15 @@ module Html2rss
       nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
     end
 
-    def category_node_options(selector_config)
-      selector_config.merge(channel: channel_context, selector: nil)
+    def category_node_options(selector_config, base_url:)
+      selector_config.merge(channel: channel_context(base_url), selector: nil)
     end
 
-    def apply_post_process_steps(item:, value:, post_process_steps:)
+    def apply_post_process_steps(item:, value:, post_process_steps:, base_url:)
       return value unless value && post_process_steps
 
       steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-      post_process(item, value, steps)
+      post_process(item, value, steps, base_url:)
     end
 
     def selector_config_for(name, allow_nil: false)
@@ -353,13 +355,13 @@ module Html2rss
       Extractors.element(item, config[:selector])
     end
 
-    def channel_context
-      { url: @url, time_zone: @time_zone }
+    def channel_context(base_url)
+      { url: base_url, time_zone: @time_zone }
     end
 
     # @return [Hash] enclosure details.
-    def enclosure(item:, config:)
-      url = Url.from_relative(select_regular(:enclosure, item:, config:), @url)
+    def enclosure(item:, config:, base_url:)
+      url = Url.from_relative(select_regular(:enclosure, item:, config:, base_url:), base_url)
 
       { url:, type: config[:content_type] }
     end
