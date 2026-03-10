@@ -23,6 +23,103 @@ RSpec.describe Html2rss::Selectors do
     HTML
   end
 
+  describe '#articles with pagination' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    subject(:titles) do
+      described_class.new(
+        response,
+        selectors:,
+        time_zone:,
+        request_context:,
+        strategy: :faraday
+      ).articles.map(&:title)
+    end
+
+    let(:selectors) do
+      {
+        items: { selector: 'article', pagination: { max_pages: 3 } },
+        title: { selector: 'h1' }
+      }
+    end
+    let(:request_context) { Html2rss::RequestService::Context.new(url: 'http://example.com', policy:, budget:) }
+    let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 3) }
+    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 3) }
+    let(:body) do
+      <<~HTML
+        <html>
+          <head><link rel="next" href="/page/2"></head>
+          <body>
+            <article><h1>article1</h1></article>
+            <article><h1>article2</h1></article>
+          </body>
+        </html>
+      HTML
+    end
+
+    before do
+      allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+        ctx.budget.consume!
+        raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+
+        case ctx.url.to_s
+        when 'http://example.com/page/2'
+          Html2rss::RequestService::Response.new(
+            url: ctx.url,
+            headers: { 'content-type' => 'text/html' },
+            body: <<~HTML
+              <html><head><link rel="next" href="/page/3"></head><body><article><h1>article3</h1></article></body></html>
+            HTML
+          )
+        when 'http://example.com/page/3'
+          Html2rss::RequestService::Response.new(
+            url: ctx.url,
+            headers: { 'content-type' => 'text/html' },
+            body: '<html><body><article><h1>article4</h1></article></body></html>'
+          )
+        else
+          raise "Unexpected URL #{ctx.url}"
+        end
+      end
+    end
+
+    it 'follows the next-page chain up to max_pages' do
+      expect(titles).to eq(%w[article1 article2 article3 article4])
+    end
+
+    it 'uses pagination follow-up contexts', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      titles
+
+      expect(Html2rss::RequestService).to have_received(:execute).twice do |ctx, strategy:|
+        expect(ctx.relation).to eq(:pagination)
+        expect(ctx.origin_url.to_s).to eq('http://example.com')
+        expect(strategy).to eq(:faraday)
+      end
+    end
+
+    context 'when the request budget is exhausted' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 1) }
+      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 1) }
+
+      it 'stops pagination without raising' do
+        expect(titles).to eq(%w[article1 article2 article3])
+      end
+    end
+  end
+
+  describe '#initialize with pagination and no request context' do
+    let(:selectors) do
+      {
+        items: { selector: 'article', pagination: { max_pages: 2 } },
+        title: { selector: 'h1' }
+      }
+    end
+
+    it 'raises an argument error' do
+      expect do
+        described_class.new(response, selectors:, time_zone:)
+      end.to raise_error(ArgumentError, 'Pagination requires a request_context')
+    end
+  end
+
   describe '#initialize' do
     it 'raises an error if the URL and link selectors are both present' do
       selectors[:link] = {}

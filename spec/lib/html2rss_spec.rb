@@ -198,6 +198,52 @@ RSpec.describe Html2rss do
       end
     end
 
+    context 'with selectors.items pagination enabled' do
+      subject(:feed) { described_class.feed(config) }
+
+      let(:config) do
+        {
+          strategy: :faraday,
+          channel: { url: 'https://example.com/news', title: 'Example News' },
+          selectors: {
+            items: { selector: 'article', pagination: { max_pages: 3 } },
+            title: { selector: 'h1' }
+          }
+        }
+      end
+
+      before do
+        allow(described_class).to receive(:build_rss_feed).and_call_original
+        allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
+          ctx.budget.consume!
+
+          case ctx.url.to_s
+          when 'https://example.com/news'
+            Html2rss::RequestService::Response.new(
+              body: <<~HTML,
+                <html><head><link rel="next" href="/news?page=2"></head><body><article><h1>page1</h1></article></body></html>
+              HTML
+              url: ctx.url,
+              headers: { 'content-type' => 'text/html' }
+            )
+          when 'https://example.com/news?page=2'
+            Html2rss::RequestService::Response.new(
+              body: '<html><body><article><h1>page2</h1></article></body></html>',
+              url: ctx.url,
+              headers: { 'content-type' => 'text/html' }
+            )
+          else
+            raise "Unexpected URL #{ctx.url}"
+          end
+        end
+      end
+
+      it 'collects items from pagination follow-up pages', :aggregate_failures do
+        expect(feed.items.map(&:title)).to eq(%w[page1 page2])
+        expect(Html2rss::RequestService).to have_received(:execute).twice
+      end
+    end
+
     context 'with config without title selector' do
       subject(:feed) do
         VCR.use_cassette(name) do

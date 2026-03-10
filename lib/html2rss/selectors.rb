@@ -35,16 +35,23 @@ module Html2rss
     # @param response [RequestService::Response] The response object.
     # @param selectors [Hash] A hash of CSS selectors.
     # @param time_zone [String] Time zone string used for date parsing.
-    def initialize(response, selectors:, time_zone:)
+    # @param request_context [RequestService::Context, nil] request context for follow-up page loads
+    # @param strategy [Symbol] request strategy to reuse for follow-up page loads
+    def initialize(
+      response,
+      selectors:,
+      time_zone:,
+      request_context: nil,
+      strategy: RequestService.default_strategy_name
+    )
       @response = response
       @url = response.url
       @selectors = selectors
       @time_zone = time_zone
+      @request_context = request_context
+      @strategy = strategy
 
-      validate_url_and_link_exclusivity!
-      fix_url_and_link!
-      handle_renamed_attributes!
-
+      prepare_selectors!
       @rss_item_attributes = @selectors.keys & Html2rss::RssBuilder::Article::PROVIDED_KEYS
     end
 
@@ -67,12 +74,14 @@ module Html2rss
 
       enhance = enhance?
 
-      parsed_body.css(items_selector).each do |item|
-        article_hash = extract_article(item)
+      each_response do |page_response|
+        parsed_body_for(page_response).css(items_selector).each do |item|
+          article_hash = extract_article(item, page_response)
 
-        enhance_article_hash(article_hash, item) if enhance
+          enhance_article_hash(article_hash, item, page_response.url) if enhance
 
-        yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
+          yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
+        end
       end
     end
 
@@ -89,7 +98,7 @@ module Html2rss
     #
     # @param item [Nokogiri::XML::Element] The element to extract from.
     # @return [Hash] Hash of attributes for the article.
-    def extract_article(item)
+    def extract_article(item, _page_response = response)
       @rss_item_attributes.to_h { |key| [key, select(key, item)] }.compact
     end
 
@@ -100,8 +109,8 @@ module Html2rss
     # @param article_hash [Hash] The original article hash.
     # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
     # @return [Hash] The enhanced article hash.
-    def enhance_article_hash(article_hash, article_tag)
-      extracted = HtmlExtractor.new(article_tag, base_url: @url).call
+    def enhance_article_hash(article_hash, article_tag, base_url = @url)
+      extracted = HtmlExtractor.new(article_tag, base_url:).call
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|
@@ -136,6 +145,74 @@ module Html2rss
 
     attr_reader :response
 
+    def each_response(&)
+      yield response
+
+      return unless paginated?
+
+      follow_up_pages.each(&)
+    end
+
+    def paginated?
+      @selectors.dig(ITEMS_SELECTOR_KEY, :pagination) ? true : false
+    end
+
+    def pagination_max_pages
+      @selectors.dig(ITEMS_SELECTOR_KEY, :pagination, :max_pages) || 1
+    end
+
+    def next_page_url(page_response)
+      href = parsed_body_for(page_response).at_css('link[rel~="next"][href], a[rel~="next"][href]')&.[]('href')
+      return nil if href.nil? || href.empty?
+
+      Html2rss::Url.from_relative(href, page_response.url)
+    end
+
+    def fetch_follow_up_response(next_url)
+      RequestService.execute(
+        @request_context.follow_up(url: next_url, relation: :pagination),
+        strategy: @strategy
+      )
+    end
+
+    def prepare_selectors!
+      validate_url_and_link_exclusivity!
+      fix_url_and_link!
+      handle_renamed_attributes!
+      validate_pagination_context!
+    end
+
+    def follow_up_pages # rubocop:disable Metrics/MethodLength
+      return enum_for(:follow_up_pages) unless block_given?
+
+      visited = Set[response.url]
+      current_response = response
+
+      pagination_max_pages.pred.times do
+        next_url = next_page_url(current_response)
+        break unless next_url && !visited.include?(next_url)
+
+        visited << next_url
+        current_response = fetch_follow_up_response_or_stop(next_url)
+        break unless current_response
+
+        yield current_response
+      end
+    end
+
+    def fetch_follow_up_response_or_stop(next_url)
+      fetch_follow_up_response(next_url)
+    rescue RequestService::RequestBudgetExceeded
+      nil
+    end
+
+    def validate_pagination_context!
+      return unless paginated?
+      return if @request_context
+
+      raise ArgumentError, 'Pagination requires a request_context'
+    end
+
     def validate_url_and_link_exclusivity!
       return unless @selectors.key?(:url) && @selectors.key?(:link)
 
@@ -161,12 +238,17 @@ module Html2rss
     end
 
     def parsed_body
-      @parsed_body ||= if response.json_response?
-                         fragment = ObjectToXmlConverter.new(response.parsed_body).call
-                         Nokogiri::HTML5.fragment(fragment)
-                       else
-                         response.parsed_body
-                       end
+      parsed_body_for(response)
+    end
+
+    def parsed_body_for(page_response)
+      @parsed_bodies ||= {}
+      @parsed_bodies[page_response.url] ||= if page_response.json_response?
+                                              fragment = ObjectToXmlConverter.new(page_response.parsed_body).call
+                                              Nokogiri::HTML5.fragment(fragment)
+                                            else
+                                              page_response.parsed_body
+                                            end
     end
 
     def select_special(name, item:, config:)

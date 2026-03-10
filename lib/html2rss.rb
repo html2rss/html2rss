@@ -88,8 +88,9 @@ module Html2rss
 
     def build_pipeline(raw_config)
       config = Config.from_hash(raw_config, params: raw_config[:params])
-      response = perform_request(config)
-      articles = collect_articles(response, config)
+      request_context = request_context_for(config)
+      response = perform_request(request_context, config)
+      articles = collect_articles(response, config, request_context)
       processed_articles = Articles::Deduplicator.new(articles).call
 
       yield response, config, processed_articles
@@ -103,28 +104,48 @@ module Html2rss
       end
     end
 
-    def perform_request(config)
+    def request_context_for(config)
+      policy = RequestService::Policy.new(max_requests: max_requests_for(config))
+
+      RequestService::Context.new(
+        url: config.url,
+        headers: config.headers,
+        policy:
+      )
+    end
+
+    def max_requests_for(config)
+      config.selectors&.dig(:items, :pagination, :max_pages) || 1
+    end
+
+    def perform_request(request_context, config)
       RequestService.execute(
-        RequestService::Context.new(
-          url: config.url,
-          headers: config.headers
-        ),
+        request_context,
         strategy: config.strategy
       )
     end
 
-    def collect_articles(response, config)
-      [].tap do |articles|
-        if (selectors = config.selectors)
-          selector_service = Selectors.new(response, selectors:, time_zone: config.time_zone)
-          articles.concat(selector_service.articles)
-        end
+    def collect_articles(response, config, request_context)
+      selector_articles(response, config, request_context) +
+        auto_source_articles(response, config)
+    end
 
-        next unless (auto_source = config.auto_source)
+    def selector_articles(response, config, request_context)
+      return [] unless (selectors = config.selectors)
 
-        auto_source_service = AutoSource.new(response, auto_source)
-        articles.concat(auto_source_service.articles)
-      end
+      Selectors.new(
+        response,
+        selectors:,
+        time_zone: config.time_zone,
+        request_context:,
+        strategy: config.strategy
+      ).articles
+    end
+
+    def auto_source_articles(response, config)
+      return [] unless (auto_source = config.auto_source)
+
+      AutoSource.new(response, auto_source).articles
     end
 
     def build_rss_feed(response, config, articles)
