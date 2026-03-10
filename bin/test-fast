@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+specs="$(mktemp)"
+trap 'rm -f "$specs"' EXIT
+
+bin/list-changed-paths 'spec/**/*_spec.rb' >"$specs"
+
+if [ -s "$specs" ]; then
+  xargs -0 mise exec -- bundle exec rspec <"$specs"
+else
+  mise exec -- bundle exec rspec --only-failures
+fi

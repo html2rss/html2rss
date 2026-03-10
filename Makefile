@@ -1,12 +1,21 @@
 # html2rss Development Makefile
 
-.PHONY: help lint-changed test-fast test lint schema validate-fixtures docs quick ready clean
+SHELL_SCRIPTS = \
+	bin/list-changed-paths \
+	bin/lint-changed \
+	bin/test-fast \
+	bin/quick \
+	bin/ready \
+	bin/setup
+
+.PHONY: help lint-changed test-fast test lint shellcheck schema validate-fixtures docs quick ready clean
 
 help: ## Show available commands
 	@echo "Available commands:"
 	@echo "  make quick   - Run the fast local feedback loop"
 	@echo "  make test    - Run tests"
 	@echo "  make lint    - Run linting"
+	@echo "  make shellcheck - Run shellcheck on maintained shell scripts"
 	@echo "  make schema  - Regenerate and verify the config schema"
 	@echo "  make validate-fixtures - Validate fixture configs"
 	@echo "  make docs    - Generate documentation"
@@ -14,36 +23,13 @@ help: ## Show available commands
 	@echo "  make clean   - Clean build artifacts"
 
 lint-changed: ## Run RuboCop only on changed Ruby files
-	@files="$$(mktemp)" ; \
-	{ \
-		git diff --name-only --cached -z -- '*.rb' '*.rake' 'Gemfile' 'Rakefile' 'exe/*' 'spec/*' ; \
-		git diff --name-only -z -- '*.rb' '*.rake' 'Gemfile' 'Rakefile' 'exe/*' 'spec/*' ; \
-		git ls-files -o --exclude-standard -z -- '*.rb' '*.rake' 'Gemfile' 'Rakefile' 'exe/*' 'spec/*' ; \
-	} > "$$files" ; \
-	if [ -s "$$files" ]; then \
-		xargs -0 mise exec -- bundle exec rubocop < "$$files" ; \
-	else \
-		echo "No changed Ruby files to lint"; \
-	fi ; \
-	rm -f "$$files"
+	bin/lint-changed
 
 test-fast: ## Run focused specs for the local feedback loop
-	@specs="$$(mktemp)" ; \
-	{ \
-		git diff --name-only --cached -z -- 'spec/**/*_spec.rb' ; \
-		git diff --name-only -z -- 'spec/**/*_spec.rb' ; \
-		git ls-files -o --exclude-standard -z -- 'spec/**/*_spec.rb' ; \
-	} > "$$specs" ; \
-	if [ -s "$$specs" ]; then \
-		xargs -0 mise exec -- bundle exec rspec < "$$specs" ; \
-	else \
-		mise exec -- bundle exec rspec --only-failures; \
-	fi ; \
-	rm -f "$$specs"
+	bin/test-fast
 
 quick: ## Run the fast local feedback loop
-	$(MAKE) lint-changed
-	$(MAKE) test-fast
+	bin/quick
 
 test: ## Run tests
 	COVERAGE=true mise exec -- bundle exec rspec
@@ -51,6 +37,9 @@ test: ## Run tests
 lint: ## Run linting
 	mise exec -- bundle exec rubocop
 	mise exec -- bundle exec reek
+
+shellcheck: ## Run shellcheck on maintained shell scripts
+	shellcheck $(SHELL_SCRIPTS)
 
 schema: ## Regenerate and verify the config schema
 	mise exec -- bundle exec rake config:schema
@@ -65,7 +54,7 @@ docs: ## Generate documentation
 	mise exec -- bundle exec yard doc
 
 ready: ## Run the local PR readiness checks
-	$(MAKE) -j 5 lint test schema validate-fixtures docs
+	bin/ready
 
 clean: ## Clean build artifacts
 	rm -rf coverage/ doc/ tmp/ html2rss-*.gem .rspec_status
