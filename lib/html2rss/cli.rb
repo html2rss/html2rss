@@ -74,6 +74,11 @@ module Html2rss
     end
 
     desc 'validate YAML_FILE [feed_name]', 'Validate a YAML config with the runtime validator'
+    method_option :params,
+                  type: :hash,
+                  optional: true,
+                  required: false,
+                  default: {}
     ##
     # Validates a YAML config and prints the result.
     #
@@ -81,7 +86,7 @@ module Html2rss
     # @param feed_name [String, nil] optional feed name for multi-feed files
     # @return [void]
     def validate(yaml_file, feed_name = nil)
-      result = Html2rss::Config.validate_yaml(yaml_file, feed_name)
+      result = Html2rss::Config.validate_yaml(yaml_file, feed_name, params: options[:params] || {})
 
       raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
 

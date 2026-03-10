@@ -85,6 +85,7 @@ module Html2rss
           properties[:stylesheets] = Components.stylesheets
           properties[:auto_source] = Components.auto_source
           properties[:selectors] = Components.selectors
+          properties.delete(:dynamic_params_error)
         end
       end
     end
