@@ -1,5 +1,6 @@
 # html2rss Development Makefile
 
+RUBY_RUNNER = $(shell if command -v mise >/dev/null 2>&1; then printf 'mise exec -- '; fi)
 SHELL_SCRIPTS = \
 	bin/list-changed-paths \
 	bin/lint-changed \
@@ -32,26 +33,26 @@ quick: ## Run the fast local feedback loop
 	bin/quick
 
 test: ## Run tests
-	COVERAGE=true mise exec -- bundle exec rspec
+	COVERAGE=true $(RUBY_RUNNER)bundle exec rspec
 
 lint: ## Run linting
-	mise exec -- bundle exec rubocop
-	mise exec -- bundle exec reek
+	$(RUBY_RUNNER)bundle exec rubocop
+	$(RUBY_RUNNER)bundle exec reek
 
 shellcheck: ## Run shellcheck on maintained shell scripts
 	shellcheck $(SHELL_SCRIPTS)
 
 schema: ## Regenerate and verify the config schema
-	mise exec -- bundle exec rake config:schema
+	$(RUBY_RUNNER)bundle exec rake config:schema
 	git diff --exit-code schema/html2rss-config.schema.json
 
 validate-fixtures: ## Validate fixture configs
-	mise exec -- bundle exec exe/html2rss validate spec/fixtures/single.test.yml
-	mise exec -- bundle exec exe/html2rss validate spec/fixtures/feeds.test.yml notitle
-	! mise exec -- bundle exec exe/html2rss validate spec/fixtures/invalid_selectors.test.yml
+	$(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/single.test.yml
+	$(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/feeds.test.yml notitle
+	! $(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/invalid_selectors.test.yml
 
 docs: ## Generate documentation
-	mise exec -- bundle exec yard doc
+	$(RUBY_RUNNER)bundle exec yard doc
 
 ready: ## Run the local PR readiness checks
 	bin/ready
