@@ -145,6 +145,51 @@ RSpec.describe Html2rss::Rendering::DescriptionBuilder do
         expect(iframe['height']).to eq('75vh')
       end
     end
+
+    context 'when enclosure has an unknown MIME type' do
+      subject(:description) do
+        described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
+                            image: nil).call
+      end
+
+      let(:base) { 'Some content' }
+      let(:enclosures) { [instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/file.xyz', type: 'application/x-unknown')] }
+
+      it 'returns the base description without raising' do
+        expect(description).to eq('Some content')
+      end
+    end
+
+    context 'when enclosure has a nil type' do
+      subject(:description) do
+        described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
+                            image: nil).call
+      end
+
+      let(:base) { 'Some content' }
+      let(:enclosures) { [instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/file', type: nil)] }
+
+      it 'returns the base description without raising' do
+        expect(description).to eq('Some content')
+      end
+    end
+
+    context 'when enclosures all have unrenderable types and a fallback image is present' do
+      subject(:doc) do
+        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
+                                   image:).call
+        Nokogiri::HTML.fragment(html)
+      end
+
+      let(:base) { 'Some content' }
+      let(:image) { 'http://example.com/fallback.jpg' }
+      let(:enclosures) { [instance_double(Html2rss::RssBuilder::Enclosure, url: 'http://example.com/file.xyz', type: 'application/x-unknown')] }
+
+      it 'renders the fallback image' do
+        img = doc.at_css('img')
+        expect(img['src']).to eq('http://example.com/fallback.jpg')
+      end
+    end
   end
 
   describe '.remove_pattern_from_start' do

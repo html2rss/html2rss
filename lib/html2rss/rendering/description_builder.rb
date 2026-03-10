@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'cgi'
-
 module Html2rss
   module Rendering
     # Builds a sanitized article description from the base text, title, and optional media.
@@ -64,7 +62,8 @@ module Html2rss
       private
 
       def rendered_media
-        return render_enclosures if @enclosures.any?
+        rendered = render_enclosures
+        return rendered if rendered.any?
         return render_fallback_image if @image
 
         []
