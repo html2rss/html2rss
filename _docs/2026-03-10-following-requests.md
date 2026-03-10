@@ -14,33 +14,38 @@ Provide a security and architecture basis for any feature that performs follow-u
 
 ## Findings
 
-### 1. Critical: the current request layer has no enforceable resource budget
+These findings describe the pre-mitigation baseline that motivated the request-governance work.
+`Policy`, `Budget`, `ResponseGuard`, and the updated request strategies now address much of this
+surface; the notes below record the original design risks and the remaining architectural direction.
+
+### 1. Critical (pre-mitigation baseline): the request layer had no enforceable resource budget
 
 All three features build on an unbounded fetch primitive.
 
-`FaradayStrategy` performs a full GET with redirect-following and no explicit timeout, redirect cap, byte cap, or request budget:
+`FaradayStrategy` originally performed a full GET with redirect-following and no explicit timeout,
+redirect cap, byte cap, or request budget:
 
-- [lib/html2rss/request_service/faraday_strategy.rb](/Users/gil/versioned/html2rss/html2rss/lib/html2rss/request_service/faraday_strategy.rb#L14)
+- `lib/html2rss/request_service/faraday_strategy.rb`
 
-`PuppetCommander` similarly has no html2rss-owned wall-clock budget beyond Puppeteer defaults:
+`PuppetCommander` similarly had no html2rss-owned wall-clock budget beyond Puppeteer defaults:
 
-- [lib/html2rss/request_service/puppet_commander.rb](/Users/gil/versioned/html2rss/html2rss/lib/html2rss/request_service/puppet_commander.rb#L23)
+- `lib/html2rss/request_service/puppet_commander.rb`
 
-`Response` then fully materializes and parses remote bodies in memory:
+`Response` then fully materialized and parsed remote bodies in memory:
 
-- [lib/html2rss/request_service/response.rb](/Users/gil/versioned/html2rss/html2rss/lib/html2rss/request_service/response.rb#L39)
+- `lib/html2rss/request_service/response.rb`
 
-This is the common DoS root cause.
+This was the common DoS root cause.
 
-### 2. High: follow-up requests are not constrained by origin or network policy
+### 2. High (pre-mitigation baseline): follow-up requests were not constrained by origin or network policy
 
-`Context` only carries `url` and headers:
+`Context` originally only carried `url` and headers:
 
-- [lib/html2rss/request_service/context.rb](/Users/gil/versioned/html2rss/html2rss/lib/html2rss/request_service/context.rb#L12)
+- `lib/html2rss/request_service/context.rb`
 
 `Url` validation only protects the top-level channel URL shape, not where redirects or discovered links may go:
 
-- [lib/html2rss/url.rb](/Users/gil/versioned/html2rss/html2rss/lib/html2rss/url.rb#L74)
+- `lib/html2rss/url.rb`
 
 For PR `#301` and the planned WordPress API scraper, this means a page can point html2rss at a different host entirely. For WordPress specifically, trusting `<link rel="https://api.w.org/">` without a same-origin policy is an SSRF and amplification footgun.
 
@@ -50,7 +55,7 @@ A config can drive arbitrarily large `timeout_ms`, `max_clicks`, and `iterations
 
 Also, the named `wait_for_network_idle` is implemented as sleep, not actual network-idle detection, so users may overprovision it.
 
-### 4. Medium: PR `#301` improves pagination behavior, but its broad fallback selector creates unnecessary fan-out
+### 4. Medium (superseded by current implementation): PR `#301` improved pagination behavior, but its broad fallback selector created unnecessary fan-out
 
 `max_pages` limits fetch count, but not candidate breadth or queue growth, and the fallback `.pagination a[href]` makes traversal less deterministic than a strict `rel=next` or single “next” link strategy.
 
@@ -60,7 +65,7 @@ The WordPress API feature should avoid this pattern entirely and follow a single
 
 A structured JSON array is easier to parse semantically, but it still arrives as a full response body and is fully `JSON.parse`d today:
 
-- [lib/html2rss/request_service/response.rb](/Users/gil/versioned/html2rss/html2rss/lib/html2rss/request_service/response.rb#L45)
+- `lib/html2rss/request_service/response.rb`
 
 `per_page=100` plus content/excerpt/media fields is large enough to matter, especially if paginated follow-up is enabled.
 

@@ -242,6 +242,42 @@ RSpec.describe Html2rss do
         expect(feed.items.map(&:title)).to eq(%w[page1 page2])
         expect(Html2rss::RequestService).to have_received(:execute).twice
       end
+
+      context 'when max_pages exceeds the system pagination ceiling' do
+        let(:config) do
+          {
+            strategy: :faraday,
+            channel: { url: 'https://example.com/news', title: 'Example News' },
+            selectors: {
+              items: { selector: 'article', pagination: { max_pages: 20 } },
+              title: { selector: 'h1' }
+            }
+          }
+        end
+
+        before do
+          allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
+            ctx.budget.consume!
+
+            page_number = ctx.url.query.to_s[/((?:^|&)page=)(\d+)/, 2] || '1'
+            next_page = page_number.to_i + 1
+            next_link = next_page <= 20 ? %(<link rel="next" href="/news?page=#{next_page}">) : ''
+
+            Html2rss::RequestService::Response.new(
+              body: "<html><head>#{next_link}</head><body><article><h1>page#{page_number}</h1></article></body></html>",
+              url: ctx.url,
+              headers: { 'content-type' => 'text/html' }
+            )
+          end
+        end
+
+        it 'caps follow-up requests at the system budget ceiling', :aggregate_failures do
+          expect(feed.items.map(&:title)).to eq(
+            %w[page1 page2 page3 page4 page5 page6 page7 page8 page9 page10]
+          )
+          expect(Html2rss::RequestService).to have_received(:execute).exactly(Html2rss::MAX_PAGINATION_REQUESTS).times
+        end
+      end
     end
 
     context 'with config without title selector' do

@@ -190,7 +190,7 @@ module Html2rss
 
       pagination_max_pages.pred.times do
         next_url = next_page_url(current_response)
-        break unless next_url && !visited.include?(next_url)
+        break unless follow_up_allowed?(next_url, visited)
 
         visited << next_url
         current_response = fetch_follow_up_response_or_stop(next_url)
@@ -204,6 +204,10 @@ module Html2rss
       fetch_follow_up_response(next_url)
     rescue RequestService::RequestBudgetExceeded
       nil
+    end
+
+    def follow_up_allowed?(next_url, visited)
+      next_url && !visited.include?(next_url) && @request_context.budget.remaining.positive?
     end
 
     def validate_pagination_context!
