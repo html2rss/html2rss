@@ -63,7 +63,9 @@ Keep logic anchored to the correct stage. For example, default headers or strate
 ## Operating Checklist
 
 - Keep methods small and focused.
-- Run `bundle exec rubocop` and `bundle exec reek` locally.
+- Use `make quick` during implementation for the fast local feedback loop. It should stay focused on changed-file linting and targeted specs.
+- Treat `make ready` as the implementation quality gate before handoff or a potential PR merge. It must cover the repo's required merge checks.
+- Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Exercise all core flows with tests.
 - Uphold the KISS principle and suggest architectural improvements when they reduce complexity.
 
@@ -79,7 +81,7 @@ Keep logic anchored to the correct stage. For example, default headers or strate
 ## Workflow
 
 1. Study existing patterns before you modify or extend them.
-2. Implement changes while running `rubocop` and `reek` frequently.
-3. Verify with `COVERAGE=true bundle exec rspec` before committing.
-4. Commit only after lint and test suites pass.
+2. Implement changes while running `make quick` frequently.
+3. Verify with `make ready` before committing or handing work back for review.
+4. Commit only after the `make ready` quality gate passes, unless you are explicitly handing off a known-red state.
 5. Write commit messages using the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard so history stays machine-readable.
