@@ -99,7 +99,6 @@ RSpec.describe Html2rss::RequestService::Policy do
         expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /example.com/)
       end
     end
-
     context 'when private networks are allowed' do
       let(:options) { { allow_private_networks: true } }
       let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }

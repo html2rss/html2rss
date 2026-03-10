@@ -97,7 +97,7 @@ module Html2rss
       # @return [Policy] a default, frozen policy instance
       # rubocop:disable Layout/ClassStructure
       def self.default
-        DEFAULT_POLICY
+        new
       end
       # rubocop:enable Layout/ClassStructure
 
@@ -185,7 +185,7 @@ module Html2rss
       def enforce_public_network!(url)
         host = url.host
         return if allow_private_networks?
-        return unless blocked_host?(host) || blocked_resolved_address?(host)
+        return unless blocked_host?(host) || resolved_ip_addresses(host).any? { |address| blocked_ip?(address) }
 
         raise PrivateNetworkDenied, "Private network target denied for #{url}"
       end
@@ -194,31 +194,31 @@ module Html2rss
         LOCAL_HOSTS.include?(host.to_s.downcase)
       end
 
-      def blocked_resolved_address?(host)
+      def resolved_ip_addresses(host)
         literal = parse_ip(host)
-        return blocked_ip?(literal) if literal
+        return [literal] if literal
 
         if resolver.respond_to?(:each_address)
-          blocked_address_from_each_address?(host)
+          addresses_from_each_address(host)
         else
-          blocked_address_from_getaddrinfo?(host)
+          addresses_from_getaddrinfo(host)
         end
       rescue Resolv::ResolvError, SocketError, SystemCallError
-        false
+        []
       end
 
-      def blocked_address_from_each_address?(host)
-        resolver.each_address(host) do |address|
-          parsed = parse_ip(address)
-          return true if parsed && blocked_ip?(parsed)
+      def addresses_from_each_address(host)
+        [].tap do |addresses|
+          resolver.each_address(host) do |address|
+            parsed = parse_ip(address)
+            addresses << parsed if parsed
+          end
         end
-
-        false
       end
 
-      def blocked_address_from_getaddrinfo?(host)
-        resolver.getaddrinfo(host, nil).any? do |entry|
-          (parsed = parse_ip(entry[3])) && blocked_ip?(parsed)
+      def addresses_from_getaddrinfo(host)
+        resolver.getaddrinfo(host, nil).filter_map do |entry|
+          parse_ip(entry[3])
         end
       end
 
