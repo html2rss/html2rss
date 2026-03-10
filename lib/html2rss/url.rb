@@ -123,6 +123,7 @@ module Html2rss
     def to_s = @uri.to_s
     def scheme = @uri.scheme
     def host = @uri.host
+    def port = @uri.port
     def path = @uri.path
     def query = @uri.query
     def fragment = @uri.fragment

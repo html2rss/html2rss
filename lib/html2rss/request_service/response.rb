@@ -9,6 +9,7 @@ module Html2rss
     class Response
       ##
       # @param body [String] the body of the response
+      # @param url [Html2rss::Url] the final request URL
       # @param headers [Hash] the headers of the response
       def initialize(body:, url:, headers: {})
         @body = body

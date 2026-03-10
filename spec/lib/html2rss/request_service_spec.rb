@@ -3,10 +3,23 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService do
-  specify(:aggregate_failures) do
-    expect(described_class::UnknownStrategy).to be < Html2rss::Error
-    expect(described_class::InvalidUrl).to be < Html2rss::Error
-    expect(described_class::UnsupportedUrlScheme).to be < Html2rss::Error
+  let(:error_types) do
+    [
+      described_class::UnknownStrategy,
+      described_class::InvalidUrl,
+      described_class::UnsupportedUrlScheme,
+      described_class::RequestBudgetExceeded,
+      described_class::PrivateNetworkDenied,
+      described_class::CrossOriginFollowUpDenied,
+      described_class::ResponseTooLarge,
+      described_class::RequestTimedOut
+    ]
+  end
+
+  describe 'error types' do
+    specify(:aggregate_failures) do
+      expect(error_types).to all(be < Html2rss::Error)
+    end
   end
 
   describe '.default_strategy_name' do
