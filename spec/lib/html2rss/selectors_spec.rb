@@ -95,6 +95,58 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
+    context 'when paginated pages expose relative item links' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      subject(:urls) do
+        described_class.new(
+          response,
+          selectors: selectors.merge(url: { selector: 'a', extractor: 'href' }),
+          time_zone:,
+          request_context:,
+          strategy: :faraday
+        ).articles.map { |article| article.url.to_s }
+      end
+
+      let(:body) do
+        <<~HTML
+          <html>
+            <head><link rel="next" href="/page/2"></head>
+            <body>
+              <article><h1>article1</h1><a href="article1">Read</a></article>
+            </body>
+          </html>
+        HTML
+      end
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+
+          case ctx.url.to_s
+          when 'http://example.com/page/2'
+            Html2rss::RequestService::Response.new(
+              url: ctx.url,
+              headers: { 'content-type' => 'text/html' },
+              body: <<~HTML
+                <html><body><article><h1>article2</h1><a href="article2">Read</a></article></body></html>
+              HTML
+            )
+          else
+            raise "Unexpected URL #{ctx.url}"
+          end
+        end
+      end
+
+      it 'resolves item links against the current page url' do # rubocop:disable RSpec/ExampleLength
+        expect(urls).to eq(
+          [
+            'http://example.com/article1',
+            'http://example.com/page/article2'
+          ]
+        )
+      end
+    end
+
     context 'when the request budget is exhausted' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 1) }
       let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 1) }
