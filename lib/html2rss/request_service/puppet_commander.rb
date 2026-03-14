@@ -91,23 +91,21 @@ module Html2rss
       end
 
       def handle_request(request)
-        validate_navigation_request!(request) if request.navigation_request?
+        validate_request!(request)
 
         skip_request_resources.member?(request.resource_type) ? request.abort : request.continue
       rescue Html2rss::Error => error
-        @navigation_error ||= error
+        store_navigation_error(error, navigation_request: request.navigation_request?)
         request.abort
       end
 
       def handle_response(response)
-        return unless response.request.navigation_request?
-
-        validate_navigation_response!(response)
+        validate_response!(response)
       rescue Html2rss::Error => error
-        @navigation_error ||= error
+        store_navigation_error(error, navigation_request: response.request.navigation_request?)
       end
 
-      def validate_navigation_request!(request)
+      def validate_request!(request)
         validate_navigation_redirect_chain!(request)
         validate_navigation_target!(request)
       end
@@ -126,6 +124,10 @@ module Html2rss
       def validate_navigation_response!(navigation_response)
         final_url = response_url(navigation_response, ctx.url)
         ctx.policy.validate_remote_ip!(ip: remote_ip(navigation_response), url: final_url)
+      end
+
+      def validate_response!(response)
+        validate_navigation_response!(response)
       end
 
       def response_url(navigation_response, fallback_url)
@@ -153,6 +155,12 @@ module Html2rss
 
       def validate_navigation_target!(request)
         ctx.policy.validate_request!(url: request_url(request), origin_url: ctx.origin_url, relation: ctx.relation)
+      end
+
+      def store_navigation_error(error, navigation_request:)
+        return unless navigation_request
+
+        @navigation_error = error if @navigation_error.nil?
       end
     end
   end

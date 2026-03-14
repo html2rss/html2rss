@@ -136,6 +136,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       asset_request = instance_double(
         Puppeteer::HTTPRequest,
         navigation_request?: false,
+        url: 'https://example.com/image.png',
+        redirect_chain: [],
         resource_type: 'image'
       )
       allow(asset_request).to receive(:abort)
@@ -143,7 +145,36 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       event_handlers.fetch('request').call(asset_request)
 
       expect(asset_request).to have_received(:abort)
-      expect(policy).not_to have_received(:validate_request!)
+      expect(policy).to have_received(:validate_request!).with(
+        url: Html2rss::Url.from_relative('https://example.com/image.png', 'https://example.com/image.png'),
+        origin_url: ctx.origin_url,
+        relation: :initial
+      )
+    end
+
+    it 'aborts denied non-navigation requests without continuing them', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      asset_request = instance_double(
+        Puppeteer::HTTPRequest,
+        navigation_request?: false,
+        url: 'https://127.0.0.1/private',
+        redirect_chain: [],
+        resource_type: 'fetch'
+      )
+      error = Html2rss::RequestService::PrivateNetworkDenied.new('blocked')
+
+      allow(asset_request).to receive(:continue)
+      allow(asset_request).to receive(:abort)
+      allow(policy).to receive(:validate_request!).and_raise(error)
+
+      event_handlers.fetch('request').call(asset_request)
+
+      expect(policy).to have_received(:validate_request!).with(
+        url: Html2rss::Url.from_relative('https://127.0.0.1/private', 'https://127.0.0.1/private'),
+        origin_url: ctx.origin_url,
+        relation: :initial
+      )
+      expect(asset_request).to have_received(:abort)
+      expect(asset_request).not_to have_received(:continue)
     end
 
     it 'raises stored navigation policy errors from goto', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
