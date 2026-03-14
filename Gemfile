@@ -10,6 +10,7 @@ gemspec
 group :development, :test do
   gem 'byebug'
   gem 'rake', require: false
+  gem 'redcarpet', require: false
   gem 'yard', require: false
 
   gem 'reek', require: false

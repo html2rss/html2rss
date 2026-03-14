@@ -115,27 +115,6 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       expect(request).to have_received(:continue)
     end
 
-    it 'validates non-navigation requests before continuing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      background_request = instance_double(
-        Puppeteer::HTTPRequest,
-        navigation_request?: false,
-        resource_type: 'fetch',
-        url: 'https://api.example.com/articles',
-        redirect_chain: []
-      )
-      allow(background_request).to receive(:continue)
-      allow(background_request).to receive(:abort)
-
-      event_handlers.fetch('request').call(background_request)
-
-      expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_relative('https://api.example.com/articles', 'https://api.example.com/articles'),
-        origin_url: ctx.origin_url,
-        relation: :initial
-      )
-      expect(background_request).to have_received(:continue)
-    end
-
     it 'validates redirect hops from the request chain' do # rubocop:disable RSpec/ExampleLength
       redirect_request = instance_double(Puppeteer::HTTPRequest, url: 'https://example.com/redirect')
       allow(request).to receive_messages(
@@ -153,24 +132,49 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       )
     end
 
-    it 'validates skipped resources before aborting them', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'aborts skipped resources without validating navigation policy', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       asset_request = instance_double(
         Puppeteer::HTTPRequest,
         navigation_request?: false,
-        resource_type: 'image',
-        url: 'https://cdn.example.com/logo.png',
-        redirect_chain: []
+        url: 'https://example.com/image.png',
+        redirect_chain: [],
+        resource_type: 'image'
       )
       allow(asset_request).to receive(:abort)
 
       event_handlers.fetch('request').call(asset_request)
 
+      expect(asset_request).to have_received(:abort)
       expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_relative('https://cdn.example.com/logo.png', 'https://cdn.example.com/logo.png'),
+        url: Html2rss::Url.from_relative('https://example.com/image.png', 'https://example.com/image.png'),
+        origin_url: ctx.origin_url,
+        relation: :initial
+      )
+    end
+
+    it 'aborts denied non-navigation requests without continuing them', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      asset_request = instance_double(
+        Puppeteer::HTTPRequest,
+        navigation_request?: false,
+        url: 'https://127.0.0.1/private',
+        redirect_chain: [],
+        resource_type: 'fetch'
+      )
+      error = Html2rss::RequestService::PrivateNetworkDenied.new('blocked')
+
+      allow(asset_request).to receive(:continue)
+      allow(asset_request).to receive(:abort)
+      allow(policy).to receive(:validate_request!).and_raise(error)
+
+      event_handlers.fetch('request').call(asset_request)
+
+      expect(policy).to have_received(:validate_request!).with(
+        url: Html2rss::Url.from_relative('https://127.0.0.1/private', 'https://127.0.0.1/private'),
         origin_url: ctx.origin_url,
         relation: :initial
       )
       expect(asset_request).to have_received(:abort)
+      expect(asset_request).not_to have_received(:continue)
     end
 
     it 'raises stored navigation policy errors from goto', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

@@ -8,7 +8,7 @@ module Html2rss
       # It uses [Kernel#format](https://ruby-doc.org/core/Kernel.html#method-i-format)
       #
       # It supports the format pattern `%<key>s` and `%{key}`, where `key` is the key of the selector.
-      # If `%{self}` is used, the selectors extracted value will be used.
+      # If ``%{self}`` is used, the selectors extracted value will be used.
       #
       # Imagine this HTML:
       #
@@ -29,7 +29,7 @@ module Html2rss
       #        selector: h1
       #        post_process:
       #          name: template
-      #          string: '%{self}s (%{price})'
+      #          string: '`%{self}s (%{price})`'
       #
       # Would return:
       #    'Product (23,42€)'
