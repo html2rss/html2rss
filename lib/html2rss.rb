@@ -88,9 +88,9 @@ module Html2rss
 
     def build_pipeline(raw_config)
       config = Config.from_hash(raw_config, params: raw_config[:params])
-      request_context = request_context_for(config)
-      response = perform_request(request_context, config)
-      articles = collect_articles(response, config, request_context)
+      request_session = request_session_for(config)
+      response = request_session.fetch_initial_response
+      articles = collect_articles(response, config, request_session)
       processed_articles = Articles::Deduplicator.new(articles).call
 
       yield response, config, processed_articles
@@ -104,11 +104,14 @@ module Html2rss
       end
     end
 
-    def request_context_for(config)
-      RequestService::Context.new(
-        url: config.url,
-        headers: config.headers,
-        policy: RequestService::Policy.new(max_requests: requested_pages_for(config))
+    def request_session_for(config)
+      RequestSession.new(
+        context: RequestService::Context.new(
+          url: config.url,
+          headers: config.headers,
+          policy: RequestService::Policy.new(max_requests: requested_pages_for(config))
+        ),
+        strategy: config.strategy
       )
     end
 
@@ -116,28 +119,28 @@ module Html2rss
       config.selectors&.dig(:items, :pagination, :max_pages) || 1
     end
 
-    def perform_request(request_context, config)
-      RequestService.execute(
-        request_context,
-        strategy: config.strategy
-      )
-    end
-
-    def collect_articles(response, config, request_context)
-      selector_articles(response, config, request_context) +
+    def collect_articles(response, config, request_session)
+      selector_articles(response, config, request_session) +
         auto_source_articles(response, config)
     end
 
-    def selector_articles(response, config, request_context)
+    def selector_articles(response, config, request_session)
       return [] unless (selectors = config.selectors)
 
-      Selectors.new(
-        response,
-        selectors:,
-        time_zone: config.time_zone,
-        request_context:,
-        strategy: config.strategy
-      ).articles
+      selector_responses(response, selectors, request_session).flat_map do |page_response|
+        Selectors.new(page_response, selectors:, time_zone: config.time_zone).articles
+      end
+    end
+
+    def selector_responses(initial_response, selectors, request_session)
+      max_pages = selectors.dig(:items, :pagination, :max_pages) || 1
+      return [initial_response] if max_pages == 1
+
+      RequestSession::RelNextPager.new(
+        session: request_session,
+        initial_response:,
+        max_pages:
+      ).to_a
     end
 
     def auto_source_articles(response, config)

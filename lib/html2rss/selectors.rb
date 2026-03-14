@@ -35,21 +35,11 @@ module Html2rss
     # @param response [RequestService::Response] The response object.
     # @param selectors [Hash] A hash of CSS selectors.
     # @param time_zone [String] Time zone string used for date parsing.
-    # @param request_context [RequestService::Context, nil] request context for follow-up page loads
-    # @param strategy [Symbol] request strategy to reuse for follow-up page loads
-    def initialize(
-      response,
-      selectors:,
-      time_zone:,
-      request_context: nil,
-      strategy: RequestService.default_strategy_name
-    )
+    def initialize(response, selectors:, time_zone:)
       @response = response
       @url = response.url
       @selectors = selectors
       @time_zone = time_zone
-      @request_context = request_context
-      @strategy = strategy
 
       prepare_selectors!
       @rss_item_attributes = @selectors.keys & Html2rss::RssBuilder::Article::PROVIDED_KEYS
@@ -74,14 +64,12 @@ module Html2rss
 
       enhance = enhance?
 
-      each_response do |page_response|
-        parsed_body_for(page_response).css(items_selector).each do |item|
-          article_hash = extract_article(item, page_response)
+      parsed_body.css(items_selector).each do |item|
+        article_hash = extract_article(item, response)
 
-          enhance_article_hash(article_hash, item, page_response.url) if enhance
+        enhance_article_hash(article_hash, item, response.url) if enhance
 
-          yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
-        end
+        yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
       end
     end
 
@@ -145,77 +133,10 @@ module Html2rss
 
     attr_reader :response
 
-    def each_response(&)
-      yield response
-
-      return unless paginated?
-
-      follow_up_pages.each(&)
-    end
-
-    def paginated?
-      @selectors.dig(ITEMS_SELECTOR_KEY, :pagination) ? true : false
-    end
-
-    def pagination_max_pages
-      @selectors.dig(ITEMS_SELECTOR_KEY, :pagination, :max_pages) || 1
-    end
-
-    def next_page_url(page_response)
-      href = parsed_body_for(page_response).at_css('link[rel~="next"][href], a[rel~="next"][href]')&.[]('href')
-      return nil if href.nil? || href.empty?
-
-      Html2rss::Url.from_relative(href, page_response.url)
-    end
-
-    def fetch_follow_up_response(next_url)
-      RequestService.execute(
-        @request_context.follow_up(url: next_url, relation: :pagination),
-        strategy: @strategy
-      )
-    end
-
     def prepare_selectors!
       validate_url_and_link_exclusivity!
       fix_url_and_link!
       handle_renamed_attributes!
-      validate_pagination_context!
-    end
-
-    def follow_up_pages # rubocop:disable Metrics/MethodLength
-      return enum_for(:follow_up_pages) unless block_given?
-
-      visited = Set[response.url]
-      current_response = response
-
-      pagination_max_pages.pred.times do
-        next_url = next_page_url(current_response)
-        break unless follow_up_allowed?(next_url, visited)
-
-        visited << next_url
-        current_response = fetch_follow_up_response_or_stop(next_url)
-        break unless current_response
-
-        yield current_response
-      end
-    end
-
-    def fetch_follow_up_response_or_stop(next_url)
-      fetch_follow_up_response(next_url)
-    rescue RequestService::RequestBudgetExceeded => error
-      Html2rss::Log.warn("#{self.class}: pagination stopped at #{next_url} - #{error.message}")
-      nil
-    end
-
-    def follow_up_allowed?(next_url, visited)
-      next_url && !visited.include?(next_url)
-    end
-
-    def validate_pagination_context!
-      return unless paginated?
-      return if @request_context
-
-      raise ArgumentError, 'Pagination requires a request_context'
     end
 
     def validate_url_and_link_exclusivity!

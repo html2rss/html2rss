@@ -9,10 +9,11 @@ module Html2rss
       ##
       # @param url [String, Html2rss::Url] the URL to request
       # @param headers [Hash] HTTP request headers
-      # @param relation [Symbol] why this request is being made
-      # @param origin_url [String, Html2rss::Url, nil] the originating URL for same-origin checks
-      # @param policy [Policy] runtime request policy
-      # @param budget [Budget] shared request budget for the feed build
+      # @param request_options [Hash] runtime request options
+      # @option request_options [Symbol] :relation why this request is being made
+      # @option request_options [String, Html2rss::Url, nil] :origin_url originating URL for same-origin checks
+      # @option request_options [Policy] :policy runtime request policy
+      # @option request_options [Budget] :budget shared request budget for the feed build
       # @raise [ArgumentError] if policy or budget is explicitly nil
       def initialize(url:, headers: {}, **request_options)
         @url = Html2rss::Url.from_relative(url, url)
@@ -43,8 +44,9 @@ module Html2rss
       #
       # @param url [String, Html2rss::Url] the follow-up URL
       # @param relation [Symbol] why the follow-up is being made
+      # @param origin_url [String, Html2rss::Url] effective origin for same-origin checks
       # @return [Context] derived request context
-      def follow_up(url:, relation:)
+      def follow_up(url:, relation:, origin_url: self.origin_url)
         self.class.new(
           url:,
           headers:,

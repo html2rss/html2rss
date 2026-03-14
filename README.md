@@ -92,8 +92,9 @@ selectors:
 Behavior:
 
 - `max_pages` is the total page budget for the item selector chain, including the initial page.
+- `max_pages` is capped by the system request ceiling of 10 pages per feed build.
 - Pagination follows strict `link[rel~=next]` or `a[rel~=next]` targets only.
-- Follow-up pages stay on the original origin by default and stop when the shared request budget is exhausted.
+- Follow-up pages use the current page's effective origin after redirects and stop when the shared request budget is exhausted.
 - The same request safeguards apply to pagination and Browserless navigation: timeout limits, redirect limits, response-size guards, and private-network denial.
 
 ## 🧪 Testing

@@ -1,0 +1,82 @@
+# frozen_string_literal: true
+
+module Html2rss
+  ##
+  # Coordinates multi-request feed builds on top of RequestService.
+  class RequestSession
+    ##
+    # @param context [RequestService::Context] initial request context
+    # @param strategy [Symbol] request strategy to use for all requests in the session
+    # @param logger [Logger] logger used for operational warnings
+    def initialize(context:, strategy:, logger: Html2rss::Log)
+      @context = context
+      @strategy = strategy
+      @logger = logger
+      @visited_urls = Set.new
+    end
+
+    ##
+    # Executes the initial request for the session.
+    #
+    # @return [RequestService::Response] initial response
+    def fetch_initial_response
+      execute(context).tap { |response| remember!(response.url) }
+    end
+
+    ##
+    # Executes a follow-up request sharing policy, headers, and budget.
+    #
+    # @param url [String, Html2rss::Url] follow-up request url
+    # @param relation [Symbol] why the follow-up is being made
+    # @param origin_url [String, Html2rss::Url] effective origin for same-origin checks
+    # @return [RequestService::Response] follow-up response
+    def follow_up(url:, relation:, origin_url:)
+      execute(context.follow_up(url:, relation:, origin_url:)).tap { |response| remember!(response.url) }
+    end
+
+    ##
+    # Returns the effective page budget after applying the policy ceiling.
+    #
+    # @param requested_pages [Integer] configured page budget
+    # @return [Integer] effective page budget for the session
+    def effective_page_budget(requested_pages)
+      effective_pages = [requested_pages, context.policy.max_requests].min
+      return effective_pages if effective_pages == requested_pages
+
+      logger.warn(
+        "#{self.class}: pagination max_pages=#{requested_pages} " \
+        "exceeds system ceiling=#{context.policy.max_requests}; " \
+        "clamping to #{effective_pages}"
+      )
+      effective_pages
+    end
+
+    ##
+    # @param url [String, Html2rss::Url] url to query
+    # @return [Boolean] whether the url was already visited in this session
+    def visited?(url)
+      visited_urls.include?(normalize_url(url))
+    end
+
+    ##
+    # Records a visited url in the session.
+    #
+    # @param url [String, Html2rss::Url] url to track
+    # @return [Set<Html2rss::Url>] visited urls
+    def remember!(url)
+      visited_urls.add(normalize_url(url))
+    end
+
+    private
+
+    attr_reader :context, :strategy, :logger, :visited_urls
+
+    def execute(request_context)
+      RequestService.execute(request_context, strategy:)
+    end
+
+    def normalize_url(url)
+      Html2rss::Url.from_relative(url, url)
+    end
+  end
+end

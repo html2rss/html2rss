@@ -243,6 +243,46 @@ RSpec.describe Html2rss do
         expect(Html2rss::RequestService).to have_received(:execute).twice
       end
 
+      context 'when the initial request redirects to a different host' do
+        before do
+          allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
+            ctx.budget.consume!
+
+            case ctx.url.to_s
+            when 'https://example.com/news'
+              Html2rss::RequestService::Response.new(
+                body: <<~HTML,
+                  <html><head><link rel="next" href="/news?page=2"></head><body><article><h1>page1</h1></article></body></html>
+                HTML
+                url: Html2rss::Url.from_relative('https://redirected.example.com/news',
+                                                 'https://redirected.example.com/news'),
+                headers: { 'content-type' => 'text/html' }
+              )
+            when 'https://redirected.example.com/news?page=2'
+              Html2rss::RequestService::Response.new(
+                body: '<html><body><article><h1>page2</h1></article></body></html>',
+                url: ctx.url,
+                headers: { 'content-type' => 'text/html' }
+              )
+            else
+              raise "Unexpected URL #{ctx.url}"
+            end
+          end
+        end
+
+        it 'uses the redirected page as the origin for rel-next follow-ups', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+          expect(feed.items.map(&:title)).to eq(%w[page1 page2])
+          expect(Html2rss::RequestService).to have_received(:execute).with(
+            satisfy do |ctx|
+              ctx.url.to_s == 'https://redirected.example.com/news?page=2' &&
+                ctx.origin_url.to_s == 'https://redirected.example.com/news' &&
+                ctx.relation == :pagination
+            end,
+            strategy: :faraday
+          )
+        end
+      end
+
       context 'when max_pages exceeds the system pagination ceiling' do
         let(:config) do
           {
@@ -271,13 +311,18 @@ RSpec.describe Html2rss do
           end
         end
 
-        it 'caps follow-up requests at the system budget ceiling', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        it 'caps total pages at the system budget ceiling and logs the clamp', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+          allow(Html2rss::Log).to receive(:warn)
+
           expect(feed.items.map(&:title)).to eq(
             %w[page1 page2 page3 page4 page5 page6 page7 page8 page9 page10]
           )
           expect(Html2rss::RequestService).to have_received(:execute).exactly(
-            Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING + 1
+            Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING
           ).times
+          expect(Html2rss::Log).to have_received(:warn).with(
+            /Html2rss::RequestSession: pagination max_pages=20 exceeds system ceiling=10; clamping to 10/
+          )
         end
       end
     end
