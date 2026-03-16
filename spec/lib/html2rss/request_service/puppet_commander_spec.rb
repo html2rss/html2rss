@@ -24,6 +24,15 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
   end
   let(:browser) { instance_double(Puppeteer::Browser, new_page: page) }
   let(:page) { instance_double(Puppeteer::Page) }
+  let(:unsafe_headers) do
+    {
+      'Host' => 'example.com',
+      'Connection' => 'keep-alive',
+      'Content-Length' => '123',
+      'Transfer-Encoding' => 'chunked',
+      'User-Agent' => 'RSpec'
+    }
+  end
   let(:request) do
     instance_double(
       Puppeteer::HTTPRequest,
@@ -86,13 +95,6 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
     end
 
     it 'strips transport headers that Chromium rejects' do
-      unsafe_headers = {
-        'Host' => 'example.com',
-        'Connection' => 'keep-alive',
-        'Content-Length' => '123',
-        'Transfer-Encoding' => 'chunked',
-        'User-Agent' => 'RSpec'
-      }
       allow(ctx).to receive(:headers).and_return(unsafe_headers)
 
       puppet_commander.new_page

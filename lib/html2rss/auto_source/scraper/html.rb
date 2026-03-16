@@ -76,14 +76,7 @@ module Html2rss
         # @return [Set<String>] The set of XPath selectors
         def selectors
           @selectors ||= Hash.new(0).tap do |selectors|
-            traversal_root&.traverse do |node|
-              next if !node.element? || node.name != 'a' || String(node['href']).empty?
-
-              path = self.class.simplify_xpath(node.path)
-              next if path.match?(TAGS_TO_IGNORE)
-
-              selectors[path] += 1
-            end
+            each_relevant_anchor { |node| increment_selector_count(selectors, node) }
           end
         end
 
@@ -102,6 +95,23 @@ module Html2rss
         def anchor_count(node)
           @anchor_counts ||= {}
           @anchor_counts[node.path] ||= node.name == 'a' ? 1 : node.css('a').size
+        end
+
+        def each_relevant_anchor
+          return enum_for(:each_relevant_anchor) unless block_given?
+
+          traversal_root&.traverse do |node|
+            yield node if relevant_anchor?(node)
+          end
+        end
+
+        def relevant_anchor?(node)
+          node.element? && node.name == 'a' && !String(node['href']).empty?
+        end
+
+        def increment_selector_count(selectors, node)
+          path = self.class.simplify_xpath(node.path)
+          selectors[path] += 1 unless path.match?(TAGS_TO_IGNORE)
         end
 
         def traversal_root
