@@ -131,11 +131,11 @@ module Html2rss
       end
 
       def parameter_defaults(config)
-        config.fetch(:parameters, {}).each_with_object({}) do |(name, definition), defaults|
-          next unless definition.is_a?(Hash) && definition.key?(:default)
-
-          defaults[name] = definition[:default]
-        end
+        config.fetch(:parameters, {})
+              .filter_map do |name, definition|
+                [name, definition[:default]] if definition.is_a?(Hash) && definition.key?(:default)
+              end
+              .to_h
       end
 
       def prepare_for_validation(config)
