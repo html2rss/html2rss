@@ -62,14 +62,8 @@ module Html2rss
             trimmed = text.to_s.strip
             return if trimmed.empty?
 
-            GLOBAL_ASSIGNMENT_PATTERNS.each do |pattern|
-              next unless trimmed.match?(pattern)
-
-              payload = trimmed.sub(pattern, '')
-              return extract_assignment_payload(payload)
-            end
-
-            nil
+            pattern = GLOBAL_ASSIGNMENT_PATTERNS.find { trimmed.match?(_1) }
+            extract_assignment_payload(trimmed.sub(pattern, '')) if pattern
           end
 
           def extract_assignment_payload(text)

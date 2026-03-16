@@ -21,9 +21,7 @@ module Html2rss
           def supported_roots(parsed_body)
             return [] unless parsed_body
 
-            parsed_body.css(ITEM_SELECTOR).each_with_object([]) do |node, roots|
-              roots << node if supported_root?(node)
-            end
+            parsed_body.css(ITEM_SELECTOR).select { supported_root?(_1) }
           end
 
           def supported_root?(node)
@@ -35,9 +33,9 @@ module Html2rss
           end
 
           def normalized_types(itemtype)
-            itemtype.to_s.split.each_with_object([]) do |value, types|
+            itemtype.to_s.split.filter_map do |value|
               type = value.split('/').last.to_s.split('#').last.to_s
-              types << type unless type.empty?
+              type unless type.empty?
             end
           end
 
@@ -100,8 +98,8 @@ module Html2rss
           module_function
 
           def call(root)
-            direct_properties(root).each_with_object({}) do |node, properties|
-              append_properties!(properties, node)
+            {}.tap do |properties|
+              direct_properties(root).each { append_properties!(properties, _1) }
             end
           end
 
@@ -115,9 +113,7 @@ module Html2rss
           end
 
           def direct_properties(root)
-            root.css('[itemprop]').each_with_object([]) do |node, properties|
-              properties << node if direct_property?(root, node)
-            end
+            root.css('[itemprop]').select { direct_property?(root, _1) }
           end
 
           def direct_property?(root, node)
@@ -127,9 +123,9 @@ module Html2rss
           end
 
           def property_names(node)
-            node['itemprop'].to_s.split.each_with_object([]) do |name, names|
+            node['itemprop'].to_s.split.filter_map do |name|
               stripped = name.strip
-              names << stripped unless stripped.empty?
+              stripped unless stripped.empty?
             end
           end
 
@@ -226,17 +222,16 @@ module Html2rss
           def normalize_about(value)
             candidate = unwrap(value)
             items = candidate.is_a?(Array) ? candidate : [candidate]
-            values = items.each_with_object([]) { |item, result| append_about_item(result, item) }
+            values = items.filter_map { normalize_about_item(_1) }
             values unless values.empty?
           end
 
-          def append_about_item(result, item)
+          def normalize_about_item(item)
             case item
             when Hash
               name = item[:name]
-              result << { name: name.to_s } if name
-            when String
-              result << item
+              { name: name.to_s } if name
+            when String then item
             end
           end
 
@@ -251,19 +246,12 @@ module Html2rss
           end
 
           def array_value(*values)
-            result = values.each_with_object([]) do |value, items|
-              items.concat(string_values(Array(unwrap(value))))
-            end
-
-            result.uniq!
+            result = values.flat_map { string_values(Array(unwrap(_1))) }.uniq
             result unless result.empty?
           end
 
           def string_values(values)
-            values.each_with_object([]) do |value, items|
-              string = stringify(value)
-              items << string if string
-            end
+            values.filter_map { stringify(_1) }
           end
 
           def first_string(*values)

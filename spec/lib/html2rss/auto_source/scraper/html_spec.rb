@@ -192,7 +192,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
 
     it 'returns true for body and html tags', :aggregate_failures do
-      body_node = parsed_body.at_css('body')
+      body_node = parsed_body.at_css('html > body, body')
       html_node = parsed_body.at_css('html')
       expect(scraper).to be_article_tag_condition(body_node)
       expect(scraper).to be_article_tag_condition(html_node)
