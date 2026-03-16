@@ -5,6 +5,8 @@ module Html2rss
     ##
     # Commands the Puppeteer Browser to the website and builds the Response.
     class PuppetCommander # rubocop:disable Metrics/ClassLength
+      BROWSER_UNSAFE_HEADERS = %w[host connection content-length transfer-encoding].to_set.freeze
+
       # @param ctx [Context]
       # @param browser [Puppeteer::Browser]
       # @param skip_request_resources [Set<String>] the resource types not to request
@@ -46,7 +48,7 @@ module Html2rss
       # @param page [Puppeteer::Page]
       # @return [void]
       def configure_page(page)
-        page.extra_http_headers = ctx.headers
+        page.extra_http_headers = browser_headers
         page.default_navigation_timeout = navigation_timeout_ms
         page.default_timeout = navigation_timeout_ms
       end
@@ -88,6 +90,10 @@ module Html2rss
 
       def navigation_timeout_ms
         ctx.policy.total_timeout_seconds * 1000
+      end
+
+      def browser_headers
+        ctx.headers.reject { |key, _| BROWSER_UNSAFE_HEADERS.include?(key.to_s.downcase) }
       end
 
       def handle_request(request)

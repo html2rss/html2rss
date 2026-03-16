@@ -85,6 +85,21 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       expect(page).to have_received(:extra_http_headers=).with(ctx.headers)
     end
 
+    it 'strips transport headers that Chromium rejects' do
+      unsafe_headers = {
+        'Host' => 'example.com',
+        'Connection' => 'keep-alive',
+        'Content-Length' => '123',
+        'Transfer-Encoding' => 'chunked',
+        'User-Agent' => 'RSpec'
+      }
+      allow(ctx).to receive(:headers).and_return(unsafe_headers)
+
+      puppet_commander.new_page
+
+      expect(page).to have_received(:extra_http_headers=).with('User-Agent' => 'RSpec')
+    end
+
     it 'sets page timeouts from the request policy', :aggregate_failures do
       puppet_commander.new_page
 

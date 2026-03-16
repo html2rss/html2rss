@@ -43,6 +43,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     subject(:articles?) { described_class.articles?(parsed_body) }
 
     it { is_expected.to be_truthy }
+
+    context 'when parsed_body is empty' do
+      let(:parsed_body) { Nokogiri::HTML('') }
+
+      it { is_expected.to be(false) }
+    end
   end
 
   describe '#each' do
@@ -126,6 +132,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       it 'contains the second_article' do
         expect(articles.to_a[-1]).to include(second_article)
+      end
+    end
+
+    context 'when parsed_body is empty' do
+      let(:parsed_body) { Nokogiri::HTML('') }
+
+      it 'does not yield articles' do
+        expect(articles.to_a).to eq([])
       end
     end
   end

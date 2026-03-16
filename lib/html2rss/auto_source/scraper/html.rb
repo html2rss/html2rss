@@ -80,7 +80,7 @@ module Html2rss
         # @return [Set<String>] The set of XPath selectors
         def selectors
           @selectors ||= Hash.new(0).tap do |selectors|
-            @parsed_body.at_css('body').traverse do |node|
+            traversal_root&.traverse do |node|
               next if !node.element? || node.name != 'a' || String(node['href']).empty?
 
               path = self.class.simplify_xpath(node.path)
@@ -97,13 +97,15 @@ module Html2rss
         def filtered_selectors
           selectors.keys.sort_by { |key| selectors[key] }
                    .last(use_top_selectors)
-                   .filter_map do |key|
-                     selectors[key] >= minimum_selector_frequency ? key : nil
-          end
+                   .select { |key| selectors[key] >= minimum_selector_frequency }
         end
 
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
         def use_top_selectors = @opts[:use_top_selectors] || DEFAULT_USE_TOP_SELECTORS
+
+        def traversal_root
+          parsed_body.at_css('body, html') || parsed_body.root
+        end
       end
     end
   end
