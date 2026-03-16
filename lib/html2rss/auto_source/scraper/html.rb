@@ -63,14 +63,10 @@ module Html2rss
         def article_tag_condition?(node)
           # Ignore tags that are below a tag which is in TAGS_TO_IGNORE.
           return false if node.path.match?(TAGS_TO_IGNORE)
-
           return true if %w[body html].include?(node.name)
+          return false unless (parent = node.parent)
 
-          count_of_anchors_below = node.name == 'a' ? 1 : node.css('a').size
-
-          return true if node.parent.css('a').size > count_of_anchors_below
-
-          false
+          anchor_count(parent) > anchor_count(node)
         end
 
         private
@@ -95,13 +91,18 @@ module Html2rss
         # Filter the frequent selectors by the minimum_selector_frequency and use_top_selectors.
         # @return [Array<String>] The filtered selectors
         def filtered_selectors
-          selectors.keys.sort_by { |key| selectors[key] }
-                   .last(use_top_selectors)
-                   .select { |key| selectors[key] >= minimum_selector_frequency }
+          selectors.select { |_selector, count| count >= minimum_selector_frequency }
+                   .max_by(use_top_selectors, &:last)
+                   .map(&:first)
         end
 
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
         def use_top_selectors = @opts[:use_top_selectors] || DEFAULT_USE_TOP_SELECTORS
+
+        def anchor_count(node)
+          @anchor_counts ||= {}
+          @anchor_counts[node.path] ||= node.name == 'a' ? 1 : node.css('a').size
+        end
 
         def traversal_root
           parsed_body.at_css('body, html') || parsed_body.root
