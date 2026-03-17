@@ -23,6 +23,22 @@ RSpec.describe Html2rss::Selectors::Config do
 
       it { expect { result }.to raise_error(/must be one of: reverse/) }
     end
+
+    context 'with pagination max_pages' do
+      let(:config) do
+        { items: { selector: '.article', pagination: { max_pages: 3 } } }
+      end
+
+      it { is_expected.to be_success }
+    end
+
+    context 'with invalid pagination max_pages' do
+      let(:config) do
+        { items: { selector: '.article', pagination: { max_pages: 0 } } }
+      end
+
+      it { expect { result }.to raise_error(/must be greater than 0/) }
+    end
   end
 
   describe 'Selector' do

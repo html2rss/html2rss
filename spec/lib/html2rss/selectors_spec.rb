@@ -58,6 +58,14 @@ RSpec.describe Html2rss::Selectors do
         expect(titles).to eq(%w[article2 article1])
       end
     end
+
+    context 'when selectors include pagination metadata' do
+      before { selectors[:items][:pagination] = { max_pages: 3 } }
+
+      it 'still extracts only from the current response' do
+        expect(titles).to eq(%w[article1 article2])
+      end
+    end
   end
 
   describe '#each' do
@@ -103,6 +111,25 @@ RSpec.describe Html2rss::Selectors do
           title: 'Test string',
           description: "<body>\n  <main>\n    <h1>article1</h1>\n    <script>alert('');</script>\n  </main>\n</body>"
         )
+      end
+    end
+
+    context 'when the page exposes relative item links' do
+      let(:selectors) do
+        {
+          items: { selector: 'article' },
+          title: { selector: 'h1' },
+          url: { selector: 'a', extractor: 'href' }
+        }
+      end
+      let(:body) do
+        <<~HTML
+          <html><body><article><h1>article1</h1><a href="article1">Read</a></article></body></html>
+        HTML
+      end
+
+      it 'resolves item links against the current page url' do
+        expect(instance.articles.map { |article| article.url.to_s }).to eq(['http://example.com/article1'])
       end
     end
   end
