@@ -29,12 +29,9 @@ module Html2rss
       def call
         seen = Set.new
 
-        articles.each_with_object([]) do |article, deduplicated|
-          fingerprint = deduplication_fingerprint_for(article)
-          fingerprint ||= article.hash
-          next unless seen.add?(fingerprint)
-
-          deduplicated << article
+        articles.filter do |article|
+          fingerprint = deduplication_fingerprint_for(article) || article.hash
+          seen.add?(fingerprint)
         end
       end
 

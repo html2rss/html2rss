@@ -43,6 +43,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     subject(:articles?) { described_class.articles?(parsed_body) }
 
     it { is_expected.to be_truthy }
+
+    context 'when parsed_body is empty' do
+      let(:parsed_body) { Nokogiri::HTML('') }
+
+      it { is_expected.to be(false) }
+    end
   end
 
   describe '#each' do
@@ -128,6 +134,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         expect(articles.to_a[-1]).to include(second_article)
       end
     end
+
+    context 'when parsed_body is empty' do
+      let(:parsed_body) { Nokogiri::HTML('') }
+
+      it 'does not yield articles' do
+        expect(articles.to_a).to eq([])
+      end
+    end
   end
 
   describe '.simplify_xpath' do
@@ -178,7 +192,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
 
     it 'returns true for body and html tags', :aggregate_failures do
-      body_node = parsed_body.at_css('body')
+      body_node = parsed_body.at_css('html > body, body')
       html_node = parsed_body.at_css('html')
       expect(scraper).to be_article_tag_condition(body_node)
       expect(scraper).to be_article_tag_condition(html_node)
