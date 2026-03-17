@@ -9,7 +9,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
   let(:response) { build_response(body:, headers:, url:) }
   let(:body) { '' }
   let(:headers) { default_headers }
-  let(:url) { Html2rss::Url.from_relative('https://example.com', 'https://example.com') }
+  let(:url) { Html2rss::Url.from_absolute('https://example.com') }
 
   # Test factories and shared data
   def build_response(body:, headers:, url:)
@@ -138,7 +138,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
       let(:body) { '<head></head>' }
 
       it 'generates a default description' do
-        expect(instance.description).to eq 'Latest items from https://example.com'
+        expect(instance.description).to eq 'Latest items from https://example.com/'
       end
     end
 

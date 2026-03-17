@@ -83,7 +83,7 @@ RSpec.describe 'Multi-Language Site Configuration' do
 
   it 'applies the configured channel metadata', :aggregate_failures do
     expect(feed.channel.title).to eq('ACME Multi-Language Site News')
-    expect(feed.channel.link).to eq('https://example.com')
+    expect(feed.channel.link).to eq('https://example.com/')
     expect(feed.channel.language).to eq('en')
   end
 

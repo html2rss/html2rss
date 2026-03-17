@@ -74,7 +74,7 @@ module ExampleHelpers
 
   def stub_request_service(fixture_path, url, content_type)
     body = File.read(fixture_path)
-    response_url = Html2rss::Url.from_relative(url, url)
+    response_url = Html2rss::Url.from_absolute(url)
 
     allow(Html2rss::RequestService).to receive(:execute).and_return(
       Html2rss::RequestService::Response.new(

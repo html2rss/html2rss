@@ -22,15 +22,14 @@ RSpec.describe Html2rss::RequestSession::RelNextPager do
           <body><article><h1>page1</h1></article></body>
         </html>
       HTML
-      url: Html2rss::Url.from_relative('https://redirected.example.com/news', 'https://redirected.example.com/news'),
+      url: Html2rss::Url.from_absolute('https://redirected.example.com/news'),
       headers: { 'content-type' => 'text/html' }
     )
   end
   let(:follow_up_response) do
     Html2rss::RequestService::Response.new(
       body: '<html><body><article><h1>page2</h1></article></body></html>',
-      url: Html2rss::Url.from_relative('https://redirected.example.com/news?page=2',
-                                       'https://redirected.example.com/news?page=2'),
+      url: Html2rss::Url.from_absolute('https://redirected.example.com/news?page=2'),
       headers: { 'content-type' => 'text/html' }
     )
   end

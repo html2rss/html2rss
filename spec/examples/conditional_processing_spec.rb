@@ -86,7 +86,7 @@ RSpec.describe 'Conditional Processing Configuration' do
 
   it 'publishes the configured channel metadata', :aggregate_failures do
     expect(feed.channel.title).to eq('ACME Conditional Processing Site News')
-    expect(feed.channel.link).to eq('https://example.com')
+    expect(feed.channel.link).to eq('https://example.com/')
   end
 
   it 'renders templated descriptions that expose the item status' do

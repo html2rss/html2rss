@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService::Response do
-  subject(:instance) { described_class.new(body:, headers:, url: Html2rss::Url.from_relative('https://example.com', 'https://example.com')) }
+  subject(:instance) { described_class.new(body:, headers:, url: Html2rss::Url.from_absolute('https://example.com')) }
 
   describe '#headers' do
     subject(:returned_headers) { instance.headers }
@@ -70,7 +70,7 @@ RSpec.describe Html2rss::RequestService::Response do
     let(:headers) { {} }
 
     it 'returns the request URL' do
-      expect(instance.url.to_s).to eq('https://example.com')
+      expect(instance.url.to_s).to eq('https://example.com/')
     end
   end
 end

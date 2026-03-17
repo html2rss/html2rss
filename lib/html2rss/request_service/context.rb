@@ -16,7 +16,7 @@ module Html2rss
       # @option request_options [Budget] :budget shared request budget for the feed build
       # @raise [ArgumentError] if policy or budget is explicitly nil
       def initialize(url:, headers: {}, **request_options)
-        @url = Html2rss::Url.from_relative(url, url)
+        @url = Html2rss::Url.from_absolute(url)
         @headers = headers
         assign_request_options(request_options)
       end
@@ -71,7 +71,7 @@ module Html2rss
 
       def normalized_origin_url(origin_url)
         source = origin_url || @url
-        Html2rss::Url.from_relative(source, source)
+        Html2rss::Url.from_absolute(source)
       end
     end
   end

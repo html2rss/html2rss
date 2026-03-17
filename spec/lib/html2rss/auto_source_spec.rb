@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource do
   subject(:auto_source) { described_class.new(response, config) }
 
   let(:config) { described_class::DEFAULT_CONFIG }
-  let(:url) { Html2rss::Url.from_relative('https://example.com', 'https://example.com') }
+  let(:url) { Html2rss::Url.from_absolute('https://example.com') }
   let(:headers) { { 'content-type': 'text/html' } }
   let(:response) { Html2rss::RequestService::Response.new(body:, headers:, url:) }
   let(:body) do
@@ -89,7 +89,7 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       it 'sanitizes the article url' do
-        expected_url = Html2rss::Url.from_relative('https://example.com/article1', 'https://example.com')
+        expected_url = Html2rss::Url.from_absolute('https://example.com/article1')
         expect(article.url).to eq(expected_url)
       end
     end

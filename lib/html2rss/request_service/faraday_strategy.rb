@@ -65,7 +65,7 @@ module Html2rss
       def response_url(response)
         return ctx.url unless (url = response.env&.url)
 
-        Html2rss::Url.from_relative(url.to_s, url.to_s)
+        Html2rss::Url.from_absolute(url.to_s)
       end
 
       def redirect_callback
@@ -77,7 +77,7 @@ module Html2rss
       end
 
       def normalize_url(url)
-        Html2rss::Url.from_relative(url.to_s, url.to_s)
+        Html2rss::Url.from_absolute(url.to_s)
       end
     end
   end

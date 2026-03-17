@@ -16,13 +16,13 @@ RSpec.describe Html2rss::RequestService::Context do
 
       it 'creates a valid context', :aggregate_failures do
         expect(instance.url).to be_a(Html2rss::Url)
-        expect(instance.url.to_s).to eq('http://www.example.com')
+        expect(instance.url.to_s).to eq('http://www.example.com/')
         expect(instance.headers).to eq({})
       end
     end
 
     context 'with a valid URL (Html2rss::Url)' do
-      let(:url) { Html2rss::Url.from_relative('http://example.com', 'http://example.com') }
+      let(:url) { Html2rss::Url.from_absolute('http://example.com') }
 
       it 'does not raise an error' do
         expect { instance }.not_to raise_error
@@ -30,7 +30,7 @@ RSpec.describe Html2rss::RequestService::Context do
 
       it 'creates a valid context', :aggregate_failures do
         expect(instance.url).to be_a(Html2rss::Url)
-        expect(instance.url.to_s).to eq('http://example.com')
+        expect(instance.url.to_s).to eq(url.to_s)
       end
     end
 
