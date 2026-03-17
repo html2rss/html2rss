@@ -62,7 +62,7 @@ RSpec.describe Html2rss::AutoSource do
       expected_articles = [
         have_attributes(
           scraper: Html2rss::AutoSource::Scraper::WordpressApi,
-          id: '42',
+          id: '/2024/04/wordpress-api-post/',
           title: 'WordPress API post',
           description: '<p>Full content from the API.</p>',
           url: Html2rss::Url.from_absolute('https://example.com/2024/04/wordpress-api-post/'),
@@ -71,7 +71,7 @@ RSpec.describe Html2rss::AutoSource do
         ),
         have_attributes(
           scraper: Html2rss::AutoSource::Scraper::WordpressApi,
-          id: '43',
+          id: '/2024/04/excerpt-only-post/',
           title: 'Excerpt only post',
           description: '<p>Excerpt fallback content.</p>',
           url: Html2rss::Url.from_absolute('https://example.com/2024/04/excerpt-only-post/'),
@@ -81,6 +81,10 @@ RSpec.describe Html2rss::AutoSource do
       ]
 
       expect(articles).to match_array(expected_articles)
+    end
+
+    it 'aligns WordPress article ids with canonical paths for cross-scraper deduplication' do
+      expect(articles.map(&:id)).to eq(['/2024/04/wordpress-api-post/', '/2024/04/excerpt-only-post/'])
     end
   end
 end

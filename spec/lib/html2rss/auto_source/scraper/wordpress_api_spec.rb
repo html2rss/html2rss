@@ -50,7 +50,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
     it 'normalises API posts into article hashes' do # rubocop:disable RSpec/ExampleLength
       expected_articles = [
         match(
-          id: '42',
+          id: '/2024/04/wordpress-api-post/',
           title: 'WordPress API post',
           description: '<p>Full content from the API.</p>',
           url: Html2rss::Url.from_absolute('https://example.com/2024/04/wordpress-api-post/'),
@@ -58,7 +58,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
           categories: match_array(%w[7 9])
         ),
         match(
-          id: '43',
+          id: '/2024/04/excerpt-only-post/',
           title: 'Excerpt only post',
           description: '<p>Excerpt fallback content.</p>',
           url: Html2rss::Url.from_absolute('https://example.com/2024/04/excerpt-only-post/'),
@@ -74,11 +74,70 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       expect(articles).to all(include(:id, :title, :description, :url, :published_at, :categories))
     end
 
+    it 'uses the canonical article path as the article id' do
+      expect(articles.map { _1[:id] }).to eq(['/2024/04/wordpress-api-post/', '/2024/04/excerpt-only-post/'])
+    end
+
     context 'when the request session is unavailable' do
       let(:request_session) { nil }
 
       it 'returns no articles' do
         expect(articles).to eq([])
+      end
+    end
+
+    context 'when the api link href is blank' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<html><head><link rel="https://api.w.org/" href="" /></head></html>')
+      end
+
+      it 'returns no articles without attempting a follow-up request' do
+        expect(articles).to eq([])
+        expect(request_session).not_to have_received(:follow_up)
+      end
+    end
+
+    context 'when the api link href is invalid' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<html><head><link rel="https://api.w.org/" href="://bad url" /></head></html>')
+      end
+
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'returns no articles and logs a warning', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(request_session).not_to have_received(:follow_up)
+        expect(Html2rss::Log).to have_received(:warn).with(/WordPress API/)
+      end
+    end
+
+    context 'when the advertised api root uses rest_route query params' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="https://api.w.org/" href="https://example.com/index.php?rest_route=/" />' \
+          '</head></html>'
+        )
+      end
+      let(:api_response) do
+        Html2rss::RequestService::Response.new(
+          body: '[]',
+          url: Html2rss::Url.from_absolute(
+            'https://example.com/index.php?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories&per_page=100&rest_route=%2Fwp%2Fv2%2Fposts'
+          ),
+          headers: { 'content-type' => 'application/json' }
+        )
+      end
+
+      it 'preserves the query-style api root when requesting posts' do # rubocop:disable RSpec/ExampleLength
+        articles
+        expect(request_session).to have_received(:follow_up).with(
+          url: api_response.url,
+          relation: :auto_source,
+          origin_url: url
+        )
       end
     end
   end

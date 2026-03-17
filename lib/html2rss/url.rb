@@ -133,6 +133,25 @@ module Html2rss
     def absolute? = @uri.absolute?
 
     ##
+    # Returns the URL query string as a hash of string keys and values.
+    #
+    # @return [Hash{String => String}] normalized query parameters
+    def query_values
+      @uri.query_values(Hash) || {}
+    end
+
+    ##
+    # Returns a copy of the URL with the provided query values.
+    #
+    # @param values [Hash{String, Symbol => #to_s}] query parameters to assign
+    # @return [Url] a new URL with the updated query string
+    def with_query_values(values)
+      uri = @uri.dup
+      uri.query_values = values.transform_keys(&:to_s).transform_values(&:to_s)
+      self.class.from_absolute(uri.normalize.to_s)
+    end
+
+    ##
     # Returns a titleized representation of the URL path.
     # Converts the path to a human-readable title by cleaning and capitalizing words.
     # Removes file extensions and special characters, then capitalizes each word.

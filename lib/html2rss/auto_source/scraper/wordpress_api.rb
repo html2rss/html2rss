@@ -59,9 +59,10 @@ module Html2rss
 
         def posts_response
           return unless request_session
+          return unless (resolved_posts_url = posts_url)
 
           request_session.follow_up(
-            url: posts_url,
+            url: resolved_posts_url,
             relation: :auto_source,
             origin_url: url
           )
@@ -73,7 +74,11 @@ module Html2rss
         def posts_url
           return unless (api_root = api_root_url)
 
-          Html2rss::Url.from_relative(POSTS_PATH, api_root)
+          if api_root.query.to_s.include?('rest_route=')
+            query_root_posts_url(api_root)
+          else
+            Html2rss::Url.from_relative(POSTS_PATH, api_root)
+          end
         end
 
         def api_root_url
@@ -99,8 +104,8 @@ module Html2rss
           absolute_link(post[:link])
         end
 
-        def article_id(post, article_url)
-          post[:id]&.to_s || article_url.to_s
+        def article_id(_post, article_url)
+          string(article_url.path) || string(article_url.query) || article_url.to_s
         end
 
         def article_title(post)
@@ -151,6 +156,25 @@ module Html2rss
         def string(value)
           text = value.to_s.strip
           text unless text.empty?
+        end
+
+        def query_root_posts_url(api_root)
+          query = api_root.query_values
+          route = normalized_rest_route(query.fetch('rest_route', '/'))
+          api_root.with_query_values(
+            query.merge(
+              'rest_route' => "#{route}/wp/v2/posts",
+              '_fields' => POSTS_FIELDS.join(','),
+              'per_page' => '100'
+            )
+          )
+        end
+
+        def normalized_rest_route(route)
+          value = route.to_s
+          value = '/' if value.empty?
+          value = "/#{value}" unless value.start_with?('/')
+          value.sub(%r{/+\z}, '')
         end
       end
     end

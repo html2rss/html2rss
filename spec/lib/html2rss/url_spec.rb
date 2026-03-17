@@ -81,6 +81,37 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#query_values' do
+    it 'returns parsed query values as a string-keyed hash' do
+      url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F&per_page=100')
+
+      expect(url.query_values).to eq('rest_route' => '/', 'per_page' => '100')
+    end
+
+    it 'returns an empty hash when the url has no query string' do
+      url = described_class.from_absolute('https://example.com/index.php')
+
+      expect(url.query_values).to eq({})
+    end
+  end
+
+  describe '#with_query_values' do
+    it 'returns a new url with the provided query values' do
+      url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F')
+
+      expect(url.with_query_values(rest_route: '/wp/v2/posts', per_page: '100').to_s)
+        .to eq('https://example.com/index.php?per_page=100&rest_route=/wp/v2/posts')
+    end
+
+    it 'does not mutate the original url' do
+      url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F')
+
+      url.with_query_values(rest_route: '/wp/v2/posts')
+
+      expect(url.to_s).to eq('https://example.com/index.php?rest_route=/')
+    end
+  end
+
   describe 'delegation' do
     let(:url) { described_class.from_relative('/path', 'https://example.com') }
 
