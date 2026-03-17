@@ -66,7 +66,7 @@ module Html2rss
             elsif ItemList::SUPPORTED_TYPES.member?(type)
               ItemList
             else
-              Log.debug("Schema#scraper_for_schema_object: Unsupported schema object @type: #{type}")
+              Log.debug("#{name}: unsupported schema object @type=#{type.inspect}")
               nil
             end
           end
@@ -76,7 +76,7 @@ module Html2rss
           def parse_script_tag(script_tag)
             JSON.parse(script_tag.text, symbolize_names: true)
           rescue JSON::ParserError => error
-            Log.warn('Schema#schema_objects: Failed to parse JSON', error: error.message)
+            Log.warn("#{name}: failed to parse JSON", error: error.message)
             []
           end
         end

@@ -85,7 +85,7 @@ module Html2rss
     def articles
       @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound => error
-      Log.warn "No auto source scraper found for URL: #{url}. Skipping auto source. (#{error.message})"
+      Log.warn "#{self.class}: no scraper matched #{url} (#{error.message})"
       []
     end
 

@@ -105,7 +105,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'logs a warning and returns an empty array', :aggregate_failures do
         expect(articles).to eq([])
         expect(Html2rss::Log).to have_received(:warn)
-          .with(/No auto source scraper found for URL: #{Regexp.escape(url.to_s)}/)
+          .with("#{described_class}: no scraper matched #{url} (no scrapers)")
       end
     end
 
