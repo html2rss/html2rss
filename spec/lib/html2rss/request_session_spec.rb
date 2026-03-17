@@ -22,7 +22,7 @@ RSpec.describe Html2rss::RequestSession do
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
-        url: Html2rss::Url.from_relative('https://example.com/news', 'https://example.com/news'),
+        url: Html2rss::Url.from_absolute('https://example.com/news'),
         headers: { 'content-type' => 'text/html' }
       )
     end
@@ -41,8 +41,7 @@ RSpec.describe Html2rss::RequestSession do
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
-        url: Html2rss::Url.from_relative('https://redirected.example.com/news?page=2',
-                                         'https://redirected.example.com/news?page=2'),
+        url: Html2rss::Url.from_absolute('https://redirected.example.com/news?page=2'),
         headers: { 'content-type' => 'text/html' }
       )
     end

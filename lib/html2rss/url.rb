@@ -59,6 +59,23 @@ module Html2rss
     end
 
     ##
+    # Creates a URL from an already-absolute URL string.
+    #
+    # @param url_string [String, Html2rss::Url] the absolute URL to parse
+    # @return [Url] the parsed and normalized URL
+    # @raise [ArgumentError] if the URL is not absolute or cannot be parsed
+    def self.from_absolute(url_string)
+      return url_string if url_string.is_a?(self)
+
+      url = new(Addressable::URI.parse(url_string.to_s.strip).normalize)
+      raise ArgumentError, 'URL must be absolute' unless url.absolute?
+
+      url
+    rescue Addressable::URI::InvalidURIError
+      raise ArgumentError, 'URL must be absolute'
+    end
+
+    ##
     # Creates a URL for channel use with validation.
     # Validates that the URL meets channel requirements (absolute, no @, supported schemes).
     #
@@ -77,23 +94,9 @@ module Html2rss
       stripped = url_string.strip
       return nil if stripped.empty?
 
-      url = parse_and_normalize_url(stripped)
+      url = from_absolute(stripped)
       validate_channel_url(url)
       url
-    end
-
-    ##
-    # Parses and normalizes a URL string.
-    #
-    # @param url_string [String] the URL string to parse
-    # @return [Url] the parsed and normalized URL
-    # @raise [ArgumentError] if the URL cannot be parsed
-    def self.parse_and_normalize_url(url_string)
-      # Parse and normalize the URL directly since we expect absolute URLs
-      # Using from_relative with same parameter is confusing - this is clearer
-      new(Addressable::URI.parse(url_string).normalize)
-    rescue Addressable::URI::InvalidURIError
-      raise ArgumentError, 'URL must be absolute'
     end
 
     ##
@@ -110,7 +113,7 @@ module Html2rss
       raise ArgumentError, "URL scheme '#{scheme}' is not supported" unless SUPPORTED_SCHEMES.include?(scheme)
     end
 
-    private_class_method :parse_and_normalize_url, :validate_channel_url
+    private_class_method :validate_channel_url
 
     ##
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
@@ -136,10 +139,10 @@ module Html2rss
     #
     # @return [String] the titleized path, or empty string if path is empty
     # @example Basic titleization
-    #   url = Url.from_string('https://example.com/foo-bar/baz.txt')
+    #   url = Url.from_absolute('https://example.com/foo-bar/baz.txt')
     #   url.titleized # => "Foo Bar Baz"
     # @example With URL encoding
-    #   url = Url.from_string('https://example.com/hello%20world/article.html')
+    #   url = Url.from_absolute('https://example.com/hello%20world/article.html')
     #   url.titleized # => "Hello World Article"
     def titleized
       path = @uri.path
@@ -162,10 +165,10 @@ module Html2rss
     #
     # @return [String] the titleized channel URL
     # @example With path
-    #   url = Url.from_string('https://example.com/foo-bar/baz')
+    #   url = Url.from_absolute('https://example.com/foo-bar/baz')
     #   url.channel_titleized # => "example.com: Foo Bar Baz"
     # @example Without path (root URL)
-    #   url = Url.from_string('https://example.com')
+    #   url = Url.from_absolute('https://example.com')
     #   url.channel_titleized # => "example.com"
     def channel_titleized
       nicer_path = CGI.unescapeURIComponent(@uri.path).split('/').reject(&:empty?)

@@ -43,7 +43,7 @@ RSpec.describe Html2rss::HtmlExtractor do
           description: 'Sample Heading FCK PTN Sample description',
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
-          url: Html2rss::Url.from_relative('https://example.com/sample', 'https://example.com'),
+          url: Html2rss::Url.from_absolute('https://example.com/sample'),
           image: be_a(Html2rss::Url),
           categories: [],
           enclosures: contain_exactly(a_hash_including(

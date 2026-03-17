@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
-  let(:base_url) { Html2rss::Url.from_relative('https://example.com', 'https://example.com') }
+  let(:base_url) { Html2rss::Url.from_absolute('https://example.com') }
 
   def load_fixture(name)
     file = File.join(__dir__, '../../../..', 'fixtures/auto_source/json_state', name)
@@ -58,7 +58,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
             title: 'Next.js powers the latest headlines',
             description: 'A summary sourced from Next.js JSON state.',
             url: Html2rss::Url.from_relative('/next/headline', base_url),
-            image: Html2rss::Url.from_relative('https://cdn.example.com/images/next/headline.jpg', base_url),
+            image: Html2rss::Url.from_absolute('https://cdn.example.com/images/next/headline.jpg'),
             published_at: '2024-04-01T12:00:00Z',
             categories: %w[nextjs spa],
             id: 'next-article-1'

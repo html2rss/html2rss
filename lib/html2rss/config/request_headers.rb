@@ -123,7 +123,7 @@ module Html2rss
       def request_host
         return nil if url.nil? || url.empty?
 
-        Html2rss::Url.from_relative(url, url).host
+        Html2rss::Url.from_absolute(url).host
       end
     end
   end

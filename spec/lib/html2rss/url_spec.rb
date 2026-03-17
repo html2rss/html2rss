@@ -36,6 +36,22 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '.from_absolute' do
+    it 'parses an absolute URL string' do
+      expect(described_class.from_absolute('https://example.com/path').to_s).to eq('https://example.com/path')
+    end
+
+    it 'returns Url instances unchanged' do
+      url = described_class.from_absolute('https://example.com/path')
+
+      expect(described_class.from_absolute(url)).to equal(url)
+    end
+
+    it 'rejects relative URLs' do
+      expect { described_class.from_absolute('/path') }.to raise_error(ArgumentError, 'URL must be absolute')
+    end
+  end
+
   describe '#titleized' do
     {
       'http://www.example.com' => '',
@@ -46,7 +62,7 @@ RSpec.describe Html2rss::Url do
       'http://www.example.com/foo%20bar/baz%20qux-4711.html' => 'Foo Bar Baz Qux 4711'
     }.each_pair do |url_string, expected|
       it "titleizes #{url_string} to #{expected}" do
-        url = described_class.from_relative(url_string, 'https://example.com')
+        url = described_class.from_absolute(url_string)
         expect(url.titleized).to eq(expected)
       end
     end
@@ -59,7 +75,7 @@ RSpec.describe Html2rss::Url do
       'http://www.example.com/foobar/baz' => 'www.example.com: Foobar Baz'
     }.each_pair do |url_string, expected|
       it "channel titleizes #{url_string} to #{expected}" do
-        url = described_class.from_relative(url_string, 'https://example.com')
+        url = described_class.from_absolute(url_string)
         expect(url.channel_titleized).to eq(expected)
       end
     end

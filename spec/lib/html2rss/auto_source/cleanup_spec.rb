@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Cleanup do
-  let(:url) { Html2rss::Url.from_relative('http://example.com', 'http://example.com') }
+  let(:url) { Html2rss::Url.from_absolute('http://example.com') }
   let(:articles) do
     [
       instance_double(Html2rss::RssBuilder::Article,

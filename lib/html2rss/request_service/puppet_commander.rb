@@ -138,7 +138,7 @@ module Html2rss
 
       def response_url(navigation_response, fallback_url)
         raw_url = navigation_response&.url || fallback_url.to_s
-        Html2rss::Url.from_relative(raw_url, raw_url)
+        Html2rss::Url.from_absolute(raw_url)
       end
 
       def remote_ip(navigation_response)
@@ -150,7 +150,7 @@ module Html2rss
       end
 
       def request_url(request)
-        Html2rss::Url.from_relative(request.url, request.url)
+        Html2rss::Url.from_absolute(request.url)
       end
 
       def validate_navigation_redirect_chain!(request)

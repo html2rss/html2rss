@@ -23,7 +23,7 @@ module Html2rss
         @title ||= fetch_title
       end
 
-      def url = @url ||= Html2rss::Url.from_relative(@response.url, @response.url)
+      def url = @url ||= Html2rss::Url.from_absolute(@response.url)
 
       def description
         return overrides[:description] unless overrides[:description].to_s.empty?

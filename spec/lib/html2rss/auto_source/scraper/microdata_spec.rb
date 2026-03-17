@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
   subject(:scraper) { described_class.new(parsed_body, url: base_url) }
 
-  let(:base_url) { Html2rss::Url.from_relative('https://example.com', 'https://example.com') }
+  let(:base_url) { Html2rss::Url.from_absolute('https://example.com') }
 
   describe '.options_key' do
     it { expect(described_class.options_key).to eq(:microdata) }
@@ -102,7 +102,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
           title: 'Microdata Product',
           description: 'Useful product description.',
           url: Html2rss::Url.from_relative('/products/microdata-product', base_url),
-          image: Html2rss::Url.from_relative('https://cdn.example.com/microdata-product.jpg', base_url)
+          image: Html2rss::Url.from_absolute('https://cdn.example.com/microdata-product.jpg')
         }
       end
 

@@ -254,8 +254,7 @@ RSpec.describe Html2rss do
                 body: <<~HTML,
                   <html><head><link rel="next" href="/news?page=2"></head><body><article><h1>page1</h1></article></body></html>
                 HTML
-                url: Html2rss::Url.from_relative('https://redirected.example.com/news',
-                                                 'https://redirected.example.com/news'),
+                url: Html2rss::Url.from_absolute('https://redirected.example.com/news'),
                 headers: { 'content-type' => 'text/html' }
               )
             when 'https://redirected.example.com/news?page=2'

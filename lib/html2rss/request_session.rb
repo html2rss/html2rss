@@ -76,7 +76,7 @@ module Html2rss
     end
 
     def normalize_url(url)
-      Html2rss::Url.from_relative(url, url)
+      Html2rss::Url.from_absolute(url)
     end
   end
 end

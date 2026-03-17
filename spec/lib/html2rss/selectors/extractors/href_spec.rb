@@ -13,7 +13,7 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
 
     specify(:aggregate_failures) do
       expect(subject).to be_a(Html2rss::Url)
-      expect(subject).to eq Html2rss::Url.from_relative('https://example.com/posts/latest-findings', 'http://example.com')
+      expect(subject).to eq Html2rss::Url.from_absolute('https://example.com/posts/latest-findings')
     end
   end
 
@@ -22,7 +22,7 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
 
     specify(:aggregate_failures) do
       expect(subject).to be_a(Html2rss::Url)
-      expect(subject).to eq Html2rss::Url.from_relative('http://example.com/posts/absolute', 'http://example.com')
+      expect(subject).to eq Html2rss::Url.from_absolute('http://example.com/posts/absolute')
     end
   end
 end

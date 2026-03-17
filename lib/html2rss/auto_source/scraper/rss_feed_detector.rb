@@ -52,7 +52,7 @@ module Html2rss
         # @param opts [Hash] Additional options (unused but kept for consistency).
         def initialize(parsed_body, url:, **opts)
           @parsed_body = parsed_body
-          @url = url.is_a?(Html2rss::Url) ? url : Html2rss::Url.from_relative(url.to_s, url.to_s)
+          @url = url.is_a?(Html2rss::Url) ? url : Html2rss::Url.from_absolute(url)
           @opts = opts
         end
 

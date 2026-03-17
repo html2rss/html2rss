@@ -16,8 +16,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
   end
   let(:ctx) do
     instance_double(Html2rss::RequestService::Context,
-                    url: Html2rss::Url.from_relative('https://example.com', 'https://example.com'),
-                    origin_url: Html2rss::Url.from_relative('https://example.com', 'https://example.com'),
+                    url: Html2rss::Url.from_absolute('https://example.com'),
+                    origin_url: Html2rss::Url.from_absolute('https://example.com'),
                     relation: :initial,
                     headers: { 'User-Agent' => 'RSpec' },
                     policy:)
@@ -76,7 +76,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       expect(result.headers).to eq({ 'Content-Type' => 'text/html' })
       expect(policy).to have_received(:validate_remote_ip!).with(
         ip: '93.184.216.34',
-        url: Html2rss::Url.from_relative('https://example.com/articles', 'https://example.com/articles')
+        url: Html2rss::Url.from_absolute('https://example.com/articles')
       )
     end
 
@@ -125,7 +125,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       event_handlers.fetch('request').call(request)
 
       expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_relative('https://example.com/articles', 'https://example.com/articles'),
+        url: Html2rss::Url.from_absolute('https://example.com/articles'),
         origin_url: ctx.origin_url,
         relation: :initial
       )
@@ -142,8 +142,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       event_handlers.fetch('request').call(request)
 
       expect(policy).to have_received(:validate_redirect!).with(
-        from_url: Html2rss::Url.from_relative('https://example.com/redirect', 'https://example.com/redirect'),
-        to_url: Html2rss::Url.from_relative('https://example.com/final', 'https://example.com/final'),
+        from_url: Html2rss::Url.from_absolute('https://example.com/redirect'),
+        to_url: Html2rss::Url.from_absolute('https://example.com/final'),
         origin_url: ctx.origin_url,
         relation: :initial
       )
@@ -163,7 +163,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
 
       expect(asset_request).to have_received(:abort)
       expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_relative('https://example.com/image.png', 'https://example.com/image.png'),
+        url: Html2rss::Url.from_absolute('https://example.com/image.png'),
         origin_url: ctx.origin_url,
         relation: :initial
       )
@@ -186,7 +186,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
       event_handlers.fetch('request').call(asset_request)
 
       expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_relative('https://127.0.0.1/private', 'https://127.0.0.1/private'),
+        url: Html2rss::Url.from_absolute('https://127.0.0.1/private'),
         origin_url: ctx.origin_url,
         relation: :initial
       )

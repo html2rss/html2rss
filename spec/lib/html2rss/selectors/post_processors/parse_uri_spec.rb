@@ -14,9 +14,9 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with Html2rss::Url value' do
-    let(:url) { Html2rss::Url.from_relative('http://example.com', 'http://example.com') }
+    let(:url) { Html2rss::Url.from_absolute('http://example.com') }
 
-    it { is_expected.to eq 'http://example.com' }
+    it { is_expected.to eq 'http://example.com/' }
   end
 
   context 'with String value' do

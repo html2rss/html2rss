@@ -15,7 +15,7 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
     # Helper method to create expected enclosure hash
     def expected_enclosure(path, type)
-      { url: Html2rss::Url.from_relative("http://example.com#{path}", 'http://example.com'), type: }
+      { url: Html2rss::Url.from_absolute("http://example.com#{path}"), type: }
     end
 
     context 'when article_tag contains video and audio sources' do

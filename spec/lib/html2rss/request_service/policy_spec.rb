@@ -7,7 +7,7 @@ RSpec.describe Html2rss::RequestService::Policy do
 
   let(:options) { {} }
   let(:resolver) { instance_double(Resolv) }
-  let(:origin_url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+  let(:origin_url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
   describe '#initialize' do
     let(:options) { { max_requests: described_class::MAX_REQUESTS_CEILING + 5 } }
@@ -23,7 +23,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     let(:relation) { :initial }
 
     context 'when the host resolves to a private IP' do
-      let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
       before do
         allow(resolver).to receive(:each_address).with('example.com').and_yield('127.0.0.1')
@@ -36,7 +36,7 @@ RSpec.describe Html2rss::RequestService::Policy do
 
     context 'when a follow-up leaves the origin host' do
       let(:relation) { :pagination }
-      let(:url) { Html2rss::Url.from_relative('https://other.example.com/page/2', 'https://other.example.com/page/2') }
+      let(:url) { Html2rss::Url.from_absolute('https://other.example.com/page/2') }
 
       before do
         allow(resolver).to receive(:each_address)
@@ -51,7 +51,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the host is blocked before DNS resolution' do
-      let(:url) { Html2rss::Url.from_relative('https://localhost/feed', 'https://localhost/feed') }
+      let(:url) { Html2rss::Url.from_absolute('https://localhost/feed') }
 
       it 'rejects localhost' do
         expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /localhost/)
@@ -73,7 +73,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the host resolves to a public IP' do
-      let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
       before do
         allow(resolver).to receive(:each_address).with('example.com').and_yield('93.184.216.34')
@@ -85,7 +85,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the host resolves to an IPv6 loopback address' do
-      let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
       before do
         allow(resolver).to receive(:each_address).with('example.com').and_yield('::1')
@@ -97,7 +97,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the host resolves to an IPv6 unique local address' do
-      let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
       before do
         allow(resolver).to receive(:each_address).with('example.com').and_yield('fd12:3456:789a::1')
@@ -107,9 +107,10 @@ RSpec.describe Html2rss::RequestService::Policy do
         expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /example.com/)
       end
     end
+
     context 'when private networks are allowed' do
       let(:options) { { allow_private_networks: true } }
-      let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
       before do
         allow(resolver).to receive(:each_address).with('example.com').and_yield('127.0.0.1')
@@ -124,7 +125,7 @@ RSpec.describe Html2rss::RequestService::Policy do
       let(:options) { { allow_cross_origin_followups: true } }
       let(:relation) { :pagination }
       let(:url) do
-        Html2rss::Url.from_relative('https://other.example.com/page/2', 'https://other.example.com/page/2')
+        Html2rss::Url.from_absolute('https://other.example.com/page/2')
       end
 
       before do
@@ -140,7 +141,7 @@ RSpec.describe Html2rss::RequestService::Policy do
   describe '#validate_redirect!' do
     subject(:validate_redirect!) { policy.validate_redirect!(from_url:, to_url:, origin_url:, relation:) }
 
-    let(:from_url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+    let(:from_url) { Html2rss::Url.from_absolute('https://example.com/feed') }
     let(:relation) { :initial }
 
     before do
@@ -148,7 +149,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the redirect downgrades the scheme' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:to_url) { Html2rss::Url.from_relative('http://example.com/feed', 'http://example.com/feed') }
+      let(:to_url) { Html2rss::Url.from_absolute('http://example.com/feed') }
 
       it 'rejects the redirect' do
         expect { validate_redirect! }.to raise_error(Html2rss::RequestService::UnsupportedUrlScheme,
@@ -157,7 +158,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the redirect stays acceptable' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:to_url) { Html2rss::Url.from_relative('https://example.com/other', 'https://example.com/other') }
+      let(:to_url) { Html2rss::Url.from_absolute('https://example.com/other') }
 
       it 'allows the redirect' do
         expect { validate_redirect! }.not_to raise_error
@@ -167,7 +168,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     context 'when the redirect crosses origin on a follow-up request' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:relation) { :pagination }
       let(:to_url) do
-        Html2rss::Url.from_relative('https://other.example.com/other', 'https://other.example.com/other')
+        Html2rss::Url.from_absolute('https://other.example.com/other')
       end
 
       it 'rejects the redirect' do
@@ -180,7 +181,7 @@ RSpec.describe Html2rss::RequestService::Policy do
   describe '#validate_remote_ip!' do
     subject(:validate_remote_ip!) { policy.validate_remote_ip!(ip:, url:) }
 
-    let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
+    let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
     context 'when the response IP is private' do
       let(:ip) { '127.0.0.1' }

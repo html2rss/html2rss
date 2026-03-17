@@ -20,7 +20,7 @@ RSpec.describe Html2rss::RssBuilder::Enclosure do
   describe '#initialize' do
     subject { described_class.new(url:, type:, bits_length:) }
 
-    let(:url) { Html2rss::Url.from_relative('https://example.com/image.jpg', 'https://example.com') }
+    let(:url) { Html2rss::Url.from_absolute('https://example.com/image.jpg') }
     let(:type) { 'image/jpeg' }
     let(:bits_length) { 123 }
 
