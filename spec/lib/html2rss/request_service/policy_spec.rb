@@ -9,6 +9,14 @@ RSpec.describe Html2rss::RequestService::Policy do
   let(:resolver) { instance_double(Resolv) }
   let(:origin_url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }
 
+  describe '#initialize' do
+    let(:options) { { max_requests: described_class::MAX_REQUESTS_CEILING + 5 } }
+
+    it 'clamps request budgets to the policy ceiling' do
+      expect(policy.max_requests).to eq(described_class::MAX_REQUESTS_CEILING)
+    end
+  end
+
   describe '#validate_request!' do
     subject(:validate_request!) { policy.validate_request!(url:, origin_url:, relation:) }
 
@@ -99,7 +107,6 @@ RSpec.describe Html2rss::RequestService::Policy do
         expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /example.com/)
       end
     end
-
     context 'when private networks are allowed' do
       let(:options) { { allow_private_networks: true } }
       let(:url) { Html2rss::Url.from_relative('https://example.com/feed', 'https://example.com/feed') }

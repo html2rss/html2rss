@@ -80,5 +80,19 @@ RSpec.describe Html2rss::RequestService::Context do
       expect(follow_up.relation).to eq(:pagination)
       expect(follow_up.headers).to eq(instance.headers)
     end
+
+    context 'when an effective origin override is supplied' do
+      subject(:follow_up) do
+        instance.follow_up(
+          url: 'https://redirected.example.com/page/2',
+          relation: :pagination,
+          origin_url: 'https://redirected.example.com/page/1'
+        )
+      end
+
+      it 'uses the supplied origin url for follow-up policy checks' do
+        expect(follow_up.origin_url.to_s).to eq('https://redirected.example.com/page/1')
+      end
+    end
   end
 end
