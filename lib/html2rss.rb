@@ -121,7 +121,7 @@ module Html2rss
 
     def collect_articles(response, config, request_session)
       selector_articles(response, config, request_session) +
-        auto_source_articles(response, config)
+        auto_source_articles(response, config, request_session)
     end
 
     def selector_articles(response, config, request_session)
@@ -143,10 +143,10 @@ module Html2rss
       ).to_a
     end
 
-    def auto_source_articles(response, config)
+    def auto_source_articles(response, config, request_session)
       return [] unless (auto_source = config.auto_source)
 
-      AutoSource.new(response, auto_source).articles
+      AutoSource.new(response, auto_source, request_session:).articles
     end
 
     def build_rss_feed(response, config, articles)

@@ -19,6 +19,9 @@ module Html2rss
   class AutoSource
     DEFAULT_CONFIG = {
       scraper: {
+        wordpress_api: {
+          enabled: true
+        },
         schema: {
           enabled: true
         },
@@ -44,6 +47,9 @@ module Html2rss
     }.freeze
 
     SCRAPER_CONFIG = proc do
+      optional(:wordpress_api).hash do
+        optional(:enabled).filled(:bool)
+      end
       optional(:schema).hash do
         optional(:enabled).filled(:bool)
       end
@@ -76,10 +82,16 @@ module Html2rss
       end
     end
 
-    def initialize(response, opts = DEFAULT_CONFIG)
+    ##
+    # @param response [Html2rss::RequestService::Response] initial page response
+    # @param opts [Hash] validated auto-source options
+    # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+    # @return [void]
+    def initialize(response, opts = DEFAULT_CONFIG, request_session: nil)
       @parsed_body = response.parsed_body
       @url = response.url
       @opts = opts
+      @request_session = request_session
     end
 
     def articles
@@ -91,14 +103,14 @@ module Html2rss
 
     private
 
-    attr_reader :url, :parsed_body
+    attr_reader :url, :parsed_body, :request_session
 
     def extract_articles
       scrapers = Scraper.from(parsed_body, @opts[:scraper])
       return [] if scrapers.empty?
 
       articles = Parallel.flat_map(scrapers, in_threads: thread_count_for(scrapers)) do |scraper|
-        instance = scraper.new(parsed_body, url:, **scraper_options_for(scraper))
+        instance = scraper.new(parsed_body, url:, request_session:, **scraper_options_for(scraper))
 
         run_scraper(instance)
       end

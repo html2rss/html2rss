@@ -10,6 +10,7 @@ module Html2rss
     #
     module Scraper
       SCRAPERS = [
+        WordpressApi,
         Schema,
         Microdata,
         JsonState,
