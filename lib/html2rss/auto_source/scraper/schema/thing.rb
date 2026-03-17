@@ -36,7 +36,7 @@ module Html2rss
 
           def initialize(schema_object, url:)
             @schema_object = schema_object
-            @url = url
+            @url = Url.from_absolute(url)
           end
 
           # @return [Hash] the scraped article hash with DEFAULT_ATTRIBUTES
@@ -49,7 +49,7 @@ module Html2rss
           def id
             return @id if defined?(@id)
 
-            id = (schema_object[:@id] || url&.path).to_s
+            id = normalized_id(schema_object[:@id]) || url&.path.to_s
 
             return if id.empty?
 
@@ -100,6 +100,33 @@ module Html2rss
                 object[:url] || object[:contentUrl]
               end
             end
+          end
+
+          def normalized_id(value)
+            text = value.to_s
+            return if text.empty?
+
+            normalized_url = normalized_id_url(text)
+            return text unless normalized_url.host == @url.host
+
+            normalized_id_value(normalized_url)
+          rescue ArgumentError
+            text
+          end
+
+          def normalized_id_url(text)
+            if text.start_with?('/')
+              Url.from_relative(text, @url)
+            else
+              Url.from_absolute(text)
+            end
+          end
+
+          def normalized_id_value(url)
+            path = url.path.to_s
+            return path unless path.empty?
+
+            url.query
           end
         end
       end

@@ -91,7 +91,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         Nokogiri::HTML('<html><head><link rel="https://api.w.org/" href="" /></head></html>')
       end
 
-      it 'returns no articles without attempting a follow-up request' do
+      it 'returns no articles without attempting a follow-up request', :aggregate_failures do
         expect(articles).to eq([])
         expect(request_session).not_to have_received(:follow_up)
       end
