@@ -38,29 +38,40 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       allow(request_session).to receive(:follow_up).and_return(api_response)
     end
 
-    it 'requests the posts endpoint' do
+    it 'requests the posts endpoint' do # rubocop:disable RSpec/ExampleLength
       articles
-      expected_request = { url: api_response.url, relation: :auto_source, origin_url: url }
-
-      expect(request_session).to have_received(:follow_up).with(expected_request)
+      expect(request_session).to have_received(:follow_up).with(
+        url: api_response.url,
+        relation: :auto_source,
+        origin_url: url
+      )
     end
 
-    it 'normalises the first article payload', :aggregate_failures do
-      first_article = articles.first
+    it 'normalises API posts into article hashes' do # rubocop:disable RSpec/ExampleLength
+      expected_articles = [
+        match(
+          id: '42',
+          title: 'WordPress API post',
+          description: '<p>Full content from the API.</p>',
+          url: Html2rss::Url.from_absolute('https://example.com/2024/04/wordpress-api-post/'),
+          published_at: '2024-04-01T12:00:00',
+          categories: match_array(%w[7 9])
+        ),
+        match(
+          id: '43',
+          title: 'Excerpt only post',
+          description: '<p>Excerpt fallback content.</p>',
+          url: Html2rss::Url.from_absolute('https://example.com/2024/04/excerpt-only-post/'),
+          published_at: '2024-04-02T08:15:00',
+          categories: be_empty
+        )
+      ]
 
-      expect(first_article.values_at(:id, :title, :description, :url, :published_at, :categories))
-        .to eq(['42', 'WordPress API post', '<p>Full content from the API.</p>',
-                Html2rss::Url.from_absolute('https://example.com/2024/04/wordpress-api-post/'),
-                '2024-04-01T12:00:00', %w[7 9]])
+      expect(articles).to match_array(expected_articles)
     end
 
-    it 'falls back to the excerpt when content is blank', :aggregate_failures do
-      second_article = articles.last
-
-      expect(second_article.values_at(:id, :title, :description, :url, :published_at))
-        .to eq(['43', 'Excerpt only post', '<p>Excerpt fallback content.</p>',
-                Html2rss::Url.from_absolute('https://example.com/2024/04/excerpt-only-post/'),
-                '2024-04-02T08:15:00'])
+    it 'preserves the expected article shape for each mapped post' do
+      expect(articles).to all(include(:id, :title, :description, :url, :published_at, :categories))
     end
 
     context 'when the request session is unavailable' do

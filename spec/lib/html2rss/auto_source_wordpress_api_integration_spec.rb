@@ -49,16 +49,38 @@ RSpec.describe Html2rss::AutoSource do
       allow(request_session).to receive(:follow_up).and_return(api_response)
     end
 
-    it 'routes the follow-up request through the shared request session' do
+    it 'routes the follow-up request through the shared request session' do # rubocop:disable RSpec/ExampleLength
       articles
-      expected_request = { url: api_response.url, relation: :auto_source, origin_url: url }
-
-      expect(request_session).to have_received(:follow_up).with(expected_request)
+      expect(request_session).to have_received(:follow_up).with(
+        url: api_response.url,
+        relation: :auto_source,
+        origin_url: url
+      )
     end
 
-    it 'returns WordpressApi articles', :aggregate_failures do
-      expect(articles.map(&:scraper)).to all(eq(Html2rss::AutoSource::Scraper::WordpressApi))
-      expect(articles.map(&:title)).to eq(['WordPress API post', 'Excerpt only post'])
+    it 'returns WordpressApi articles with the mapped attributes' do # rubocop:disable RSpec/ExampleLength
+      expected_articles = [
+        have_attributes(
+          scraper: Html2rss::AutoSource::Scraper::WordpressApi,
+          id: '42',
+          title: 'WordPress API post',
+          description: '<p>Full content from the API.</p>',
+          url: Html2rss::Url.from_absolute('https://example.com/2024/04/wordpress-api-post/'),
+          published_at: DateTime.parse('2024-04-01T12:00:00'),
+          categories: match_array(%w[7 9])
+        ),
+        have_attributes(
+          scraper: Html2rss::AutoSource::Scraper::WordpressApi,
+          id: '43',
+          title: 'Excerpt only post',
+          description: '<p>Excerpt fallback content.</p>',
+          url: Html2rss::Url.from_absolute('https://example.com/2024/04/excerpt-only-post/'),
+          published_at: DateTime.parse('2024-04-02T08:15:00'),
+          categories: be_empty
+        )
+      ]
+
+      expect(articles).to match_array(expected_articles)
     end
   end
 end

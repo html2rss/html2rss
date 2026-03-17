@@ -85,3 +85,8 @@ Keep logic anchored to the correct stage. For example, default headers or strate
 3. Verify with `make ready` before committing or handing work back for review.
 4. Commit only after the `make ready` quality gate passes, unless you are explicitly handing off a known-red state.
 5. Write commit messages using the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard so history stays machine-readable.
+
+## Agent Preferences
+
+- For Ruby implementation, debugging, refactoring, and test work in this repository, use the `ruby-dev` skill when available.
+- When improving or reviewing specs, prefer the local Dash MCP docsets for Ruby/RSpec references before reaching elsewhere. In particular, use the local `rspec-expectations`, `rspec-core`, and related docsets to choose more precise built-in matchers and align assertions with actual object contracts.
