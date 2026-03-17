@@ -6,34 +6,16 @@
 
 This gem is the core of the [html2rss-web](https://github.com/html2rss/html2rss-web) application.
 
-## 🌐 Community & Resources
+## Documentation
 
-| Resource                              | Description                                                 | Link                                                               |
-| ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ |
-| **📚 Documentation & Feed Directory** | Complete guides, tutorials, and browse 100+ pre-built feeds | [html2rss.github.io](https://html2rss.github.io)                   |
-| **💬 Community Discussions**          | Get help, share ideas, and connect with other users         | [GitHub Discussions](https://github.com/orgs/html2rss/discussions) |
-| **📋 Project Board**                  | Track development progress and upcoming features            | [View Project Board](https://github.com/orgs/html2rss/projects)    |
-| **💖 Support Development**            | Help fund ongoing development and maintenance               | [Sponsor on GitHub](https://github.com/sponsors/gildesmarais)      |
+Detailed usage guides, reference docs, and the feed directory live on the project website:
 
-**Quick Start Options:**
-
-- **New to RSS?** → Start with the [web application](https://html2rss.github.io/web-application)
-- **Ruby Developer?** → Check out the [Ruby gem documentation](https://html2rss.github.io/ruby-gem)
-- **Need a specific feed?** → Browse the [feed directory](https://html2rss.github.io/feed-directory)
-- **Want to contribute?** → See our [contributing guide](https://html2rss.github.io/get-involved/contributing)
-
-## ✨ Features
-
-- 🎯 **CSS Selector Support** - Extract content using familiar CSS selectors
-- 🤖 **Auto-Detection** - Automatically detect content using Schema.org, JSON state, and semantic HTML
-- 🔄 **Multiple Request Strategies** - Faraday for static sites, Browserless for JS-heavy sites
-- 🛠️ **Post-Processing** - Template rendering, HTML sanitization, time parsing, and more
-- 🧪 **Comprehensive Testing** - 95%+ test coverage with RSpec
-- 📚 **Full Documentation** - YARD documentation and comprehensive guides
-
-## 🚀 Quick Start
-
-For installation and usage instructions, please visit the [project website](https://html2rss.github.io/ruby-gem).
+- [Ruby gem documentation](https://html2rss.github.io/ruby-gem)
+- [Web application](https://html2rss.github.io/web-application)
+- [Feed directory](https://html2rss.github.io/feed-directory)
+- [Contributing guide](https://html2rss.github.io/get-involved/contributing)
+- [GitHub Discussions](https://github.com/orgs/html2rss/discussions)
+- [Sponsor on GitHub](https://github.com/sponsors/gildesmarais)
 
 ### 💻 Try in Browser
 
@@ -42,10 +24,6 @@ You can develop html2rss directly in your browser using GitHub Codespaces:
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?repo=html2rss/html2rss)
 
 The Codespace comes pre-configured with Ruby 3.4 (compatible with Ruby 4.0), all dependencies, and VS Code extensions ready to go!
-
-## 📚 Documentation
-
-The full documentation for the `html2rss` gem is available on the [project website](https://html2rss.github.io/ruby-gem).
 
 ## 🤝 Contributing
 
@@ -66,21 +44,6 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 ```text
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
-
-## 🧪 Testing
-
-- **RSpec** for comprehensive testing
-- **95%+ code coverage** with SimpleCov
-- **VCR** for HTTP interaction testing
-- **RuboCop** for code style enforcement
-- **Reek** for code smell detection
-
-## 🔧 Development Tools
-
-- **Ruby LSP** for IntelliSense and language features
-- **Debug** for modern debugging and exploration
-- **YARD** for documentation generation
-- **GitHub Actions** for CI/CD
 
 ### Config schema workflow
 

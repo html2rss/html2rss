@@ -1,20 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Scraper::Schema do
-  # Test factories for maintainability
-  def build_script_tag(json_content)
-    Nokogiri::HTML("<script type=\"application/ld+json\">#{json_content}</script>")
-  end
-
-  def mock_logging
-    allow(Html2rss::Log).to receive(:warn)
-    allow(Html2rss::Log).to receive(:debug)
-  end
-
-  def build_simple_article(type: 'Article', title: 'Sample Title')
-    { '@type': type, title:, url: 'https://example.com' }
-  end
-
+  let(:script_tag) { ->(json_content) { Nokogiri::HTML("<script type=\"application/ld+json\">#{json_content}</script>") } }
+  let(:simple_article) { ->(type: 'Article', title: 'Sample Title') { { '@type': type, title:, url: 'https://example.com' } } }
   let(:news_article_schema_object) do
     # src: https://schema.org/NewsArticle
     {
@@ -45,7 +33,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       datePublished: '2017-03-20T20:30:54+00:00'
     }
   end
-
   let(:article_schema_object) do
     {
       '@context': 'https://schema.org',
@@ -58,6 +45,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       abstract: 'Einem Python-Team wurde offenbar komplett gekündigt.',
       image: 'https://www.heise.de/imgs/18/4/5/8/2/0/6/6/shutterstock_1777981682-958a1d575a8f5e3e.jpeg'
     }
+  end
+
+  before do
+    allow(Html2rss::Log).to receive(:warn)
+    allow(Html2rss::Log).to receive(:debug)
   end
 
   describe '.options_key' do
@@ -216,18 +208,17 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with malformed JSON' do
-      let(:parsed_body) { build_script_tag('{invalid json}') }
-
-      before { mock_logging }
+      let(:parsed_body) { script_tag.call('{invalid json}') }
 
       it 'logs a warning and returns an empty array', :aggregate_failures do
         expect { |b| new.each(&b) }.not_to yield_with_args
-        expect(Html2rss::Log).to have_received(:warn).with(/Failed to parse JSON/, error: anything)
+        expect(Html2rss::Log).to have_received(:warn)
+          .with("#{described_class}: failed to parse JSON", error: anything)
       end
     end
 
     context 'with an ItemList that returns an array' do
-      let(:parsed_body) { build_script_tag('{"@type": "ItemList", "itemListElement": []}') }
+      let(:parsed_body) { script_tag.call('{"@type": "ItemList", "itemListElement": []}') }
 
       before do
         item_list_instance = instance_double(Html2rss::AutoSource::Scraper::Schema::ItemList)
@@ -247,7 +238,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with a scraper that returns nil' do
-      let(:parsed_body) { build_script_tag('{"@type": "Article"}') }
+      let(:parsed_body) { script_tag.call('{"@type": "Article"}') }
 
       before do
         thing_instance = instance_double(Html2rss::AutoSource::Scraper::Schema::Thing)
@@ -263,7 +254,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
 
   describe '.supported_schema_object?' do
     context 'with a supported schema object' do
-      let(:object) { build_simple_article }
+      let(:object) { simple_article.call }
 
       it 'returns true' do
         expect(described_class.supported_schema_object?(object)).to be true
@@ -271,7 +262,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with an unsupported schema object' do
-      let(:object) { build_simple_article(type: 'UnsupportedType') }
+      let(:object) { simple_article.call(type: 'UnsupportedType') }
 
       it 'returns false' do
         expect(described_class.supported_schema_object?(object)).to be false
@@ -281,7 +272,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
 
   describe '.scraper_for_schema_object' do
     context 'with a Thing type' do
-      let(:object) { build_simple_article }
+      let(:object) { simple_article.call }
 
       it 'returns Thing class' do
         expect(described_class.scraper_for_schema_object(object)).to eq(Html2rss::AutoSource::Scraper::Schema::Thing)
@@ -289,7 +280,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with an ItemList type' do
-      let(:object) { build_simple_article(type: 'ItemList') }
+      let(:object) { simple_article.call(type: 'ItemList') }
 
       it 'returns ItemList class' do
         expect(described_class.scraper_for_schema_object(object)).to eq(Html2rss::AutoSource::Scraper::Schema::ItemList)
@@ -297,23 +288,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     end
 
     context 'with an unsupported type' do
-      let(:object) { build_simple_article(type: 'UnsupportedType') }
-
-      before { mock_logging }
+      let(:object) { simple_article.call(type: 'UnsupportedType') }
 
       it 'logs debug message and returns nil', :aggregate_failures do
         expect(described_class.scraper_for_schema_object(object)).to be_nil
-        expect(Html2rss::Log).to have_received(:debug).with(/Unsupported schema object @type: UnsupportedType/)
+        expect(Html2rss::Log).to have_received(:debug)
+          .with("#{described_class}: unsupported schema object @type=\"UnsupportedType\"")
       end
     end
   end
 
   describe '.from' do
     context 'with a Nokogiri::XML::Element' do
-      let(:script_tag) { build_script_tag('{"@type": "Article"}').at_css('script') }
+      let(:script_element) { script_tag.call('{"@type": "Article"}').at_css('script') }
 
       it 'parses the script tag and returns schema objects' do
-        expect(described_class.from(script_tag)).to include(hash_including('@type': 'Article'))
+        expect(described_class.from(script_element)).to include(hash_including('@type': 'Article'))
       end
     end
 

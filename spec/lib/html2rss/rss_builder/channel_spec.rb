@@ -1,35 +1,32 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers
+
 require 'timecop'
 
 RSpec.describe Html2rss::RssBuilder::Channel do
   subject(:instance) { described_class.new(response, overrides:) }
 
   let(:overrides) { {} }
-  let(:response) { build_response(body:, headers:, url:) }
+  let(:response) { build_response.call(body:, headers:, url:) }
   let(:body) { '' }
   let(:headers) { default_headers }
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
-
-  # Test factories and shared data
-  def build_response(body:, headers:, url:)
-    Html2rss::RequestService::Response.new(body:, headers:, url:)
+  let(:build_response) do
+    lambda do |body:, headers:, url:|
+      Html2rss::RequestService::Response.new(body:, headers:, url:)
+    end
   end
-
-  def default_headers
+  let(:default_headers) do
     {
       'content-type' => 'text/html',
       'cache-control' => 'max-age=120, private, must-revalidate',
       'last-modified' => 'Tue, 01 Jan 2019 00:00:00 GMT'
     }
   end
-
-  def build_html_with_meta(name:, content:)
-    "<head><meta name=\"#{name}\" content=\"#{content}\"></head>"
-  end
-
-  def build_html_with_property(property:, content:)
-    "<head><meta property=\"#{property}\" content=\"#{content}\"></head>"
+  let(:build_html_with_meta) { ->(name:, content:) { "<head><meta name=\"#{name}\" content=\"#{content}\"></head>" } }
+  let(:build_html_with_property) do
+    ->(property:, content:) { "<head><meta property=\"#{property}\" content=\"#{content}\"></head>" }
   end
 
   # Shared examples for override behavior
@@ -43,7 +40,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
 
   shared_examples 'falls back to meta content' do |method, meta_name, expected_content|
     context "with #{meta_name} meta tag" do
-      let(:body) { build_html_with_meta(name: meta_name, content: expected_content) }
+      let(:body) { build_html_with_meta.call(name: meta_name, content: expected_content) }
 
       it { expect(instance.public_send(method)).to eq(expected_content) }
     end
@@ -154,7 +151,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
 
     context 'when overrides[:description] is empty' do
       let(:overrides) { { description: '' } }
-      let(:body) { build_html_with_meta(name: 'description', content: 'Example') }
+      let(:body) { build_html_with_meta.call(name: 'description', content: 'Example') }
 
       it 'falls back to meta description' do
         expect(instance.description).to eq('Example')
@@ -185,7 +182,7 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     it_behaves_like 'returns overridden value', :image, :image, 'https://example.com/override.jpg'
 
     context 'with og:image meta tag' do
-      let(:body) { build_html_with_property(property: 'og:image', content: 'https://example.com/image.jpg') }
+      let(:body) { build_html_with_property.call(property: 'og:image', content: 'https://example.com/image.jpg') }
 
       it 'extracts the image URL' do
         expect(instance.image.to_s).to eq('https://example.com/image.jpg')
@@ -257,3 +254,4 @@ RSpec.describe Html2rss::RssBuilder::Channel do
     end
   end
 end
+# rubocop:enable RSpec/MultipleMemoizedHelpers

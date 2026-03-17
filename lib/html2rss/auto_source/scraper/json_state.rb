@@ -137,9 +137,7 @@ module Html2rss
             # Coerce those payloads into valid JSON so we keep the same parsing pipeline.
             JSON.parse(coerced, symbolize_names: true)
           rescue JSON::ParserError => error
-            Html2rss::Log.debug do
-              "fallback also failed (#{error.message})"
-            end
+            Html2rss::Log.debug("#{name}: failed to parse coerced JavaScript object (#{error.message})")
             nil
           end
 

@@ -87,7 +87,7 @@ module Html2rss
 
           build_article_hash(absolute_url, feed_title, feed_type)
         rescue StandardError => error
-          Log.warn "RssFeedDetector: Failed to create article for feed URL '#{feed_url}': #{error.message}"
+          Log.warn "#{self.class}: failed to create article for feed URL #{feed_url.inspect}: #{error.message}"
           nil
         end
 

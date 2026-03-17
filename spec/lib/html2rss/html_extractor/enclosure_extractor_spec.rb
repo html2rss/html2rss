@@ -7,20 +7,16 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
     subject(:enclosures) { described_class.call(article_tag, base_url) }
 
     let(:base_url) { 'http://example.com' }
-
-    # Helper method to create article tag from HTML
-    def article_tag_from(html)
-      Nokogiri::HTML(html).at('article')
-    end
-
-    # Helper method to create expected enclosure hash
-    def expected_enclosure(path, type)
-      { url: Html2rss::Url.from_absolute("http://example.com#{path}"), type: }
+    let(:article_tag_from) { ->(html) { Nokogiri::HTML(html).at('article') } }
+    let(:expected_enclosure) do
+      lambda do |path, type|
+        { url: Html2rss::Url.from_absolute("http://example.com#{path}"), type: }
+      end
     end
 
     context 'when article_tag contains video and audio sources' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <video>
               <source src="/videos/video1.mp4" type="video/mp4">
@@ -33,15 +29,15 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
       it 'extracts the enclosures with correct URLs and types' do
         expect(enclosures).to contain_exactly(
-          expected_enclosure('/videos/video1.mp4', 'video/mp4'),
-          expected_enclosure('/videos/video2.webm', 'video/webm'),
-          expected_enclosure('/audios/audio1.mp3', 'audio/mpeg')
+          expected_enclosure.call('/videos/video1.mp4', 'video/mp4'),
+          expected_enclosure.call('/videos/video2.webm', 'video/webm'),
+          expected_enclosure.call('/audios/audio1.mp3', 'audio/mpeg')
         )
       end
     end
 
     context 'when article_tag contains no media sources' do
-      let(:article_tag) { article_tag_from('<article><p>No media here</p></article>') }
+      let(:article_tag) { article_tag_from.call('<article><p>No media here</p></article>') }
 
       it 'returns an empty array' do
         expect(enclosures).to be_empty
@@ -50,7 +46,7 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
     context 'when article_tag contains sources with empty src attributes' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <video>
               <source src="" type="video/mp4">
@@ -67,7 +63,7 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
     context 'when article_tag contains PDF links' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <a href="/documents/report.pdf">Download Report</a>
             <a href="/files/manual.pdf">Manual</a>
@@ -77,15 +73,15 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
       it 'extracts PDF enclosures with correct URLs and types' do
         expect(enclosures).to contain_exactly(
-          expected_enclosure('/documents/report.pdf', 'application/pdf'),
-          expected_enclosure('/files/manual.pdf', 'application/pdf')
+          expected_enclosure.call('/documents/report.pdf', 'application/pdf'),
+          expected_enclosure.call('/files/manual.pdf', 'application/pdf')
         )
       end
     end
 
     context 'when article_tag contains iframe sources' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <iframe src="/embeds/video.html"></iframe>
             <iframe src="/widgets/chart.html"></iframe>
@@ -95,15 +91,15 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
       it 'extracts iframe enclosures with correct URLs and types' do
         expect(enclosures).to contain_exactly(
-          expected_enclosure('/embeds/video.html', 'text/html'),
-          expected_enclosure('/widgets/chart.html', 'text/html')
+          expected_enclosure.call('/embeds/video.html', 'text/html'),
+          expected_enclosure.call('/widgets/chart.html', 'text/html')
         )
       end
     end
 
     context 'when article_tag contains archive links' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <a href="/downloads/data.zip">Download ZIP</a>
             <a href="/archives/backup.tar.gz">Backup TAR.GZ</a>
@@ -114,16 +110,16 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
       it 'extracts archive enclosures with correct URLs and types' do
         expect(enclosures).to contain_exactly(
-          expected_enclosure('/downloads/data.zip', 'application/zip'),
-          expected_enclosure('/archives/backup.tar.gz', 'application/zip'),
-          expected_enclosure('/files/package.tgz', 'application/zip')
+          expected_enclosure.call('/downloads/data.zip', 'application/zip'),
+          expected_enclosure.call('/archives/backup.tar.gz', 'application/zip'),
+          expected_enclosure.call('/files/package.tgz', 'application/zip')
         )
       end
     end
 
     context 'when article_tag contains PDF links with empty href attributes' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <a href="">Empty PDF Link</a>
             <a href="/documents/valid.pdf">Valid PDF</a>
@@ -133,14 +129,14 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
       it 'ignores links with empty href attributes' do
         expect(enclosures).to contain_exactly(
-          expected_enclosure('/documents/valid.pdf', 'application/pdf')
+          expected_enclosure.call('/documents/valid.pdf', 'application/pdf')
         )
       end
     end
 
     context 'when article_tag contains images' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <img src="/images/photo.jpg" alt="Photo">
             <img src="/gallery/image.png" alt="Gallery Image">
@@ -150,15 +146,15 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
       it 'extracts image enclosures with correct URLs and types' do
         expect(enclosures).to contain_exactly(
-          expected_enclosure('/images/photo.jpg', 'image/jpeg'),
-          expected_enclosure('/gallery/image.png', 'image/png')
+          expected_enclosure.call('/images/photo.jpg', 'image/jpeg'),
+          expected_enclosure.call('/gallery/image.png', 'image/png')
         )
       end
     end
 
     context 'when article_tag contains mixed content types' do
       let(:article_tag) do
-        article_tag_from(<<~HTML)
+        article_tag_from.call(<<~HTML)
           <article>
             <img src="/images/hero.jpg" alt="Hero">
             <video>
@@ -173,11 +169,11 @@ RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
 
       let(:expected_enclosures) do
         [
-          expected_enclosure('/images/hero.jpg', 'image/jpeg'),
-          expected_enclosure('/videos/demo.mp4', 'video/mp4'),
-          expected_enclosure('/documents/guide.pdf', 'application/pdf'),
-          expected_enclosure('/widgets/map.html', 'text/html'),
-          expected_enclosure('/downloads/source.zip', 'application/zip')
+          expected_enclosure.call('/images/hero.jpg', 'image/jpeg'),
+          expected_enclosure.call('/videos/demo.mp4', 'video/mp4'),
+          expected_enclosure.call('/documents/guide.pdf', 'application/pdf'),
+          expected_enclosure.call('/widgets/map.html', 'text/html'),
+          expected_enclosure.call('/downloads/source.zip', 'application/zip')
         ]
       end
 

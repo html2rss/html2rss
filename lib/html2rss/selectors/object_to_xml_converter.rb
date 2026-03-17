@@ -24,7 +24,7 @@ module Html2rss
       # @return [String] representing the object in XML
       def call
         object_to_xml(@object).tap do |converted|
-          Html2rss::Log.info "Converted to XML. Excerpt:\n\t#{converted.to_s[0..110]}…"
+          Html2rss::Log.debug("#{self.class}: converted object to XML (#{converted.bytesize} bytes)")
         end
       end
 

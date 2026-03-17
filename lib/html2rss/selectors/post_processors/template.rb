@@ -29,7 +29,7 @@ module Html2rss
       #        selector: h1
       #        post_process:
       #          name: template
-      #          string: '%{self}s (%{price})'
+      #          string: '%{self} (%{price})'
       #
       # Would return:
       #    'Product (23,42€)'
