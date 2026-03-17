@@ -59,7 +59,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
     context 'with article microdata' do
       let(:expected_article) do
         {
-          id: 'https://example.com/stories/microdata-headline',
+          id: '/stories/microdata-headline',
           title: 'Microdata headline',
           description: 'Longer body copy for the story.',
           url: Html2rss::Url.from_relative('/stories/microdata-headline', base_url),
