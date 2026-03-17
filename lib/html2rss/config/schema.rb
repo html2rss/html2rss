@@ -81,10 +81,12 @@ module Html2rss
         end
 
         def assign_properties(properties)
-          properties[:headers] = Components.headers
-          properties[:stylesheets] = Components.stylesheets
-          properties[:auto_source] = Components.auto_source
-          properties[:selectors] = Components.selectors
+          properties.merge!(
+            headers: Components.headers,
+            stylesheets: Components.stylesheets,
+            auto_source: Components.auto_source,
+            selectors: Components.selectors
+          )
           properties.delete(:dynamic_params_error)
         end
       end
@@ -222,9 +224,7 @@ module Html2rss
         end
 
         def stringify_hash(object)
-          object.each_with_object({}) do |(key, value), result|
-            result[key.to_s] = call(value)
-          end
+          object.to_h { |key, value| [key.to_s, call(value)] }
         end
       end
     end

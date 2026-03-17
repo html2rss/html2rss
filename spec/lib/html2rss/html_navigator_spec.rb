@@ -107,7 +107,7 @@ RSpec.describe Html2rss::HtmlNavigator do
     context 'when the anchor is not inside the specified tag' do
       it 'returns stop_tag' do
         article_tag = described_class.find_tag_in_ancestors(current_tag, 'body')
-        expect(article_tag).to be document.at_css('body')
+        expect(article_tag).to be document.at_css('html > body, body')
       end
     end
 
