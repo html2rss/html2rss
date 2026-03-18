@@ -358,7 +358,8 @@ RSpec.describe Html2rss::Config do
             },
             json_state: { enabled: true },    # wasn't explicitly set -> default
             microdata: { enabled: true },     # wasn't explicitly set -> default
-            rss_feed_detector: { enabled: true } # wasn't explicitly set -> default
+            rss_feed_detector: { enabled: true }, # wasn't explicitly set -> default
+            wordpress_api: { enabled: true } # wasn't explicitly set -> default
           },
           cleanup: {
             keep_different_domain: false,     # wasn't explicitly set -> default

@@ -13,7 +13,12 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       selectors: {
         items: { selector: 'article', pagination: { max_pages: 3 } },
         title: { selector: 'h2' }
-      }
+      },
+      auto_source: Html2rss::AutoSource::DEFAULT_CONFIG.merge(
+        scraper: Html2rss::AutoSource::DEFAULT_CONFIG.fetch(:scraper).merge(
+          wordpress_api: { enabled: true }
+        )
+      )
     }
   end
 
@@ -31,7 +36,7 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
       it 'adds predictable follow-up budget to the runtime policy', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(3)
+        expect(runtime_policy.max_requests).to eq(4)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end

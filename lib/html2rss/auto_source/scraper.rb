@@ -4,12 +4,16 @@ module Html2rss
   class AutoSource
     ##
     # The Scraper module contains all scrapers that can be used to extract articles.
-    # Each scraper should implement a `call` method that returns an array of article hashes.
+    # Each scraper should implement an `each` method that yields article hashes.
     # Each scraper should also implement an `articles?` method that returns true if the scraper
     # can potentially be used to extract articles from the given HTML.
+    # Scrapers run in parallel threads, so implementations must avoid shared
+    # mutable state and degrade by returning no articles when a follow-up would
+    # be unsafe or unsupported.
     #
     module Scraper
       SCRAPERS = [
+        WordpressApi,
         Schema,
         Microdata,
         JsonState,

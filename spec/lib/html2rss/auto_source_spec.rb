@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource do
-  subject(:auto_source) { described_class.new(response, config) }
+  subject(:auto_source) { described_class.new(response, config, request_session:) }
 
   let(:config) { described_class::DEFAULT_CONFIG }
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
-  let(:headers) { { 'content-type': 'text/html' } }
-  let(:response) { Html2rss::RequestService::Response.new(body:, headers:, url:) }
+  let(:response) { Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/html' }, url:) }
+  let(:request_session) { nil }
   let(:body) do
     <<~HTML
       <html>
@@ -38,6 +38,14 @@ RSpec.describe Html2rss::AutoSource do
     it 'allows toggling the json_state scraper' do
       toggled_config = described_class::DEFAULT_CONFIG.merge(
         scraper: described_class::DEFAULT_CONFIG[:scraper].merge(json_state: { enabled: false })
+      )
+
+      expect(schema.call(toggled_config)).to be_success
+    end
+
+    it 'allows toggling the wordpress_api scraper' do
+      toggled_config = described_class::DEFAULT_CONFIG.merge(
+        scraper: described_class::DEFAULT_CONFIG[:scraper].merge(wordpress_api: { enabled: false })
       )
 
       expect(schema.call(toggled_config)).to be_success
