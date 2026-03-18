@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers
+
 RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
   subject(:instance) { described_class.new(parsed_body, url:, request_session:) }
 
@@ -143,3 +145,4 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
     end
   end
 end
+# rubocop:enable RSpec/MultipleMemoizedHelpers

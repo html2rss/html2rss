@@ -21,6 +21,8 @@ RSpec.describe Html2rss do
 
     before do
       allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, context, **_kwargs|
+        context.budget.consume!
+
         case context.url.to_s
         when 'https://example.com/blog'
           Html2rss::RequestService::Response.new(
@@ -47,6 +49,12 @@ RSpec.describe Html2rss do
           'https://example.com/2024/04/excerpt-only-post/'
         ]
       )
+    end
+
+    it 'reserves request budget for the wordpress api follow-up' do
+      feed
+
+      expect(Html2rss::RequestService).to have_received(:execute).twice
     end
   end
 end

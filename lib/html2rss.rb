@@ -116,7 +116,23 @@ module Html2rss
     end
 
     def requested_pages_for(config)
-      config.selectors&.dig(:items, :pagination, :max_pages) || 1
+      [required_request_budget(config), config.max_requests].max
+    end
+
+    def pagination_request_budget(config)
+      config.selectors&.dig(:items, :pagination, :max_pages)
+    end
+
+    def required_request_budget(config)
+      1 + pagination_follow_up_budget(config) + wordpress_api_follow_up_budget(config)
+    end
+
+    def pagination_follow_up_budget(config)
+      [pagination_request_budget(config).to_i - 1, 0].max
+    end
+
+    def wordpress_api_follow_up_budget(config)
+      config.auto_source&.dig(:scraper, :wordpress_api, :enabled) ? 1 : 0
     end
 
     def collect_articles(response, config, request_session)
