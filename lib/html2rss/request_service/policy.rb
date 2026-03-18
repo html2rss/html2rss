@@ -233,7 +233,7 @@ module Html2rss
 
       def parse_ip(value)
         IPAddr.new(value)
-      rescue IPAddr::InvalidAddressError
+      rescue IPAddr::AddressFamilyError, IPAddr::InvalidAddressError
         nil
       end
 

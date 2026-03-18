@@ -63,7 +63,7 @@ module Html2rss
       end
 
       def execute_browserless_request
-        Puppeteer.connect(browser_ws_endpoint:, protocol_timeout: protocol_timeout_ms) do |browser|
+        connect_with_timeout_support do |browser|
           PuppetCommander.new(ctx, browser).call
         ensure
           browser.disconnect
@@ -72,6 +72,18 @@ module Html2rss
 
       def protocol_timeout_ms
         ctx.policy.total_timeout_seconds * 1000
+      end
+
+      def connect_with_timeout_support(&)
+        Puppeteer.connect(browser_ws_endpoint:, protocol_timeout: protocol_timeout_ms, &)
+      rescue ArgumentError => error
+        raise unless unsupported_protocol_timeout?(error)
+
+        Puppeteer.connect(browser_ws_endpoint:, &)
+      end
+
+      def unsupported_protocol_timeout?(error)
+        error.message.include?('unknown keyword: :protocol_timeout')
       end
 
       def browserless_api_token(ws_url)

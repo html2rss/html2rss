@@ -30,7 +30,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
   end
   let(:browser) { instance_double(Puppeteer::Browser, new_page: page) }
   let(:page) { instance_double(Puppeteer::Page) }
-  let(:main_frame) { instance_double('Puppeteer::Frame') }
+  let(:main_frame) { instance_double(Puppeteer::Frame) }
   let(:unsafe_headers) do
     {
       'Host' => 'example.com',
@@ -186,7 +186,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       end
 
       it 'ignores iframe navigation responses when building final metadata', :aggregate_failures do
-        iframe_frame = instance_double('Puppeteer::Frame')
+        iframe_frame = instance_double(Puppeteer::Frame)
         iframe_request = instance_double(
           Puppeteer::HTTPRequest,
           navigation_request?: true,
