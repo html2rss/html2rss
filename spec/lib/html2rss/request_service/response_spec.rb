@@ -17,6 +17,18 @@ RSpec.describe Html2rss::RequestService::Response do
     end
   end
 
+  describe '#content_type' do
+    let(:body) { '' }
+
+    context 'when the response uses canonical header casing' do
+      let(:headers) { { 'Content-Type' => 'text/html' } }
+
+      it 'looks up the header case-insensitively' do
+        expect(instance.content_type).to eq('text/html')
+      end
+    end
+  end
+
   describe '#parsed_body' do
     subject(:parsed_body) { instance.parsed_body }
 

@@ -130,6 +130,63 @@ RSpec.describe Html2rss::Config do
         expect(config.headers).to include('X-Query' => 'ruby')
       end
     end
+
+    it 'tracks omitted request budgets as non-explicit' do # rubocop:disable RSpec/ExampleLength
+      config = described_class.from_hash({
+                                           channel: { url: 'https://example.com' },
+                                           selectors: {
+                                             items: { selector: '.item' },
+                                             title: { selector: 'h2' }
+                                           }
+                                         })
+
+      expect(config.request_controls.explicit?(:max_requests)).to be(false)
+    end
+
+    it 'tracks explicit request budgets as explicit' do # rubocop:disable RSpec/ExampleLength
+      config = described_class.from_hash({
+                                           max_requests: 4,
+                                           channel: { url: 'https://example.com' },
+                                           selectors: {
+                                             items: { selector: '.item' },
+                                             title: { selector: 'h2' }
+                                           }
+                                         })
+
+      expect(config.request_controls.explicit?(:max_requests)).to be(true)
+    end
+  end
+
+  describe '.auto_source_config' do
+    let(:config) do
+      described_class.auto_source_config(
+        url: 'https://example.com/blog',
+        items_selector: '.post',
+        request_controls: Html2rss::RequestControls.new(
+          strategy: :browserless,
+          max_redirects: 8,
+          max_requests: 5,
+          explicit_keys: %i[strategy max_redirects max_requests]
+        )
+      )
+    end
+
+    it 'builds a top-level auto-source feed config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      expect(config[:strategy]).to eq(:browserless)
+      expect(config[:max_redirects]).to eq(8)
+      expect(config[:max_requests]).to eq(5)
+      expect(config.dig(:channel, :url)).to eq('https://example.com/blog')
+      expect(config[:auto_source]).to eq(Html2rss::AutoSource::DEFAULT_CONFIG)
+      expect(config[:selectors]).to eq(items: { selector: '.post', enhance: true })
+    end
+
+    it 'leaves optional request overrides unset so runtime config can apply defaults', :aggregate_failures do
+      config = described_class.auto_source_config(url: 'https://example.com/blog')
+
+      expect(config).not_to have_key(:max_redirects)
+      expect(config).not_to have_key(:max_requests)
+      expect(config[:selectors]).to be_nil
+    end
   end
 
   describe '.validate' do
@@ -301,7 +358,8 @@ RSpec.describe Html2rss::Config do
             },
             json_state: { enabled: true },    # wasn't explicitly set -> default
             microdata: { enabled: true },     # wasn't explicitly set -> default
-            rss_feed_detector: { enabled: true } # wasn't explicitly set -> default
+            rss_feed_detector: { enabled: true }, # wasn't explicitly set -> default
+            wordpress_api: { enabled: true } # wasn't explicitly set -> default
           },
           cleanup: {
             keep_different_domain: false,     # wasn't explicitly set -> default

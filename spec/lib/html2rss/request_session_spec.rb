@@ -6,7 +6,7 @@ RSpec.describe Html2rss::RequestSession do
   subject(:session) { described_class.new(context:, strategy:, logger:) }
 
   let(:strategy) { :faraday }
-  let(:logger) { instance_double(Logger, warn: nil) }
+  let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
   let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 3) }
   let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 3) }
   let(:context) do
@@ -18,12 +18,57 @@ RSpec.describe Html2rss::RequestSession do
     )
   end
 
+  describe '.from_runtime_input' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:runtime_input) do
+      Html2rss::RequestSession::RuntimeInput.new(
+        url: 'https://example.com/blog',
+        headers: { 'User-Agent' => 'RSpec' },
+        strategy: :browserless,
+        request_policy:
+      )
+    end
+    let(:request_policy) { Html2rss::RequestService::Policy.new(max_requests: configured_max_requests, max_redirects: 8) }
+
+    # rubocop:disable RSpec/MultipleMemoizedHelpers
+    context 'when max_requests is explicitly configured' do
+      let(:configured_max_requests) { 1 }
+
+      it 'honors the configured request ceiling while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        session = described_class.from_runtime_input(runtime_input, logger:)
+        context = session.instance_variable_get(:@context)
+
+        expect(session).to be_a(described_class)
+        expect(context.url.to_s).to eq('https://example.com/blog')
+        expect(context.headers).to eq(runtime_input.headers)
+        expect(context.policy.max_redirects).to eq(8)
+        expect(context.policy.max_requests).to eq(1)
+      end
+    end
+
+    context 'when max_requests is omitted' do
+      let(:configured_max_requests) { 4 }
+
+      it 'infers the baseline request budget while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        session = described_class.from_runtime_input(runtime_input, logger:)
+        context = session.instance_variable_get(:@context)
+
+        expect(session).to be_a(described_class)
+        expect(context.url.to_s).to eq('https://example.com/blog')
+        expect(context.headers).to eq(runtime_input.headers)
+        expect(context.policy.max_redirects).to eq(8)
+        expect(context.policy.max_requests).to eq(4)
+      end
+    end
+    # rubocop:enable RSpec/MultipleMemoizedHelpers
+  end
+
   describe '#fetch_initial_response' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
         url: Html2rss::Url.from_absolute('https://example.com/news'),
-        headers: { 'content-type' => 'text/html' }
+        headers: { 'content-type' => 'text/html' },
+        status: 200
       )
     end
 
@@ -31,9 +76,12 @@ RSpec.describe Html2rss::RequestSession do
       allow(Html2rss::RequestService).to receive(:execute).with(context, strategy:).and_return(response)
     end
 
-    it 'requests the initial page and tracks its url', :aggregate_failures do
+    it 'requests the initial page, tracks its url, and logs the response summary', :aggregate_failures do
       expect(session.fetch_initial_response).to eq(response)
       expect(session.visited?(response.url)).to be(true)
+      expect(logger).to have_received(:debug).with(
+        %r{Html2rss::RequestSession: relation=initial request_url=https://example\.com/news final_url=https://example\.com/news status=200 content_type="text/html" bytes=13}
+      )
     end
   end
 
@@ -42,7 +90,8 @@ RSpec.describe Html2rss::RequestSession do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
         url: Html2rss::Url.from_absolute('https://redirected.example.com/news?page=2'),
-        headers: { 'content-type' => 'text/html' }
+        headers: { 'content-type' => 'text/html' },
+        status: 200
       )
     end
 
@@ -65,6 +114,14 @@ RSpec.describe Html2rss::RequestSession do
             follow_up_context.headers == context.headers
         end,
         strategy: :faraday
+      )
+      expect(logger).to have_received(:debug).with(
+        %r{
+          Html2rss::RequestSession:\s+relation=pagination\s+
+          request_url=https://redirected\.example\.com/news\?page=2\s+
+          final_url=https://redirected\.example\.com/news\?page=2\s+
+          status=200\s+content_type="text/html"\s+bytes=13
+        }x
       )
     end
   end

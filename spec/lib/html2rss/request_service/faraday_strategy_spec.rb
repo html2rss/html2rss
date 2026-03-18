@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'stringio'
+require 'zlib'
 
 RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RSpec/MultipleMemoizedHelpers
   subject(:execute) { described_class.new(ctx).execute }
@@ -36,7 +38,8 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       Faraday::Response,
       body: '<html></html>',
       headers: { 'content-type' => 'text/html' },
-      env: response_env
+      env: response_env,
+      status: 200
     )
   end
 
@@ -59,6 +62,75 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       hash_including(limit: policy.max_redirects, callback: kind_of(Proc))
     )
     expect(builder).to have_received(:request).with(:gzip)
+    expect(builder).to have_received(:use).with(described_class::StreamingBodyMiddleware)
+    expect(request_options.context).to include(
+      described_class::StreamingBodyMiddleware::STREAM_BUFFER_KEY => ''
+    )
+    expect(request_options.on_data).to be_a(Proc)
     expect(result).to be_a(Html2rss::RequestService::Response)
+  end
+
+  it 'raises when streamed bytes exceed the configured limit' do # rubocop:disable RSpec/ExampleLength
+    allow(policy).to receive(:max_response_bytes).and_return(5)
+    allow(connection).to receive(:get) do |&block|
+      block.call(request)
+      streamed_env = Faraday::Env.from(
+        request: request_options,
+        response_headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+      request_options.on_data.call('123', 3, streamed_env)
+      request_options.on_data.call('456', 6, streamed_env)
+      response
+    end
+
+    expect { execute }.to raise_error(
+      Html2rss::RequestService::ResponseTooLarge,
+      'Response exceeded 5 bytes'
+    )
+  end
+
+  describe described_class::StreamingBodyMiddleware do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    subject(:middleware_response) { middleware.call(request_env) }
+
+    let(:request_options) do
+      Faraday::RequestOptions.new(
+        context: {
+          described_class::STREAM_BUFFER_KEY => compressed_body
+        }
+      )
+    end
+    let(:request_env) do
+      Faraday::Env.from(
+        method: :get,
+        request: request_options,
+        request_headers: Faraday::Utils::Headers.new,
+        url: Addressable::URI.parse('https://example.com')
+      )
+    end
+    let(:response_env) do
+      Faraday::Env.from(
+        request: request_options,
+        status: 200,
+        response_headers: Faraday::Utils::Headers.new('Content-Encoding' => 'gzip'),
+        response_body: +''
+      )
+    end
+    let(:app) do
+      Class.new do
+        define_method(:initialize) { |response| @response = response }
+        define_method(:call) { |_env| @response }
+      end.new(Faraday::Response.new(response_env))
+    end
+    let(:middleware) { Faraday::Gzip::Middleware.new(described_class.new(app)) }
+    let(:compressed_body) do
+      StringIO.new.tap do |io|
+        Zlib::GzipWriter.wrap(io) { |gzip| gzip.write('<html></html>') }
+      end.string
+    end
+
+    it 'restores buffered streamed bytes before gzip decoding' do
+      expect(middleware_response.body).to eq('<html></html>')
+    end
   end
 end

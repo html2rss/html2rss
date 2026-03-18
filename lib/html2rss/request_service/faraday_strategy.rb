@@ -11,6 +11,19 @@ module Html2rss
     # @see https://rubygems.org/gems/faraday
     class FaradayStrategy < Strategy
       ##
+      # Restores buffered streamed bytes so response middleware can process them.
+      class StreamingBodyMiddleware < Faraday::Middleware
+        STREAM_BUFFER_KEY = :html2rss_stream_buffer
+
+        def on_complete(env)
+          buffer = env.request.context&.delete(STREAM_BUFFER_KEY)
+          return if buffer.nil? || buffer.empty?
+
+          env.body = buffer
+        end
+      end
+
+      ##
       # NOTE: Unlike BrowserlessStrategy, Faraday does not expose the remote IP after connect.
       # SSRF protection here is pre-connection only (DNS resolution via Policy).
       # A DNS rebinding attack between resolution and connect cannot be caught at this layer.
@@ -25,7 +38,8 @@ module Html2rss
         response = faraday_request(response_guard)
         response_guard.inspect_body!(response.body)
 
-        Response.new(body: response.body, headers: response.headers, url: response_url(response))
+        Response.new(body: response.body, headers: response.headers, url: response_url(response),
+                     status: response.status)
       end
 
       private
@@ -38,7 +52,8 @@ module Html2rss
       def faraday_request(response_guard)
         client.get do |req|
           apply_timeouts(req)
-          req.options.on_data = on_data_callback(response_guard)
+          buffer = prepare_stream_buffer(req)
+          req.options.on_data = on_data_callback(response_guard, buffer)
         end
       end
 
@@ -46,6 +61,7 @@ module Html2rss
         @client ||= Faraday.new(url: ctx.url.to_s, headers: ctx.headers) do |faraday|
           faraday.use Faraday::FollowRedirects::Middleware, limit: ctx.policy.max_redirects, callback: redirect_callback
           faraday.request :gzip
+          faraday.use StreamingBodyMiddleware
           faraday.adapter Faraday.default_adapter
         end
       end
@@ -56,9 +72,15 @@ module Html2rss
         request.options.read_timeout = ctx.policy.read_timeout_seconds
       end
 
-      def on_data_callback(response_guard)
-        proc do |_chunk, total_bytes, env|
+      def prepare_stream_buffer(request)
+        request.options.context ||= {}
+        request.options.context[StreamingBodyMiddleware::STREAM_BUFFER_KEY] = +''
+      end
+
+      def on_data_callback(response_guard, buffer)
+        proc do |chunk, total_bytes, env|
           response_guard.inspect_chunk!(total_bytes:, headers: env&.response_headers)
+          buffer << chunk
         end
       end
 

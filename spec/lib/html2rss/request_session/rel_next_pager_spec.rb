@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Html2rss::RequestSession::RelNextPager do
   subject(:pager) { described_class.new(session:, initial_response:, max_pages: 2, logger:) }
 
-  let(:logger) { instance_double(Logger, warn: nil) }
+  let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
   let(:session) do
     context = Html2rss::RequestService::Context.new(
       url: 'https://example.com/news',
@@ -59,7 +59,7 @@ RSpec.describe Html2rss::RequestSession::RelNextPager do
     it 'stops pagination and logs the stop reason', :aggregate_failures do
       expect(pager.to_a).to eq([initial_response])
       expect(logger).to have_received(:warn).with(
-        %r{Html2rss::RequestSession::RelNextPager: pagination stopped at https://redirected\.example\.com/news\?page=2 - Request budget exhausted}
+        %r{Html2rss::RequestSession::RelNextPager: pagination stopped at https://redirected\.example\.com/news\?page=2 - Request budget exhausted\. Retry with --max-requests 4 or increase top-level max_requests in the config\.}
       )
     end
   end

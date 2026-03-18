@@ -4,6 +4,26 @@ module Html2rss
   ##
   # Coordinates multi-request feed builds on top of RequestService.
   class RequestSession
+    class << self
+      ##
+      # Builds a request session from translated runtime request inputs.
+      #
+      # @param runtime_input [RuntimeInput] translated runtime request inputs
+      # @param logger [Logger] logger used for operational warnings
+      # @return [RequestSession] configured request session
+      def from_runtime_input(runtime_input, logger: Html2rss::Log)
+        new(
+          context: RequestService::Context.new(
+            url: runtime_input.url,
+            headers: runtime_input.headers,
+            policy: runtime_input.request_policy
+          ),
+          strategy: runtime_input.strategy,
+          logger:
+        )
+      end
+    end
+
     ##
     # @param context [RequestService::Context] initial request context
     # @param strategy [Symbol] request strategy to use for all requests in the session
@@ -52,6 +72,14 @@ module Html2rss
     end
 
     ##
+    # Returns the configured request budget for the session.
+    #
+    # @return [Integer] maximum requests allowed for the feed build
+    def max_requests
+      context.policy.max_requests
+    end
+
+    ##
     # @param url [String, Html2rss::Url] url to query
     # @return [Boolean] whether the url was already visited in this session
     def visited?(url)
@@ -72,7 +100,14 @@ module Html2rss
     attr_reader :context, :strategy, :logger, :visited_urls
 
     def execute(request_context)
-      RequestService.execute(request_context, strategy:)
+      RequestService.execute(request_context, strategy:).tap do |response|
+        logger.debug(
+          "#{self.class}: relation=#{request_context.relation} " \
+          "request_url=#{request_context.url} final_url=#{response.url} " \
+          "status=#{response.status || 'unknown'} content_type=#{response.content_type.inspect} " \
+          "bytes=#{response.body.bytesize}"
+        )
+      end
     end
 
     def normalize_url(url)
