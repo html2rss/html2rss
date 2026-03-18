@@ -17,7 +17,7 @@ RSpec.describe Html2rss::AutoSource do
       Html2rss::RequestService::Response.new(
         body: File.read(File.expand_path('../../fixtures/auto_source/wordpress_api/posts.json', __dir__)),
         url: Html2rss::Url.from_absolute(
-          'https://example.com/wp-json/wp/v2/posts?per_page=100&_fields=id,title,excerpt,content,link,date,categories'
+          'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,categories&per_page=100'
         ),
         headers: { 'content-type' => 'application/json' }
       )

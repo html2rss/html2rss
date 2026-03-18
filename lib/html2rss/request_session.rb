@@ -33,7 +33,10 @@ module Html2rss
       end
 
       def request_budget_for(config)
-        [baseline_request_budget(config), config.max_requests].max
+        max_requests = config.max_requests
+        return max_requests if config.explicit_max_requests?
+
+        [baseline_request_budget(config), max_requests].max
       end
 
       # Reserve enough budget for the initial request plus predictable follow-ups

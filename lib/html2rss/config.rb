@@ -22,27 +22,22 @@ module Html2rss
     # @param config [Hash<Symbol, Object>] the configuration hash.
     # @raise [InvalidConfig] if the configuration fails validation.
     def initialize(config)
+      @explicit_max_requests = explicit_max_requests_configured?(config)
       prepared_config = prepare_config(config)
 
-      validator = Validator.new.call(prepared_config)
-
-      raise InvalidConfig, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
-
-      validated_config = validator.to_h
-
-      validated_config[:headers] = RequestHeaders.normalize(
-        validated_config[:headers],
-        channel_language: validated_config.dig(:channel, :language),
-        url: validated_config.dig(:channel, :url)
-      )
-
-      @config = validated_config.freeze
+      @config = validated_config_for(prepared_config).freeze
     end
 
     def strategy = config[:strategy]
     def max_redirects = config[:max_redirects]
     def max_requests = config[:max_requests]
     def stylesheets = config[:stylesheets]
+
+    ##
+    # @return [Boolean] whether max_requests was explicitly configured by the caller
+    def explicit_max_requests?
+      @explicit_max_requests
+    end
 
     def headers = config[:headers]
     def channel = config[:channel]
@@ -55,6 +50,27 @@ module Html2rss
     private
 
     attr_reader :config
+
+    def explicit_max_requests_configured?(config)
+      config.key?(:max_requests) || config.key?('max_requests')
+    end
+
+    def validated_config_for(config)
+      validator = Validator.new.call(config)
+
+      raise InvalidConfig, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
+
+      normalized_headers(validator.to_h)
+    end
+
+    def normalized_headers(validated_config)
+      validated_config[:headers] = RequestHeaders.normalize(
+        validated_config[:headers],
+        channel_language: validated_config.dig(:channel, :language),
+        url: validated_config.dig(:channel, :url)
+      )
+      validated_config
+    end
 
     def handle_deprecated_channel_attributes(config)
       { strategy: RequestService.default_strategy_name, headers: {} }.each_pair do |key, default_value|
