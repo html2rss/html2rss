@@ -25,6 +25,20 @@ Follow the gem’s pipeline exactly; every enhancement must respect these bounda
 
 Keep logic anchored to the correct stage. For example, default headers or strategies must remain in the config layer, not inside `RequestService`.
 
+## Contributor Entrypoint
+
+- Treat `lib/html2rss.rb` as the contributor-facing entrypoint to the gem.
+- A curious contributor should be able to read `lib/html2rss.rb` top to bottom and understand the high-level pipeline:
+  config -> request session -> initial response -> article collection -> deduplication -> rendering.
+- Keep `lib/html2rss.rb` focused on that orchestration story. It should explain what happens, not how every detail is calculated.
+- Low-level setup details belong with their owners:
+  - top-level feed config shaping belongs in `Html2rss::Config`
+  - request policy and session assembly belong in `Html2rss::RequestSession`
+  - extraction details belong in `Html2rss::Selectors` and `Html2rss::AutoSource`
+  - rendering details belong in the builders
+- Do not let `lib/html2rss.rb` accumulate source-specific heuristics, transport-policy calculations, or other implementation details that distract from the pipeline narrative.
+- Prefer a small number of orchestration helpers in `lib/html2rss.rb` with names that describe pipeline phases, not mechanics.
+
 ## Coding Standards
 
 - Target Ruby 3.2 or newer.
@@ -36,6 +50,8 @@ Keep logic anchored to the correct stage. For example, default headers or strate
 - Name things descriptively and encapsulate behaviour in service objects or modules.
 - Raise meaningful errors; never fail silently.
 - Document every public method with YARD tags (`@param`, `@return`).
+- Prefer direct, skimmable code over metric-driven indirection. Do not introduce tiny helper methods whose main purpose is to satisfy RuboCop metrics if they make the main flow harder to read.
+- For contributor-facing entrypoints and CLI code, targeted RuboCop disables are acceptable when they preserve a clearer, more direct reading experience than extra abstraction would.
 
 ## Testing Standards
 
