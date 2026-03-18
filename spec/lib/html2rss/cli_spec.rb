@@ -96,8 +96,10 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'prints the jsonfeed output when requested' do
+      expected_output = "#{JSON.pretty_generate(auto_json_feed)}\n"
+
       expect { cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' }) }
-        .to output("#{auto_json_feed}\n").to_stdout
+        .to output(expected_output).to_stdout
     end
 
     it 'passes the items_selector option to Html2rss.auto_source' do

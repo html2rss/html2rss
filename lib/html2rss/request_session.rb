@@ -131,7 +131,14 @@ module Html2rss
     attr_reader :context, :strategy, :logger, :visited_urls
 
     def execute(request_context)
-      RequestService.execute(request_context, strategy:)
+      RequestService.execute(request_context, strategy:).tap do |response|
+        logger.debug(
+          "#{self.class}: relation=#{request_context.relation} " \
+          "request_url=#{request_context.url} final_url=#{response.url} " \
+          "status=#{response.status || 'unknown'} content_type=#{response.content_type.inspect} " \
+          "bytes=#{response.body.bytesize}"
+        )
+      end
     end
 
     def normalize_url(url)

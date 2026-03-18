@@ -123,7 +123,8 @@ module Html2rss
         Response.new(
           body: page_body,
           headers: navigation_response&.headers || {},
-          url: response_url(navigation_response, ctx.url)
+          url: response_url(navigation_response, ctx.url),
+          status: navigation_response&.status
         )
       end
 

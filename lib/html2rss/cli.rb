@@ -67,21 +67,21 @@ module Html2rss
                   type: :numeric,
                   desc: 'Maximum requests to allow for this feed build',
                   default: Html2rss::RequestService::Policy::DEFAULTS[:max_requests]
-    def auto(url) # rubocop:disable Metrics/MethodLength
-      source_method =
-        options.fetch(:format, 'rss') == 'jsonfeed' ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
+    def auto(url) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      format = options.fetch(:format, 'rss')
+      source_method = format == 'jsonfeed' ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
 
-      puts(
-        execute_feed do
-          source_method.call(
-            url,
-            strategy: options.fetch(:strategy, 'faraday').to_sym,
-            items_selector: options[:items_selector],
-            max_redirects: options[:max_redirects],
-            max_requests: options[:max_requests]
-          )
-        end
-      )
+      result = execute_feed do
+        source_method.call(
+          url,
+          strategy: options.fetch(:strategy, 'faraday').to_sym,
+          items_selector: options[:items_selector],
+          max_redirects: options[:max_redirects],
+          max_requests: options[:max_requests]
+        )
+      end
+
+      puts(format == 'jsonfeed' ? JSON.pretty_generate(result) : result)
     end
 
     desc 'schema', 'Print the exported config JSON Schema'

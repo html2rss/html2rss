@@ -25,7 +25,8 @@ module Html2rss
         response = faraday_request(response_guard)
         response_guard.inspect_body!(response.body)
 
-        Response.new(body: response.body, headers: response.headers, url: response_url(response))
+        Response.new(body: response.body, headers: response.headers, url: response_url(response),
+                     status: response.status)
       end
 
       private
