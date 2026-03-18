@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Html2rss::RequestSession::RelNextPager do
   subject(:pager) { described_class.new(session:, initial_response:, max_pages: 2, logger:) }
 
-  let(:logger) { instance_double(Logger, warn: nil) }
+  let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
   let(:session) do
     context = Html2rss::RequestService::Context.new(
       url: 'https://example.com/news',

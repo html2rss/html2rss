@@ -11,6 +11,19 @@ module Html2rss
     # @see https://rubygems.org/gems/faraday
     class FaradayStrategy < Strategy
       ##
+      # Restores buffered streamed bytes so response middleware can process them.
+      class StreamingBodyMiddleware < Faraday::Middleware
+        STREAM_BUFFER_KEY = :html2rss_stream_buffer
+
+        def on_complete(env)
+          buffer = env.request.context&.delete(STREAM_BUFFER_KEY)
+          return if buffer.nil? || buffer.empty?
+
+          env.body = buffer
+        end
+      end
+
+      ##
       # NOTE: Unlike BrowserlessStrategy, Faraday does not expose the remote IP after connect.
       # SSRF protection here is pre-connection only (DNS resolution via Policy).
       # A DNS rebinding attack between resolution and connect cannot be caught at this layer.
@@ -22,8 +35,7 @@ module Html2rss
         validate_request!
 
         response_guard = ResponseGuard.new(policy: ctx.policy)
-        response = faraday_request
-        response_guard.inspect_chunk!(total_bytes: response.body.bytesize, headers: response.headers)
+        response = faraday_request(response_guard)
         response_guard.inspect_body!(response.body)
 
         Response.new(body: response.body, headers: response.headers, url: response_url(response),
@@ -37,9 +49,11 @@ module Html2rss
         ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
       end
 
-      def faraday_request
+      def faraday_request(response_guard)
         client.get do |req|
           apply_timeouts(req)
+          buffer = prepare_stream_buffer(req)
+          req.options.on_data = on_data_callback(response_guard, buffer)
         end
       end
 
@@ -47,6 +61,7 @@ module Html2rss
         @client ||= Faraday.new(url: ctx.url.to_s, headers: ctx.headers) do |faraday|
           faraday.use Faraday::FollowRedirects::Middleware, limit: ctx.policy.max_redirects, callback: redirect_callback
           faraday.request :gzip
+          faraday.use StreamingBodyMiddleware
           faraday.adapter Faraday.default_adapter
         end
       end
@@ -55,6 +70,18 @@ module Html2rss
         request.options.timeout = ctx.policy.total_timeout_seconds
         request.options.open_timeout = ctx.policy.connect_timeout_seconds
         request.options.read_timeout = ctx.policy.read_timeout_seconds
+      end
+
+      def prepare_stream_buffer(request)
+        request.options.context ||= {}
+        request.options.context[StreamingBodyMiddleware::STREAM_BUFFER_KEY] = +''
+      end
+
+      def on_data_callback(response_guard, buffer)
+        proc do |chunk, total_bytes, env|
+          response_guard.inspect_chunk!(total_bytes:, headers: env&.response_headers)
+          buffer << chunk
+        end
       end
 
       def response_url(response)
