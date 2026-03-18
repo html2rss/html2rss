@@ -18,6 +18,34 @@ RSpec.describe Html2rss::RequestSession do
     )
   end
 
+  describe '.for_config' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:config) do
+      Html2rss::Config.from_hash({
+                                   strategy: :browserless,
+                                   max_redirects: 8,
+                                   max_requests: 5,
+                                   channel: { url: 'https://example.com/blog' },
+                                   selectors: {
+                                     items: { selector: 'article', pagination: { max_pages: 3 } },
+                                     title: { selector: 'h2' }
+                                   },
+                                   auto_source: Html2rss::AutoSource::DEFAULT_CONFIG
+                                 })
+    end
+
+    it 'builds a session with config-derived strategy and request policy', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      session = described_class.for_config(config, logger:)
+      context = session.instance_variable_get(:@context)
+
+      expect(session).to be_a(described_class)
+      expect(session.instance_variable_get(:@strategy)).to eq(:browserless)
+      expect(context.url.to_s).to eq('https://example.com/blog')
+      expect(context.headers).to eq(config.headers)
+      expect(context.policy.max_redirects).to eq(8)
+      expect(context.policy.max_requests).to eq(5)
+    end
+  end
+
   describe '#fetch_initial_response' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:response) do
       Html2rss::RequestService::Response.new(

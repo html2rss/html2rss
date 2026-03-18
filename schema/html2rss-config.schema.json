@@ -7,6 +7,20 @@
         "type": "null"
       }
     },
+    "max_redirects": {
+      "type": "integer",
+      "not": {
+        "type": "null"
+      },
+      "minimum": 0
+    },
+    "max_requests": {
+      "type": "integer",
+      "not": {
+        "type": "null"
+      },
+      "exclusiveMinimum": 0
+    },
     "channel": {
       "type": "object",
       "properties": {

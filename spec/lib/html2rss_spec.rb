@@ -243,6 +243,58 @@ RSpec.describe Html2rss do
         expect(Html2rss::RequestService).to have_received(:execute).twice
       end
 
+      context 'when max_redirects is configured' do
+        let(:config) do
+          {
+            strategy: :faraday,
+            max_redirects: 8,
+            channel: { url: 'https://example.com/news', title: 'Example News' },
+            selectors: {
+              items: { selector: 'article' },
+              title: { selector: 'h1' }
+            }
+          }
+        end
+
+        it 'builds the request policy with the configured redirect limit', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+          feed
+
+          expect(Html2rss::RequestService).to have_received(:execute).with(
+            satisfy do |ctx|
+              ctx.policy.max_redirects == 8 &&
+                ctx.url.to_s == 'https://example.com/news'
+            end,
+            strategy: :faraday
+          )
+        end
+      end
+
+      context 'when max_requests is configured' do
+        let(:config) do
+          {
+            strategy: :faraday,
+            max_requests: 8,
+            channel: { url: 'https://example.com/news', title: 'Example News' },
+            selectors: {
+              items: { selector: 'article' },
+              title: { selector: 'h1' }
+            }
+          }
+        end
+
+        it 'builds the request policy with the configured request budget', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+          feed
+
+          expect(Html2rss::RequestService).to have_received(:execute).with(
+            satisfy do |ctx|
+              ctx.policy.max_requests == 8 &&
+                ctx.url.to_s == 'https://example.com/news'
+            end,
+            strategy: :faraday
+          )
+        end
+      end
+
       context 'when the initial request redirects to a different host' do
         before do
           allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
@@ -405,6 +457,30 @@ RSpec.describe Html2rss do
         )
       end
     end
+
+    context 'with max_redirects' do
+      before do
+        allow(described_class).to receive(:feed).and_return(nil)
+      end
+
+      it 'adds max_redirects to the generated config' do
+        described_class.auto_source(url, max_redirects: 8)
+
+        expect(described_class).to have_received(:feed).with(hash_including(max_redirects: 8))
+      end
+    end
+
+    context 'with max_requests' do
+      before do
+        allow(described_class).to receive(:feed).and_return(nil)
+      end
+
+      it 'adds max_requests to the generated config' do
+        described_class.auto_source(url, max_requests: 8)
+
+        expect(described_class).to have_received(:feed).with(hash_including(max_requests: 8))
+      end
+    end
   end
 
   describe '.auto_json_feed' do
@@ -435,6 +511,30 @@ RSpec.describe Html2rss do
         expect(described_class).to have_received(:json_feed).with(
           hash_including(selectors: { items: { selector: items_selector, enhance: true } })
         )
+      end
+    end
+
+    context 'with max_redirects' do
+      before do
+        allow(described_class).to receive(:json_feed).and_return(nil)
+      end
+
+      it 'adds max_redirects to the generated config' do
+        described_class.auto_json_feed(url, max_redirects: 8)
+
+        expect(described_class).to have_received(:json_feed).with(hash_including(max_redirects: 8))
+      end
+    end
+
+    context 'with max_requests' do
+      before do
+        allow(described_class).to receive(:json_feed).and_return(nil)
+      end
+
+      it 'adds max_requests to the generated config' do
+        described_class.auto_json_feed(url, max_requests: 8)
+
+        expect(described_class).to have_received(:json_feed).with(hash_including(max_requests: 8))
       end
     end
   end

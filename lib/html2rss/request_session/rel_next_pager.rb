@@ -59,7 +59,10 @@ module Html2rss
       def fetch_follow_up_response_or_stop(next_url, origin_url)
         session.follow_up(url: next_url, relation: :pagination, origin_url:)
       rescue RequestService::RequestBudgetExceeded => error
-        logger.warn("#{self.class}: pagination stopped at #{next_url} - #{error.message}")
+        logger.warn(
+          "#{self.class}: pagination stopped at #{next_url} - #{error.message}. " \
+          "Retry with --max-requests #{session.max_requests} or increase top-level max_requests in the config."
+        )
         nil
       end
     end

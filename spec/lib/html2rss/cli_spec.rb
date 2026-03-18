@@ -34,6 +34,22 @@ RSpec.describe Html2rss::CLI do
       expect(Html2rss).to have_received(:feed).with(hash_including(strategy: :browserless))
     end
 
+    it 'passes the max_redirects option to the config' do
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+      cli.invoke(:feed, ['example.yml'], { max_redirects: 8 })
+
+      expect(Html2rss).to have_received(:feed).with(hash_including(max_redirects: 8))
+    end
+
+    it 'passes the max_requests option to the config' do
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+      cli.invoke(:feed, ['example.yml'], { max_requests: 8 })
+
+      expect(Html2rss).to have_received(:feed).with(hash_including(max_requests: 8))
+    end
+
     it 'passes the params option to the config' do
       allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
 
@@ -45,9 +61,10 @@ RSpec.describe Html2rss::CLI do
 
   describe '#auto' do
     let(:auto_rss_xml) { '<rss><channel><title>Auto Source</title></channel></rss>' }
+    let(:auto_json_feed) { { version: 'https://jsonfeed.org/version/1.1', title: 'Auto Source', items: [] } }
 
     before do
-      allow(Html2rss).to receive(:auto_source).and_return(auto_rss_xml)
+      allow(Html2rss).to receive_messages(auto_source: auto_rss_xml, auto_json_feed:)
     end
 
     it 'calls Html2rss.auto_source and prints the result to stdout' do
@@ -58,14 +75,68 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { strategy: 'browserless' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :browserless, items_selector: nil)
+        .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: 3,
+                                     max_requests: 1)
+    end
+
+    it 'passes the rss format option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { format: 'rss' })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 3,
+                                     max_requests: 1)
+    end
+
+    it 'passes the jsonfeed format option to Html2rss.auto_json_feed' do
+      cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' })
+
+      expect(Html2rss).to have_received(:auto_json_feed)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 3,
+                                     max_requests: 1)
+    end
+
+    it 'prints the jsonfeed output when requested' do
+      expect { cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' }) }
+        .to output("#{auto_json_feed}\n").to_stdout
     end
 
     it 'passes the items_selector option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { items_selector: '.item' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: '.item')
+        .with('https://example.com', strategy: :faraday, items_selector: '.item', max_redirects: 3,
+                                     max_requests: 1)
+    end
+
+    it 'passes the max_redirects option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 8, max_requests: 1)
+    end
+
+    it 'passes the max_requests option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { max_requests: 8 })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 3, max_requests: 8)
+    end
+
+    context 'when the redirect limit is hit' do
+      before do
+        allow(Html2rss).to receive(:auto_source).and_raise(
+          Faraday::FollowRedirects::RedirectLimitReached,
+          'too many redirects; last one to: https://www.example.com/'
+        )
+      end
+
+      it 'raises a CLI error with an actionable redirect hint' do
+        expect { cli.auto('https://example.com') }
+          .to raise_error(
+            Thor::Error,
+            /retry with --max-redirects 10 or use the final URL directly/
+          )
+      end
     end
   end
 

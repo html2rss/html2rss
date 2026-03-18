@@ -9,7 +9,7 @@ require 'thor'
 module Html2rss
   ##
   # The Html2rss command line interface.
-  class CLI < Thor
+  class CLI < Thor # rubocop:disable Metrics/ClassLength
     check_unknown_options!
 
     def self.exit_on_failure?
@@ -27,12 +27,24 @@ module Html2rss
                   desc: 'The strategy to request the URL',
                   enum: %w[faraday browserless],
                   default: 'faraday'
+    method_option :max_redirects,
+                  type: :numeric,
+                  desc: 'Maximum redirects to follow per request',
+                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_redirects]
+    method_option :max_requests,
+                  type: :numeric,
+                  desc: 'Maximum requests to allow for this feed build',
+                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_requests]
     def feed(yaml_file, feed_name = nil)
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
-      config[:strategy] ||= options[:strategy]&.to_sym
       config[:params] = options[:params] || {}
+      config.merge!(
+        strategy: options.fetch(:strategy, 'faraday').to_sym,
+        max_redirects: options[:max_redirects],
+        max_requests: options[:max_requests]
+      ) { |_key, current, _default| current }
 
-      puts Html2rss.feed(config)
+      puts(execute_feed { Html2rss.feed(config) })
     end
 
     desc 'auto [URL]', 'Automatically sources an RSS feed from the URL'
@@ -41,11 +53,35 @@ module Html2rss
                   desc: 'The strategy to request the URL',
                   enum: %w[faraday browserless],
                   default: 'faraday'
+    method_option :format,
+                  type: :string,
+                  desc: 'Output format for the auto-sourced feed',
+                  enum: %w[rss jsonfeed],
+                  default: 'rss'
     method_option :items_selector, type: :string, desc: 'CSS selector for items (will be enhanced) (optional)'
-    def auto(url)
-      strategy = options.fetch(:strategy, 'faraday').to_sym
+    method_option :max_redirects,
+                  type: :numeric,
+                  desc: 'Maximum redirects to follow per request',
+                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_redirects]
+    method_option :max_requests,
+                  type: :numeric,
+                  desc: 'Maximum requests to allow for this feed build',
+                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_requests]
+    def auto(url) # rubocop:disable Metrics/MethodLength
+      source_method =
+        options.fetch(:format, 'rss') == 'jsonfeed' ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
 
-      puts Html2rss.auto_source(url, strategy:, items_selector: options[:items_selector])
+      puts(
+        execute_feed do
+          source_method.call(
+            url,
+            strategy: options.fetch(:strategy, 'faraday').to_sym,
+            items_selector: options[:items_selector],
+            max_redirects: options[:max_redirects],
+            max_requests: options[:max_requests]
+          )
+        end
+      )
     end
 
     desc 'schema', 'Print the exported config JSON Schema'
@@ -91,6 +127,17 @@ module Html2rss
       raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
 
       puts 'Configuration is valid'
+    end
+
+    private
+
+    def execute_feed
+      yield
+    rescue Faraday::FollowRedirects::RedirectLimitReached => error
+      raise Thor::Error, "#{error.message}. retry with --max-redirects 10 or use the final URL directly."
+    rescue Html2rss::RequestService::RequestBudgetExceeded => error
+      raise Thor::Error,
+            "#{error.message}. retry with --max-requests 5 or increase top-level max_requests in the config."
     end
   end
 end

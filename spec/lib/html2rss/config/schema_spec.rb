@@ -11,6 +11,14 @@ RSpec.describe Html2rss::Config::Schema do
       expect(json_schema.fetch('required')).to include('strategy', 'channel')
     end
 
+    it 'documents max_redirects as a top-level request option' do
+      expect(json_schema.dig('properties', 'max_redirects', 'minimum')).to eq(0)
+    end
+
+    it 'documents max_requests as a top-level request option' do
+      expect(json_schema.dig('properties', 'max_requests', 'exclusiveMinimum')).to eq(0)
+    end
+
     it 'enforces presence of selectors or auto_source' do
       expect(json_schema.fetch('anyOf'))
         .to contain_exactly({ 'required' => ['selectors'] }, { 'required' => ['auto_source'] })

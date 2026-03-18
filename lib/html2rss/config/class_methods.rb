@@ -105,12 +105,36 @@ module Html2rss
       end
 
       ##
+      # Builds a top-level auto-source feed config for the public shortcut APIs.
+      #
+      # @param url [String] source page URL
+      # @param strategy [Symbol] request strategy to use
+      # @param items_selector [String, nil] optional selector hint for item extraction
+      # @param max_redirects [Integer, nil] optional redirect limit override
+      # @param max_requests [Integer, nil] optional request budget override
+      # @return [Hash<Symbol, Object>] feed config hash ready for {from_hash}
+      def auto_source_config(url:, strategy:, items_selector: nil, max_redirects: nil, max_requests: nil)
+        config = default_config.merge(
+          strategy:,
+          max_redirects: max_redirects || default_config[:max_redirects],
+          max_requests: max_requests || default_config[:max_requests],
+          channel: default_config[:channel].merge(url:),
+          auto_source: AutoSource::DEFAULT_CONFIG
+        )
+
+        config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
+        config
+      end
+
+      ##
       # Provides a default configuration.
       #
       # @return [Hash<Symbol, Object>] a hash with default configuration values.
       def default_config
         {
           strategy: RequestService.default_strategy_name,
+          max_redirects: RequestService::Policy::DEFAULTS[:max_redirects],
+          max_requests: RequestService::Policy::DEFAULTS[:max_requests],
           channel: { time_zone: 'UTC' },
           headers: RequestHeaders.browser_defaults,
           stylesheets: []

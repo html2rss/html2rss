@@ -40,6 +40,8 @@ module Html2rss
     end
 
     def strategy = config[:strategy]
+    def max_redirects = config[:max_redirects]
+    def max_requests = config[:max_requests]
     def stylesheets = config[:stylesheets]
 
     def headers = config[:headers]

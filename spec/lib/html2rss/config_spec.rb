@@ -132,6 +132,35 @@ RSpec.describe Html2rss::Config do
     end
   end
 
+  describe '.auto_source_config' do
+    let(:config) do
+      described_class.auto_source_config(
+        url: 'https://example.com/blog',
+        strategy: :browserless,
+        items_selector: '.post',
+        max_redirects: 8,
+        max_requests: 5
+      )
+    end
+
+    it 'builds a top-level auto-source feed config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      expect(config[:strategy]).to eq(:browserless)
+      expect(config[:max_redirects]).to eq(8)
+      expect(config[:max_requests]).to eq(5)
+      expect(config.dig(:channel, :url)).to eq('https://example.com/blog')
+      expect(config[:auto_source]).to eq(Html2rss::AutoSource::DEFAULT_CONFIG)
+      expect(config[:selectors]).to eq(items: { selector: '.post', enhance: true })
+    end
+
+    it 'uses runtime defaults when optional overrides are omitted', :aggregate_failures do
+      config = described_class.auto_source_config(url: 'https://example.com/blog', strategy: :faraday)
+
+      expect(config[:max_redirects]).to eq(Html2rss::RequestService::Policy::DEFAULTS[:max_redirects])
+      expect(config[:max_requests]).to eq(Html2rss::RequestService::Policy::DEFAULTS[:max_requests])
+      expect(config[:selectors]).to be_nil
+    end
+  end
+
   describe '.validate' do
     let(:config) do
       {

@@ -28,6 +28,8 @@ module Html2rss
 
       params do
         required(:strategy).filled(:symbol)
+        optional(:max_redirects).filled(:integer, gteq?: 0)
+        optional(:max_requests).filled(:integer, gt?: 0)
         required(:channel).hash(ChannelConfig)
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)
