@@ -35,7 +35,7 @@ module Html2rss
       # @return [Html2rss::Url] the URL of the response
       attr_reader :url
 
-      def content_type = headers['content-type'] || ''
+      def content_type = header('content-type').to_s
       def json_response? = content_type.include?('application/json')
       def html_response? = content_type.include?('text/html')
 
@@ -53,6 +53,14 @@ module Html2rss
                          else
                            raise UnsupportedResponseContentType, "Unsupported content type: #{content_type}"
                          end
+      end
+
+      private
+
+      def header(name)
+        headers.fetch(name) do
+          headers.find { |key, _value| key.casecmp?(name) }&.last
+        end
       end
     end
   end

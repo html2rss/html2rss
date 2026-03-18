@@ -38,11 +38,7 @@ module Html2rss
     def feed(yaml_file, feed_name = nil)
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
       config[:params] = options[:params] || {}
-      config.merge!(
-        strategy: options.fetch(:strategy, 'faraday').to_sym,
-        max_redirects: options[:max_redirects],
-        max_requests: options[:max_requests]
-      ) { |_key, current, _default| current }
+      apply_runtime_request_overrides!(config)
 
       puts(execute_feed { Html2rss.feed(config) })
     end
@@ -131,13 +127,37 @@ module Html2rss
 
     private
 
+    def apply_runtime_request_overrides!(config)
+      config[:strategy] ||= options.fetch(:strategy, 'faraday').to_sym
+      config[:max_redirects] ||= current_max_redirects
+      config[:max_requests] ||= current_max_requests
+    end
+
+    def current_max_redirects
+      options.fetch(:max_redirects, Html2rss::RequestService::Policy::DEFAULTS[:max_redirects])
+    end
+
+    def current_max_requests
+      options.fetch(:max_requests, Html2rss::RequestService::Policy::DEFAULTS[:max_requests])
+    end
+
+    def suggested_max_redirects
+      current_max_redirects + 1
+    end
+
+    def suggested_max_requests
+      current_max_requests + 1
+    end
+
     def execute_feed
       yield
     rescue Faraday::FollowRedirects::RedirectLimitReached => error
-      raise Thor::Error, "#{error.message}. retry with --max-redirects 10 or use the final URL directly."
+      raise Thor::Error,
+            "#{error.message}. retry with --max-redirects #{suggested_max_redirects} or use the final URL directly."
     rescue Html2rss::RequestService::RequestBudgetExceeded => error
       raise Thor::Error,
-            "#{error.message}. retry with --max-requests 5 or increase top-level max_requests in the config."
+            "#{error.message}. retry with --max-requests #{suggested_max_requests} " \
+            'or increase top-level max_requests in the config.'
     end
   end
 end

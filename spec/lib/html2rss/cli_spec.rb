@@ -57,6 +57,20 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:feed).with(hash_including(params: { 'foo' => 'bar' }))
     end
+
+    it 'applies CLI defaults when the YAML config uses nil request overrides' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return(
+        strategy: nil,
+        max_redirects: nil,
+        max_requests: nil
+      )
+
+      cli.feed('example.yml')
+
+      expect(Html2rss).to have_received(:feed).with(
+        hash_including(strategy: :faraday, max_redirects: 3, max_requests: 1)
+      )
+    end
   end
 
   describe '#auto' do
@@ -136,7 +150,7 @@ RSpec.describe Html2rss::CLI do
         expect { cli.auto('https://example.com') }
           .to raise_error(
             Thor::Error,
-            /retry with --max-redirects 10 or use the final URL directly/
+            /retry with --max-redirects 4 or use the final URL directly/
           )
       end
     end
@@ -198,6 +212,24 @@ RSpec.describe Html2rss::CLI do
         expect { cli.validate('config.yml') }
           .to raise_error(Thor::Error, "Invalid configuration: #{errors.to_h}")
       end
+    end
+  end
+
+  describe 'request budget failures' do
+    before do
+      allow(Html2rss).to receive(:feed).and_raise(
+        Html2rss::RequestService::RequestBudgetExceeded,
+        'Request budget exhausted'
+      )
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({ url: 'https://example.com' })
+    end
+
+    it 'raises a CLI error with an increased retry hint' do
+      expect { cli.feed('example.yml') }
+        .to raise_error(
+          Thor::Error,
+          /retry with --max-requests 2 or increase top-level max_requests in the config/
+        )
     end
   end
 end

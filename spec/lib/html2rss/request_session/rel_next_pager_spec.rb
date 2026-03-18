@@ -59,7 +59,7 @@ RSpec.describe Html2rss::RequestSession::RelNextPager do
     it 'stops pagination and logs the stop reason', :aggregate_failures do
       expect(pager.to_a).to eq([initial_response])
       expect(logger).to have_received(:warn).with(
-        %r{Html2rss::RequestSession::RelNextPager: pagination stopped at https://redirected\.example\.com/news\?page=2 - Request budget exhausted\. Retry with --max-requests 3 or increase top-level max_requests in the config\.}
+        %r{Html2rss::RequestSession::RelNextPager: pagination stopped at https://redirected\.example\.com/news\?page=2 - Request budget exhausted\. Retry with --max-requests 4 or increase top-level max_requests in the config\.}
       )
     end
   end

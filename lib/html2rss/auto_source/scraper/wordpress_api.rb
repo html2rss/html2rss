@@ -57,6 +57,9 @@ module Html2rss
           return unless response
 
           Array(response.parsed_body)
+        rescue RequestService::UnsupportedResponseContentType, JSON::ParserError => error
+          Log.warn("#{self.class}: failed to parse WordPress API posts (#{error.message})")
+          nil
         end
 
         def posts_response

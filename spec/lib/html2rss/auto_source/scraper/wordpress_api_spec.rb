@@ -143,6 +143,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         )
       end
     end
+
+    context 'when the posts response content type is unsupported' do
+      let(:api_response) do
+        Html2rss::RequestService::Response.new(
+          body: 'not-json',
+          url: Html2rss::Url.from_absolute('https://example.com/wp-json/wp/v2/posts'),
+          headers: { 'content-type' => 'text/plain' }
+        )
+      end
+
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'returns no articles and logs a warning', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(Html2rss::Log).to have_received(:warn).with(/failed to parse WordPress API posts/i)
+      end
+    end
   end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers
