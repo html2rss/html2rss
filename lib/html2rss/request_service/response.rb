@@ -11,13 +11,15 @@ module Html2rss
       # @param body [String] the body of the response
       # @param url [Html2rss::Url] the final request URL
       # @param headers [Hash] the headers of the response
-      def initialize(body:, url:, headers: {})
+      # @param status [Integer, nil] the HTTP status code when available
+      def initialize(body:, url:, headers: {}, status: nil)
         @body = body
 
         headers = headers.dup
         headers.transform_keys!(&:to_s)
 
         @headers = headers
+        @status = status
         @url = url
       end
 
@@ -27,10 +29,13 @@ module Html2rss
       # @return [Hash<String, Object>] the headers of the response
       attr_reader :headers
 
+      # @return [Integer, nil] the HTTP status code when known
+      attr_reader :status
+
       # @return [Html2rss::Url] the URL of the response
       attr_reader :url
 
-      def content_type = headers['content-type'] || ''
+      def content_type = header('content-type').to_s
       def json_response? = content_type.include?('application/json')
       def html_response? = content_type.include?('text/html')
 
@@ -48,6 +53,14 @@ module Html2rss
                          else
                            raise UnsupportedResponseContentType, "Unsupported content type: #{content_type}"
                          end
+      end
+
+      private
+
+      def header(name)
+        headers.fetch(name) do
+          headers.find { |key, _value| key.casecmp?(name) }&.last
+        end
       end
     end
   end

@@ -46,6 +46,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
     instance_double(
       Puppeteer::HTTPResponse,
       headers: { 'Content-Type' => 'text/html' },
+      status: 200,
       url: 'https://example.com/articles',
       remote_address: instance_double(Puppeteer::HTTPResponse::RemoteAddress, ip: '93.184.216.34'),
       request:
@@ -74,6 +75,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
 
       expect(result.body).to eq('<html></html>')
       expect(result.headers).to eq({ 'Content-Type' => 'text/html' })
+      expect(result.status).to eq(200)
       expect(policy).to have_received(:validate_remote_ip!).with(
         ip: '93.184.216.34',
         url: Html2rss::Url.from_absolute('https://example.com/articles')
