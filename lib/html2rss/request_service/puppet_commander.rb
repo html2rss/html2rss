@@ -42,6 +42,7 @@ module Html2rss
       # @see https://yusukeiwaki.github.io/puppeteer-ruby-docs/Puppeteer/Page.html
       def new_page
         page = browser.new_page
+        @main_frame = page.main_frame if page.respond_to?(:main_frame)
         configure_page(page)
         configure_navigation_guards(page)
         page
@@ -90,7 +91,7 @@ module Html2rss
 
       private
 
-      attr_reader :ctx, :browser, :skip_request_resources, :referer, :latest_navigation_response
+      attr_reader :ctx, :browser, :skip_request_resources, :referer, :latest_navigation_response, :main_frame
 
       def navigation_timeout_ms
         ctx.policy.total_timeout_seconds * 1000
@@ -110,7 +111,7 @@ module Html2rss
       end
 
       def handle_response(response)
-        @latest_navigation_response = response if response.request.navigation_request?
+        @latest_navigation_response = response if main_frame_navigation_response?(response)
         validate_response!(response)
       rescue Html2rss::Error => error
         store_navigation_error(error, navigation_request: response.request.navigation_request?)
@@ -119,6 +120,19 @@ module Html2rss
       def validate_request!(request)
         validate_navigation_redirect_chain!(request)
         validate_navigation_target!(request)
+      end
+
+      def main_frame_navigation_response?(response)
+        request = response.request
+        return false unless request.navigation_request?
+        return true unless request.respond_to?(:frame)
+
+        frame = request.frame
+        return true if frame.nil?
+        return frame == main_frame unless main_frame.nil?
+        return true unless frame.respond_to?(:parent_frame)
+
+        frame.parent_frame.nil?
       end
 
       def build_response(page, navigation_response)

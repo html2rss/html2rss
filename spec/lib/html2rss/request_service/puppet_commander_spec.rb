@@ -30,6 +30,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
   end
   let(:browser) { instance_double(Puppeteer::Browser, new_page: page) }
   let(:page) { instance_double(Puppeteer::Page) }
+  let(:main_frame) { instance_double('Puppeteer::Frame') }
   let(:unsafe_headers) do
     {
       'Host' => 'example.com',
@@ -45,7 +46,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       navigation_request?: true,
       url: 'https://example.com/articles',
       redirect_chain: [],
-      resource_type: 'document'
+      resource_type: 'document',
+      frame: main_frame
     )
   end
   let(:response) do
@@ -65,6 +67,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
     allow(page).to receive(:default_navigation_timeout=)
     allow(page).to receive(:default_timeout=)
     allow(page).to receive(:request_interception=)
+    allow(page).to receive(:main_frame).and_return(main_frame)
     allow(page).to receive_messages(
       content: '<html></html>',
       wait_for_timeout: nil,
@@ -152,7 +155,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
           navigation_request?: true,
           url: 'https://example.com/articles?page=2&loaded=true',
           redirect_chain: [redirect_request],
-          resource_type: 'document'
+          resource_type: 'document',
+          frame: main_frame
         )
         followup_response = instance_double(
           Puppeteer::HTTPResponse,
@@ -179,6 +183,39 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
           ip: '93.184.216.35',
           url: Html2rss::Url.from_absolute('https://example.com/articles?page=2&loaded=true')
         )
+      end
+
+      it 'ignores iframe navigation responses when building final metadata', :aggregate_failures do
+        iframe_frame = instance_double('Puppeteer::Frame')
+        iframe_request = instance_double(
+          Puppeteer::HTTPRequest,
+          navigation_request?: true,
+          url: 'https://embed.example.com/frame',
+          redirect_chain: [],
+          resource_type: 'document',
+          frame: iframe_frame
+        )
+        iframe_response = instance_double(
+          Puppeteer::HTTPResponse,
+          headers: { 'Content-Type' => 'text/html', 'X-Frame' => 'embed' },
+          status: 200,
+          url: 'https://embed.example.com/frame',
+          remote_address: instance_double(Puppeteer::HTTPResponse::RemoteAddress, ip: '93.184.216.36'),
+          request: iframe_request
+        )
+
+        allow(page).to receive(:query_selector).with('.load-more').and_return(element, nil)
+        allow(element).to receive(:click) do
+          html_body.replace('<html data-page="2" data-state="loaded"></html>')
+          event_handlers.fetch('response').call(iframe_response)
+        end
+
+        result = commander.call
+
+        expect(result.body).to eq('<html data-page="2" data-state="loaded"></html>')
+        expect(result.url).to eq(Html2rss::Url.from_absolute('https://example.com/articles'))
+        expect(result.status).to eq(200)
+        expect(result.headers).to eq({ 'Content-Type' => 'text/html' })
       end
     end
 
