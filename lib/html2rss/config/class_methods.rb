@@ -4,7 +4,7 @@ module Html2rss
   class Config
     ##
     # Public class-level helpers for loading, validating, and exporting config.
-    module ClassMethods # rubocop:disable Metrics/ModuleLength
+    module ClassMethods
       UNSET = Object.new.freeze
 
       ##
