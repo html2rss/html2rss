@@ -109,6 +109,10 @@ module Html2rss
       scrapers = Scraper.from(parsed_body, @opts[:scraper])
       return [] if scrapers.empty?
 
+      # Scrapers are instantiated and run in parallel threads. Implementations
+      # must avoid shared mutable state, treat request_session calls as
+      # concurrency-safe from the scraper side, and return no articles when a
+      # follow-up would be unsafe or unsupported.
       articles = Parallel.flat_map(scrapers, in_threads: thread_count_for(scrapers)) do |scraper|
         instance = scraper.new(parsed_body, url:, request_session:, **scraper_options_for(scraper))
 

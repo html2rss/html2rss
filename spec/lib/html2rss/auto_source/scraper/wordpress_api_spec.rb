@@ -103,9 +103,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         Nokogiri::HTML('<html><head><link rel="https://api.w.org/" href="" /></head></html>')
       end
 
-      it 'returns no articles without attempting a follow-up request', :aggregate_failures do
+      before do
+        allow(Html2rss::Log).to receive(:debug)
+      end
+
+      it 'returns no articles, skips follow-up requests, and logs the missing api root', :aggregate_failures do
         expect(articles).to eq([])
         expect(request_session).not_to have_received(:follow_up)
+        expect(Html2rss::Log).to have_received(:debug).with(/without a usable API root/)
       end
     end
 
@@ -307,6 +312,53 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when the date archive is only exposed through the canonical URL' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="canonical" href="https://example.com/2024/02/29/" />' \
+          '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
+          '</head><body class="archive date"></body></html>'
+        )
+      end
+
+      before do
+        allow(request_session).to receive(:follow_up).and_return(empty_api_response)
+      end
+
+      it 'prefers the canonical date scope when requesting posts' do # rubocop:disable RSpec/ExampleLength
+        articles
+        expect(request_session).to have_received(:follow_up).with(
+          url: Html2rss::Url.from_absolute(
+            'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories&after=2024-02-29T00%3A00%3A00Z&before=2024-03-01T00%3A00%3A00Z&per_page=100'
+          ),
+          relation: :auto_source,
+          origin_url: url
+        )
+      end
+    end
+
+    context 'when the canonical date archive is invalid' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="canonical" href="https://example.com/2023/02/29/" />' \
+          '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
+          '</head><body class="archive date"></body></html>'
+        )
+      end
+
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'returns no articles, skips follow-up requests, and logs the unsafe scope', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(request_session).not_to have_received(:follow_up)
+        expect(Html2rss::Log).to have_received(:warn).with(/unable to derive safe WordPress archive scope/)
+      end
+    end
+
     context 'when the page is an archive without a safe scope signal' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/category/news/') }
       let(:parsed_body) do
@@ -316,9 +368,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         )
       end
 
-      it 'returns no articles without attempting a follow-up request', :aggregate_failures do
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'returns no articles, skips follow-up requests, and logs the unsafe scope', :aggregate_failures do
         expect(articles).to eq([])
         expect(request_session).not_to have_received(:follow_up)
+        expect(Html2rss::Log).to have_received(:warn).with(/unable to derive safe WordPress archive scope/)
       end
     end
 
@@ -331,9 +388,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         )
       end
 
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
       it 'does not fall back to the unscoped posts collection', :aggregate_failures do
         expect(articles).to eq([])
         expect(request_session).not_to have_received(:follow_up)
+        expect(Html2rss::Log).to have_received(:warn).with(/unable to derive safe WordPress archive scope/)
       end
     end
 
@@ -352,7 +414,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
 
       it 'returns no articles and logs a warning', :aggregate_failures do
         expect(articles).to eq([])
-        expect(Html2rss::Log).to have_received(:warn).with(/failed to parse WordPress API posts/i)
+        expect(Html2rss::Log).to have_received(:warn).with(/unsupported WordPress API posts content type/i)
       end
     end
   end

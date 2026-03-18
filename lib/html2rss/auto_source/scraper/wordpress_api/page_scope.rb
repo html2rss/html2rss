@@ -146,7 +146,7 @@ module Html2rss
             end
 
             def path_segments
-              @path_segments ||= canonical_or_current_url.path.to_s.split('/').reject(&:empty?)
+              @path_segments ||= canonical_or_current_url.path_segments
             end
 
             def leading_path_segment

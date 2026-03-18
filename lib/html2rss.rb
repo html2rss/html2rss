@@ -85,9 +85,10 @@ module Html2rss
     def run_pipeline(raw_config)
       # 1. Normalize and validate the user-facing feed config.
       config = Config.from_hash(raw_config, params: raw_config[:params])
+      runtime_input = RequestSession::RuntimeInput.from_config(config)
 
       # 2. Fetch the initial page using a shared request session.
-      request_session = RequestSession.for_config(config)
+      request_session = RequestSession.from_runtime_input(runtime_input)
       response = request_session.fetch_initial_response
 
       # 3. Collect articles from configured selectors and auto-source scrapers.

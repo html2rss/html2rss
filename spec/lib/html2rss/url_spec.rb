@@ -95,6 +95,36 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#path_segments' do
+    it 'returns normalized non-empty path segments' do
+      url = described_class.from_absolute('https://example.com/wp-json/wp/v2/posts/')
+
+      expect(url.path_segments).to eq(%w[wp-json wp v2 posts])
+    end
+
+    it 'returns an empty array for the root path' do
+      url = described_class.from_absolute('https://example.com/')
+
+      expect(url.path_segments).to eq([])
+    end
+  end
+
+  describe '#with_path' do
+    it 'returns a new url with the provided path' do
+      url = described_class.from_absolute('https://example.com/wp-json?lang=de')
+
+      expect(url.with_path('/wp-json/').to_s).to eq('https://example.com/wp-json/?lang=de')
+    end
+
+    it 'does not mutate the original url' do
+      url = described_class.from_absolute('https://example.com/wp-json')
+
+      url.with_path('/wp-json/')
+
+      expect(url.to_s).to eq('https://example.com/wp-json')
+    end
+  end
+
   describe '#with_query_values' do
     it 'returns a new url with the provided query values' do
       url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F')

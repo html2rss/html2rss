@@ -141,6 +141,25 @@ module Html2rss
     end
 
     ##
+    # Returns the URL path split into non-empty segments.
+    #
+    # @return [Array<String>] normalized path segments
+    def path_segments
+      @uri.path.to_s.split('/').reject(&:empty?)
+    end
+
+    ##
+    # Returns a copy of the URL with the provided path.
+    #
+    # @param path [String] normalized absolute path
+    # @return [Url] a new URL with the updated path
+    def with_path(path)
+      uri = @uri.dup
+      uri.path = path
+      self.class.from_absolute(uri.normalize.to_s)
+    end
+
+    ##
     # Returns a copy of the URL with the provided query values.
     #
     # @param values [Hash{String, Symbol => #to_s}] query parameters to assign
@@ -170,7 +189,7 @@ module Html2rss
       nicer_path = CGI.unescapeURIComponent(path)
                       .split('/')
                       .flat_map do |part|
-                        part.gsub(/[^a-zA-Z0-9.]/, ' ').gsub(/\s+/, ' ').split
+        part.gsub(/[^a-zA-Z0-9.]/, ' ').gsub(/\s+/, ' ').split
       end
 
       nicer_path.map!(&:capitalize)

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'addressable/uri'
 require 'date'
 require 'nokogiri'
 
@@ -61,8 +60,11 @@ module Html2rss
           return unless response
 
           Array(response.parsed_body)
-        rescue RequestService::UnsupportedResponseContentType, JSON::ParserError => error
-          Log.warn("#{self.class}: failed to parse WordPress API posts (#{error.message})")
+        rescue RequestService::UnsupportedResponseContentType => error
+          Log.warn("#{self.class}: unsupported WordPress API posts content type (#{error.message})")
+          nil
+        rescue JSON::ParserError => error
+          Log.warn("#{self.class}: failed to parse WordPress API posts JSON (#{error.message})")
           nil
         end
 
@@ -81,8 +83,9 @@ module Html2rss
         end
 
         def posts_url
-          return unless (api_root = api_root_url)
-          return unless page_scope.fetchable?
+          api_root = api_root_url
+          return unless api_root
+          return unless fetchable_page_scope?
 
           if api_root.query.to_s.include?('rest_route=')
             query_root_posts_url(api_root)
@@ -93,7 +96,7 @@ module Html2rss
 
         def api_root_url
           href = parsed_body.at_css(API_LINK_SELECTOR)&.[]('href').to_s.strip
-          return if href.empty?
+          return log_missing_api_root if href.empty?
 
           Html2rss::Url.from_relative(href, url)
         rescue ArgumentError => error
@@ -185,9 +188,19 @@ module Html2rss
         end
 
         def normalized_api_root(api_root)
-          uri = Addressable::URI.parse(api_root.to_s)
-          uri.path = normalized_api_path(uri.path)
-          Html2rss::Url.from_absolute(uri.normalize.to_s)
+          api_root.with_path(normalized_api_path(api_root.path))
+        end
+
+        def fetchable_page_scope?
+          return true if page_scope.fetchable?
+
+          Log.warn("#{self.class}: unable to derive safe WordPress archive scope for #{url}")
+          false
+        end
+
+        def log_missing_api_root
+          Log.debug("#{self.class}: page advertised WordPress API support without a usable API root")
+          nil
         end
 
         def normalized_api_path(path)

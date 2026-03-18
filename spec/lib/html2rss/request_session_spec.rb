@@ -18,53 +18,48 @@ RSpec.describe Html2rss::RequestSession do
     )
   end
 
-  describe '.for_config' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    let(:raw_config) do
-      {
+  describe '.from_runtime_input' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:runtime_input) do
+      Html2rss::RequestSession::RuntimeInput.new(
+        url: 'https://example.com/blog',
+        headers: { 'User-Agent' => 'RSpec' },
         strategy: :browserless,
-        max_redirects: 8,
-        channel: { url: 'https://example.com/blog' },
-        selectors: {
-          items: { selector: 'article', pagination: { max_pages: 3 } },
-          title: { selector: 'h2' }
-        },
-        auto_source: Html2rss::AutoSource::DEFAULT_CONFIG.merge(
-          scraper: Html2rss::AutoSource::DEFAULT_CONFIG.fetch(:scraper).merge(
-            wordpress_api: { enabled: true }
-          )
-        )
-      }
+        request_policy:
+      )
     end
+    let(:request_policy) { Html2rss::RequestService::Policy.new(max_requests: configured_max_requests, max_redirects: 8) }
 
-    context 'when max_requests is explicitly configured' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:config) { Html2rss::Config.from_hash(raw_config.merge(max_requests: 1)) }
+    # rubocop:disable RSpec/MultipleMemoizedHelpers
+    context 'when max_requests is explicitly configured' do
+      let(:configured_max_requests) { 1 }
 
       it 'honors the configured request ceiling while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        session = described_class.for_config(config, logger:)
+        session = described_class.from_runtime_input(runtime_input, logger:)
         context = session.instance_variable_get(:@context)
 
         expect(session).to be_a(described_class)
         expect(context.url.to_s).to eq('https://example.com/blog')
-        expect(context.headers).to eq(config.headers)
+        expect(context.headers).to eq(runtime_input.headers)
         expect(context.policy.max_redirects).to eq(8)
         expect(context.policy.max_requests).to eq(1)
       end
     end
 
-    context 'when max_requests is omitted' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:config) { Html2rss::Config.from_hash(raw_config) }
+    context 'when max_requests is omitted' do
+      let(:configured_max_requests) { 4 }
 
       it 'infers the baseline request budget while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        session = described_class.for_config(config, logger:)
+        session = described_class.from_runtime_input(runtime_input, logger:)
         context = session.instance_variable_get(:@context)
 
         expect(session).to be_a(described_class)
         expect(context.url.to_s).to eq('https://example.com/blog')
-        expect(context.headers).to eq(config.headers)
+        expect(context.headers).to eq(runtime_input.headers)
         expect(context.policy.max_redirects).to eq(8)
         expect(context.policy.max_requests).to eq(4)
       end
     end
+    # rubocop:enable RSpec/MultipleMemoizedHelpers
   end
 
   describe '#fetch_initial_response' do # rubocop:disable RSpec/MultipleMemoizedHelpers

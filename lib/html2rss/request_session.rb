@@ -6,55 +6,21 @@ module Html2rss
   class RequestSession
     class << self
       ##
-      # Builds a request session from a validated runtime config.
+      # Builds a request session from translated runtime request inputs.
       #
-      # @param config [Html2rss::Config] validated feed config
+      # @param runtime_input [RuntimeInput] translated runtime request inputs
       # @param logger [Logger] logger used for operational warnings
       # @return [RequestSession] configured request session
-      def for_config(config, logger: Html2rss::Log)
+      def from_runtime_input(runtime_input, logger: Html2rss::Log)
         new(
           context: RequestService::Context.new(
-            url: config.url,
-            headers: config.headers,
-            policy: request_policy_for(config)
+            url: runtime_input.url,
+            headers: runtime_input.headers,
+            policy: runtime_input.request_policy
           ),
-          strategy: config.strategy,
+          strategy: runtime_input.strategy,
           logger:
         )
-      end
-
-      private
-
-      def request_policy_for(config)
-        RequestService::Policy.new(
-          max_requests: request_budget_for(config),
-          max_redirects: config.max_redirects
-        )
-      end
-
-      def request_budget_for(config)
-        max_requests = config.max_requests
-        return max_requests if config.request_controls.explicit?(:max_requests)
-
-        [baseline_request_budget(config), max_requests].max
-      end
-
-      # Reserve enough budget for the initial request plus predictable follow-ups
-      # that the top-level pipeline may trigger during a normal feed build.
-      def baseline_request_budget(config)
-        1 + pagination_follow_up_budget(config) + known_auto_source_follow_up_budget(config)
-      end
-
-      def pagination_follow_up_budget(config)
-        [pagination_request_budget(config).to_i - 1, 0].max
-      end
-
-      def pagination_request_budget(config)
-        config.selectors&.dig(:items, :pagination, :max_pages)
-      end
-
-      def known_auto_source_follow_up_budget(config)
-        config.auto_source&.dig(:scraper, :wordpress_api, :enabled) ? 1 : 0
       end
     end
 
