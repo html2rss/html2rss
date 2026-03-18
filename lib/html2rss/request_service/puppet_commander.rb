@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'set' # rubocop:disable Lint/RedundantRequireStatement
-
 module Html2rss
   class RequestService
     ##

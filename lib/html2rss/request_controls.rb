@@ -114,8 +114,16 @@ module Html2rss
     def apply_request_value(config, key, value)
       return unless explicit?(key)
 
-      config[:request] ||= {}
+      ensure_request_config!(config)
       config[:request][key] = value
+    end
+
+    def ensure_request_config!(config)
+      request_config = config[:request]
+      return config[:request] = {} if request_config.nil?
+      return if request_config.is_a?(Hash)
+
+      raise ArgumentError, 'request config must be a hash'
     end
   end
 end
