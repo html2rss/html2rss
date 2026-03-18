@@ -61,6 +61,14 @@ module Html2rss
           def fetchable_page_scope?
             return true if page_scope.fetchable?
 
+            if page_scope.reason == :non_archive
+              logger.debug(
+                "#{WordpressApi}: page advertised WordPress API support " \
+                'without a safe WordPress archive scope'
+              )
+              return false
+            end
+
             logger.warn("#{WordpressApi}: unable to derive safe WordPress archive scope for #{page_url}")
             false
           end

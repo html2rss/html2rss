@@ -94,7 +94,7 @@ module Html2rss
         end
 
         def article_id(_post, article_url)
-          string(article_url.path) || string(article_url.query) || article_url.to_s
+          root_path_query_id(article_url) || string(article_url.path) || article_url.to_s
         end
 
         def article_title(post)
@@ -145,6 +145,16 @@ module Html2rss
         def string(value)
           text = value.to_s.strip
           text unless text.empty?
+        end
+
+        def root_path_query_id(article_url)
+          query = string(article_url.query)
+          return unless query
+
+          path = article_url.path.to_s
+          return unless path.empty? || path == '/'
+
+          "/?#{query}"
         end
 
         def posts_query

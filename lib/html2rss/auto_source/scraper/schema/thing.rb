@@ -124,6 +124,7 @@ module Html2rss
 
           def normalized_id_value(url)
             path = url.path.to_s
+            return "#{path}?#{url.query}" if (path.empty? || path == '/') && !url.query.to_s.empty?
             return path unless path.empty?
 
             url.query

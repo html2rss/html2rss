@@ -30,6 +30,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       end
     end
 
+    context 'when schema_object contains a query-permalink @id on the same origin' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', '@id': 'https://example.com/?p=123' }
+      end
+
+      it 'preserves the distinguishing query permalink' do
+        expect(id).to eq('/?p=123')
+      end
+    end
+
     context 'when schema_object contains a non-url @id' do
       let(:schema_object) do
         { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', '@id': 'article-123' }

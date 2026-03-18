@@ -15,7 +15,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
   let(:parsed_body) do
     Nokogiri::HTML('<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/" /></head></html>')
   end
-  let(:page_scope) { instance_double(Html2rss::AutoSource::Scraper::WordpressApi::PageScope, fetchable?: true) }
+  let(:page_scope) do
+    instance_double(Html2rss::AutoSource::Scraper::WordpressApi::PageScope, fetchable?: true, reason: :unscoped)
+  end
   let(:posts_query) { { '_fields' => 'id,title', 'per_page' => '100' } }
   let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
 
@@ -81,11 +83,32 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
     end
 
     context 'when the page scope is not safely fetchable' do
-      let(:page_scope) { instance_double(Html2rss::AutoSource::Scraper::WordpressApi::PageScope, fetchable?: false) }
+      let(:page_scope) do
+        instance_double(
+          Html2rss::AutoSource::Scraper::WordpressApi::PageScope,
+          fetchable?: false,
+          reason: :unsupported_archive
+        )
+      end
 
       it 'returns nil and logs the unsafe scope', :aggregate_failures do
         expect(posts_endpoint).to be_nil
         expect(logger).to have_received(:warn).with(/unable to derive safe WordPress archive scope/)
+      end
+    end
+
+    context 'when the page is a non-archive page' do
+      let(:page_scope) do
+        instance_double(
+          Html2rss::AutoSource::Scraper::WordpressApi::PageScope,
+          fetchable?: false,
+          reason: :non_archive
+        )
+      end
+
+      it 'returns nil and logs a debug message', :aggregate_failures do
+        expect(posts_endpoint).to be_nil
+        expect(logger).to have_received(:debug).with(/without a safe WordPress archive scope/)
       end
     end
 

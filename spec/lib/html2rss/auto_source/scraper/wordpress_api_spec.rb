@@ -433,6 +433,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when the page is not an archive' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/about/') }
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/" /></head>' \
+          '<body class="page page-id-2"></body></html>'
+        )
+      end
+
+      before do
+        allow(Html2rss::Log).to receive(:debug)
+      end
+
+      it 'does not fall back to the unscoped posts collection', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(request_session).not_to have_received(:follow_up)
+        expect(Html2rss::Log).to have_received(:debug).with(/without a safe WordPress archive scope/)
+      end
+    end
+
     context 'when the archive is only detectable from the URL path' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/category/news/') }
       let(:parsed_body) do
@@ -469,6 +489,37 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       it 'returns no articles and logs a warning', :aggregate_failures do
         expect(articles).to eq([])
         expect(Html2rss::Log).to have_received(:warn).with(/unsupported WordPress API posts content type/i)
+      end
+    end
+
+    context 'when the WordPress API returns query-style permalinks' do
+      let(:posts_json) do
+        <<~JSON
+          [
+            {
+              "id": 123,
+              "title": { "rendered": "First query permalink post" },
+              "content": { "rendered": "<p>First body</p>" },
+              "excerpt": { "rendered": "<p>First excerpt</p>" },
+              "link": "https://example.com/?p=123",
+              "date": "2024-04-01T12:00:00",
+              "categories": []
+            },
+            {
+              "id": 456,
+              "title": { "rendered": "Second query permalink post" },
+              "content": { "rendered": "<p>Second body</p>" },
+              "excerpt": { "rendered": "<p>Second excerpt</p>" },
+              "link": "https://example.com/?p=456",
+              "date": "2024-04-02T12:00:00",
+              "categories": []
+            }
+          ]
+        JSON
+      end
+
+      it 'keeps distinct ids for query-based permalinks' do
+        expect(articles.map { _1[:id] }).to eq(['/?p=123', '/?p=456'])
       end
     end
 

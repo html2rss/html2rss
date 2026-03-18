@@ -22,9 +22,11 @@ module Html2rss
           ##
           # @param query [Hash<String, String>] scoped query params for the posts endpoint
           # @param fetchable [Boolean] whether a posts follow-up is safe for this page
-          def initialize(query:, fetchable:)
+          # @param reason [Symbol] classification of the resolved page scope
+          def initialize(query:, fetchable:, reason:)
             @query = query.freeze
             @fetchable = fetchable
+            @reason = reason
             freeze
           end
 
@@ -37,6 +39,10 @@ module Html2rss
           def fetchable?
             @fetchable
           end
+
+          ##
+          # @return [Symbol] classification of the resolved page scope
+          attr_reader :reason
 
           ##
           # Resolves the page scope from page markup and canonical URL signals.
@@ -87,23 +93,28 @@ module Html2rss
               range = date_archive_range
               return unknown_archive_scope unless range
 
-              PageScope.new(query: range, fetchable: true)
+              PageScope.new(query: range, fetchable: true, reason: :archive)
             end
 
             def fallback_scope
               return unknown_archive_scope if archive_like?
+              return non_archive_scope if singular_like?
 
-              PageScope.new(query: {}, fetchable: true)
+              PageScope.new(query: {}, fetchable: true, reason: :unscoped)
             end
 
             def scoped_scope(query)
               return unknown_archive_scope if query.values.any?(&:nil?)
 
-              PageScope.new(query:, fetchable: true)
+              PageScope.new(query:, fetchable: true, reason: :archive)
             end
 
             def unknown_archive_scope
-              PageScope.new(query: {}, fetchable: false)
+              PageScope.new(query: {}, fetchable: false, reason: :unsupported_archive)
+            end
+
+            def non_archive_scope
+              PageScope.new(query: {}, fetchable: false, reason: :non_archive)
             end
 
             def category_archive?
@@ -124,6 +135,11 @@ module Html2rss
 
             def archive_like?
               category_archive? || tag_archive? || author_archive? || date_archive? || body_classes.include?('archive')
+            end
+
+            def singular_like?
+              body_classes.intersect?(%w[page single singular attachment]) ||
+                body_classes.any? { _1.match?(/\A(?:page-id|postid)-\d+\z/) }
             end
 
             def body_classes

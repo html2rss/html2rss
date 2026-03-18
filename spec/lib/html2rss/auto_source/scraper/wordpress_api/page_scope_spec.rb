@@ -110,5 +110,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PageScope do
         )
       end
     end
+
+    context 'when the page is a non-archive singular page' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/about/') }
+      let(:html) { '<html><body class="page page-id-2"></body></html>' }
+
+      it 'treats the page as unsafe for an unscoped posts follow-up', :aggregate_failures do
+        expect(page_scope).not_to be_fetchable
+        expect(page_scope.reason).to eq(:non_archive)
+        expect(page_scope.query).to eq({})
+      end
+    end
   end
 end
