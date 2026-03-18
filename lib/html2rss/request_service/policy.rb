@@ -168,9 +168,17 @@ module Html2rss
 
       def enforce_same_origin!(url, origin_url, relation)
         return if relation == :initial || allow_cross_origin_followups?
+
+        enforce_follow_up_scheme!(url, origin_url)
         return if comparable_origin(url) == comparable_origin(origin_url)
 
         raise CrossOriginFollowUpDenied, "Cross-origin follow-up denied for #{url}"
+      end
+
+      def enforce_follow_up_scheme!(url, origin_url)
+        return unless origin_url.scheme == 'https' && url.scheme == 'http'
+
+        raise UnsupportedUrlScheme, "Follow-up downgraded from https to http for #{url}"
       end
 
       def comparable_origin(url)
