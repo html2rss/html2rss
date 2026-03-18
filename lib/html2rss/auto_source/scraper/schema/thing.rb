@@ -36,7 +36,7 @@ module Html2rss
 
           def initialize(schema_object, url:)
             @schema_object = schema_object
-            @url = url
+            @base_url = normalized_base_url(url)
           end
 
           # @return [Hash] the scraped article hash with DEFAULT_ATTRIBUTES
@@ -49,7 +49,7 @@ module Html2rss
           def id
             return @id if defined?(@id)
 
-            id = (schema_object[:@id] || url&.path).to_s
+            id = normalized_id(schema_object[:@id], reference_url: url || base_url) || url&.path.to_s
 
             return if id.empty?
 
@@ -71,12 +71,12 @@ module Html2rss
               return
             end
 
-            Url.from_relative(url, @url)
+            Url.from_relative(url, base_url || url)
           end
 
           def image
             if (image_url = image_urls.first)
-              Url.from_relative(image_url, @url)
+              Url.from_relative(image_url, base_url || image_url)
             end
           end
 
@@ -88,7 +88,7 @@ module Html2rss
             @categories = CategoryExtractor.call(schema_object)
           end
 
-          attr_reader :schema_object
+          attr_reader :schema_object, :base_url
 
           def image_urls
             schema_object.values_at(:image, :thumbnailUrl).filter_map do |object|
@@ -100,6 +100,42 @@ module Html2rss
                 object[:url] || object[:contentUrl]
               end
             end
+          end
+
+          def normalized_id(value, reference_url:)
+            text = value.to_s
+            return if text.empty?
+
+            normalized_url = normalized_id_url(text, reference_url:)
+            return text unless reference_url && normalized_url.host == reference_url.host
+
+            normalized_id_value(normalized_url)
+          rescue ArgumentError
+            text
+          end
+
+          def normalized_id_url(text, reference_url:)
+            if text.start_with?('/')
+              Url.from_relative(text, reference_url || text)
+            else
+              Url.from_absolute(text)
+            end
+          end
+
+          def normalized_id_value(url)
+            path = url.path.to_s
+            return "#{path}?#{url.query}" if (path.empty? || path == '/') && !url.query.to_s.empty?
+            return path unless path.empty?
+
+            url.query
+          end
+
+          def normalized_base_url(url)
+            return if url.to_s.strip.empty?
+
+            Url.from_absolute(url)
+          rescue ArgumentError
+            nil
           end
         end
       end
