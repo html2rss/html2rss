@@ -146,37 +146,38 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       end
 
       it 'returns metadata from the post-click navigation response', :aggregate_failures do
+        redirect_request = instance_double(Puppeteer::HTTPRequest, url: 'https://example.com/articles?page=2')
         followup_request = instance_double(
           Puppeteer::HTTPRequest,
           navigation_request?: true,
-          url: 'https://example.com/articles?page=2',
-          redirect_chain: [],
+          url: 'https://example.com/articles?page=2&loaded=true',
+          redirect_chain: [redirect_request],
           resource_type: 'document'
         )
         followup_response = instance_double(
           Puppeteer::HTTPResponse,
           headers: { 'Content-Type' => 'text/html', 'X-Page' => '2' },
-          status: 302,
-          url: 'https://example.com/articles?page=2',
+          status: 200,
+          url: 'https://example.com/articles?page=2&loaded=true',
           remote_address: instance_double(Puppeteer::HTTPResponse::RemoteAddress, ip: '93.184.216.35'),
           request: followup_request
         )
 
         allow(page).to receive(:query_selector).with('.load-more').and_return(element, nil)
         allow(element).to receive(:click) do
-          html_body.replace('<html data-page="2"></html>')
+          html_body.replace('<html data-page="2" data-state="loaded"></html>')
           event_handlers.fetch('response').call(followup_response)
         end
 
         result = commander.call
 
-        expect(result.body).to eq('<html data-page="2"></html>')
-        expect(result.url).to eq(Html2rss::Url.from_absolute('https://example.com/articles?page=2'))
-        expect(result.status).to eq(302)
+        expect(result.body).to eq('<html data-page="2" data-state="loaded"></html>')
+        expect(result.url).to eq(Html2rss::Url.from_absolute('https://example.com/articles?page=2&loaded=true'))
+        expect(result.status).to eq(200)
         expect(result.headers).to eq({ 'Content-Type' => 'text/html', 'X-Page' => '2' })
         expect(policy).to have_received(:validate_remote_ip!).at_least(:once).with(
           ip: '93.184.216.35',
-          url: Html2rss::Url.from_absolute('https://example.com/articles?page=2')
+          url: Html2rss::Url.from_absolute('https://example.com/articles?page=2&loaded=true')
         )
       end
     end
