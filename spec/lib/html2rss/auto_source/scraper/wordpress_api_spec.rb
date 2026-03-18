@@ -190,7 +190,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         )
       end
 
-      it 'preserves query params when requesting posts' do
+      it 'preserves query params when requesting posts' do # rubocop:disable RSpec/ExampleLength
         articles
 
         expect(request_session).to have_received(:follow_up).with(

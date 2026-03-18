@@ -4,7 +4,7 @@ module Html2rss
   class Config
     ##
     # Public class-level helpers for loading, validating, and exporting config.
-    module ClassMethods
+    module ClassMethods # rubocop:disable Metrics/ModuleLength
       UNSET = Object.new.freeze
 
       ##
@@ -108,27 +108,16 @@ module Html2rss
       # Builds a top-level auto-source feed config for the public shortcut APIs.
       #
       # @param url [String] source page URL
-      # @param strategy [Symbol, nil] request strategy to use
       # @param items_selector [String, nil] optional selector hint for item extraction
-      # @param max_redirects [Integer, nil] optional redirect limit override
-      # @param max_requests [Integer, nil] optional request budget override
-      # @param request_controls [Html2rss::Config::RequestControls, nil] explicit request controls to write
+      # @param request_controls [Html2rss::RequestControls, nil] explicit request controls to write
       # @return [Hash<Symbol, Object>] feed config hash ready for {from_hash}
-      def auto_source_config(url:, strategy: nil, items_selector: nil, max_redirects: nil, max_requests: nil,
-                             request_controls: nil)
+      def auto_source_config(url:, items_selector: nil, request_controls: nil)
         config = {
           channel: default_config[:channel].merge(url:),
           auto_source: AutoSource::DEFAULT_CONFIG
         }
 
-        request_controls ||= RequestControls.new(
-          strategy:,
-          max_redirects:,
-          max_requests:,
-          explicit_keys: [:strategy] +
-                         (max_redirects.nil? ? [] : [:max_redirects]) +
-                         (max_requests.nil? ? [] : [:max_requests])
-        )
+        request_controls ||= Html2rss::RequestControls.new
         request_controls.apply_to(config)
 
         config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector
@@ -172,7 +161,7 @@ module Html2rss
       end
 
       def prepare_for_validation(config)
-        allocate.send(:prepare_config, deep_dup(config))
+        Config::Preparer.new.call(deep_dup(config))
       end
 
       # rubocop:disable Metrics/MethodLength

@@ -57,7 +57,7 @@ module Html2rss
     method_option :max_requests,
                   type: :numeric,
                   desc: 'Maximum requests to allow for this feed build'
-    def auto(url) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+    def auto(url) # rubocop:disable Metrics/MethodLength
       format = options.fetch(:format, 'rss')
       source_method = format == 'jsonfeed' ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
 
@@ -133,7 +133,7 @@ module Html2rss
     end
 
     def request_controls
-      Html2rss::Config::RequestControls.new(
+      Html2rss::RequestControls.new(
         strategy: options[:strategy]&.to_sym,
         max_redirects: options[:max_redirects],
         max_requests: options[:max_requests],

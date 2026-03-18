@@ -54,7 +54,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session
+        attr_reader :parsed_body, :url, :request_session, :page_scope
 
         def fetch_posts
           response = posts_response
@@ -173,7 +173,7 @@ module Html2rss
           route = normalized_rest_route(query.fetch('rest_route', '/'))
           api_root.with_query_values(
             query.merge(
-              'rest_route' => "#{route}/wp/v2/posts",
+              'rest_route' => append_posts_route(route),
               **posts_query
             )
           )
@@ -208,11 +208,19 @@ module Html2rss
           value = route.to_s
           value = '/' if value.empty?
           value = "/#{value}" unless value.start_with?('/')
-          value.sub(%r{/+\z}, '')
+          trim_trailing_slashes(value)
         end
 
-        def page_scope
-          @page_scope
+        def trim_trailing_slashes(value)
+          end_index = value.length
+          end_index -= 1 while end_index > 1 && value.getbyte(end_index - 1) == 47
+          value[0, end_index]
+        end
+
+        def append_posts_route(route)
+          return '/wp/v2/posts' if route == '/'
+
+          "#{route}/wp/v2/posts"
         end
       end
     end

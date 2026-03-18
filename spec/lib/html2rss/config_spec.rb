@@ -131,7 +131,7 @@ RSpec.describe Html2rss::Config do
       end
     end
 
-    it 'tracks omitted request budgets as non-explicit' do
+    it 'tracks omitted request budgets as non-explicit' do # rubocop:disable RSpec/ExampleLength
       config = described_class.from_hash({
                                            channel: { url: 'https://example.com' },
                                            selectors: {
@@ -143,7 +143,7 @@ RSpec.describe Html2rss::Config do
       expect(config.request_controls.explicit?(:max_requests)).to be(false)
     end
 
-    it 'tracks explicit request budgets as explicit' do
+    it 'tracks explicit request budgets as explicit' do # rubocop:disable RSpec/ExampleLength
       config = described_class.from_hash({
                                            max_requests: 4,
                                            channel: { url: 'https://example.com' },
@@ -161,10 +161,13 @@ RSpec.describe Html2rss::Config do
     let(:config) do
       described_class.auto_source_config(
         url: 'https://example.com/blog',
-        strategy: :browserless,
         items_selector: '.post',
-        max_redirects: 8,
-        max_requests: 5
+        request_controls: Html2rss::RequestControls.new(
+          strategy: :browserless,
+          max_redirects: 8,
+          max_requests: 5,
+          explicit_keys: %i[strategy max_redirects max_requests]
+        )
       )
     end
 
@@ -178,7 +181,7 @@ RSpec.describe Html2rss::Config do
     end
 
     it 'leaves optional request overrides unset so runtime config can apply defaults', :aggregate_failures do
-      config = described_class.auto_source_config(url: 'https://example.com/blog', strategy: :faraday)
+      config = described_class.auto_source_config(url: 'https://example.com/blog')
 
       expect(config).not_to have_key(:max_redirects)
       expect(config).not_to have_key(:max_requests)
