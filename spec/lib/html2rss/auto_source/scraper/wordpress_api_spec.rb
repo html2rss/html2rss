@@ -5,9 +5,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
 
   let(:url) { Html2rss::Url.from_absolute('https://example.com/blog') }
   let(:request_session) { instance_double(Html2rss::RequestSession) }
-  let(:parsed_body) do
-    Nokogiri::HTML(File.read(File.expand_path('../../../../fixtures/auto_source/wordpress_api/index.html', __dir__)))
-  end
+  let(:fixture_root) { File.expand_path('../../../../fixtures/auto_source/wordpress_api', __dir__) }
+  let(:index_html) { File.read(File.join(fixture_root, 'index.html')) }
+  let(:posts_json) { File.read(File.join(fixture_root, 'posts.json')) }
+  let(:parsed_body) { Nokogiri::HTML(index_html) }
 
   describe '.articles?' do
     it 'returns true when the page exposes the WordPress API link' do
@@ -26,7 +27,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
 
     let(:api_response) do
       Html2rss::RequestService::Response.new(
-        body: File.read(File.expand_path('../../../../fixtures/auto_source/wordpress_api/posts.json', __dir__)),
+        body: posts_json,
         url: Html2rss::Url.from_absolute(
           'https://example.com/wp-json/wp/v2/posts?per_page=100&_fields=id,title,excerpt,content,link,date,categories'
         ),

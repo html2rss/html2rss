@@ -36,7 +36,7 @@ module Html2rss
 
           def initialize(schema_object, url:)
             @schema_object = schema_object
-            @base_url = Url.for_channel(url.to_s)
+            @base_url = normalized_base_url(url)
           end
 
           # @return [Hash] the scraped article hash with DEFAULT_ATTRIBUTES
@@ -127,6 +127,14 @@ module Html2rss
             return path unless path.empty?
 
             url.query
+          end
+
+          def normalized_base_url(url)
+            return if url.to_s.strip.empty?
+
+            Url.from_absolute(url)
+          rescue ArgumentError
+            nil
           end
         end
       end
