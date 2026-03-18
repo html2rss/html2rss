@@ -25,16 +25,13 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: %w[faraday browserless],
-                  default: 'faraday'
+                  enum: %w[faraday browserless]
     method_option :max_redirects,
                   type: :numeric,
-                  desc: 'Maximum redirects to follow per request',
-                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_redirects]
+                  desc: 'Maximum redirects to follow per request'
     method_option :max_requests,
                   type: :numeric,
-                  desc: 'Maximum requests to allow for this feed build',
-                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_requests]
+                  desc: 'Maximum requests to allow for this feed build'
     def feed(yaml_file, feed_name = nil)
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
       config[:params] = options[:params] || {}
@@ -47,8 +44,7 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: %w[faraday browserless],
-                  default: 'faraday'
+                  enum: %w[faraday browserless]
     method_option :format,
                   type: :string,
                   desc: 'Output format for the auto-sourced feed',
@@ -57,12 +53,10 @@ module Html2rss
     method_option :items_selector, type: :string, desc: 'CSS selector for items (will be enhanced) (optional)'
     method_option :max_redirects,
                   type: :numeric,
-                  desc: 'Maximum redirects to follow per request',
-                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_redirects]
+                  desc: 'Maximum redirects to follow per request'
     method_option :max_requests,
                   type: :numeric,
-                  desc: 'Maximum requests to allow for this feed build',
-                  default: Html2rss::RequestService::Policy::DEFAULTS[:max_requests]
+                  desc: 'Maximum requests to allow for this feed build'
     def auto(url) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       format = options.fetch(:format, 'rss')
       source_method = format == 'jsonfeed' ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
@@ -70,7 +64,7 @@ module Html2rss
       result = execute_feed do
         source_method.call(
           url,
-          strategy: options.fetch(:strategy, 'faraday').to_sym,
+          strategy: current_strategy,
           items_selector: options[:items_selector],
           max_redirects: options[:max_redirects],
           max_requests: options[:max_requests]
@@ -128,9 +122,35 @@ module Html2rss
     private
 
     def apply_runtime_request_overrides!(config)
-      config[:strategy] ||= options.fetch(:strategy, 'faraday').to_sym
-      config[:max_redirects] ||= current_max_redirects
-      config[:max_requests] ||= current_max_requests
+      clear_blank_request_overrides!(config)
+      request_controls.apply_to(config)
+    end
+
+    def clear_blank_request_overrides!(config)
+      %i[strategy max_redirects max_requests].each do |key|
+        config.delete(key) if config[key].nil?
+      end
+    end
+
+    def request_controls
+      Html2rss::Config::RequestControls.new(
+        strategy: options[:strategy]&.to_sym,
+        max_redirects: options[:max_redirects],
+        max_requests: options[:max_requests],
+        explicit_keys: explicit_request_control_keys
+      )
+    end
+
+    def explicit_request_control_keys
+      keys = []
+      keys << :strategy if options[:strategy]
+      keys << :max_redirects unless options[:max_redirects].nil?
+      keys << :max_requests unless options[:max_requests].nil?
+      keys
+    end
+
+    def current_strategy
+      options[:strategy]&.to_sym || :faraday
     end
 
     def current_max_redirects

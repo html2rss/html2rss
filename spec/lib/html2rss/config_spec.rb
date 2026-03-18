@@ -130,6 +130,31 @@ RSpec.describe Html2rss::Config do
         expect(config.headers).to include('X-Query' => 'ruby')
       end
     end
+
+    it 'tracks omitted request budgets as non-explicit' do
+      config = described_class.from_hash({
+                                           channel: { url: 'https://example.com' },
+                                           selectors: {
+                                             items: { selector: '.item' },
+                                             title: { selector: 'h2' }
+                                           }
+                                         })
+
+      expect(config.request_controls.explicit?(:max_requests)).to be(false)
+    end
+
+    it 'tracks explicit request budgets as explicit' do
+      config = described_class.from_hash({
+                                           max_requests: 4,
+                                           channel: { url: 'https://example.com' },
+                                           selectors: {
+                                             items: { selector: '.item' },
+                                             title: { selector: 'h2' }
+                                           }
+                                         })
+
+      expect(config.request_controls.explicit?(:max_requests)).to be(true)
+    end
   end
 
   describe '.auto_source_config' do
@@ -152,11 +177,11 @@ RSpec.describe Html2rss::Config do
       expect(config[:selectors]).to eq(items: { selector: '.post', enhance: true })
     end
 
-    it 'uses runtime defaults when optional overrides are omitted', :aggregate_failures do
+    it 'leaves optional request overrides unset so runtime config can apply defaults', :aggregate_failures do
       config = described_class.auto_source_config(url: 'https://example.com/blog', strategy: :faraday)
 
-      expect(config[:max_redirects]).to eq(Html2rss::RequestService::Policy::DEFAULTS[:max_redirects])
-      expect(config[:max_requests]).to eq(Html2rss::RequestService::Policy::DEFAULTS[:max_requests])
+      expect(config).not_to have_key(:max_redirects)
+      expect(config).not_to have_key(:max_requests)
       expect(config[:selectors]).to be_nil
     end
   end

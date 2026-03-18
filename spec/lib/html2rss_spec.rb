@@ -481,6 +481,14 @@ RSpec.describe Html2rss do
         expect(described_class).to have_received(:feed).with(hash_including(max_requests: 8))
       end
     end
+
+    it 'leaves max_requests unset when omitted so request budget can be inferred' do
+      allow(described_class).to receive(:feed).and_return(nil)
+
+      described_class.auto_source(url)
+
+      expect(described_class).to have_received(:feed).with(hash_excluding(:max_requests))
+    end
   end
 
   describe '.auto_json_feed' do
@@ -536,6 +544,14 @@ RSpec.describe Html2rss do
 
         expect(described_class).to have_received(:json_feed).with(hash_including(max_requests: 8))
       end
+    end
+
+    it 'leaves max_requests unset when omitted so request budget can be inferred' do
+      allow(described_class).to receive(:json_feed).and_return(nil)
+
+      described_class.auto_json_feed(url)
+
+      expect(described_class).to have_received(:json_feed).with(hash_excluding(:max_requests))
     end
   end
 end

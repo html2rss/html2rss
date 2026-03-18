@@ -22,22 +22,32 @@ module Html2rss
     # @param config [Hash<Symbol, Object>] the configuration hash.
     # @raise [InvalidConfig] if the configuration fails validation.
     def initialize(config)
-      @explicit_max_requests = explicit_max_requests_configured?(config)
+      @request_controls = RequestControls.from_config(config)
       prepared_config = prepare_config(config)
+      validated_config = validated_config_for(prepared_config)
 
-      @config = validated_config_for(prepared_config).freeze
+      @config = validated_config.freeze
+      @request_controls = request_controls.with_effective_values(
+        strategy: validated_config[:strategy],
+        max_redirects: validated_config[:max_redirects],
+        max_requests: validated_config[:max_requests]
+      )
     end
 
-    def strategy = config[:strategy]
-    def max_redirects = config[:max_redirects]
-    def max_requests = config[:max_requests]
+    def strategy = request_controls.strategy
+    def max_redirects = request_controls.max_redirects
+    def max_requests = request_controls.max_requests
     def stylesheets = config[:stylesheets]
 
     ##
     # @return [Boolean] whether max_requests was explicitly configured by the caller
     def explicit_max_requests?
-      @explicit_max_requests
+      request_controls.explicit?(:max_requests)
     end
+
+    ##
+    # @return [Html2rss::Config::RequestControls] request controls with provenance
+    attr_reader :request_controls
 
     def headers = config[:headers]
     def channel = config[:channel]
@@ -50,10 +60,6 @@ module Html2rss
     private
 
     attr_reader :config
-
-    def explicit_max_requests_configured?(config)
-      config.key?(:max_requests) || config.key?('max_requests')
-    end
 
     def validated_config_for(config)
       validator = Validator.new.call(config)

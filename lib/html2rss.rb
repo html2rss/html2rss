@@ -63,13 +63,18 @@ module Html2rss
   # @param max_requests [Integer, nil] optional request budget override
   # @return [RSS::Rss] generated RSS feed
   def self.auto_source(url, strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: nil)
+    request_controls = Config::RequestControls.new(
+      strategy:,
+      max_redirects:,
+      max_requests:,
+      explicit_keys: explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
+    )
+
     feed(
       Config.auto_source_config(
         url:,
-        strategy:,
         items_selector:,
-        max_redirects:,
-        max_requests:
+        request_controls:
       )
     )
   end
@@ -84,13 +89,18 @@ module Html2rss
   # @param max_requests [Integer, nil] optional request budget override
   # @return [Hash] JSONFeed-compliant hash
   def self.auto_json_feed(url, strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: nil)
+    request_controls = Config::RequestControls.new(
+      strategy:,
+      max_redirects:,
+      max_requests:,
+      explicit_keys: explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
+    )
+
     json_feed(
       Config.auto_source_config(
         url:,
-        strategy:,
         items_selector:,
-        max_redirects:,
-        max_requests:
+        request_controls:
       )
     )
   end
@@ -154,6 +164,14 @@ module Html2rss
       channel = RssBuilder::Channel.new(response, overrides: config.channel)
 
       JsonFeedBuilder.new(channel:, articles:).call
+    end
+
+    def explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
+      keys = []
+      keys << :strategy unless strategy == :faraday
+      keys << :max_redirects unless max_redirects.nil?
+      keys << :max_requests unless max_requests.nil?
+      keys
     end
   end
 end

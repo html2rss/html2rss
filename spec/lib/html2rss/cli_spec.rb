@@ -68,8 +68,16 @@ RSpec.describe Html2rss::CLI do
       cli.feed('example.yml')
 
       expect(Html2rss).to have_received(:feed).with(
-        hash_including(strategy: :faraday, max_redirects: 3, max_requests: 1)
+        hash_excluding(:strategy, :max_redirects, :max_requests)
       )
+    end
+
+    it 'preserves omitted request controls so downstream config can infer budgets' do
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+      cli.feed('example.yml')
+
+      expect(Html2rss).to have_received(:feed).with(hash_excluding(:max_requests, :max_redirects))
     end
   end
 
@@ -89,24 +97,24 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { strategy: 'browserless' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: 3,
-                                     max_requests: 1)
+        .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
     end
 
     it 'passes the rss format option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { format: 'rss' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 3,
-                                     max_requests: 1)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
     end
 
     it 'passes the jsonfeed format option to Html2rss.auto_json_feed' do
       cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' })
 
       expect(Html2rss).to have_received(:auto_json_feed)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 3,
-                                     max_requests: 1)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
     end
 
     it 'prints the jsonfeed output when requested' do
@@ -120,22 +128,22 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { items_selector: '.item' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: '.item', max_redirects: 3,
-                                     max_requests: 1)
+        .with('https://example.com', strategy: :faraday, items_selector: '.item', max_redirects: nil,
+                                     max_requests: nil)
     end
 
     it 'passes the max_redirects option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 8, max_requests: 1)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 8, max_requests: nil)
     end
 
     it 'passes the max_requests option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { max_requests: 8 })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 3, max_requests: 8)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: 8)
     end
 
     context 'when the redirect limit is hit' do

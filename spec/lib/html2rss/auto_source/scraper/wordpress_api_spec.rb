@@ -181,6 +181,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when the advertised api root carries additional query params' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="https://api.w.org/" href="https://example.com/wp-json?lang=de" />' \
+          '</head></html>'
+        )
+      end
+
+      it 'preserves query params when requesting posts' do
+        articles
+
+        expect(request_session).to have_received(:follow_up).with(
+          hash_including(
+            url: satisfy do |request_url|
+              request_url.path == '/wp-json/wp/v2/posts' &&
+                request_url.query_values['lang'] == 'de' &&
+                request_url.query_values['per_page'] == '100'
+            end
+          )
+        )
+      end
+    end
+
     context 'when the page is a category archive with a term id signal' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/category/news/') }
       let(:parsed_body) do
@@ -293,6 +317,21 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
 
       it 'returns no articles without attempting a follow-up request', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(request_session).not_to have_received(:follow_up)
+      end
+    end
+
+    context 'when the archive is only detectable from the URL path' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/category/news/') }
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/" /></head>' \
+          '<body></body></html>'
+        )
+      end
+
+      it 'does not fall back to the unscoped posts collection', :aggregate_failures do
         expect(articles).to eq([])
         expect(request_session).not_to have_received(:follow_up)
       end
