@@ -3,7 +3,8 @@
 require 'spec_helper'
 require 'puppeteer'
 
-RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RSpec/MultipleMemoizedHelpers
+# rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
+RSpec.describe Html2rss::RequestService::PuppetCommander do
   subject(:commander) { described_class.new(ctx, browser) }
 
   let(:policy) do
@@ -64,15 +65,17 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
     allow(page).to receive(:default_navigation_timeout=)
     allow(page).to receive(:default_timeout=)
     allow(page).to receive(:request_interception=)
+    allow(page).to receive_messages(
+      content: '<html></html>',
+      wait_for_timeout: nil,
+      evaluate: nil,
+      query_selector: nil,
+      goto: response,
+      close: nil
+    )
     allow(page).to receive(:on) do |event, &block|
       event_handlers[event] = block
     end
-    allow(page).to receive(:content).and_return('<html></html>')
-    allow(page).to receive(:wait_for_timeout)
-    allow(page).to receive(:evaluate)
-    allow(page).to receive(:query_selector).and_return(nil)
-    allow(page).to receive(:goto).and_return(response)
-    allow(page).to receive(:close)
     allow(request).to receive(:continue)
     allow(request).to receive(:abort)
   end
@@ -140,6 +143,41 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
         expect(element).to have_received(:click).twice
         expect(page).to have_received(:wait_for_timeout).with(200).twice
         expect(result.body).to eq('<html data-loads="2"></html>')
+      end
+
+      it 'returns metadata from the post-click navigation response', :aggregate_failures do
+        followup_request = instance_double(
+          Puppeteer::HTTPRequest,
+          navigation_request?: true,
+          url: 'https://example.com/articles?page=2',
+          redirect_chain: [],
+          resource_type: 'document'
+        )
+        followup_response = instance_double(
+          Puppeteer::HTTPResponse,
+          headers: { 'Content-Type' => 'text/html', 'X-Page' => '2' },
+          status: 302,
+          url: 'https://example.com/articles?page=2',
+          remote_address: instance_double(Puppeteer::HTTPResponse::RemoteAddress, ip: '93.184.216.35'),
+          request: followup_request
+        )
+
+        allow(page).to receive(:query_selector).with('.load-more').and_return(element, nil)
+        allow(element).to receive(:click) do
+          html_body.replace('<html data-page="2"></html>')
+          event_handlers.fetch('response').call(followup_response)
+        end
+
+        result = commander.call
+
+        expect(result.body).to eq('<html data-page="2"></html>')
+        expect(result.url).to eq(Html2rss::Url.from_absolute('https://example.com/articles?page=2'))
+        expect(result.status).to eq(302)
+        expect(result.headers).to eq({ 'Content-Type' => 'text/html', 'X-Page' => '2' })
+        expect(policy).to have_received(:validate_remote_ip!).at_least(:once).with(
+          ip: '93.184.216.35',
+          url: Html2rss::Url.from_absolute('https://example.com/articles?page=2')
+        )
       end
     end
 
@@ -319,3 +357,4 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do # rubocop:disable RS
     end
   end
 end
+# rubocop:enable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength

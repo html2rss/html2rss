@@ -99,7 +99,7 @@ RSpec.describe Html2rss::RequestService::Context do
       )
     end
 
-    it 'shares origin, policy, budget, and request settings with the derived context', :aggregate_failures do
+    it 'shares origin, policy, budget, and request settings with the derived context', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       expect(follow_up.origin_url).to eq(instance.origin_url)
       expect(follow_up.policy).to eq(policy)
       expect(follow_up.budget).to eq(budget)

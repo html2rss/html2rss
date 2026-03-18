@@ -236,10 +236,10 @@ RSpec.describe Html2rss::CLI do
 
     it 'raises a CLI error with an increased retry hint' do
       expect { cli.feed('example.yml') }
-          .to raise_error(
-            Thor::Error,
-            /retry with --max-requests 2 or increase request.max_requests in the config/
-          )
+        .to raise_error(
+          Thor::Error,
+          /retry with --max-requests 2 or increase request.max_requests in the config/
+        )
     end
   end
 end

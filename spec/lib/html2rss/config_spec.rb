@@ -171,7 +171,7 @@ RSpec.describe Html2rss::Config do
       )
     end
 
-    it 'builds a top-level auto-source feed config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'builds a top-level auto-source feed config', :aggregate_failures do
       expect(config[:strategy]).to eq(:browserless)
       expect(config[:request]).to eq(max_redirects: 8, max_requests: 5)
       expect(config.dig(:channel, :url)).to eq('https://example.com/blog')

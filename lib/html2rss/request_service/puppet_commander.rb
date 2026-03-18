@@ -32,8 +32,9 @@ module Html2rss
         page = new_page
         navigation_response = navigate_to_destination(page, ctx.url)
         perform_preload(page)
-        validate_navigation_response!(navigation_response)
-        build_response(page, navigation_response)
+        final_navigation_response = latest_navigation_response || navigation_response
+        validate_navigation_response!(final_navigation_response)
+        build_response(page, final_navigation_response)
       ensure
         page&.close
       end
@@ -74,6 +75,7 @@ module Html2rss
       # @return [Puppeteer::HTTPResponse, nil] the navigation response if one was produced
       def navigate_to_destination(page, url)
         @navigation_error = nil
+        @latest_navigation_response = nil
         page.goto(url, wait_until: 'networkidle0', referer:, timeout: navigation_timeout_ms).tap do
           raise @navigation_error if @navigation_error
         end
@@ -90,7 +92,7 @@ module Html2rss
 
       private
 
-      attr_reader :ctx, :browser, :skip_request_resources, :referer
+      attr_reader :ctx, :browser, :skip_request_resources, :referer, :latest_navigation_response
 
       def navigation_timeout_ms
         ctx.policy.total_timeout_seconds * 1000
@@ -110,6 +112,7 @@ module Html2rss
       end
 
       def handle_response(response)
+        @latest_navigation_response = response if response.request.navigation_request?
         validate_response!(response)
       rescue Html2rss::Error => error
         store_navigation_error(error, navigation_request: response.request.navigation_request?)
