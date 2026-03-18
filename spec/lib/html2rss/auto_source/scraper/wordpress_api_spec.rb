@@ -338,6 +338,60 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
 
+    context 'when the page is a subdirectory date archive' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/blog/2024/04/') }
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="canonical" href="https://example.com/blog/2024/04/" />' \
+          '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
+          '</head><body class="archive date"></body></html>'
+        )
+      end
+
+      before do
+        allow(request_session).to receive(:follow_up).and_return(empty_api_response)
+      end
+
+      it 'scopes the posts request to the subdirectory date window' do # rubocop:disable RSpec/ExampleLength
+        articles
+        expect(request_session).to have_received(:follow_up).with(
+          url: Html2rss::Url.from_absolute(
+            'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories&after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&per_page=100'
+          ),
+          relation: :auto_source,
+          origin_url: url
+        )
+      end
+    end
+
+    context 'when the page exposes a cross-origin canonical date archive' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/2024/04/') }
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="canonical" href="https://elsewhere.example.net/2024/02/29/" />' \
+          '<link rel="https://api.w.org/" href="https://example.com/wp-json/" />' \
+          '</head><body class="archive date"></body></html>'
+        )
+      end
+
+      before do
+        allow(request_session).to receive(:follow_up).and_return(empty_api_response)
+      end
+
+      it 'ignores the cross-origin canonical when deriving the date scope' do # rubocop:disable RSpec/ExampleLength
+        articles
+        expect(request_session).to have_received(:follow_up).with(
+          url: Html2rss::Url.from_absolute(
+            'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle%2Cexcerpt%2Ccontent%2Clink%2Cdate%2Ccategories&after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&per_page=100'
+          ),
+          relation: :auto_source,
+          origin_url: url
+        )
+      end
+    end
+
     context 'when the canonical date archive is invalid' do
       let(:parsed_body) do
         Nokogiri::HTML(
@@ -415,6 +469,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       it 'returns no articles and logs a warning', :aggregate_failures do
         expect(articles).to eq([])
         expect(Html2rss::Log).to have_received(:warn).with(/unsupported WordPress API posts content type/i)
+      end
+    end
+
+    context 'when the follow-up request exceeds the request budget' do
+      before do
+        allow(request_session).to receive(:follow_up)
+          .and_raise(Html2rss::RequestService::RequestBudgetExceeded, 'Request budget exhausted')
+        allow(Html2rss::Log).to receive(:warn)
+      end
+
+      it 'returns no articles and logs the operational failure', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(Html2rss::Log).to have_received(:warn).with(/failed to fetch WordPress API posts/)
+      end
+    end
+
+    context 'when the follow-up request raises an unexpected error' do
+      before do
+        allow(request_session).to receive(:follow_up).and_raise(StandardError, 'boom')
+      end
+
+      it 're-raises the defect instead of degrading it' do
+        expect { articles }.to raise_error(StandardError, 'boom')
       end
     end
   end

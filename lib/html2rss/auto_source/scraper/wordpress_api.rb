@@ -75,8 +75,8 @@ module Html2rss
             relation: :auto_source,
             origin_url: url
           )
-        rescue StandardError => error
-          Log.warn("#{self.class}: failed to fetch WordPress API posts (#{error.message})")
+        rescue Html2rss::Error => error
+          Log.warn("#{self.class}: failed to fetch WordPress API posts (#{error.class}: #{error.message})")
           nil
         end
 

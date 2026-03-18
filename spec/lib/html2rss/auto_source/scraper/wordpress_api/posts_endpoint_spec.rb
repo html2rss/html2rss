@@ -62,6 +62,24 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
       end
     end
 
+    context 'when another query param value mentions rest_route' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="https://api.w.org/" href="https://example.com/wp-json?redirect=rest_route=/wp/v2/posts" />' \
+          '</head></html>'
+        )
+      end
+
+      it 'still treats the API root as collection-style' do
+        expect(posts_endpoint).to eq(
+          Html2rss::Url.from_absolute(
+            'https://example.com/wp-json/wp/v2/posts?_fields=id%2Ctitle&per_page=100&redirect=rest_route%3D%2Fwp%2Fv2%2Fposts'
+          )
+        )
+      end
+    end
+
     context 'when the page scope is not safely fetchable' do
       let(:page_scope) { instance_double(Html2rss::AutoSource::Scraper::WordpressApi::PageScope, fetchable?: false) }
 

@@ -140,7 +140,8 @@ module Html2rss
               href = parsed_body.at_css(WordpressApi::CANONICAL_LINK_SELECTOR)&.[]('href').to_s.strip
               return url if href.empty?
 
-              Html2rss::Url.from_relative(href, url)
+              canonical_url = Html2rss::Url.from_relative(href, url)
+              same_origin_url?(canonical_url, url) ? canonical_url : url
             rescue ArgumentError
               url
             end
@@ -154,7 +155,7 @@ module Html2rss
             end
 
             def date_archive_path?
-              path_segments.first&.match?(/\A\d{4}\z/)
+              !date_archive_segments.nil?
             end
 
             def date_archive_range
@@ -171,16 +172,42 @@ module Html2rss
             end
 
             def date_archive_components
-              return unless date_archive_path?
+              segments = date_archive_segments
+              return unless segments
 
-              year = path_segments.fetch(0).to_i
-              month = parse_archive_segment(path_segments[1], 1, 12)
-              day = parse_archive_segment(path_segments[2], 1, 31)
+              year = segments.fetch(0).to_i
+              month = parse_archive_segment(segments[1], 1, 12)
+              day = parse_archive_segment(segments[2], 1, 31)
 
               {
                 start_date_parts: [year, month || 1, day || 1],
                 precision: archive_precision(month:, day:)
               }
+            end
+
+            def date_archive_segments
+              year_index = path_segments.find_index { _1.match?(/\A\d{4}\z/) }
+              return unless year_index
+
+              segments = path_segments.drop(year_index)
+              return unless segments.length.between?(1, 3)
+              return unless archive_segment_shape?(segments)
+
+              segments
+            end
+
+            def archive_segment_shape?(segments)
+              month = segments[1]
+              day = segments[2]
+              return false if day && month.nil?
+              return false unless month.nil? || month.match?(/\A\d+\z/)
+              return false unless day.nil? || day.match?(/\A\d+\z/)
+
+              true
+            end
+
+            def same_origin_url?(left, right)
+              [left.scheme, left.host, left.port] == [right.scheme, right.host, right.port]
             end
 
             def archive_precision(month:, day:)

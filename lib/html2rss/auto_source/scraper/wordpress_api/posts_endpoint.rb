@@ -71,7 +71,7 @@ module Html2rss
           end
 
           def query_style_api_root?(api_root)
-            api_root.query.to_s.include?('rest_route=')
+            api_root.query_values.key?('rest_route')
           end
 
           def query_root_posts_url(api_root)
