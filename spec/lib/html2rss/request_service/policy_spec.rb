@@ -50,6 +50,22 @@ RSpec.describe Html2rss::RequestService::Policy do
       end
     end
 
+    context 'when a follow-up downgrades from https to http on the same host' do
+      let(:relation) { :auto_source }
+      let(:url) { Html2rss::Url.from_absolute('http://example.com/wp-json/wp/v2/posts') }
+
+      before do
+        allow(resolver).to receive(:each_address).with('example.com').and_yield('93.184.216.34')
+      end
+
+      it 'rejects the downgrade' do
+        expect { validate_request! }.to raise_error(
+          Html2rss::RequestService::UnsupportedUrlScheme,
+          /Follow-up downgraded from https to http/
+        )
+      end
+    end
+
     context 'when the host is blocked before DNS resolution' do
       let(:url) { Html2rss::Url.from_absolute('https://localhost/feed') }
 

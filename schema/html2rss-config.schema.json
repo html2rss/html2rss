@@ -110,6 +110,18 @@
         "scraper": {
           "type": "object",
           "properties": {
+            "wordpress_api": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            },
             "schema": {
               "type": "object",
               "properties": {
@@ -222,6 +234,9 @@
       "required": [],
       "default": {
         "scraper": {
+          "wordpress_api": {
+            "enabled": true
+          },
           "schema": {
             "enabled": true
           },

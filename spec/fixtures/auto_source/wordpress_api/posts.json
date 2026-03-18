@@ -1,0 +1,32 @@
+[
+  {
+    "id": 42,
+    "date": "2024-04-01T12:00:00",
+    "link": "https://example.com/2024/04/wordpress-api-post/",
+    "title": {
+      "rendered": "WordPress API post"
+    },
+    "excerpt": {
+      "rendered": "<p>Short excerpt from the API.</p>"
+    },
+    "content": {
+      "rendered": "<p>Full content from the API.</p>"
+    },
+    "categories": [7, 9]
+  },
+  {
+    "id": 43,
+    "date": "2024-04-02T08:15:00",
+    "link": "https://example.com/2024/04/excerpt-only-post/",
+    "title": {
+      "rendered": "Excerpt only post"
+    },
+    "excerpt": {
+      "rendered": "<p>Excerpt fallback content.</p>"
+    },
+    "content": {
+      "rendered": ""
+    },
+    "categories": []
+  }
+]
