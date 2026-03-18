@@ -34,6 +34,22 @@ RSpec.describe Html2rss::CLI do
       expect(Html2rss).to have_received(:feed).with(hash_including(strategy: :browserless))
     end
 
+    it 'passes the max_redirects option to the config' do
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+      cli.invoke(:feed, ['example.yml'], { max_redirects: 8 })
+
+      expect(Html2rss).to have_received(:feed).with(hash_including(max_redirects: 8))
+    end
+
+    it 'passes the max_requests option to the config' do
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+      cli.invoke(:feed, ['example.yml'], { max_requests: 8 })
+
+      expect(Html2rss).to have_received(:feed).with(hash_including(max_requests: 8))
+    end
+
     it 'passes the params option to the config' do
       allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
 
@@ -41,13 +57,36 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:feed).with(hash_including(params: { 'foo' => 'bar' }))
     end
+
+    it 'applies CLI defaults when the YAML config uses nil request overrides' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return(
+        strategy: nil,
+        max_redirects: nil,
+        max_requests: nil
+      )
+
+      cli.feed('example.yml')
+
+      expect(Html2rss).to have_received(:feed).with(
+        hash_excluding(:strategy, :max_redirects, :max_requests)
+      )
+    end
+
+    it 'preserves omitted request controls so downstream config can infer budgets' do
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+      cli.feed('example.yml')
+
+      expect(Html2rss).to have_received(:feed).with(hash_excluding(:max_requests, :max_redirects))
+    end
   end
 
   describe '#auto' do
     let(:auto_rss_xml) { '<rss><channel><title>Auto Source</title></channel></rss>' }
+    let(:auto_json_feed) { { version: 'https://jsonfeed.org/version/1.1', title: 'Auto Source', items: [] } }
 
     before do
-      allow(Html2rss).to receive(:auto_source).and_return(auto_rss_xml)
+      allow(Html2rss).to receive_messages(auto_source: auto_rss_xml, auto_json_feed:)
     end
 
     it 'calls Html2rss.auto_source and prints the result to stdout' do
@@ -58,14 +97,70 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { strategy: 'browserless' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :browserless, items_selector: nil)
+        .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
+    end
+
+    it 'passes the rss format option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { format: 'rss' })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
+    end
+
+    it 'passes the jsonfeed format option to Html2rss.auto_json_feed' do
+      cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' })
+
+      expect(Html2rss).to have_received(:auto_json_feed)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
+    end
+
+    it 'prints the jsonfeed output when requested' do
+      expected_output = "#{JSON.pretty_generate(auto_json_feed)}\n"
+
+      expect { cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' }) }
+        .to output(expected_output).to_stdout
     end
 
     it 'passes the items_selector option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { items_selector: '.item' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: '.item')
+        .with('https://example.com', strategy: :faraday, items_selector: '.item', max_redirects: nil,
+                                     max_requests: nil)
+    end
+
+    it 'passes the max_redirects option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 8, max_requests: nil)
+    end
+
+    it 'passes the max_requests option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { max_requests: 8 })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: 8)
+    end
+
+    context 'when the redirect limit is hit' do
+      before do
+        allow(Html2rss).to receive(:auto_source).and_raise(
+          Faraday::FollowRedirects::RedirectLimitReached,
+          'too many redirects; last one to: https://www.example.com/'
+        )
+      end
+
+      it 'raises a CLI error with an actionable redirect hint' do
+        expect { cli.auto('https://example.com') }
+          .to raise_error(
+            Thor::Error,
+            /retry with --max-redirects 4 or use the final URL directly/
+          )
+      end
     end
   end
 
@@ -125,6 +220,24 @@ RSpec.describe Html2rss::CLI do
         expect { cli.validate('config.yml') }
           .to raise_error(Thor::Error, "Invalid configuration: #{errors.to_h}")
       end
+    end
+  end
+
+  describe 'request budget failures' do
+    before do
+      allow(Html2rss).to receive(:feed).and_raise(
+        Html2rss::RequestService::RequestBudgetExceeded,
+        'Request budget exhausted'
+      )
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({ url: 'https://example.com' })
+    end
+
+    it 'raises a CLI error with an increased retry hint' do
+      expect { cli.feed('example.yml') }
+        .to raise_error(
+          Thor::Error,
+          /retry with --max-requests 2 or increase top-level max_requests in the config/
+        )
     end
   end
 end
