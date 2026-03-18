@@ -36,7 +36,8 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       Faraday::Response,
       body: '<html></html>',
       headers: { 'content-type' => 'text/html' },
-      env: response_env
+      env: response_env,
+      status: 200
     )
   end
 

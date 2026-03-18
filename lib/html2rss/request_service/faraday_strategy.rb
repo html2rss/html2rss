@@ -22,7 +22,8 @@ module Html2rss
         validate_request!
 
         response_guard = ResponseGuard.new(policy: ctx.policy)
-        response = faraday_request(response_guard)
+        response = faraday_request
+        response_guard.inspect_chunk!(total_bytes: response.body.bytesize, headers: response.headers)
         response_guard.inspect_body!(response.body)
 
         Response.new(body: response.body, headers: response.headers, url: response_url(response),
@@ -36,10 +37,9 @@ module Html2rss
         ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
       end
 
-      def faraday_request(response_guard)
+      def faraday_request
         client.get do |req|
           apply_timeouts(req)
-          req.options.on_data = on_data_callback(response_guard)
         end
       end
 
@@ -55,12 +55,6 @@ module Html2rss
         request.options.timeout = ctx.policy.total_timeout_seconds
         request.options.open_timeout = ctx.policy.connect_timeout_seconds
         request.options.read_timeout = ctx.policy.read_timeout_seconds
-      end
-
-      def on_data_callback(response_guard)
-        proc do |_chunk, total_bytes, env|
-          response_guard.inspect_chunk!(total_bytes:, headers: env&.response_headers)
-        end
       end
 
       def response_url(response)
