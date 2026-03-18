@@ -25,8 +25,28 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', '@id': 'https://example.com/123' }
       end
 
-      it 'returns the @id' do
-        expect(id).to eq('https://example.com/123')
+      it 'normalizes same-origin url ids to their canonical path' do
+        expect(id).to eq('/123')
+      end
+    end
+
+    context 'when schema_object contains a query-permalink @id on the same origin' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', '@id': 'https://example.com/?p=123' }
+      end
+
+      it 'preserves the distinguishing query permalink' do
+        expect(id).to eq('/?p=123')
+      end
+    end
+
+    context 'when schema_object contains a non-url @id' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', '@id': 'article-123' }
+      end
+
+      it 'returns the original identifier' do
+        expect(id).to eq('article-123')
       end
     end
 

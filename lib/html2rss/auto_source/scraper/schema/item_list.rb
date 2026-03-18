@@ -22,7 +22,7 @@ module Html2rss
             elements = [elements] unless elements.is_a?(Array)
 
             elements.each do |schema_object|
-              hashes << ListItem.new(schema_object, url: @url).call
+              hashes << ListItem.new(schema_object, url: base_url || '').call
             end
 
             hashes

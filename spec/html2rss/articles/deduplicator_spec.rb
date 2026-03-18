@@ -40,6 +40,31 @@ RSpec.describe Html2rss::Articles::Deduplicator do
       end
     end
 
+    context 'when a WordPress API article overlaps with an existing scraper article by canonical URL' do
+      let(:articles) do
+        [
+          Html2rss::RssBuilder::Article.new(
+            id: 'https://example.com/posts/alpha/',
+            url: 'https://example.com/posts/alpha/',
+            title: 'Alpha',
+            description: 'From selectors',
+            scraper:
+          ),
+          Html2rss::RssBuilder::Article.new(
+            id: 'https://example.com/posts/alpha/',
+            url: 'https://example.com/posts/alpha/',
+            title: 'Alpha',
+            description: 'From WordPress API',
+            scraper: Html2rss::AutoSource::Scraper::WordpressApi
+          )
+        ]
+      end
+
+      it 'keeps only the first occurrence' do
+        expect(deduplicated).to eq([articles.first])
+      end
+    end
+
     context 'when articles do not expose a guid' do
       let(:articles) do
         shared_fingerprint = 'https://example.com/shared#!/shared'

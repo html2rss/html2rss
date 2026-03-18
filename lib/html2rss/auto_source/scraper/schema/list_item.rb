@@ -16,7 +16,7 @@ module Html2rss
           def url
             url = schema_object.dig(:item, :url) || super
 
-            Url.from_relative(url, @url) if url
+            Url.from_relative(url, base_url || url) if url
           end
         end
       end
