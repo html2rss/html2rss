@@ -6,7 +6,6 @@ module Html2rss
   class RequestControls
     TOP_LEVEL_KEYS = %i[strategy].freeze
     REQUEST_KEYS = %i[max_redirects max_requests].freeze
-    REQUEST_CONTROL_KEYS = (TOP_LEVEL_KEYS + REQUEST_KEYS).freeze
 
     ##
     # @param config [Hash<Symbol, Object>, Hash<String, Object>] raw config input

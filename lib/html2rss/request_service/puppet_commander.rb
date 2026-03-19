@@ -30,6 +30,7 @@ module Html2rss
         page = new_page
         navigation_response = navigate_to_destination(page, ctx.url)
         perform_preload(page)
+        raise_navigation_error_if_any
         final_navigation_response = latest_navigation_response || navigation_response
         validate_navigation_response!(final_navigation_response)
         build_response(page, final_navigation_response)
@@ -76,10 +77,10 @@ module Html2rss
         @navigation_error = nil
         @latest_navigation_response = nil
         page.goto(url, wait_until: 'networkidle0', referer:, timeout: navigation_timeout_ms).tap do
-          raise @navigation_error if @navigation_error
+          raise_navigation_error_if_any
         end
       rescue StandardError
-        raise @navigation_error if @navigation_error
+        raise_navigation_error_if_any
 
         raise
       end
@@ -92,6 +93,10 @@ module Html2rss
       private
 
       attr_reader :ctx, :browser, :skip_request_resources, :referer, :latest_navigation_response, :main_frame
+
+      def raise_navigation_error_if_any
+        raise @navigation_error if @navigation_error
+      end
 
       def navigation_timeout_ms
         ctx.policy.total_timeout_seconds * 1000

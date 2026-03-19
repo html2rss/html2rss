@@ -185,6 +185,34 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         )
       end
 
+      it 'raises navigation policy errors captured during preload follow-up requests', :aggregate_failures do
+        error = Html2rss::RequestService::PrivateNetworkDenied.new('blocked during preload')
+        allow(page).to receive(:query_selector).with('.load-more').and_return(element, nil)
+        allow(policy).to receive(:validate_request!).with(
+          url: Html2rss::Url.from_absolute('https://127.0.0.1/private'),
+          origin_url: ctx.origin_url,
+          relation: :initial
+        ).and_raise(error)
+
+        allow(element).to receive(:click) do
+          preload_request = instance_double(
+            Puppeteer::HTTPRequest,
+            navigation_request?: true,
+            url: 'https://127.0.0.1/private',
+            redirect_chain: [],
+            resource_type: 'document',
+            frame: main_frame
+          )
+          allow(preload_request).to receive(:abort)
+          event_handlers.fetch('request').call(preload_request)
+        end
+
+        expect { commander.call }.to raise_error(
+          Html2rss::RequestService::PrivateNetworkDenied,
+          'blocked during preload'
+        )
+      end
+
       it 'ignores iframe navigation responses when building final metadata', :aggregate_failures do
         iframe_frame = instance_double(Puppeteer::Frame)
         iframe_request = instance_double(
