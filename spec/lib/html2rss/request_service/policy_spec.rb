@@ -243,8 +243,11 @@ RSpec.describe Html2rss::RequestService::Policy do
         )
       end
 
-      it 'ignores the malformed IP' do
-        expect { validate_remote_ip! }.not_to raise_error
+      it 'rejects the response because the remote IP cannot be validated' do
+        expect { validate_remote_ip! }.to raise_error(
+          Html2rss::RequestService::PrivateNetworkDenied,
+          /Remote IP could not be validated/
+        )
       end
     end
   end

@@ -145,7 +145,8 @@ module Html2rss
         return if ip.nil? || ip.empty?
 
         parsed_ip = parse_ip(ip)
-        return unless parsed_ip && blocked_ip?(parsed_ip)
+        raise PrivateNetworkDenied, "Remote IP could not be validated for #{url}" unless parsed_ip
+        return unless blocked_ip?(parsed_ip)
 
         raise PrivateNetworkDenied, "Private network target denied for #{url}"
       end
