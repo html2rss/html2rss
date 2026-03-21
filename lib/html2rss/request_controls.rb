@@ -4,7 +4,8 @@ module Html2rss
   ##
   # Tracks runtime request controls together with whether each value was explicitly set.
   class RequestControls
-    REQUEST_CONTROL_KEYS = %i[strategy max_redirects max_requests].freeze
+    TOP_LEVEL_KEYS = %i[strategy].freeze
+    REQUEST_KEYS = %i[max_redirects max_requests].freeze
 
     ##
     # @param config [Hash<Symbol, Object>, Hash<String, Object>] raw config input
@@ -12,16 +13,15 @@ module Html2rss
     def self.from_config(config)
       new(
         strategy: value_for(config, :strategy),
-        max_redirects: value_for(config, :max_redirects),
-        max_requests: value_for(config, :max_requests),
+        max_redirects: request_value_for(config, :max_redirects),
+        max_requests: request_value_for(config, :max_requests),
         explicit_keys: explicit_keys_for(config)
       )
     end
 
     def self.explicit_keys_for(config)
-      REQUEST_CONTROL_KEYS.select do |key|
-        config.key?(key) || config.key?(key.to_s)
-      end
+      TOP_LEVEL_KEYS.filter { top_level_key?(config, _1) } +
+        REQUEST_KEYS.filter { request_key?(config, _1) }
     end
 
     def self.value_for(config, key)
@@ -30,7 +30,23 @@ module Html2rss
 
       nil
     end
-    private_class_method :explicit_keys_for, :value_for
+
+    def self.request_value_for(config, key)
+      request_config = value_for(config, :request)
+      return nil unless request_config.is_a?(Hash)
+
+      value_for(request_config, key)
+    end
+
+    def self.top_level_key?(config, key)
+      config.key?(key) || config.key?(key.to_s)
+    end
+
+    def self.request_key?(config, key)
+      request_config = value_for(config, :request)
+      request_config.is_a?(Hash) && top_level_key?(request_config, key)
+    end
+    private_class_method :explicit_keys_for, :request_value_for, :top_level_key?, :request_key?, :value_for
 
     ##
     # @param strategy [Symbol, nil] effective request strategy
@@ -85,13 +101,28 @@ module Html2rss
     # @return [Hash<Symbol, Object>] the same hash with explicit controls written
     def apply_to(config)
       config[:strategy] = strategy if explicit?(:strategy)
-      config[:max_redirects] = max_redirects if explicit?(:max_redirects)
-      config[:max_requests] = max_requests if explicit?(:max_requests)
+      apply_request_value(config, :max_redirects, max_redirects)
+      apply_request_value(config, :max_requests, max_requests)
       config
     end
 
     private
 
     attr_reader :explicit_keys
+
+    def apply_request_value(config, key, value)
+      return unless explicit?(key)
+
+      ensure_request_config!(config)
+      config[:request][key] = value
+    end
+
+    def ensure_request_config!(config)
+      request_config = config[:request]
+      return config[:request] = {} if request_config.nil?
+      return if request_config.is_a?(Hash)
+
+      raise ArgumentError, 'request config must be a hash'
+    end
   end
 end

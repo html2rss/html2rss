@@ -29,8 +29,8 @@ module Html2rss
       @config = validated_config.freeze
       @request_controls = request_controls.with_effective_values(
         strategy: validated_config[:strategy],
-        max_redirects: validated_config[:max_redirects],
-        max_requests: validated_config[:max_requests]
+        max_redirects: validated_config.dig(:request, :max_redirects),
+        max_requests: validated_config.dig(:request, :max_requests)
       )
     end
 
@@ -53,6 +53,8 @@ module Html2rss
     def channel = config[:channel]
     def url = config.dig(:channel, :url)
     def time_zone = config.dig(:channel, :time_zone)
+
+    def request = config[:request]
 
     def selectors = config[:selectors]
     def auto_source = config[:auto_source]

@@ -49,6 +49,20 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
         instance.execute
       end.to raise_error(Html2rss::RequestService::RequestTimedOut, 'Navigation timeout')
     end
+
+    it 'retries without protocol timeout when Puppeteer does not support it', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(Puppeteer).to receive(:connect)
+        .with(browser_ws_endpoint: instance.browser_ws_endpoint, protocol_timeout: 30_000)
+        .and_raise(ArgumentError, 'unknown keyword: :protocol_timeout')
+      allow(Puppeteer).to receive(:connect)
+        .with(browser_ws_endpoint: instance.browser_ws_endpoint)
+        .and_yield(browser)
+
+      expect { instance.execute }.not_to raise_error
+
+      expect(Puppeteer).to have_received(:connect).with(browser_ws_endpoint: instance.browser_ws_endpoint)
+      expect(commander).to have_received(:call)
+    end
   end
 
   describe '#browser_ws_endpoint' do

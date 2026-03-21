@@ -61,7 +61,7 @@ module Html2rss
       rescue RequestService::RequestBudgetExceeded => error
         logger.warn(
           "#{self.class}: pagination stopped at #{next_url} - #{error.message}. " \
-          "Retry with --max-requests #{session.max_requests + 1} or increase top-level max_requests in the config."
+          "Retry with --max-requests #{session.max_requests + 1} or increase request.max_requests in the config."
         )
         nil
       end

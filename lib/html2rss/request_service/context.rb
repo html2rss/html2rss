@@ -9,15 +9,17 @@ module Html2rss
       ##
       # @param url [String, Html2rss::Url] the URL to request
       # @param headers [Hash] HTTP request headers
+      # @param request [Hash] request specific options passed to strategies
       # @param request_options [Hash] runtime request options
       # @option request_options [Symbol] :relation why this request is being made
       # @option request_options [String, Html2rss::Url, nil] :origin_url originating URL for same-origin checks
       # @option request_options [Policy] :policy runtime request policy
       # @option request_options [Budget] :budget shared request budget for the feed build
       # @raise [ArgumentError] if policy or budget is explicitly nil
-      def initialize(url:, headers: {}, **request_options)
+      def initialize(url:, headers: {}, request: {}, **request_options)
         @url = Html2rss::Url.from_absolute(url)
         @headers = headers
+        @request = request.freeze
         assign_request_options(request_options)
       end
 
@@ -26,6 +28,15 @@ module Html2rss
 
       # @return [Hash] the HTTP request headers
       attr_reader :headers
+
+      # @return [Hash] the request specific options
+      attr_reader :request
+
+      # @return [Hash] browserless specific options
+      def browserless = request.fetch(:browserless, {})
+
+      # @return [Hash, nil] preload options for browserless requests
+      def browserless_preload = browserless[:preload]
 
       # @return [Symbol] the request relation
       attr_reader :relation
@@ -50,6 +61,7 @@ module Html2rss
         self.class.new(
           url:,
           headers:,
+          request:,
           relation:,
           origin_url:,
           policy:,

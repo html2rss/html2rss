@@ -100,6 +100,24 @@ RSpec.describe Html2rss::RequestService::Policy do
       end
     end
 
+    context 'when DNS yields an address string that IPAddr cannot classify cleanly' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
+
+      before do
+        allow(resolver).to receive(:each_address).with('example.com')
+                                                 .and_yield('weird-address')
+                                                 .and_yield('93.184.216.34')
+        allow(IPAddr).to receive(:new).and_call_original
+        allow(IPAddr).to receive(:new).with('weird-address').and_raise(
+          IPAddr::AddressFamilyError, 'address family must be specified'
+        )
+      end
+
+      it 'ignores the malformed address and allows the request' do
+        expect { validate_request! }.not_to raise_error
+      end
+    end
+
     context 'when the host resolves to an IPv6 loopback address' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
@@ -212,6 +230,24 @@ RSpec.describe Html2rss::RequestService::Policy do
 
       it 'allows the response' do
         expect { validate_remote_ip! }.not_to raise_error
+      end
+    end
+
+    context 'when the response IP cannot be classified by IPAddr' do
+      let(:ip) { 'weird-address' }
+
+      before do
+        allow(IPAddr).to receive(:new).and_call_original
+        allow(IPAddr).to receive(:new).with('weird-address').and_raise(
+          IPAddr::AddressFamilyError, 'address family must be specified'
+        )
+      end
+
+      it 'rejects the response because the remote IP cannot be validated' do
+        expect { validate_remote_ip! }.to raise_error(
+          Html2rss::RequestService::PrivateNetworkDenied,
+          /Remote IP could not be validated/
+        )
       end
     end
   end

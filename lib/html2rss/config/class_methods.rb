@@ -131,8 +131,10 @@ module Html2rss
       def default_config
         {
           strategy: RequestService.default_strategy_name,
-          max_redirects: RequestService::Policy::DEFAULTS[:max_redirects],
-          max_requests: RequestService::Policy::DEFAULTS[:max_requests],
+          request: {
+            max_redirects: RequestService::Policy::DEFAULTS[:max_redirects],
+            max_requests: RequestService::Policy::DEFAULTS[:max_requests]
+          },
           channel: { time_zone: 'UTC' },
           headers: RequestHeaders.browser_defaults,
           stylesheets: []

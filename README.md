@@ -6,6 +6,8 @@
 
 This gem is the core of the [html2rss-web](https://github.com/html2rss/html2rss-web) application.
 
+Most people looking for a first working feed should start with `html2rss-web`, run it with Docker, and open one of the included feeds from their own instance before moving to custom configs or the gem APIs.
+
 ## Documentation
 
 Detailed usage guides, reference docs, and the feed directory live on the project website:

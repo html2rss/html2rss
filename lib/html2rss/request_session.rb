@@ -16,6 +16,7 @@ module Html2rss
           context: RequestService::Context.new(
             url: runtime_input.url,
             headers: runtime_input.headers,
+            request: runtime_input.request,
             policy: runtime_input.request_policy
           ),
           strategy: runtime_input.strategy,

@@ -23,6 +23,7 @@ RSpec.describe Html2rss::RequestSession do
       Html2rss::RequestSession::RuntimeInput.new(
         url: 'https://example.com/blog',
         headers: { 'User-Agent' => 'RSpec' },
+        request: { browserless: { preload: { wait_after_ms: 500 } } },
         strategy: :browserless,
         request_policy:
       )
@@ -40,6 +41,7 @@ RSpec.describe Html2rss::RequestSession do
         expect(session).to be_a(described_class)
         expect(context.url.to_s).to eq('https://example.com/blog')
         expect(context.headers).to eq(runtime_input.headers)
+        expect(context.request).to eq(runtime_input.request)
         expect(context.policy.max_redirects).to eq(8)
         expect(context.policy.max_requests).to eq(1)
       end
@@ -55,6 +57,7 @@ RSpec.describe Html2rss::RequestSession do
         expect(session).to be_a(described_class)
         expect(context.url.to_s).to eq('https://example.com/blog')
         expect(context.headers).to eq(runtime_input.headers)
+        expect(context.request).to eq(runtime_input.request)
         expect(context.policy.max_redirects).to eq(8)
         expect(context.policy.max_requests).to eq(4)
       end
