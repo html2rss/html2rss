@@ -26,25 +26,19 @@ module Html2rss
         optional(:media).maybe(:string)
       end
 
-      WaitForNetworkIdleConfig = Dry::Schema.Params do
-        optional(:timeout_ms).filled(:integer, gt?: 0)
-      end
-
       BrowserlessPreloadClickSelectorConfig = Dry::Schema.Params do
         required(:selector).filled(:string)
         optional(:max_clicks).filled(:integer, gt?: 0)
-        optional(:delay_ms).filled(:integer, gteq?: 0)
-        optional(:wait_for_network_idle).hash(WaitForNetworkIdleConfig)
+        optional(:wait_after_ms).filled(:integer, gteq?: 0)
       end
 
       BrowserlessPreloadScrollConfig = Dry::Schema.Params do
         optional(:iterations).filled(:integer, gt?: 0)
-        optional(:delay_ms).filled(:integer, gteq?: 0)
-        optional(:wait_for_network_idle).hash(WaitForNetworkIdleConfig)
+        optional(:wait_after_ms).filled(:integer, gteq?: 0)
       end
 
       BrowserlessPreloadConfig = Dry::Schema.Params do
-        optional(:wait_for_network_idle).hash(WaitForNetworkIdleConfig)
+        optional(:wait_after_ms).filled(:integer, gteq?: 0)
         optional(:click_selectors).array(BrowserlessPreloadClickSelectorConfig)
         optional(:scroll_down).hash(BrowserlessPreloadScrollConfig)
       end

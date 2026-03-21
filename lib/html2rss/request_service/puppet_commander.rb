@@ -5,7 +5,6 @@ module Html2rss
     ##
     # Commands the Puppeteer Browser to the website and builds the Response.
     class PuppetCommander # rubocop:disable Metrics/ClassLength
-      DEFAULT_WAIT_FOR_NETWORK_IDLE_TIMEOUT = 5_000
       BROWSER_UNSAFE_HEADERS = %w[host connection content-length transfer-encoding].to_set.freeze
 
       # @param ctx [Context]
@@ -198,17 +197,17 @@ module Html2rss
         preload_config = ctx.browserless_preload
         return unless preload_config
 
-        wait_for_network_idle(page, preload_config[:wait_for_network_idle])
+        wait_after(page, preload_config[:wait_after_ms])
         click_selectors(page, preload_config[:click_selectors]) if preload_config[:click_selectors]
         scroll_down(page, preload_config[:scroll_down]) if preload_config[:scroll_down]
-        wait_for_network_idle(page, preload_config[:wait_for_network_idle])
+        wait_after(page, preload_config[:wait_after_ms])
       end
 
-      def wait_for_network_idle(page, config)
-        return unless config
+      def wait_after(page, timeout_ms)
+        return unless timeout_ms
 
-        timeout = config.fetch(:timeout_ms, DEFAULT_WAIT_FOR_NETWORK_IDLE_TIMEOUT)
-        page.wait_for_timeout(timeout)
+        ctx.budget.consume!
+        page.wait_for_timeout(timeout_ms)
       end
 
       def click_selectors(page, selectors)
@@ -217,12 +216,11 @@ module Html2rss
 
       def scroll_down(page, config)
         iterations = config.fetch(:iterations, 1)
-        delay_ms = config.fetch(:delay_ms, 0)
-        wait_config = config[:wait_for_network_idle]
+        wait_after_ms = config[:wait_after_ms]
         previous_height = nil
 
         iterations.times do
-          updated_height = perform_scroll_iteration(page, wait_config, delay_ms, previous_height)
+          updated_height = perform_scroll_iteration(page, wait_after_ms, previous_height)
           break unless updated_height
 
           previous_height = updated_height
@@ -232,22 +230,21 @@ module Html2rss
       def click_selector(page, config)
         selector = config.fetch(:selector)
         max_clicks = config.fetch(:max_clicks, 1)
-        delay_ms = config.fetch(:delay_ms, 0)
-        wait_config = config[:wait_for_network_idle]
+        wait_after_ms = config[:wait_after_ms]
 
         max_clicks.times do
           break unless (element = page.query_selector(selector))
 
+          ctx.budget.consume!
           element.click
-          wait_for_network_idle(page, wait_config)
-          sleep(delay_ms / 1000.0) if delay_ms.positive?
+          wait_after(page, wait_after_ms)
         end
       end
 
-      def perform_scroll_iteration(page, wait_config, delay_ms, previous_height)
+      def perform_scroll_iteration(page, wait_after_ms, previous_height)
+        ctx.budget.consume!
         page.evaluate('() => window.scrollTo(0, document.body.scrollHeight)')
-        wait_for_network_idle(page, wait_config)
-        sleep(delay_ms / 1000.0) if delay_ms.positive?
+        wait_after(page, wait_after_ms)
 
         current_height = page.evaluate('() => document.body.scrollHeight')
         return if previous_height && current_height <= previous_height

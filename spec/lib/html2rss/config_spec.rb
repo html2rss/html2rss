@@ -387,13 +387,13 @@ RSpec.describe Html2rss::Config do
           request: {
             browserless: {
               preload: {
-                wait_for_network_idle: { timeout_ms: 2_000 },
+                wait_after_ms: 2_000,
                 click_selectors: [
-                  { selector: '.load-more', max_clicks: 2, delay_ms: 100 }
+                  { selector: '.load-more', max_clicks: 2, wait_after_ms: 100 }
                 ],
                 scroll_down: {
                   iterations: 4,
-                  wait_for_network_idle: { timeout_ms: 1_000 }
+                  wait_after_ms: 1_000
                 }
               }
             }
@@ -402,7 +402,7 @@ RSpec.describe Html2rss::Config do
       end
 
       it 'exposes the request options', :aggregate_failures do
-        expect(instance.request.dig(:browserless, :preload, :wait_for_network_idle, :timeout_ms)).to eq(2_000)
+        expect(instance.request.dig(:browserless, :preload, :wait_after_ms)).to eq(2_000)
         expect(instance.request.dig(:browserless, :preload, :click_selectors).first[:max_clicks]).to eq(2)
       end
     end

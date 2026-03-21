@@ -8,7 +8,7 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
   let(:raw_config) do
     {
       strategy: :browserless,
-      request: { max_redirects: 8 },
+      request: { max_redirects: 8, browserless: { preload: { wait_after_ms: 500 } } },
       channel: { url: 'https://example.com/blog' },
       selectors: {
         items: { selector: 'article', pagination: { max_pages: 3 } },
@@ -36,7 +36,7 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
       it 'adds predictable follow-up budget to the runtime policy', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(4)
+        expect(runtime_policy.max_requests).to eq(6)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end

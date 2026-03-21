@@ -10,7 +10,7 @@ RSpec.describe Html2rss::RequestSession::RuntimeInput do
       {
         strategy: :browserless,
         channel: { url: 'https://example.com/blog' },
-        request: { browserless: { preload: { wait_for_network_idle: { timeout_ms: 500 } } } },
+        request: { browserless: { preload: { wait_after_ms: 500 } } },
         selectors: {
           items: { selector: 'article' },
           title: { selector: 'h2' }

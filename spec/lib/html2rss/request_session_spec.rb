@@ -23,7 +23,7 @@ RSpec.describe Html2rss::RequestSession do
       Html2rss::RequestSession::RuntimeInput.new(
         url: 'https://example.com/blog',
         headers: { 'User-Agent' => 'RSpec' },
-        request: { browserless: { preload: { wait_for_network_idle: { timeout_ms: 500 } } } },
+        request: { browserless: { preload: { wait_after_ms: 500 } } },
         strategy: :browserless,
         request_policy:
       )

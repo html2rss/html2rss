@@ -17,6 +17,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       validate_remote_ip!: nil
     )
   end
+  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil) }
   let(:ctx) do
     instance_double(
       Html2rss::RequestService::Context,
@@ -25,6 +26,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       relation: :initial,
       headers: { 'User-Agent' => 'RSpec' },
       policy:,
+      budget:,
       browserless_preload: nil
     )
   end
@@ -110,13 +112,14 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
 
     context 'with preload wait for network idle' do
       before do
-        allow(ctx).to receive(:browserless_preload).and_return({ wait_for_network_idle: { timeout_ms: 1_000 } })
+        allow(ctx).to receive(:browserless_preload).and_return({ wait_after_ms: 1_000 })
       end
 
       it 'waits for network idle before collecting the body' do
         commander.call
 
         expect(page).to have_received(:wait_for_timeout).with(1_000).twice
+        expect(budget).to have_received(:consume!).twice
       end
     end
 
@@ -126,7 +129,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       before do
         allow(ctx).to receive(:browserless_preload).and_return(
           click_selectors: [
-            { selector: '.load-more', max_clicks: 3, delay_ms: 0, wait_for_network_idle: { timeout_ms: 200 } }
+            { selector: '.load-more', max_clicks: 3, wait_after_ms: 200 }
           ]
         )
 
@@ -145,6 +148,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         expect(page).to have_received(:query_selector).with('.load-more').exactly(3).times
         expect(element).to have_received(:click).twice
         expect(page).to have_received(:wait_for_timeout).with(200).twice
+        expect(budget).to have_received(:consume!).exactly(4).times
         expect(result.body).to eq('<html data-loads="2"></html>')
       end
 
@@ -250,7 +254,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
     context 'with preload scroll down' do
       before do
         allow(ctx).to receive(:browserless_preload).and_return(
-          scroll_down: { iterations: 5, wait_for_network_idle: { timeout_ms: 150 } }
+          scroll_down: { iterations: 5, wait_after_ms: 150 }
         )
 
         scroll_heights = [1_000, 2_000, 2_000]
@@ -273,7 +277,31 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         expect(page).to have_received(:evaluate)
           .with('() => window.scrollTo(0, document.body.scrollHeight)').exactly(3).times
         expect(page).to have_received(:wait_for_timeout).with(150).exactly(3).times
+        expect(budget).to have_received(:consume!).exactly(6).times
         expect(result.body).to eq('<html data-scrolls="3"></html>')
+      end
+    end
+
+    context 'when preload exhausts the shared request budget' do
+      let(:element) { instance_double(Puppeteer::ElementHandle) }
+
+      before do
+        allow(ctx).to receive(:browserless_preload).and_return(
+          click_selectors: [{ selector: '.load-more', max_clicks: 2, wait_after_ms: 200 }]
+        )
+        allow(page).to receive(:query_selector).with('.load-more').and_return(element, element)
+        allow(element).to receive(:click)
+        allow(budget).to receive(:consume!).and_raise(
+          Html2rss::RequestService::RequestBudgetExceeded,
+          'Request budget exhausted'
+        )
+      end
+
+      it 'raises when preload actions exceed the shared budget' do
+        expect { commander.call }.to raise_error(
+          Html2rss::RequestService::RequestBudgetExceeded,
+          'Request budget exhausted'
+        )
       end
     end
   end

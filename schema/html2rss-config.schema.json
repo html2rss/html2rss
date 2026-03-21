@@ -399,18 +399,12 @@
             "preload": {
               "type": "object",
               "properties": {
-                "wait_for_network_idle": {
-                  "type": "object",
-                  "properties": {
-                    "timeout_ms": {
-                      "type": "integer",
-                      "not": {
-                        "type": "null"
-                      },
-                      "exclusiveMinimum": 0
-                    }
+                "wait_after_ms": {
+                  "type": "integer",
+                  "not": {
+                    "type": "null"
                   },
-                  "required": []
+                  "minimum": 0
                 },
                 "click_selectors": {
                   "type": "array",
@@ -428,25 +422,12 @@
                         },
                         "exclusiveMinimum": 0
                       },
-                      "delay_ms": {
+                      "wait_after_ms": {
                         "type": "integer",
                         "not": {
                           "type": "null"
                         },
                         "minimum": 0
-                      },
-                      "wait_for_network_idle": {
-                        "type": "object",
-                        "properties": {
-                          "timeout_ms": {
-                            "type": "integer",
-                            "not": {
-                              "type": "null"
-                            },
-                            "exclusiveMinimum": 0
-                          }
-                        },
-                        "required": []
                       }
                     },
                     "required": [
@@ -464,25 +445,12 @@
                       },
                       "exclusiveMinimum": 0
                     },
-                    "delay_ms": {
+                    "wait_after_ms": {
                       "type": "integer",
                       "not": {
                         "type": "null"
                       },
                       "minimum": 0
-                    },
-                    "wait_for_network_idle": {
-                      "type": "object",
-                      "properties": {
-                        "timeout_ms": {
-                          "type": "integer",
-                          "not": {
-                            "type": "null"
-                          },
-                          "exclusiveMinimum": 0
-                        }
-                      },
-                      "required": []
                     }
                   },
                   "required": []
