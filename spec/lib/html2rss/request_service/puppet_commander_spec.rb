@@ -115,7 +115,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         allow(ctx).to receive(:browserless_preload).and_return({ wait_after_ms: 1_000 })
       end
 
-      it 'waits for network idle before collecting the body' do
+      it 'waits for network idle before collecting the body', :aggregate_failures do
         commander.call
 
         expect(page).to have_received(:wait_for_timeout).with(1_000).twice
