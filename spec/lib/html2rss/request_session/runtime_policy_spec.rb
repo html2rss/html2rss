@@ -40,5 +40,52 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
+
+    context 'when browserless preload is omitted' do
+      let(:config) do
+        Html2rss::Config.from_hash(
+          raw_config.merge(request: { max_redirects: 8 })
+        )
+      end
+
+      it 'does not reserve preload budget', :aggregate_failures do
+        expect(runtime_policy.max_requests).to eq(4)
+        expect(runtime_policy.max_redirects).to eq(8)
+      end
+    end
+
+    context 'when preload only clicks without waits' do
+      let(:config) do
+        Html2rss::Config.from_hash(
+          raw_config.merge(
+            request: {
+              max_redirects: 8,
+              browserless: { preload: { click_selectors: [{ selector: '.load-more', max_clicks: 2 }] } }
+            }
+          )
+        )
+      end
+
+      it 'counts click actions without extra wait budget' do
+        expect(runtime_policy.max_requests).to eq(6)
+      end
+    end
+
+    context 'when preload only scrolls without waits' do
+      let(:config) do
+        Html2rss::Config.from_hash(
+          raw_config.merge(
+            request: {
+              max_redirects: 8,
+              browserless: { preload: { scroll_down: { iterations: 3 } } }
+            }
+          )
+        )
+      end
+
+      it 'counts scroll actions without extra wait budget' do
+        expect(runtime_policy.max_requests).to eq(7)
+      end
+    end
   end
 end

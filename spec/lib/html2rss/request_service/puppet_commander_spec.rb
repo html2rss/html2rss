@@ -152,6 +152,19 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         expect(result.body).to eq('<html data-loads="2"></html>')
       end
 
+      it 'still budgets clicks when no wait is configured', :aggregate_failures do
+        allow(ctx).to receive(:browserless_preload).and_return(
+          click_selectors: [{ selector: '.load-more', max_clicks: 3 }]
+        )
+
+        result = commander.call
+
+        expect(element).to have_received(:click).twice
+        expect(page).not_to have_received(:wait_for_timeout)
+        expect(budget).to have_received(:consume!).exactly(2).times
+        expect(result.body).to eq('<html data-loads="2"></html>')
+      end
+
       it 'returns metadata from the post-click navigation response', :aggregate_failures do
         redirect_request = instance_double(Puppeteer::HTTPRequest, url: 'https://example.com/articles?page=2')
         followup_request = instance_double(
@@ -278,6 +291,20 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
           .with('() => window.scrollTo(0, document.body.scrollHeight)').exactly(3).times
         expect(page).to have_received(:wait_for_timeout).with(150).exactly(3).times
         expect(budget).to have_received(:consume!).exactly(6).times
+        expect(result.body).to eq('<html data-scrolls="3"></html>')
+      end
+
+      it 'still budgets scrolls when no wait is configured', :aggregate_failures do
+        allow(ctx).to receive(:browserless_preload).and_return(
+          scroll_down: { iterations: 5 }
+        )
+
+        result = commander.call
+
+        expect(page).to have_received(:evaluate)
+          .with('() => window.scrollTo(0, document.body.scrollHeight)').exactly(3).times
+        expect(page).not_to have_received(:wait_for_timeout)
+        expect(budget).to have_received(:consume!).exactly(3).times
         expect(result.body).to eq('<html data-scrolls="3"></html>')
       end
     end
