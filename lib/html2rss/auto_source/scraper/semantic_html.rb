@@ -11,6 +11,8 @@ module Html2rss
       class SemanticHtml
         include Enumerable
 
+        Entry = Data.define(:container, :selected_anchor)
+
         CONTAINER_SELECTORS = [
           'article:not(:has(article))',
           'section:not(:has(section))',
@@ -47,18 +49,19 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          candidate_containers.each do |container|
-            selected_anchor = primary_anchor_for(container)
-            next unless selected_anchor
-
-            article_hash = @extractor.new(container, base_url: @url, selected_anchor:).call
+          extractable_entries.each do |entry|
+            article_hash = @extractor.new(
+              entry.container,
+              base_url: @url,
+              selected_anchor: entry.selected_anchor
+            ).call
             yield article_hash if article_hash
           end
         end
 
         # @return [Boolean] true when at least one candidate container yields a primary anchor
         def extractable?
-          candidate_containers.any? { |container| primary_anchor_for(container) }
+          extractable_entries.any?
         end
 
         protected
@@ -69,6 +72,15 @@ module Html2rss
 
         def primary_anchor_for(container)
           @anchor_selector.primary_anchor_for(container)
+        end
+
+        def extractable_entries
+          @extractable_entries ||= candidate_containers.filter_map do |container|
+            selected_anchor = primary_anchor_for(container)
+            next unless selected_anchor
+
+            Entry.new(container:, selected_anchor:)
+          end
         end
 
         def collect_candidate_containers

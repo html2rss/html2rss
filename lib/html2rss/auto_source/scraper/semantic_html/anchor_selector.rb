@@ -10,8 +10,11 @@ module Html2rss
           AnchorFacts = Data.define(
             :anchor,
             :text,
+            :url,
             :destination,
             :segments,
+            :meaningful_text,
+            :content_like_destination,
             :heading_anchor,
             :heading_text_match,
             :score
@@ -55,31 +58,36 @@ module Html2rss
 
           def build_facts(anchor, heading, heading_text) # rubocop:disable Metrics/MethodLength
             text = visible_text(anchor)
-            destination = normalized_destination(anchor)
-            return unless destination
+            meaningful_text = meaningful_text?(text)
+            url = normalized_destination(anchor)
+            return unless url
 
-            segments = destination_segments(destination)
-            return if ineligible_anchor?(anchor, text, segments)
+            segments = url.path_segments
+            content_like_destination = content_like_destination?(segments)
+            return if ineligible_anchor?(anchor, text, meaningful_text, segments)
 
             heading_anchor = heading_anchor?(anchor, heading)
-            heading_text_match = heading_text_match?(heading_text, text)
-            return unless heading_anchor || content_like_anchor?(text, segments)
+            heading_text_match = heading_text_match?(heading_text, text, meaningful_text)
+            return unless heading_anchor || content_like_anchor?(meaningful_text, content_like_destination)
 
             AnchorFacts.new(
               anchor:,
               text:,
-              destination:,
+              url:,
+              destination: url.to_s,
               segments:,
+              meaningful_text:,
+              content_like_destination:,
               heading_anchor:,
               heading_text_match:,
-              score: score_anchor(text, segments, heading_anchor, heading_text_match)
+              score: score_anchor(meaningful_text, content_like_destination, heading_anchor, heading_text_match)
             )
           end
 
-          def ineligible_anchor?(anchor, text, segments)
+          def ineligible_anchor?(anchor, text, meaningful_text, segments)
             utility_destination?(segments) ||
               utility_text?(text) ||
-              icon_only_anchor?(anchor, text)
+              icon_only_anchor?(anchor, meaningful_text)
           end
 
           def keep_stronger_fact(best_by_destination, facts)
@@ -90,16 +98,16 @@ module Html2rss
             best_by_destination[facts.destination] = facts
           end
 
-          def content_like_anchor?(text, segments)
-            meaningful_text?(text) || content_like_destination?(segments)
+          def content_like_anchor?(meaningful_text, content_like_destination)
+            meaningful_text || content_like_destination
           end
 
-          def score_anchor(text, segments, heading_anchor, heading_text_match)
+          def score_anchor(meaningful_text, content_like_destination, heading_anchor, heading_text_match)
             score = 0
             score += 100 if heading_anchor
             score += 20 if heading_text_match
-            score += 10 if meaningful_text?(text)
-            score += 10 if content_like_destination?(segments)
+            score += 10 if meaningful_text
+            score += 10 if content_like_destination
             score
           end
 
@@ -107,16 +115,16 @@ module Html2rss
             heading && anchor.ancestors.include?(heading)
           end
 
-          def heading_text_match?(heading_text, text)
-            meaningful_text?(heading_text) && heading_text == text
+          def heading_text_match?(heading_text, text, meaningful_text)
+            meaningful_text && meaningful_text?(heading_text) && heading_text == text
           end
 
           def heading_for(container)
             container.at_css(HEADING_SELECTOR)
           end
 
-          def icon_only_anchor?(anchor, text)
-            !meaningful_text?(text) && anchor.at_css('img, svg')
+          def icon_only_anchor?(anchor, meaningful_text)
+            !meaningful_text && anchor.at_css('img, svg')
           end
 
           def utility_destination?(segments)
@@ -129,17 +137,11 @@ module Html2rss
             end
           end
 
-          def destination_segments(destination)
-            Html2rss::Url.from_absolute(destination).path_segments
-          rescue ArgumentError
-            []
-          end
-
           def normalized_destination(anchor)
             href = anchor['href'].to_s.split('#').first.to_s.strip
             return if href.empty?
 
-            Html2rss::Url.from_relative(href, base_url).to_s
+            Html2rss::Url.from_relative(href, base_url)
           rescue ArgumentError
             nil
           end

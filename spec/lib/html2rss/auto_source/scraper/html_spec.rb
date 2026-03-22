@@ -121,11 +121,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         }
       end
 
-      it 'derives ids from the selected anchor urls', :aggregate_failures do
-        first, second = articles.to_a
+      it 'derives the first id from the selected anchor url' do
+        expect(articles.first[:id]).to eq('/')
+      end
 
-        expect(first[:id]).to eq('/')
-        expect(second[:id]).to eq('/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html')
+      it 'derives the second id from the selected anchor url' do
+        expect(articles.to_a.last[:id]).to eq('/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html')
       end
 
       it 'contains the first_article' do

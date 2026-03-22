@@ -48,10 +48,7 @@ module Html2rss
           return enum_for(:each) unless block_given?
 
           each_article_tag do |article_tag|
-            selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
-            next unless selected_anchor
-
-            article_hash = @extractor.new(article_tag, base_url: @url, selected_anchor:).call
+            article_hash = extract_article(article_tag)
             yield article_hash if article_hash
           end
         end
@@ -129,6 +126,13 @@ module Html2rss
           return if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
 
           HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
+        end
+
+        def extract_article(article_tag)
+          selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
+          return unless selected_anchor
+
+          @extractor.new(article_tag, base_url: @url, selected_anchor:).call
         end
       end
     end

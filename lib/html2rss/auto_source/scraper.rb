@@ -27,7 +27,7 @@ module Html2rss
       class NoScraperFound < Html2rss::Error; end
 
       ##
-      # Returns an array of scrapers that claim to find articles in the parsed body.
+      # Returns an array of scraper classes that claim to find articles in the parsed body.
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
       # @param opts [Hash] The options hash.
       # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
@@ -39,6 +39,35 @@ module Html2rss
 
         scrapers
       end
+
+      # Returns scraper instances ready for extraction.
+      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
+      # @param url [String, Html2rss::Url] The page url.
+      # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
+      # @param opts [Hash] The options hash.
+      # @return [Array<Object>] An array of scraper instances that can handle the parsed body.
+      def self.instances_for(parsed_body, url:, request_session: nil,
+                             opts: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
+        instances = SCRAPERS.filter_map do |scraper|
+          next unless opts.dig(scraper.options_key, :enabled)
+
+          instance = scraper.new(parsed_body, url:, request_session:, **opts.fetch(scraper.options_key, {}))
+          next unless extractable_instance?(instance, parsed_body)
+
+          instance
+        end
+
+        raise NoScraperFound, 'No scrapers found for URL.' if instances.empty?
+
+        instances
+      end
+
+      def self.extractable_instance?(instance, parsed_body)
+        return instance.extractable? if instance.respond_to?(:extractable?)
+
+        instance.class.articles?(parsed_body)
+      end
+      private_class_method :extractable_instance?
     end
   end
 end
