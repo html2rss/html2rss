@@ -47,20 +47,12 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          filtered_selectors.each do |selector|
-            parsed_body.xpath(selector).each do |selected_tag|
-              next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
+          each_article_tag do |article_tag|
+            selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
+            next unless selected_anchor
 
-              article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
-              next unless article_tag
-
-              selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
-              next unless selected_anchor
-
-              if (article_hash = @extractor.new(article_tag, base_url: @url, selected_anchor:).call)
-                yield article_hash
-              end
-            end
+            article_hash = @extractor.new(article_tag, base_url: @url, selected_anchor:).call
+            yield article_hash if article_hash
           end
         end
 
@@ -120,6 +112,23 @@ module Html2rss
 
         def traversal_root
           parsed_body.at_css('body, html') || parsed_body.root
+        end
+
+        def each_article_tag
+          return enum_for(:each_article_tag) unless block_given?
+
+          filtered_selectors.each do |selector|
+            parsed_body.xpath(selector).each do |selected_tag|
+              article_tag = article_tag_for(selected_tag)
+              yield article_tag if article_tag
+            end
+          end
+        end
+
+        def article_tag_for(selected_tag)
+          return if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
+
+          HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
         end
       end
     end

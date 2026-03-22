@@ -18,7 +18,7 @@ module Html2rss
     include Enumerable
 
     # A context instance passed to item extractors and post-processors.
-    Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
+    Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true) # rubocop:disable Style/RedundantStructKeywordInit
 
     DEFAULT_CONFIG = { items: { enhance: true } }.freeze
 

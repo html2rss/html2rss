@@ -121,8 +121,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         }
       end
 
-      it 'derives ids from the selected anchor urls' do
-        first, second  = articles.to_a
+      it 'derives ids from the selected anchor urls', :aggregate_failures do
+        first, second = articles.to_a
 
         expect(first[:id]).to eq('/')
         expect(second[:id]).to eq('/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html')

@@ -6,40 +6,39 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/multi_link_block.html')) }
     let(:articles) { new.each.to_a }
+    let(:articles_by_url) do
+      articles.to_h { |article| [article[:url].to_s, article] }
+    end
+    let(:excluded_urls) do
+      %w[
+        https://page.com/category/news
+        https://page.com/article/1#comments
+        https://twitter.com/share?url=...
+        https://page.com/about
+        https://page.com/contact
+        https://page.com/newsletter/signup
+        https://page.com/gallery/3
+        https://page.com/author/jane
+        https://page.com/newsletter/4
+      ]
+    end
 
-    it 'selects the best anchor for each block', :aggregate_failures do
-      # Block 1: Should prefer /article/1 over /category/news
-      article_1 = articles.find { |a| a[:url].to_s == 'https://page.com/article/1' }
-      expect(article_1).not_to be_nil
-      expect(article_1[:title]).to eq('Main Article Title')
+    it 'prefers the intended content links', :aggregate_failures do
+      expect(articles_by_url.fetch('https://page.com/article/1')[:title]).to eq('Main Article Title')
+      expect(articles_by_url.fetch('https://page.com/article/3')[:title]).to eq('Correct Title Link')
+      expect(articles_by_url.fetch('https://page.com/article/4')[:title]).to eq('Actual Article Text')
+    end
 
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/category/news' }).to be_nil
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/article/1#comments' }).to be_nil
-      expect(articles.find { |a| a[:url].to_s == 'https://twitter.com/share?url=...' }).to be_nil
-
-      # Block 2: Utility-only links should not produce an article
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/about' }).to be_nil
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/contact' }).to be_nil
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/newsletter/signup' }).to be_nil
-
-      # Block 3: Should prefer /article/3
-      article_3 = articles.find { |a| a[:url].to_s == 'https://page.com/article/3' }
-      expect(article_3).not_to be_nil
-      expect(article_3[:title]).to eq('Correct Title Link')
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/gallery/3' }).to be_nil
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/author/jane' }).to be_nil
-
-      # Block 4: Should prefer the article link over icon-only and utility text links
-      article_4 = articles.find { |a| a[:url].to_s == 'https://page.com/article/4' }
-      expect(article_4).not_to be_nil
-      expect(article_4[:title]).to eq('Actual Article Text')
-      expect(articles.find { |a| a[:url].to_s == 'https://page.com/newsletter/4' }).to be_nil
-
-      expect(articles.map { |a| a[:url].to_s }).to contain_exactly(
+    it 'suppresses utility and duplicate link variants' do
+      expect(articles_by_url.keys).to contain_exactly(
         'https://page.com/article/1',
         'https://page.com/article/3',
         'https://page.com/article/4'
       )
+    end
+
+    it 'drops non-content links from noisy blocks' do
+      expect(articles_by_url).not_to include(*excluded_urls)
     end
   end
 end

@@ -25,7 +25,7 @@ module Html2rss
       # during post processing with {PostProcessors::ParseTime}.
       class Attribute
         # The available options for the attribute extractor.
-        Options = Struct.new('AttributeOptions', :selector, :attribute, keyword_init: true)
+        Options = Struct.new('AttributeOptions', :selector, :attribute, keyword_init: true) # rubocop:disable Style/RedundantStructKeywordInit
 
         ##
         # Initializes the Attribute extractor.

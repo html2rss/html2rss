@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'semantic_html/anchor_selector'
+
 module Html2rss
   class AutoSource
     module Scraper
@@ -16,15 +18,6 @@ module Html2rss
           'tr:not(:has(tr))',
           'div:not(:has(div))'
         ].freeze
-        HEADING_SELECTOR = HtmlExtractor::HEADING_TAGS.join(',').freeze
-        UTILITY_PATH_SEGMENTS = %w[
-          about account author category comment comments contact feedback help
-          login newsletter profile register search settings share signup tag tags
-          user users
-        ].freeze
-        CONTENT_PATH_SEGMENTS = %w[
-          article articles news post posts story stories update updates
-        ].freeze
 
         def self.options_key = :semantic_html
 
@@ -33,10 +26,7 @@ module Html2rss
         def self.articles?(parsed_body)
           return false unless parsed_body
 
-          scraper = new(parsed_body, url: 'https://example.com')
-          scraper.send(:candidate_containers).any? do |container|
-            scraper.send(:primary_anchor_for, container)
-          end
+          new(parsed_body, url: 'https://example.com').extractable?
         end
 
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
@@ -46,6 +36,7 @@ module Html2rss
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor
+          @anchor_selector = AnchorSelector.new(url)
         end
 
         attr_reader :parsed_body
@@ -65,144 +56,33 @@ module Html2rss
           end
         end
 
-        private
+        # @return [Boolean] true when at least one candidate container yields a primary anchor
+        def extractable?
+          candidate_containers.any? { |container| primary_anchor_for(container) }
+        end
+
+        protected
 
         def candidate_containers
-          seen = {}
-
-          CONTAINER_SELECTORS.flat_map { |selector| parsed_body.css(selector).to_a }.filter_map do |container|
-            next if container.path.match?(Html::TAGS_TO_IGNORE)
-            next if seen[container.path]
-
-            seen[container.path] = true
-            container
-          end
+          @candidate_containers ||= collect_candidate_containers
         end
 
         def primary_anchor_for(container)
-          representative_anchors(container)
-            .filter_map { |anchor| score_anchor(container, anchor) }
-            .max_by(&:last)
-            &.first
+          @anchor_selector.primary_anchor_for(container)
         end
 
-        def representative_anchors(container)
-          eligible_anchors(container)
-            .group_by { |anchor| normalized_destination(anchor) }
-            .values
-            .filter_map { |anchors| best_anchor_for_group(container, anchors) }
-        end
+        def collect_candidate_containers
+          seen = {}.compare_by_identity
 
-        def eligible_anchors(container)
-          container.css(HtmlExtractor::MAIN_ANCHOR_SELECTOR).select do |anchor|
-            next false if anchor.path.match?(Html::TAGS_TO_IGNORE)
+          CONTAINER_SELECTORS.each_with_object([]) do |selector, containers|
+            parsed_body.css(selector).each do |container|
+              next if container.path.match?(Html::TAGS_TO_IGNORE)
+              next if seen[container]
 
-            eligible_anchor?(container, anchor)
+              seen[container] = true
+              containers << container
+            end
           end
-        end
-
-        def eligible_anchor?(container, anchor)
-          return false if utility_anchor?(anchor)
-          return false if icon_only_anchor?(anchor)
-
-          heading_anchor?(container, anchor) || content_like_anchor?(anchor)
-        end
-
-        def utility_anchor?(anchor)
-          utility_destination?(anchor) || utility_text?(anchor_text(anchor))
-        end
-
-        def content_like_anchor?(anchor)
-          meaningful_text?(anchor_text(anchor)) || content_like_destination?(anchor)
-        end
-
-        def best_anchor_for_group(container, anchors)
-          anchors.max_by do |anchor|
-            score_anchor(container, anchor)&.last.to_i
-          end
-        end
-
-        def score_anchor(container, anchor)
-          return unless eligible_anchor?(container, anchor)
-
-          score = 0
-          score += 100 if heading_anchor?(container, anchor)
-          score += 20 if heading_text_match?(container, anchor)
-          score += 10 if meaningful_text?(anchor_text(anchor))
-          score += 10 if content_like_destination?(anchor)
-
-          [anchor, score]
-        end
-
-        def heading_anchor?(container, anchor)
-          anchor.ancestors.any? { |node| node == heading_for(container) }
-        end
-
-        def heading_text_match?(container, anchor)
-          heading_text = visible_text(heading_for(container))
-          anchor_text = anchor_text(anchor)
-
-          meaningful_text?(heading_text) && heading_text == anchor_text
-        end
-
-        def heading_for(container)
-          container.at_css(HEADING_SELECTOR)
-        end
-
-        def icon_only_anchor?(anchor)
-          !meaningful_text?(anchor_text(anchor)) && anchor.at_css('img, svg')
-        end
-
-        def utility_destination?(anchor)
-          segments = destination_segments(anchor)
-          return true if segments.empty?
-
-          segments.any? { |segment| UTILITY_PATH_SEGMENTS.include?(segment) }
-        end
-
-        def content_like_destination?(anchor)
-          segments = destination_segments(anchor)
-          return false if segments.empty?
-
-          segments.any? do |segment|
-            CONTENT_PATH_SEGMENTS.include?(segment) || segment.match?(/\A\d[\w-]*\z/)
-          end
-        end
-
-        def destination_segments(anchor)
-          destination = normalized_destination(anchor)
-          return [] unless destination
-
-          Html2rss::Url.from_absolute(destination).path_segments
-        rescue ArgumentError
-          []
-        end
-
-        def normalized_destination(anchor)
-          href = anchor['href'].to_s.split('#').first.to_s.strip
-          return if href.empty?
-
-          Html2rss::Url.from_relative(href, @url).to_s
-        rescue ArgumentError
-          nil
-        end
-
-        def utility_text?(text)
-          text.match?(/\A(about|contact|log in|login|sign up|signup|share|comments?)\b/i)
-        end
-
-        def meaningful_text?(text)
-          text.scan(/\p{Alnum}+/).any?
-        end
-
-        def anchor_text(anchor)
-          visible_text(anchor)
-        end
-
-        def visible_text(node)
-          return '' unless node
-
-          HtmlExtractor.extract_visible_text(node).to_s.strip
         end
       end
     end

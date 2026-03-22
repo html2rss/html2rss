@@ -26,6 +26,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
     let(:articles) { new.each.to_a }
+    let(:article_ids) { articles.filter_map { |article| article[:id] } }
 
     let(:grouped_expected_articles) do
       # rubocop:disable Layout/LineLength
@@ -48,11 +49,21 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(grouped_expected_articles.values.flatten).to be_empty
     end
 
-    it 'reduces raw candidate volume on the large semantic fixture', :aggregate_failures, :slow do
-      article_ids = articles.map { |article| article[:id] }.compact
-
+    it 'keeps the intended article ids on the large semantic fixture', :aggregate_failures, :slow do
       expect(article_ids).to include('/6972085/brittney-griner-book-coming-home/')
       expect(article_ids).to include('/6974836/white-house-car-crash-driver-dies-security-barrier/')
+    end
+
+    it 'keeps noisy newsletter and author links out of the large semantic fixture', :slow do
+      excluded_ids = [
+        'https://cloud.newsletters.page.com/signup?nln=worth-your-page',
+        'https://page.com/author/eddie-s-glaude-jr/'
+      ]
+
+      expect(article_ids & excluded_ids).to be_empty
+    end
+
+    it 'reduces raw candidate volume on the large semantic fixture', :slow do
       expect(articles.size).to be < 100
     end
   end

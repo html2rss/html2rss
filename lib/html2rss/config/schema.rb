@@ -46,7 +46,7 @@ module Html2rss
   end
 end
 
-module Html2rss
+module Html2rss # rubocop:disable Style/OneClassPerFile
   class Config
     module Schema
       ##
@@ -94,7 +94,7 @@ module Html2rss
   end
 end
 
-module Html2rss
+module Html2rss # rubocop:disable Style/OneClassPerFile
   class Config
     module Schema
       ##
@@ -132,7 +132,7 @@ module Html2rss
   end
 end
 
-module Html2rss
+module Html2rss # rubocop:disable Style/OneClassPerFile
   class Config
     module Schema
       ##
@@ -204,7 +204,7 @@ module Html2rss
   end
 end
 
-module Html2rss
+module Html2rss # rubocop:disable Style/OneClassPerFile
   class Config
     module Schema
       ##
