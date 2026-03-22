@@ -42,13 +42,7 @@ module Html2rss
         require 'dry/schema/extensions/json_schema'
         Dry::Schema.load_extensions(:json_schema)
       end
-    end
-  end
-end
 
-module Html2rss # rubocop:disable Style/OneClassPerFile
-  class Config
-    module Schema
       ##
       # Orchestrates schema assembly from runtime validator contracts plus
       # client-facing overlays.
@@ -90,13 +84,7 @@ module Html2rss # rubocop:disable Style/OneClassPerFile
           properties.delete(:dynamic_params_error)
         end
       end
-    end
-  end
-end
 
-module Html2rss # rubocop:disable Style/OneClassPerFile
-  class Config
-    module Schema
       ##
       # Exposes schema fragments that populate the top-level configuration schema.
       module Components
@@ -128,13 +116,7 @@ module Html2rss # rubocop:disable Style/OneClassPerFile
           Selectors.schema
         end
       end
-    end
-  end
-end
 
-module Html2rss # rubocop:disable Style/OneClassPerFile
-  class Config
-    module Schema
       ##
       # Provides schema fragments that document selector configuration.
       module Selectors
@@ -200,13 +182,7 @@ module Html2rss # rubocop:disable Style/OneClassPerFile
           }
         end
       end
-    end
-  end
-end
 
-module Html2rss # rubocop:disable Style/OneClassPerFile
-  class Config
-    module Schema
       ##
       # Converts nested hash keys to strings so the resulting schema serializes cleanly.
       module DeepStringifier
