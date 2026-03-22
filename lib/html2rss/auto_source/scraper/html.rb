@@ -6,8 +6,16 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scrapes articles from HTML pages by
-      # finding similar structures around anchor tags in the parsed_body.
+      # Scrapes article-like blocks from plain HTML by looking for repeated link
+      # structures when richer structured data is unavailable.
+      #
+      # The approach is intentionally heuristic:
+      # 1. collect repeated anchor paths
+      # 2. walk upward to a shared container shape
+      # 3. extract the best anchor found inside each container
+      #
+      # This scraper is broader and noisier than `SemanticHtml`, so it acts as a
+      # fallback for pages without stronger semantic signals.
       class Html
         include Enumerable
 
@@ -16,14 +24,27 @@ module Html2rss
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
         DEFAULT_USE_TOP_SELECTORS = 5
 
+        ##
+        # @return [Symbol] config key used to enable or configure this scraper
         def self.options_key = :html
 
+        ##
+        # Probes whether the document appears to contain repeated anchor
+        # structures that this fallback scraper can cluster into article-like
+        # containers.
+        #
+        # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+        # @return [Boolean] true when the scraper can likely extract articles
         def self.articles?(parsed_body)
           new(parsed_body, url: '').any?
         end
 
         ##
         # Simplify an XPath selector by removing the index notation.
+        # This keeps repeated anchor paths comparable across sibling blocks.
+        #
+        # @param xpath [String] original XPath
+        # @return [String] XPath without positional indexes
         def self.simplify_xpath(xpath)
           xpath.gsub(/\[\d+\]/, '')
         end
@@ -53,6 +74,16 @@ module Html2rss
           end
         end
 
+        ##
+        # Decides whether a traversed node has reached a useful article-like
+        # boundary for the generic HTML scraper.
+        #
+        # The predicate prefers containers that add surrounding link context,
+        # which helps the scraper move from a leaf anchor toward a repeated
+        # teaser/card wrapper.
+        #
+        # @param node [Nokogiri::XML::Node] candidate boundary node
+        # @return [Boolean] true when the node is a good extraction boundary
         def article_tag_condition?(node)
           # Ignore tags that are below a tag which is in TAGS_TO_IGNORE.
           return false if node.path.match?(TAGS_TO_IGNORE)

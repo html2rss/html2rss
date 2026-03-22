@@ -6,8 +6,17 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scrapes semantic containers by selecting a single content-like anchor
-      # within each block before extraction.
+      # Scrapes semantic containers by choosing one primary content link per
+      # block before extraction.
+      #
+      # This scraper is intentionally container-first:
+      # 1. collect candidate semantic containers once
+      # 2. select the strongest content-like anchor within each container
+      # 3. extract fields from the container while honoring that anchor choice
+      #
+      # The result is lower recall on weak-signal blocks, but much better link
+      # quality on modern teaser cards that mix headlines, utility links, and
+      # duplicate image overlays.
       class SemanticHtml
         include Enumerable
 
@@ -21,6 +30,8 @@ module Html2rss
           'div:not(:has(div))'
         ].freeze
 
+        ##
+        # @return [Symbol] config key used to enable or configure this scraper
         def self.options_key = :semantic_html
 
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
@@ -44,8 +55,15 @@ module Html2rss
         attr_reader :parsed_body
 
         ##
+        # Yields extracted article hashes for each semantic container that
+        # survives anchor selection.
+        #
+        # Detection and extraction share the same memoized entry list so this
+        # scraper does not rerun anchor ranking once a page has already been
+        # accepted as extractable.
+        #
         # @yieldparam article_hash [Hash] extracted article hash
-        # @return [Enumerator]
+        # @return [Enumerator<Hash>]
         def each
           return enum_for(:each) unless block_given?
 
@@ -59,6 +77,10 @@ module Html2rss
           end
         end
 
+        ##
+        # Reports whether the page contains at least one semantic container with
+        # a selectable primary anchor.
+        #
         # @return [Boolean] true when at least one candidate container yields a primary anchor
         def extractable?
           extractable_entries.any?

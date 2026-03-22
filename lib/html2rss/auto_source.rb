@@ -94,6 +94,20 @@ module Html2rss
       @request_session = request_session
     end
 
+    ##
+    # Extracts article candidates by selecting every scraper that can explain the
+    # page shape, running those scrapers, and normalizing the resulting hashes
+    # into `RssBuilder::Article` objects.
+    #
+    # The contributor-facing flow is:
+    # 1. choose scraper instances that match the page
+    # 2. let each scraper collect its own candidates
+    # 3. clean and deduplicate the merged article list
+    #
+    # Scrapers with expensive precomputation, such as `SemanticHtml`, keep that
+    # state on the instance so detection and extraction can reuse the same work.
+    #
+    # @return [Array<Html2rss::RssBuilder::Article>] extracted articles
     def articles
       @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound => error

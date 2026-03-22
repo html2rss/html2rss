@@ -7,6 +7,10 @@ module Html2rss
     # Each scraper should implement an `each` method that yields article hashes.
     # Each scraper should also implement an `articles?` method that returns true if the scraper
     # can potentially be used to extract articles from the given HTML.
+    #
+    # Detection is intentionally shallow for most scrapers, but instance-based
+    # matching is available for scrapers that need to carry expensive selection
+    # state forward into extraction.
     # Scrapers run in parallel threads, so implementations must avoid shared
     # mutable state and degrade by returning no articles when a follow-up would
     # be unsafe or unsupported.
@@ -46,6 +50,11 @@ module Html2rss
       # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
       # @param opts [Hash] The options hash.
       # @return [Array<Object>] An array of scraper instances that can handle the parsed body.
+      #
+      # `instances_for` is the main entrypoint for extraction. It lets a scraper
+      # decide whether it matches using the same instance that will later yield
+      # article hashes, which keeps precomputed state close to the scraper that
+      # owns it.
       def self.instances_for(parsed_body, url:, request_session: nil,
                              opts: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
         instances = SCRAPERS.filter_map do |scraper|
