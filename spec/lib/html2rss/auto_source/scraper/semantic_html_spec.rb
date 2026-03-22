@@ -8,7 +8,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe '.articles?' do
     let(:parsed_body) do
       Nokogiri::HTML.parse <<~HTML
-        <html><body><article><a href="">Article 1</a></article></body></html>
+        <html><body><article><a href="/article-1">Article 1</a></article></body></html>
       HTML
     end
 

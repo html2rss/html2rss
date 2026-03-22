@@ -29,9 +29,14 @@ module Html2rss
         def self.options_key = :semantic_html
 
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
-        # @return [Boolean] true when semantic containers exist in the document
+        # @return [Boolean] true when at least one semantic container has an eligible anchor
         def self.articles?(parsed_body)
-          !!parsed_body&.at_css(CONTAINER_SELECTORS.join(','))
+          return false unless parsed_body
+
+          scraper = new(parsed_body, url: 'https://example.com')
+          scraper.send(:candidate_containers).any? do |container|
+            scraper.send(:primary_anchor_for, container)
+          end
         end
 
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
