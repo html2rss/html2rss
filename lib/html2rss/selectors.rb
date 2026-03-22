@@ -98,7 +98,10 @@ module Html2rss
     # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
     # @return [Hash] The enhanced article hash.
     def enhance_article_hash(article_hash, article_tag, base_url = @url)
-      extracted = HtmlExtractor.new(article_tag, base_url:).call
+      selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
+      return article_hash unless selected_anchor
+
+      extracted = HtmlExtractor.new(article_tag, base_url:, selected_anchor:).call
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|

@@ -1,0 +1,45 @@
+<html>
+<body>
+  <div class="container">
+    <!-- Block 1: Heading link should beat category, comments, and share actions -->
+    <article class="article-1">
+      <a href="/category/news" class="category">News</a>
+      <h2>
+        <a href="/article/1" class="title">Main Article Title</a>
+      </h2>
+      <p>Summary of the article...</p>
+      <div class="actions">
+        <a href="/article/1#comments">Comments</a>
+        <a href="https://twitter.com/share?url=...">Share on Twitter</a>
+      </div>
+    </article>
+
+    <!-- Block 2: Only non-content links, should produce no article -->
+    <section class="utility">
+      <nav>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+        <a href="/newsletter/signup">Sign up for breaking alerts</a>
+      </nav>
+    </section>
+
+    <!-- Block 3: Thumbnail and author links should lose to the heading link -->
+    <li class="item">
+      <div class="thumbnail">
+        <a href="/gallery/3">
+          <img src="img.jpg" alt="thumbnail">
+        </a>
+      </div>
+      <h3><a href="/article/3">Correct Title Link</a></h3>
+      <a href="/author/jane">Jane Doe</a>
+    </li>
+
+    <!-- Block 4: Utility text can be longer than the actual article title -->
+    <div class="item">
+       <a href="/article/4" class="icon">🔍</a>
+       <a href="/newsletter/4" class="utility">Read the full newsletter and analysis</a>
+       <a href="/article/4" class="text">Actual Article Text</a>
+    </div>
+  </div>
+</body>
+</html>

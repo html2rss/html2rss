@@ -25,6 +25,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     subject(:new) { described_class.new(parsed_body, url: 'https://page.com') }
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
+    let(:articles) { new.each.to_a }
 
     let(:grouped_expected_articles) do
       # rubocop:disable Layout/LineLength
@@ -47,13 +48,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(grouped_expected_articles.values.flatten).to be_empty
     end
 
-    it 'returns the expected number of articles', :slow do
-      # Many articles are extracted from the page, but only 3 are expected [above].
-      # The SemanticHtml class tries to catch as many article as possibile.
-      # RSS readers respecting the items' guid will only show the other articles once.
-      #
-      # However, to catch larger changes in the algorithm, the number of articles is expected.
-      expect { |b| new.each(&b) }.to yield_control.at_least(189).times
+    it 'reduces raw candidate volume on the large semantic fixture', :aggregate_failures, :slow do
+      article_ids = articles.map { |article| article[:id] }.compact
+
+      expect(article_ids).to include('/6972085/brittney-griner-book-coming-home/')
+      expect(article_ids).to include('/6974836/white-house-car-crash-driver-dies-security-barrier/')
+      expect(articles.size).to be < 100
     end
   end
 end

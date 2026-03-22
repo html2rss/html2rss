@@ -53,7 +53,10 @@ module Html2rss
 
               article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
 
-              if article_tag && (article_hash = @extractor.new(article_tag, base_url: @url).call)
+              selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
+              next unless selected_anchor
+
+              if article_tag && (article_hash = @extractor.new(article_tag, base_url: @url, selected_anchor:).call)
                 yield article_hash
               end
             end

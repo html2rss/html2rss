@@ -3,7 +3,9 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss::HtmlExtractor do
-  subject(:article_hash) { described_class.new(article_tag, base_url: 'https://example.com').call }
+  subject(:article_hash) { described_class.new(article_tag, base_url: 'https://example.com', selected_anchor:).call }
+
+  let(:selected_anchor) { described_class.main_anchor_for(article_tag) }
 
   describe '.extract_visible_text' do
     subject(:visible_text) { described_class.extract_visible_text(tag) }
@@ -14,6 +16,25 @@ RSpec.describe Html2rss::HtmlExtractor do
 
     it 'returns the visible text from the tag and its children' do
       expect(visible_text).to eq('Hello World')
+    end
+  end
+
+  describe '#call with selected_anchor' do
+    let(:article_tag) do
+      Nokogiri::HTML.fragment(<<~HTML).at_css('article')
+        <article id="story">
+          <a href="/category/news">News</a>
+          <h2><a href="/article/42">Correct Story</a></h2>
+          <p>Summary text</p>
+        </article>
+      HTML
+    end
+    let(:selected_anchor) { article_tag.at_css('h2 a') }
+
+    it 'uses the provided anchor for url extraction', :aggregate_failures do
+      expect(article_hash[:url].to_s).to eq('https://example.com/article/42')
+      expect(article_hash[:title]).to eq('Correct Story')
+      expect(article_hash[:id]).to eq('story')
     end
   end
 
@@ -110,7 +131,7 @@ RSpec.describe Html2rss::HtmlExtractor do
   end
 
   describe '#heading' do
-    subject(:heading) { described_class.new(article_tag, base_url: 'https://example.com').send(:heading) }
+    subject(:heading) { described_class.new(article_tag, base_url: 'https://example.com', selected_anchor:).send(:heading) }
 
     let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
