@@ -44,11 +44,16 @@ module Html2rss
       end
     end
 
-    def initialize(article_tag, base_url:)
+    ##
+    # @param article_tag [Nokogiri::XML::Node] article-like container to extract from
+    # @param base_url [String, Html2rss::Url] base url used to resolve relative links
+    # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
+    def initialize(article_tag, base_url:, selected_anchor:)
       raise ArgumentError, 'article_tag is required' unless article_tag
 
       @article_tag = article_tag
       @base_url = base_url
+      @selected_anchor = selected_anchor
     end
 
     def call
@@ -66,23 +71,30 @@ module Html2rss
 
     private
 
-    attr_reader :article_tag, :base_url
+    attr_reader :article_tag, :base_url, :selected_anchor
+
+    class << self
+      ##
+      # @param article_tag [Nokogiri::XML::Node] article-like container to search within
+      # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
+      def main_anchor_for(article_tag)
+        return article_tag if article_tag.name == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
+
+        article_tag.at_css(MAIN_ANCHOR_SELECTOR)
+      end
+    end
 
     def extract_url
       @extract_url ||= begin
-        href = find_main_anchor&.[]('href').to_s
+        href = selected_anchor&.[]('href').to_s
 
         Url.from_relative(href.split('#').first.strip, base_url) unless href.empty?
       end
     end
 
-    # Finds the closest ancestor anchor element matching the MAIN_ANCHOR_SELECTOR.
-    def find_main_anchor
-      HtmlNavigator.find_closest_selector_upwards(article_tag, MAIN_ANCHOR_SELECTOR)
-    end
-
     def extract_title
-      self.class.extract_visible_text(heading) if heading
+      title_source = heading || selected_anchor
+      self.class.extract_visible_text(title_source) if title_source
     end
 
     def heading

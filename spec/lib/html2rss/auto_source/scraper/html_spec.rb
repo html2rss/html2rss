@@ -100,7 +100,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       let(:first_article) do
-        { title: nil,
+        { title: '[Plonk]',
           url: be_a(Html2rss::Url),
           image: nil,
           description: '[Plonk]',
@@ -111,19 +111,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       let(:second_article) do
         {
-          title: nil,
+          title: 'Bla bla bla',
           url: be_a(Html2rss::Url),
           image: nil,
           description: 'Bla bla bla',
-          id: '/',
+          id: '/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html',
           published_at: nil,
           enclosures: []
         }
       end
 
-      it 'contains the articles with same id' do
-        first, second  = articles.to_a
-        expect(first[:id]).to eq(second[:id])
+      it 'derives the first id from the selected anchor url' do
+        expect(articles.first[:id]).to eq('/')
+      end
+
+      it 'derives the second id from the selected anchor url' do
+        expect(articles.to_a.last[:id]).to eq('/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html')
       end
 
       it 'contains the first_article' do

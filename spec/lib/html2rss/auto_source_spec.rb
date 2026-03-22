@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers
+
 RSpec.describe Html2rss::AutoSource do
   subject(:auto_source) { described_class.new(response, config, request_session:) }
 
@@ -7,6 +9,19 @@ RSpec.describe Html2rss::AutoSource do
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
   let(:response) { Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/html' }, url:) }
   let(:request_session) { nil }
+  let(:instances_for_arguments) do
+    [
+      instance_of(Nokogiri::HTML::Document),
+      {
+        url:,
+        request_session: nil,
+        opts: hash_including(
+          schema: hash_including(enabled: false),
+          html: hash_including(enabled: false)
+        )
+      }
+    ]
+  end
   let(:body) do
     <<~HTML
       <html>
@@ -105,7 +120,7 @@ RSpec.describe Html2rss::AutoSource do
     context 'when no scrapers are found' do
       before do
         allow(Html2rss::AutoSource::Scraper)
-          .to receive(:from)
+          .to receive(:instances_for)
           .and_raise(Html2rss::AutoSource::Scraper::NoScraperFound, 'no scrapers')
         allow(Html2rss::Log).to receive(:warn)
       end
@@ -126,16 +141,18 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       before do
-        allow(Html2rss::AutoSource::Scraper).to receive(:from).and_return([])
+        allow(Html2rss::AutoSource::Scraper).to receive(:instances_for).and_raise(
+          Html2rss::AutoSource::Scraper::NoScraperFound, 'No scrapers found for URL.'
+        )
+        articles
       end
 
-      it 'passes the overrides to the scraper lookup', :aggregate_failures do
+      it 'returns no articles when the custom scraper configuration matches nothing' do
         expect(articles).to eq([])
+      end
 
-        expect(Html2rss::AutoSource::Scraper).to have_received(:from)
-          .with(instance_of(Nokogiri::HTML::Document),
-                hash_including(schema: hash_including(enabled: false),
-                               html: hash_including(enabled: false)))
+      it 'passes the overrides to the scraper lookup' do
+        expect(Html2rss::AutoSource::Scraper).to have_received(:instances_for).with(*instances_for_arguments)
       end
     end
 
@@ -172,7 +189,9 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       before do
-        allow(Html2rss::AutoSource::Scraper).to receive(:from).and_return([semantic_scraper_class, html_scraper_class])
+        allow(Html2rss::AutoSource::Scraper)
+          .to receive(:instances_for)
+          .and_return([semantic_scraper_instance, html_scraper_instance])
         allow(Html2rss::AutoSource::Cleanup).to receive(:call).and_call_original
       end
 
@@ -184,7 +203,7 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'when scraper lookup raises an error' do
       before do
-        allow(Html2rss::AutoSource::Scraper).to receive(:from).and_raise(StandardError, 'Test error')
+        allow(Html2rss::AutoSource::Scraper).to receive(:instances_for).and_raise(StandardError, 'Test error')
       end
 
       it 're-raises the error' do
@@ -236,3 +255,4 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 end
+# rubocop:enable RSpec/MultipleMemoizedHelpers

@@ -6,8 +6,16 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scrapes articles from HTML pages by
-      # finding similar structures around anchor tags in the parsed_body.
+      # Scrapes article-like blocks from plain HTML by looking for repeated link
+      # structures when richer structured data is unavailable.
+      #
+      # The approach is intentionally heuristic:
+      # 1. collect repeated anchor paths
+      # 2. walk upward to a shared container shape
+      # 3. extract the best anchor found inside each container
+      #
+      # This scraper is broader and noisier than `SemanticHtml`, so it acts as a
+      # fallback for pages without stronger semantic signals.
       class Html
         include Enumerable
 
@@ -16,14 +24,27 @@ module Html2rss
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
         DEFAULT_USE_TOP_SELECTORS = 5
 
+        ##
+        # @return [Symbol] config key used to enable or configure this scraper
         def self.options_key = :html
 
+        ##
+        # Probes whether the document appears to contain repeated anchor
+        # structures that this fallback scraper can cluster into article-like
+        # containers.
+        #
+        # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+        # @return [Boolean] true when the scraper can likely extract articles
         def self.articles?(parsed_body)
           new(parsed_body, url: '').any?
         end
 
         ##
         # Simplify an XPath selector by removing the index notation.
+        # This keeps repeated anchor paths comparable across sibling blocks.
+        #
+        # @param xpath [String] original XPath
+        # @return [String] XPath without positional indexes
         def self.simplify_xpath(xpath)
           xpath.gsub(/\[\d+\]/, '')
         end
@@ -47,19 +68,22 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          filtered_selectors.each do |selector|
-            parsed_body.xpath(selector).each do |selected_tag|
-              next if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
-
-              article_tag = HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
-
-              if article_tag && (article_hash = @extractor.new(article_tag, base_url: @url).call)
-                yield article_hash
-              end
-            end
+          each_article_tag do |article_tag|
+            article_hash = extract_article(article_tag)
+            yield article_hash if article_hash
           end
         end
 
+        ##
+        # Decides whether a traversed node has reached a useful article-like
+        # boundary for the generic HTML scraper.
+        #
+        # The predicate prefers containers that add surrounding link context,
+        # which helps the scraper move from a leaf anchor toward a repeated
+        # teaser/card wrapper.
+        #
+        # @param node [Nokogiri::XML::Node] candidate boundary node
+        # @return [Boolean] true when the node is a good extraction boundary
         def article_tag_condition?(node)
           # Ignore tags that are below a tag which is in TAGS_TO_IGNORE.
           return false if node.path.match?(TAGS_TO_IGNORE)
@@ -116,6 +140,30 @@ module Html2rss
 
         def traversal_root
           parsed_body.at_css('body, html') || parsed_body.root
+        end
+
+        def each_article_tag
+          return enum_for(:each_article_tag) unless block_given?
+
+          filtered_selectors.each do |selector|
+            parsed_body.xpath(selector).each do |selected_tag|
+              article_tag = article_tag_for(selected_tag)
+              yield article_tag if article_tag
+            end
+          end
+        end
+
+        def article_tag_for(selected_tag)
+          return if selected_tag.path.match?(Html::TAGS_TO_IGNORE)
+
+          HtmlNavigator.parent_until_condition(selected_tag, method(:article_tag_condition?))
+        end
+
+        def extract_article(article_tag)
+          selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
+          return unless selected_anchor
+
+          @extractor.new(article_tag, base_url: @url, selected_anchor:).call
         end
       end
     end

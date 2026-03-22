@@ -24,7 +24,7 @@ module Html2rss
       # {PostProcessors::SanitizeHtml}.
       class Html
         # The available options for the html extractor.
-        Options = Struct.new('HtmlOptions', :selector, keyword_init: true)
+        Options = Struct.new('HtmlOptions', :selector, keyword_init: true) # rubocop:disable Style/RedundantStructKeywordInit
 
         ##
         # Initializes the Html extractor.

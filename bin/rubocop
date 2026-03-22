@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+if command -v mise >/dev/null 2>&1; then
+  exec mise exec -- ruby -e 'require "rubocop"; exit RuboCop::CLI.new.run(ARGV)' -- "$@"
+fi
+
+exec bundle exec ruby -e 'require "rubocop"; exit RuboCop::CLI.new.run(ARGV)' -- "$@"

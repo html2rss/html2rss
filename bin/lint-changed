@@ -16,7 +16,7 @@ bin/list-changed-paths \
   'spec/*' >"$files"
 
 if [ -s "$files" ]; then
-  xargs -0 mise exec -- bundle exec rubocop <"$files"
+  xargs -0 bin/rubocop <"$files"
 else
   echo "No changed Ruby files to lint"
 fi

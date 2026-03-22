@@ -22,7 +22,7 @@ module Html2rss
       #    'Lorem ipsum dolor ...'
       class Text
         # The available options for the text extractor.
-        Options = Struct.new('TextOptions', :selector, keyword_init: true)
+        Options = Struct.new('TextOptions', :selector, keyword_init: true) # rubocop:disable Style/RedundantStructKeywordInit
 
         ##
         # Initializes the Text extractor.

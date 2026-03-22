@@ -9,7 +9,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   describe '.from(parsed_body, opts)' do
     context 'when suitable scraper is found' do
       let(:parsed_body) do
-        Nokogiri::HTML('<html><body><article><a href="#"></a></article></body></html>')
+        Nokogiri::HTML('<html><body><article><a href="/article-1">Article 1</a></article></body></html>')
       end
 
       it 'returns an array of scrapers' do
@@ -25,6 +25,17 @@ RSpec.describe Html2rss::AutoSource::Scraper do
           described_class.from(parsed_body)
         end.to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound)
       end
+    end
+  end
+
+  describe '.instances_for(parsed_body, url:, opts:)' do
+    let(:parsed_body) do
+      Nokogiri::HTML('<html><body><article><a href="/article-1">Article 1</a></article></body></html>')
+    end
+    let(:url) { Html2rss::Url.from_absolute('https://example.com') }
+
+    it 'returns scraper instances that can extract articles' do
+      expect(described_class.instances_for(parsed_body, url:)).to all(respond_to(:each))
     end
   end
 end

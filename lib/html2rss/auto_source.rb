@@ -94,6 +94,20 @@ module Html2rss
       @request_session = request_session
     end
 
+    ##
+    # Extracts article candidates by selecting every scraper that can explain the
+    # page shape, running those scrapers, and normalizing the resulting hashes
+    # into `RssBuilder::Article` objects.
+    #
+    # The contributor-facing flow is:
+    # 1. choose scraper instances that match the page
+    # 2. let each scraper collect its own candidates
+    # 3. clean and deduplicate the merged article list
+    #
+    # Scrapers with expensive precomputation, such as `SemanticHtml`, keep that
+    # state on the instance so detection and extraction can reuse the same work.
+    #
+    # @return [Array<Html2rss::RssBuilder::Article>] extracted articles
     def articles
       @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound => error
@@ -106,16 +120,14 @@ module Html2rss
     attr_reader :url, :parsed_body, :request_session
 
     def extract_articles
-      scrapers = Scraper.from(parsed_body, @opts[:scraper])
-      return [] if scrapers.empty?
+      scraper_instances = Scraper.instances_for(parsed_body, url:, request_session:, opts: @opts[:scraper])
+      return [] if scraper_instances.empty?
 
       # Scrapers are instantiated and run in parallel threads. Implementations
       # must avoid shared mutable state, treat request_session calls as
       # concurrency-safe from the scraper side, and return no articles when a
       # follow-up would be unsafe or unsupported.
-      articles = Parallel.flat_map(scrapers, in_threads: thread_count_for(scrapers)) do |scraper|
-        instance = scraper.new(parsed_body, url:, request_session:, **scraper_options_for(scraper))
-
+      articles = Parallel.flat_map(scraper_instances, in_threads: thread_count_for(scraper_instances)) do |instance|
         run_scraper(instance)
       end
 
@@ -126,10 +138,6 @@ module Html2rss
       instance.each.map do |article_hash|
         RssBuilder::Article.new(**article_hash, scraper: instance.class)
       end
-    end
-
-    def scraper_options_for(scraper)
-      @opts.fetch(:scraper, {}).fetch(scraper.options_key, {})
     end
 
     def cleanup_options

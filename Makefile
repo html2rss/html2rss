@@ -36,7 +36,7 @@ test: ## Run tests
 	COVERAGE=true $(RUBY_RUNNER)bundle exec rspec
 
 lint: ## Run linting
-	$(RUBY_RUNNER)bundle exec rubocop
+	bin/rubocop
 	$(RUBY_RUNNER)bundle exec reek
 
 shellcheck: ## Run shellcheck on maintained shell scripts

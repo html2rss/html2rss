@@ -25,7 +25,7 @@ module Html2rss
       #    'http://blog-without-a-feed.example.com/posts/latest-findings'
       class Href
         # The available options for the href (attribute) extractor.
-        Options = Struct.new('HrefOptions', :selector, :channel, keyword_init: true)
+        Options = Struct.new('HrefOptions', :selector, :channel, keyword_init: true) # rubocop:disable Style/RedundantStructKeywordInit
 
         ##
         # Initializes the Href extractor.
