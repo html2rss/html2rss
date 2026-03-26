@@ -39,6 +39,11 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       'Connection' => 'keep-alive',
       'Content-Length' => '123',
       'Transfer-Encoding' => 'chunked',
+      'Sec-Fetch-Dest' => 'document',
+      'Sec-Fetch-Mode' => 'navigate',
+      'Sec-Fetch-Site' => 'none',
+      'Sec-Fetch-User' => '?1',
+      'Upgrade-Insecure-Requests' => '1',
       'User-Agent' => 'RSpec'
     }
   end
