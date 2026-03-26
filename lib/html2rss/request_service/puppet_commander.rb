@@ -5,7 +5,11 @@ module Html2rss
     ##
     # Commands the Puppeteer Browser to the website and builds the Response.
     class PuppetCommander # rubocop:disable Metrics/ClassLength
-      BROWSER_UNSAFE_HEADERS = %w[host connection content-length transfer-encoding].to_set.freeze
+      BROWSER_UNSAFE_HEADERS = %w[
+        host connection content-length transfer-encoding
+        sec-fetch-dest sec-fetch-mode sec-fetch-site sec-fetch-user
+        upgrade-insecure-requests
+      ].to_set.freeze
 
       # @param ctx [Context]
       # @param browser [Puppeteer::Browser]
