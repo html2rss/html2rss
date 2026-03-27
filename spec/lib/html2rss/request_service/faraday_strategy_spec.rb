@@ -31,8 +31,11 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
   let(:builder) { instance_double(Faraday::RackBuilder, use: nil, request: nil, adapter: nil) }
   let(:connection) { instance_double(Faraday::Connection) }
   let(:request_options) { Faraday::RequestOptions.new }
+  let(:retry_request_options) { Faraday::RequestOptions.new }
   let(:request) { instance_double(Faraday::Request, options: request_options) }
+  let(:retry_request) { instance_double(Faraday::Request, options: retry_request_options) }
   let(:response_env) { instance_double(Faraday::Env, url: Addressable::URI.parse('https://example.com')) }
+  let(:redirected_env) { instance_double(Faraday::Env, url: Addressable::URI.parse('https://example.com/final')) }
   let(:response) do
     instance_double(
       Faraday::Response,
@@ -42,10 +45,29 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       status: 200
     )
   end
+  let(:empty_redirected_response) do
+    instance_double(
+      Faraday::Response,
+      body: '',
+      headers: { 'content-type' => 'text/html' },
+      env: redirected_env,
+      status: 200
+    )
+  end
+  let(:recovered_response) do
+    instance_double(
+      Faraday::Response,
+      body: '<html>redirected body</html>',
+      headers: { 'content-type' => 'text/html' },
+      env: redirected_env,
+      status: 200
+    )
+  end
 
   before do
     allow(Faraday).to receive(:new).and_yield(builder).and_return(connection)
     allow(connection).to receive(:get).and_yield(request).and_return(response)
+    allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 100.0, 100.0)
   end
 
   it 'consumes budget, validates the request, and returns a response', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -88,6 +110,52 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       Html2rss::RequestService::ResponseTooLarge,
       'Response exceeded 5 bytes'
     )
+  end
+
+  it 'retries without streaming when a redirected response returns an empty body', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    call_count = 0
+    allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 100.0, 112.0)
+    allow(connection).to receive(:get) do |&block|
+      call_count += 1
+      block&.call(call_count == 1 ? request : retry_request)
+      call_count == 1 ? empty_redirected_response : recovered_response
+    end
+
+    result = execute
+
+    expect(budget).to have_received(:consume!).twice
+    expect(policy).to have_received(:validate_request!).twice
+    expect(connection).to have_received(:get).twice
+    expect(retry_request_options.timeout).to eq(18)
+    expect(retry_request_options.open_timeout).to eq(5)
+    expect(retry_request_options.read_timeout).to eq(10)
+    expect(retry_request_options.on_data).to be_a(Proc)
+    expect(retry_request_options.context).to be_nil
+    expect(result.body).to eq('<html>redirected body</html>')
+    expect(result.url.to_s).to eq('https://example.com/final')
+  end
+
+  it 'enforces streamed byte limits on the redirected fallback path' do # rubocop:disable RSpec/ExampleLength
+    allow(policy).to receive(:max_response_bytes).and_return(5)
+
+    call_count = 0
+    allow(connection).to receive(:get) do |&block|
+      call_count += 1
+      current_request = call_count == 1 ? request : retry_request
+      block.call(current_request)
+      current_options = current_request.options
+      streamed_env = Faraday::Env.from(
+        request: current_options,
+        response_headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+      current_options.on_data.call('123', 3, streamed_env)
+      current_options.on_data.call('456', 6, streamed_env) if call_count == 2
+
+      call_count == 1 ? empty_redirected_response : recovered_response
+    end
+
+    expect { execute }.to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 5 bytes')
   end
 
   describe described_class::StreamingBodyMiddleware do # rubocop:disable RSpec/MultipleMemoizedHelpers
