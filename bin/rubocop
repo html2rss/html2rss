@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 if command -v mise >/dev/null 2>&1; then
-  exec mise exec -- ruby -e 'require "rubocop"; exit RuboCop::CLI.new.run(ARGV)' -- "$@"
+  exec mise exec -- bundle exec ruby -e 'require "rubocop"; argv = %w[--cache false] + ARGV; exit RuboCop::CLI.new.run(argv)' -- "$@"
 fi
 
-exec bundle exec ruby -e 'require "rubocop"; exit RuboCop::CLI.new.run(ARGV)' -- "$@"
+exec bundle exec ruby -e 'require "rubocop"; argv = %w[--cache false] + ARGV; exit RuboCop::CLI.new.run(argv)' -- "$@"

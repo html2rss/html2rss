@@ -32,19 +32,31 @@ module Html2rss
       #
       # @return [Response] normalized request response
       def execute
-        deadline = monotonic_now + ctx.policy.total_timeout_seconds
-        response_guard = ResponseGuard.new(policy: ctx.policy)
-        response = faraday_request(response_guard, deadline:, streaming_buffer: true)
-        response = retry_without_streaming(response_guard, deadline:) if retry_without_streaming?(response)
+        deadline = request_deadline
+        response_guard, response = perform_request(deadline:)
         response_guard.inspect_body!(response.body)
-
-        Response.new(body: response.body, headers: response.headers, url: response_url(response),
-                     status: response.status)
+        build_response(response)
       rescue Faraday::TimeoutError, Timeout::Error => error
         raise RequestTimedOut, error.message
       end
 
       private
+
+      def request_deadline
+        monotonic_now + ctx.policy.total_timeout_seconds
+      end
+
+      def perform_request(deadline:)
+        response_guard = ResponseGuard.new(policy: ctx.policy)
+        response = faraday_request(response_guard, deadline:, streaming_buffer: true)
+        response = retry_without_streaming(response_guard, deadline:) if retry_without_streaming?(response)
+        [response_guard, response]
+      end
+
+      def build_response(response)
+        Response.new(body: response.body, headers: response.headers, url: response_url(response),
+                     status: response.status)
+      end
 
       def validate_request!
         ctx.budget.consume!
