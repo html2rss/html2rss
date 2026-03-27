@@ -114,7 +114,7 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
 
   it 'retries without streaming when a redirected response returns an empty body', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     call_count = 0
-    allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 100.0, 112.0)
+    allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 100.0, 112.4)
     allow(connection).to receive(:get) do |&block|
       call_count += 1
       block&.call(call_count == 1 ? request : retry_request)
@@ -123,10 +123,10 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
 
     result = execute
 
-    expect(budget).to have_received(:consume!).twice
+    expect(budget).to have_received(:consume!).once
     expect(policy).to have_received(:validate_request!).twice
     expect(connection).to have_received(:get).twice
-    expect(retry_request_options.timeout).to eq(18)
+    expect(retry_request_options.timeout).to be_within(0.001).of(17.6)
     expect(retry_request_options.open_timeout).to eq(5)
     expect(retry_request_options.read_timeout).to eq(10)
     expect(retry_request_options.on_data).to be_a(Proc)

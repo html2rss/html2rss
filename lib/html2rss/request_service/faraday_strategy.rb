@@ -58,13 +58,13 @@ module Html2rss
                      status: response.status)
       end
 
-      def validate_request!
-        ctx.budget.consume!
+      def validate_request!(consume_budget: true)
+        ctx.budget.consume! if consume_budget
         ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
       end
 
-      def faraday_request(response_guard, deadline:, streaming_buffer:)
-        validate_request!
+      def faraday_request(response_guard, deadline:, streaming_buffer:, consume_budget: true)
+        validate_request!(consume_budget:)
 
         client.get do |req|
           apply_timeouts(req, deadline:)
@@ -74,7 +74,7 @@ module Html2rss
       end
 
       def retry_without_streaming(response_guard, deadline:)
-        faraday_request(response_guard, deadline:, streaming_buffer: false)
+        faraday_request(response_guard, deadline:, streaming_buffer: false, consume_budget: false)
       end
 
       def client
@@ -106,7 +106,7 @@ module Html2rss
       end
 
       def remaining_timeout_seconds(deadline)
-        remaining = (deadline - monotonic_now).ceil
+        remaining = deadline - monotonic_now
         raise RequestTimedOut, 'Request timed out' if remaining <= 0
 
         remaining
