@@ -12,7 +12,9 @@ RSpec.describe Html2rss::RequestService do
       described_class::PrivateNetworkDenied,
       described_class::CrossOriginFollowUpDenied,
       described_class::ResponseTooLarge,
-      described_class::RequestTimedOut
+      described_class::RequestTimedOut,
+      described_class::BrowserlessConfigurationError,
+      described_class::BrowserlessConnectionFailed
     ]
   end
 

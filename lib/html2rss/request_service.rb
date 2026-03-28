@@ -19,6 +19,8 @@ module Html2rss
     class CrossOriginFollowUpDenied < Html2rss::Error; end
     class ResponseTooLarge < Html2rss::Error; end
     class RequestTimedOut < Html2rss::Error; end
+    class BrowserlessConfigurationError < Html2rss::Error; end
+    class BrowserlessConnectionFailed < Html2rss::Error; end
 
     class << self
       extend Forwardable

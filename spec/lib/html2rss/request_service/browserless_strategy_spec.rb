@@ -63,6 +63,33 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
       expect(Puppeteer).to have_received(:connect).with(browser_ws_endpoint: instance.browser_ws_endpoint)
       expect(commander).to have_received(:call)
     end
+
+    it 'surfaces actionable diagnostics when Browserless connection fails' do # rubocop:disable RSpec/ExampleLength
+      allow(Puppeteer).to receive(:connect)
+        .with(browser_ws_endpoint: instance.browser_ws_endpoint, protocol_timeout: 30_000)
+        .and_raise(SocketError, 'getaddrinfo: Name or service not known')
+
+      expect do
+        instance.execute
+      end.to raise_error(
+        Html2rss::RequestService::BrowserlessConnectionFailed,
+        /Check BROWSERLESS_IO_WEBSOCKET_URL/
+      )
+    end
+
+    it 'surfaces retry failure details when protocol-timeout compatibility fallback also fails', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(Puppeteer).to receive(:connect)
+        .with(browser_ws_endpoint: instance.browser_ws_endpoint, protocol_timeout: 30_000)
+        .and_raise(ArgumentError, 'unknown keyword: :protocol_timeout')
+      allow(Puppeteer).to receive(:connect)
+        .with(browser_ws_endpoint: instance.browser_ws_endpoint)
+        .and_raise(StandardError, 'Connection refused')
+
+      expect { instance.execute }.to raise_error(Html2rss::RequestService::BrowserlessConnectionFailed) { |error|
+        expect(error.message).to include('Connection refused')
+        expect(error.message).not_to include('unknown keyword: :protocol_timeout')
+      }
+    end
   end
 
   describe '#browser_ws_endpoint' do
@@ -93,10 +120,13 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
         ) { example.run }
       end
 
-      it 'raises a clear error' do
+      it 'raises a clear error' do # rubocop:disable RSpec/ExampleLength
         expect do
           instance.browser_ws_endpoint
-        end.to raise_error(ArgumentError, 'BROWSERLESS_IO_API_TOKEN is required for custom Browserless endpoints')
+        end.to raise_error(
+          Html2rss::RequestService::BrowserlessConfigurationError,
+          /BROWSERLESS_IO_API_TOKEN is required for custom Browserless endpoints/
+        )
       end
     end
   end
