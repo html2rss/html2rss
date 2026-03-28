@@ -201,6 +201,63 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when content scrapers and rss feed detector both emit articles' do
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          cleanup: described_class::DEFAULT_CONFIG[:cleanup].merge(min_words_title: 1)
+        )
+      end
+      let(:semantic_scraper_instance) do
+        instance_double(
+          Html2rss::AutoSource::Scraper::SemanticHtml,
+          each: [{ id: 'story-1', title: 'Story number one', url: 'https://example.com/story-1' }].each
+        )
+      end
+      let(:rss_feed_detector_instance) do
+        instance_double(
+          Html2rss::AutoSource::Scraper::RssFeedDetector,
+          each: [{ id: 'feed-1', title: 'Main Site Feed', url: 'https://example.com/feed.xml' }].each
+        )
+      end
+
+      before do
+        allow(semantic_scraper_instance).to receive(:class).and_return(Html2rss::AutoSource::Scraper::SemanticHtml)
+        allow(rss_feed_detector_instance).to receive(:class).and_return(Html2rss::AutoSource::Scraper::RssFeedDetector)
+        allow(Html2rss::AutoSource::Scraper)
+          .to receive(:instances_for)
+          .and_return([semantic_scraper_instance, rss_feed_detector_instance])
+      end
+
+      it 'keeps content articles and drops feed-discovery entries' do
+        expect(articles.map { |article| article.url.to_s }).to contain_exactly('https://example.com/story-1')
+      end
+    end
+
+    context 'when only rss feed detector emits articles' do
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          cleanup: described_class::DEFAULT_CONFIG[:cleanup].merge(min_words_title: 1)
+        )
+      end
+      let(:rss_feed_detector_instance) do
+        instance_double(
+          Html2rss::AutoSource::Scraper::RssFeedDetector,
+          each: [{ id: 'feed-1', title: 'Site Feed', url: 'https://example.com/feed.xml' }].each
+        )
+      end
+
+      before do
+        allow(rss_feed_detector_instance).to receive(:class).and_return(Html2rss::AutoSource::Scraper::RssFeedDetector)
+        allow(Html2rss::AutoSource::Scraper)
+          .to receive(:instances_for)
+          .and_return([rss_feed_detector_instance])
+      end
+
+      it 'keeps feed-discovery entries as a fallback surface' do
+        expect(articles.map { |article| article.url.to_s }).to contain_exactly('https://example.com/feed.xml')
+      end
+    end
+
     context 'when scraper lookup raises an error' do
       before do
         allow(Html2rss::AutoSource::Scraper).to receive(:instances_for).and_raise(StandardError, 'Test error')
