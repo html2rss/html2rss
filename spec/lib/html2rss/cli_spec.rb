@@ -163,6 +163,14 @@ RSpec.describe Html2rss::CLI do
             /retry with --max-redirects 4 or use the final URL directly/
           )
       end
+
+      it 'increments the retry hint from an explicit max_redirects override' do
+        expect { cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 }) }
+          .to raise_error(
+            Thor::Error,
+            /retry with --max-redirects 9 or use the final URL directly/
+          )
+      end
     end
 
     context 'when browserless connectivity fails' do
@@ -267,6 +275,32 @@ RSpec.describe Html2rss::CLI do
         .to raise_error(
           Thor::Error,
           /retry with --max-requests 2 or increase request.max_requests in the config/
+        )
+    end
+  end
+
+  describe 'redirect failures' do
+    before do
+      allow(Html2rss).to receive(:feed).and_raise(
+        Faraday::FollowRedirects::RedirectLimitReached,
+        'too many redirects; last one to: https://www.example.com/'
+      )
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({ url: 'https://example.com' })
+    end
+
+    it 'raises a CLI error with an increased retry hint for feed' do
+      expect { cli.feed('example.yml') }
+        .to raise_error(
+          Thor::Error,
+          /retry with --max-redirects 4 or use the final URL directly/
+        )
+    end
+
+    it 'increments the feed retry hint from an explicit max_redirects override' do
+      expect { cli.invoke(:feed, ['example.yml'], { max_redirects: 8 }) }
+        .to raise_error(
+          Thor::Error,
+          /retry with --max-redirects 9 or use the final URL directly/
         )
     end
   end

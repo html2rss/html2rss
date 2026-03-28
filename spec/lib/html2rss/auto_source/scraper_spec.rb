@@ -21,9 +21,36 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       let(:parsed_body) { Nokogiri::HTML('<html><body></body></html>') }
 
       it 'raises NoScraperFound error' do
-        expect do
-          described_class.from(parsed_body)
-        end.to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound)
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound, /unsupported extraction surface for auto mode/)
+      end
+    end
+
+    context 'when the document looks like an anti-bot interstitial' do
+      let(:error_hint) { /blocked surface likely \(anti-bot or interstitial\)/ }
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head><title>Just a moment...</title></head>' \
+          '<body>Checking your browser before accessing example.com.</body></html>'
+        )
+      end
+
+      it 'raises a blocked-surface categorized NoScraperFound error' do
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound, error_hint)
+      end
+    end
+
+    context 'when the document looks like a client-rendered app shell' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><body><div id="root"></div><script src="/assets/app.js"></script></body></html>'
+        )
+      end
+
+      it 'raises an app-shell categorized NoScraperFound error' do
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound, /app-shell surface detected/)
       end
     end
   end
