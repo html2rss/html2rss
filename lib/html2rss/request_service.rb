@@ -18,6 +18,7 @@ module Html2rss
     class PrivateNetworkDenied < Html2rss::Error; end
     class CrossOriginFollowUpDenied < Html2rss::Error; end
     class ResponseTooLarge < Html2rss::Error; end
+    class BlockedSurfaceDetected < Html2rss::Error; end
     class RequestTimedOut < Html2rss::Error; end
     class BrowserlessConfigurationError < Html2rss::Error; end
     class BrowserlessConnectionFailed < Html2rss::Error; end

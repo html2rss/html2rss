@@ -336,6 +336,22 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         )
       end
     end
+
+    context 'when the rendered body is an anti-bot interstitial' do
+      before do
+        allow(page).to receive(:content).and_return(<<~HTML)
+          <html>
+            <head><title>Just a moment...</title></head>
+            <body>Checking your browser before accessing itch.io.</body>
+          </html>
+        HTML
+      end
+
+      it 'raises blocked-surface classification from the response guard' do
+        expect { commander.call }
+          .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+      end
+    end
   end
 
   describe '#new_page' do

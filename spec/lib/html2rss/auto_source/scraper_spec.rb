@@ -21,9 +21,60 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       let(:parsed_body) { Nokogiri::HTML('<html><body></body></html>') }
 
       it 'raises NoScraperFound error' do
-        expect do
-          described_class.from(parsed_body)
-        end.to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound)
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound, /unsupported extraction surface for auto mode/)
+      end
+    end
+
+    context 'when the document looks like an anti-bot interstitial' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head><title>Just a moment...</title></head>' \
+          '<body>Checking your browser before accessing example.com.</body></html>'
+        )
+      end
+
+      it 'raises a blocked-surface categorized NoScraperFound error', :aggregate_failures do
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
+            expect(error.category).to eq(:blocked_surface)
+            expect(error.message).to match(/blocked surface likely \(anti-bot or interstitial\)/)
+          }
+      end
+    end
+
+    context 'when the document looks like a client-rendered app shell' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><body><div id="root"></div><script src="/assets/app.js"></script></body></html>'
+        )
+      end
+
+      it 'raises an app-shell categorized NoScraperFound error', :aggregate_failures do
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
+            expect(error.category).to eq(:app_shell)
+            expect(error.message).to match(/app-shell surface detected/)
+          }
+      end
+    end
+
+    context 'when the app shell has long script/style content' do
+      let(:parsed_body) do
+        html = '<html><body><div id="root"></div>' \
+               "<script>#{'x' * 1_000}</script>" \
+               "<style>#{'y' * 1_000}</style></body></html>"
+        Nokogiri::HTML(
+          html
+        )
+      end
+
+      it 'still classifies as app_shell by measuring only visible text', :aggregate_failures do
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
+            expect(error.category).to eq(:app_shell)
+            expect(error.message).to match(/app-shell surface detected/)
+          }
       end
     end
   end
@@ -36,6 +87,13 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
     it 'returns scraper instances that can extract articles' do
       expect(described_class.instances_for(parsed_body, url:)).to all(respond_to(:each))
+    end
+  end
+
+  describe Html2rss::AutoSource::Scraper::NoScraperFound do
+    it 'raises a clear error for unknown categories' do
+      expect { described_class.new(category: :bogus) }
+        .to raise_error(ArgumentError, /Unknown category: :bogus/)
     end
   end
 end
