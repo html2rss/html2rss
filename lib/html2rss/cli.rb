@@ -175,7 +175,7 @@ module Html2rss
       current_max_requests + 1
     end
 
-    def execute_feed
+    def execute_feed # rubocop:disable Metrics/MethodLength
       yield
     rescue Faraday::FollowRedirects::RedirectLimitReached => error
       raise Thor::Error,
@@ -184,6 +184,9 @@ module Html2rss
       raise Thor::Error,
             "#{error.message}. retry with --max-requests #{suggested_max_requests} " \
             'or increase request.max_requests in the config.'
+    rescue Html2rss::RequestService::BrowserlessConfigurationError,
+           Html2rss::RequestService::BrowserlessConnectionFailed => error
+      raise Thor::Error, error.message
     end
   end
 end

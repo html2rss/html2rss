@@ -164,6 +164,20 @@ RSpec.describe Html2rss::CLI do
           )
       end
     end
+
+    context 'when browserless connectivity fails' do
+      before do
+        allow(Html2rss).to receive(:auto_source).and_raise(
+          Html2rss::RequestService::BrowserlessConnectionFailed,
+          'Browserless connection failed (SocketError: getaddrinfo: Name or service not known).'
+        )
+      end
+
+      it 'raises a CLI error with browserless diagnostics' do
+        expect { cli.invoke(:auto, ['https://example.com'], { strategy: 'browserless' }) }
+          .to raise_error(Thor::Error, /Browserless connection failed/)
+      end
+    end
   end
 
   describe '#schema' do
