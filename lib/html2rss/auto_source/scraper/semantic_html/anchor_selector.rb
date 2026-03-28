@@ -26,27 +26,11 @@ module Html2rss
           )
 
           HEADING_SELECTOR = HtmlExtractor::HEADING_TAGS.join(',').freeze
-          UTILITY_PATH_SEGMENTS = %w[
-            about account author category comment comments contact feedback help
-            login newsletter profile register search settings share signup subscribe
-            topic topics view-all archive archives
-            feed feeds
-            recommended
-            for-you
-            preference preferences
-            notification notifications
-            privacy terms
-            cookie cookies
-            logout
-            user users
-          ].to_set.freeze
-          CONTENT_PATH_SEGMENTS = %w[
-            article articles news post posts story stories update updates
-          ].to_set.freeze
           UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].freeze
 
           def initialize(base_url)
             @base_url = base_url
+            @link_heuristics = LinkHeuristics.new(base_url)
           end
 
           ##
@@ -81,27 +65,27 @@ module Html2rss
             end.values
           end
 
-          def build_facts(anchor, heading, heading_text) # rubocop:disable Metrics/MethodLength
+          def build_facts(anchor, heading, heading_text) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
             text = visible_text(anchor)
             meaningful_text = meaningful_text?(text)
             ancestors = anchor.ancestors.to_a
-            url = normalized_destination(anchor)
-            return unless url
+            destination_facts = normalized_destination(anchor)
+            return unless destination_facts
 
-            segments = url.path_segments
-            content_like_destination = content_like_destination?(segments)
-            return if ineligible_anchor?(anchor, ancestors, text, meaningful_text, segments)
-
+            content_like_destination = destination_facts.content_path
             heading_anchor = heading_anchor?(ancestors, heading)
+            return if suppress_utility_text?(text, destination_facts, heading_anchor:)
+            return if ineligible_anchor?(anchor, ancestors, meaningful_text, destination_facts)
+
             heading_text_match = heading_text_match?(heading_text, text, meaningful_text)
             return unless heading_anchor || content_like_anchor?(meaningful_text, content_like_destination)
 
             AnchorFacts.new(
               anchor:,
               text:,
-              url:,
-              destination: url.to_s,
-              segments:,
+              url: destination_facts.url,
+              destination: destination_facts.destination,
+              segments: destination_facts.segments,
               meaningful_text:,
               content_like_destination:,
               heading_anchor:,
@@ -110,9 +94,8 @@ module Html2rss
             )
           end
 
-          def ineligible_anchor?(anchor, ancestors, text, meaningful_text, segments)
-            utility_destination?(segments) ||
-              utility_text?(text) ||
+          def ineligible_anchor?(anchor, ancestors, meaningful_text, destination_facts)
+            destination_facts.high_confidence_utility_destination ||
               icon_only_anchor?(anchor, meaningful_text) ||
               utility_landmark_anchor?(ancestors)
           end
@@ -154,23 +137,8 @@ module Html2rss
             !meaningful_text && anchor.at_css('img, svg')
           end
 
-          def utility_destination?(segments)
-            segments.empty? || segments.any? { |segment| UTILITY_PATH_SEGMENTS.include?(segment) }
-          end
-
-          def content_like_destination?(segments)
-            segments.any? do |segment|
-              CONTENT_PATH_SEGMENTS.include?(segment) || segment.match?(/\A\d[\w-]*\z/)
-            end
-          end
-
           def normalized_destination(anchor)
-            href = anchor['href'].to_s.split('#').first.to_s.strip
-            return if href.empty?
-
-            Html2rss::Url.from_relative(href, base_url)
-          rescue ArgumentError
-            nil
+            @link_heuristics.destination_facts(anchor)
           end
 
           def meaningful_text?(text)
@@ -178,9 +146,17 @@ module Html2rss
           end
 
           def utility_text?(text)
-            text.match?(
-              /\A(about|contact|log in|login|sign up|signup|share|comments?|view all|recommended for you|subscribe)\b/i
-            )
+            @link_heuristics.utility_text?(text)
+          end
+
+          def suppress_utility_text?(text, destination_facts, heading_anchor:)
+            return false if destination_facts.content_path
+
+            utility_text?(text) &&
+              (
+                destination_facts.high_confidence_utility_destination ||
+                (!heading_anchor && !destination_facts.strong_post_suffix)
+              )
           end
 
           def utility_landmark_anchor?(ancestors)

@@ -16,7 +16,7 @@ module Html2rss
       #
       # This scraper is broader and noisier than `SemanticHtml`, so it acts as a
       # fallback for pages without stronger semantic signals.
-      class Html
+      class Html # rubocop:disable Metrics/ClassLength
         include Enumerable
 
         TAGS_TO_IGNORE = /(nav|footer|header|svg|script|style)/i
@@ -58,6 +58,7 @@ module Html2rss
           @url = url
           @extractor = extractor
           @opts = opts
+          @link_heuristics = LinkHeuristics.new(url)
         end
 
         attr_reader :parsed_body
@@ -130,7 +131,12 @@ module Html2rss
         end
 
         def relevant_anchor?(node)
-          node.element? && node.name == 'a' && !String(node['href']).empty?
+          return false unless node.element? && node.name == 'a' && !String(node['href']).empty?
+
+          destination_facts = @link_heuristics.destination_facts(node)
+          return false unless destination_facts
+
+          !noise_anchor?(node, destination_facts)
         end
 
         def increment_selector_count(selectors, node)
@@ -162,8 +168,28 @@ module Html2rss
         def extract_article(article_tag)
           selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
           return unless selected_anchor
+          return if noise_anchor?(selected_anchor, @link_heuristics.destination_facts(selected_anchor))
 
           @extractor.new(article_tag, base_url: @url, selected_anchor:).call
+        end
+
+        def noise_anchor?(anchor, destination_facts) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+          return true unless destination_facts
+
+          text = HtmlExtractor.extract_visible_text(anchor).to_s.strip
+
+          destination_facts.high_confidence_junk_path ||
+            short_utility_label?(text, destination_facts) ||
+            (@link_heuristics.recommended_text?(text) && destination_facts.shallow) ||
+            (@link_heuristics.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
+            (@link_heuristics.utility_text?(text) && destination_facts.vanity_path)
+        end
+
+        def short_utility_label?(text, destination_facts)
+          destination_facts.utility_path &&
+            !destination_facts.content_path &&
+            !destination_facts.strong_post_suffix &&
+            text.scan(/\p{Alnum}+/).size <= 3
         end
       end
     end
