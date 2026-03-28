@@ -28,12 +28,22 @@ module Html2rss
           HEADING_SELECTOR = HtmlExtractor::HEADING_TAGS.join(',').freeze
           UTILITY_PATH_SEGMENTS = %w[
             about account author category comment comments contact feedback help
-            login newsletter profile register search settings share signup tag tags
+            login newsletter profile register search settings share signup subscribe
+            topic topics view-all archive archives
+            feed feeds
+            recommended
+            for-you
+            preference preferences
+            notification notifications
+            privacy terms
+            cookie cookies
+            logout
             user users
           ].to_set.freeze
           CONTENT_PATH_SEGMENTS = %w[
             article articles news post posts story stories update updates
           ].to_set.freeze
+          UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].freeze
 
           def initialize(base_url)
             @base_url = base_url
@@ -74,14 +84,15 @@ module Html2rss
           def build_facts(anchor, heading, heading_text) # rubocop:disable Metrics/MethodLength
             text = visible_text(anchor)
             meaningful_text = meaningful_text?(text)
+            ancestors = anchor.ancestors.to_a
             url = normalized_destination(anchor)
             return unless url
 
             segments = url.path_segments
             content_like_destination = content_like_destination?(segments)
-            return if ineligible_anchor?(anchor, text, meaningful_text, segments)
+            return if ineligible_anchor?(anchor, ancestors, text, meaningful_text, segments)
 
-            heading_anchor = heading_anchor?(anchor, heading)
+            heading_anchor = heading_anchor?(ancestors, heading)
             heading_text_match = heading_text_match?(heading_text, text, meaningful_text)
             return unless heading_anchor || content_like_anchor?(meaningful_text, content_like_destination)
 
@@ -99,10 +110,11 @@ module Html2rss
             )
           end
 
-          def ineligible_anchor?(anchor, text, meaningful_text, segments)
+          def ineligible_anchor?(anchor, ancestors, text, meaningful_text, segments)
             utility_destination?(segments) ||
               utility_text?(text) ||
-              icon_only_anchor?(anchor, meaningful_text)
+              icon_only_anchor?(anchor, meaningful_text) ||
+              utility_landmark_anchor?(ancestors)
           end
 
           def keep_stronger_fact(best_by_destination, facts)
@@ -126,8 +138,8 @@ module Html2rss
             score
           end
 
-          def heading_anchor?(anchor, heading)
-            heading && anchor.ancestors.include?(heading)
+          def heading_anchor?(ancestors, heading)
+            heading && ancestors.include?(heading)
           end
 
           def heading_text_match?(heading_text, text, meaningful_text)
@@ -166,7 +178,13 @@ module Html2rss
           end
 
           def utility_text?(text)
-            text.match?(/\A(about|contact|log in|login|sign up|signup|share|comments?)\b/i)
+            text.match?(
+              /\A(about|contact|log in|login|sign up|signup|share|comments?|view all|recommended for you|subscribe)\b/i
+            )
+          end
+
+          def utility_landmark_anchor?(ancestors)
+            ancestors.any? { |node| UTILITY_LANDMARK_TAGS.include?(node.name) }
           end
 
           def visible_text(node)

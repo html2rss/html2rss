@@ -181,18 +181,6 @@
                 }
               },
               "required": []
-            },
-            "rss_feed_detector": {
-              "type": "object",
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "not": {
-                    "type": "null"
-                  }
-                }
-              },
-              "required": []
             }
           },
           "required": []
@@ -239,9 +227,6 @@
             "enabled": true,
             "minimum_selector_frequency": 2,
             "use_top_selectors": 5
-          },
-          "rss_feed_detector": {
-            "enabled": true
           }
         },
         "cleanup": {

@@ -41,4 +41,34 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(articles_by_url).not_to include(*excluded_urls)
     end
   end
+
+  describe 'chrome suppression' do
+    subject(:articles_by_url) do
+      scraper = described_class.new(parsed_body, url: 'https://page.com')
+      scraper.each.to_a.to_h { |article| [article[:url].to_s, article] }
+    end
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html>
+          <body>
+            <section class="newsroom-list">
+              <nav class="section-nav">
+                <a href="/news">View all news</a>
+                <a href="/recommended">Recommended for you</a>
+              </nav>
+              <article>
+                <h2><a href="/news/launch-update">Launch update</a></h2>
+                <p>Release notes and product changes.</p>
+              </article>
+            </section>
+          </body>
+        </html>
+      HTML
+    end
+
+    it 'keeps content links while excluding common nav chrome' do
+      expect(articles_by_url.keys).to contain_exactly('https://page.com/news/launch-update')
+    end
+  end
 end
