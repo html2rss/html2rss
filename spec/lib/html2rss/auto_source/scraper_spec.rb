@@ -58,6 +58,25 @@ RSpec.describe Html2rss::AutoSource::Scraper do
           }
       end
     end
+
+    context 'when the app shell has long script/style content' do
+      let(:parsed_body) do
+        html = '<html><body><div id="root"></div>' \
+               "<script>#{'x' * 1_000}</script>" \
+               "<style>#{'y' * 1_000}</style></body></html>"
+        Nokogiri::HTML(
+          html
+        )
+      end
+
+      it 'still classifies as app_shell by measuring only visible text', :aggregate_failures do
+        expect { described_class.from(parsed_body) }
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
+            expect(error.category).to eq(:app_shell)
+            expect(error.message).to match(/app-shell surface detected/)
+          }
+      end
+    end
   end
 
   describe '.instances_for(parsed_body, url:, opts:)' do
@@ -68,6 +87,13 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
     it 'returns scraper instances that can extract articles' do
       expect(described_class.instances_for(parsed_body, url:)).to all(respond_to(:each))
+    end
+  end
+
+  describe Html2rss::AutoSource::Scraper::NoScraperFound do
+    it 'raises a clear error for unknown categories' do
+      expect { described_class.new(category: :bogus) }
+        .to raise_error(ArgumentError, /Unknown category: :bogus/)
     end
   end
 end

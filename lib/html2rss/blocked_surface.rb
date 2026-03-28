@@ -30,7 +30,7 @@ module Html2rss
     # @param body [String, nil] response body candidate
     # @return [Hash, nil] signature hash when matched, otherwise nil
     def self.interstitial_signature_for(body)
-      normalized_body = body.to_s
+      normalized_body = normalize_body(body)
       INTERSTITIAL_SIGNATURES.find { |signature| interstitial_signature_match?(normalized_body, signature) }
     end
 
@@ -42,9 +42,23 @@ module Html2rss
     end
 
     def self.interstitial_signature_match?(body, signature)
-      matches = signature.fetch(:patterns).count { |pattern| pattern.match?(body) }
-      matches >= signature.fetch(:min_matches, 1)
+      min_matches = signature.fetch(:min_matches, 1)
+      matches = 0
+
+      signature.fetch(:patterns).each do |pattern|
+        matches += 1 if pattern.match?(body)
+        return true if matches >= min_matches
+      end
+
+      false
     end
     private_class_method :interstitial_signature_match?
+
+    def self.normalize_body(body)
+      body.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
+    rescue Encoding::CompatibilityError, Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+      body.to_s.force_encoding(Encoding::UTF_8).scrub
+    end
+    private_class_method :normalize_body
   end
 end

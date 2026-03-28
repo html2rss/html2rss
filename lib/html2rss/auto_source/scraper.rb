@@ -44,24 +44,21 @@ module Html2rss
                                'or use explicit selectors in a feed config.'
         }.freeze
 
-        def initialize(message = nil, category: nil)
-          inferred_category = category || inferred_category_from_message(message)
-          @category = inferred_category
-          super(message || CATEGORY_MESSAGES.fetch(inferred_category))
+        def initialize(message = nil, category: :unsupported_surface)
+          validate_category!(category)
+          @category = category
+          super(message || CATEGORY_MESSAGES.fetch(@category))
         end
 
         attr_reader :category
 
         private
 
-        def inferred_category_from_message(message)
-          return :unsupported_surface if message.nil?
+        def validate_category!(category)
+          return if CATEGORY_MESSAGES.key?(category)
 
-          CATEGORY_MESSAGES.each do |candidate, default_message|
-            return candidate if message == default_message
-          end
-
-          :unsupported_surface
+          valid_categories = CATEGORY_MESSAGES.keys.join(', ')
+          raise ArgumentError, "Unknown category: #{category.inspect}. Valid categories are: #{valid_categories}"
         end
       end
 
@@ -162,7 +159,8 @@ module Html2rss
         body = parsed_body.at_css('body')
         return 0 unless body
 
-        body.text.gsub(/\s+/, ' ').strip.length
+        text_nodes = body.xpath('.//text()[not(ancestor::script or ancestor::style or ancestor::noscript)]')
+        text_nodes.map(&:text).join(' ').gsub(/\s+/, ' ').strip.length
       end
       private_class_method :visible_text_length
     end
