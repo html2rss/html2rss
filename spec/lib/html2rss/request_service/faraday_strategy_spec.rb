@@ -158,6 +158,15 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
     expect { execute }.to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 5 bytes')
   end
 
+  it 'raises blocked-surface classification when response body is an anti-bot interstitial' do
+    body = '<html><head><title>Just a moment...</title></head>' \
+           '<body>Checking your browser before accessing canva.com.</body></html>'
+    allow(response).to receive(:body).and_return(body)
+
+    expect { execute }
+      .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+  end
+
   describe described_class::StreamingBodyMiddleware do # rubocop:disable RSpec/MultipleMemoizedHelpers
     subject(:middleware_response) { middleware.call(request_env) }
 

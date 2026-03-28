@@ -178,6 +178,20 @@ RSpec.describe Html2rss::CLI do
           .to raise_error(Thor::Error, /Browserless connection failed/)
       end
     end
+
+    context 'when an anti-bot interstitial is detected' do
+      before do
+        allow(Html2rss).to receive(:auto_source).and_raise(
+          Html2rss::RequestService::BlockedSurfaceDetected,
+          'Blocked surface detected: Cloudflare anti-bot interstitial page. Retry with --strategy browserless.'
+        )
+      end
+
+      it 'raises a CLI error with blocked-surface guidance' do
+        expect { cli.auto('https://example.com') }
+          .to raise_error(Thor::Error, /Blocked surface detected: Cloudflare anti-bot interstitial page/)
+      end
+    end
   end
 
   describe '#schema' do
