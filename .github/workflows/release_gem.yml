@@ -1,24 +1,45 @@
+name: release gem
+
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: release-gem-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release_gem:
-    if: github.event.release.prerelease == false && github.event.release.draft == false
-
     name: Release gem to RubyGems.org
     runs-on: ubuntu-latest
 
     permissions:
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
-      contents: write # IMPORTANT: this permission is required for `rake release` to push the release tag
+      contents: write
+      issues: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          # Use a PAT or GitHub App token so release PRs and tags can trigger follow-on workflows.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
       - name: Set up Ruby
+        if: steps.release.outputs.releases_created == 'true'
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
           ruby-version: ruby
 
-      - uses: rubygems/release-gem@v1
+      - if: steps.release.outputs.releases_created == 'true'
+        uses: rubygems/release-gem@v1
