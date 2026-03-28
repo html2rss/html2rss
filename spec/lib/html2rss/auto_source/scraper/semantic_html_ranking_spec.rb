@@ -276,6 +276,107 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 
+  describe 'regression: deep section permalinks with post-like suffixes' do
+    subject(:urls) do
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper.each.to_a.map { |article| article[:url].to_s }
+    end
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="updates">
+            <article>
+              <h2><a href="/category/company/platform-launch-notes-for-teams">Platform launch notes for teams</a></h2>
+              <time datetime="2026-03-28"></time>
+              <p>Rollout details, migration notes, and operator guidance.</p>
+            </article>
+            <article>
+              <h2><a href="/privacy/api-announcement-for-enterprise-admins">API announcement for enterprise admins</a></h2>
+              <time datetime="2026-03-27"></time>
+              <p>Important product update with support timelines and release notes.</p>
+            </article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    it 'keeps ambiguous deep utility-segment routes in extraction instead of hard-dropping them', :aggregate_failures do
+      expect(urls).to include('https://example.com/category/company/platform-launch-notes-for-teams')
+      expect(urls).to include('https://example.com/privacy/api-announcement-for-enterprise-admins')
+    end
+  end
+
+  describe 'regression: deep taxonomy and account routes stay conservative' do
+    subject(:urls) do
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper.each.to_a.map { |article| article[:url].to_s }
+    end
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="updates">
+            <article>
+              <h2><a href="/topics/security/cloud">Cloud</a></h2>
+              <p>Nested taxonomy page for browsing related security topics.</p>
+            </article>
+            <article>
+              <h2><a href="/topics/security/cloud-security-updates">Cloud security updates</a></h2>
+              <p>Another nested taxonomy route with a long suffix but no independent post context.</p>
+            </article>
+            <article>
+              <h2><a href="/account/settings/security-notifications">Security notifications</a></h2>
+              <p>Account settings route with a long utility tail.</p>
+            </article>
+            <article>
+              <h2><a href="/news/platform-hardening-update">Platform hardening update</a></h2>
+              <time datetime="2026-03-28"></time>
+              <p>Legitimate post entry retained as the content result.</p>
+            </article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    it 'filters deep taxonomy and account/settings routes unless they carry trusted post context',
+       :aggregate_failures do
+      expect(urls).to include('https://example.com/news/platform-hardening-update')
+      expect(urls).not_to include('https://example.com/topics/security/cloud')
+      expect(urls).not_to include('https://example.com/topics/security/cloud-security-updates')
+      expect(urls).not_to include('https://example.com/account/settings/security-notifications')
+    end
+  end
+
+  describe 'regression: vanity CTA heading leak' do
+    subject(:urls) do
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper.each.to_a.map { |article| article[:url].to_s }
+    end
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="updates">
+            <article>
+              <h2><a href="/join">Subscribe</a></h2>
+              <p>Membership offer and account benefits.</p>
+            </article>
+            <article>
+              <h2><a href="/news/launch-update">Launch update</a></h2>
+              <time datetime="2026-03-28"></time>
+              <p>Release notes and rollout guidance for the platform update.</p>
+            </article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    it 'filters utility CTA headings on vanity routes even when they are heading anchors', :aggregate_failures do
+      expect(urls).to contain_exactly('https://example.com/news/launch-update')
+    end
+  end
+
   describe 'ordering and deduplication' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
@@ -365,6 +466,186 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(urls.uniq).to eq(urls)
       expect(story_a[:published_at]&.iso8601).to eq('2026-03-28T08:30:00+00:00')
       expect(story_a[:description]).to include('Useful context paragraph')
+    end
+  end
+
+  describe 'dedupe comparator precedence' do
+    subject(:scraper) { described_class.new(Nokogiri::HTML.parse('<html><body></body></html>'), url: 'https://example.com') }
+
+    let(:container) { Nokogiri::HTML.fragment('<article><a href="/news/story">Story</a></article>').at_css('article') }
+    let(:anchor) { container.at_css('a') }
+    let(:base_article) do
+      {
+        title: 'Story',
+        url: Html2rss::Url.from_relative('/news/story', 'https://example.com'),
+        image: nil,
+        description: 'Short summary',
+        published_at: nil,
+        categories: [],
+        enclosures: []
+      }
+    end
+    let(:entry_builder) do
+      lambda do |quality_score:, junk_score:, final_score:, position:, article:|
+        described_class::Entry.new(
+          container:,
+          selected_anchor: anchor,
+          destination_facts: nil,
+          quality_score:,
+          junk_score:,
+          final_score:,
+          position:,
+          article:
+        )
+      end
+    end
+
+    it 'prefers higher final_score over richer payload' do # rubocop:disable RSpec/ExampleLength
+      higher_score = entry_builder.call(
+        quality_score: 80,
+        junk_score: 10,
+        final_score: 70,
+        position: 1,
+        article: base_article
+      )
+      richer_payload = entry_builder.call(
+        quality_score: 65,
+        junk_score: 10,
+        final_score: 55,
+        position: 0,
+        article: base_article.merge(
+          image: 'https://example.com/story.png',
+          description: 'Much longer summary with additional supporting context for comparison',
+          categories: %w[news launch],
+          enclosures: [{ url: 'https://example.com/audio.mp3' }]
+        )
+      )
+
+      expect(scraper.instance_eval { stronger_entry?(higher_score, richer_payload) }).to be(true)
+    end
+
+    it 'prefers higher quality_score when final_score is tied' do # rubocop:disable RSpec/ExampleLength
+      higher_quality = entry_builder.call(
+        quality_score: 80,
+        junk_score: 20,
+        final_score: 60,
+        position: 1,
+        article: base_article
+      )
+      richer_payload = entry_builder.call(
+        quality_score: 70,
+        junk_score: 10,
+        final_score: 60,
+        position: 0,
+        article: base_article.merge(
+          image: 'https://example.com/story.png',
+          description: 'Longer summary with more details for payload richness',
+          categories: %w[news launch]
+        )
+      )
+
+      expect(scraper.instance_eval { stronger_entry?(higher_quality, richer_payload) }).to be(true)
+    end
+
+    it 'prefers richer payload when final_score and quality_score are tied' do # rubocop:disable RSpec/ExampleLength
+      leaner = entry_builder.call(
+        quality_score: 75,
+        junk_score: 10,
+        final_score: 65,
+        position: 1,
+        article: base_article
+      )
+      richer = entry_builder.call(
+        quality_score: 75,
+        junk_score: 10,
+        final_score: 65,
+        position: 2,
+        article: base_article.merge(
+          image: 'https://example.com/story.png',
+          description: 'Longer summary with materially richer extraction data for the duplicate',
+          published_at: Time.utc(2026, 3, 28),
+          categories: %w[news launch],
+          enclosures: [{ url: 'https://example.com/audio.mp3' }]
+        )
+      )
+
+      expect(scraper.instance_eval { stronger_entry?(richer, leaner) }).to be(true)
+    end
+
+    it 'falls back to DOM position on an exact tie' do # rubocop:disable RSpec/ExampleLength
+      earlier = entry_builder.call(
+        quality_score: 75,
+        junk_score: 10,
+        final_score: 65,
+        position: 0,
+        article: base_article
+      )
+      later = entry_builder.call(
+        quality_score: 75,
+        junk_score: 10,
+        final_score: 65,
+        position: 1,
+        article: base_article
+      )
+
+      expect(scraper.instance_eval { stronger_entry?(earlier, later) }).to be(true)
+    end
+  end
+
+  describe 'dedupe perf shape' do
+    subject(:scraper) { described_class.new(parsed_body, url: 'https://example.com') }
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="list">
+            <article><h2><a href="/news/story-1">Story 1</a></h2><time datetime="2026-03-28"></time><p>Useful context for story one.</p></article>
+            <article><h2><a href="/news/story-2">Story 2</a></h2><time datetime="2026-03-28"></time><p>Useful context for story two.</p></article>
+            <article><h2><a href="/news/story-3">Story 3</a></h2><time datetime="2026-03-28"></time><p>Useful context for story three.</p></article>
+            <article><h2><a href="/news/story-4">Story 4</a></h2><time datetime="2026-03-28"></time><p>Useful context for story four.</p></article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    let(:container) do
+      instance_double(Nokogiri::XML::Node).tap do |node|
+        allow(node).to receive(:ancestors).and_raise('cross-group nested comparison executed')
+      end
+    end
+    let(:entries) do
+      Array.new(4) do |index|
+        described_class::Entry.new(
+          container:,
+          selected_anchor: nil,
+          destination_facts: nil,
+          quality_score: 70,
+          junk_score: 10,
+          final_score: 60,
+          position: index,
+          article: {
+            title: "Story #{index}",
+            url: Html2rss::Url.from_relative("/news/story-#{index}", 'https://example.com'),
+            image: nil,
+            description: 'Short summary',
+            published_at: nil,
+            categories: [],
+            enclosures: []
+          }
+        )
+      end
+    end
+
+    it 'skips nested-container checks for single-entry destination groups', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      deduplicated = nil
+
+      expect do
+        deduplicated = scraper.instance_exec(entries) do |candidate_entries|
+          deduplicate_by_destination(candidate_entries)
+        end
+      end.not_to raise_error
+
+      expect(deduplicated.size).to eq(4)
     end
   end
 end

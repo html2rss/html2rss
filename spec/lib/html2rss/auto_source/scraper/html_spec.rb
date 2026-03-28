@@ -145,6 +145,61 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         expect(articles.to_a).to eq([])
       end
     end
+
+    context 'with repeated taxonomy and vanity noise' do
+      let(:html) do
+        <<~HTML
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <ul class="taxonomy-list">
+                <li><a href="/topics/markets">Markets</a></li>
+                <li><a href="/topics/security">Security</a></li>
+                <li><a href="/topics/platform">Platform</a></li>
+                <li><a href="/topics/security/cloud">Cloud</a></li>
+                <li><a href="/topics/security/cloud-security-updates">Cloud security updates</a></li>
+              </ul>
+              <section class="cards">
+                <div class="card">
+                  <h2>Launch update</h2>
+                  <p>Shipping details for operators and customers.</p>
+                  <a href="/news/launch-update">Read more</a>
+                </div>
+                <div class="card">
+                  <h2>API rollout</h2>
+                  <p>Migration notes and support timelines.</p>
+                  <a href="/news/api-rollout">Read more</a>
+                </div>
+                <div class="card">
+                  <h2>Subscribe</h2>
+                  <p>Membership plans and pricing.</p>
+                  <a href="/join">Subscribe</a>
+                </div>
+                <div class="card">
+                  <h2>Security notifications</h2>
+                  <p>Account preferences and notification controls.</p>
+                  <a href="/account/settings/security-notifications">Manage notifications</a>
+                </div>
+              </section>
+            </body>
+          </html>
+        HTML
+      end
+
+      it 'reduces utility and taxonomy contamination in fallback extraction', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        urls = articles.to_a.map { |article| article[:url].to_s }
+
+        expect(urls).to include('http://example.com/news/launch-update')
+        expect(urls).to include('http://example.com/news/api-rollout')
+        expect(urls).not_to include('http://example.com/topics/markets')
+        expect(urls).not_to include('http://example.com/topics/security')
+        expect(urls).not_to include('http://example.com/topics/platform')
+        expect(urls).not_to include('http://example.com/topics/security/cloud')
+        expect(urls).not_to include('http://example.com/topics/security/cloud-security-updates')
+        expect(urls).not_to include('http://example.com/account/settings/security-notifications')
+        expect(urls).not_to include('http://example.com/join')
+      end
+    end
   end
 
   describe '.simplify_xpath' do
