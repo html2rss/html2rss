@@ -10,8 +10,6 @@ auto_source:
       enabled: false
     html:
       enabled: false
-    rss_feed_detector:
-      enabled: false
 
 # Add additional selectors for extra data
 selectors:

@@ -22,8 +22,7 @@ module Html2rss
         Microdata,
         JsonState,
         SemanticHtml,
-        Html,
-        RssFeedDetector
+        Html
       ].freeze
 
       ##

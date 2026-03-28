@@ -36,8 +36,7 @@ RSpec.describe Html2rss::AutoSource do
               :scraper, :html, :minimum_selector_frequency
             ),
             use_top_selectors: described_class::DEFAULT_CONFIG.dig(:scraper, :html, :use_top_selectors)
-          },
-          rss_feed_detector: { enabled: false }
+          }
         }
       )
     end
