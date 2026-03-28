@@ -27,7 +27,6 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     end
 
     context 'when the document looks like an anti-bot interstitial' do
-      let(:error_hint) { /blocked surface likely \(anti-bot or interstitial\)/ }
       let(:parsed_body) do
         Nokogiri::HTML(
           '<html><head><title>Just a moment...</title></head>' \
@@ -35,9 +34,12 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         )
       end
 
-      it 'raises a blocked-surface categorized NoScraperFound error' do
+      it 'raises a blocked-surface categorized NoScraperFound error', :aggregate_failures do
         expect { described_class.from(parsed_body) }
-          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound, error_hint)
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
+            expect(error.category).to eq(:blocked_surface)
+            expect(error.message).to match(/blocked surface likely \(anti-bot or interstitial\)/)
+          }
       end
     end
 
@@ -48,9 +50,12 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         )
       end
 
-      it 'raises an app-shell categorized NoScraperFound error' do
+      it 'raises an app-shell categorized NoScraperFound error', :aggregate_failures do
         expect { described_class.from(parsed_body) }
-          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound, /app-shell surface detected/)
+          .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
+            expect(error.category).to eq(:app_shell)
+            expect(error.message).to match(/app-shell surface detected/)
+          }
       end
     end
   end

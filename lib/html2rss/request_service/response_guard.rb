@@ -5,23 +5,6 @@ module Html2rss
     ##
     # Enforces response-size limits before parsing.
     class ResponseGuard
-      INTERSTITIAL_SIGNATURES = [
-        {
-          key: :cloudflare_interstitial,
-          min_matches: 2,
-          patterns: [
-            %r{<title>\s*just a moment\.\.\.\s*</title>}i,
-            /checking your browser before accessing/i,
-            /please (?:enable|turn on) javascript and cookies/i,
-            %r{cdn-cgi/challenge-platform}i,
-            /cloudflare ray id/i
-          ],
-          message: 'Blocked surface detected: Cloudflare anti-bot interstitial page. ' \
-                   'Retry with --strategy browserless, try a more specific public listing URL, ' \
-                   'or run from an environment that can complete anti-bot checks.'
-        }
-      ].freeze
-
       ##
       # @param policy [Policy] request policy that defines byte ceilings
       def initialize(policy:)
@@ -62,15 +45,10 @@ module Html2rss
       attr_reader :policy
 
       def raise_if_blocked_surface!(body)
-        signature = INTERSTITIAL_SIGNATURES.find { |candidate| interstitial_signature_match?(body, candidate) }
+        signature = Html2rss::BlockedSurface.interstitial_signature_for(body)
         return unless signature
 
         raise BlockedSurfaceDetected, signature.fetch(:message)
-      end
-
-      def interstitial_signature_match?(body, signature)
-        matches = signature.fetch(:patterns).count { |pattern| pattern.match?(body) }
-        matches >= signature.fetch(:min_matches, 1)
       end
 
       def raise_if_too_large!(bytes, limit)

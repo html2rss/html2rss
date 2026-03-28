@@ -16,14 +16,6 @@ module Html2rss
     # be unsafe or unsupported.
     #
     module Scraper
-      BLOCKED_SURFACE_PATTERNS = [
-        %r{<title>\s*just a moment\.\.\.\s*</title>}i,
-        /checking your browser before accessing/i,
-        /please (?:enable|turn on) javascript and cookies/i,
-        %r{cdn-cgi/challenge-platform}i,
-        /cloudflare ray id/i
-      ].freeze
-      BLOCKED_SURFACE_MIN_MATCHES = 2
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       APP_SHELL_MAX_ANCHORS = 2
       APP_SHELL_MAX_VISIBLE_TEXT_LENGTH = 220
@@ -135,9 +127,7 @@ module Html2rss
       private_class_method :classify_no_scraper_surface
 
       def self.blocked_surface?(parsed_body)
-        html = parsed_body.to_html
-        matches = BLOCKED_SURFACE_PATTERNS.count { |pattern| pattern.match?(html) }
-        matches >= BLOCKED_SURFACE_MIN_MATCHES
+        Html2rss::BlockedSurface.interstitial?(parsed_body.to_html)
       end
       private_class_method :blocked_surface?
 
