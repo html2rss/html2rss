@@ -16,7 +16,7 @@ module Html2rss
   # @see Html2rss::AutoSource::Scraper::Schema
   # @see Html2rss::AutoSource::Scraper::SemanticHtml
   # @see Html2rss::AutoSource::Scraper::Html
-  class AutoSource # rubocop:disable Metrics/ClassLength
+  class AutoSource
     DEFAULT_CONFIG = {
       scraper: {
         wordpress_api: {
@@ -130,7 +130,6 @@ module Html2rss
       articles = Parallel.flat_map(scraper_instances, in_threads: thread_count_for(scraper_instances)) do |instance|
         run_scraper(instance)
       end
-      articles = suppress_feed_discovery_articles!(articles)
       Cleanup.call(articles, url:, **cleanup_options)
     end
 
@@ -147,13 +146,6 @@ module Html2rss
     def thread_count_for(scrapers)
       count = [scrapers.size, Parallel.processor_count].min
       count.zero? ? 1 : count
-    end
-
-    def suppress_feed_discovery_articles!(articles)
-      content_articles = articles.reject { |article| article.scraper == Html2rss::AutoSource::Scraper::RssFeedDetector }
-      return articles if content_articles.empty? || content_articles.length == articles.length
-
-      content_articles
     end
   end
 end
