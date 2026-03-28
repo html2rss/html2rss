@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html2rss (0.17.0)
+    html2rss (0.18.0)
       addressable (~> 2.7)
       brotli
       dry-validation
@@ -286,7 +286,7 @@ CHECKSUMS
   faraday-follow_redirects (0.5.0) sha256=5cde93c894b30943a5d2b93c2fe9284216a6b756f7af406a1e55f211d97d10ad
   faraday-gzip (3.0.4) sha256=3553d0e3805c060a680f1c2f47d6768482df1f68134c1233837f243f2e4051dc
   faraday-net_http (3.4.2) sha256=f147758260d3526939bf57ecf911682f94926a3666502e24c69992765875906c
-  html2rss (0.17.0)
+  html2rss (0.18.0)
   io-console (0.8.2) sha256=d6e3ae7a7cc7574f4b8893b4fca2162e57a825b223a177b7afa236c5ef9814cc
   irb (1.16.0) sha256=2abe56c9ac947cdcb2f150572904ba798c1e93c890c256f8429981a7675b0806
   json (2.19.2) sha256=e7e1bd318b2c37c4ceee2444841c86539bc462e81f40d134cf97826cb14e83cf
@@ -356,4 +356,4 @@ CHECKSUMS
   zlib (3.2.2) sha256=908e61263f99c1371b5422581e2d6663bd37c6b04ae13b5f8cb10b0d09379f40
 
 BUNDLED WITH
-  4.0.3
+  4.0.9
