@@ -81,7 +81,7 @@ module Html2rss
             end.values
           end
 
-          def build_facts(anchor, heading, heading_text) # rubocop:disable Metrics/MethodLength
+          def build_facts(anchor, heading, heading_text) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
             text = visible_text(anchor)
             meaningful_text = meaningful_text?(text)
             ancestors = anchor.ancestors.to_a
@@ -90,9 +90,10 @@ module Html2rss
 
             segments = url.path_segments
             content_like_destination = content_like_destination?(segments)
-            return if ineligible_anchor?(anchor, ancestors, text, meaningful_text, segments)
-
             heading_anchor = heading_anchor?(ancestors, heading)
+            return if suppress_utility_text?(text, heading_anchor:, content_like_destination:)
+            return if ineligible_anchor?(anchor, ancestors, meaningful_text, segments)
+
             heading_text_match = heading_text_match?(heading_text, text, meaningful_text)
             return unless heading_anchor || content_like_anchor?(meaningful_text, content_like_destination)
 
@@ -110,9 +111,8 @@ module Html2rss
             )
           end
 
-          def ineligible_anchor?(anchor, ancestors, text, meaningful_text, segments)
+          def ineligible_anchor?(anchor, ancestors, meaningful_text, segments)
             utility_destination?(segments) ||
-              utility_text?(text) ||
               icon_only_anchor?(anchor, meaningful_text) ||
               utility_landmark_anchor?(ancestors)
           end
@@ -181,6 +181,10 @@ module Html2rss
             text.match?(
               /\A(about|contact|log in|login|sign up|signup|share|comments?|view all|recommended for you|subscribe)\b/i
             )
+          end
+
+          def suppress_utility_text?(text, heading_anchor:, content_like_destination:)
+            utility_text?(text) && !heading_anchor && !content_like_destination
           end
 
           def utility_landmark_anchor?(ancestors)
