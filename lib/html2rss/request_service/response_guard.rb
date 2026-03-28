@@ -33,6 +33,7 @@ module Html2rss
       # @param body [String, nil] final response body
       # @return [void]
       # @raise [ResponseTooLarge] if the final body exceeds configured limits
+      # @raise [BlockedSurfaceDetected] if the body matches known anti-bot interstitial signatures
       def inspect_body!(body)
         normalized_body = body.to_s
         size = normalized_body.bytesize

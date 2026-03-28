@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
 module Html2rss
+  ##
   # Shared anti-bot/interstitial signatures used by request and auto-source flows.
+  #
+  # This module centralizes signature matching so request-time guards and
+  # auto-source surface classification stay consistent.
   module BlockedSurface
     INTERSTITIAL_SIGNATURES = [
       {
@@ -20,11 +24,19 @@ module Html2rss
       }
     ].freeze
 
+    ##
+    # Returns the first matching interstitial signature for the provided body.
+    #
+    # @param body [String, nil] response body candidate
+    # @return [Hash, nil] signature hash when matched, otherwise nil
     def self.interstitial_signature_for(body)
       normalized_body = body.to_s
       INTERSTITIAL_SIGNATURES.find { |signature| interstitial_signature_match?(normalized_body, signature) }
     end
 
+    ##
+    # @param body [String, nil] response body candidate
+    # @return [Boolean] true when body matches a known interstitial signature
     def self.interstitial?(body)
       !interstitial_signature_for(body).nil?
     end
