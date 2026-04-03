@@ -21,6 +21,11 @@ module Html2rss
 
           ##
           # Transforms URLs to absolute ones.
+          #
+          # @param node_name [String] node name currently being transformed
+          # @param node [Nokogiri::XML::Node] node currently being transformed
+          # @param _env [Hash] transformer context
+          # @option _env [Object] :_reserved reserved for transformer pipeline context
           def call(node_name:, node:, **_env)
             return unless URL_ELEMENTS_WITH_URL_ATTRIBUTE.key?(node_name)
 

@@ -24,13 +24,12 @@ module Html2rss
       end
 
       ##
-      # NOTE: Unlike BrowserlessStrategy, Faraday does not expose the remote IP after connect.
-      # SSRF protection here is pre-connection only (DNS resolution via Policy).
-      # A DNS rebinding attack between resolution and connect cannot be caught at this layer.
-      #
       # Executes a request with runtime policy enforcement.
       #
       # @return [Response] normalized request response
+      # @note Unlike BrowserlessStrategy, Faraday does not expose the remote IP after connect.
+      #   SSRF protection here is pre-connection only (DNS resolution via Policy).
+      #   A DNS rebinding attack between resolution and connect cannot be caught at this layer.
       def execute
         deadline = request_deadline
         response_guard, response = perform_request(deadline:)

@@ -12,7 +12,7 @@ module Html2rss
       ##
       # Returns the exported configuration JSON Schema.
       #
-      # @return [Hash<String, Object>] JSON Schema represented as a Ruby hash
+      # @return [Hash{String => Object}] JSON Schema represented as a Ruby hash
       def json_schema
         load_json_schema_extension!
         Builder.call

@@ -16,7 +16,18 @@ module Html2rss
       PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
       DEDUP_FINGERPRINT_SEPARATOR = '#!/'
 
-      # @param options [Hash<Symbol, String>]
+      # @param options [Hash{Symbol => String}]
+      # @option options [String] :id stable article identifier
+      # @option options [String] :title article title
+      # @option options [String] :description article description/content
+      # @option options [String, Html2rss::Url] :url canonical article URL
+      # @option options [String, Html2rss::Url] :image image URL for fallback enclosure rendering
+      # @option options [String] :author author name
+      # @option options [String] :guid explicit GUID override
+      # @option options [String, Time, DateTime] :published_at publication timestamp
+      # @option options [Array<Hash{Symbol => Object}>] :enclosures enclosure attribute hashes
+      # @option options [Array<String>] :categories category labels
+      # @option options [Class] :scraper scraper class that produced the article
       def initialize(**options)
         @to_h = {}
         options.each_pair { |key, value| @to_h[key] = value.freeze if value }

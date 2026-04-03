@@ -26,7 +26,7 @@ module Html2rss
       # @return [String] the raw body of the response
       attr_reader :body
 
-      # @return [Hash<String, Object>] the headers of the response
+      # @return [Hash{String => Object}] the headers of the response
       attr_reader :headers
 
       # @return [Integer, nil] the HTTP status code when known

@@ -16,7 +16,6 @@ module Html2rss
     #     image: "https://example.com/image.jpg"
     #   )
     #   description = builder.call
-    #
     class DescriptionBuilder
       # Removes the specified pattern from the beginning of the text
       # within a given range if the pattern occurs before the range's end.

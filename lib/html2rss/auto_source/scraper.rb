@@ -14,7 +14,6 @@ module Html2rss
     # Scrapers run in parallel threads, so implementations must avoid shared
     # mutable state and degrade by returning no articles when a follow-up would
     # be unsafe or unsupported.
-    #
     module Scraper
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       APP_SHELL_MAX_ANCHORS = 2
@@ -66,6 +65,12 @@ module Html2rss
       # Returns an array of scraper classes that claim to find articles in the parsed body.
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
       # @param opts [Hash] The options hash.
+      # @option opts [Hash] :wordpress_api scraper toggle and configuration
+      # @option opts [Hash] :schema scraper toggle and configuration
+      # @option opts [Hash] :microdata scraper toggle and configuration
+      # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :semantic_html scraper toggle and configuration
+      # @option opts [Hash] :html scraper toggle and configuration
       # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
       def self.from(parsed_body, opts = Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
         scrapers = SCRAPERS.select { |scraper| opts.dig(scraper.options_key, :enabled) }
@@ -81,6 +86,12 @@ module Html2rss
       # @param url [String, Html2rss::Url] The page url.
       # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
       # @param opts [Hash] The options hash.
+      # @option opts [Hash] :wordpress_api scraper toggle and configuration
+      # @option opts [Hash] :schema scraper toggle and configuration
+      # @option opts [Hash] :microdata scraper toggle and configuration
+      # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :semantic_html scraper toggle and configuration
+      # @option opts [Hash] :html scraper toggle and configuration
       # @return [Array<Object>] An array of scraper instances that can handle the parsed body.
       #
       # `instances_for` is the main entrypoint for extraction. It lets a scraper

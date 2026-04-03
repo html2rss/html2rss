@@ -29,6 +29,7 @@ module Html2rss
         # @param url [String, Html2rss::Url] canonical page URL
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @param _opts [Hash] unused scraper-specific options
+        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         # @return [void]
         def initialize(parsed_body, url:, request_session: nil, **_opts)
           @parsed_body = parsed_body

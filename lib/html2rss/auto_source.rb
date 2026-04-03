@@ -80,6 +80,8 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
     # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+    # @option opts [Hash] :scraper scraper configuration map
+    # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
     def initialize(response, opts = DEFAULT_CONFIG, request_session: nil)
       @parsed_body = response.parsed_body

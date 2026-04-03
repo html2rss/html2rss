@@ -20,7 +20,7 @@ module Html2rss
           end
 
           ##
-          # @param query [Hash<String, String>] scoped query params for the posts endpoint
+          # @param query [Hash{String => String}] scoped query params for the posts endpoint
           # @param fetchable [Boolean] whether a posts follow-up is safe for this page
           # @param reason [Symbol] classification of the resolved page scope
           def initialize(query:, fetchable:, reason:)
@@ -31,7 +31,7 @@ module Html2rss
           end
 
           ##
-          # @return [Hash<String, String>] query params to apply to the posts request
+          # @return [Hash{String => String}] query params to apply to the posts request
           attr_reader :query
 
           ##

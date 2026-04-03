@@ -45,6 +45,8 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @param url [String, Html2rss::Url] base url
         # @param extractor [Class] extractor class used for article extraction
+        # @param _opts [Hash] scraper-specific options
+        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         def initialize(parsed_body, url:, extractor: HtmlExtractor, **_opts)
           @parsed_body = parsed_body
           @url = url

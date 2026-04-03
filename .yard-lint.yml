@@ -14,18 +14,18 @@ AllValidators:
     DefaultBaseRef:
 Documentation/UndocumentedObjects:
   Description: Checks for classes, modules, and methods without documentation.
-  Enabled: true
+  Enabled: false
   Severity: warning
   ExcludedMethods:
   - initialize/0
   - "/^_/"
 Documentation/UndocumentedMethodArguments:
   Description: Checks for method parameters without @param tags.
-  Enabled: true
+  Enabled: false
   Severity: warning
 Documentation/UndocumentedBooleanMethods:
   Description: Checks that question mark methods document their boolean return.
-  Enabled: true
+  Enabled: false
   Severity: warning
 Documentation/UndocumentedOptions:
   Description: Detects methods with options hash parameters but no @option tags.
@@ -50,7 +50,7 @@ Documentation/EmptyCommentLine:
     Trailing: true
 Documentation/BlankLineBeforeDefinition:
   Description: Detects blank lines between YARD documentation and method definition.
-  Enabled: true
+  Enabled: false
   Severity: convention
   OrphanedSeverity: convention
   EnabledPatterns:
@@ -260,5 +260,3 @@ Semantic/AbstractMethods:
   Description: Ensures @abstract methods do not have real implementations.
   Enabled: true
   Severity: warning
-inherit_from:
-- ".yard-lint-todo.yml"

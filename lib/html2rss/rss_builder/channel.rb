@@ -11,9 +11,8 @@ module Html2rss
       DEFAULT_DESCRIPTION_TEMPLATE = 'Latest items from %<url>s'
 
       ##
-      #
       # @param response [Html2rss::RequestService::Response]
-      # @param overrides [Hash<Symbol, String>] - Optional, overrides for any channel attribute
+      # @param overrides [Hash{Symbol => String}] optional overrides for channel attributes
       def initialize(response, overrides: {})
         @response = response
         @overrides = overrides

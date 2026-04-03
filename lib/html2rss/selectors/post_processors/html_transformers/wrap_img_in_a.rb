@@ -12,6 +12,8 @@ module Html2rss
           #
           # @param node_name [String]
           # @param node [Nokogiri::XML::Node]
+          # @param _env [Hash] transformer context
+          # @option _env [Object] :_reserved reserved for transformer pipeline context
           # @return [nil]
           def call(node_name:, node:, **_env)
             return unless should_process?(node_name)

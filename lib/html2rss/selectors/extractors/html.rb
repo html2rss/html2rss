@@ -31,6 +31,7 @@ module Html2rss
         #
         # @param xml [Nokogiri::XML::Element]
         # @param options [Options]
+        # @option options [String] :selector CSS selector used to find the element
         def initialize(xml, options)
           @element = Extractors.element(xml, options.selector)
         end

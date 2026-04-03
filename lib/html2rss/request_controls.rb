@@ -8,7 +8,7 @@ module Html2rss
     REQUEST_KEYS = %i[max_redirects max_requests].freeze
 
     ##
-    # @param config [Hash<Symbol, Object>, Hash<String, Object>] raw config input
+    # @param config [Hash{Symbol => Object}, Hash{String => Object}] raw config input
     # @return [RequestControls] request controls extracted from the config hash
     def self.from_config(config)
       new(
@@ -97,8 +97,8 @@ module Html2rss
     ##
     # Applies only explicitly set controls to the provided config hash.
     #
-    # @param config [Hash<Symbol, Object>] mutable config hash
-    # @return [Hash<Symbol, Object>] the same hash with explicit controls written
+    # @param config [Hash{Symbol => Object}] mutable config hash
+    # @return [Hash{Symbol => Object}] the same hash with explicit controls written
     def apply_to(config)
       config[:strategy] = strategy if explicit?(:strategy)
       apply_request_value(config, :max_redirects, max_redirects)

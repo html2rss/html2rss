@@ -36,7 +36,7 @@ module Html2rss
           selector ? xml.css(selector) : xml
         end
 
-        # @param attribute_options [Hash<Symbol, Object>]
+        # @param attribute_options [Hash{Symbol => Object}]
         #   Should contain at least `:extractor` (the name) and required options for that extractor.
         # @param xml [Nokogiri::XML::Document]
         # @return [Object] instance of the specified item extractor class

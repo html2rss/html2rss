@@ -90,7 +90,7 @@ module Html2rss
           ##
           # Extracts categories from a string by splitting on separators.
           #
-          # @param string [String] The string to process
+          # @param string [String] source string that may contain category delimiters
           # @return [Set<String>] Set of category strings
           def self.extract_string_categories(string)
             Set.new(string.split(/[,;|]/).map(&:strip).reject(&:empty?))

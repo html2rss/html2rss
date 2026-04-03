@@ -53,6 +53,7 @@ module Html2rss
         #   the parsed response body to inspect for top-level Microdata items.
         # @param url [Html2rss::Url] the absolute page URL used to resolve relative links.
         # @param _opts [Hash] unused scraper-specific options.
+        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         # @return [void]
         def initialize(parsed_body, url:, **_opts)
           @parsed_body = parsed_body

@@ -13,7 +13,7 @@ module Html2rss
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @param page_url [Html2rss::Url] canonical page URL
           # @param page_scope [Html2rss::AutoSource::Scraper::WordpressApi::PageScope] derived page scope
-          # @param posts_query [Hash<String, String>] query params for the posts request
+          # @param posts_query [Hash{String => String}] query params for the posts request
           # @param logger [Logger] logger used for operational warnings
           # @return [Html2rss::Url, nil] resolved posts endpoint or nil when unavailable
           def self.resolve(parsed_body:, page_url:, page_scope:, posts_query:, logger: Html2rss::Log)
@@ -24,7 +24,7 @@ module Html2rss
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @param page_url [Html2rss::Url] canonical page URL
           # @param page_scope [Html2rss::AutoSource::Scraper::WordpressApi::PageScope] derived page scope
-          # @param posts_query [Hash<String, String>] query params for the posts request
+          # @param posts_query [Hash{String => String}] query params for the posts request
           # @param logger [Logger] logger used for operational warnings
           def initialize(parsed_body:, page_url:, page_scope:, posts_query:, logger:)
             @parsed_body = parsed_body

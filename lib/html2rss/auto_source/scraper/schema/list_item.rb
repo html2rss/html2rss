@@ -5,7 +5,6 @@ module Html2rss
     module Scraper
       class Schema
         ##
-        #
         # @see https://schema.org/ListItem
         class ListItem < Thing
           def id =          (id = (schema_object.dig(:item, :@id) || super).to_s).empty? ? nil : id

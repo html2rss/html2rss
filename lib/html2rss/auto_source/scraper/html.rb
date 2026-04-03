@@ -53,6 +53,8 @@ module Html2rss
         # @param url [String] The base URL.
         # @param extractor [Class] The extractor class to handle article extraction.
         # @param opts [Hash] Additional options.
+        # @option opts [Integer] :minimum_selector_frequency minimum count before a selector is considered stable
+        # @option opts [Integer] :use_top_selectors number of top selectors to keep
         def initialize(parsed_body, url:, extractor: HtmlExtractor, **opts)
           @parsed_body = parsed_body
           @url = url

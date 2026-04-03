@@ -10,7 +10,7 @@ module Html2rss
       ##
       # Returns the exported JSON Schema for html2rss configuration.
       #
-      # @return [Hash<String, Object>] JSON Schema represented as a Ruby hash
+      # @return [Hash{String => Object}] JSON Schema represented as a Ruby hash
       def json_schema
         Schema.json_schema
       end
@@ -27,8 +27,8 @@ module Html2rss
       ##
       # Validates a configuration hash with the runtime validator.
       #
-      # @param config [Hash<Symbol, Object>] the configuration hash
-      # @param params [Hash<Symbol, Object>, Hash<String, Object>, nil] dynamic parameters for string formatting
+      # @param config [Hash{Symbol => Object}] the configuration hash
+      # @param params [Hash{Symbol => Object}, Hash{String => Object}, nil] dynamic parameters for string formatting
       # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
       def validate(config, params: UNSET)
         prepared_config = prepare_for_validation(resolve_effective_config(config, params:))
@@ -55,7 +55,7 @@ module Html2rss
       # @param file [String] the YAML file to load
       # @param feed_name [String, nil] optional feed name for multi-feed files
       # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
-      # @param params [Hash<Symbol, Object>, Hash<String, Object>, nil] dynamic parameters for string formatting
+      # @param params [Hash{Symbol => Object}, Hash{String => Object}, nil] dynamic parameters for string formatting
       # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
       def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
         validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
@@ -69,7 +69,7 @@ module Html2rss
       # @param file [String] the YAML file to load.
       # @param feed_name [String, nil] the feed name when using multiple feeds.
       # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
-      # @return [Hash<Symbol, Object>] the configuration hash.
+      # @return [Hash{Symbol => Object}] the configuration hash.
       # @raise [ArgumentError] if the file doesn't exist or feed is not found.
       # rubocop:disable Metrics/MethodLength
       def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
@@ -97,8 +97,8 @@ module Html2rss
       # Processes the provided configuration hash, applying dynamic parameters if given,
       # and returns a new configuration object.
       #
-      # @param config [Hash<Symbol, Object>] the configuration hash.
-      # @param params [Hash<Symbol, Object>, Hash<String, Object>, nil] dynamic parameters for string formatting.
+      # @param config [Hash{Symbol => Object}] the configuration hash.
+      # @param params [Hash{Symbol => Object}, Hash{String => Object}, nil] dynamic parameters for string formatting.
       # @return [Html2rss::Config] the configuration object.
       def from_hash(config, params: UNSET)
         new(resolve_effective_config(config, params:))
@@ -110,7 +110,7 @@ module Html2rss
       # @param url [String] source page URL
       # @param items_selector [String, nil] optional selector hint for item extraction
       # @param request_controls [Html2rss::RequestControls, nil] explicit request controls to write
-      # @return [Hash<Symbol, Object>] feed config hash ready for {from_hash}
+      # @return [Hash{Symbol => Object}] feed config hash ready for {from_hash}
       def auto_source_config(url:, items_selector: nil, request_controls: nil)
         config = {
           channel: default_config[:channel].merge(url:),
@@ -127,7 +127,7 @@ module Html2rss
       ##
       # Provides a default configuration.
       #
-      # @return [Hash<Symbol, Object>] a hash with default configuration values.
+      # @return [Hash{Symbol => Object}] a hash with default configuration values.
       def default_config
         {
           strategy: RequestService.default_strategy_name,

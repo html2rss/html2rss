@@ -8,12 +8,10 @@ module Html2rss
     module Scraper
       ##
       # Scrapes articles from Schema.org objects, by looking for the objects in:
-
       # <script type="application/ld+json"> "schema" tags.
       #
-      # See:
-      # 1. https://schema.org/docs/full.html
-      # 2. https://developers.google.com/search/docs/appearance/structured-data/article#microdata
+      # @see https://schema.org/docs/full.html
+      # @see https://developers.google.com/search/docs/appearance/structured-data/article#microdata
       class Schema
         include Enumerable
 
@@ -81,6 +79,10 @@ module Html2rss
           end
         end
 
+        # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+        # @param url [String, Html2rss::Url] base page URL
+        # @param opts [Hash] scraper-specific options
+        # @option opts [Object] :_reserved reserved for future scraper-specific options
         def initialize(parsed_body, url:, **opts)
           @parsed_body = parsed_body
           @url = url

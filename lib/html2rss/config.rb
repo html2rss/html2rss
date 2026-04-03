@@ -19,7 +19,7 @@ module Html2rss
     #
     # Processes deprecated attributes, applies default values, and validates the configuration.
     #
-    # @param config [Hash<Symbol, Object>] the configuration hash.
+    # @param config [Hash{Symbol => Object}] the configuration hash.
     # @raise [InvalidConfig] if the configuration fails validation.
     def initialize(config)
       @request_controls = RequestControls.from_config(config)
@@ -66,8 +66,8 @@ module Html2rss
     # Normalizes raw config input before validation.
     class Preparer
       ##
-      # @param config [Hash<Symbol, Object>] raw config input
-      # @return [Hash<Symbol, Object>] config with defaults and deprecations applied
+      # @param config [Hash{Symbol => Object}] raw config input
+      # @return [Hash{Symbol => Object}] config with defaults and deprecations applied
       def call(config)
         config = config.dup if config.frozen?
 

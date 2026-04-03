@@ -25,7 +25,7 @@ module Html2rss
         # @param value [Object] the value to check
         # @param types [Array<Class>, Class] the expected type(s)
         # @param name [String] the name of the option being checked
-        # @param context [Selectors::Context] the context
+        # @param context [Selectors::Context] call-site context used for richer validation errors
         # @raise [InvalidType] if the value is not of the expected type(s)
         def self.assert_type(value, types = [], name, context:)
           return if Array(types).any? { |type| value.is_a?(type) }
@@ -49,7 +49,7 @@ module Html2rss
         # Initializes the post processor
         #
         # @param value [Object] the value to be processed
-        # @param context [Selectors::Context] the context
+        # @param context [Selectors::Context] runtime selector context and options
         def initialize(value, context)
           klass = self.class
           # TODO: get rid of Hash

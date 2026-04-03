@@ -26,7 +26,7 @@ module Html2rss
   #
   # @param file [String] path to the YAML file
   # @param feed_name [String, nil] optional feed name inside a multi-feed config
-  # @return [Hash<Symbol, Object>] loaded configuration hash
+  # @return [Hash{Symbol => Object}] loaded configuration hash
   def self.config_from_yaml_file(file, feed_name = nil)
     Config.load_yaml(file, feed_name)
   end
@@ -34,7 +34,7 @@ module Html2rss
   ##
   # Returns an RSS object generated from the provided configuration.
   #
-  # @param raw_config [Hash<Symbol, Object>] feed configuration
+  # @param raw_config [Hash{Symbol => Object}] feed configuration
   # @return [RSS::Rss] generated RSS feed
   def self.feed(raw_config)
     run_pipeline(raw_config) do |response:, config:, articles:|
@@ -45,7 +45,7 @@ module Html2rss
   ##
   # Returns a JSONFeed 1.1 hash generated from the provided configuration.
   #
-  # @param raw_config [Hash<Symbol, Object>] feed configuration
+  # @param raw_config [Hash{Symbol => Object}] feed configuration
   # @return [Hash] JSONFeed-compliant hash
   def self.json_feed(raw_config)
     run_pipeline(raw_config) do |response:, config:, articles:|

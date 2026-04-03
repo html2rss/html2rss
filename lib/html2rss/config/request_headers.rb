@@ -37,7 +37,7 @@ module Html2rss
 
       class << self
         ##
-        # @return [Hash<String, String>] the unmodified default header set
+        # @return [Hash{String => String}] the unmodified default header set
         def browser_defaults
           DEFAULT_HEADERS.dup
         end
@@ -48,7 +48,7 @@ module Html2rss
         # @param headers [Hash, nil] caller provided headers
         # @param channel_language [String, nil] language defined on the channel
         # @param url [String] request URL used to infer the Host header
-        # @return [Hash<String, String>] normalized HTTP headers
+        # @return [Hash{String => String}] normalized HTTP headers
         def normalize(headers, channel_language:, url:)
           new(headers || {}, channel_language:, url:).to_h
         end
@@ -61,7 +61,7 @@ module Html2rss
       end
 
       ##
-      # @return [Hash<String, String>] normalized HTTP headers
+      # @return [Hash{String => String}] normalized HTTP headers
       def to_h
         defaults = DEFAULT_HEADERS.dup
         normalized = normalize_custom_headers(headers)
