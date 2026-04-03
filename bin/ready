@@ -4,4 +4,4 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-make -j 6 lint test schema validate-fixtures docs shellcheck
+make -j 6 lint yard-lint test schema validate-fixtures docs shellcheck
