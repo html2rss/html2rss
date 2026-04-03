@@ -3,10 +3,12 @@
 module Html2rss
   class Selectors
     module PostProcessors
+      # HTML tree transformers used by selectors post-processing.
       module HtmlTransformers
         ##
         # Transformer that converts relative URLs to absolute URLs within specified HTML elements.
         class TransformUrlsToAbsoluteOnes
+          # HTML tags and the URL-bearing attribute that should be normalized.
           URL_ELEMENTS_WITH_URL_ATTRIBUTE = {
             'a' => :href, # Visible link
             'img' => :src, # Visible image

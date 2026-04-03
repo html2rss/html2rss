@@ -10,17 +10,29 @@ module Html2rss
   class RequestService
     include Singleton
 
+    # Raised when an unknown request strategy is requested.
     class UnknownStrategy < Html2rss::Error; end
+    # Raised when a URL cannot be parsed or validated.
     class InvalidUrl < Html2rss::Error; end
+    # Raised when a URL uses an unsupported scheme.
     class UnsupportedUrlScheme < Html2rss::Error; end
+    # Raised when a response type cannot be parsed.
     class UnsupportedResponseContentType < Html2rss::Error; end
+    # Raised when request limits are exceeded.
     class RequestBudgetExceeded < Html2rss::Error; end
+    # Raised when policy denies private-network access.
     class PrivateNetworkDenied < Html2rss::Error; end
+    # Raised when cross-origin follow-up requests are denied.
     class CrossOriginFollowUpDenied < Html2rss::Error; end
+    # Raised when a response exceeds configured size limits.
     class ResponseTooLarge < Html2rss::Error; end
+    # Raised when blocked content surfaces are detected.
     class BlockedSurfaceDetected < Html2rss::Error; end
+    # Raised when a request times out.
     class RequestTimedOut < Html2rss::Error; end
+    # Raised when Browserless configuration is missing or invalid.
     class BrowserlessConfigurationError < Html2rss::Error; end
+    # Raised when Browserless cannot be reached.
     class BrowserlessConnectionFailed < Html2rss::Error; end
 
     class << self

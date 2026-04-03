@@ -20,10 +20,14 @@ module Html2rss
     # A context instance passed to item extractors and post-processors.
     Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true) # rubocop:disable Style/RedundantStructKeywordInit
 
+    # Default selectors options merged into user configuration.
     DEFAULT_CONFIG = { items: { enhance: true } }.freeze
 
+    # Selector key that points to the root list of article nodes.
     ITEMS_SELECTOR_KEY = :items
+    # Supported RSS item attributes extractable through selectors.
     ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
+    # Item attributes that require dedicated extraction logic.
     SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
 
     # Mapping of new attribute names to their legacy names for backward compatibility.

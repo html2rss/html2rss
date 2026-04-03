@@ -7,7 +7,9 @@ module Html2rss
     # 1. the HTML document's <head>.
     # 2. the HTTP response
     class Channel
+      # Fallback RSS ttl (in minutes) when no cache directives are present.
       DEFAULT_TTL_IN_MINUTES = 360
+      # Description template used when no explicit or discovered description exists.
       DEFAULT_DESCRIPTION_TEMPLATE = 'Latest items from %<url>s'
 
       ##
@@ -18,12 +20,15 @@ module Html2rss
         @overrides = overrides
       end
 
+      # @return [String] channel title derived from overrides, document title, or URL
       def title
         @title ||= fetch_title
       end
 
+      # @return [Html2rss::Url] canonical channel URL
       def url = @url ||= Html2rss::Url.from_absolute(@response.url)
 
+      # @return [String] channel description text
       def description
         return overrides[:description] unless overrides[:description].to_s.empty?
 
@@ -34,6 +39,7 @@ module Html2rss
         description
       end
 
+      # @return [Integer] cache time-to-live in minutes
       def ttl
         return overrides[:ttl] if overrides[:ttl]
 
@@ -44,6 +50,7 @@ module Html2rss
         DEFAULT_TTL_IN_MINUTES
       end
 
+      # @return [String, nil] ISO-like language code when available
       def language
         return overrides[:language] if overrides[:language]
 
@@ -56,6 +63,7 @@ module Html2rss
         parsed_body['lang'] || parsed_body.at_css('[lang]')&.[]('lang')
       end
 
+      # @return [String, nil] channel author metadata
       def author
         return overrides[:author] if overrides[:author]
 
@@ -64,8 +72,10 @@ module Html2rss
         parsed_body.at_css('meta[name="author"]')&.[]('content')
       end
 
+      # @return [String, Time] source last-modified timestamp or current time fallback
       def last_build_date = headers['last-modified'] || Time.now
 
+      # @return [Html2rss::Url, nil] channel image URL
       def image
         return overrides[:image] if overrides[:image]
 

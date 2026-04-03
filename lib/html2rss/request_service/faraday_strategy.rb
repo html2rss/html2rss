@@ -13,6 +13,7 @@ module Html2rss
       ##
       # Restores buffered streamed bytes so response middleware can process them.
       class StreamingBodyMiddleware < Faraday::Middleware
+        # Request-context key used to store streamed chunks before middleware completion.
         STREAM_BUFFER_KEY = :html2rss_stream_buffer
 
         # @param env [Faraday::Env] completed response environment

@@ -13,6 +13,7 @@ module Html2rss
         @type = type
       end
 
+      # @return [String] HTML video snippet for article rendering
       def to_html
         %(<video controls preload="none" referrerpolicy="no-referrer" crossorigin="anonymous" playsinline>
             <source src="#{escaped_url}" type="#{escaped_type}">

@@ -4,7 +4,9 @@ module Html2rss
   ##
   # Tracks runtime request controls together with whether each value was explicitly set.
   class RequestControls
+    # Request-control keys accepted at the top level of feed config.
     TOP_LEVEL_KEYS = %i[strategy].freeze
+    # Request-control keys accepted under the nested `request` config.
     REQUEST_KEYS = %i[max_redirects max_requests].freeze
 
     ##

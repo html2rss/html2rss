@@ -13,7 +13,9 @@ module Html2rss
       include Enumerable
       include Comparable
 
+      # Allowed article attributes accepted by the value object constructor.
       PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
+      # Separator used to build deterministic deduplication fingerprints.
       DEDUP_FINGERPRINT_SEPARATOR = '#!/'
 
       # @param options [Hash{Symbol => String}]
@@ -52,10 +54,13 @@ module Html2rss
         PROVIDED_KEYS.each { |key| yield(key, public_send(key)) }
       end
 
+      # @return [String, nil] stable article identifier
       def id = blank_string_to_nil(@to_h[:id])
 
+      # @return [String, nil] article title
       def title = blank_string_to_nil(@to_h[:title])
 
+      # @return [String] rendered article description
       def description
         @description ||= Rendering::DescriptionBuilder.new(
           base: @to_h[:description],
@@ -93,6 +98,7 @@ module Html2rss
         dedup_from_url || dedup_from_id || dedup_from_guid || hash
       end
 
+      # @return [Array<Html2rss::RssBuilder::Enclosure>] normalized enclosure objects
       def enclosures
         @enclosures ||= Array(@to_h[:enclosures])
                         .map { |enclosure| Html2rss::RssBuilder::Enclosure.new(**enclosure) }
@@ -112,6 +118,7 @@ module Html2rss
         end
       end
 
+      # @return [Array<String>] normalized, unique category names
       def categories
         @categories ||= @to_h[:categories].dup.to_a.tap do |categories|
           categories.map! { |category| category.to_s.strip }
@@ -130,6 +137,7 @@ module Html2rss
         nil
       end
 
+      # @return [Class, nil] scraper class that produced this article
       def scraper
         @to_h[:scraper]
       end

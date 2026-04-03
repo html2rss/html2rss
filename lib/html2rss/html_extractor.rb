@@ -5,10 +5,14 @@ module Html2rss
   # HtmlExtractor is responsible for extracting details (headline, url, images, etc.)
   # from an article_tag.
   class HtmlExtractor
+    # Tags ignored when extracting visible text content from article containers.
     INVISIBLE_CONTENT_TAGS = %w[svg script noscript style template].to_set.freeze
+    # Heading tags used to prioritize title extraction.
     HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
+    # Selector used to derive non-headline description nodes.
     NON_HEADLINE_SELECTOR = (HEADING_TAGS.map { |tag| ":not(#{tag})" } + INVISIBLE_CONTENT_TAGS.to_a).freeze
 
+    # Anchor selector used to identify the canonical article link element.
     MAIN_ANCHOR_SELECTOR = begin
       buf = +'a[href]:not([href=""])'
       %w[# javascript: mailto: tel: file:// sms: data:].each do |prefix|
@@ -56,6 +60,7 @@ module Html2rss
       @selected_anchor = selected_anchor
     end
 
+    # @return [Hash{Symbol => Object}] extracted article attributes
     def call
       {
         title: extract_title,

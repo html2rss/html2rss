@@ -13,6 +13,7 @@ module Html2rss
         @title = title
       end
 
+      # @return [String] HTML image snippet for article rendering
       def to_html
         %(<img src="#{@url}"
               alt="#{escaped_title}"

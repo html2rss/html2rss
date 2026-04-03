@@ -25,6 +25,7 @@ module Html2rss
 
     # Regular expression for basic URI format validation
     URI_REGEXP = Addressable::URI::URIREGEX
+    # Schemes accepted by channel URL validation.
     SUPPORTED_SCHEMES = %w[http https].to_set.freeze
 
     ##
@@ -122,14 +123,28 @@ module Html2rss
       freeze
     end
 
-    # Delegate common URI operations to the underlying URI
+    # @return [String] normalized URL string
     def to_s = @uri.to_s
+
+    # @return [String, nil] URI scheme, for example `http` or `https`
     def scheme = @uri.scheme
+
+    # @return [String, nil] URI host component
     def host = @uri.host
+
+    # @return [Integer, nil] URI port component
     def port = @uri.port
+
+    # @return [String, nil] URI path component
     def path = @uri.path
+
+    # @return [String, nil] URI query string without leading `?`
     def query = @uri.query
+
+    # @return [String, nil] URI fragment without leading `#`
     def fragment = @uri.fragment
+
+    # @return [Boolean] whether the URL includes scheme and host
     def absolute? = @uri.absolute?
 
     ##

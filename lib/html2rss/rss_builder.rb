@@ -53,6 +53,7 @@ module Html2rss
       @stylesheets = stylesheets
     end
 
+    # @return [RSS::Rss] RSS 2.0 document instance
     def call
       RSS::Maker.make('2.0') do |maker|
         Stylesheet.add(maker, stylesheets)

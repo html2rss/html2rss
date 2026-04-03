@@ -35,6 +35,7 @@ module Html2rss
         end
       end
 
+      # Allowed stylesheet MIME types for RSS processing instructions.
       TYPES = ['text/css', 'text/xsl'].to_set.freeze
 
       # @param href [String] stylesheet URL

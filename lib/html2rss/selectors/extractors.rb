@@ -23,6 +23,7 @@ module Html2rss
         hash[klass] = klass.const_get(:Options)
       end
 
+      # Extractor used when none is explicitly configured.
       DEFAULT_EXTRACTOR = :text
 
       class << self

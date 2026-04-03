@@ -11,6 +11,7 @@ module Html2rss
         @url = url
       end
 
+      # @return [String] HTML iframe snippet for PDF rendering
       def to_html
         %(<iframe src="#{escaped_url}" width="100%" height="75vh"
                   sandbox=""

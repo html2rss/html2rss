@@ -10,7 +10,9 @@ module Html2rss
     # Describes the runtime request envelope for a single feed build.
     class Policy # rubocop:disable Metrics/ClassLength
       MAX_REQUESTS_CEILING = 10
+      # Hostnames treated as local/private surfaces.
       LOCAL_HOSTS = %w[localhost localhost.localdomain metadata.google.internal].to_set.freeze
+      # IP ranges blocked when private networks are disabled.
       BLOCKED_IP_RANGES = [
         IPAddr.new('0.0.0.0/8'),
         IPAddr.new('10.0.0.0/8'),
@@ -26,6 +28,7 @@ module Html2rss
         IPAddr.new('ff00::/8')
       ].freeze
 
+      # Default policy values used when request controls are not explicitly set.
       DEFAULTS = {
         connect_timeout_seconds: 5,
         read_timeout_seconds: 10,
@@ -243,6 +246,7 @@ module Html2rss
       end
     end
 
+    # Shared immutable policy instance used for default request execution.
     Policy::DEFAULT_POLICY = Policy.new
   end
 end

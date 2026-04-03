@@ -46,6 +46,7 @@ module Html2rss
         @bits_length = bits_length
       end
 
+      # @return [String] explicit MIME type or one inferred from URL extension
       def type = @type || self.class.guess_content_type_from_url(url)
 
       attr_reader :bits_length, :url
