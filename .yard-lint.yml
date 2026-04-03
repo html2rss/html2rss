@@ -1,8 +1,7 @@
 ---
 AllValidators:
   YardOptions:
-  - "--private"
-  - "--protected"
+  - "--public"
   Exclude:
   - "\\.git"
   - vendor/**/*
@@ -14,18 +13,18 @@ AllValidators:
     DefaultBaseRef:
 Documentation/UndocumentedObjects:
   Description: Checks for classes, modules, and methods without documentation.
-  Enabled: false
-  Severity: warning
+  Enabled: true
+  Severity: convention
   ExcludedMethods:
   - initialize/0
   - "/^_/"
 Documentation/UndocumentedMethodArguments:
   Description: Checks for method parameters without @param tags.
-  Enabled: false
+  Enabled: true
   Severity: warning
 Documentation/UndocumentedBooleanMethods:
   Description: Checks that question mark methods document their boolean return.
-  Enabled: false
+  Enabled: true
   Severity: warning
 Documentation/UndocumentedOptions:
   Description: Detects methods with options hash parameters but no @option tags.
@@ -33,8 +32,8 @@ Documentation/UndocumentedOptions:
   Severity: warning
 Documentation/MissingReturn:
   Description: Requires @return tags on all methods (opt-in for strict documentation).
-  Enabled: false
-  Severity: warning
+  Enabled: true
+  Severity: convention
   ExcludedMethods:
   - initialize
 Documentation/MarkdownSyntax:
