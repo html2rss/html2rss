@@ -7,8 +7,11 @@ module Html2rss
       class Microdata
         include Enumerable
 
+        # Selector matching nodes that define a microdata item scope.
         ITEM_SELECTOR = '[itemscope][itemtype]'
+        # Schema.org types supported for article extraction via Microdata.
         SUPPORTED_TYPES = (Schema::Thing::SUPPORTED_TYPES | Set['Product']).freeze
+        # Attribute names checked first for microdata property values.
         VALUE_ATTRIBUTES = %w[content datetime href src data value].freeze
 
         # @return [Symbol] scraper config key

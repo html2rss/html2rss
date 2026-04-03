@@ -7,11 +7,13 @@ module Html2rss
     # :reek:MissingSafeMethod { enabled: false }
     # It applies various strategies to filter and refine the article list.
     class Cleanup
+      # Default cleanup behavior for auto-sourced article lists.
       DEFAULT_CONFIG = {
         keep_different_domain: false,
         min_words_title: 3
       }.freeze
 
+      # Allowed URL schemes for article filtering.
       VALID_SCHEMES = %w[http https].to_set.freeze
 
       class << self

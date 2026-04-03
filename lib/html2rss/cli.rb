@@ -12,6 +12,7 @@ module Html2rss
   class CLI < Thor # rubocop:disable Metrics/ClassLength
     check_unknown_options!
 
+    # @return [Boolean] whether Thor should terminate process on command failures
     def self.exit_on_failure?
       true
     end

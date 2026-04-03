@@ -11,6 +11,7 @@ module Html2rss
   #
   # Configuration is validated during initialization.
   class Config
+    # Raised when a configuration hash fails runtime validation.
     class InvalidConfig < Html2rss::Error; end
     extend ClassMethods
 
@@ -34,9 +35,13 @@ module Html2rss
       )
     end
 
+    # @return [Symbol, nil] selected request strategy
     def strategy = request_controls.strategy
+    # @return [Integer, nil] configured redirect budget
     def max_redirects = request_controls.max_redirects
+    # @return [Integer, nil] configured request budget
     def max_requests = request_controls.max_requests
+    # @return [Array<Hash>] stylesheet definitions
     def stylesheets = config[:stylesheets]
 
     ##
@@ -49,14 +54,21 @@ module Html2rss
     # @return [Html2rss::RequestControls] request controls with provenance
     attr_reader :request_controls
 
+    # @return [Hash{String => String}] normalized HTTP headers
     def headers = config[:headers]
+    # @return [Hash{Symbol => Object}] channel configuration
     def channel = config[:channel]
+    # @return [String] source channel URL
     def url = config.dig(:channel, :url)
+    # @return [String, nil] configured channel time zone
     def time_zone = config.dig(:channel, :time_zone)
 
+    # @return [Hash{Symbol => Object}] request envelope configuration
     def request = config[:request]
 
+    # @return [Hash{Symbol => Object}, nil] selectors configuration
     def selectors = config[:selectors]
+    # @return [Hash{Symbol => Object}, nil] auto-source configuration
     def auto_source = config[:auto_source]
 
     private

@@ -6,6 +6,7 @@ module Html2rss
     # Normalizes HTTP headers for outgoing requests.
     # Ensures a browser-like baseline while respecting caller overrides.
     class RequestHeaders
+      # Browser-like default `Accept` header value.
       DEFAULT_ACCEPT = %w[
         text/html
         application/xhtml+xml
@@ -16,6 +17,7 @@ module Html2rss
         */*;q=0.8
       ].join(',')
 
+      # Browser-like default `User-Agent` header value.
       DEFAULT_USER_AGENT = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         'AppleWebKit/537.36 (KHTML, like Gecko)',
@@ -23,6 +25,7 @@ module Html2rss
         'Safari/537.36'
       ].join(' ')
 
+      # Baseline browser-like header set used for outbound requests.
       DEFAULT_HEADERS = {
         'Accept' => DEFAULT_ACCEPT,
         'Cache-Control' => 'max-age=0',

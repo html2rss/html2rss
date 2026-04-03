@@ -19,6 +19,7 @@ module Html2rss
       end
     end
 
+    # Extraction strategies for enclosure-like media/link tags.
     module Extractors
       # Extracts image enclosures from HTML tags.
       # Finds all image sources and returns them in a format suitable for RSS.

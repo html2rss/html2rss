@@ -11,6 +11,7 @@ module Html2rss
         #
         # @see https://schema.org/Thing
         class Thing
+          # Supported Schema.org `@type` values mapped to article extraction.
           SUPPORTED_TYPES = %w[
             AdvertiserContentArticle
             AnalysisNewsArticle
@@ -32,6 +33,7 @@ module Html2rss
             TechArticle
           ].to_set.freeze
 
+          # Attributes exposed by `#call` in generated article hashes.
           DEFAULT_ATTRIBUTES = %i[id title description url image published_at categories].freeze
 
           # @param schema_object [Hash{Symbol => Object}] parsed schema.org object
@@ -48,6 +50,7 @@ module Html2rss
             end
           end
 
+          # @return [String, nil] stable schema object identifier
           def id
             return @id if defined?(@id)
 
@@ -58,8 +61,10 @@ module Html2rss
             @id = id
           end
 
+          # @return [String, nil] article title
           def title = schema_object[:title]
 
+          # @return [String, nil] longest available description field
           def description
             schema_object.values_at(:description, :schema_object_body, :abstract)
                          .max_by { |string| string.to_s.size }
@@ -76,14 +81,17 @@ module Html2rss
             Url.from_relative(url, base_url || url)
           end
 
+          # @return [Html2rss::Url, nil] normalized article image URL
           def image
             if (image_url = image_urls.first)
               Url.from_relative(image_url, base_url || image_url)
             end
           end
 
+          # @return [String, nil] published-at timestamp string
           def published_at = schema_object[:datePublished]
 
+          # @return [Array<String>, nil] extracted category labels
           def categories
             return @categories if defined?(@categories)
 
@@ -92,6 +100,7 @@ module Html2rss
 
           attr_reader :schema_object, :base_url
 
+          # @return [Array<String>] normalized image URL candidates
           def image_urls
             schema_object.values_at(:image, :thumbnailUrl).filter_map do |object|
               next unless object

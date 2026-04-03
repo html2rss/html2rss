@@ -4,6 +4,7 @@ module Html2rss
   class Config
     # Processes and applies dynamic parameter formatting in configuration values.
     class DynamicParams
+      # Raised when string interpolation references an unavailable parameter.
       class ParamsMissing < Html2rss::Error; end
 
       class << self

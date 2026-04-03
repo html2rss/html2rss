@@ -25,7 +25,9 @@ module Html2rss
             :score
           )
 
+          # Comma-separated heading selector used for heading/anchor matching.
           HEADING_SELECTOR = HtmlExtractor::HEADING_TAGS.join(',').freeze
+          # Path segments that usually represent utility navigation rather than article content.
           UTILITY_PATH_SEGMENTS = %w[
             about account author category comment comments contact feedback help
             login newsletter profile register search settings share signup subscribe
@@ -40,9 +42,11 @@ module Html2rss
             logout
             user users
           ].to_set.freeze
+          # Path segments that signal content-like destinations.
           CONTENT_PATH_SEGMENTS = %w[
             article articles news post posts story stories update updates
           ].to_set.freeze
+          # Ancestor tags that usually indicate navigation/utility regions.
           UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].freeze
 
           # @param base_url [String, Html2rss::Url] page URL used to normalize href destinations

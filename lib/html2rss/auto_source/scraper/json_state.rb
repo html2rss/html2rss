@@ -13,7 +13,9 @@ module Html2rss
       class JsonState
         include Enumerable
 
+        # Selector for JSON-only script tags.
         JSON_SCRIPT_SELECTOR = 'script[type="application/json"]'
+        # Regex patterns for known global JavaScript state assignments.
         GLOBAL_ASSIGNMENT_PATTERNS = [
           /(?:window|self|globalThis)\.__NEXT_DATA__\s*=\s*/m,
           /(?:window|self|globalThis)\.__NUXT__\s*=\s*/m,
@@ -28,13 +30,20 @@ module Html2rss
           /(?:window|self|globalThis)\.angular\s*=\s*/m
         ].freeze
 
+        # Preferred keys when extracting title-like values from state payloads.
         TITLE_KEYS = %w[title headline name text].freeze
+        # Preferred keys when extracting URL-like values from state payloads.
         URL_KEYS = %w[url link href permalink slug path canonicalUrl shortUrl].freeze
+        # Preferred keys when extracting description-like values from state payloads.
         DESCRIPTION_KEYS = %w[description summary excerpt dek subheading].freeze
+        # Preferred keys when extracting image-like values from state payloads.
         IMAGE_KEYS = %w[image imageUrl thumbnailUrl thumbnail src featuredImage coverImage heroImage].freeze
+        # Preferred keys when extracting publication timestamps from state payloads.
         PUBLISHED_AT_KEYS = %w[published_at publishedAt datePublished date publicationDate pubDate updatedAt updated_at
                                createdAt created_at].freeze
+        # Preferred keys when extracting category-like values from state payloads.
         CATEGORY_KEYS = %w[categories tags section sections topic topics channel].freeze
+        # Preferred keys when extracting identifier-like values from state payloads.
         ID_KEYS = %w[id guid uuid slug key].freeze
 
         # Scans DOM nodes for JSON payloads containing article data.

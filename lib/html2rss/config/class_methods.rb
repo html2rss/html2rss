@@ -5,6 +5,7 @@ module Html2rss
     ##
     # Public class-level helpers for loading, validating, and exporting config.
     module ClassMethods
+      # Sentinel to differentiate omitted params from explicit `nil`.
       UNSET = Object.new.freeze
 
       ##

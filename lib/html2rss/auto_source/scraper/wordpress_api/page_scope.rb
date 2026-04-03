@@ -7,8 +7,11 @@ module Html2rss
         ##
         # Determines whether a WordPress page can safely be mapped to a posts query.
         class PageScope
+          # Canonical path segment for category archives.
           CATEGORY_SEGMENT = 'category'
+          # Canonical path segment for tag archives.
           TAG_SEGMENT = 'tag'
+          # Canonical path segment for author archives.
           AUTHOR_SEGMENT = 'author'
 
           ##

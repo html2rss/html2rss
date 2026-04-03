@@ -15,8 +15,10 @@ module Html2rss
       class Schema
         include Enumerable
 
+        # Selector for JSON-LD script tags containing Schema.org objects.
         TAG_SELECTOR = 'script[type="application/ld+json"]'
 
+        # @return [Symbol] scraper config key
         def self.options_key = :schema
 
         class << self

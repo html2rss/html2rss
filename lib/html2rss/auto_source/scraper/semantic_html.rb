@@ -20,8 +20,10 @@ module Html2rss
       class SemanticHtml
         include Enumerable
 
+        # Container plus selected anchor chosen for extraction.
         Entry = Data.define(:container, :selected_anchor)
 
+        # Candidate semantic container selectors used to locate extractable blocks.
         CONTAINER_SELECTORS = [
           'article:not(:has(article))',
           'section:not(:has(section))',

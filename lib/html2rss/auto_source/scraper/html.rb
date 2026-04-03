@@ -19,9 +19,12 @@ module Html2rss
       class Html
         include Enumerable
 
+        # Elements ignored when traversing potential article containers.
         TAGS_TO_IGNORE = /(nav|footer|header|svg|script|style)/i
 
+        # Minimum selector frequency required to treat a path as a stable list signal.
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
+        # Number of most frequent selectors kept for container extraction.
         DEFAULT_USE_TOP_SELECTORS = 5
 
         ##

@@ -7,6 +7,7 @@ module Html2rss
         ##
         # Resolves the WordPress posts endpoint for a given page and scope.
         class PostsEndpoint
+          # REST API collection path for posts resources.
           POSTS_PATH = 'wp/v2/posts'
 
           ##

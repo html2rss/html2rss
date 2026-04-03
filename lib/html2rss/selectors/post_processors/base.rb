@@ -10,6 +10,7 @@ module Html2rss
         #
         # @param keys [Array<Symbol>] the keys to check for presence
         # @param context [Hash] the context containing options
+        # @return [void]
         # @raise [MissingOption] if any key is missing
         def self.expect_options(keys, context)
           keys.each do |key|
@@ -26,6 +27,7 @@ module Html2rss
         # @param types [Array<Class>, Class] the expected type(s)
         # @param name [String] the name of the option being checked
         # @param context [Selectors::Context] call-site context used for richer validation errors
+        # @return [void]
         # @raise [InvalidType] if the value is not of the expected type(s)
         def self.assert_type(value, types = [], name, context:)
           return if Array(types).any? { |type| value.is_a?(type) }
@@ -68,6 +70,7 @@ module Html2rss
 
         # Abstract method to be implemented by subclasses
         #
+        # @return [Object] transformed value
         # @raise [NotImplementedError] if not implemented in subclass
         def get
           raise NotImplementedError, 'You must implement the `get` method in the post processor'

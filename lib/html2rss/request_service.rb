@@ -63,6 +63,7 @@ module Html2rss
     ##
     # Sets the default strategy.
     # @param strategy [Symbol] the name of the strategy
+    # @return [Symbol] the selected default strategy name
     # @raise [UnknownStrategy] if the strategy is not registered
     def default_strategy_name=(strategy)
       raise UnknownStrategy unless strategy_registered?(strategy)
@@ -77,6 +78,7 @@ module Html2rss
     # Registers a new strategy.
     # @param name [Symbol] the name of the strategy
     # @param strategy_class [Class] the class implementing the strategy
+    # @return [Class] the registered strategy class
     # @raise [ArgumentError] if strategy_class is not a Class
     def register_strategy(name, strategy_class)
       unless strategy_class.is_a?(Class)

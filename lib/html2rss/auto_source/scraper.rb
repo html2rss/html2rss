@@ -15,10 +15,14 @@ module Html2rss
     # mutable state and degrade by returning no articles when a follow-up would
     # be unsafe or unsupported.
     module Scraper
+      # Root markers indicating likely app-shell/client-rendered surfaces.
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
+      # Maximum anchors tolerated before app-shell detection is considered unlikely.
       APP_SHELL_MAX_ANCHORS = 2
+      # Maximum visible text length tolerated for app-shell classification.
       APP_SHELL_MAX_VISIBLE_TEXT_LENGTH = 220
 
+      # Ordered scraper classes considered during auto-source extraction.
       SCRAPERS = [
         WordpressApi,
         Schema,
@@ -31,6 +35,7 @@ module Html2rss
       ##
       # Error raised when no suitable scraper is found.
       class NoScraperFound < Html2rss::Error
+        # User-facing messages grouped by no-scraper surface category.
         CATEGORY_MESSAGES = {
           blocked_surface: 'No scrapers found: blocked surface likely (anti-bot or interstitial). ' \
                            'Retry with --strategy browserless, try a more specific public listing URL, ' \

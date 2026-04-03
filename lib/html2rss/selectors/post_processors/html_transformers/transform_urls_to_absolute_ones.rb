@@ -29,6 +29,7 @@ module Html2rss
           # @param node [Nokogiri::XML::Node] node currently being transformed
           # @param _env [Hash] transformer context
           # @option _env [Object] :_reserved reserved for transformer pipeline context
+          # @return [void]
           def call(node_name:, node:, **_env)
             return unless URL_ELEMENTS_WITH_URL_ATTRIBUTE.key?(node_name)
 
