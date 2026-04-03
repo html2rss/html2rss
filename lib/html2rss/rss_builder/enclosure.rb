@@ -37,7 +37,7 @@ module Html2rss
 
       # @param url [Html2rss::Url] absolute enclosure URL
       # @param type [String, nil] optional enclosure MIME type
-      # @param bits_length [Integer] enclosure byte length
+      # @param bits_length [Integer] enclosure byte length (historical name)
       def initialize(url:, type: nil, bits_length: 0)
         raise ArgumentError, 'An Enclosure requires an absolute URL' if !url || !url.absolute?
 
@@ -49,7 +49,14 @@ module Html2rss
       # @return [String] explicit MIME type or one inferred from URL extension
       def type = @type || self.class.guess_content_type_from_url(url)
 
-      attr_reader :bits_length, :url
+      # @return [Integer] enclosure length in bytes
+      def bytes_length = @bits_length
+
+      # @return [Integer] enclosure length in bytes (legacy reader name)
+      def bits_length = bytes_length
+
+      # @return [Html2rss::Url] absolute enclosure URL
+      attr_reader :url
     end
   end
 end

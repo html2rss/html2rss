@@ -6,10 +6,11 @@ module Html2rss
   #
   # @example
   #   Html2rss::Rendering::ImageRenderer.new(
-  #     enclosure: nil,
-  #     image: "https://example.com/image.jpg",
+  #     url: "https://example.com/image.jpg",
   #     title: "Example"
   #   ).to_html
+  #
+  # @example
   #   Html2rss::Rendering::MediaRenderer.for(
   #     enclosure: nil,
   #     image: "https://example.com/image.jpg",
