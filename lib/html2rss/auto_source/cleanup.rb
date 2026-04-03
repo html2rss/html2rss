@@ -40,6 +40,7 @@ module Html2rss
         #
         # @param articles [Array<Article>] The list of articles to process.
         # @param key [Symbol] The key to deduplicate by.
+        # @return [Array<Article>] the mutated articles array
         def deduplicate_by!(articles, key)
           seen = {}
           articles.reject! do |article|
@@ -52,6 +53,7 @@ module Html2rss
         # Keeps only articles with HTTP or HTTPS URLs.
         #
         # @param articles [Array<Article>] The list of articles to process.
+        # @return [Array<Article>] the mutated articles array
         def keep_only_http_urls!(articles)
           articles.select! { |article| VALID_SCHEMES.include?(article.url&.scheme) }
         end
@@ -61,6 +63,7 @@ module Html2rss
         #
         # @param articles [Array<Article>] The list of articles to process.
         # @param base_url [Html2rss::Url] The source URL to compare against.
+        # @return [Array<Article>] the mutated articles array
         def reject_different_domain!(articles, base_url)
           base_host = base_url.host
           articles.select! { |article| article.url&.host == base_host }
@@ -71,6 +74,7 @@ module Html2rss
         #
         # @param articles [Array<Article>] The list of articles to process.
         # @param min_words_title [Integer] The minimum number of words in the title.
+        # @return [Array<Article>] the mutated articles array
         def keep_only_with_min_words_title!(articles, min_words_title:)
           articles.select! do |article|
             article.title ? word_count_at_least?(article.title, min_words_title) : true

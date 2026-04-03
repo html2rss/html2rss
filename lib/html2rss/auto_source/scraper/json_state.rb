@@ -42,27 +42,32 @@ module Html2rss
           module_function
 
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+          # @return [Array<Hash, Array>] parsed JSON documents discovered in scripts
           def json_documents(parsed_body)
             script_documents(parsed_body) + assignment_documents(parsed_body)
           end
 
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+          # @return [Array<Hash, Array>] JSON documents extracted from JSON script tags
           def script_documents(parsed_body)
             parsed_body.css(JSON_SCRIPT_SELECTOR).filter_map { parse_json(_1.text) }
           end
 
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+          # @return [Array<Hash, Array>] JSON documents extracted from global assignments
           def assignment_documents(parsed_body)
             parsed_body.css('script').filter_map { parse_assignment(_1.text) }
           end
 
           # @param text [String] script text that may contain a global assignment
+          # @return [Hash, Array, nil] parsed assignment payload when available
           def parse_assignment(text)
             payload = assignment_payload(text)
             parse_json(payload) if payload
           end
 
           # @param text [String] script text to inspect for known assignment patterns
+          # @return [String, nil] extracted JSON-like assignment payload
           def assignment_payload(text)
             trimmed = text.to_s.strip
             return if trimmed.empty?
@@ -78,11 +83,13 @@ module Html2rss
           end
 
           # @param text [String] text potentially containing JSON-like payloads
+          # @return [String, nil] normalized assignment payload
           def extract_assignment_payload(text)
             extract_json_block(text) || text
           end
 
           # @param text [String] text potentially containing JSON blocks
+          # @return [String, nil] extracted JSON block spanning balanced brackets
           def extract_json_block(text)
             start_index = text.index(/[\[{]/)
             return unless start_index
@@ -94,6 +101,7 @@ module Html2rss
           # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
           # @param text [String] text starting with a JSON object/array opening token
           # @param start_index [Integer] index where JSON-like content starts
+          # @return [Integer, nil] index where the balanced JSON payload ends
           def scan_for_json_end(text, start_index)
             stack = []
             in_string = false
@@ -131,6 +139,7 @@ module Html2rss
           # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
           # @param payload [String, nil] JSON payload to parse
+          # @return [Hash, Array, nil] parsed payload or nil when parsing fails
           def parse_json(payload)
             return unless payload
 
@@ -141,6 +150,7 @@ module Html2rss
 
           # @param payload [String] JavaScript object-literal payload
           # @param _original_error [JSON::ParserError] original JSON parse error
+          # @return [Hash, Array, nil] parsed payload after JavaScript coercion
           def parse_js_object(payload, _original_error)
             coerced = coerce_javascript_object(payload)
             return unless coerced
@@ -154,6 +164,7 @@ module Html2rss
           end
 
           # @param payload [String] JavaScript object-literal payload
+          # @return [String] JSON-compatible payload string
           def coerce_javascript_object(payload)
             string = payload.dup
 
@@ -162,6 +173,7 @@ module Html2rss
           end
 
           # @param jsonish [String] JSON-like string with potentially unquoted keys
+          # @return [String] payload with unquoted object keys quoted
           def quote_unquoted_keys(jsonish)
             jsonish.gsub(/(\A\s*|[{,\[]\s*)([A-Za-z_]\w*)(\s*:)/) do
               "#{Regexp.last_match(1)}\"#{Regexp.last_match(2)}\"#{Regexp.last_match(3)}"
@@ -169,6 +181,7 @@ module Html2rss
           end
 
           # @param jsonish [String] JSON-like string with potential trailing commas
+          # @return [String] payload without trailing commas before closing tokens
           def strip_trailing_commas(jsonish)
             jsonish.gsub(/,(\s*[\]}])/, '\1')
           end
@@ -181,6 +194,7 @@ module Html2rss
 
           # @param object [Hash, Array] candidate container traversed during key lookup
           # @param keys [Array<String, Symbol>] keys to probe in order
+          # @return [Object, nil] first matching value
           def fetch(object, keys)
             case object
             when Hash then fetch_from_hash(object, keys)
@@ -190,6 +204,7 @@ module Html2rss
 
           # @param hash [Hash] hash candidate traversed during key lookup
           # @param keys [Array<String, Symbol>] keys to probe in order
+          # @return [Object, nil] first matching value from hash or nested metadata
           def fetch_from_hash(hash, keys)
             keys.each do |key|
               string_key = key.to_s
@@ -205,6 +220,7 @@ module Html2rss
 
           # @param array [Array] array whose entries may contain target keys
           # @param keys [Array<String, Symbol>] keys to probe in order
+          # @return [Object, nil] first matching value from array entries
           def fetch_from_array(array, keys)
             array.each do |entry|
               result = fetch(entry, keys)
@@ -216,6 +232,7 @@ module Html2rss
 
           # @param value [Hash, Array, nil] nested value to recurse into
           # @param keys [Array<String, Symbol>] keys to probe in order
+          # @return [Object, nil] matching nested value
           def fetch_nested(value, keys)
             fetch(value, keys) if value
           end
@@ -227,6 +244,7 @@ module Html2rss
           module_function
 
           # @param document [Hash, Array, Object] candidate document node
+          # @return [Boolean] whether the node contains article-like arrays
           def candidate_array?(document)
             case document
             when Array
@@ -239,6 +257,7 @@ module Html2rss
           end
 
           # @param value [Hash, Array, Object] candidate nested value
+          # @return [Boolean] whether nested value should be traversed for article candidates
           def traversable_candidate?(value)
             case value
             when Array, Hash then candidate_array?(value)
@@ -247,6 +266,7 @@ module Html2rss
           end
 
           # @param array [Array<Object>] candidate list of entries
+          # @return [Boolean] whether array includes hash entries with title and URL fields
           def array_of_articles?(array)
             array.any? do |element|
               next unless element.is_a?(Hash)
@@ -256,11 +276,13 @@ module Html2rss
           end
 
           # @param object [Hash] article candidate object
+          # @return [Object, nil] detected title-like value
           def title_from(object)
             ValueFinder.fetch(object, TITLE_KEYS)
           end
 
           # @param object [Hash] article candidate object
+          # @return [Object, nil] detected URL-like value
           def url_from(object)
             ValueFinder.fetch(object, URL_KEYS)
           end
@@ -274,6 +296,7 @@ module Html2rss
           # rubocop:disable Metrics/MethodLength
           # @param entry [Hash] raw article entry candidate
           # @param base_url [String, Html2rss::Url] base URL for relative link resolution
+          # @return [Hash{Symbol => Object}, nil] normalized article hash for downstream extraction
           def normalise(entry, base_url:)
             return unless entry.is_a?(Hash)
 
@@ -298,6 +321,7 @@ module Html2rss
           # rubocop:enable Metrics/MethodLength
 
           # @param value [Object] candidate scalar value
+          # @return [String, nil] normalized non-empty string value
           def string(value)
             trimmed = value.to_s.strip
             trimmed unless trimmed.empty?
@@ -307,6 +331,7 @@ module Html2rss
           # @param keys [Array<String>] preferred link keys
           # @param base_url [String, Html2rss::Url] base URL for relative link resolution
           # @param log_key [String] structured log message key
+          # @return [Html2rss::Url, nil] resolved absolute URL
           def resolve_link(entry, keys:, base_url:, log_key:)
             value = ValueFinder.fetch(entry, keys)
             value = ValueFinder.fetch(value, keys) if value.is_a?(Hash)
@@ -321,6 +346,7 @@ module Html2rss
 
           # rubocop:disable Metrics/MethodLength
           # @param entry [Hash] raw article entry candidate
+          # @return [Array<String>, nil] normalized unique categories
           def categories(entry)
             raw = ValueFinder.fetch(entry, CATEGORY_KEYS)
             names = case raw
@@ -346,6 +372,7 @@ module Html2rss
 
           # @param entry [Hash] raw article entry candidate
           # @param article_url [Html2rss::Url] resolved article URL
+          # @return [String] stable article identifier fallbacking to resolved URL
           def identifier(entry, article_url)
             value = ValueFinder.fetch(entry, ID_KEYS)
             value = ValueFinder.fetch(value, ID_KEYS) if value.is_a?(Hash)
@@ -354,6 +381,7 @@ module Html2rss
         end
         private_constant :ArticleNormalizer
 
+        # @return [Symbol] scraper config key
         def self.options_key = :json_state
 
         class << self
@@ -365,6 +393,7 @@ module Html2rss
           end
 
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
+          # @return [Array<Hash, Array>] parsed JSON documents discovered in the response body
           def json_documents(parsed_body)
             DocumentScanner.json_documents(parsed_body)
           end
@@ -381,6 +410,8 @@ module Html2rss
 
         attr_reader :parsed_body
 
+        # @yield [Hash{Symbol => Object}] normalized article hash
+        # @return [Enumerator, void] article enumerator when no block is given
         def each
           return enum_for(:each) unless block_given?
 
