@@ -54,6 +54,9 @@ module Html2rss
         end
       end
 
+      # @param headers [Hash{String, Symbol => String}] caller-provided headers
+      # @param channel_language [String, nil] channel language hint for Accept-Language
+      # @param url [String, Html2rss::Url, nil] request URL used to infer Host
       def initialize(headers, channel_language:, url:)
         @headers = headers
         @channel_language = channel_language

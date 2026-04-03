@@ -32,6 +32,9 @@ module Html2rss
     method_option :max_requests,
                   type: :numeric,
                   desc: 'Maximum requests to allow for this feed build'
+    # @param yaml_file [String] path to YAML config
+    # @param feed_name [String, nil] optional named feed in multi-feed config
+    # @return [void]
     def feed(yaml_file, feed_name = nil)
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
       config[:params] = options[:params] || {}
@@ -57,6 +60,8 @@ module Html2rss
     method_option :max_requests,
                   type: :numeric,
                   desc: 'Maximum requests to allow for this feed build'
+    # @param url [String] source page URL for auto discovery
+    # @return [void]
     def auto(url) # rubocop:disable Metrics/MethodLength
       format = options.fetch(:format, 'rss')
       source_method = format == 'jsonfeed' ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)

@@ -15,6 +15,11 @@ module Html2rss
       VALID_SCHEMES = %w[http https].to_set.freeze
 
       class << self
+        # @param articles [Array<Article>] extracted article candidates
+        # @param url [Html2rss::Url] feed source URL used for same-host filtering
+        # @param keep_different_domain [Boolean] whether to keep off-domain entries
+        # @param min_words_title [Integer] minimum word count for title filtering
+        # @return [Array<Article>] cleaned article list
         def call(articles, url:, keep_different_domain:, min_words_title:)
           Log.debug "Cleanup: start with #{articles.size} articles"
 

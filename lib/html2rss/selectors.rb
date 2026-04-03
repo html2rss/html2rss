@@ -85,6 +85,7 @@ module Html2rss
     # Extracts an article hash for a given item element.
     #
     # @param item [Nokogiri::XML::Element] The element to extract from.
+    # @param page_response [RequestService::Response] response used for selector extraction context
     # @return [Hash] Hash of attributes for the article.
     def extract_article(item, page_response = response)
       @rss_item_attributes.to_h { |key| [key, select(key, item, base_url: page_response.url)] }.compact
@@ -96,6 +97,7 @@ module Html2rss
     #
     # @param article_hash [Hash] The original article hash.
     # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
+    # @param base_url [String, Html2rss::Url] base URL for normalization during enhancement
     # @return [Hash] The enhanced article hash.
     def enhance_article_hash(article_hash, article_tag, base_url = @url)
       selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
@@ -116,6 +118,7 @@ module Html2rss
     #
     # @param name [Symbol, String] Name of the attribute.
     # @param item [Nokogiri::XML::Element] The HTML element to process.
+    # @param base_url [String, Html2rss::Url] base URL for relative extraction values
     # @return [Object, Array<Object>] The selected value(s).
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
     def select(name, item, base_url: @url)

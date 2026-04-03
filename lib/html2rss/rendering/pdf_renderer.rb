@@ -6,6 +6,7 @@ module Html2rss
   module Rendering
     # Renders an HTML <iframe> for PDF documents.
     class PdfRenderer
+      # @param url [String, Html2rss::Url] PDF URL rendered in the iframe
       def initialize(url:)
         @url = url
       end

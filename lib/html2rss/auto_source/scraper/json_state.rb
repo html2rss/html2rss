@@ -41,23 +41,28 @@ module Html2rss
         module DocumentScanner
           module_function
 
+          # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           def json_documents(parsed_body)
             script_documents(parsed_body) + assignment_documents(parsed_body)
           end
 
+          # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           def script_documents(parsed_body)
             parsed_body.css(JSON_SCRIPT_SELECTOR).filter_map { parse_json(_1.text) }
           end
 
+          # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           def assignment_documents(parsed_body)
             parsed_body.css('script').filter_map { parse_assignment(_1.text) }
           end
 
+          # @param text [String] script text that may contain a global assignment
           def parse_assignment(text)
             payload = assignment_payload(text)
             parse_json(payload) if payload
           end
 
+          # @param text [String] script text to inspect for known assignment patterns
           def assignment_payload(text)
             trimmed = text.to_s.strip
             return if trimmed.empty?
@@ -72,10 +77,12 @@ module Html2rss
             nil
           end
 
+          # @param text [String] text potentially containing JSON-like payloads
           def extract_assignment_payload(text)
             extract_json_block(text) || text
           end
 
+          # @param text [String] text potentially containing JSON blocks
           def extract_json_block(text)
             start_index = text.index(/[\[{]/)
             return unless start_index
@@ -85,6 +92,8 @@ module Html2rss
           end
 
           # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+          # @param text [String] text starting with a JSON object/array opening token
+          # @param start_index [Integer] index where JSON-like content starts
           def scan_for_json_end(text, start_index)
             stack = []
             in_string = false
@@ -121,6 +130,7 @@ module Html2rss
           end
           # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
+          # @param payload [String, nil] JSON payload to parse
           def parse_json(payload)
             return unless payload
 
@@ -129,6 +139,8 @@ module Html2rss
             parse_js_object(payload, error)
           end
 
+          # @param payload [String] JavaScript object-literal payload
+          # @param _original_error [JSON::ParserError] original JSON parse error
           def parse_js_object(payload, _original_error)
             coerced = coerce_javascript_object(payload)
             return unless coerced
@@ -141,6 +153,7 @@ module Html2rss
             nil
           end
 
+          # @param payload [String] JavaScript object-literal payload
           def coerce_javascript_object(payload)
             string = payload.dup
 
@@ -148,12 +161,14 @@ module Html2rss
             strip_trailing_commas(quote_unquoted_keys(string))
           end
 
+          # @param jsonish [String] JSON-like string with potentially unquoted keys
           def quote_unquoted_keys(jsonish)
             jsonish.gsub(/(\A\s*|[{,\[]\s*)([A-Za-z_]\w*)(\s*:)/) do
               "#{Regexp.last_match(1)}\"#{Regexp.last_match(2)}\"#{Regexp.last_match(3)}"
             end
           end
 
+          # @param jsonish [String] JSON-like string with potential trailing commas
           def strip_trailing_commas(jsonish)
             jsonish.gsub(/,(\s*[\]}])/, '\1')
           end
@@ -164,6 +179,8 @@ module Html2rss
         module ValueFinder
           module_function
 
+          # @param object [Hash, Array] candidate container traversed during key lookup
+          # @param keys [Array<String, Symbol>] keys to probe in order
           def fetch(object, keys)
             case object
             when Hash then fetch_from_hash(object, keys)
@@ -171,6 +188,8 @@ module Html2rss
             end
           end
 
+          # @param hash [Hash] hash candidate traversed during key lookup
+          # @param keys [Array<String, Symbol>] keys to probe in order
           def fetch_from_hash(hash, keys)
             keys.each do |key|
               string_key = key.to_s
@@ -184,6 +203,8 @@ module Html2rss
               fetch_nested(hash[:data] || hash['data'], keys)
           end
 
+          # @param array [Array] array whose entries may contain target keys
+          # @param keys [Array<String, Symbol>] keys to probe in order
           def fetch_from_array(array, keys)
             array.each do |entry|
               result = fetch(entry, keys)
@@ -193,6 +214,8 @@ module Html2rss
             nil
           end
 
+          # @param value [Hash, Array, nil] nested value to recurse into
+          # @param keys [Array<String, Symbol>] keys to probe in order
           def fetch_nested(value, keys)
             fetch(value, keys) if value
           end
@@ -203,6 +226,7 @@ module Html2rss
         module CandidateDetector
           module_function
 
+          # @param document [Hash, Array, Object] candidate document node
           def candidate_array?(document)
             case document
             when Array
@@ -214,6 +238,7 @@ module Html2rss
             end
           end
 
+          # @param value [Hash, Array, Object] candidate nested value
           def traversable_candidate?(value)
             case value
             when Array, Hash then candidate_array?(value)
@@ -221,6 +246,7 @@ module Html2rss
             end
           end
 
+          # @param array [Array<Object>] candidate list of entries
           def array_of_articles?(array)
             array.any? do |element|
               next unless element.is_a?(Hash)
@@ -229,10 +255,12 @@ module Html2rss
             end
           end
 
+          # @param object [Hash] article candidate object
           def title_from(object)
             ValueFinder.fetch(object, TITLE_KEYS)
           end
 
+          # @param object [Hash] article candidate object
           def url_from(object)
             ValueFinder.fetch(object, URL_KEYS)
           end
@@ -244,6 +272,8 @@ module Html2rss
           module_function
 
           # rubocop:disable Metrics/MethodLength
+          # @param entry [Hash] raw article entry candidate
+          # @param base_url [String, Html2rss::Url] base URL for relative link resolution
           def normalise(entry, base_url:)
             return unless entry.is_a?(Hash)
 
@@ -267,11 +297,16 @@ module Html2rss
           end
           # rubocop:enable Metrics/MethodLength
 
+          # @param value [Object] candidate scalar value
           def string(value)
             trimmed = value.to_s.strip
             trimmed unless trimmed.empty?
           end
 
+          # @param entry [Hash] raw article entry candidate
+          # @param keys [Array<String>] preferred link keys
+          # @param base_url [String, Html2rss::Url] base URL for relative link resolution
+          # @param log_key [String] structured log message key
           def resolve_link(entry, keys:, base_url:, log_key:)
             value = ValueFinder.fetch(entry, keys)
             value = ValueFinder.fetch(value, keys) if value.is_a?(Hash)
@@ -285,6 +320,7 @@ module Html2rss
           end
 
           # rubocop:disable Metrics/MethodLength
+          # @param entry [Hash] raw article entry candidate
           def categories(entry)
             raw = ValueFinder.fetch(entry, CATEGORY_KEYS)
             names = case raw
@@ -308,6 +344,8 @@ module Html2rss
           end
           # rubocop:enable Metrics/MethodLength
 
+          # @param entry [Hash] raw article entry candidate
+          # @param article_url [Html2rss::Url] resolved article URL
           def identifier(entry, article_url)
             value = ValueFinder.fetch(entry, ID_KEYS)
             value = ValueFinder.fetch(value, ID_KEYS) if value.is_a?(Hash)
@@ -319,12 +357,14 @@ module Html2rss
         def self.options_key = :json_state
 
         class << self
+          # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
           def articles?(parsed_body)
             return false unless parsed_body
 
             DocumentScanner.json_documents(parsed_body).any? { CandidateDetector.candidate_array?(_1) }
           end
 
+          # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
           def json_documents(parsed_body)
             DocumentScanner.json_documents(parsed_body)
           end

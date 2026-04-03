@@ -6,6 +6,8 @@ module Html2rss
   module Rendering
     # Renders an HTML <video> tag from a URL and type.
     class VideoRenderer
+      # @param url [String, Html2rss::Url] media URL for the video source
+      # @param type [String] MIME type for the video source
       def initialize(url:, type:)
         @url = url
         @type = type

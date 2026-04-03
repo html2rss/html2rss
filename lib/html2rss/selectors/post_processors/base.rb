@@ -42,6 +42,10 @@ module Html2rss
 
         ##
         # This method validates the arguments passed to the post processor. Must be implemented by subclasses.
+        #
+        # @param _value [Object] extracted selector value
+        # @param _context [Selectors::Context, Hash] post-processor execution context
+        # @return [void]
         def self.validate_args!(_value, _context)
           raise NotImplementedError, 'You must implement the `validate_args!` method in the post processor'
         end

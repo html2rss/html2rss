@@ -170,6 +170,8 @@ module Html2rss
         # JSON Schema can enforce non-empty reference arrays, while runtime
         # validation remains authoritative for checking that each entry points
         # to an existing sibling selector key.
+        # @param description [String] human-readable description for the reference field
+        # @return [Hash{Symbol => Object}] JSON schema fragment for selector references
         def reference_array(description)
           {
             type: 'array',
@@ -188,6 +190,8 @@ module Html2rss
       module DeepStringifier
         module_function
 
+        # @param object [Hash, Array, Object] nested data to normalize
+        # @return [Hash, Array, Object] deep copy with stringified hash keys
         def call(object)
           case object
           when Hash
@@ -199,6 +203,8 @@ module Html2rss
           end
         end
 
+        # @param object [Hash{Object => Object}] hash whose keys should become strings
+        # @return [Hash{String => Object}] hash with recursively normalized values
         def stringify_hash(object)
           object.to_h { |key, value| [key.to_s, call(value)] }
         end

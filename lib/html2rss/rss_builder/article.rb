@@ -134,6 +134,8 @@ module Html2rss
         @to_h[:scraper]
       end
 
+      # @param other [Object] value compared against this article
+      # @return [Integer, nil] comparison result for compatible Article values
       def <=>(other)
         return nil unless other.is_a?(Article)
 

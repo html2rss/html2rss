@@ -6,6 +6,8 @@ module Html2rss
   module Rendering
     # Renders an HTML <audio> tag from a URL and type.
     class AudioRenderer
+      # @param url [String, Html2rss::Url] media URL for the audio source
+      # @param type [String] MIME type for the audio source
       def initialize(url:, type:)
         @url = url
         @type = type

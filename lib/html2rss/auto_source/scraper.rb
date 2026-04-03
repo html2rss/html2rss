@@ -43,6 +43,8 @@ module Html2rss
                                'or use explicit selectors in a feed config.'
         }.freeze
 
+        # @param message [String, nil] custom error message override
+        # @param category [Symbol] no-scraper classification
         def initialize(message = nil, category: :unsupported_surface)
           validate_category!(category)
           @category = category

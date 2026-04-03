@@ -22,6 +22,9 @@ module Html2rss
         content_type.first&.to_s || 'application/octet-stream'
       end
 
+      # @param enclosure [Html2rss::RssBuilder::Enclosure, nil] built enclosure object for the current RSS item
+      # @param maker [RSS::Maker::RSS20::ItemsBase::ItemBase] RSS item builder
+      # @return [void]
       def self.add(enclosure, maker)
         return unless enclosure
 
@@ -32,6 +35,9 @@ module Html2rss
         end
       end
 
+      # @param url [Html2rss::Url] absolute enclosure URL
+      # @param type [String, nil] optional enclosure MIME type
+      # @param bits_length [Integer] enclosure byte length
       def initialize(url:, type: nil, bits_length: 0)
         raise ArgumentError, 'An Enclosure requires an absolute URL' if !url || !url.absolute?
 

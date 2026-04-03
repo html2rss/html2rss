@@ -20,10 +20,14 @@ module Html2rss
         def self.options_key = :schema
 
         class << self
+          # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+          # @return [Boolean] whether the page includes supported schema types
           def articles?(parsed_body)
             parsed_body.css(TAG_SELECTOR).any? { |script| supported_schema_type?(script) }
           end
 
+          # @param script [Nokogiri::XML::Element] schema JSON-LD script tag
+          # @return [Boolean] whether the tag references a supported schema type
           def supported_schema_type?(script)
             supported_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
             supported_types.any? { |type| script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/) }
@@ -50,11 +54,14 @@ module Html2rss
             end
           end
 
+          # @param object [Hash{Symbol => Object}] schema candidate object
+          # @return [Boolean] whether an extractor exists for the candidate object
           def supported_schema_object?(object)
             scraper_for_schema_object(object) ? true : false
           end
 
           ##
+          # @param schema_object [Hash{Symbol => Object}] schema object with an @type key
           # @return [Scraper::Schema::Thing, Scraper::Schema::ItemList, nil] a class responding to `#call`
           def scraper_for_schema_object(schema_object)
             type = schema_object[:@type]

@@ -23,6 +23,10 @@ module Html2rss
       ##
       # Think of it as `css_upwards` method.
       # It searches for the closest parent that matches the given selector.
+      #
+      # @param current_tag [Nokogiri::XML::Node, nil] starting node
+      # @param selector [String] CSS selector to search upwards for
+      # @return [Nokogiri::XML::Node, nil] first matching node in upward traversal
       def find_closest_selector_upwards(current_tag, selector)
         while current_tag
           found = current_tag.at_css(selector)
@@ -36,6 +40,10 @@ module Html2rss
 
       ##
       # Searches for the closest parent that matches the given tag name.
+      #
+      # @param current_tag [Nokogiri::XML::Node] starting node
+      # @param tag_name [String] tag name to find in ancestors
+      # @return [Nokogiri::XML::Node, nil] matching ancestor node
       def find_tag_in_ancestors(current_tag, tag_name)
         return current_tag if current_tag.name == tag_name
 

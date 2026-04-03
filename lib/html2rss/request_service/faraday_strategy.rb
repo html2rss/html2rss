@@ -15,6 +15,8 @@ module Html2rss
       class StreamingBodyMiddleware < Faraday::Middleware
         STREAM_BUFFER_KEY = :html2rss_stream_buffer
 
+        # @param env [Faraday::Env] completed response environment
+        # @return [void]
         def on_complete(env)
           buffer = env.request.context&.delete(STREAM_BUFFER_KEY)
           return if buffer.nil? || buffer.empty?

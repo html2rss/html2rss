@@ -15,6 +15,7 @@ module Html2rss
             'video' => :src # Video player is visible
           }.freeze
 
+          # @param channel_url [String, Html2rss::Url] base URL used to resolve relative links
           def initialize(channel_url)
             @channel_url = channel_url
           end

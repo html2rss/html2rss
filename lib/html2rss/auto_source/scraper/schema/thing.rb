@@ -34,6 +34,8 @@ module Html2rss
 
           DEFAULT_ATTRIBUTES = %i[id title description url image published_at categories].freeze
 
+          # @param schema_object [Hash{Symbol => Object}] parsed schema.org object
+          # @param url [String, Html2rss::Url, nil] base URL used for relative normalization
           def initialize(schema_object, url:)
             @schema_object = schema_object
             @base_url = normalized_base_url(url)
@@ -102,6 +104,9 @@ module Html2rss
             end
           end
 
+          # @param value [String, Symbol, nil] candidate schema identifier
+          # @param reference_url [Html2rss::Url, nil] URL used for same-origin normalization
+          # @return [String, nil] normalized identifier value
           def normalized_id(value, reference_url:)
             text = value.to_s
             return if text.empty?
@@ -114,6 +119,9 @@ module Html2rss
             text
           end
 
+          # @param text [String] raw identifier text
+          # @param reference_url [Html2rss::Url, nil] URL used to resolve relative IDs
+          # @return [Html2rss::Url] normalized identifier URL
           def normalized_id_url(text, reference_url:)
             if text.start_with?('/')
               Url.from_relative(text, reference_url || text)
@@ -122,6 +130,8 @@ module Html2rss
             end
           end
 
+          # @param url [Html2rss::Url] normalized identifier URL
+          # @return [String, nil] path/query portion used as stable ID
           def normalized_id_value(url)
             path = url.path.to_s
             return "#{path}?#{url.query}" if (path.empty? || path == '/') && !url.query.to_s.empty?
@@ -130,6 +140,8 @@ module Html2rss
             url.query
           end
 
+          # @param url [String, Html2rss::Url, nil] candidate page URL
+          # @return [Html2rss::Url, nil] normalized absolute URL for schema resolution
           def normalized_base_url(url)
             return if url.to_s.strip.empty?
 

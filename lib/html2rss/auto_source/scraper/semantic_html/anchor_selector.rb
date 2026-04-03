@@ -45,6 +45,7 @@ module Html2rss
           ].to_set.freeze
           UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].freeze
 
+          # @param base_url [String, Html2rss::Url] page URL used to normalize href destinations
           def initialize(base_url)
             @base_url = base_url
           end

@@ -7,6 +7,9 @@ module Html2rss
   # Builds an RSS Feed by providing channel, articles and stylesheets.
   class RssBuilder
     class << self
+      # @param article [Html2rss::RssBuilder::Article] source article
+      # @param item_maker [RSS::Maker::RSS20::ItemsBase::ItemBase] RSS item builder
+      # @return [void]
       def add_item(article, item_maker)
         add_item_string_values(article, item_maker)
         add_item_categories(article, item_maker)

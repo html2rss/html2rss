@@ -14,24 +14,29 @@ module Html2rss
         def self.options_key = :microdata
 
         class << self
+          # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
           def articles?(parsed_body)
             supported_roots(parsed_body).any?
           end
 
+          # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
           def supported_roots(parsed_body)
             return [] unless parsed_body
 
             parsed_body.css(ITEM_SELECTOR).select { supported_root?(_1) }
           end
 
+          # @param node [Nokogiri::XML::Element] itemscope candidate node
           def supported_root?(node)
             supported_type_name(node) && top_level_item?(node)
           end
 
+          # @param node [Nokogiri::XML::Element] itemscope candidate node
           def supported_type_name(node)
             normalized_types(node['itemtype']).find { SUPPORTED_TYPES.include?(_1) }
           end
 
+          # @param itemtype [String, nil] raw itemtype attribute value
           def normalized_types(itemtype)
             itemtype.to_s.split.filter_map do |value|
               type = value.split('/').last.to_s.split('#').last.to_s
@@ -39,6 +44,7 @@ module Html2rss
             end
           end
 
+          # @param node [Nokogiri::XML::Element] itemscope candidate node
           def top_level_item?(node)
             return false if node.attribute('itemprop')
 
@@ -98,12 +104,15 @@ module Html2rss
         module ItemParser
           module_function
 
+          # @param root [Nokogiri::XML::Element] microdata root node
           def call(root)
             {}.tap do |properties|
               direct_properties(root).each { append_properties!(properties, _1) }
             end
           end
 
+          # @param properties [Hash{Symbol => Object}] accumulator hash for parsed properties
+          # @param node [Nokogiri::XML::Element] itemprop node
           def append_properties!(properties, node)
             value = property_value(node)
             return if blank_value?(value)
@@ -113,16 +122,20 @@ module Html2rss
             end
           end
 
+          # @param root [Nokogiri::XML::Element] microdata root node
           def direct_properties(root)
             root.css('[itemprop]').select { direct_property?(root, _1) }
           end
 
+          # @param root [Nokogiri::XML::Element] microdata root node
+          # @param node [Nokogiri::XML::Element] candidate itemprop node
           def direct_property?(root, node)
             return false if node == root
 
             node.ancestors.take_while { _1 != root }.none? { |ancestor| ancestor.attribute('itemscope') }
           end
 
+          # @param node [Nokogiri::XML::Element] itemprop node
           def property_names(node)
             node['itemprop'].to_s.split.filter_map do |name|
               stripped = name.strip
@@ -130,6 +143,7 @@ module Html2rss
             end
           end
 
+          # @param node [Nokogiri::XML::Element] itemprop node
           def property_value(node)
             value = if node.attribute('itemscope')
                       nested_item(node)
@@ -140,6 +154,7 @@ module Html2rss
             value unless blank_value?(value)
           end
 
+          # @param node [Nokogiri::XML::Element] nested itemscope node
           def nested_item(node)
             item = call(node)
             itemtype = node['itemtype']
@@ -149,6 +164,7 @@ module Html2rss
             item
           end
 
+          # @param node [Nokogiri::XML::Element] itemprop node
           def attribute_value(node)
             VALUE_ATTRIBUTES.each do |attribute|
               value = node[attribute]
@@ -158,11 +174,15 @@ module Html2rss
             nil
           end
 
+          # @param node [Nokogiri::XML::Element] itemprop node
           def text_value(node)
             value = node.text.to_s.strip
             value unless value.empty?
           end
 
+          # @param properties [Hash{Symbol => Object}] accumulator hash for parsed properties
+          # @param key [Symbol] target property key
+          # @param value [Object] parsed property value to assign for the key
           def append(properties, key, value)
             return if blank_value?(value)
 
@@ -174,6 +194,7 @@ module Html2rss
             properties[key] = Array(properties[key]) << value
           end
 
+          # @param value [Object] candidate value
           def blank_value?(value)
             case value
             when nil then true
@@ -183,6 +204,7 @@ module Html2rss
             end
           end
 
+          # @param value [Object] candidate value
           def present?(value)
             !blank_value?(value)
           end
@@ -193,6 +215,7 @@ module Html2rss
         module ValueNormalizer
           module_function
 
+          # @param values [Array<Object>] value candidates
           def url_value(*values)
             values.each do |value|
               candidate = extract_nested_value(value, :url, :@id)
@@ -202,6 +225,7 @@ module Html2rss
             nil
           end
 
+          # @param values [Array<Object>] value candidates
           def image_value(*values)
             values.each do |value|
               candidate = normalize_image(value)
@@ -211,6 +235,7 @@ module Html2rss
             nil
           end
 
+          # @param value [Object] image candidate value
           def normalize_image(value)
             candidate = unwrap(value)
             return unless present?(candidate)
@@ -220,6 +245,7 @@ module Html2rss
             candidate.to_s
           end
 
+          # @param value [Object] about candidate value
           def normalize_about(value)
             candidate = unwrap(value)
             items = candidate.is_a?(Array) ? candidate : [candidate]
@@ -227,6 +253,7 @@ module Html2rss
             values unless values.empty?
           end
 
+          # @param item [Object] single about item
           def normalize_about_item(item)
             case item
             when Hash
@@ -236,6 +263,7 @@ module Html2rss
             end
           end
 
+          # @param value [Object] scalar or array candidate
           def string_or_array(value)
             candidate = unwrap(value)
             return unless present?(candidate)
@@ -246,15 +274,18 @@ module Html2rss
             result unless result.empty?
           end
 
+          # @param values [Array<Object>] value candidates
           def array_value(*values)
             result = values.flat_map { string_values(Array(unwrap(_1))) }.uniq
             result unless result.empty?
           end
 
+          # @param values [Array<Object>] candidate scalar values collected from microdata arrays
           def string_values(values)
             values.filter_map { stringify(_1) }
           end
 
+          # @param values [Array<Object>] value candidates
           def first_string(*values)
             values.each do |value|
               candidate = stringify(unwrap(value))
@@ -264,6 +295,8 @@ module Html2rss
             nil
           end
 
+          # @param value [Object] nested container or scalar
+          # @param keys [Array<Symbol>] nested keys to probe in order
           def extract_nested_value(value, *keys)
             candidate = unwrap(value)
             return candidate unless candidate.is_a?(Hash)
@@ -276,10 +309,12 @@ module Html2rss
             nil
           end
 
+          # @param value [Object] scalar or array candidate
           def unwrap(value)
             value.is_a?(Array) ? value.first : value
           end
 
+          # @param value [Object] scalar candidate normalized to string output
           def stringify(value)
             return unless present?(value)
             return value if value.is_a?(String)
@@ -288,6 +323,7 @@ module Html2rss
             value.to_s
           end
 
+          # @param value [Object] candidate value
           def present?(value)
             case value
             when nil then false
@@ -305,6 +341,7 @@ module Html2rss
 
           extend ValueNormalizer
 
+          # @param root [Nokogiri::XML::Element] supported microdata root node
           def call(root)
             type = Microdata.supported_type_name(root)
             return unless type
@@ -312,12 +349,18 @@ module Html2rss
             compact_object(type, root, ItemParser.call(root))
           end
 
+          # @param type [String] schema type inferred from itemtype
+          # @param root [Nokogiri::XML::Element] supported microdata root node
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
           def compact_object(type, root, properties)
             object = base_attributes(type, root, properties)
             merge_categories!(object, properties)
             object.compact
           end
 
+          # @param type [String] schema type inferred from itemtype
+          # @param root [Nokogiri::XML::Element] supported microdata root node
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
           def base_attributes(type, root, properties)
             identifier = first_string(root['itemid'], properties.delete(:identifier))
 
@@ -329,10 +372,12 @@ module Html2rss
               .merge(media_attributes(properties))
           end
 
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
           def title(properties)
             first_string(properties.delete(:headline), properties.delete(:title), properties.delete(:name))
           end
 
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
           def text_attributes(properties)
             {
               title: title(properties),
@@ -343,18 +388,23 @@ module Html2rss
             }
           end
 
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
+          # @param identifier [String, nil] identifier candidate for fallback URL handling
           def link_attributes(properties, identifier)
             {
               url: url(properties, identifier)
             }
           end
 
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
           def media_attributes(properties)
             {
               image: image_value(properties.delete(:image), properties.delete(:thumbnailUrl))
             }
           end
 
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
+          # @param fallback_id [String, nil] identifier candidate for fallback URL handling
           def url(properties, fallback_id)
             url_value(
               properties.delete(:url),
@@ -363,6 +413,7 @@ module Html2rss
             )
           end
 
+          # @param fallback_id [String, nil] identifier candidate for fallback URL handling
           def url_fallback(fallback_id)
             value = first_string(fallback_id)
             return unless value
@@ -372,6 +423,7 @@ module Html2rss
             nil
           end
 
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
           def published_at(properties)
             first_string(
               properties.delete(:datePublished),
@@ -381,6 +433,8 @@ module Html2rss
             )
           end
 
+          # @param object [Hash{Symbol => Object}] schema-like output object
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
           def merge_categories!(object, properties)
             categories = array_value(properties.delete(:categories), properties.delete(:articleSection))
             assign_if_present(object, :categories, categories)
@@ -389,6 +443,9 @@ module Html2rss
             assign_if_present(object, :about, normalize_about(properties.delete(:about)))
           end
 
+          # @param object [Hash{Symbol => Object}] schema-like output object
+          # @param key [Symbol] target attribute key
+          # @param value [Object] value to assign when present
           def assign_if_present(object, key, value)
             object[key] = value if value
           end
