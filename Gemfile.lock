@@ -228,6 +228,9 @@ GEM
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
     yard (0.9.38)
+    yard-lint (1.5.0)
+      yard (~> 0.9)
+      zeitwerk (~> 2.6)
     zeitwerk (2.7.4)
     zlib (3.2.3)
 
@@ -258,6 +261,7 @@ DEPENDENCIES
   timecop
   vcr
   yard
+  yard-lint
 
 CHECKSUMS
   addressable (2.8.9) sha256=cc154fcbe689711808a43601dee7b980238ce54368d23e127421753e46895485
@@ -352,6 +356,7 @@ CHECKSUMS
   websocket-driver (0.8.0) sha256=ed0dba4b943c22f17f9a734817e808bc84cdce6a7e22045f5315aa57676d4962
   websocket-extensions (0.1.5) sha256=1c6ba63092cda343eb53fc657110c71c754c56484aad42578495227d717a8241
   yard (0.9.38) sha256=721fb82afb10532aa49860655f6cc2eaa7130889df291b052e1e6b268283010f
+  yard-lint (1.5.0) sha256=18660453836c9cf1bff08c1d2addbc135dd3851beeb7878a680b058413677e7c
   zeitwerk (2.7.4) sha256=2bef90f356bdafe9a6c2bd32bcd804f83a4f9b8bc27f3600fff051eb3edcec8b
   zlib (3.2.3) sha256=5bd316698b32f31a64ab910a8b6c282442ca1626a81bbd6a1674e8522e319c20
 
