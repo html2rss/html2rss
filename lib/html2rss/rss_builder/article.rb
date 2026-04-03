@@ -13,10 +13,23 @@ module Html2rss
       include Enumerable
       include Comparable
 
+      # Allowed article attributes accepted by the value object constructor.
       PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
+      # Separator used to build deterministic deduplication fingerprints.
       DEDUP_FINGERPRINT_SEPARATOR = '#!/'
 
-      # @param options [Hash<Symbol, String>]
+      # @param options [Hash{Symbol => String}]
+      # @option options [String] :id stable article identifier
+      # @option options [String] :title article title
+      # @option options [String] :description article description/content
+      # @option options [String, Html2rss::Url] :url canonical article URL
+      # @option options [String, Html2rss::Url] :image image URL for fallback enclosure rendering
+      # @option options [String] :author author name
+      # @option options [String] :guid explicit GUID override
+      # @option options [String, Time, DateTime] :published_at publication timestamp
+      # @option options [Array<Hash{Symbol => Object}>] :enclosures enclosure attribute hashes
+      # @option options [Array<String>] :categories category labels
+      # @option options [Class] :scraper scraper class that produced the article
       def initialize(**options)
         @to_h = {}
         options.each_pair { |key, value| @to_h[key] = value.freeze if value }
@@ -41,10 +54,13 @@ module Html2rss
         PROVIDED_KEYS.each { |key| yield(key, public_send(key)) }
       end
 
+      # @return [String, nil] stable article identifier
       def id = blank_string_to_nil(@to_h[:id])
 
+      # @return [String, nil] article title
       def title = blank_string_to_nil(@to_h[:title])
 
+      # @return [String] rendered article description
       def description
         @description ||= Rendering::DescriptionBuilder.new(
           base: @to_h[:description],
@@ -82,6 +98,7 @@ module Html2rss
         dedup_from_url || dedup_from_id || dedup_from_guid || hash
       end
 
+      # @return [Array<Html2rss::RssBuilder::Enclosure>] normalized enclosure objects
       def enclosures
         @enclosures ||= Array(@to_h[:enclosures])
                         .map { |enclosure| Html2rss::RssBuilder::Enclosure.new(**enclosure) }
@@ -101,6 +118,7 @@ module Html2rss
         end
       end
 
+      # @return [Array<String>] normalized, unique category names
       def categories
         @categories ||= @to_h[:categories].dup.to_a.tap do |categories|
           categories.map! { |category| category.to_s.strip }
@@ -119,10 +137,13 @@ module Html2rss
         nil
       end
 
+      # @return [Class, nil] scraper class that produced this article
       def scraper
         @to_h[:scraper]
       end
 
+      # @param other [Object] value compared against this article
+      # @return [Integer, nil] comparison result for compatible Article values
       def <=>(other)
         return nil unless other.is_a?(Article)
 

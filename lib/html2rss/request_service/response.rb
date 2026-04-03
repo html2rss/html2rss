@@ -26,7 +26,7 @@ module Html2rss
       # @return [String] the raw body of the response
       attr_reader :body
 
-      # @return [Hash<String, Object>] the headers of the response
+      # @return [Hash{String => Object}] the headers of the response
       attr_reader :headers
 
       # @return [Integer, nil] the HTTP status code when known
@@ -35,8 +35,13 @@ module Html2rss
       # @return [Html2rss::Url] the URL of the response
       attr_reader :url
 
+      # @return [String] normalized content type header value
       def content_type = header('content-type').to_s
+
+      # @return [Boolean] whether response content is JSON
       def json_response? = content_type.include?('application/json')
+
+      # @return [Boolean] whether response content is HTML
       def html_response? = content_type.include?('text/html')
 
       ##
@@ -57,6 +62,8 @@ module Html2rss
 
       private
 
+      # @param name [String] canonical header name
+      # @return [Object, nil] header value when present
       def header(name)
         headers.fetch(name) do
           headers.find { |key, _value| key.casecmp?(name) }&.last

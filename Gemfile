@@ -12,6 +12,7 @@ group :development, :test do
   gem 'rake', require: false
   gem 'redcarpet', require: false
   gem 'yard', require: false
+  gem 'yard-lint', require: false
 
   gem 'reek', require: false
 

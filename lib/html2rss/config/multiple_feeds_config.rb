@@ -7,6 +7,7 @@ module Html2rss
     # where each feed name is the key for its feed configuration.
     # All global configuration keys (outside :feeds) are merged into each feed's settings.
     class MultipleFeedsConfig
+      # Reserved YAML key under which multiple named feed configs are defined.
       CONFIG_KEY_FEEDS = :feeds
 
       class << self

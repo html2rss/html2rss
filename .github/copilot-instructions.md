@@ -81,6 +81,7 @@ Keep logic anchored to the correct stage. For example, default headers or strate
 - Keep methods small and focused.
 - Use `make quick` during implementation for the fast local feedback loop. It should stay focused on changed-file linting and targeted specs.
 - Treat `make ready` as the implementation quality gate before handoff or a potential PR merge. It must cover the repo's required merge checks.
+- Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Exercise all core flows with tests.
 - Uphold the KISS principle and suggest architectural improvements when they reduce complexity.

@@ -7,6 +7,7 @@ module Html2rss
   # This module centralizes signature matching so request-time guards and
   # auto-source surface classification stay consistent.
   module BlockedSurface
+    # Known interstitial fingerprints used to detect blocked or anti-bot surfaces.
     INTERSTITIAL_SIGNATURES = [
       {
         key: :cloudflare_interstitial,

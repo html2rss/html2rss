@@ -49,7 +49,7 @@ module Html2rss
     ##
     # Extracts categories from data attributes of a single element.
     #
-    # @param element [Nokogiri::XML::Element] The element to process
+    # @param element [Nokogiri::XML::Element] metadata element that may contain category links
     # @return [Set<String>] Set of category strings
     def self.extract_element_data_categories(element)
       Set.new.tap do |categories|
@@ -65,7 +65,7 @@ module Html2rss
     ##
     # Extracts text-based categories from elements, splitting content into discrete values.
     #
-    # @param element [Nokogiri::XML::Element] The element to process
+    # @param element [Nokogiri::XML::Element] metadata element whose text may contain delimiters
     # @return [Set<String>] Set of category strings
     def self.extract_text_categories(element)
       anchor_values = element.css('a').filter_map do |node|

@@ -9,7 +9,7 @@ module Html2rss
       # Example usage in YAML:
       #
       #    selectors:
-      #      author:
+      #      byline:
       #        extractor: static
       #        static: Foobar
       #
@@ -24,6 +24,7 @@ module Html2rss
         #
         # @param _xml [nil, Nokogiri::XML::Element] Unused parameter for compatibility with other extractors.
         # @param options [Options] Options containing the static value.
+        # @option options [String, Symbol] :static static value returned by this extractor
         def initialize(_xml, options)
           @options = options
         end

@@ -12,6 +12,8 @@ module Html2rss
           #
           # @param node_name [String]
           # @param node [Nokogiri::XML::Node]
+          # @param _env [Hash] transformer context
+          # @option _env [Object] :_reserved reserved for transformer pipeline context
           # @return [nil]
           def call(node_name:, node:, **_env)
             return unless should_process?(node_name)
@@ -19,10 +21,14 @@ module Html2rss
             wrap_image_in_anchor(node) unless already_wrapped?(node)
           end
 
+          # @param node_name [String] node name currently being transformed
+          # @return [Boolean] whether this transformer should run for the node
           def should_process?(node_name)
             node_name == 'img'
           end
 
+          # @param node [Nokogiri::XML::Node] node currently being transformed
+          # @return [Boolean] whether the image is already wrapped in a link
           def already_wrapped?(node)
             node.parent.name == 'a'
           end

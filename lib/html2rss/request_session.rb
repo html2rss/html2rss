@@ -81,7 +81,7 @@ module Html2rss
     end
 
     ##
-    # @param url [String, Html2rss::Url] url to query
+    # @param url [String, Html2rss::Url] follow-up target URL for the request
     # @return [Boolean] whether the url was already visited in this session
     def visited?(url)
       visited_urls.include?(normalize_url(url))
@@ -90,7 +90,7 @@ module Html2rss
     ##
     # Records a visited url in the session.
     #
-    # @param url [String, Html2rss::Url] url to track
+    # @param url [String, Html2rss::Url] URL used to update relation tracking state
     # @return [Set<Html2rss::Url>] visited urls
     def remember!(url)
       visited_urls.add(normalize_url(url))

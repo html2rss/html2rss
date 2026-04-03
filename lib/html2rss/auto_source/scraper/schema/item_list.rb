@@ -11,6 +11,7 @@ module Html2rss
         #
         # @see https://schema.org/ItemList
         class ItemList < Thing
+          # Schema.org type names handled by the ItemList extractor.
           SUPPORTED_TYPES = Set['ItemList']
 
           # @return [Array<Hash>] the scraped article hashes with DEFAULT_ATTRIBUTES

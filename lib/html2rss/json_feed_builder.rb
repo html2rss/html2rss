@@ -6,6 +6,7 @@ module Html2rss
   #
   # @see https://www.jsonfeed.org/version/1.1/
   class JsonFeedBuilder
+    # Official JSON Feed 1.1 schema version URL.
     VERSION_URL = 'https://jsonfeed.org/version/1.1'
 
     ##

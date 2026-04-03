@@ -10,9 +10,13 @@ module Html2rss
       class WordpressApi # rubocop:disable Metrics/ClassLength
         include Enumerable
 
+        # Selector for WordPress API discovery link tags.
         API_LINK_SELECTOR = 'link[rel="https://api.w.org/"][href]'
+        # Selector for canonical link tags used for scope normalization.
         CANONICAL_LINK_SELECTOR = 'link[rel="canonical"][href]'
+        # Fields requested from the WordPress posts endpoint.
         POSTS_FIELDS = %w[id title excerpt content link date categories].freeze
+        # @return [Symbol] scraper config key
         def self.options_key = :wordpress_api
 
         ##
@@ -29,6 +33,7 @@ module Html2rss
         # @param url [String, Html2rss::Url] canonical page URL
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @param _opts [Hash] unused scraper-specific options
+        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         # @return [void]
         def initialize(parsed_body, url:, request_session: nil, **_opts)
           @parsed_body = parsed_body

@@ -5,6 +5,9 @@ module Html2rss
     ##
     # Extracts enclosures from HTML tags using various strategies.
     class EnclosureExtractor
+      # @param article_tag [Nokogiri::XML::Element] article container node
+      # @param base_url [String, Html2rss::Url] base URL for relative enclosure links
+      # @return [Array<Hash{Symbol => Object}>] normalized enclosure hashes
       def self.call(article_tag, base_url)
         [
           Extractors::Image,
@@ -16,10 +19,14 @@ module Html2rss
       end
     end
 
+    # Extraction strategies for enclosure-like media/link tags.
     module Extractors
       # Extracts image enclosures from HTML tags.
       # Finds all image sources and returns them in a format suitable for RSS.
       class Image
+        # @param article_tag [Nokogiri::XML::Element] article container node
+        # @param base_url [String, Html2rss::Url] base URL for relative image sources
+        # @return [Array<Hash{Symbol => Object}>] image enclosure hashes
         def self.call(article_tag, base_url:)
           article_tag.css('img[src]:not([src^="data"])').filter_map do |img|
             src = img['src'].to_s
@@ -36,6 +43,9 @@ module Html2rss
 
       # Extracts media enclosures (video/audio) from HTML tags.
       class Media
+        # @param article_tag [Nokogiri::XML::Element] article container node
+        # @param base_url [String, Html2rss::Url] base URL for relative media sources
+        # @return [Array<Hash{Symbol => Object}>] media enclosure hashes
         def self.call(article_tag, base_url:)
           article_tag.css('video source[src], audio source[src], audio[src]').filter_map do |element|
             src = element['src'].to_s
@@ -51,6 +61,9 @@ module Html2rss
 
       # Extracts PDF enclosures from HTML tags.
       class Pdf
+        # @param article_tag [Nokogiri::XML::Element] article container node
+        # @param base_url [String, Html2rss::Url] base URL for relative PDF links
+        # @return [Array<Hash{Symbol => Object}>] PDF enclosure hashes
         def self.call(article_tag, base_url:)
           article_tag.css('a[href$=".pdf"]').filter_map do |link|
             href = link['href'].to_s
@@ -67,6 +80,9 @@ module Html2rss
 
       # Extracts iframe enclosures from HTML tags.
       class Iframe
+        # @param article_tag [Nokogiri::XML::Element] article container node
+        # @param base_url [String, Html2rss::Url] base URL for relative iframe links
+        # @return [Array<Hash{Symbol => Object}>] iframe enclosure hashes
         def self.call(article_tag, base_url:)
           article_tag.css('iframe[src]').filter_map do |iframe|
             src = iframe['src']
@@ -83,6 +99,9 @@ module Html2rss
 
       # Extracts archive enclosures (zip, tar.gz, tgz) from HTML tags.
       class Archive
+        # @param article_tag [Nokogiri::XML::Element] article container node
+        # @param base_url [String, Html2rss::Url] base URL for relative archive links
+        # @return [Array<Hash{Symbol => Object}>] archive enclosure hashes
         def self.call(article_tag, base_url:)
           article_tag.css('a[href$=".zip"], a[href$=".tar.gz"], a[href$=".tgz"]').filter_map do |link|
             href = link['href'].to_s

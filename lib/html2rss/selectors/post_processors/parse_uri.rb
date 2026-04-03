@@ -23,6 +23,9 @@ module Html2rss
       # Would return:
       #    'http://why-not-use-a-link.uh'
       class ParseUri < Base
+        # @param value [String] extracted selector value
+        # @param _context [Selectors::Context, Hash] post-processor context
+        # @return [void]
         def self.validate_args!(value, _context)
           raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
         end

@@ -5,8 +5,17 @@ module Html2rss
   # images, audio, video, or embedded documents for feed descriptions.
   #
   # @example
-  #   Html2rss::Rendering::ImageRenderer.new(...).to_html
-  #   Html2rss::Rendering::MediaRenderer.for(...)
+  #   Html2rss::Rendering::ImageRenderer.new(
+  #     url: "https://example.com/image.jpg",
+  #     title: "Example"
+  #   ).to_html
+  #
+  # @example
+  #   Html2rss::Rendering::MediaRenderer.for(
+  #     enclosure: nil,
+  #     image: "https://example.com/image.jpg",
+  #     title: "Example"
+  #   )
   #
   # @see Html2rss::Rendering::DescriptionBuilder
   module Rendering

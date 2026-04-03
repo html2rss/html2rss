@@ -13,8 +13,11 @@ module Html2rss
       ##
       # Restores buffered streamed bytes so response middleware can process them.
       class StreamingBodyMiddleware < Faraday::Middleware
+        # Request-context key used to store streamed chunks before middleware completion.
         STREAM_BUFFER_KEY = :html2rss_stream_buffer
 
+        # @param env [Faraday::Env] completed response environment
+        # @return [void]
         def on_complete(env)
           buffer = env.request.context&.delete(STREAM_BUFFER_KEY)
           return if buffer.nil? || buffer.empty?
@@ -24,13 +27,12 @@ module Html2rss
       end
 
       ##
-      # NOTE: Unlike BrowserlessStrategy, Faraday does not expose the remote IP after connect.
-      # SSRF protection here is pre-connection only (DNS resolution via Policy).
-      # A DNS rebinding attack between resolution and connect cannot be caught at this layer.
-      #
       # Executes a request with runtime policy enforcement.
       #
       # @return [Response] normalized request response
+      # @note Unlike BrowserlessStrategy, Faraday does not expose the remote IP after connect.
+      #   SSRF protection here is pre-connection only (DNS resolution via Policy).
+      #   A DNS rebinding attack between resolution and connect cannot be caught at this layer.
       def execute
         deadline = request_deadline
         response_guard, response = perform_request(deadline:)

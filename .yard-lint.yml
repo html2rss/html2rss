@@ -1,0 +1,11 @@
+---
+AllValidators:
+  YardOptions:
+    - "--public"
+  Exclude:
+    - "\\.git"
+    - vendor/**/*
+    - node_modules/**/*
+    - spec/**/*
+    - test/**/*
+  FailOnSeverity: warning

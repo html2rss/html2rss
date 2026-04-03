@@ -17,6 +17,7 @@ module Html2rss
   # @see Html2rss::AutoSource::Scraper::SemanticHtml
   # @see Html2rss::AutoSource::Scraper::Html
   class AutoSource
+    # Default auto-source configuration shipped for scraper and cleanup behavior.
     DEFAULT_CONFIG = {
       scraper: {
         wordpress_api: {
@@ -67,6 +68,7 @@ module Html2rss
     end.freeze
     private_constant :SCRAPER_CONFIG
 
+    # Runtime schema used to validate auto-source config values.
     Config = Dry::Schema.Params do
       optional(:scraper).hash(&SCRAPER_CONFIG)
 
@@ -80,6 +82,8 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
     # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+    # @option opts [Hash] :scraper scraper configuration map
+    # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
     def initialize(response, opts = DEFAULT_CONFIG, request_session: nil)
       @parsed_body = response.parsed_body

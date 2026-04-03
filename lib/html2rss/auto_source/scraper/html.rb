@@ -19,9 +19,12 @@ module Html2rss
       class Html
         include Enumerable
 
+        # Elements ignored when traversing potential article containers.
         TAGS_TO_IGNORE = /(nav|footer|header|svg|script|style)/i
 
+        # Minimum selector frequency required to treat a path as a stable list signal.
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
+        # Number of most frequent selectors kept for container extraction.
         DEFAULT_USE_TOP_SELECTORS = 5
 
         ##
@@ -53,6 +56,8 @@ module Html2rss
         # @param url [String] The base URL.
         # @param extractor [Class] The extractor class to handle article extraction.
         # @param opts [Hash] Additional options.
+        # @option opts [Integer] :minimum_selector_frequency minimum count before a selector is considered stable
+        # @option opts [Integer] :use_top_selectors number of top selectors to keep
         def initialize(parsed_body, url:, extractor: HtmlExtractor, **opts)
           @parsed_body = parsed_body
           @url = url

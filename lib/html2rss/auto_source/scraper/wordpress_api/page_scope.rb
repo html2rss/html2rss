@@ -7,8 +7,11 @@ module Html2rss
         ##
         # Determines whether a WordPress page can safely be mapped to a posts query.
         class PageScope
+          # Canonical path segment for category archives.
           CATEGORY_SEGMENT = 'category'
+          # Canonical path segment for tag archives.
           TAG_SEGMENT = 'tag'
+          # Canonical path segment for author archives.
           AUTHOR_SEGMENT = 'author'
 
           ##
@@ -20,7 +23,7 @@ module Html2rss
           end
 
           ##
-          # @param query [Hash<String, String>] scoped query params for the posts endpoint
+          # @param query [Hash{String => String}] scoped query params for the posts endpoint
           # @param fetchable [Boolean] whether a posts follow-up is safe for this page
           # @param reason [Symbol] classification of the resolved page scope
           def initialize(query:, fetchable:, reason:)
@@ -31,7 +34,7 @@ module Html2rss
           end
 
           ##
-          # @return [Hash<String, String>] query params to apply to the posts request
+          # @return [Hash{String => String}] query params to apply to the posts request
           attr_reader :query
 
           ##

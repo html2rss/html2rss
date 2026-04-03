@@ -7,6 +7,7 @@ module Html2rss
     ##
     # A naive implementation of "Object to XML": converts a Ruby object to XML format.
     class ObjectToXmlConverter
+      # Wrapper tags used for top-level collection conversion.
       OBJECT_TO_XML_TAGS = {
         hash: ['<object>', '</object>'],
         array: ['<array>', '</array>']

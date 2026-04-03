@@ -4,13 +4,14 @@ module Html2rss
   class Config
     # Processes and applies dynamic parameter formatting in configuration values.
     class DynamicParams
+      # Raised when string interpolation references an unavailable parameter.
       class ParamsMissing < Html2rss::Error; end
 
       class << self
         # Recursively traverses the given value and formats any strings containing
         # placeholders with values from the provided params.
         #
-        # @param value [String, Hash, Enumerable, Object] The value to process.
+        # @param value [String, Hash, Enumerable, Object] value that may contain parameter placeholders
         # @param params [Hash] The parameters for substitution.
         # @param getter [Proc, nil] Optional proc to retrieve a key's value.
         # @param replace_missing_with [Object, nil] Value to substitute if a key is missing.

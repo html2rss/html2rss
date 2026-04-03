@@ -3,6 +3,7 @@
 require 'set' # rubocop:disable Lint/RedundantRequireStatement
 
 module Html2rss
+  # Shared helpers that operate on `RssBuilder::Article` collections.
   module Articles
     ##
     # Deduplicates a list of articles while preserving their original order.

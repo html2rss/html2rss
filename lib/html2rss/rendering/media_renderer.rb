@@ -16,6 +16,10 @@ module Html2rss
       end
 
       # @private
+      # @param type [String, nil] enclosure MIME type
+      # @param url [String, Html2rss::Url] enclosure URL
+      # @param title [String, nil] title used by image renderer
+      # @return [ImageRenderer, VideoRenderer, AudioRenderer, PdfRenderer, nil]
       def self.create_renderer_for_type(type, url:, title:)
         case type
         when %r{^image/}

@@ -10,6 +10,7 @@ module Html2rss
         #
         # @param keys [Array<Symbol>] the keys to check for presence
         # @param context [Hash] the context containing options
+        # @return [void]
         # @raise [MissingOption] if any key is missing
         def self.expect_options(keys, context)
           keys.each do |key|
@@ -25,7 +26,8 @@ module Html2rss
         # @param value [Object] the value to check
         # @param types [Array<Class>, Class] the expected type(s)
         # @param name [String] the name of the option being checked
-        # @param context [Selectors::Context] the context
+        # @param context [Selectors::Context] call-site context used for richer validation errors
+        # @return [void]
         # @raise [InvalidType] if the value is not of the expected type(s)
         def self.assert_type(value, types = [], name, context:)
           return if Array(types).any? { |type| value.is_a?(type) }
@@ -42,6 +44,10 @@ module Html2rss
 
         ##
         # This method validates the arguments passed to the post processor. Must be implemented by subclasses.
+        #
+        # @param _value [Object] extracted selector value
+        # @param _context [Selectors::Context, Hash] post-processor execution context
+        # @return [void]
         def self.validate_args!(_value, _context)
           raise NotImplementedError, 'You must implement the `validate_args!` method in the post processor'
         end
@@ -49,7 +55,7 @@ module Html2rss
         # Initializes the post processor
         #
         # @param value [Object] the value to be processed
-        # @param context [Selectors::Context] the context
+        # @param context [Selectors::Context] runtime selector context and options
         def initialize(value, context)
           klass = self.class
           # TODO: get rid of Hash
@@ -64,6 +70,7 @@ module Html2rss
 
         # Abstract method to be implemented by subclasses
         #
+        # @return [Object] transformed value
         # @raise [NotImplementedError] if not implemented in subclass
         def get
           raise NotImplementedError, 'You must implement the `get` method in the post processor'

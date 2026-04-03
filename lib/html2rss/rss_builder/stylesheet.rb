@@ -35,8 +35,12 @@ module Html2rss
         end
       end
 
+      # Allowed stylesheet MIME types for RSS processing instructions.
       TYPES = ['text/css', 'text/xsl'].to_set.freeze
 
+      # @param href [String] stylesheet URL
+      # @param type [String] MIME type (`text/css` or `text/xsl`)
+      # @param media [String] media query hint for the stylesheet
       def initialize(href:, type:, media: 'all')
         raise ArgumentError, 'stylesheet.href must be a String' unless href.is_a?(String)
         raise ArgumentError, 'stylesheet.type invalid' unless TYPES.include?(type)

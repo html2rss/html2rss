@@ -7,12 +7,13 @@ module Html2rss
     module Schema
       module_function
 
+      # Canonical filename for the exported config JSON schema artifact.
       SCHEMA_FILENAME = 'html2rss-config.schema.json'
 
       ##
       # Returns the exported configuration JSON Schema.
       #
-      # @return [Hash<String, Object>] JSON Schema represented as a Ruby hash
+      # @return [Hash{String => Object}] JSON Schema represented as a Ruby hash
       def json_schema
         load_json_schema_extension!
         Builder.call
@@ -38,6 +39,7 @@ module Html2rss
         File.expand_path("../../../schema/#{SCHEMA_FILENAME}", __dir__)
       end
 
+      # @return [void]
       def load_json_schema_extension!
         require 'dry/schema/extensions/json_schema'
         Dry::Schema.load_extensions(:json_schema)
@@ -48,11 +50,13 @@ module Html2rss
       # client-facing overlays.
       class Builder
         class << self
+          # @return [Hash{String => Object}] fully assembled JSON schema hash
           def call
             new.call
           end
         end
 
+        # @return [Hash{String => Object}] fully assembled JSON schema hash
         def call
           schema = validator_schema
           apply_top_level(schema)
@@ -90,6 +94,7 @@ module Html2rss
       module Components
         module_function
 
+        # @return [Hash{Symbol => Object}] schema fragment for headers
         def headers
           {
             type: 'object',
@@ -98,6 +103,7 @@ module Html2rss
           }
         end
 
+        # @return [Hash{Symbol => Object}] schema fragment for stylesheet definitions
         def stylesheets
           {
             type: 'array',
@@ -106,12 +112,14 @@ module Html2rss
           }
         end
 
+        # @return [Hash{Symbol => Object}] schema fragment for auto_source configuration
         def auto_source
           schema = Html2rss::AutoSource::Config.json_schema(loose: true)
           schema[:default] = DeepStringifier.call(Html2rss::AutoSource::DEFAULT_CONFIG)
           schema
         end
 
+        # @return [Hash{Symbol => Object}] schema fragment for selectors configuration
         def selectors
           Selectors.schema
         end
@@ -122,8 +130,10 @@ module Html2rss
       module Selectors
         module_function
 
+        # Pattern used for dynamic selector keys excluding reserved selector names.
         RESERVED_SELECTOR_PATTERN = '^(?!items$|enclosure$|guid$|categories$).+$'
 
+        # @return [Hash{Symbol => Object}] schema fragment for selectors root object
         def schema
           {
             type: 'object',
@@ -135,6 +145,7 @@ module Html2rss
         end
 
         # rubocop:disable Layout/LineLength
+        # @return [Hash{Symbol => Object}] schema map for reserved selector properties
         def selector_properties
           {
             items: items_schema,
@@ -145,22 +156,26 @@ module Html2rss
         end
         # rubocop:enable Layout/LineLength
 
+        # @return [Hash{String => Object}] schema map for dynamic selector keys
         def pattern_properties
           { RESERVED_SELECTOR_PATTERN => dynamic_selector_schema }
         end
 
+        # @return [Hash{Symbol => Object}] schema fragment for dynamic selector entries
         def dynamic_selector_schema
           Html2rss::Selectors::Config::Selector.new.schema.json_schema(loose: true).merge(
             description: 'Dynamic selector definition keyed by attribute name.'
           )
         end
 
+        # @return [Hash{Symbol => Object}] schema fragment for `items` selector configuration
         def items_schema
           Html2rss::Selectors::Config::Items.new.schema.json_schema(loose: true).merge(
             description: 'Defines the items selector and optional enhancement settings.'
           )
         end
 
+        # @return [Hash{Symbol => Object}] schema fragment for `enclosure` selector configuration
         def enclosure_schema
           Html2rss::Selectors::Config::Enclosure.new.schema.json_schema(loose: true).merge(
             description: 'Describes enclosure extraction settings.'
@@ -170,6 +185,8 @@ module Html2rss
         # JSON Schema can enforce non-empty reference arrays, while runtime
         # validation remains authoritative for checking that each entry points
         # to an existing sibling selector key.
+        # @param description [String] human-readable description for the reference field
+        # @return [Hash{Symbol => Object}] JSON schema fragment for selector references
         def reference_array(description)
           {
             type: 'array',
@@ -188,6 +205,8 @@ module Html2rss
       module DeepStringifier
         module_function
 
+        # @param object [Hash, Array, Object] nested data to normalize
+        # @return [Hash, Array, Object] deep copy with stringified hash keys
         def call(object)
           case object
           when Hash
@@ -199,6 +218,8 @@ module Html2rss
           end
         end
 
+        # @param object [Hash{Object => Object}] hash whose keys should become strings
+        # @return [Hash{String => Object}] hash with recursively normalized values
         def stringify_hash(object)
           object.to_h { |key, value| [key.to_s, call(value)] }
         end
