@@ -15,9 +15,11 @@ module Html2rss
 
       # @return [String] HTML video snippet for article rendering
       def to_html
-        %(<video controls preload="none" referrerpolicy="no-referrer" crossorigin="anonymous" playsinline>
-            <source src="#{escaped_url}" type="#{escaped_type}">
-          </video>)
+        [
+          '<video controls preload="none" referrerpolicy="no-referrer" crossorigin="anonymous" playsinline>',
+          %(<source src="#{escaped_url}" type="#{escaped_type}">),
+          '</video>'
+        ].join
       end
 
       private

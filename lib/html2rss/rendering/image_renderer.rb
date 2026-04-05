@@ -15,16 +15,23 @@ module Html2rss
 
       # @return [String] HTML image snippet for article rendering
       def to_html
-        %(<img src="#{@url}"
-              alt="#{escaped_title}"
-              title="#{escaped_title}"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-              decoding="async"
-              crossorigin="anonymous">).delete("\n").gsub(/\s+/, ' ')
+        attributes = [
+          %(src="#{escaped_url}"),
+          %(alt="#{escaped_title}"),
+          %(title="#{escaped_title}"),
+          'loading="lazy"',
+          'referrerpolicy="no-referrer"',
+          'decoding="async"',
+          'crossorigin="anonymous"'
+        ]
+        "<img #{attributes.join(' ')}>"
       end
 
       private
+
+      def escaped_url
+        CGI.escapeHTML(@url.to_s)
+      end
 
       def escaped_title
         CGI.escapeHTML(@title.to_s)
