@@ -15,9 +15,11 @@ module Html2rss
 
       # @return [String] HTML audio snippet for article rendering
       def to_html
-        %(<audio controls preload="none" referrerpolicy="no-referrer" crossorigin="anonymous">
-            <source src="#{escaped_url}" type="#{escaped_type}">
-          </audio>)
+        [
+          '<audio controls preload="none" referrerpolicy="no-referrer" crossorigin="anonymous">',
+          %(<source src="#{escaped_url}" type="#{escaped_type}">),
+          '</audio>'
+        ].join
       end
 
       private

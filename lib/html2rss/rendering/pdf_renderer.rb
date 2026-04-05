@@ -13,11 +13,15 @@ module Html2rss
 
       # @return [String] HTML iframe snippet for PDF rendering
       def to_html
-        %(<iframe src="#{escaped_url}" width="100%" height="75vh"
-                  sandbox=""
-                  referrerpolicy="no-referrer"
-                  loading="lazy">
-           </iframe>)
+        attributes = [
+          %(src="#{escaped_url}"),
+          'width="100%"',
+          'height="75vh"',
+          'sandbox=""',
+          'referrerpolicy="no-referrer"',
+          'loading="lazy"'
+        ]
+        "<iframe #{attributes.join(' ')}></iframe>"
       end
 
       private
