@@ -36,15 +36,25 @@ RSpec.describe Html2rss::RequestService::Context do
     end
 
     context 'with custom headers' do
-      let(:headers) { { 'User-Agent' => 'Custom Agent' } }
+      let(:headers) { { 'User-Agent': 'Custom Agent' } }
 
-      it 'stores the headers' do
-        expect(instance.headers).to eq(headers)
+      it 'normalizes and freezes headers with string keys', :aggregate_failures do
+        expect(instance.headers).to eq('User-Agent' => 'Custom Agent')
+        expect(instance.headers).to be_frozen
       end
     end
 
     context 'with browserless request configuration' do
       let(:request) do
+        {
+          'browserless' => {
+            'preload' => {
+              'click_selectors' => [{ 'selector' => '.load-more', 'max_clicks' => 2 }]
+            }
+          }
+        }
+      end
+      let(:expected_request) do
         {
           browserless: {
             preload: {
@@ -54,10 +64,12 @@ RSpec.describe Html2rss::RequestService::Context do
         }
       end
 
-      it 'exposes the request options', :aggregate_failures do
-        expect(instance.request).to eq(request)
-        expect(instance.browserless).to eq(request[:browserless])
-        expect(instance.browserless_preload).to eq(request.dig(:browserless, :preload))
+      it 'exposes the request options' do
+        expect(instance).to have_attributes(
+          request: expected_request,
+          browserless: expected_request[:browserless],
+          browserless_preload: expected_request.dig(:browserless, :preload)
+        )
       end
     end
 

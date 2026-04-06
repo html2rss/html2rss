@@ -132,5 +132,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
         )
       end
     end
+
+    context 'with nested attributes and data nodes' do
+      let(:expected_article) do
+        a_hash_including(
+          title: 'Nested data article',
+          url: Html2rss::Url.from_relative('/nested/data', base_url)
+        )
+      end
+
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><body><script type="application/json">' \
+          '[{"data":{"attributes":{"title":"Nested data article","url":"/nested/data"}}}]' \
+          '</script></body></html>'
+        )
+      end
+
+      it 'extracts article values through symbolized nested keys' do
+        expect(articles).to contain_exactly(expected_article)
+      end
+    end
   end
 end

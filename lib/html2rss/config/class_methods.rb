@@ -36,7 +36,7 @@ module Html2rss
 
         Validator.new.call(prepared_config)
       rescue DynamicParams::ParamsMissing => error
-        prepared_config = prepare_for_validation(deep_dup(config))
+        prepared_config = prepare_for_validation(HashUtil.deep_symbolize_keys(config, context: 'config'))
         prepared_config[:dynamic_params_error] = error.message
 
         Validator.new.call(prepared_config)
@@ -145,12 +145,14 @@ module Html2rss
       private
 
       def resolve_effective_config(config, params:)
-        effective_config = deep_dup(config)
+        effective_config = HashUtil.deep_symbolize_keys(config, context: 'config')
         resolved_params = parameter_defaults(effective_config)
-        resolved_params.merge!(params) unless params.equal?(UNSET) || params.nil?
+        unless params.equal?(UNSET) || params.nil?
+          resolved_params.merge!(HashUtil.deep_symbolize_keys(params, context: 'params'))
+        end
 
-        DynamicParams.call(effective_config[:headers], resolved_params)
-        DynamicParams.call(effective_config[:channel], resolved_params)
+        effective_config[:headers] = DynamicParams.call(effective_config[:headers], resolved_params)
+        effective_config[:channel] = DynamicParams.call(effective_config[:channel], resolved_params)
 
         effective_config
       end
@@ -164,27 +166,8 @@ module Html2rss
       end
 
       def prepare_for_validation(config)
-        Config::Preparer.new.call(deep_dup(config))
+        Config::Preparer.new.call(HashUtil.deep_dup(config))
       end
-
-      # rubocop:disable Metrics/MethodLength
-      def deep_dup(object)
-        case object
-        when Hash
-          object.transform_values do |value|
-            deep_dup(value)
-          end
-        when Array
-          object.map { |value| deep_dup(value) }
-        else
-          begin
-            object.dup
-          rescue TypeError
-            object
-          end
-        end
-      end
-      # rubocop:enable Metrics/MethodLength
     end
   end
 end

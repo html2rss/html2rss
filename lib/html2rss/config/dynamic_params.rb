@@ -56,12 +56,13 @@ module Html2rss
         end
 
         def from_hash(hash, params, getter:, replace_missing_with:)
-          hash.transform_keys!(&:to_sym)
-          hash.transform_values! { |value| call(value, params, getter:, replace_missing_with:) }
+          HashUtil.deep_symbolize_keys(hash, context: 'dynamic params hash').to_h do |key, value|
+            [key, call(value, params, getter:, replace_missing_with:)]
+          end
         end
 
         def from_enumerable(enumerable, params, getter:, replace_missing_with:)
-          enumerable.map! { |value| call(value, params, getter:, replace_missing_with:) }
+          enumerable.map { |value| call(value, params, getter:, replace_missing_with:) }
         end
       end
     end
