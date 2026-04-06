@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
+  def context_for(options)
+    Html2rss::Selectors::Context.new(options:)
+  end
+
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with args validation' do
     context 'without pattern option' do
       it do
         expect do
-          described_class.new('hello',
-                              options: { replacement: 'world' })
+          described_class.new('hello', context_for(replacement: 'world'))
         end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
                            /The `pattern` option is missing in: {/)
       end
@@ -17,8 +20,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     context 'without replacement option' do
       it do
         expect do
-          described_class.new('hello',
-                              options: { pattern: 'world' })
+          described_class.new('hello', context_for(pattern: 'world'))
         end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
                            /The `replacement` option is missing in: {/)
       end
@@ -27,7 +29,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     context 'without replacement option not being a String or Hash' do
       it do
         expect do
-          described_class.new('hello', options: { pattern: 'world', replacement: [] })
+          described_class.new('hello', context_for(pattern: 'world', replacement: []))
         end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType,
                            /The type of `replacement` must be String or Hash, but is: Array in: {/)
       end
@@ -37,7 +39,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
   context 'with string pattern' do
     context 'with string replacement' do
       subject do
-        described_class.new('Foo bar and boo', options: { pattern: 'boo', replacement: 'baz' }).get
+        described_class.new('Foo bar and boo', context_for(pattern: 'boo', replacement: 'baz')).get
       end
 
       it { is_expected.to eq 'Foo bar and baz' }
@@ -47,8 +49,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
   context 'with pattern being a Regexp as String' do
     context 'with hash replacement' do
       subject do
-        described_class.new('hello',
-                            options: { pattern: '/[eo]/', replacement: { 'e' => 3, 'o' => '*' } }).get
+        described_class.new('hello', context_for(pattern: '/[eo]/', replacement: { 'e' => 3, 'o' => '*' })).get
       end
 
       it { is_expected.to eq 'h3ll*' }
@@ -56,8 +57,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
 
     context 'with single character string' do
       subject do
-        described_class.new('hello',
-                            options: { pattern: '/', replacement: 'X' }).get
+        described_class.new('hello', context_for(pattern: '/', replacement: 'X')).get
       end
 
       it { is_expected.to eq 'hello' }
@@ -65,8 +65,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
 
     context 'with three character string with slashes' do
       subject do
-        described_class.new('hello',
-                            options: { pattern: '/e/', replacement: 'X' }).get
+        described_class.new('hello', context_for(pattern: '/e/', replacement: 'X')).get
       end
 
       it { is_expected.to eq 'hXllo' }
@@ -76,7 +75,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
   context 'with whitespace and empty string patterns' do
     context 'with empty string' do
       subject do
-        described_class.new('', options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+        described_class.new('', context_for(pattern: '^\\s*$', replacement: 'Untitled')).get
       end
 
       it { is_expected.to eq 'Untitled' }
@@ -84,7 +83,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
 
     context 'with whitespace only string' do
       subject do
-        described_class.new('   ', options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+        described_class.new('   ', context_for(pattern: '^\\s*$', replacement: 'Untitled')).get
       end
 
       it { is_expected.to eq 'Untitled' }
@@ -92,7 +91,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
 
     context 'with mixed whitespace string' do
       subject do
-        described_class.new(" \t\n ", options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+        described_class.new(" \t\n ", context_for(pattern: '^\\s*$', replacement: 'Untitled')).get
       end
 
       it { is_expected.to eq 'Untitled' }
@@ -100,7 +99,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
 
     context 'with non-empty string containing whitespace' do
       subject do
-        described_class.new('  hello  ', options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+        described_class.new('  hello  ', context_for(pattern: '^\\s*$', replacement: 'Untitled')).get
       end
 
       it { is_expected.to eq '  hello  ' }
@@ -108,7 +107,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
 
     context 'with newlines and tabs only' do
       subject do
-        described_class.new("\n\t\n", options: { pattern: '^\\s*$', replacement: 'Untitled' }).get
+        described_class.new("\n\t\n", context_for(pattern: '^\\s*$', replacement: 'Untitled')).get
       end
 
       it { is_expected.to eq 'Untitled' }

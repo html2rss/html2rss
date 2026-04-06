@@ -37,7 +37,7 @@ module Html2rss
       #
       # @param name [String, Symbol] post-processor name from selector config
       # @param value [Object] extracted selector value
-      # @param context [Selectors::Context, Hash] post-processor context
+      # @param context [Selectors::Context] post-processor context
       # @return [Object] transformed selector value
       def self.get(name, value, context)
         klass = NAME_TO_CLASS[name.to_sym] || raise(UnknownPostProcessorName, "Unknown name '#{name}'")

@@ -9,7 +9,7 @@ module Html2rss
         # Validates the presence of required options in the context
         #
         # @param keys [Array<Symbol>] the keys to check for presence
-        # @param context [Hash] the context containing options
+        # @param context [Selectors::Context] the context containing options
         # @return [void]
         # @raise [MissingOption] if any key is missing
         def self.expect_options(keys, context)
@@ -32,8 +32,8 @@ module Html2rss
         def self.assert_type(value, types = [], name, context:)
           return if Array(types).any? { |type| value.is_a?(type) }
 
-          options = if context.is_a?(Hash)
-                      context[:options]
+          options = if context.respond_to?(:options)
+                      context.options
                     else
                       { file: File.basename(caller(1, 1).first.split(':').first) }
                     end
@@ -46,7 +46,7 @@ module Html2rss
         # This method validates the arguments passed to the post processor. Must be implemented by subclasses.
         #
         # @param _value [Object] extracted selector value
-        # @param _context [Selectors::Context, Hash] post-processor execution context
+        # @param _context [Selectors::Context] post-processor execution context
         # @return [void]
         def self.validate_args!(_value, _context)
           raise NotImplementedError, 'You must implement the `validate_args!` method in the post processor'
@@ -58,8 +58,7 @@ module Html2rss
         # @param context [Selectors::Context] runtime selector context and options
         def initialize(value, context)
           klass = self.class
-          # TODO: get rid of Hash
-          klass.assert_type(context, [Selectors::Context, Hash], 'context', context:)
+          klass.assert_type(context, Selectors::Context, 'context', context:)
           klass.validate_args!(value, context)
 
           @value = value

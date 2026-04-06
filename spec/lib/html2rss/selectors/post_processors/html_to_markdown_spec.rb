@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::PostProcessors::HtmlToMarkdown do
-  subject { described_class.new(html, config:).get }
+  subject { described_class.new(html, context).get }
 
   let(:markdown) do
     [
@@ -40,6 +40,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::HtmlToMarkdown do
       }
     }
   end
+  let(:context) { Html2rss::Selectors::Context.new(config:, options: {}) }
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 

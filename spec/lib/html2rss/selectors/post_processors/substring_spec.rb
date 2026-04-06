@@ -1,22 +1,26 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
+  def context_for(options)
+    Html2rss::Selectors::Context.new(options:)
+  end
+
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with end' do
-    subject { described_class.new('Foo bar and baz', options: { start: 4, end: 6 }).get }
+    subject { described_class.new('Foo bar and baz', context_for(start: 4, end: 6)).get }
 
     it { is_expected.to eq 'bar' }
   end
 
   context 'without end' do
-    subject { described_class.new('foobarbaz', options: { start: 3 }).get }
+    subject { described_class.new('foobarbaz', context_for(start: 3)).get }
 
     it { is_expected.to eq 'barbaz' }
   end
 
   describe '#range' do
-    subject { described_class.new('value', options:) }
+    subject { described_class.new('value', context_for(options)) }
 
     context 'when start and end options are provided' do
       let(:options) { { start: 2, end: 4 } }
