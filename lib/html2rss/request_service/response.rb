@@ -17,6 +17,7 @@ module Html2rss
 
         headers = headers.dup
         headers.transform_keys!(&:to_s)
+        HashUtil.assert_string_keys!(headers, context: 'response headers', deep: false)
 
         @headers = headers
         @status = status

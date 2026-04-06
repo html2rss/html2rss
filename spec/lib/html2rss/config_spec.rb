@@ -9,6 +9,39 @@ RSpec.describe Html2rss::Config do
     describe '::CONFIG_KEY_FEEDS' do
       it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
     end
+
+    describe '.to_single_feed' do
+      let(:yaml) do
+        {
+          channel: { language: 'en', metadata: { site: 'global' } },
+          headers: { 'User-Agent': 'Global Agent' },
+          stylesheets: [{ href: '/global.css', type: 'text/css' }],
+          strategy: :faraday,
+          feeds: {
+            sample: {
+              channel: { metadata: { section: 'local' } },
+              headers: { 'X-Feed': 'sample' },
+              stylesheets: [{ href: '/local.css', type: 'text/css' }],
+              strategy: :browserless
+            }
+          }
+        }
+      end
+
+      let(:expected_merged) do
+        {
+          channel: { language: 'en', metadata: { site: 'global', section: 'local' } },
+          headers: { 'User-Agent': 'Global Agent', 'X-Feed': 'sample' },
+          stylesheets: [{ href: '/global.css', type: 'text/css' }, { href: '/local.css', type: 'text/css' }],
+          strategy: :browserless
+        }
+      end
+
+      it 'deep merges nested hash values and keeps local scalar overrides' do
+        merged = described_class.to_single_feed(yaml[:feeds][:sample].dup, yaml)
+        expect(merged).to include(expected_merged)
+      end
+    end
   end
 
   describe '.load_yaml' do
@@ -99,6 +132,22 @@ RSpec.describe Html2rss::Config do
 
     it 'returns the configuration' do
       expect(described_class.from_hash(hash)).to be_a(described_class)
+    end
+
+    context 'with string-keyed config input' do
+      let(:hash) do
+        {
+          'channel' => { 'url' => 'http://example.com' },
+          'selectors' => {
+            'items' => { 'selector' => '.item' },
+            'title' => { 'selector' => 'h2' }
+          }
+        }
+      end
+
+      it 'normalizes keys at ingress and builds the config' do
+        expect(described_class.from_hash(hash)).to be_a(described_class)
+      end
     end
 
     context 'with frozen hash' do

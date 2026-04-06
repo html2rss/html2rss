@@ -18,8 +18,8 @@ module Html2rss
       # @raise [ArgumentError] if policy or budget is explicitly nil
       def initialize(url:, headers: {}, request: {}, **request_options)
         @url = Html2rss::Url.from_absolute(url)
-        @headers = headers
-        @request = request.freeze
+        @headers = normalize_headers(headers).freeze
+        @request = normalize_request(request).freeze
         assign_request_options(request_options)
       end
 
@@ -84,6 +84,18 @@ module Html2rss
       def normalized_origin_url(origin_url)
         source = origin_url || @url
         Html2rss::Url.from_absolute(source)
+      end
+
+      def normalize_headers(headers)
+        headers.to_h do |key, value|
+          [key.to_s, value]
+        end
+      end
+
+      def normalize_request(request)
+        normalized = HashUtil.deep_symbolize_keys(request, context: 'request')
+        HashUtil.assert_symbol_keys!(normalized, context: 'request')
+        normalized
       end
     end
   end

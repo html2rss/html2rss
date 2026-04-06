@@ -31,20 +31,20 @@ module Html2rss
         ].freeze
 
         # Preferred keys when extracting title-like values from state payloads.
-        TITLE_KEYS = %w[title headline name text].freeze
+        TITLE_KEYS = %i[title headline name text].freeze
         # Preferred keys when extracting URL-like values from state payloads.
-        URL_KEYS = %w[url link href permalink slug path canonicalUrl shortUrl].freeze
+        URL_KEYS = %i[url link href permalink slug path canonicalUrl shortUrl].freeze
         # Preferred keys when extracting description-like values from state payloads.
-        DESCRIPTION_KEYS = %w[description summary excerpt dek subheading].freeze
+        DESCRIPTION_KEYS = %i[description summary excerpt dek subheading].freeze
         # Preferred keys when extracting image-like values from state payloads.
-        IMAGE_KEYS = %w[image imageUrl thumbnailUrl thumbnail src featuredImage coverImage heroImage].freeze
+        IMAGE_KEYS = %i[image imageUrl thumbnailUrl thumbnail src featuredImage coverImage heroImage].freeze
         # Preferred keys when extracting publication timestamps from state payloads.
-        PUBLISHED_AT_KEYS = %w[published_at publishedAt datePublished date publicationDate pubDate updatedAt updated_at
+        PUBLISHED_AT_KEYS = %i[published_at publishedAt datePublished date publicationDate pubDate updatedAt updated_at
                                createdAt created_at].freeze
         # Preferred keys when extracting category-like values from state payloads.
-        CATEGORY_KEYS = %w[categories tags section sections topic topics channel].freeze
+        CATEGORY_KEYS = %i[categories tags section sections topic topics channel].freeze
         # Preferred keys when extracting identifier-like values from state payloads.
-        ID_KEYS = %w[id guid uuid slug key].freeze
+        ID_KEYS = %i[id guid uuid slug key].freeze
 
         # Scans DOM nodes for JSON payloads containing article data.
         module DocumentScanner
@@ -202,7 +202,7 @@ module Html2rss
           module_function
 
           # @param object [Hash, Array] candidate container traversed during key lookup
-          # @param keys [Array<String, Symbol>] keys to probe in order
+          # @param keys [Array<Symbol>] keys to probe in order
           # @return [Object, nil] first matching value
           def fetch(object, keys)
             case object
@@ -212,23 +212,19 @@ module Html2rss
           end
 
           # @param hash [Hash] hash candidate traversed during key lookup
-          # @param keys [Array<String, Symbol>] keys to probe in order
+          # @param keys [Array<Symbol>] keys to probe in order
           # @return [Object, nil] first matching value from hash or nested metadata
           def fetch_from_hash(hash, keys)
             keys.each do |key|
-              string_key = key.to_s
-              return hash[string_key] if hash.key?(string_key)
-
-              symbol_key = string_key.to_sym
-              return hash[symbol_key] if hash.key?(symbol_key)
+              return hash[key] if hash.key?(key)
             end
 
-            fetch_nested(hash[:attributes] || hash['attributes'], keys) ||
-              fetch_nested(hash[:data] || hash['data'], keys)
+            fetch_nested(hash[:attributes], keys) ||
+              fetch_nested(hash[:data], keys)
           end
 
           # @param array [Array] array whose entries may contain target keys
-          # @param keys [Array<String, Symbol>] keys to probe in order
+          # @param keys [Array<Symbol>] keys to probe in order
           # @return [Object, nil] first matching value from array entries
           def fetch_from_array(array, keys)
             array.each do |entry|
@@ -240,7 +236,7 @@ module Html2rss
           end
 
           # @param value [Hash, Array, nil] nested value to recurse into
-          # @param keys [Array<String, Symbol>] keys to probe in order
+          # @param keys [Array<Symbol>] keys to probe in order
           # @return [Object, nil] matching nested value
           def fetch_nested(value, keys)
             fetch(value, keys) if value
@@ -368,7 +364,7 @@ module Html2rss
             result = names.flat_map do |value|
               case value
               when Hash
-                string(ValueFinder.fetch(value, %w[name title label]))
+                string(ValueFinder.fetch(value, %i[name title label]))
               else
                 string(value)
               end

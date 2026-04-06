@@ -38,11 +38,11 @@ module Html2rss
           local_value = config[key]
           case local_value
           when Hash
-            global_value.is_a?(Hash) ? global_value.merge(local_value) : local_value
+            global_value.is_a?(Hash) ? HashUtil.deep_merge(global_value, local_value) : local_value
           when Array
             global_value.is_a?(Array) ? global_value + local_value : local_value
           else
-            global_value
+            local_value.nil? ? global_value : local_value
           end
         end
       end

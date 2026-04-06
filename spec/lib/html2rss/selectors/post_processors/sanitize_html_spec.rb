@@ -4,7 +4,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   describe '#get' do
-    subject { described_class.new(html, config:).get }
+    subject { described_class.new(html, context).get }
 
     let(:config) do
       {
@@ -16,6 +16,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
         }
       }
     end
+    let(:context) { Html2rss::Selectors::Context.new(config:, options: {}) }
 
     let(:sanitized_html) do
       <<~HTML

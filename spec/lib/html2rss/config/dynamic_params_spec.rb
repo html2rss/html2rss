@@ -20,6 +20,13 @@ RSpec.describe Html2rss::Config::DynamicParams do
         result = described_class.call(value, params)
         expect(result).to eq({ greeting: 'Hello, John.', details: { age: 'You are 30 years old.' } })
       end
+
+      it 'does not mutate the input hash' do
+        value = { 'greeting' => 'Hello, %<name>s.' }
+        described_class.call(value, params)
+
+        expect(value).to eq({ 'greeting' => 'Hello, %<name>s.' })
+      end
     end
 
     context 'when value is an Array' do
@@ -27,6 +34,13 @@ RSpec.describe Html2rss::Config::DynamicParams do
         value = ['Hello, %<name>s.', 'You are %<age>s years old.']
         result = described_class.call(value, params)
         expect(result).to eq(['Hello, John.', 'You are 30 years old.'])
+      end
+
+      it 'does not mutate the input array' do
+        value = ['Hello, %<name>s.']
+        described_class.call(value, params)
+
+        expect(value).to eq(['Hello, %<name>s.'])
       end
     end
 

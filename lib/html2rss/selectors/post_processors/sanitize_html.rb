@@ -84,7 +84,7 @@ module Html2rss
           }
         }.freeze
         # @param value [String] extracted selector value
-        # @param context [Selectors::Context, Hash] post-processor context
+        # @param context [Selectors::Context] post-processor context
         # @return [void]
         def self.validate_args!(value, context)
           assert_type value, String, :value, context:
@@ -98,7 +98,8 @@ module Html2rss
         def self.get(html, url)
           return nil if String(html).empty?
 
-          new(html, config: { channel: { url: } }).get
+          context = Selectors::Context.new(config: { channel: { url: } }, options: {})
+          new(html, context).get
         end
 
         ##

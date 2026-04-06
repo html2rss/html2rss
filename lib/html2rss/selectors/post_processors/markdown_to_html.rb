@@ -35,7 +35,7 @@ module Html2rss
       #    <p>Price: 12.34</p>
       class MarkdownToHtml < Base
         # @param value [String] extracted selector value
-        # @param context [Selectors::Context, Hash] post-processor context
+        # @param context [Selectors::Context] post-processor context
         # @return [void]
         def self.validate_args!(value, context)
           assert_type value, String, :value, context:

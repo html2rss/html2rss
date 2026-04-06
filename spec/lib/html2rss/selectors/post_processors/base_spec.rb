@@ -60,6 +60,12 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
       described_class.new(value, context)
       expect(described_class).to have_received(:validate_args!).with(value, context)
     end
+
+    it 'rejects legacy hash context' do
+      expect do
+        described_class.new(value, { options: { key1: 'value1' } })
+      end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /type of `context` must be Struct::Context/)
+    end
   end
 
   describe '#get' do

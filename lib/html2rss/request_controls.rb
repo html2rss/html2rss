@@ -13,8 +13,8 @@ module Html2rss
     # @param config [Hash{Symbol => Object}] raw config input
     # @return [RequestControls] request controls extracted from the config hash
     def self.from_config(config)
-      ensure_symbol_keys!(config, context: 'config')
-      ensure_symbol_keys!(config[:request], context: 'config[:request]') if config[:request].is_a?(Hash)
+      HashUtil.assert_symbol_keys!(config, context: 'config', deep: false)
+      HashUtil.assert_symbol_keys!(config[:request], context: 'config[:request]') if config[:request].is_a?(Hash)
 
       new(
         strategy: config[:strategy],
@@ -41,15 +41,7 @@ module Html2rss
       request_config.is_a?(Hash) && request_config.key?(key)
     end
 
-    def self.ensure_symbol_keys!(value, context:)
-      return unless value.is_a?(Hash)
-
-      invalid_key = value.keys.find { !_1.is_a?(Symbol) }
-      return unless invalid_key
-
-      raise ArgumentError, "#{context} must use symbol keys (found #{invalid_key.inspect})"
-    end
-    private_class_method :explicit_keys_for, :request_value_for, :request_key?, :ensure_symbol_keys!
+    private_class_method :explicit_keys_for, :request_value_for, :request_key?
 
     ##
     # @param strategy [Symbol, nil] effective request strategy
