@@ -13,6 +13,10 @@ module Html2rss
           TAG_SEGMENT = 'tag'
           # Canonical path segment for author archives.
           AUTHOR_SEGMENT = 'author'
+          # Canonical path segment for paginated archives.
+          PAGE_SEGMENT = 'page'
+          # Canonical query key used for paginated archives.
+          PAGED_QUERY_KEY = 'paged'
 
           ##
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
@@ -61,11 +65,13 @@ module Html2rss
             ##
             # @return [PageScope] derived page scope
             def call
-              category_scope ||
-                tag_scope ||
-                author_scope ||
-                date_scope ||
-                fallback_scope
+              scope = category_scope ||
+                      tag_scope ||
+                      author_scope ||
+                      date_scope ||
+                      fallback_scope
+
+              apply_pagination(scope)
             end
 
             private
@@ -104,6 +110,17 @@ module Html2rss
               return non_archive_scope if singular_like?
 
               PageScope.new(query: {}, fetchable: true, reason: :unscoped)
+            end
+
+            def apply_pagination(scope)
+              page = archive_page_number
+              return scope unless scope.fetchable? && page
+
+              PageScope.new(
+                query: scope.query.merge('page' => page.to_s),
+                fetchable: scope.fetchable?,
+                reason: scope.reason
+              )
             end
 
             def scoped_scope(query)
@@ -169,8 +186,12 @@ module Html2rss
               @path_segments ||= canonical_or_current_url.path_segments
             end
 
+            def scoped_path_segments
+              @scoped_path_segments ||= paginated_path? ? path_segments[0...-2] : path_segments
+            end
+
             def leading_path_segment
-              path_segments.first
+              scoped_path_segments.first
             end
 
             def date_archive_path?
@@ -205,14 +226,31 @@ module Html2rss
             end
 
             def date_archive_segments
-              year_index = path_segments.find_index { _1.match?(/\A\d{4}\z/) }
+              year_index = scoped_path_segments.find_index { _1.match?(/\A\d{4}\z/) }
               return unless year_index
 
-              segments = path_segments.drop(year_index)
+              segments = scoped_path_segments.drop(year_index)
               return unless segments.length.between?(1, 3)
               return unless archive_segment_shape?(segments)
 
               segments
+            end
+
+            def paginated_path?
+              return false if path_segments.length < 2
+              return false unless path_segments[-2] == PAGE_SEGMENT
+
+              !parse_positive_integer(path_segments[-1]).nil?
+            end
+
+            def archive_page_number
+              parse_positive_integer(canonical_or_current_url.query_values[PAGED_QUERY_KEY]) || path_page_number
+            end
+
+            def path_page_number
+              return unless paginated_path?
+
+              parse_positive_integer(path_segments[-1])
             end
 
             def archive_segment_shape?(segments)
@@ -253,6 +291,15 @@ module Html2rss
 
               number = value.to_i
               return nil if number < minimum || number > maximum
+
+              number
+            end
+
+            def parse_positive_integer(value)
+              return nil unless value.to_s.match?(/\A\d+\z/)
+
+              number = value.to_i
+              return nil if number < 1
 
               number
             end

@@ -48,6 +48,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PostsEndpoint do
       end
     end
 
+    context 'when posts query includes a paginated archive page' do
+      let(:posts_query) { { '_fields' => 'id,title', 'per_page' => '100', 'page' => '2' } }
+
+      it 'preserves pagination for collection-style API roots' do
+        expect(posts_endpoint.query_values).to include('_fields' => 'id,title', 'per_page' => '100', 'page' => '2')
+      end
+    end
+
+    context 'when query-style API roots receive paginated archive queries' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head>' \
+          '<link rel="https://api.w.org/" href="https://example.com/index.php?rest_route=/" />' \
+          '</head></html>'
+        )
+      end
+      let(:posts_query) { { '_fields' => 'id,title', 'per_page' => '100', 'page' => '3' } }
+
+      it 'preserves pagination for query-style API roots' do
+        expected_query = { '_fields' => 'id,title', 'per_page' => '100', 'page' => '3', 'rest_route' => '/wp/v2/posts' }
+        expect(posts_endpoint.query_values).to include(expected_query)
+      end
+    end
+
     context 'when the API root carries additional query params' do
       let(:parsed_body) do
         Nokogiri::HTML(

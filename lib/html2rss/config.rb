@@ -119,9 +119,15 @@ module Html2rss
       end
 
       def deep_merge(base_config, override_config)
-        base_config.merge(override_config) do |_key, oldval, newval|
-          oldval.is_a?(Hash) && newval.is_a?(Hash) ? deep_merge(oldval, newval) : newval
+        base_config.merge(override_config) do |_key, base_value, override_value|
+          merge_value(base_value, override_value)
         end
+      end
+
+      def merge_value(base_value, override_value)
+        return deep_merge(base_value, override_value) if base_value.is_a?(Hash) && override_value.is_a?(Hash)
+
+        override_value
       end
     end
 

@@ -95,6 +95,37 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PageScope do
       end
     end
 
+    context 'when the page URL is a paginated category archive' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/category/news/page/2/') }
+      let(:html) { '<html><body class="archive category category-7"></body></html>' }
+
+      it 'keeps taxonomy scope and includes the current archive page', :aggregate_failures do
+        expect(page_scope).to be_fetchable
+        expect(page_scope.query).to eq(
+          'categories' => '7',
+          'page' => '2'
+        )
+      end
+    end
+
+    context 'when the page URL is a paginated date archive path' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/2024/04/page/2/') }
+
+      it 'keeps date range scope and includes the current archive page' do
+        expected_query = { 'after' => '2024-04-01T00:00:00Z', 'before' => '2024-05-01T00:00:00Z', 'page' => '2' }
+        expect(page_scope).to have_attributes(fetchable?: true, query: expected_query)
+      end
+    end
+
+    context 'when the page URL uses query-style pagination' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/2024/04/?paged=3') }
+
+      it 'maps paged query values to the posts page query' do
+        expected_query = { 'after' => '2024-04-01T00:00:00Z', 'before' => '2024-05-01T00:00:00Z', 'page' => '3' }
+        expect(page_scope).to have_attributes(fetchable?: true, query: expected_query)
+      end
+    end
+
     context 'when the page exposes a cross-origin canonical date archive' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/2024/04/') }
       let(:html) do
