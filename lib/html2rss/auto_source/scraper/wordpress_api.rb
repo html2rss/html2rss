@@ -16,6 +16,11 @@ module Html2rss
         CANONICAL_LINK_SELECTOR = 'link[rel="canonical"][href]'
         # Fields requested from the WordPress posts endpoint.
         POSTS_FIELDS = %w[id title excerpt content link date categories].freeze
+        # Baseline query sent to WordPress posts API follow-ups.
+        POSTS_QUERY_DEFAULTS = {
+          '_fields' => POSTS_FIELDS.join(','),
+          'per_page' => '100'
+        }.freeze
         # @return [Symbol] scraper config key
         def self.options_key = :wordpress_api
 
@@ -99,7 +104,7 @@ module Html2rss
         end
 
         def article_id(_post, article_url)
-          root_path_query_id(article_url) || string(article_url.path) || article_url.to_s
+          root_path_query_id(article_url) || present_string(article_url.path) || article_url.to_s
         end
 
         def article_title(post)
@@ -111,11 +116,11 @@ module Html2rss
         end
 
         def article_published_at(post)
-          string(post[:date])
+          present_string(post[:date])
         end
 
         def article_categories(post)
-          Array(post[:categories]).filter_map { |value| string(value) }
+          Array(post[:categories]).filter_map { |value| present_string(value) }
         end
 
         def article_attributes(post, article_url)
@@ -130,7 +135,7 @@ module Html2rss
         end
 
         def absolute_link(link)
-          value = string(link)
+          value = present_string(link)
           return unless value
 
           Html2rss::Url.from_relative(value, url)
@@ -143,17 +148,17 @@ module Html2rss
         end
 
         def rendered_html(value)
-          text = string(value)
+          text = present_string(value)
           text unless text.nil?
         end
 
-        def string(value)
+        def present_string(value)
           text = value.to_s.strip
           text unless text.empty?
         end
 
         def root_path_query_id(article_url)
-          query = string(article_url.query)
+          query = present_string(article_url.query)
           return unless query
 
           path = article_url.path.to_s
@@ -163,10 +168,7 @@ module Html2rss
         end
 
         def posts_query
-          {
-            '_fields' => POSTS_FIELDS.join(','),
-            'per_page' => '100'
-          }.merge(page_scope.query)
+          POSTS_QUERY_DEFAULTS.merge(page_scope.query).transform_values(&:to_s)
         end
 
         def posts_endpoint_url

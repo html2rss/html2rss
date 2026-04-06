@@ -118,6 +118,28 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         expect(articles.map { _1[:id] }).to eq(['/?p=123', '/?p=456'])
       end
     end
+
+    context 'when the source URL is a paginated archive' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/2024/04/page/2/') }
+      let(:expected_follow_up) { { url: api_response.url, relation: :auto_source, origin_url: url } }
+      let(:api_response) do
+        Html2rss::RequestService::Response.new(
+          body: posts_json,
+          url: Html2rss::Url.from_absolute(
+            'https://example.com/wp-json/wp/v2/posts?' \
+            '_fields=id,title,excerpt,content,link,date,categories&' \
+            'after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&page=2&per_page=100'
+          ),
+          headers: { 'content-type' => 'application/json' }
+        )
+      end
+
+      it 'requests the posts endpoint with archive page context' do
+        articles
+
+        expect(request_session).to have_received(:follow_up).with(expected_follow_up)
+      end
+    end
   end
 end
 

@@ -10,11 +10,14 @@ module Html2rss
     REQUEST_KEYS = %i[max_redirects max_requests].freeze
 
     ##
-    # @param config [Hash{Symbol => Object}, Hash{String => Object}] raw config input
+    # @param config [Hash{Symbol => Object}] raw config input
     # @return [RequestControls] request controls extracted from the config hash
     def self.from_config(config)
+      ensure_symbol_keys!(config, context: 'config')
+      ensure_symbol_keys!(config[:request], context: 'config[:request]') if config[:request].is_a?(Hash)
+
       new(
-        strategy: value_for(config, :strategy),
+        strategy: config[:strategy],
         max_redirects: request_value_for(config, :max_redirects),
         max_requests: request_value_for(config, :max_requests),
         explicit_keys: explicit_keys_for(config)
@@ -22,33 +25,31 @@ module Html2rss
     end
 
     def self.explicit_keys_for(config)
-      TOP_LEVEL_KEYS.filter { top_level_key?(config, _1) } +
+      TOP_LEVEL_KEYS.filter { config.key?(_1) } +
         REQUEST_KEYS.filter { request_key?(config, _1) }
     end
 
-    def self.value_for(config, key)
-      return config[key] if config.key?(key)
-      return config[key.to_s] if config.key?(key.to_s)
-
-      nil
-    end
-
     def self.request_value_for(config, key)
-      request_config = value_for(config, :request)
+      request_config = config[:request]
       return nil unless request_config.is_a?(Hash)
 
-      value_for(request_config, key)
-    end
-
-    def self.top_level_key?(config, key)
-      config.key?(key) || config.key?(key.to_s)
+      request_config[key]
     end
 
     def self.request_key?(config, key)
-      request_config = value_for(config, :request)
-      request_config.is_a?(Hash) && top_level_key?(request_config, key)
+      request_config = config[:request]
+      request_config.is_a?(Hash) && request_config.key?(key)
     end
-    private_class_method :explicit_keys_for, :request_value_for, :top_level_key?, :request_key?, :value_for
+
+    def self.ensure_symbol_keys!(value, context:)
+      return unless value.is_a?(Hash)
+
+      invalid_key = value.keys.find { !_1.is_a?(Symbol) }
+      return unless invalid_key
+
+      raise ArgumentError, "#{context} must use symbol keys (found #{invalid_key.inspect})"
+    end
+    private_class_method :explicit_keys_for, :request_value_for, :request_key?, :ensure_symbol_keys!
 
     ##
     # @param strategy [Symbol, nil] effective request strategy
