@@ -11,15 +11,13 @@ module Html2rss
     # @return [Object] deep duplicated object
     def deep_dup(object)
       case object
-      when Hash
-        object.to_h { |key, value| [key, deep_dup(value)] }
-      when Array
+      in Hash
+        object.transform_values { deep_dup(_1) }
+      in Array
         object.map { deep_dup(_1) }
       else
-        object.dup
+        object.dup rescue StandardError # rubocop:disable Style/RescueModifier
       end
-    rescue TypeError
-      object
     end
 
     # Deeply merges nested hashes while replacing non-hash values from override.
@@ -28,8 +26,13 @@ module Html2rss
     # @param override [Hash] override hash
     # @return [Hash] merged hash
     def deep_merge(base, override)
-      base.merge(override) do |_key, base_value, override_value|
-        base_value.is_a?(Hash) && override_value.is_a?(Hash) ? deep_merge(base_value, override_value) : override_value
+      base.merge(override) do |_key, old_val, new_val|
+        case [old_val, new_val]
+        in [Hash, Hash]
+          deep_merge(old_val, new_val)
+        else
+          new_val
+        end
       end
     end
 
@@ -40,11 +43,11 @@ module Html2rss
     # @return [Object] normalized value
     def deep_symbolize_keys(object, context: 'hash')
       case object
-      when Hash
-        object.to_h do |key, value|
-          [symbol_key(key, context:), deep_symbolize_keys(value, context:)]
+      in Hash
+        object.each_with_object({}) do |(k, v), memo|
+          memo[symbol_key(k, context:)] = deep_symbolize_keys(v, context:)
         end
-      when Array
+      in Array
         object.map { deep_symbolize_keys(_1, context:) }
       else
         object
@@ -58,13 +61,14 @@ module Html2rss
     # @param deep [Boolean] whether nested hashes should also be validated
     # @return [void]
     def assert_symbol_keys!(value, context: 'hash', deep: true)
-      return unless value.is_a?(Hash)
+      return unless value in Hash
 
-      key = value.keys.find { !_1.is_a?(Symbol) }
-      raise ArgumentError, "#{context} must use symbol keys (found #{key.inspect})" if key
-      return unless deep
+      unless value.each_key.all?(Symbol)
+        invalid_key = value.keys.find { _1.class != Symbol }
+        raise ArgumentError, "#{context} must use symbol keys (found #{invalid_key.inspect})"
+      end
 
-      value.each_value { assert_symbol_keys!(_1, context:, deep:) }
+      value.each_value { assert_symbol_keys!(_1, context:, deep:) } if deep
     end
 
     # Validates that hash keys are strings.
@@ -74,20 +78,23 @@ module Html2rss
     # @param deep [Boolean] whether nested hashes should also be validated
     # @return [void]
     def assert_string_keys!(value, context: 'hash', deep: true)
-      return unless value.is_a?(Hash)
+      return unless value in Hash
 
-      key = value.keys.find { !_1.is_a?(String) }
-      raise ArgumentError, "#{context} must use string keys (found #{key.inspect})" if key
-      return unless deep
+      unless value.each_key.all?(String)
+        invalid_key = value.keys.find { _1.class != String }
+        raise ArgumentError, "#{context} must use string keys (found #{invalid_key.inspect})"
+      end
 
-      value.each_value { assert_string_keys!(_1, context:, deep:) }
+      value.each_value { assert_string_keys!(_1, context:, deep:) } if deep
     end
 
     def symbol_key(key, context:)
-      return key if key.is_a?(Symbol)
-      return key.to_sym if key.is_a?(String)
-
-      raise ArgumentError, "#{context} must use string or symbol keys (found #{key.inspect})"
+      case key
+      in Symbol then key
+      in String then key.to_sym
+      else
+        raise ArgumentError, "#{context} must use string or symbol keys (found #{key.inspect})"
+      end
     end
     private_class_method :symbol_key
   end
