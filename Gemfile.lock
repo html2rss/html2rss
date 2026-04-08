@@ -24,7 +24,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.8.9)
+    addressable (2.9.0)
       public_suffix (>= 2.0.2, < 8.0)
     ast (2.4.3)
     base64 (0.3.0)
@@ -264,7 +264,7 @@ DEPENDENCIES
   yard-lint
 
 CHECKSUMS
-  addressable (2.8.9) sha256=cc154fcbe689711808a43601dee7b980238ce54368d23e127421753e46895485
+  addressable (2.9.0) sha256=7fdf6ac3660f7f4e867a0838be3f6cf722ace541dd97767fa42bc6cfa980c7af
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (4.1.0) sha256=6dc07767aa3dc456ccd48e7ae70a07b474e9afd7c5bc576f80bd6da5c8dd6cae
