@@ -22,6 +22,7 @@ group :development, :test do
   gem 'rubocop-rake', require: false
   gem 'rubocop-rspec', require: false
   gem 'rubocop-thread_safety', require: false
+  gem 'rubocop-yard', require: false
 
   gem 'rspec', '~> 3.0', require: false
   gem 'rspec-instafail', require: false

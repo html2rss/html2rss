@@ -50,7 +50,7 @@ module Html2rss
         ##
         # Yields article hashes from the WordPress posts API.
         #
-        # @yieldparam article [Hash<Symbol, Object>] normalized article hash
+        # @yieldparam article [Hash{Symbol => Object}] normalized article hash
         # @return [Enumerator, void] enumerator when no block is given
         def each
           return enum_for(:each) unless block_given?
