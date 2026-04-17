@@ -15,15 +15,14 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do # rubocop:disable
     )
   end
   let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil) }
-  let(:ctx) { Html2rss::RequestService::Context.new(url: 'https://example.com', policy:, budget:) }
+  let(:request_config) { {} }
+  let(:ctx) { Html2rss::RequestService::Context.new(url: 'https://example.com', request: request_config, policy:, budget:) }
   let(:connection) { instance_double(Faraday::Connection) }
-  let(:api_response) do
-    instance_double(Faraday::Response, status: 200, body: response_body)
-  end
+  let(:api_response) { instance_double(Faraday::Response, status: 200, body: response_body) }
   let(:response_body) do
     {
-      url: 'https://redacted.example/technology',
-      final_url: 'https://redacted.example/technology/',
+      url: 'https://redacted.example/path',
+      final_url: 'https://redacted.example/path/',
       status_code: 200,
       headers: { 'content-type' => 'text/html' },
       html: '<html><body>ok</body></html>',
@@ -42,8 +41,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do # rubocop:disable
   let(:source_fixture_path) { '/Users/gil/versioned/html2rss/botasaurus-scrape-api/reuters_tech.response.json' }
   let(:inline_sample_payload) do
     {
-      'url' => 'https://redacted.example/technology',
-      'final_url' => 'https://redacted.example/technology/',
+      'url' => 'https://redacted.example/path',
+      'final_url' => 'https://redacted.example/path/',
       'status_code' => 200,
       'headers' => { 'content-type' => 'text/html' },
       'html' => '<html>redacted</html>',
@@ -81,7 +80,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do # rubocop:disable
     end
   end
 
-  it 'posts with td-like defaults, validates policy, and maps response', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+  it 'posts defaults, validates policy, and maps response', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     result = execute
 
     expect(budget).to have_received(:consume!)
@@ -95,32 +94,111 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do # rubocop:disable
     path, body, headers = captured_post_args.first
     expect(path).to eq('/scrape')
     expect(headers).to eq('Content-Type' => 'application/json')
-    expect(JSON.parse(body)).to include(
+    expect(JSON.parse(body)).to eq(
       'url' => 'https://example.com/',
       'navigation_mode' => 'auto',
       'max_retries' => 2,
       'headless' => false
     )
     expect(result).to be_a(Html2rss::RequestService::Response)
-    expect(result.url.to_s).to eq('https://redacted.example/technology/')
+    expect(result.url.to_s).to eq('https://redacted.example/path/')
     expect(result.status).to eq(200)
     expect(result.headers.fetch('content-type')).to include('text/html')
     expect(result.body).to include('ok')
   end
 
-  it 'uses status and fallback headers from transport when payload omits them', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-    allow(api_response).to receive_messages(status: 202, body: {
+  it 'includes allowlisted botasaurus options and excludes unknown keys', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    request_overrides = {
+      botasaurus: {
+        navigation_mode: 'google_get_bypass',
+        max_retries: 3,
+        wait_for_selector: 'h1',
+        wait_timeout_seconds: 15,
+        block_images: true,
+        block_images_and_css: false,
+        wait_for_complete_page_load: true,
+        headless: true,
+        proxy: 'http://proxy.local:8080',
+        user_agent: 'Agent/1.0',
+        window_size: [1920, 1080],
+        lang: 'en-US',
+        ignored_key: 'drop-me'
+      }
+    }
+    ctx_with_options = Html2rss::RequestService::Context.new(
+      url: 'https://example.com',
+      request: request_overrides,
+      policy:,
+      budget:
+    )
+
+    described_class.new(ctx_with_options).execute
+
+    payload = JSON.parse(captured_post_args.first.fetch(1))
+    expect(payload).to include(
+      'navigation_mode' => 'google_get_bypass',
+      'max_retries' => 3,
+      'wait_for_selector' => 'h1',
+      'wait_timeout_seconds' => 15,
+      'block_images' => true,
+      'block_images_and_css' => false,
+      'wait_for_complete_page_load' => true,
+      'headless' => true,
+      'proxy' => 'http://proxy.local:8080',
+      'user_agent' => 'Agent/1.0',
+      'window_size' => [1920, 1080],
+      'lang' => 'en-US'
+    )
+    expect(payload).not_to have_key('ignored_key')
+  end
+
+  it 'uses fallback headers from transport metadata defaults when payload omits headers', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    allow(api_response).to receive_messages(status: 200, body: {
       final_url: nil,
       status_code: nil,
       headers: nil,
-      html: '<html>fallback</html>'
+      html: '<html>fallback</html>',
+      error: nil,
+      error_category: nil
     }.to_json)
 
     result = execute
 
-    expect(result.status).to eq(202)
+    expect(result.status).to eq(200)
     expect(result.url.to_s).to eq('https://example.com/')
     expect(result.headers).to eq('content-type' => 'text/html')
+  end
+
+  it 'raises BotasaurusConnectionFailed on non-200 upstream failures', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    allow(api_response).to receive_messages(status: 502, body: {
+      html: '<html>error</html>',
+      status_code: 502,
+      error: 'navigation failed',
+      error_category: 'navigation_error',
+      request_id: 'trace-123'
+    }.to_json)
+
+    expect { execute }
+      .to raise_error(
+        Html2rss::RequestService::BotasaurusConnectionFailed,
+        /status=502, error_category=navigation_error, error=navigation failed, request_id=trace-123/
+      )
+  end
+
+  it 'raises BotasaurusConnectionFailed on upstream error payloads', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    allow(api_response).to receive(:body).and_return({
+      html: '<html>error</html>',
+      status_code: 200,
+      error: 'metadata collection failed',
+      error_category: 'metadata_error',
+      request_id: 'trace-456'
+    }.to_json)
+
+    expect { execute }
+      .to raise_error(
+        Html2rss::RequestService::BotasaurusConnectionFailed,
+        /status=200, error_category=metadata_error, error=metadata collection failed, request_id=trace-456/
+      )
   end
 
   it 'raises configuration error when BOTASAURUS_SCRAPER_URL is missing' do # rubocop:disable RSpec/ExampleLength
@@ -161,8 +239,13 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do # rubocop:disable
       .to raise_error(Html2rss::RequestService::BotasaurusConnectionFailed, /JSON parse failed/)
   end
 
-  it 'raises BotasaurusConnectionFailed when required html field is missing' do
-    allow(api_response).to receive(:body).and_return({ final_url: 'https://redacted.example/path' }.to_json)
+  it 'raises BotasaurusConnectionFailed when required html field is missing' do # rubocop:disable RSpec/ExampleLength
+    allow(api_response).to receive(:body).and_return({
+      final_url: 'https://redacted.example/path/',
+      status_code: 200,
+      error: nil,
+      error_category: nil
+    }.to_json)
 
     expect { execute }
       .to raise_error(Html2rss::RequestService::BotasaurusConnectionFailed, /missing required 'html'/)
@@ -196,6 +279,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do # rubocop:disable
       'challenge_detected' => false,
       'error_category' => nil
     )
+    expect(fixture.fetch('url')).to start_with('https://redacted.example')
+    expect(fixture.fetch('final_url')).to start_with('https://redacted.example')
     expect(result.url.to_s).to eq('https://redacted.example/technology/')
     expect(result.headers.fetch('content-type')).to include('text/html')
     expect(result.body.bytesize).to eq(562_671)

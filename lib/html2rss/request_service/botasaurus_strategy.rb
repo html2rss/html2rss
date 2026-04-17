@@ -8,15 +8,6 @@ module Html2rss
     ##
     # Strategy to delegate fetching to a Botasaurus scrape API.
     class BotasaurusStrategy < Strategy
-      # Default Botasaurus navigation mode.
-      DEFAULT_NAVIGATION_MODE = 'auto'
-      # Default retry count used by Botasaurus auto mode.
-      DEFAULT_MAX_RETRIES = 2
-      # Default Botasaurus headless flag.
-      DEFAULT_HEADLESS = false
-      # Fallback response headers when upstream omits headers.
-      DEFAULT_HEADERS = { 'content-type' => 'text/html' }.freeze
-
       ##
       # Executes a Botasaurus-backed request with shared request policy guards.
       #
@@ -26,12 +17,13 @@ module Html2rss
       # @raise [RequestTimedOut] when the Botasaurus request exceeds configured timeout
       def execute
         validate_request!
-        transport_response = client.post('/scrape', JSON.generate(scrape_payload), content_type_header)
-        build_response(parse_payload(transport_response), transport_response)
+        transport_response = client.post('/scrape', JSON.generate(contract.request_payload), content_type_header)
+        parsed_response = contract.parse_response(transport_response)
+        raise_if_challenge_blocked!(parsed_response)
+        raise_if_upstream_failed!(parsed_response)
+        build_response(parsed_response)
       rescue Faraday::TimeoutError, Timeout::Error => error
         raise RequestTimedOut, error.message
-      rescue JSON::ParserError => error
-        raise BotasaurusConnectionFailed, "Botasaurus response JSON parse failed: #{error.message}"
       rescue Faraday::ConnectionFailed, Faraday::SSLError => error
         raise BotasaurusConnectionFailed, "Botasaurus connection failed: #{error.message}"
       end
@@ -43,55 +35,40 @@ module Html2rss
         ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
       end
 
-      def build_response(response_payload, transport_response)
-        body = response_payload.fetch('html').to_s
+      def build_response(parsed_response)
+        body = parsed_response.html
         ResponseGuard.new(policy: ctx.policy).inspect_body!(body)
 
         Response.new(
           body:,
-          headers: response_headers(response_payload),
-          url: response_url(response_payload),
-          status: response_status(response_payload, transport_response)
+          headers: parsed_response.headers,
+          url: response_url(parsed_response.final_url),
+          status: parsed_response.status
         )
       end
 
-      def parse_payload(transport_response)
-        payload = JSON.parse(transport_response.body.to_s)
-        raise BotasaurusConnectionFailed, 'Botasaurus response must be a JSON object' unless payload.is_a?(Hash)
-        unless payload.key?('html')
-          raise BotasaurusConnectionFailed, "Botasaurus response missing required 'html' field"
-        end
+      def raise_if_challenge_blocked!(parsed_response)
+        return unless parsed_response.challenge_block?
 
-        raise_if_challenge_blocked!(payload)
-
-        payload
+        raise BlockedSurfaceDetected, "Blocked surface detected: #{parsed_response.challenge_message}"
       end
 
-      def raise_if_challenge_blocked!(response_payload)
-        return unless response_payload['error_category'] == 'challenge_block'
+      def raise_if_upstream_failed!(parsed_response)
+        return unless parsed_response.upstream_failure?
 
-        message = response_payload['error'] || 'Botasaurus challenge block detected.'
-        raise BlockedSurfaceDetected, "Blocked surface detected: #{message}"
+        raise BotasaurusConnectionFailed, parsed_response.upstream_failure_message
       end
 
-      def response_headers(response_payload)
-        raw_headers = response_payload['headers']
-        return DEFAULT_HEADERS.dup unless raw_headers.is_a?(Hash) && raw_headers.any?
+      def response_url(final_url)
+        return ctx.url if final_url.nil?
 
-        raw_headers.to_h { |key, value| [key.to_s, value.to_s] }
-      end
-
-      def response_status(response_payload, transport_response)
-        status_code = response_payload['status_code']
-        status_code.is_a?(Integer) ? status_code : transport_response.status
-      end
-
-      def response_url(response_payload)
-        return ctx.url unless response_payload['final_url']
-
-        Html2rss::Url.from_absolute(response_payload['final_url'])
+        Html2rss::Url.from_absolute(final_url)
       rescue ArgumentError
         ctx.url
+      end
+
+      def contract
+        @contract ||= BotasaurusContract.new(url: ctx.url, options: ctx.request.fetch(:botasaurus, {}))
       end
 
       def client
@@ -100,15 +77,6 @@ module Html2rss
 
       def request_options
         { timeout: ctx.policy.total_timeout_seconds }
-      end
-
-      def scrape_payload
-        {
-          url: ctx.url.to_s,
-          navigation_mode: DEFAULT_NAVIGATION_MODE,
-          max_retries: DEFAULT_MAX_RETRIES,
-          headless: DEFAULT_HEADLESS
-        }
       end
 
       def content_type_header
