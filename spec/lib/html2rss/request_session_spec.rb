@@ -62,6 +62,19 @@ RSpec.describe Html2rss::RequestSession do
         expect(context.policy.max_requests).to eq(4)
       end
     end
+
+    context 'when a shared budget is provided' do
+      let(:configured_max_requests) { 4 }
+      let(:shared_budget) { Html2rss::RequestService::Budget.new(max_requests: 2) }
+
+      it 'uses the provided budget object for the session context', :aggregate_failures do
+        session = described_class.from_runtime_input(runtime_input, budget: shared_budget, logger:)
+        context = session.instance_variable_get(:@context)
+
+        expect(session).to be_a(described_class)
+        expect(context.budget).to equal(shared_budget)
+      end
+    end
     # rubocop:enable RSpec/MultipleMemoizedHelpers
   end
 
@@ -140,6 +153,51 @@ RSpec.describe Html2rss::RequestSession do
     it 'logs and clamps the configured budget when it exceeds the policy ceiling', :aggregate_failures do
       expect(session.effective_page_budget(20)).to eq(Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING)
       expect(logger).to have_received(:warn).with(/pagination max_pages=20 exceeds system ceiling=10/)
+    end
+  end
+
+  describe 'with strategy auto' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    subject(:session) { described_class.new(context:, strategy: :auto, logger:) }
+
+    let(:initial_response) do
+      Html2rss::RequestService::Response.new(
+        body: '<html></html>',
+        url: Html2rss::Url.from_absolute('https://example.com/news'),
+        headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+    end
+    let(:follow_up_response) do
+      Html2rss::RequestService::Response.new(
+        body: '<html></html>',
+        url: Html2rss::Url.from_absolute('https://example.com/news?page=2'),
+        headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+    end
+    let(:faraday_strategy) { instance_double(Html2rss::RequestService::FaradayStrategy) }
+    let(:botasaurus_strategy) { instance_double(Html2rss::RequestService::BotasaurusStrategy) }
+
+    before do
+      allow(Html2rss::RequestService::FaradayStrategy).to receive(:new).and_return(faraday_strategy)
+      allow(Html2rss::RequestService::BotasaurusStrategy).to receive(:new).and_return(botasaurus_strategy)
+
+      allow(faraday_strategy).to receive(:execute)
+        .and_raise(Html2rss::RequestService::BlockedSurfaceDetected, 'blocked')
+      allow(botasaurus_strategy).to receive(:execute).and_return(initial_response, follow_up_response)
+    end
+
+    it 'pins the successful auto strategy for follow-up requests', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      session.fetch_initial_response
+      result = session.follow_up(
+        url: 'https://example.com/news?page=2',
+        relation: :pagination,
+        origin_url: 'https://example.com/news'
+      )
+
+      expect(result).to eq(follow_up_response)
+      expect(faraday_strategy).to have_received(:execute).once
+      expect(botasaurus_strategy).to have_received(:execute).twice
     end
   end
 end
