@@ -258,6 +258,76 @@ RSpec.describe Html2rss::Config do
       expect(result.to_h.dig(:channel, :time_zone)).to eq('UTC')
     end
 
+    context 'when request includes valid botasaurus options' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: {
+              navigation_mode: 'google_get_bypass',
+              max_retries: 3,
+              wait_for_selector: '.main',
+              wait_timeout_seconds: 15,
+              block_images: true,
+              block_images_and_css: false,
+              wait_for_complete_page_load: true,
+              headless: false,
+              proxy: 'http://user:pass@proxy:8080',
+              user_agent: 'Mozilla/5.0',
+              window_size: [1920, 1080],
+              lang: 'en-US'
+            }
+          }
+        }
+      end
+
+      it 'accepts the botasaurus config contract', :aggregate_failures do
+        result = described_class.validate(config)
+
+        expect(result).to be_success
+        expect(result.to_h.dig(:request, :botasaurus, :navigation_mode)).to eq('google_get_bypass')
+      end
+    end
+
+    context 'when request includes invalid botasaurus options' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: {
+              navigation_mode: 'invalid_mode',
+              max_retries: 4,
+              wait_timeout_seconds: 0
+            }
+          }
+        }
+      end
+
+      it 'rejects values outside the contract' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
+    context 'when botasaurus window_size length is not exactly two items' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: {
+              window_size: [1920]
+            }
+          }
+        }
+      end
+
+      it 'rejects the botasaurus config' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
     it 'fails when guid references an unknown selector' do
       config[:selectors][:guid] = ['missing']
 

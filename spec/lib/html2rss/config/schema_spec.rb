@@ -56,6 +56,21 @@ RSpec.describe Html2rss::Config::Schema do
     it 'does not expose internal validation helper properties' do
       expect(json_schema.fetch('properties')).not_to include('dynamic_params_error')
     end
+
+    it 'exposes botasaurus request options and constraints', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      botasaurus = json_schema.dig('properties', 'request', 'properties', 'botasaurus', 'properties')
+      window_size = botasaurus.fetch('window_size')
+      min_window_size = window_size['minItems'] || window_size.dig('items', 'minLength')
+      max_window_size = window_size['maxItems'] || window_size.dig('items', 'maxLength')
+
+      expect(botasaurus.fetch('navigation_mode').fetch('enum'))
+        .to contain_exactly('auto', 'get', 'google_get', 'google_get_bypass')
+      expect(botasaurus.dig('max_retries', 'minimum')).to eq(0)
+      expect(botasaurus.dig('max_retries', 'maximum')).to eq(3)
+      expect(botasaurus.dig('wait_timeout_seconds', 'exclusiveMinimum')).to eq(0)
+      expect(min_window_size).to eq(2)
+      expect(max_window_size).to eq(2)
+    end
   end
 
   describe '.path' do
