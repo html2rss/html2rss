@@ -26,7 +26,7 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: %w[faraday browserless]
+                  enum: %w[faraday browserless botasaurus]
     method_option :max_redirects,
                   type: :numeric,
                   desc: 'Maximum redirects to follow per request'
@@ -48,7 +48,7 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: %w[faraday browserless]
+                  enum: %w[faraday browserless botasaurus]
     method_option :format,
                   type: :string,
                   desc: 'Output format for the auto-sourced feed',
@@ -192,6 +192,8 @@ module Html2rss
             'or increase request.max_requests in the config.'
     rescue Html2rss::RequestService::BrowserlessConfigurationError,
            Html2rss::RequestService::BrowserlessConnectionFailed,
+           Html2rss::RequestService::BotasaurusConfigurationError,
+           Html2rss::RequestService::BotasaurusConnectionFailed,
            Html2rss::RequestService::BlockedSurfaceDetected => error
       raise Thor::Error, error.message
     end

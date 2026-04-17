@@ -34,6 +34,10 @@ module Html2rss
     class BrowserlessConfigurationError < Html2rss::Error; end
     # Raised when Browserless cannot be reached.
     class BrowserlessConnectionFailed < Html2rss::Error; end
+    # Raised when Botasaurus configuration is missing or invalid.
+    class BotasaurusConfigurationError < Html2rss::Error; end
+    # Raised when Botasaurus cannot be reached or returns invalid payloads.
+    class BotasaurusConnectionFailed < Html2rss::Error; end
 
     class << self
       extend Forwardable
@@ -52,7 +56,8 @@ module Html2rss
     def initialize
       @strategies = {
         faraday: FaradayStrategy,
-        browserless: BrowserlessStrategy
+        browserless: BrowserlessStrategy,
+        botasaurus: BotasaurusStrategy
       }
       @default_strategy_name = :faraday
     end

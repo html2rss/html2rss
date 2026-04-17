@@ -34,6 +34,14 @@ RSpec.describe Html2rss::CLI do
       expect(Html2rss).to have_received(:feed).with(hash_including(strategy: :browserless))
     end
 
+    it 'passes botasaurus strategy option to the config' do
+      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+      cli.invoke(:feed, ['example.yml'], { strategy: 'botasaurus' })
+
+      expect(Html2rss).to have_received(:feed).with(hash_including(strategy: :botasaurus))
+    end
+
     it 'passes the max_redirects option to the config' do
       allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
 
@@ -100,6 +108,14 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
+    end
+
+    it 'passes botasaurus strategy option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { strategy: 'botasaurus' })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :botasaurus, items_selector: nil, max_redirects: nil,
                                      max_requests: nil)
     end
 
@@ -184,6 +200,20 @@ RSpec.describe Html2rss::CLI do
       it 'raises a CLI error with browserless diagnostics' do
         expect { cli.invoke(:auto, ['https://example.com'], { strategy: 'browserless' }) }
           .to raise_error(Thor::Error, /Browserless connection failed/)
+      end
+    end
+
+    context 'when botasaurus connectivity fails' do
+      before do
+        allow(Html2rss).to receive(:auto_source).and_raise(
+          Html2rss::RequestService::BotasaurusConnectionFailed,
+          'Botasaurus connection failed: Connection refused'
+        )
+      end
+
+      it 'raises a CLI error with botasaurus diagnostics' do
+        expect { cli.invoke(:auto, ['https://example.com'], { strategy: 'botasaurus' }) }
+          .to raise_error(Thor::Error, /Botasaurus connection failed/)
       end
     end
 
