@@ -76,7 +76,7 @@ module Html2rss
         ##
         # Iterates over normalized article hashes extracted from supported Microdata roots.
         #
-        # @yieldparam article [Hash<Symbol, Object>] the normalized article attributes.
+        # @yieldparam article [Hash{Symbol => Object}] the normalized article attributes.
         # @return [Enumerator, void] an enumerator when no block is given.
         def each
           return enum_for(:each) unless block_given?

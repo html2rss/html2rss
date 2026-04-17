@@ -4,6 +4,7 @@ plugins:
   - rubocop-md
   - rubocop-rake
   - rubocop-thread_safety
+  - rubocop-yard
 
 AllCops:
   DisplayCopNames: true
