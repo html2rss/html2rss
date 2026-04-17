@@ -10,7 +10,7 @@ require 'logger'
 
 ##
 # The Html2rss namespace.
-module Html2rss
+module Html2rss # rubocop:disable Metrics/ModuleLength
   ##
   # The logger instance.
   Log = Logger.new($stdout)
@@ -62,7 +62,7 @@ module Html2rss
   # @param max_redirects [Integer, nil] optional redirect limit override
   # @param max_requests [Integer, nil] optional request budget override
   # @return [RSS::Rss] generated RSS feed
-  def self.auto_source(url, strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: nil)
+  def self.auto_source(url, strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil)
     feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:))
   end
 
@@ -75,29 +75,120 @@ module Html2rss
   # @param max_redirects [Integer, nil] optional redirect limit override
   # @param max_requests [Integer, nil] optional request budget override
   # @return [Hash] JSONFeed-compliant hash
-  def self.auto_json_feed(url, strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: nil)
+  def self.auto_json_feed(url, strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil)
     json_feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:))
   end
 
-  class << self
+  class << self # rubocop:disable Metrics/ClassLength
     private
 
     def run_pipeline(raw_config)
-      # 1. Normalize and validate the user-facing feed config.
       config = Config.from_hash(raw_config, params: raw_config[:params])
-      runtime_input = RequestSession::RuntimeInput.from_config(config)
+      pipeline_state = pipeline_state_for(config)
 
-      # 2. Fetch the initial page using a shared request session.
-      request_session = RequestSession.from_runtime_input(runtime_input)
+      yield response: pipeline_state.fetch(:response), config:, articles: pipeline_state.fetch(:articles)
+    end
+
+    def pipeline_state_for(config)
+      return run_pipeline_for_strategy(config, strategy: config.strategy) unless config.strategy == :auto
+
+      run_auto_pipeline(config)
+    end
+
+    def run_pipeline_for_strategy(config, strategy:, budget: nil)
+      request_session = request_session_for(config, strategy:, budget:)
       response = request_session.fetch_initial_response
-
-      # 3. Collect articles from configured selectors and auto-source scrapers.
       articles = Articles::Deduplicator.new(
         collect_articles(response:, config:, request_session:)
       ).call
 
-      # 4. Render the final output format chosen by the public entrypoint.
-      yield response:, config:, articles:
+      { response:, articles: }
+    end
+
+    def run_auto_pipeline(config) # rubocop:disable Metrics/MethodLength
+      attempts = []
+      last_error = nil
+      shared_budget = auto_pipeline_budget(config)
+
+      concrete_auto_strategies.each do |strategy|
+        state, attempts, last_error = execute_auto_attempt(
+          config:,
+          strategy:,
+          attempts:,
+          last_error:,
+          budget: shared_budget
+        )
+        return state if state
+      end
+
+      raise NoFeedItemsExtracted.new(attempts:) if auto_pipeline_zero_items_terminal?(attempts)
+      raise last_error if last_error
+
+      raise NoFeedItemsExtracted.new(attempts:)
+    end
+
+    def execute_auto_attempt(config:, strategy:, attempts:, last_error:, budget:) # rubocop:disable Metrics/MethodLength
+      request_session = request_session_for(config, strategy:, budget:)
+      response, attempts, last_error = fetch_auto_response(
+        request_session:,
+        strategy:,
+        attempts:,
+        last_error:
+      )
+      return [nil, attempts, last_error] unless response
+
+      articles = auto_attempt_articles(response:, config:, request_session:)
+      items_count = articles.size
+      attempts << { strategy:, items_count:, error_class: nil }
+      Log.debug("#{self}: auto pipeline strategy=#{strategy} items=#{items_count}")
+
+      return [{ response:, articles: }, attempts, last_error] if items_count.positive?
+
+      [nil, attempts, last_error]
+    end
+
+    def request_session_for(config, strategy:, budget: nil)
+      RequestSession.from_runtime_input(runtime_input_for(config, strategy:), budget:)
+    end
+
+    def runtime_input_for(config, strategy:)
+      RequestSession::RuntimeInput.new(
+        url: config.url,
+        headers: config.headers,
+        request: config.request,
+        strategy:,
+        request_policy: RequestSession::RuntimePolicy.from_config(config)
+      )
+    end
+
+    def auto_pipeline_budget(config)
+      policy = RequestSession::RuntimePolicy.from_config(config)
+      RequestService::Budget.new(max_requests: policy.max_requests)
+    end
+
+    def concrete_auto_strategies
+      RequestService::AutoStrategy::CHAIN
+    end
+
+    def auto_pipeline_zero_items_terminal?(attempts)
+      successful_counts = attempts.filter_map { _1[:items_count] }
+      successful_counts.any? && successful_counts.all?(&:zero?)
+    end
+
+    def fetch_auto_response(request_session:, strategy:, attempts:, last_error:)
+      [request_session.fetch_initial_response, attempts, last_error]
+    rescue *RequestService::AutoStrategy::NON_FALLBACK_ERRORS
+      raise
+    rescue StandardError => error
+      attempts << { strategy:, items_count: nil, error_class: error.class.name }
+      Log.debug("#{self}: auto pipeline strategy=#{strategy} error=#{error.class}: #{error.message}")
+      [nil, attempts, error]
+    end
+
+    def auto_attempt_articles(response:, config:, request_session:)
+      Articles::Deduplicator.new(
+        collect_articles(response:, config:, request_session:)
+      ).call
     end
 
     def collect_articles(response:, config:, request_session:)
@@ -143,7 +234,7 @@ module Html2rss
 
     def explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
       keys = []
-      keys << :strategy unless strategy == :faraday
+      keys << :strategy unless strategy.nil? || strategy == RequestService.default_strategy_name
       keys << :max_redirects unless max_redirects.nil?
       keys << :max_requests unless max_requests.nil?
       keys
