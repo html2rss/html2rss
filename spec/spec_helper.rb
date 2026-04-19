@@ -28,7 +28,7 @@ if ENV['COVERAGE']
   end
 end
 
-require_relative '../lib/html2rss'
+require 'html2rss'
 require_relative 'support/cli_helpers'
 
 # Load custom matchers and helpers

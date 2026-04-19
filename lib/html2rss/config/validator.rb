@@ -56,11 +56,30 @@ module Html2rss
         optional(:preload).hash(BrowserlessPreloadConfig)
       end
 
+      # Contract for Botasaurus-specific request options.
+      BotasaurusRequestConfig = Dry::Schema.Params do
+        config.validate_keys = true
+
+        optional(:navigation_mode).filled(:string, included_in?: %w[auto get google_get google_get_bypass])
+        optional(:max_retries).filled(:integer, gteq?: 0, lteq?: 3)
+        optional(:wait_for_selector).maybe(:string)
+        optional(:wait_timeout_seconds).filled(:integer, gt?: 0)
+        optional(:block_images).filled(:bool)
+        optional(:block_images_and_css).filled(:bool)
+        optional(:wait_for_complete_page_load).filled(:bool)
+        optional(:headless).filled(:bool)
+        optional(:proxy).filled(:string)
+        optional(:user_agent).filled(:string)
+        optional(:window_size).value(:array, min_size?: 2, max_size?: 2).each(:integer, gt?: 0)
+        optional(:lang).filled(:string)
+      end
+
       # Contract for the top-level `request` section.
       RequestConfig = Dry::Schema.Params do
         optional(:max_redirects).filled(:integer, gteq?: 0)
         optional(:max_requests).filled(:integer, gt?: 0)
         optional(:browserless).hash(BrowserlessRequestConfig)
+        optional(:botasaurus).hash(BotasaurusRequestConfig)
       end
 
       params do

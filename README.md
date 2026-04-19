@@ -36,7 +36,7 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 ### Core Components
 
 1. **Config** - Loads and validates configuration (YAML/hash)
-2. **RequestService** - Fetches pages using Faraday or Browserless
+2. **RequestService** - Fetches pages using Faraday, Botasaurus, or Browserless
 3. **Selectors** - Extracts content via CSS selectors with extractors/post-processors
 4. **AutoSource** - Auto-detects content using Schema.org, JSON state blobs, semantic HTML, and structural patterns
 5. **RssBuilder** - Assembles Article objects and renders RSS 2.0
@@ -46,6 +46,62 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 ```text
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
+
+### Request Strategies
+
+- `faraday` (default): direct HTTP fetch.
+- `botasaurus`: delegates fetching to a Botasaurus scrape API. Requires `BOTASAURUS_SCRAPER_URL` (for example `http://localhost:4010`).
+- `browserless`: remote browser rendering via Browserless (`BROWSERLESS_IO_WEBSOCKET_URL` and token as needed).
+
+Botasaurus is explicit opt-in only. Use `strategy: botasaurus` (or `--strategy botasaurus`) when you want Botasaurus transport.
+
+Supported `request.botasaurus` options:
+
+- `navigation_mode` (`auto`, `get`, `google_get`, `google_get_bypass`; default `auto`)
+- `max_retries` (`0..3`; default `2`)
+- `wait_for_selector` (string)
+- `wait_timeout_seconds` (integer)
+- `block_images` (boolean)
+- `block_images_and_css` (boolean)
+- `wait_for_complete_page_load` (boolean)
+- `headless` (boolean, default `false`)
+- `proxy` (string)
+- `user_agent` (string)
+- `window_size` (two-item integer array, for example `[1920, 1080]`)
+- `lang` (string, for example `en-US`)
+
+Minimal YAML config example:
+
+```yaml
+channel:
+  url: https://example.com
+strategy: botasaurus
+auto_source: {}
+request:
+  botasaurus:
+    navigation_mode: auto
+    max_retries: 2
+    headless: false
+```
+
+Example request payload shape:
+
+```json
+{
+  "url": "https://example.com",
+  "navigation_mode": "auto",
+  "max_retries": 2,
+  "headless": false
+}
+```
+
+Example usage:
+
+```bash
+BOTASAURUS_SCRAPER_URL=http://localhost:4010 html2rss auto https://example.com --strategy botasaurus
+```
+
+Policy note: html2rss still enforces local request policy preflight and timeout budget. Botasaurus handles browser navigation/rendering internals, so some policy details are delegated to upstream execution.
 
 ### Config schema workflow
 

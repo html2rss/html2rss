@@ -445,6 +445,88 @@
             }
           },
           "required": []
+        },
+        "botasaurus": {
+          "type": "object",
+          "properties": {
+            "navigation_mode": {
+              "type": "string",
+              "minLength": 1,
+              "enum": [
+                "auto",
+                "get",
+                "google_get",
+                "google_get_bypass"
+              ]
+            },
+            "max_retries": {
+              "type": "integer",
+              "not": {
+                "type": "null"
+              },
+              "minimum": 0,
+              "maximum": 3
+            },
+            "wait_for_selector": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "wait_timeout_seconds": {
+              "type": "integer",
+              "not": {
+                "type": "null"
+              },
+              "exclusiveMinimum": 0
+            },
+            "block_images": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
+            "block_images_and_css": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
+            "wait_for_complete_page_load": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
+            "headless": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
+            "proxy": {
+              "type": "string",
+              "minLength": 1
+            },
+            "user_agent": {
+              "type": "string",
+              "minLength": 1
+            },
+            "window_size": {
+              "type": "array",
+              "items": {
+                "minLength": 2,
+                "maxLength": 2,
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            },
+            "lang": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": []
         }
       },
       "required": []

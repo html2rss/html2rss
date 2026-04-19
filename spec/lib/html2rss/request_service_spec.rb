@@ -14,7 +14,9 @@ RSpec.describe Html2rss::RequestService do
       described_class::ResponseTooLarge,
       described_class::RequestTimedOut,
       described_class::BrowserlessConfigurationError,
-      described_class::BrowserlessConnectionFailed
+      described_class::BrowserlessConnectionFailed,
+      described_class::BotasaurusConfigurationError,
+      described_class::BotasaurusConnectionFailed
     ]
   end
 
@@ -28,6 +30,7 @@ RSpec.describe Html2rss::RequestService do
     specify(:aggregate_failures) do
       expect(described_class.default_strategy_name).to be :faraday
       expect(described_class.strategy_registered?(:faraday)).to be true
+      expect(described_class.strategy_registered?(:botasaurus)).to be true
     end
   end
 
