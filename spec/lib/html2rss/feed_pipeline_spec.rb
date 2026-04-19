@@ -12,6 +12,15 @@ RSpec.describe Html2rss::FeedPipeline do
     )
   end
 
+  def stub_first_strategy_success(response)
+    allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+      ctx.budget.consume!
+      raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+
+      response
+    end
+  end
+
   let(:base_config) do
     {
       channel: { url: 'https://example.com/news', title: 'Example News' },
@@ -74,29 +83,36 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
-      it 'logs info breadcrumbs for fallback transition and selected winner', :aggregate_failures do
+      it 'logs fallback transition when first strategy returns zero items' do
         pipeline.to_rss
 
         expect(Html2rss::Log).to have_received(:info).with(
           /auto fallback faraday -> botasaurus after zero extracted items/
         ).once
+      end
+
+      it 'logs selected strategy when fallback succeeds after retries' do
+        pipeline.to_rss
+
         expect(Html2rss::Log).to have_received(:info).with(
           /auto selected strategy=botasaurus after attempts=2/
         ).once
       end
 
-      it 'does not emit fallback info when first strategy succeeds', :aggregate_failures do
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-          raise "Unexpected strategy #{strategy}" unless strategy == :faraday
-
-          item_response
-        end
+      it 'does not call fallback strategy when first strategy succeeds', :aggregate_failures do
+        stub_first_strategy_success(item_response)
 
         pipeline.to_rss
 
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+      end
+
+      it 'does not emit fallback info when first strategy succeeds' do
+        stub_first_strategy_success(item_response)
+
+        pipeline.to_rss
+
         expect(Html2rss::Log).not_to have_received(:info)
       end
     end

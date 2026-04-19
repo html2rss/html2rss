@@ -489,7 +489,7 @@ RSpec.describe Html2rss do
           .to raise_error(Html2rss::NoFeedItemsExtracted, /No RSS feed items extracted after auto fallback/)
       end
 
-      it 'raises zero-items guidance when fallback ends with only zero-item successes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'raises the terminal transport error when fallback has mixed zero-items and errors', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
 
@@ -500,8 +500,7 @@ RSpec.describe Html2rss do
           end
         end
 
-        expect { feed }
-          .to raise_error(Html2rss::NoFeedItemsExtracted, /No RSS feed items extracted after auto fallback/)
+        expect { feed }.to raise_error(Html2rss::RequestService::RequestTimedOut, /timed out/)
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
       end
 
@@ -544,6 +543,8 @@ RSpec.describe Html2rss do
     context 'when strategy is omitted' do
       subject(:feed) { described_class.feed(config) }
 
+      let(:feed_titles) { feed.items.map(&:title) }
+
       let(:config) do
         {
           channel: { url: 'https://example.com/news', title: 'Example News' },
@@ -553,28 +554,34 @@ RSpec.describe Html2rss do
           }
         }
       end
-      let(:faraday_empty_response) do
-        Html2rss::RequestService::Response.new(
-          body: '<html><body><div>empty</div></body></html>',
-          url: Html2rss::Url.from_absolute('https://example.com/news'),
-          headers: { 'content-type' => 'text/html' }
-        )
-      end
-      let(:botasaurus_item_response) do
-        Html2rss::RequestService::Response.new(
-          body: '<html><body><article><h1>bota</h1></article></body></html>',
-          url: Html2rss::Url.from_absolute('https://example.com/news'),
-          headers: { 'content-type' => 'text/html' }
-        )
+      let(:responses_by_strategy) do
+        {
+          faraday: Html2rss::RequestService::Response.new(
+            body: '<html><body><div>empty</div></body></html>',
+            url: Html2rss::Url.from_absolute('https://example.com/news'),
+            headers: { 'content-type' => 'text/html' }
+          ),
+          botasaurus: Html2rss::RequestService::Response.new(
+            body: '<html><body><article><h1>bota</h1></article></body></html>',
+            url: Html2rss::Url.from_absolute('https://example.com/news'),
+            headers: { 'content-type' => 'text/html' }
+          )
+        }
       end
 
-      it 'defaults to auto fallback orchestration', :aggregate_failures do
+      before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          strategy == :faraday ? faraday_empty_response : botasaurus_item_response
+          strategy == :faraday ? responses_by_strategy.fetch(:faraday) : responses_by_strategy.fetch(:botasaurus)
         end
+      end
 
-        expect(feed.items.map(&:title)).to eq(['bota'])
+      it 'returns items from fallback strategy' do
+        expect(feed_titles).to eq(['bota'])
+      end
+
+      it 'tries faraday before botasaurus in auto fallback', :aggregate_failures do
+        feed
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
@@ -642,6 +649,8 @@ RSpec.describe Html2rss do
     context 'when strategy is omitted' do
       subject(:json_feed) { described_class.json_feed(config) }
 
+      let(:item_titles) { json_feed[:items].map { _1[:title] } }
+
       let(:config) do
         {
           channel: { url: 'https://example.com/news', title: 'Example News' },
@@ -651,28 +660,34 @@ RSpec.describe Html2rss do
           }
         }
       end
-      let(:faraday_empty_response) do
-        Html2rss::RequestService::Response.new(
-          body: '<html><body><div>empty</div></body></html>',
-          url: Html2rss::Url.from_absolute('https://example.com/news'),
-          headers: { 'content-type' => 'text/html' }
-        )
-      end
-      let(:botasaurus_item_response) do
-        Html2rss::RequestService::Response.new(
-          body: '<html><body><article><h1>bota</h1></article></body></html>',
-          url: Html2rss::Url.from_absolute('https://example.com/news'),
-          headers: { 'content-type' => 'text/html' }
-        )
+      let(:responses_by_strategy) do
+        {
+          faraday: Html2rss::RequestService::Response.new(
+            body: '<html><body><div>empty</div></body></html>',
+            url: Html2rss::Url.from_absolute('https://example.com/news'),
+            headers: { 'content-type' => 'text/html' }
+          ),
+          botasaurus: Html2rss::RequestService::Response.new(
+            body: '<html><body><article><h1>bota</h1></article></body></html>',
+            url: Html2rss::Url.from_absolute('https://example.com/news'),
+            headers: { 'content-type' => 'text/html' }
+          )
+        }
       end
 
-      it 'defaults to auto fallback orchestration', :aggregate_failures do
+      before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          strategy == :faraday ? faraday_empty_response : botasaurus_item_response
+          strategy == :faraday ? responses_by_strategy.fetch(:faraday) : responses_by_strategy.fetch(:botasaurus)
         end
+      end
 
-        expect(json_feed[:items].map { _1[:title] }).to eq(['bota'])
+      it 'returns items from fallback strategy' do
+        expect(item_titles).to eq(['bota'])
+      end
+
+      it 'tries faraday before botasaurus in auto fallback', :aggregate_failures do
+        json_feed
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end

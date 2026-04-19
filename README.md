@@ -56,6 +56,8 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 
 Botasaurus is explicit opt-in only. Use `strategy: botasaurus` (or `--strategy botasaurus`) when you want Botasaurus transport.
 
+Auto fallback shares one request budget across all strategy attempts. For pagination-heavy or dynamic pages, increase `request.max_requests` (or `--max-requests`) when retries exhaust the budget.
+
 To inspect auto fallback decisions in CLI output, run with `LOG_LEVEL=info`.
 
 Supported `request.botasaurus` options:

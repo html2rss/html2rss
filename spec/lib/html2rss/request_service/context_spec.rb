@@ -88,7 +88,6 @@ RSpec.describe Html2rss::RequestService::Context do
         expect { instance }.to raise_error(ArgumentError, 'budget must not be nil')
       end
     end
-
   end
 
   describe '#follow_up' do

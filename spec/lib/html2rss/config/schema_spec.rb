@@ -7,8 +7,11 @@ RSpec.describe Html2rss::Config::Schema do
   describe '.json_schema' do
     subject(:json_schema) { described_class.json_schema }
 
-    it 'includes required top-level properties' do
+    it 'includes channel as a required top-level property' do
       expect(json_schema.fetch('required')).to include('channel')
+    end
+
+    it 'does not require strategy at the top level' do
       expect(json_schema.fetch('required')).not_to include('strategy')
     end
 

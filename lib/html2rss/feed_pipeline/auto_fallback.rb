@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+##
+# The Html2rss namespace.
 module Html2rss
+  ##
+  # Coordinates feed generation pipeline stages.
   class FeedPipeline
-    ##
     # Retries feed extraction across concrete request strategies for :auto mode.
     class AutoFallback
       # Ordered list of concrete request strategies attempted by auto mode.
@@ -25,8 +28,9 @@ module Html2rss
       ##
       # @param strategies [Array<Symbol>] ordered concrete strategies for fallback
       # @param budget [RequestService::Budget] shared request budget across retries
-      # @param session_for [Proc] builds request session for strategy and budget
-      # @param articles_for [Proc] extracts deduplicated articles for response and session
+      # @param session_for [Proc] request session factory proc
+      # @param articles_for [Proc] article extraction proc
+      # @return [void]
       def initialize(strategies:, budget:, session_for:, articles_for:)
         @strategies = strategies
         @budget = budget
@@ -35,93 +39,93 @@ module Html2rss
       end
 
       ##
-      # @return [Hash{Symbol => Object}] response/articles pipeline state
+      # @return [Hash{Symbol => Object}] pipeline state containing :response and :articles
       def call
-        attempts = []
-        last_error = nil
+        state, attempts, last_error = run_attempts
+        return state if state
 
-        strategies.each_with_index do |strategy, index|
-          state, attempts, last_error = attempt(
-            strategy:,
-            next_strategy: strategies[index + 1],
-            attempts:,
-            last_error:,
-            budget:
-          )
-          return state if state
-        end
-
-        raise NoFeedItemsExtracted.new(attempts:) if zero_items_terminal?(attempts)
-        raise last_error if last_error
-
-        raise NoFeedItemsExtracted.new(attempts:)
+        finalize_failure(attempts:, last_error:)
       end
 
       private
 
       attr_reader :strategies, :budget, :session_for, :articles_for
 
-      def attempt(strategy:, next_strategy:, attempts:, last_error:, budget:)
+      def run_attempts
+        state = { result: nil, attempts: [], last_error: nil }
+        strategies.each_with_index do |strategy, index|
+          run_attempt_for(strategy:, next_strategy: strategies[index + 1], state:)
+          break if state.fetch(:result)
+        end
+        [state.fetch(:result), state.fetch(:attempts), state.fetch(:last_error)]
+      end
+
+      def run_attempt_for(strategy:, next_strategy:, state:)
+        result, attempts, last_error = attempt(
+          strategy:,
+          next_strategy:,
+          state: { attempts: state.fetch(:attempts), last_error: state.fetch(:last_error) }
+        )
+        state[:result] = result
+        state[:attempts] = attempts
+        state[:last_error] = last_error
+      end
+
+      def attempt(strategy:, next_strategy:, state:)
         request_session = session_for.call(strategy:, budget:)
-        response, attempts, last_error = fetch_response(
+        response, state = fetch_response(
           request_session:,
           strategy:,
           next_strategy:,
-          attempts:,
-          last_error:
+          state:
         )
-        return [nil, attempts, last_error] unless response
+        return [nil, state.fetch(:attempts), state.fetch(:last_error)] unless response
 
-        process_response(response:, strategy:, next_strategy:, attempts:, last_error:, request_session:)
+        process_response(response:, strategy:, next_strategy:, request_session:, state:)
       end
 
-      def fetch_response(request_session:, strategy:, next_strategy:, attempts:, last_error:)
-        [request_session.fetch_initial_response, attempts, last_error]
+      def fetch_response(request_session:, strategy:, next_strategy:, state:)
+        [request_session.fetch_initial_response, state]
       rescue *NON_FALLBACK_ERRORS
         raise
       rescue StandardError => error
-        attempts << { strategy:, items_count: nil, error_class: error.class.name }
+        state[:attempts] << { strategy:, items_count: nil, error_class: error.class.name }
+        state[:last_error] = error
         log_info_fallback_error(strategy:, next_strategy:, error:) if next_strategy
         Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message}")
-        [nil, attempts, error]
+        [nil, state]
       end
 
-      def process_response(response:, strategy:, next_strategy:, attempts:, last_error:, request_session:)
+      def process_response(response:, strategy:, next_strategy:, request_session:, state:)
         articles = articles_for.call(response:, request_session:)
         items_count = articles.size
-        attempts << { strategy:, items_count:, error_class: nil }
+        state[:attempts] << { strategy:, items_count:, error_class: nil }
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count}")
-        return success_state(response:, strategy:, attempts:, last_error:, articles:) if items_count.positive?
+        return success_state(response:, strategy:, articles:, state:) if items_count.positive?
 
         log_info_fallback_zero_items(strategy:, next_strategy:) if next_strategy
-        [nil, attempts, last_error]
+        [nil, state.fetch(:attempts), state.fetch(:last_error)]
       end
 
-      def success_state(response:, strategy:, attempts:, last_error:, articles:)
-        if attempts.size > 1
-          Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempts.size}")
+      def success_state(response:, strategy:, articles:, state:)
+        if state.fetch(:attempts).size > 1
+          Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{state.fetch(:attempts).size}")
         end
-
-        [{ response:, articles: }, attempts, last_error]
+        [{ response:, articles: }, state.fetch(:attempts), state.fetch(:last_error)]
       end
 
-      def zero_items_terminal?(attempts)
-        successful_counts = attempts.filter_map { _1[:items_count] }
-        successful_counts.any? && successful_counts.all?(&:zero?)
+      def finalize_failure(attempts:, last_error:)
+        raise last_error if last_error
+
+        raise NoFeedItemsExtracted.new(attempts:)
       end
 
       def log_info_fallback_error(strategy:, next_strategy:, error:)
-        Log.info(
-          "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
-          "after error=#{error.class}"
-        )
+        Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after error=#{error.class}")
       end
 
       def log_info_fallback_zero_items(strategy:, next_strategy:)
-        Log.info(
-          "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
-          'after zero extracted items'
-        )
+        Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items")
       end
     end
   end
