@@ -155,49 +155,4 @@ RSpec.describe Html2rss::RequestSession do
       expect(logger).to have_received(:warn).with(/pagination max_pages=20 exceeds system ceiling=10/)
     end
   end
-
-  describe 'with strategy auto' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    subject(:session) { described_class.new(context:, strategy: :auto, logger:) }
-
-    let(:initial_response) do
-      Html2rss::RequestService::Response.new(
-        body: '<html></html>',
-        url: Html2rss::Url.from_absolute('https://example.com/news'),
-        headers: { 'content-type' => 'text/html' },
-        status: 200
-      )
-    end
-    let(:follow_up_response) do
-      Html2rss::RequestService::Response.new(
-        body: '<html></html>',
-        url: Html2rss::Url.from_absolute('https://example.com/news?page=2'),
-        headers: { 'content-type' => 'text/html' },
-        status: 200
-      )
-    end
-    let(:faraday_strategy) { instance_double(Html2rss::RequestService::FaradayStrategy) }
-    let(:botasaurus_strategy) { instance_double(Html2rss::RequestService::BotasaurusStrategy) }
-
-    before do
-      allow(Html2rss::RequestService::FaradayStrategy).to receive(:new).and_return(faraday_strategy)
-      allow(Html2rss::RequestService::BotasaurusStrategy).to receive(:new).and_return(botasaurus_strategy)
-
-      allow(faraday_strategy).to receive(:execute)
-        .and_raise(Html2rss::RequestService::BlockedSurfaceDetected, 'blocked')
-      allow(botasaurus_strategy).to receive(:execute).and_return(initial_response, follow_up_response)
-    end
-
-    it 'pins the successful auto strategy for follow-up requests', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      session.fetch_initial_response
-      result = session.follow_up(
-        url: 'https://example.com/news?page=2',
-        relation: :pagination,
-        origin_url: 'https://example.com/news'
-      )
-
-      expect(result).to eq(follow_up_response)
-      expect(faraday_strategy).to have_received(:execute).once
-      expect(botasaurus_strategy).to have_received(:execute).twice
-    end
-  end
 end

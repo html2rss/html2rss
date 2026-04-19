@@ -79,7 +79,7 @@ module Html2rss
 
     def auto_fallback_for(config)
       AutoFallback.new(
-        strategies: RequestService::AutoStrategy::CHAIN,
+        strategies: AutoFallback::CHAIN,
         budget: auto_pipeline_budget(config),
         session_for: lambda do |strategy:, budget:|
           request_session_for(config, strategy:, budget:)

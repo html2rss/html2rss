@@ -59,6 +59,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       before do
+        allow(Html2rss::Log).to receive(:info)
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
           strategy == :faraday ? empty_response : item_response
@@ -71,6 +72,32 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(rss.items.map(&:title)).to eq(['bota'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+      end
+
+      it 'logs info breadcrumbs for fallback transition and selected winner', :aggregate_failures do
+        pipeline.to_rss
+
+        expect(Html2rss::Log).to have_received(:info).with(
+          /auto fallback faraday -> botasaurus after zero extracted items/
+        ).once
+        expect(Html2rss::Log).to have_received(:info).with(
+          /auto selected strategy=botasaurus after attempts=2/
+        ).once
+      end
+
+      it 'does not emit fallback info when first strategy succeeds', :aggregate_failures do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+
+          item_response
+        end
+
+        pipeline.to_rss
+
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+        expect(Html2rss::Log).not_to have_received(:info)
       end
     end
   end

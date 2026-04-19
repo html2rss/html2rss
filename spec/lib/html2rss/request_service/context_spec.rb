@@ -89,13 +89,6 @@ RSpec.describe Html2rss::RequestService::Context do
       end
     end
 
-    context 'when selected_strategy is auto' do
-      subject(:instance) { described_class.new(url:, selected_strategy: :auto) }
-
-      it 'raises an argument error' do
-        expect { instance }.to raise_error(ArgumentError, 'selected_strategy must be a concrete strategy')
-      end
-    end
   end
 
   describe '#follow_up' do
@@ -115,8 +108,7 @@ RSpec.describe Html2rss::RequestService::Context do
           }
         },
         policy:,
-        budget:,
-        selected_strategy: :botasaurus
+        budget:
       )
     end
 
@@ -127,7 +119,6 @@ RSpec.describe Html2rss::RequestService::Context do
       expect(follow_up.request).to eq(instance.request)
       expect(follow_up.relation).to eq(:pagination)
       expect(follow_up.headers).to eq(instance.headers)
-      expect(follow_up.selected_strategy).to eq(:botasaurus)
     end
 
     context 'when an effective origin override is supplied' do

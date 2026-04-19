@@ -45,7 +45,7 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :auto)) }
 
       it 'adds auto fallback retry budget to the runtime policy', :aggregate_failures do
-        expected_retry_budget = Html2rss::RequestService::AutoStrategy::CHAIN.size - 1
+        expected_retry_budget = Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1
 
         expect(runtime_policy.max_requests).to eq(6 + expected_retry_budget)
         expect(runtime_policy.max_redirects).to eq(8)

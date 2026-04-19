@@ -50,9 +50,6 @@ module Html2rss
       # @return [Budget] the shared request budget
       attr_reader :budget
 
-      # @return [Symbol, nil] selected concrete strategy for auto orchestration
-      attr_reader :selected_strategy
-
       ##
       # Builds a follow-up request context sharing headers, budget, and policy.
       #
@@ -68,18 +65,8 @@ module Html2rss
           relation:,
           origin_url:,
           policy:,
-          budget:,
-          selected_strategy:
+          budget:
         )
-      end
-
-      ##
-      # Pins the selected concrete strategy for subsequent requests.
-      #
-      # @param strategy [Symbol, String, nil] concrete strategy name
-      # @return [Symbol, nil] normalized selected strategy
-      def selected_strategy=(strategy)
-        @selected_strategy = normalize_selected_strategy(strategy)
       end
 
       private
@@ -92,8 +79,6 @@ module Html2rss
         @origin_url = normalized_origin_url(request_options[:origin_url])
         @budget = request_options.fetch(:budget) { Budget.new(max_requests: policy.max_requests) }
         raise ArgumentError, 'budget must not be nil' if @budget.nil?
-
-        @selected_strategy = normalize_selected_strategy(request_options[:selected_strategy])
       end
 
       def normalized_origin_url(origin_url)
@@ -111,15 +96,6 @@ module Html2rss
         normalized = HashUtil.deep_symbolize_keys(request, context: 'request')
         HashUtil.assert_symbol_keys!(normalized, context: 'request')
         normalized
-      end
-
-      def normalize_selected_strategy(strategy)
-        return nil if strategy.nil?
-
-        strategy_name = strategy.to_sym
-        return strategy_name if strategy_name != :auto
-
-        raise ArgumentError, 'selected_strategy must be a concrete strategy'
       end
     end
   end

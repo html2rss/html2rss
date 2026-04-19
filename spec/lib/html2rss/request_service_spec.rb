@@ -29,7 +29,6 @@ RSpec.describe Html2rss::RequestService do
   describe '.default_strategy_name' do
     specify(:aggregate_failures) do
       expect(described_class.default_strategy_name).to be :faraday
-      expect(described_class.strategy_registered?(:auto)).to be true
       expect(described_class.strategy_registered?(:faraday)).to be true
       expect(described_class.strategy_registered?(:botasaurus)).to be true
     end

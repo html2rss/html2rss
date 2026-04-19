@@ -36,7 +36,7 @@ module Html2rss
         def auto_strategy_fallback_budget_for(config)
           return 0 unless config.strategy == :auto
 
-          [RequestService::AutoStrategy::CHAIN.size - 1, 0].max
+          [FeedPipeline::AutoFallback::CHAIN.size - 1, 0].max
         end
 
         def pagination_follow_up_budget_for(config)

@@ -55,7 +55,6 @@ module Html2rss
 
     def initialize
       @strategies = {
-        auto: AutoStrategy,
         faraday: FaradayStrategy,
         botasaurus: BotasaurusStrategy,
         browserless: BrowserlessStrategy
