@@ -213,7 +213,6 @@ RSpec.describe Html2rss do
       end
 
       before do
-        allow(described_class).to receive(:build_rss_feed).and_call_original
         allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
           ctx.budget.consume!
 
