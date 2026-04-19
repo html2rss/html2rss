@@ -29,7 +29,14 @@ module Html2rss
         def baseline_request_budget_for(config)
           1 + pagination_follow_up_budget_for(config) +
             known_auto_source_follow_up_budget_for(config) +
+            auto_strategy_fallback_budget_for(config) +
             browserless_preload_budget_for(config)
+        end
+
+        def auto_strategy_fallback_budget_for(config)
+          return 0 unless config.strategy == :auto
+
+          [RequestService::AutoStrategy::CHAIN.size - 1, 0].max
         end
 
         def pagination_follow_up_budget_for(config)

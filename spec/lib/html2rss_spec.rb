@@ -449,6 +449,19 @@ RSpec.describe Html2rss do
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
+      it 'falls back with default auto budget when max_requests is not explicitly set', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        config.delete(:request)
+
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          strategy == :faraday ? faraday_empty_response : botasaurus_item_response
+        end
+
+        expect(feed.items.map(&:title)).to eq(['bota'])
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+      end
+
       it 'falls back through browserless when first two strategies return zero items', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
