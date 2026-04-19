@@ -36,7 +36,7 @@ Please see the [contributing guide](https://html2rss.github.io/get-involved/cont
 ### Core Components
 
 1. **Config** - Loads and validates configuration (YAML/hash)
-2. **RequestService** - Fetches pages using Faraday, Browserless, or Botasaurus
+2. **RequestService** - Fetches pages using Faraday, Botasaurus, or Browserless
 3. **Selectors** - Extracts content via CSS selectors with extractors/post-processors
 4. **AutoSource** - Auto-detects content using Schema.org, JSON state blobs, semantic HTML, and structural patterns
 5. **RssBuilder** - Assembles Article objects and renders RSS 2.0
@@ -50,8 +50,8 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 ### Request Strategies
 
 - `faraday` (default): direct HTTP fetch.
-- `browserless`: remote browser rendering via Browserless (`BROWSERLESS_IO_WEBSOCKET_URL` and token as needed).
 - `botasaurus`: delegates fetching to a Botasaurus scrape API. Requires `BOTASAURUS_SCRAPER_URL` (for example `http://localhost:4010`).
+- `browserless`: remote browser rendering via Browserless (`BROWSERLESS_IO_WEBSOCKET_URL` and token as needed).
 
 Botasaurus is explicit opt-in only. Use `strategy: botasaurus` (or `--strategy botasaurus`) when you want Botasaurus transport.
 

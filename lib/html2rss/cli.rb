@@ -26,7 +26,7 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: %w[faraday browserless botasaurus]
+                  enum: %w[faraday botasaurus browserless]
     method_option :max_redirects,
                   type: :numeric,
                   desc: 'Maximum redirects to follow per request'
@@ -48,7 +48,7 @@ module Html2rss
     method_option :strategy,
                   type: :string,
                   desc: 'The strategy to request the URL',
-                  enum: %w[faraday browserless botasaurus]
+                  enum: %w[faraday botasaurus browserless]
     method_option :format,
                   type: :string,
                   desc: 'Output format for the auto-sourced feed',
