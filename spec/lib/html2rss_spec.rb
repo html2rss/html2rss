@@ -541,6 +541,45 @@ RSpec.describe Html2rss do
       end
     end
 
+    context 'when strategy is omitted' do
+      subject(:feed) { described_class.feed(config) }
+
+      let(:config) do
+        {
+          channel: { url: 'https://example.com/news', title: 'Example News' },
+          selectors: {
+            items: { selector: 'article' },
+            title: { selector: 'h1' }
+          }
+        }
+      end
+      let(:faraday_empty_response) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><body><div>empty</div></body></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/news'),
+          headers: { 'content-type' => 'text/html' }
+        )
+      end
+      let(:botasaurus_item_response) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><body><article><h1>bota</h1></article></body></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/news'),
+          headers: { 'content-type' => 'text/html' }
+        )
+      end
+
+      it 'defaults to auto fallback orchestration', :aggregate_failures do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          strategy == :faraday ? faraday_empty_response : botasaurus_item_response
+        end
+
+        expect(feed.items.map(&:title)).to eq(['bota'])
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+      end
+    end
+
     context 'with non-auto strategy and zero items' do
       subject(:feed) { described_class.feed(config) }
 
@@ -599,6 +638,45 @@ RSpec.describe Html2rss do
         )
       end
     end
+
+    context 'when strategy is omitted' do
+      subject(:json_feed) { described_class.json_feed(config) }
+
+      let(:config) do
+        {
+          channel: { url: 'https://example.com/news', title: 'Example News' },
+          selectors: {
+            items: { selector: 'article' },
+            title: { selector: 'h1' }
+          }
+        }
+      end
+      let(:faraday_empty_response) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><body><div>empty</div></body></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/news'),
+          headers: { 'content-type' => 'text/html' }
+        )
+      end
+      let(:botasaurus_item_response) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><body><article><h1>bota</h1></article></body></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/news'),
+          headers: { 'content-type' => 'text/html' }
+        )
+      end
+
+      it 'defaults to auto fallback orchestration', :aggregate_failures do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          strategy == :faraday ? faraday_empty_response : botasaurus_item_response
+        end
+
+        expect(json_feed[:items].map { _1[:title] }).to eq(['bota'])
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+      end
+    end
   end
 
   describe '.auto_source' do
@@ -632,10 +710,10 @@ RSpec.describe Html2rss do
         allow(described_class).to receive(:feed).and_return(nil)
       end
 
-      it 'uses auto strategy by default for shortcut config' do
+      it 'omits strategy so config defaults apply for shortcut config' do
         described_class.auto_source(url)
 
-        expect(described_class).to have_received(:feed).with(hash_including(strategy: :auto))
+        expect(described_class).to have_received(:feed).with(hash_excluding(:strategy))
       end
     end
 
@@ -708,10 +786,10 @@ RSpec.describe Html2rss do
         allow(described_class).to receive(:json_feed).and_return(nil)
       end
 
-      it 'uses auto strategy by default for shortcut config' do
+      it 'omits strategy so config defaults apply for shortcut config' do
         described_class.auto_json_feed(url)
 
-        expect(described_class).to have_received(:json_feed).with(hash_including(strategy: :auto))
+        expect(described_class).to have_received(:json_feed).with(hash_excluding(:strategy))
       end
     end
 

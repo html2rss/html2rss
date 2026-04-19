@@ -25,7 +25,7 @@ module Html2rss
                   default: {}
     method_option :strategy,
                   type: :string,
-                  desc: 'The strategy to request the URL (auto tries faraday -> botasaurus -> browserless)',
+                  desc: 'Optional request strategy (defaults to auto; auto tries faraday -> botasaurus -> browserless)',
                   enum: %w[auto faraday browserless botasaurus]
     method_option :max_redirects,
                   type: :numeric,
@@ -47,7 +47,7 @@ module Html2rss
     desc 'auto [URL]', 'Automatically sources an RSS feed from the URL'
     method_option :strategy,
                   type: :string,
-                  desc: 'The strategy to request the URL (auto tries faraday -> botasaurus -> browserless)',
+                  desc: 'Optional request strategy (defaults to auto; auto tries faraday -> botasaurus -> browserless)',
                   enum: %w[auto faraday browserless botasaurus]
     method_option :format,
                   type: :string,

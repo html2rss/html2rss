@@ -213,6 +213,8 @@ module Html2rss
             stringify_hash(object)
           when Array
             object.map { |value| call(value) }
+          when Symbol
+            object.to_s
           else
             object
           end

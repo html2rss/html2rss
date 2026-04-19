@@ -13,6 +13,8 @@ module Html2rss
       STYLESHEET_TYPES = RssBuilder::Stylesheet::TYPES
       # Optional language/region format (`en` or `en-US`).
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
+      # Supported orchestration/transport strategy names.
+      STRATEGY_OPTIONS = ([:auto] + Html2rss::RequestService.strategy_names.map(&:to_sym)).uniq.freeze
 
       # Contract for the top-level `channel` section.
       ChannelConfig = Dry::Schema.Params do
@@ -83,7 +85,7 @@ module Html2rss
       end
 
       params do
-        required(:strategy).filled(:symbol)
+        optional(:strategy).filled(:symbol, included_in?: STRATEGY_OPTIONS)
         required(:channel).hash(ChannelConfig)
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)

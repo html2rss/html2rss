@@ -97,7 +97,7 @@ module Html2rss
 
     def explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
       keys = []
-      keys << :strategy unless strategy.nil? || strategy == RequestService.default_strategy_name
+      keys << :strategy unless strategy.nil? || strategy == Config.default_strategy_name
       keys << :max_redirects unless max_redirects.nil?
       keys << :max_requests unless max_requests.nil?
       keys

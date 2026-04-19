@@ -131,7 +131,7 @@ module Html2rss
       # @return [Hash{Symbol => Object}] a hash with default configuration values.
       def default_config
         {
-          strategy: RequestService.default_strategy_name,
+          strategy: default_strategy_name,
           request: {
             max_redirects: RequestService::Policy::DEFAULTS[:max_redirects],
             max_requests: RequestService::Policy::DEFAULTS[:max_requests]
@@ -140,6 +140,11 @@ module Html2rss
           headers: RequestHeaders.browser_defaults,
           stylesheets: []
         }
+      end
+
+      # @return [Symbol] the default strategy for feed orchestration
+      def default_strategy_name
+        :auto
       end
 
       private

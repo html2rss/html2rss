@@ -5,7 +5,13 @@
     "strategy": {
       "not": {
         "type": "null"
-      }
+      },
+      "enum": [
+        "auto",
+        "faraday",
+        "botasaurus",
+        "browserless"
+      ]
     },
     "channel": {
       "type": "object",
@@ -533,7 +539,6 @@
     }
   },
   "required": [
-    "strategy",
     "channel"
   ],
   "anyOf": [
