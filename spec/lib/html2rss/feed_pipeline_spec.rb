@@ -66,12 +66,23 @@ RSpec.describe Html2rss::FeedPipeline do
       let(:item_response) do
         build_response(body: '<html><body><article><h1>bota</h1></article></body></html>')
       end
+      let(:strategy_results) do
+        {
+          faraday: empty_response,
+          botasaurus: item_response
+        }
+      end
 
       before do
         allow(Html2rss::Log).to receive(:info)
+        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::Log).to receive(:debug)
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          strategy == :faraday ? empty_response : item_response
+          result = strategy_results.fetch(strategy)
+          raise result if result.is_a?(Exception)
+
+          result
         end
       end
 
@@ -114,6 +125,27 @@ RSpec.describe Html2rss::FeedPipeline do
         pipeline.to_rss
 
         expect(Html2rss::Log).not_to have_received(:info)
+      end
+
+      context 'when first strategy fails but fallback strategy succeeds' do
+        let(:strategy_results) do
+          {
+            faraday: Html2rss::RequestService::RequestTimedOut.new('timed out'),
+            botasaurus: item_response
+          }
+        end
+
+        it 'warns with class-only detail and keeps full error details in debug', :aggregate_failures do
+          rss = pipeline.to_rss
+
+          expect(rss.items.map(&:title)).to eq(['bota'])
+          expect(Html2rss::Log).to have_received(:warn).with(
+            /auto fallback faraday -> botasaurus after error=Html2rss::RequestService::RequestTimedOut/
+          ).once
+          expect(Html2rss::Log).to have_received(:debug).with(
+            /strategy=faraday error=Html2rss::RequestService::RequestTimedOut: timed out/
+          ).once
+        end
       end
     end
   end

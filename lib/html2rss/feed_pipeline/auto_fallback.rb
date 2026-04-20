@@ -41,10 +41,10 @@ module Html2rss
       ##
       # @return [Hash{Symbol => Object}] pipeline state containing :response and :articles
       def call
-        state, attempts, last_error = run_attempts
+        state, attempts = run_attempts
         return state if state
 
-        finalize_failure(attempts:, last_error:)
+        finalize_failure(attempts:)
       end
 
       private
@@ -52,23 +52,22 @@ module Html2rss
       attr_reader :strategies, :budget, :session_for, :articles_for
 
       def run_attempts
-        state = { result: nil, attempts: [], last_error: nil }
+        state = { result: nil, attempts: [] }
         strategies.each_with_index do |strategy, index|
           run_attempt_for(strategy:, next_strategy: strategies[index + 1], state:)
           break if state.fetch(:result)
         end
-        [state.fetch(:result), state.fetch(:attempts), state.fetch(:last_error)]
+        [state.fetch(:result), state.fetch(:attempts)]
       end
 
       def run_attempt_for(strategy:, next_strategy:, state:)
-        result, attempts, last_error = attempt(
+        result, attempts = attempt(
           strategy:,
           next_strategy:,
-          state: { attempts: state.fetch(:attempts), last_error: state.fetch(:last_error) }
+          state: { attempts: state.fetch(:attempts) }
         )
         state[:result] = result
         state[:attempts] = attempts
-        state[:last_error] = last_error
       end
 
       def attempt(strategy:, next_strategy:, state:)
@@ -79,7 +78,7 @@ module Html2rss
           next_strategy:,
           state:
         )
-        return [nil, state.fetch(:attempts), state.fetch(:last_error)] unless response
+        return [nil, state.fetch(:attempts)] unless response
 
         process_response(response:, strategy:, next_strategy:, request_session:, state:)
       end
@@ -90,8 +89,7 @@ module Html2rss
         raise
       rescue StandardError => error
         state[:attempts] << { strategy:, items_count: nil, error_class: error.class.name }
-        state[:last_error] = error
-        log_info_fallback_error(strategy:, next_strategy:, error:) if next_strategy
+        log_warn_fallback_error(strategy:, next_strategy:, error:) if next_strategy
         Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message}")
         [nil, state]
       end
@@ -104,24 +102,22 @@ module Html2rss
         return success_state(response:, strategy:, articles:, state:) if items_count.positive?
 
         log_info_fallback_zero_items(strategy:, next_strategy:) if next_strategy
-        [nil, state.fetch(:attempts), state.fetch(:last_error)]
+        [nil, state.fetch(:attempts)]
       end
 
       def success_state(response:, strategy:, articles:, state:)
         if state.fetch(:attempts).size > 1
           Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{state.fetch(:attempts).size}")
         end
-        [{ response:, articles: }, state.fetch(:attempts), state.fetch(:last_error)]
+        [{ response:, articles: }, state.fetch(:attempts)]
       end
 
-      def finalize_failure(attempts:, last_error:)
-        raise last_error if last_error
-
+      def finalize_failure(attempts:)
         raise NoFeedItemsExtracted.new(attempts:)
       end
 
-      def log_info_fallback_error(strategy:, next_strategy:, error:)
-        Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after error=#{error.class}")
+      def log_warn_fallback_error(strategy:, next_strategy:, error:)
+        Log.warn("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after error=#{error.class}")
       end
 
       def log_info_fallback_zero_items(strategy:, next_strategy:)

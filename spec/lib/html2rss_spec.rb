@@ -437,13 +437,24 @@ RSpec.describe Html2rss do
           headers: { 'content-type' => 'text/html' }
         )
       end
+      let(:strategy_results) do
+        {
+          faraday: faraday_empty_response,
+          botasaurus: botasaurus_item_response
+        }
+      end
 
-      it 'falls back from faraday zero items to botasaurus non-zero items', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          strategy == :faraday ? faraday_empty_response : botasaurus_item_response
-        end
+          result = strategy_results.fetch(strategy)
+          raise result if result.is_a?(Exception)
 
+          result
+        end
+      end
+
+      it 'falls back from faraday zero items to botasaurus non-zero items', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(feed.items.map(&:title)).to eq(['bota'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
@@ -452,67 +463,60 @@ RSpec.describe Html2rss do
       it 'falls back with default auto budget when max_requests is not explicitly set', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         config.delete(:request)
 
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-          strategy == :faraday ? faraday_empty_response : botasaurus_item_response
-        end
-
         expect(feed.items.map(&:title)).to eq(['bota'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
       it 'falls back through browserless when first two strategies return zero items', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-
-          case strategy
-          when :faraday, :botasaurus then faraday_empty_response
-          when :browserless then browserless_item_response
-          else raise "Unexpected strategy #{strategy}"
-          end
-        end
+        strategy_results[:botasaurus] = faraday_empty_response
+        strategy_results[:browserless] = browserless_item_response
 
         expect(feed.items.map(&:title)).to eq(['browser'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
       end
 
       it 'raises a specific zero-items error when all concrete strategies return zero items' do # rubocop:disable RSpec/ExampleLength
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-          raise "Unexpected strategy #{strategy}" unless %i[faraday botasaurus browserless].include?(strategy)
-
-          faraday_empty_response
-        end
+        strategy_results[:botasaurus] = faraday_empty_response
+        strategy_results[:browserless] = faraday_empty_response
 
         expect { feed }
           .to raise_error(Html2rss::NoFeedItemsExtracted, /No RSS feed items extracted after auto fallback/)
       end
 
-      it 'raises the terminal transport error when fallback has mixed zero-items and errors', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
+      it 'raises NoFeedItemsExtracted with attempt diagnostics when fallback has mixed zero-items and errors',
+         :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        strategy_results[:faraday] = Html2rss::RequestService::RequestTimedOut.new('timed out')
+        strategy_results[:botasaurus] = faraday_empty_response
+        strategy_results[:browserless] = faraday_empty_response
 
-          case strategy
-          when :faraday then raise Html2rss::RequestService::RequestTimedOut, 'timed out'
-          when :botasaurus, :browserless then faraday_empty_response
-          else raise "Unexpected strategy #{strategy}"
-          end
-        end
+        captured_error = nil
+        expect do
+          feed
+        rescue Html2rss::NoFeedItemsExtracted => error
+          captured_error = error
+          raise
+        end.to raise_error(Html2rss::NoFeedItemsExtracted, /No RSS feed items extracted after auto fallback/)
 
-        expect { feed }.to raise_error(Html2rss::RequestService::RequestTimedOut, /timed out/)
+        expect(captured_error.attempts).to eq(
+          [
+            {
+              strategy: :faraday,
+              items_count: nil,
+              error_class: 'Html2rss::RequestService::RequestTimedOut'
+            },
+            { strategy: :botasaurus, items_count: 0, error_class: nil },
+            { strategy: :browserless, items_count: 0, error_class: nil }
+          ]
+        )
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
       end
 
       it 'shares one request budget across retries and stops on RequestBudgetExceeded', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         config[:request][:max_requests] = 1
 
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-          raise "Unexpected strategy #{strategy}" if strategy == :browserless
-
-          faraday_empty_response
-        end
+        strategy_results[:botasaurus] = faraday_empty_response
+        strategy_results[:browserless] = faraday_empty_response
 
         expect { feed }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded, /Request budget exhausted/)
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
@@ -523,13 +527,6 @@ RSpec.describe Html2rss do
       it 'does not swallow extraction defects behind strategy fallback', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         config[:selectors][:url] = { selector: 'a.url' }
         config[:selectors][:link] = { selector: 'a.link' }
-
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-          raise "Unexpected strategy #{strategy}" unless strategy == :faraday
-
-          faraday_empty_response
-        end
 
         expect { feed }.to raise_error(
           Html2rss::Selectors::InvalidSelectorName,
