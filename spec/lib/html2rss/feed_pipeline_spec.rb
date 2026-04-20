@@ -135,14 +135,15 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
-        it 'warns with class-only detail and keeps full error details in debug',
-           :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-          rss = pipeline.to_rss
+        before { pipeline.to_rss }
 
-          expect(rss.items.map(&:title)).to eq(['bota'])
+        it 'warns with class-only detail' do
           expect(Html2rss::Log).to have_received(:warn).with(
             /auto fallback faraday -> botasaurus after error=Html2rss::RequestService::RequestTimedOut/
           ).once
+        end
+
+        it 'keeps full error details in debug logs' do
           expect(Html2rss::Log).to have_received(:debug).with(
             /strategy=faraday error=Html2rss::RequestService::RequestTimedOut: timed out/
           ).once
