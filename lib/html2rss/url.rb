@@ -108,7 +108,7 @@ module Html2rss
     def self.validate_channel_url(url)
       raise ArgumentError, 'URL must be absolute' unless url.absolute?
 
-      uri = url.instance_variable_get(:@uri)
+      uri = Addressable::URI.parse(url.to_s)
       has_forbidden_at = uri.user || uri.password
       has_forbidden_at ||= [uri.query, uri.fragment].compact.any? { |value| value.include?('@') }
       raise ArgumentError, 'URL must not contain an @ character' if has_forbidden_at
