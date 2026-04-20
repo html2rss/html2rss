@@ -443,6 +443,7 @@ RSpec.describe Html2rss do
           botasaurus: botasaurus_item_response
         }
       end
+
       before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
@@ -496,7 +497,7 @@ RSpec.describe Html2rss do
           end.to raise_error(Html2rss::NoFeedItemsExtracted, /No RSS feed items extracted after auto fallback/)
         end
 
-        it 'includes attempt diagnostics on the raised error' do
+        it 'includes attempt diagnostics on the raised error', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
           expected_attempts = [
             {
               strategy: :faraday,
