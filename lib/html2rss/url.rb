@@ -108,7 +108,10 @@ module Html2rss
     def self.validate_channel_url(url)
       raise ArgumentError, 'URL must be absolute' unless url.absolute?
 
-      raise ArgumentError, 'URL must not contain an @ character' if url.to_s.include?('@')
+      uri = url.instance_variable_get(:@uri)
+      has_forbidden_at = uri.user || uri.password
+      has_forbidden_at ||= [uri.query, uri.fragment].compact.any? { |value| value.include?('@') }
+      raise ArgumentError, 'URL must not contain an @ character' if has_forbidden_at
 
       scheme = url.scheme
       raise ArgumentError, "URL scheme '#{scheme}' is not supported" unless SUPPORTED_SCHEMES.include?(scheme)
@@ -151,17 +154,13 @@ module Html2rss
     # Returns the URL query string as a hash of string keys and values.
     #
     # @return [Hash{String => String}] normalized query parameters
-    def query_values
-      @uri.query_values(Hash) || {}
-    end
+    def query_values = @uri.query_values(Hash) || {}
 
     ##
     # Returns the URL path split into non-empty segments.
     #
     # @return [Array<String>] normalized path segments
-    def path_segments
-      @uri.path.to_s.split('/').reject(&:empty?)
-    end
+    def path_segments = @uri.path.to_s.split('/').reject(&:empty?)
 
     ##
     # Returns a copy of the URL with the provided path.
@@ -236,42 +235,32 @@ module Html2rss
     #
     # @param other [Url] the other URL to compare with
     # @return [Integer] -1, 0, or 1 for less than, equal, or greater than
-    def <=>(other)
-      to_s <=> other.to_s
-    end
+    def <=>(other) = to_s <=> other.to_s
 
     ##
     # Returns true if this URL is equal to another URL.
     #
     # @param other [Object] the other object to compare with
     # @return [Boolean] true if the URLs are equal
-    def ==(other)
-      other.is_a?(Url) && to_s == other.to_s
-    end
+    def ==(other) = other.is_a?(Url) && to_s == other.to_s
 
     ##
     # Supports hash-based comparisons by ensuring equality semantics match `hash`.
     #
     # @param other [Object] the other object to compare with
     # @return [Boolean] true if the URLs are considered equal
-    def eql?(other)
-      other.is_a?(Url) && to_s == other.to_s
-    end
+    def eql?(other) = other.is_a?(Url) && to_s == other.to_s
 
     ##
     # Returns the hash code for this URL.
     #
     # @return [Integer] the hash code
-    def hash
-      to_s.hash
-    end
+    def hash = to_s.hash
 
     ##
     # Returns a string representation of the URL for debugging.
     #
     # @return [String] the debug representation
-    def inspect
-      "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
-    end
+    def inspect = "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
   end
 end

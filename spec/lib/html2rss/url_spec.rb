@@ -191,7 +191,9 @@ RSpec.describe Html2rss::Url do
         'http://example.com' => 'http://example.com/',
         'https://www.example.com/path' => 'https://www.example.com/path',
         'http://subdomain.example.com:8080/path?query=value#fragment' => 'http://subdomain.example.com:8080/path?query=value#fragment',
-        'https://example.com/path with spaces' => 'https://example.com/path%20with%20spaces'
+        'https://example.com/path with spaces' => 'https://example.com/path%20with%20spaces',
+        'https://example.com/path@segment' => 'https://example.com/path@segment',
+        'https://truthsocial.com/@realDonaldTrump' => 'https://truthsocial.com/@realDonaldTrump'
       }.each_pair do |input_url, expected_url|
         it "accepts #{input_url.inspect} and returns normalized URL" do
           result = described_class.for_channel(input_url)
@@ -219,11 +221,11 @@ RSpec.describe Html2rss::Url do
       end
     end
 
-    context 'with URLs containing @ character' do
+    context 'with URLs containing @ character outside the path' do
       [
         'https://user@example.com',
-        'https://example.com/path@fragment',
-        'https://example.com?param=value@test'
+        'https://example.com?param=value@test',
+        'https://example.com/#frag@test'
       ].each do |url_with_at|
         it "raises ArgumentError for URL with @ character: #{url_with_at.inspect}" do
           expect { described_class.for_channel(url_with_at) }
@@ -245,9 +247,9 @@ RSpec.describe Html2rss::Url do
         end
       end
 
-      it 'raises ArgumentError for mailto URL (contains @ character)' do
+      it 'raises ArgumentError for mailto URL (unsupported scheme)' do
         expect { described_class.for_channel('mailto:test@example.com') }
-          .to raise_error(ArgumentError, 'URL must not contain an @ character')
+          .to raise_error(ArgumentError, "URL scheme 'mailto' is not supported")
       end
     end
 
