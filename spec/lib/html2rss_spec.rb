@@ -454,13 +454,13 @@ RSpec.describe Html2rss do
         end
       end
 
-      it 'falls back from faraday zero items to botasaurus non-zero items', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'falls back from faraday zero items to botasaurus non-zero items', :aggregate_failures do
         expect(feed.items.map(&:title)).to eq(['bota'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
-      it 'falls back with default auto budget when max_requests is not explicitly set', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'falls back with default auto budget when max_requests is not explicitly set', :aggregate_failures do
         config.delete(:request)
 
         expect(feed.items.map(&:title)).to eq(['bota'])
@@ -468,7 +468,7 @@ RSpec.describe Html2rss do
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
-      it 'falls back through browserless when first two strategies return zero items', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'falls back through browserless when first two strategies return zero items', :aggregate_failures do
         strategy_results[:botasaurus] = faraday_empty_response
         strategy_results[:browserless] = browserless_item_response
 
@@ -476,7 +476,7 @@ RSpec.describe Html2rss do
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
       end
 
-      it 'raises a specific zero-items error when all concrete strategies return zero items' do # rubocop:disable RSpec/ExampleLength
+      it 'raises a specific zero-items error when all concrete strategies return zero items' do
         strategy_results[:botasaurus] = faraday_empty_response
         strategy_results[:browserless] = faraday_empty_response
 

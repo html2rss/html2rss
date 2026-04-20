@@ -57,7 +57,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
-    context 'when strategy is auto' do
+    context 'when strategy is auto' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) { base_config.merge(strategy: :auto, request: { max_requests: 3 }) }
       let(:pipeline) { described_class.new(config) }
       let(:empty_response) do
@@ -127,7 +127,7 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::Log).not_to have_received(:info)
       end
 
-      context 'when first strategy fails but fallback strategy succeeds' do
+      context 'when first strategy fails but fallback strategy succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups
         let(:strategy_results) do
           {
             faraday: Html2rss::RequestService::RequestTimedOut.new('timed out'),
@@ -135,7 +135,8 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
-        it 'warns with class-only detail and keeps full error details in debug', :aggregate_failures do
+        it 'warns with class-only detail and keeps full error details in debug',
+           :aggregate_failures do # rubocop:disable RSpec/ExampleLength
           rss = pipeline.to_rss
 
           expect(rss.items.map(&:title)).to eq(['bota'])
