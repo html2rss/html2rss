@@ -3,21 +3,25 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::FeedPipeline do
-  def build_response(body:, url: 'https://example.com/news')
-    Html2rss::RequestService::Response.new(
-      body:,
-      url: Html2rss::Url.from_absolute(url),
-      headers: { 'content-type' => 'text/html' },
-      status: 200
-    )
+  let(:build_response) do
+    lambda do |body:, url: 'https://example.com/news'|
+      Html2rss::RequestService::Response.new(
+        body:,
+        url: Html2rss::Url.from_absolute(url),
+        headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+    end
   end
 
-  def stub_first_strategy_success(response)
-    allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-      ctx.budget.consume!
-      raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+  let(:stub_first_strategy_success) do
+    lambda do |response|
+      allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+        ctx.budget.consume!
+        raise "Unexpected strategy #{strategy}" unless strategy == :faraday
 
-      response
+        response
+      end
     end
   end
 
@@ -32,11 +36,11 @@ RSpec.describe Html2rss::FeedPipeline do
   end
 
   describe '#to_rss' do
-    context 'when strategy is non-auto' do
+    context 'when strategy is non-auto' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) { base_config.merge(strategy: :faraday) }
       let(:pipeline) { described_class.new(config) }
       let(:response) do
-        build_response(body: '<html><body><article><h1>faraday</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><h1>faraday</h1></article></body></html>')
       end
 
       before do
@@ -61,10 +65,13 @@ RSpec.describe Html2rss::FeedPipeline do
       let(:config) { base_config.merge(strategy: :auto, request: { max_requests: 3 }) }
       let(:pipeline) { described_class.new(config) }
       let(:empty_response) do
-        build_response(body: '<html><body><div>empty</div></body></html>')
+        build_response.call(body: '<html><body><div>empty</div></body></html>')
       end
       let(:item_response) do
-        build_response(body: '<html><body><article><h1>bota</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+      end
+      let(:browserless_response) do
+        build_response.call(body: '<html><body><article><h1>browser</h1></article></body></html>')
       end
       let(:strategy_results) do
         {
@@ -111,7 +118,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       it 'does not call fallback strategy when first strategy succeeds', :aggregate_failures do
-        stub_first_strategy_success(item_response)
+        stub_first_strategy_success.call(item_response)
 
         pipeline.to_rss
 
@@ -120,11 +127,22 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       it 'does not emit fallback info when first strategy succeeds' do
-        stub_first_strategy_success(item_response)
+        stub_first_strategy_success.call(item_response)
 
         pipeline.to_rss
 
         expect(Html2rss::Log).not_to have_received(:info)
+      end
+
+      it 'continues auto fallback when botasaurus is not configured', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        strategy_results[:botasaurus] = Html2rss::RequestService::BotasaurusConfigurationError.new('missing url')
+        strategy_results[:browserless] = browserless_response
+
+        rss = pipeline.to_rss
+
+        expect(rss.items.map(&:title)).to eq(['browser'])
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
       end
 
       context 'when first strategy fails but fallback strategy succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups

@@ -21,8 +21,7 @@ module Html2rss
         RequestService::PrivateNetworkDenied,
         RequestService::CrossOriginFollowUpDenied,
         RequestService::ResponseTooLarge,
-        RequestService::BrowserlessConfigurationError,
-        RequestService::BotasaurusConfigurationError
+        RequestService::BrowserlessConfigurationError
       ].freeze
 
       ##

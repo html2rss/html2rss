@@ -24,7 +24,7 @@ module Html2rss
         "#{attempt[:strategy]} (#{details})"
       end.join(', ')
 
-      "No RSS feed items extracted after auto fallback across strategies: #{summaries}. " \
+      "No feed items extracted after auto fallback across strategies: #{summaries}. " \
         'Try a more specific listing URL or provide explicit selectors.'
     end
   end

@@ -54,7 +54,7 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 - `botasaurus`: delegates fetching to a Botasaurus scrape API. Requires `BOTASAURUS_SCRAPER_URL` (for example `http://localhost:4010`).
 - `browserless`: remote browser rendering via Browserless (`BROWSERLESS_IO_WEBSOCKET_URL` and token as needed).
 
-Botasaurus is explicit opt-in only. Use `strategy: botasaurus` (or `--strategy botasaurus`) when you want Botasaurus transport.
+Botasaurus can be selected explicitly with `strategy: botasaurus` (or `--strategy botasaurus`), and `auto` can also try it when configured.
 
 Auto fallback shares one request budget across all strategy attempts. For pagination-heavy or dynamic pages, increase `request.max_requests` (or `--max-requests`) when retries exhaust the budget.
 

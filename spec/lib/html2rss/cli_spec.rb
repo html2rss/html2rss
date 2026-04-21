@@ -254,7 +254,7 @@ RSpec.describe Html2rss::CLI do
 
       it 'raises a CLI error with zero-items guidance' do
         expect { cli.auto('https://example.com') }
-          .to raise_error(Thor::Error, /No RSS feed items extracted after auto fallback/)
+          .to raise_error(Thor::Error, /No feed items extracted after auto fallback/)
       end
     end
   end

@@ -11,6 +11,21 @@ module Html2rss
   # The Html2rss command line interface.
   class CLI < Thor # rubocop:disable Metrics/ClassLength
     check_unknown_options!
+    # Ordered fallback chain attempted by auto strategy.
+    #
+    # @return [Array<Symbol>]
+    AUTO_FALLBACK_CHAIN = Html2rss::FeedPipeline::AutoFallback::CHAIN.freeze
+    # Supported CLI strategy option values.
+    #
+    # @return [Array<String>]
+    STRATEGY_OPTION_ENUM = (['auto'] + Html2rss::RequestService.strategy_names).uniq.freeze
+    # User-facing strategy help text that reflects the current fallback chain.
+    #
+    # @return [String]
+    STRATEGY_OPTION_DESC = [
+      'Optional request strategy (defaults to auto; auto tries',
+      "#{AUTO_FALLBACK_CHAIN.join(' -> ')})"
+    ].join(' ').freeze
 
     # @return [Boolean] whether Thor should terminate process on command failures
     def self.exit_on_failure?
@@ -25,8 +40,8 @@ module Html2rss
                   default: {}
     method_option :strategy,
                   type: :string,
-                  desc: 'Optional request strategy (defaults to auto; auto tries faraday -> botasaurus -> browserless)',
-                  enum: %w[auto faraday browserless botasaurus]
+                  desc: STRATEGY_OPTION_DESC,
+                  enum: STRATEGY_OPTION_ENUM
     method_option :max_redirects,
                   type: :numeric,
                   desc: 'Maximum redirects to follow per request'
@@ -47,8 +62,8 @@ module Html2rss
     desc 'auto [URL]', 'Automatically sources an RSS feed from the URL'
     method_option :strategy,
                   type: :string,
-                  desc: 'Optional request strategy (defaults to auto; auto tries faraday -> botasaurus -> browserless)',
-                  enum: %w[auto faraday browserless botasaurus]
+                  desc: STRATEGY_OPTION_DESC,
+                  enum: STRATEGY_OPTION_ENUM
     method_option :format,
                   type: :string,
                   desc: 'Output format for the auto-sourced feed',

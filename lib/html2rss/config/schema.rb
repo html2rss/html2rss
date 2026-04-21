@@ -80,6 +80,7 @@ module Html2rss
 
         def assign_properties(properties)
           properties.merge!(
+            strategy: Components.strategy,
             headers: Components.headers,
             stylesheets: Components.stylesheets,
             auto_source: Components.auto_source,
@@ -93,6 +94,14 @@ module Html2rss
       # Exposes schema fragments that populate the top-level configuration schema.
       module Components
         module_function
+
+        # @return [Hash{Symbol => Object}] schema fragment for strategy selection
+        def strategy
+          {
+            enum: Html2rss::Config::Validator::BASE_STRATEGY_OPTIONS.map(&:to_s),
+            not: { type: 'null' }
+          }
+        end
 
         # @return [Hash{Symbol => Object}] schema fragment for headers
         def headers

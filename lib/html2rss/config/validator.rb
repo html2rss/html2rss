@@ -6,15 +6,15 @@ module Html2rss
   class Config
     # Validates the configuration hash using Dry::Validation.
     # The configuration options adhere to the documented schema in README.md.
-    class Validator < Dry::Validation::Contract
+    class Validator < Dry::Validation::Contract # rubocop:disable Metrics/ClassLength
       # URI format used for channel URL validation.
       URI_REGEXP = Url::URI_REGEXP
       # Allowed stylesheet MIME types.
       STYLESHEET_TYPES = RssBuilder::Stylesheet::TYPES
       # Optional language/region format (`en` or `en-US`).
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
-      # Supported orchestration/transport strategy names.
-      STRATEGY_OPTIONS = ([:auto] + Html2rss::RequestService.strategy_names.map(&:to_sym)).uniq.freeze
+      # Baseline strategy enum exported in static schema artifacts.
+      BASE_STRATEGY_OPTIONS = ([:auto] + Html2rss::RequestService.strategy_names.map(&:to_sym)).uniq.freeze
 
       # Contract for the top-level `channel` section.
       ChannelConfig = Dry::Schema.Params do
@@ -85,7 +85,7 @@ module Html2rss
       end
 
       params do
-        optional(:strategy).filled(:symbol, included_in?: STRATEGY_OPTIONS)
+        optional(:strategy).filled(:symbol)
         required(:channel).hash(ChannelConfig)
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)
@@ -105,6 +105,13 @@ module Html2rss
 
       rule(:dynamic_params_error) do
         base.failure(value) if value
+      end
+
+      rule(:strategy) do
+        next if value.nil?
+        next if value == :auto || Html2rss::RequestService.strategy_registered?(value)
+
+        key.failure("must be one of: #{BASE_STRATEGY_OPTIONS.join(', ')}")
       end
 
       # Ensure at least one of :selectors or :auto_source is present.

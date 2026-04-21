@@ -481,7 +481,7 @@ RSpec.describe Html2rss do
         strategy_results[:browserless] = faraday_empty_response
 
         expect { feed }
-          .to raise_error(Html2rss::NoFeedItemsExtracted, /No RSS feed items extracted after auto fallback/)
+          .to raise_error(Html2rss::NoFeedItemsExtracted, /No feed items extracted after auto fallback/)
       end
 
       context 'when fallback has mixed zero-items and errors' do # rubocop:disable RSpec/MultipleMemoizedHelpers
@@ -494,7 +494,7 @@ RSpec.describe Html2rss do
         it 'raises NoFeedItemsExtracted' do
           expect do
             feed
-          end.to raise_error(Html2rss::NoFeedItemsExtracted, /No RSS feed items extracted after auto fallback/)
+          end.to raise_error(Html2rss::NoFeedItemsExtracted, /No feed items extracted after auto fallback/)
         end
 
         it 'includes attempt diagnostics on the raised error', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

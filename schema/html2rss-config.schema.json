@@ -3,15 +3,15 @@
   "type": "object",
   "properties": {
     "strategy": {
-      "not": {
-        "type": "null"
-      },
       "enum": [
         "auto",
         "faraday",
         "botasaurus",
         "browserless"
-      ]
+      ],
+      "not": {
+        "type": "null"
+      }
     },
     "channel": {
       "type": "object",

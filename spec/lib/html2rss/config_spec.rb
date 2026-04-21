@@ -274,6 +274,16 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(config_with_unknown_strategy)).to be_failure
     end
 
+    it 'accepts strategies registered after validator class load' do # rubocop:disable RSpec/ExampleLength
+      described_class.validate(config)
+      Html2rss::RequestService.register_strategy(:runtime_custom, Class.new)
+
+      result = described_class.validate(config.merge(strategy: :runtime_custom))
+      expect(result).to be_success
+    ensure
+      Html2rss::RequestService.unregister_strategy(:runtime_custom)
+    end
+
     context 'when request includes valid botasaurus options' do
       let(:config) do
         {
