@@ -3,6 +3,12 @@
   "type": "object",
   "properties": {
     "strategy": {
+      "enum": [
+        "auto",
+        "faraday",
+        "botasaurus",
+        "browserless"
+      ],
       "not": {
         "type": "null"
       }
@@ -533,7 +539,6 @@
     }
   },
   "required": [
-    "strategy",
     "channel"
   ],
   "anyOf": [

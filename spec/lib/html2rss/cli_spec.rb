@@ -123,7 +123,7 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { format: 'rss' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil,
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
                                      max_requests: nil)
     end
 
@@ -131,7 +131,7 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' })
 
       expect(Html2rss).to have_received(:auto_json_feed)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil,
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
                                      max_requests: nil)
     end
 
@@ -146,7 +146,7 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { items_selector: '.item' })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: '.item', max_redirects: nil,
+        .with('https://example.com', strategy: :auto, items_selector: '.item', max_redirects: nil,
                                      max_requests: nil)
     end
 
@@ -154,14 +154,22 @@ RSpec.describe Html2rss::CLI do
       cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: 8, max_requests: nil)
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: 8, max_requests: nil)
     end
 
     it 'passes the max_requests option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { max_requests: 8 })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: 8)
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: 8)
+    end
+
+    it 'passes auto strategy option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { strategy: 'auto' })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
+                                     max_requests: nil)
     end
 
     context 'when the redirect limit is hit' do
@@ -228,6 +236,25 @@ RSpec.describe Html2rss::CLI do
       it 'raises a CLI error with blocked-surface guidance' do
         expect { cli.auto('https://example.com') }
           .to raise_error(Thor::Error, /Blocked surface detected: Cloudflare anti-bot interstitial page/)
+      end
+    end
+
+    context 'when all auto fallback tiers return zero items' do
+      before do
+        allow(Html2rss).to receive(:auto_source).and_raise(
+          Html2rss::NoFeedItemsExtracted.new(
+            attempts: [
+              { strategy: :faraday, items_count: 0, error_class: nil },
+              { strategy: :botasaurus, items_count: 0, error_class: nil },
+              { strategy: :browserless, items_count: 0, error_class: nil }
+            ]
+          )
+        )
+      end
+
+      it 'raises a CLI error with zero-items guidance' do
+        expect { cli.auto('https://example.com') }
+          .to raise_error(Thor::Error, /No feed items extracted after auto fallback/)
       end
     end
   end

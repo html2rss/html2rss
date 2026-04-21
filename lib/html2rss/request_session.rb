@@ -9,16 +9,20 @@ module Html2rss
       # Builds a request session from translated runtime request inputs.
       #
       # @param runtime_input [RuntimeInput] translated runtime request inputs
+      # @param budget [RequestService::Budget, nil] optional shared budget for multi-attempt runs
       # @param logger [Logger] logger used for operational warnings
       # @return [RequestSession] configured request session
-      def from_runtime_input(runtime_input, logger: Html2rss::Log)
+      def from_runtime_input(runtime_input, budget: nil, logger: Html2rss::Log) # rubocop:disable Metrics/MethodLength
+        context_options = {
+          url: runtime_input.url,
+          headers: runtime_input.headers,
+          request: runtime_input.request,
+          policy: runtime_input.request_policy
+        }
+        context_options[:budget] = budget unless budget.nil?
+
         new(
-          context: RequestService::Context.new(
-            url: runtime_input.url,
-            headers: runtime_input.headers,
-            request: runtime_input.request,
-            policy: runtime_input.request_policy
-          ),
+          context: RequestService::Context.new(**context_options),
           strategy: runtime_input.strategy,
           logger:
         )

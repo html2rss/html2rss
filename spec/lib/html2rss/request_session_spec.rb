@@ -62,6 +62,19 @@ RSpec.describe Html2rss::RequestSession do
         expect(context.policy.max_requests).to eq(4)
       end
     end
+
+    context 'when a shared budget is provided' do
+      let(:configured_max_requests) { 4 }
+      let(:shared_budget) { Html2rss::RequestService::Budget.new(max_requests: 2) }
+
+      it 'uses the provided budget object for the session context', :aggregate_failures do
+        session = described_class.from_runtime_input(runtime_input, budget: shared_budget, logger:)
+        context = session.instance_variable_get(:@context)
+
+        expect(session).to be_a(described_class)
+        expect(context.budget).to equal(shared_budget)
+      end
+    end
     # rubocop:enable RSpec/MultipleMemoizedHelpers
   end
 
