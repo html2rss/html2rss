@@ -4,7 +4,7 @@ module Html2rss
   # The Html2rss::Error base class.
   class Error < StandardError; end
 
-  # Raised when auto strategy exhausts all concrete tiers without feed items.
+  # Raised when auto fallback exhausts all concrete tiers and extractors find no feed items.
   class NoFeedItemsExtracted < Error
     ##
     # @param attempts [Array<Hash{Symbol => Object}>] tier attempt diagnostics

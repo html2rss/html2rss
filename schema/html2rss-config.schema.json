@@ -3,12 +3,7 @@
   "type": "object",
   "properties": {
     "strategy": {
-      "enum": [
-        "auto",
-        "faraday",
-        "botasaurus",
-        "browserless"
-      ],
+      "type": "string",
       "not": {
         "type": "null"
       }

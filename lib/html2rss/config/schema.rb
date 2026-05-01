@@ -98,7 +98,7 @@ module Html2rss
         # @return [Hash{Symbol => Object}] schema fragment for strategy selection
         def strategy
           {
-            enum: Html2rss::Config::Validator::BASE_STRATEGY_OPTIONS.map(&:to_s),
+            type: 'string',
             not: { type: 'null' }
           }
         end

@@ -15,11 +15,19 @@ RSpec.describe Html2rss::Config::Schema do
       expect(json_schema.fetch('required')).not_to include('strategy')
     end
 
-    it 'exposes strategy as an optional enum', :aggregate_failures do
+    it 'exposes strategy as an optional non-null string', :aggregate_failures do
       strategy_schema = json_schema.dig('properties', 'strategy')
 
-      expect(strategy_schema.fetch('enum')).to contain_exactly('auto', 'faraday', 'botasaurus', 'browserless')
+      expect(strategy_schema.fetch('type')).to eq('string')
+      expect(strategy_schema).not_to include('enum')
       expect(strategy_schema.dig('not', 'type')).to eq('null')
+    end
+
+    it 'leaves runtime-registered strategy names to runtime validation' do
+      expect(json_schema.dig('properties', 'strategy')).to match(
+        'type' => 'string',
+        'not' => { 'type' => 'null' }
+      )
     end
 
     it 'enforces presence of selectors or auto_source' do

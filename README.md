@@ -54,11 +54,9 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 - `botasaurus`: delegates fetching to a Botasaurus scrape API. Requires `BOTASAURUS_SCRAPER_URL` (for example `http://localhost:4010`).
 - `browserless`: remote browser rendering via Browserless (`BROWSERLESS_IO_WEBSOCKET_URL` and token as needed).
 
-Botasaurus can be selected explicitly with `strategy: botasaurus` (or `--strategy botasaurus`), and `auto` can also try it when configured.
-
 Auto fallback shares one request budget across all strategy attempts. For pagination-heavy or dynamic pages, increase `request.max_requests` (or `--max-requests`) when retries exhaust the budget.
 
-To inspect auto fallback decisions in CLI output, run with `LOG_LEVEL=info`.
+Auto fallback decisions are hidden at the default `LOG_LEVEL=warn`; run with `LOG_LEVEL=info` to include them in CLI output.
 
 Supported `request.botasaurus` options:
 
