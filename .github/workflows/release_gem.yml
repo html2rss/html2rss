@@ -41,5 +41,14 @@ jobs:
           bundler-cache: true
           ruby-version: ruby
 
-      - if: steps.release.outputs.releases_created == 'true'
-        uses: rubygems/release-gem@v1
+      - name: Configure RubyGems trusted publishing
+        if: steps.release.outputs.releases_created == 'true'
+        uses: rubygems/configure-rubygems-credentials@v2.0.0
+
+      - name: Build gem
+        if: steps.release.outputs.releases_created == 'true'
+        run: gem build html2rss.gemspec --output html2rss.gem
+
+      - name: Publish gem
+        if: steps.release.outputs.releases_created == 'true'
+        run: gem push html2rss.gem
