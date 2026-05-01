@@ -3,6 +3,7 @@
   "type": "object",
   "properties": {
     "strategy": {
+      "type": "string",
       "not": {
         "type": "null"
       }
@@ -533,7 +534,6 @@
     }
   },
   "required": [
-    "strategy",
     "channel"
   ],
   "anyOf": [

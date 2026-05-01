@@ -134,6 +134,10 @@ RSpec.describe Html2rss::Config do
       expect(described_class.from_hash(hash)).to be_a(described_class)
     end
 
+    it 'defaults strategy to auto when omitted' do
+      expect(described_class.from_hash(hash).strategy).to eq(:auto)
+    end
+
     context 'with string-keyed config input' do
       let(:hash) do
         {
@@ -256,6 +260,28 @@ RSpec.describe Html2rss::Config do
       result = described_class.validate(config)
 
       expect(result.to_h.dig(:channel, :time_zone)).to eq('UTC')
+    end
+
+    it 'accepts configs when strategy is omitted' do
+      config_without_strategy = config.dup
+
+      expect(described_class.validate(config_without_strategy)).to be_success
+    end
+
+    it 'rejects unknown strategy values' do
+      config_with_unknown_strategy = config.merge(strategy: :unknown)
+
+      expect(described_class.validate(config_with_unknown_strategy)).to be_failure
+    end
+
+    it 'accepts strategies registered after validator class load' do # rubocop:disable RSpec/ExampleLength
+      described_class.validate(config)
+      Html2rss::RequestService.register_strategy(:runtime_custom, Class.new)
+
+      result = described_class.validate(config.merge(strategy: :runtime_custom))
+      expect(result).to be_success
+    ensure
+      Html2rss::RequestService.unregister_strategy(:runtime_custom)
     end
 
     context 'when request includes valid botasaurus options' do

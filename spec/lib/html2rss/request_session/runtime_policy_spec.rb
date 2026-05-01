@@ -41,6 +41,37 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       end
     end
 
+    context 'when strategy is auto and max_requests is omitted' do
+      let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :auto)) }
+
+      it 'adds auto fallback retry budget to the runtime policy', :aggregate_failures do
+        expected_retry_budget = Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1
+
+        expect(runtime_policy.max_requests).to eq(6 + expected_retry_budget)
+        expect(runtime_policy.max_redirects).to eq(8)
+      end
+    end
+
+    context 'when strategy is non-auto and max_requests is omitted' do
+      let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :faraday)) }
+
+      it 'keeps baseline budget unchanged for non-auto strategies' do
+        expect(runtime_policy.max_requests).to eq(6)
+      end
+    end
+
+    context 'when strategy is auto and max_requests is explicitly configured' do
+      let(:config) do
+        Html2rss::Config.from_hash(
+          raw_config.merge(strategy: :auto, request: raw_config[:request].merge(max_requests: 2))
+        )
+      end
+
+      it 'preserves the explicit request ceiling' do
+        expect(runtime_policy.max_requests).to eq(2)
+      end
+    end
+
     context 'when browserless preload is omitted' do
       let(:config) do
         Html2rss::Config.from_hash(

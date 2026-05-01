@@ -49,11 +49,14 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 
 ### Request Strategies
 
-- `faraday` (default): direct HTTP fetch.
+- `auto` (default): pipeline fallback orchestration (`faraday` -> `botasaurus` -> `browserless`) based on extraction outcome and retry policy.
+- `faraday`: direct HTTP fetch.
 - `botasaurus`: delegates fetching to a Botasaurus scrape API. Requires `BOTASAURUS_SCRAPER_URL` (for example `http://localhost:4010`).
 - `browserless`: remote browser rendering via Browserless (`BROWSERLESS_IO_WEBSOCKET_URL` and token as needed).
 
-Botasaurus is explicit opt-in only. Use `strategy: botasaurus` (or `--strategy botasaurus`) when you want Botasaurus transport.
+Auto fallback shares one request budget across all strategy attempts. For pagination-heavy or dynamic pages, increase `request.max_requests` (or `--max-requests`) when retries exhaust the budget.
+
+Auto fallback decisions are hidden at the default `LOG_LEVEL=warn`; run with `LOG_LEVEL=info` to include them in CLI output.
 
 Supported `request.botasaurus` options:
 

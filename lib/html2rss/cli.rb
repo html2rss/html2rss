@@ -11,6 +11,21 @@ module Html2rss
   # The Html2rss command line interface.
   class CLI < Thor # rubocop:disable Metrics/ClassLength
     check_unknown_options!
+    # Ordered fallback chain attempted by auto strategy.
+    #
+    # @return [Array<Symbol>]
+    AUTO_FALLBACK_CHAIN = Html2rss::FeedPipeline::AutoFallback::CHAIN.freeze
+    # Supported CLI strategy option values.
+    #
+    # @return [Array<String>]
+    STRATEGY_OPTION_ENUM = (['auto'] + Html2rss::RequestService.strategy_names).uniq.freeze
+    # User-facing strategy help text that reflects the current fallback chain.
+    #
+    # @return [String]
+    STRATEGY_OPTION_DESC = [
+      'Optional request strategy (defaults to auto; auto tries',
+      "#{AUTO_FALLBACK_CHAIN.join(' -> ')})"
+    ].join(' ').freeze
 
     # @return [Boolean] whether Thor should terminate process on command failures
     def self.exit_on_failure?
@@ -25,8 +40,8 @@ module Html2rss
                   default: {}
     method_option :strategy,
                   type: :string,
-                  desc: 'The strategy to request the URL',
-                  enum: %w[faraday botasaurus browserless]
+                  desc: STRATEGY_OPTION_DESC,
+                  enum: STRATEGY_OPTION_ENUM
     method_option :max_redirects,
                   type: :numeric,
                   desc: 'Maximum redirects to follow per request'
@@ -47,8 +62,8 @@ module Html2rss
     desc 'auto [URL]', 'Automatically sources an RSS feed from the URL'
     method_option :strategy,
                   type: :string,
-                  desc: 'The strategy to request the URL',
-                  enum: %w[faraday botasaurus browserless]
+                  desc: STRATEGY_OPTION_DESC,
+                  enum: STRATEGY_OPTION_ENUM
     method_option :format,
                   type: :string,
                   desc: 'Output format for the auto-sourced feed',
@@ -162,7 +177,7 @@ module Html2rss
     end
 
     def current_strategy
-      options[:strategy]&.to_sym || :faraday
+      options[:strategy]&.to_sym || :auto
     end
 
     def current_max_redirects
@@ -194,7 +209,8 @@ module Html2rss
            Html2rss::RequestService::BrowserlessConnectionFailed,
            Html2rss::RequestService::BotasaurusConfigurationError,
            Html2rss::RequestService::BotasaurusConnectionFailed,
-           Html2rss::RequestService::BlockedSurfaceDetected => error
+           Html2rss::RequestService::BlockedSurfaceDetected,
+           Html2rss::NoFeedItemsExtracted => error
       raise Thor::Error, error.message
     end
   end

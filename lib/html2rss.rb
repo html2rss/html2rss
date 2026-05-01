@@ -37,9 +37,7 @@ module Html2rss
   # @param raw_config [Hash{Symbol => Object}] feed configuration
   # @return [RSS::Rss] generated RSS feed
   def self.feed(raw_config)
-    run_pipeline(raw_config) do |response:, config:, articles:|
-      build_rss_feed(response:, config:, articles:)
-    end
+    FeedPipeline.new(raw_config).to_rss
   end
 
   ##
@@ -48,9 +46,7 @@ module Html2rss
   # @param raw_config [Hash{Symbol => Object}] feed configuration
   # @return [Hash] JSONFeed-compliant hash
   def self.json_feed(raw_config)
-    run_pipeline(raw_config) do |response:, config:, articles:|
-      build_json_feed(response:, config:, articles:)
-    end
+    FeedPipeline.new(raw_config).to_json_feed
   end
 
   ##
@@ -62,7 +58,7 @@ module Html2rss
   # @param max_redirects [Integer, nil] optional redirect limit override
   # @param max_requests [Integer, nil] optional request budget override
   # @return [RSS::Rss] generated RSS feed
-  def self.auto_source(url, strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: nil)
+  def self.auto_source(url, strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil)
     feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:))
   end
 
@@ -75,79 +71,12 @@ module Html2rss
   # @param max_redirects [Integer, nil] optional redirect limit override
   # @param max_requests [Integer, nil] optional request budget override
   # @return [Hash] JSONFeed-compliant hash
-  def self.auto_json_feed(url, strategy: :faraday, items_selector: nil, max_redirects: nil, max_requests: nil)
+  def self.auto_json_feed(url, strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil)
     json_feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:))
   end
 
   class << self
     private
-
-    def run_pipeline(raw_config)
-      # 1. Normalize and validate the user-facing feed config.
-      config = Config.from_hash(raw_config, params: raw_config[:params])
-      runtime_input = RequestSession::RuntimeInput.from_config(config)
-
-      # 2. Fetch the initial page using a shared request session.
-      request_session = RequestSession.from_runtime_input(runtime_input)
-      response = request_session.fetch_initial_response
-
-      # 3. Collect articles from configured selectors and auto-source scrapers.
-      articles = Articles::Deduplicator.new(
-        collect_articles(response:, config:, request_session:)
-      ).call
-
-      # 4. Render the final output format chosen by the public entrypoint.
-      yield response:, config:, articles:
-    end
-
-    def collect_articles(response:, config:, request_session:)
-      selector_articles(response:, config:, request_session:) +
-        auto_source_articles(response:, config:, request_session:)
-    end
-
-    def selector_articles(response:, config:, request_session:) # rubocop:disable Metrics/MethodLength
-      return [] unless (selectors = config.selectors)
-
-      page_responses = if (max_pages = selectors.dig(:items, :pagination, :max_pages))
-                         RequestSession::RelNextPager.new(
-                           session: request_session,
-                           initial_response: response,
-                           max_pages:
-                         ).to_a
-                       else
-                         [response]
-                       end
-
-      page_responses.flat_map do |page_response|
-        Selectors.new(page_response, selectors:, time_zone: config.time_zone).articles
-      end
-    end
-
-    def auto_source_articles(response:, config:, request_session:)
-      return [] unless (auto_source = config.auto_source)
-
-      AutoSource.new(response, auto_source, request_session:).articles
-    end
-
-    def build_rss_feed(response:, config:, articles:)
-      channel = RssBuilder::Channel.new(response, overrides: config.channel)
-
-      RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
-    end
-
-    def build_json_feed(response:, config:, articles:)
-      channel = RssBuilder::Channel.new(response, overrides: config.channel)
-
-      JsonFeedBuilder.new(channel:, articles:).call
-    end
-
-    def explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
-      keys = []
-      keys << :strategy unless strategy == :faraday
-      keys << :max_redirects unless max_redirects.nil?
-      keys << :max_requests unless max_requests.nil?
-      keys
-    end
 
     def build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:)
       Config.auto_source_config(
@@ -164,6 +93,14 @@ module Html2rss
         max_requests:,
         explicit_keys: explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
       )
+    end
+
+    def explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
+      keys = []
+      keys << :strategy unless strategy.nil? || strategy == Config.default_strategy_name
+      keys << :max_redirects unless max_redirects.nil?
+      keys << :max_requests unless max_requests.nil?
+      keys
     end
   end
 end

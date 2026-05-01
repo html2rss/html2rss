@@ -7,8 +7,27 @@ RSpec.describe Html2rss::Config::Schema do
   describe '.json_schema' do
     subject(:json_schema) { described_class.json_schema }
 
-    it 'includes required top-level properties' do
-      expect(json_schema.fetch('required')).to include('strategy', 'channel')
+    it 'includes channel as a required top-level property' do
+      expect(json_schema.fetch('required')).to include('channel')
+    end
+
+    it 'does not require strategy at the top level' do
+      expect(json_schema.fetch('required')).not_to include('strategy')
+    end
+
+    it 'exposes strategy as an optional non-null string', :aggregate_failures do
+      strategy_schema = json_schema.dig('properties', 'strategy')
+
+      expect(strategy_schema.fetch('type')).to eq('string')
+      expect(strategy_schema).not_to include('enum')
+      expect(strategy_schema.dig('not', 'type')).to eq('null')
+    end
+
+    it 'leaves runtime-registered strategy names to runtime validation' do
+      expect(json_schema.dig('properties', 'strategy')).to match(
+        'type' => 'string',
+        'not' => { 'type' => 'null' }
+      )
     end
 
     it 'enforces presence of selectors or auto_source' do
