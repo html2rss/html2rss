@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html2rss (0.18.0)
+    html2rss (0.19.0)
       addressable (~> 2.7)
       brotli
       dry-validation
