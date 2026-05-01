@@ -1,0 +1,9 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "ruby",
+      "package-name": "html2rss",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}
