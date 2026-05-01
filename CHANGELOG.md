@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)
+
+
+### Bug Fixes
+
+* restore RubyGems release provenance ([#363](https://github.com/html2rss/html2rss/issues/363)) ([bdd7a93](https://github.com/html2rss/html2rss/commit/bdd7a93fab1930ee85420dc49c1cc56e3f175b6e))
+
 ## [0.19.0](https://github.com/html2rss/html2rss/compare/v0.18.0...v0.19.0) (2026-05-01)
 
 
