@@ -43,9 +43,8 @@ jobs:
           release_branch="$(gh pr list \
             --repo "$GITHUB_REPOSITORY" \
             --state open \
-            --label "autorelease: pending" \
-            --json headRefName \
-            --jq 'map(select(.headRefName | startswith("release-please--branches--"))) | .[0].headRefName // ""')"
+            --json baseRefName,headRefName \
+            --jq 'map(select(.baseRefName == "master" and (.headRefName | startswith("release-please--branches--")))) | .[0].headRefName // ""')"
 
           if [ -z "$release_branch" ]; then
             echo "No pending release-please PR branch found" >&2
