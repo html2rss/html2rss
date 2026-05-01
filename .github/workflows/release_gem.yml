@@ -34,6 +34,57 @@ jobs:
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
 
+      - name: Resolve release PR branch
+        id: release_pr
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          release_branch="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --label "autorelease: pending" \
+            --json headRefName \
+            --jq 'map(select(.headRefName | startswith("release-please--branches--"))) | .[0].headRefName // ""')"
+
+          if [ -z "$release_branch" ]; then
+            echo "No pending release-please PR branch found" >&2
+            exit 1
+          fi
+
+          echo "branch=$release_branch" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release PR branch
+        if: steps.release.outputs.prs_created == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release_pr.outputs.branch }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+      - name: Set up Ruby for lockfile refresh
+        if: steps.release.outputs.prs_created == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
+
+      - name: Refresh release PR lockfile
+        if: steps.release.outputs.prs_created == 'true'
+        run: bundle install
+
+      - name: Commit release PR lockfile
+        if: steps.release.outputs.prs_created == 'true'
+        run: |
+          if git diff --quiet -- Gemfile.lock; then
+            echo "Gemfile.lock already up to date"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Gemfile.lock
+          git commit -m "chore: refresh release lockfile"
+          git push
+
       - name: Set up Ruby
         if: steps.release.outputs.releases_created == 'true'
         uses: ruby/setup-ruby@v1
