@@ -3,6 +3,7 @@
     ".": {
       "release-type": "ruby",
       "package-name": "html2rss",
+      "include-component-in-tag": false,
       "changelog-path": "CHANGELOG.md"
     }
   }
