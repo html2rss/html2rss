@@ -32,14 +32,6 @@ module Html2rss
           :article
         )
 
-        # Candidate semantic container selectors used to locate extractable blocks.
-        CONTAINER_SELECTORS = [
-          'article:not(:has(article))',
-          'section:not(:has(section))',
-          'li:not(:has(li))',
-          'tr:not(:has(tr))',
-          'div:not(:has(div))'
-        ].freeze
         ##
         # @return [Symbol] config key used to enable or configure this scraper
         def self.options_key = :semantic_html
@@ -137,17 +129,7 @@ module Html2rss
         end
 
         def collect_candidate_containers
-          seen = {}.compare_by_identity
-
-          CONTAINER_SELECTORS.each_with_object([]) do |selector, containers|
-            parsed_body.css(selector).each do |container|
-              next if container.path.match?(Html::TAGS_TO_IGNORE)
-              next if seen[container]
-
-              seen[container] = true
-              containers << container
-            end
-          end
+          HtmlExtractor::SemanticContainers.call(parsed_body)
         end
 
         private
@@ -215,7 +197,7 @@ module Html2rss
         end
 
         def article_signal_count(container, publish_signal:, descriptive_signal:, content_signal:)
-          [article_container?(container), publish_signal, descriptive_signal, content_signal].count(true)
+          [article_container?(container), publish_signal, descriptive_signal, content_signal].count(&:itself)
         end
 
         def article_container?(container)

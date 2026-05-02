@@ -276,6 +276,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 
+  describe 'regression: publish marker counts as an article signal' do
+    subject(:urls) do
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper.each.to_a.map { |article| article[:url].to_s }
+    end
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="updates">
+            <article>
+              <h2><a href="/briefing">Recommended briefing</a></h2>
+              <time datetime="2026-03-28"></time>
+            </article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    it 'keeps a real post when the publish marker is a Nokogiri node' do
+      expect(urls).to include('https://example.com/briefing')
+    end
+  end
+
   describe 'regression: deep section permalinks with post-like suffixes' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')

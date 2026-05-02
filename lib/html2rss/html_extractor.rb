@@ -7,6 +7,8 @@ module Html2rss
   class HtmlExtractor
     # Tags ignored when extracting visible text content from article containers.
     INVISIBLE_CONTENT_TAGS = %w[svg script noscript style template].to_set.freeze
+    # Element path pattern ignored when traversing candidate article containers.
+    IGNORED_CONTAINER_PATH = /(nav|footer|header|svg|script|style)/i
     # Heading tags used to prioritize title extraction.
     HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
     # Selector used to derive non-headline description nodes.
@@ -86,6 +88,15 @@ module Html2rss
         return article_tag if article_tag.name == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
 
         article_tag.at_css(MAIN_ANCHOR_SELECTOR)
+      end
+
+      ##
+      # @param node [Nokogiri::XML::Node, String] node or path to test
+      # @return [Boolean] true when the node belongs to ignored DOM chrome
+      def ignored_container_path?(node)
+        path = node.respond_to?(:path) ? node.path : node.to_s
+
+        path.match?(IGNORED_CONTAINER_PATH)
       end
     end
 
