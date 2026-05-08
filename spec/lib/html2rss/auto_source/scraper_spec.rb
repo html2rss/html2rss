@@ -17,6 +17,31 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       end
     end
 
+    context 'when fallback html detection depends on relative links' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <html>
+            <body>
+              <section class="cards">
+                <div class="card"><h2><a href="/news/launch-update">Launch update</a></h2></div>
+                <div class="card"><h2><a href="/news/api-rollout">API rollout</a></h2></div>
+              </section>
+            </body>
+          </html>
+        HTML
+      end
+
+      let(:opts) do
+        Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].transform_values do |config|
+          config.merge(enabled: false)
+        end.merge(html: { enabled: true })
+      end
+
+      it 'still selects the html scraper' do
+        expect(described_class.from(parsed_body, opts)).to eq([Html2rss::AutoSource::Scraper::Html])
+      end
+    end
+
     context 'when no suitable scraper is found' do
       let(:parsed_body) { Nokogiri::HTML('<html><body></body></html>') }
 

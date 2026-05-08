@@ -19,6 +19,8 @@ module Html2rss
       class Html
         include Enumerable
 
+        # Absolute base URL used when probe-time detection needs to normalize relative hrefs.
+        DETECTION_BASE_URL = 'https://example.com'
         # Minimum selector frequency required to treat a path as a stable list signal.
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
         # Number of most frequent selectors kept for container extraction.
@@ -36,7 +38,7 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @return [Boolean] true when the scraper can likely extract articles
         def self.articles?(parsed_body)
-          new(parsed_body, url: '').any?
+          new(parsed_body, url: DETECTION_BASE_URL).any?
         end
 
         ##

@@ -44,6 +44,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
     it { is_expected.to be_truthy }
 
+    context 'when the page uses only relative story links' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <html>
+            <body>
+              <section class="cards">
+                <div class="card">
+                  <h2><a href="/news/launch-update">Launch update</a></h2>
+                </div>
+                <div class="card">
+                  <h2><a href="/news/api-rollout">API rollout</a></h2>
+                </div>
+              </section>
+            </body>
+          </html>
+        HTML
+      end
+
+      it 'still detects extractable repeated content' do
+        expect(articles?).to be(true)
+      end
+    end
+
     context 'when parsed_body is empty' do
       let(:parsed_body) { Nokogiri::HTML('') }
 
@@ -202,8 +225,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
 
     context 'when a valid story link comes after chrome inside the same card' do
-      subject(:first_card_article) { articles.send(:extract_article, parsed_body.at_css('.card')) }
-
       let(:html) do
         <<~HTML
           <!DOCTYPE html>
@@ -241,12 +262,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         expect(urls).not_to include('http://example.com/join')
       end
 
-      it 'extracts from the strongest relevant anchor when the first descendant link is chrome' do
-        expect(first_card_article).to include(
-          title: 'Launch update',
-          id: '/news/launch-update',
-          url: satisfy { _1.to_s == 'http://example.com/news/launch-update' }
-        )
+      it 'uses the later story anchor instead of the first descendant chrome link', :aggregate_failures do
+        first_article = articles.to_a.first
+
+        expect(first_article).to include(title: 'Launch update', id: '/news/launch-update')
+        expect(first_article[:url].to_s).to eq('http://example.com/news/launch-update')
       end
     end
   end

@@ -26,7 +26,8 @@ module Html2rss
       ##
       # @param anchor_filter [#call] predicate for scraper-specific anchor eligibility
       # @param boundary_condition [#call] predicate for article container boundary
-      # @yieldparam [Nokogiri::XML::Node] candidate article container
+      # @yieldparam article_tag [Nokogiri::XML::Node] candidate article container
+      # @yieldparam selected_anchor [Nokogiri::XML::Node] anchor that made the container eligible
       # @return [Enumerator]
       def each_article_tag(anchor_filter:, boundary_condition:)
         return enum_for(:each_article_tag, anchor_filter:, boundary_condition:) unless block_given?
