@@ -183,7 +183,8 @@ module Html2rss
             @content_path ||= begin
               content_segments = SEGMENT_SETS.fetch(:content)
 
-              segments.any? { |segment| content_segments.include?(segment) || segment.match?(YEARISH_SEGMENT) }
+              segments.any? { |segment| content_segments.include?(segment) } ||
+                yearish_content_context?
             end
           end
 
@@ -222,6 +223,11 @@ module Html2rss
           end
 
           private
+
+          def yearish_content_context?
+            segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
+              (strong_post_suffix? || LeadingSegments.new(segments).trusted_post_context?)
+          end
 
           def utility_only_route?
             junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)

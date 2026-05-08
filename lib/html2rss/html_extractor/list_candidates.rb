@@ -31,7 +31,7 @@ module Html2rss
       def each_article_tag(anchor_filter:, boundary_condition:)
         return enum_for(:each_article_tag, anchor_filter:, boundary_condition:) unless block_given?
 
-        article_tags(anchor_filter:, boundary_condition:).each { yield _1 }
+        article_tags(anchor_filter:, boundary_condition:).each { yield _1[:article_tag], _1[:selected_anchor] }
       end
 
       private
@@ -48,7 +48,10 @@ module Html2rss
         parsed_body.xpath(selector).filter_map do |selected_tag|
           next if HtmlExtractor.ignored_container_path?(selected_tag)
 
-          HtmlNavigator.parent_until_condition(selected_tag, boundary_condition)
+          article_tag = HtmlNavigator.parent_until_condition(selected_tag, boundary_condition)
+          next unless article_tag
+
+          { article_tag:, selected_anchor: selected_tag }
         end
       end
 

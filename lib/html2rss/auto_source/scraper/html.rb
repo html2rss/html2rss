@@ -71,8 +71,8 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          each_article_tag do |article_tag|
-            article_hash = extract_article(article_tag)
+          each_article_tag do |article_tag, selected_anchor|
+            article_hash = extract_article(article_tag, selected_anchor:)
             yield article_hash if article_hash
           end
         end
@@ -113,17 +113,16 @@ module Html2rss
           !noise_anchor?(node, destination_facts)
         end
 
-        def each_article_tag
-          return enum_for(:each_article_tag) unless block_given?
+        def each_article_tag(&block)
+          return enum_for(:each_article_tag) unless block
 
-          list_candidates.each_article_tag(
-            anchor_filter: method(:relevant_anchor?),
-            boundary_condition: method(:article_tag_condition?)
-          ) { yield _1 }
+          list_candidates.each_article_tag(anchor_filter: method(:relevant_anchor?),
+                                           boundary_condition: method(:article_tag_condition?),
+                                           &block)
         end
 
-        def extract_article(article_tag)
-          selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
+        def extract_article(article_tag, selected_anchor: nil)
+          selected_anchor ||= preferred_anchor_for(article_tag)
           return unless selected_anchor
           return if noise_anchor?(selected_anchor, @link_heuristics.destination_facts(selected_anchor))
 
@@ -147,6 +146,11 @@ module Html2rss
             !destination_facts.content_path &&
             !destination_facts.strong_post_suffix &&
             text.scan(/\p{Alnum}+/).size <= 3
+        end
+
+        def preferred_anchor_for(article_tag)
+          article_tag.css(HtmlExtractor::MAIN_ANCHOR_SELECTOR).find { relevant_anchor?(_1) } ||
+            HtmlExtractor.main_anchor_for(article_tag)
         end
 
         def list_candidates

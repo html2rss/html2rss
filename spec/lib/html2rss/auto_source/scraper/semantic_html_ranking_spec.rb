@@ -372,6 +372,46 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 
+  describe 'regression: bare year segments do not make utility routes content' do
+    subject(:urls) do
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper.each.to_a.map { |article| article[:url].to_s }
+    end
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="updates">
+            <article>
+              <h2><a href="/archive/2024">2024 archive</a></h2>
+              <p>Browse everything from 2024.</p>
+            </article>
+            <article>
+              <h2><a href="/author/2024">Author archive</a></h2>
+              <p>Browse posts by one author.</p>
+            </article>
+            <article>
+              <h2><a href="/search/2024">Search results 2024</a></h2>
+              <p>Saved search result page.</p>
+            </article>
+            <article>
+              <h2><a href="/news/2024/platform-launch-notes">Platform launch notes</a></h2>
+              <time datetime="2026-03-28"></time>
+              <p>Release notes and rollout details for the platform launch.</p>
+            </article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    it 'keeps dated permalinks and filters dated utility routes', :aggregate_failures do
+      expect(urls).to include('https://example.com/news/2024/platform-launch-notes')
+      expect(urls).not_to include('https://example.com/archive/2024')
+      expect(urls).not_to include('https://example.com/author/2024')
+      expect(urls).not_to include('https://example.com/search/2024')
+    end
+  end
+
   describe 'regression: vanity CTA heading leak' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
@@ -613,6 +653,40 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       )
 
       expect(scraper.instance_eval { stronger_entry?(earlier, later) }).to be(true)
+    end
+  end
+
+  describe 'regression: exact ties fall back to real DOM order' do
+    subject(:urls) do
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper.each.to_a.map { |article| article[:url].to_s }
+    end
+
+    let(:expected_first_two_urls) do
+      [
+        'https://example.com/news/first-story',
+        'https://example.com/news/second-story'
+      ]
+    end
+
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="list">
+            <div id="first">
+              <h2><a href="/news/first-story">First story headline</a></h2>
+              <p>Supporting text gives this card descriptive context for readers.</p>
+            </div>
+            <article id="second">
+              <h2><a href="/news/second-story">Second story headline</a></h2>
+            </article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    it 'uses document order instead of selector bucket order on an exact score tie' do
+      expect(urls.first(2)).to eq(expected_first_two_urls)
     end
   end
 

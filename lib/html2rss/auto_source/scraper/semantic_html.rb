@@ -95,7 +95,7 @@ module Html2rss
         end
 
         def extractable_entries # rubocop:disable Metrics/MethodLength
-          @extractable_entries ||= candidate_containers.each_with_index.filter_map do |container, position|
+          @extractable_entries ||= candidate_containers.filter_map do |container|
             selected_anchor = primary_anchor_for(container)
 
             next unless selected_anchor
@@ -114,7 +114,7 @@ module Html2rss
               quality_score: quality,
               junk_score: junk,
               final_score: quality - junk,
-              position:,
+              position: document_position(container),
               article: nil
             )
           end
@@ -133,6 +133,12 @@ module Html2rss
         end
 
         private
+
+        def document_position(container)
+          @document_positions ||= candidate_containers.each_with_index.to_h
+
+          @document_positions.fetch(container)
+        end
 
         def quality_score(container, selected_anchor, destination_facts) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
           title = entry_title(container, selected_anchor)

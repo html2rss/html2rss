@@ -200,6 +200,55 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         expect(urls).not_to include('http://example.com/join')
       end
     end
+
+    context 'when a valid story link comes after chrome inside the same card' do
+      subject(:first_card_article) { articles.send(:extract_article, parsed_body.at_css('.card')) }
+
+      let(:html) do
+        <<~HTML
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <section class="cards">
+                <div class="card">
+                  <a href="/topics/platform">Platform</a>
+                  <div class="story-links">
+                    <a href="/news/launch-update"><img alt="Launch update" src="/launch.png"></a>
+                    <h2><a href="/news/launch-update">Launch update</a></h2>
+                  </div>
+                  <p>Shipping details for operators and customers this week.</p>
+                </div>
+                <div class="card">
+                  <a href="/join">Subscribe</a>
+                  <div class="story-links">
+                    <a href="/news/api-rollout"><img alt="API rollout" src="/api.png"></a>
+                    <h2><a href="/news/api-rollout">API rollout</a></h2>
+                  </div>
+                  <p>Migration notes and support timelines for teams.</p>
+                </div>
+              </section>
+            </body>
+          </html>
+        HTML
+      end
+
+      it 'keeps the later story link that made the container relevant', :aggregate_failures do
+        urls = articles.to_a.map { |article| article[:url].to_s }
+
+        expect(urls).to include('http://example.com/news/launch-update')
+        expect(urls).to include('http://example.com/news/api-rollout')
+        expect(urls).not_to include('http://example.com/topics/platform')
+        expect(urls).not_to include('http://example.com/join')
+      end
+
+      it 'extracts from the strongest relevant anchor when the first descendant link is chrome' do
+        expect(first_card_article).to include(
+          title: 'Launch update',
+          id: '/news/launch-update',
+          url: satisfy { _1.to_s == 'http://example.com/news/launch-update' }
+        )
+      end
+    end
   end
 
   describe '.simplify_xpath' do
