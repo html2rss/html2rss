@@ -143,7 +143,7 @@ module Html2rss
             ].to_set.freeze,
             taxonomy: %w[category categories tag tags topic topics].to_set.freeze,
             vanity: %w[join membership plus premium pricing plans subscribe signup].to_set.freeze,
-            deep_post_context: %w[category categories privacy press newsroom].to_set.freeze
+            deep_post_context: %w[press newsroom].to_set.freeze
           }.freeze
           # Path segment that begins with a year-like publishing marker.
           YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/

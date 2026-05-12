@@ -136,7 +136,7 @@ module Html2rss
 
           text = HtmlExtractor.extract_visible_text(anchor).to_s.strip
 
-          destination_facts.high_confidence_junk_path ||
+          destination_facts.taxonomy_path ||
             short_utility_label?(text, destination_facts) ||
             (@link_heuristics.recommended_text?(text) && destination_facts.shallow) ||
             (@link_heuristics.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||

@@ -320,14 +320,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
               <time datetime="2026-03-27"></time>
               <p>Important product update with support timelines and release notes.</p>
             </article>
+            <article>
+              <h2><a href="/newsroom/2026/platform-launch-notes">Newsroom platform launch notes</a></h2>
+              <time datetime="2026-03-26"></time>
+              <p>Editorial update from the newsroom with rollout detail and operator context.</p>
+            </article>
+            <article>
+              <h2><a href="/press/2026/api-announcement-for-enterprise-admins">Press API announcement for enterprise admins</a></h2>
+              <time datetime="2026-03-25"></time>
+              <p>Press release with support timelines and release detail.</p>
+            </article>
           </section>
         </body></html>
       HTML
     end
 
-    it 'keeps ambiguous deep utility-segment routes in extraction instead of hard-dropping them', :aggregate_failures do
-      expect(urls).to include('https://example.com/category/company/platform-launch-notes-for-teams')
-      expect(urls).to include('https://example.com/privacy/api-announcement-for-enterprise-admins')
+    it 'keeps editorial deep routes and filters category/privacy routes', :aggregate_failures do
+      expect(urls).to include('https://example.com/newsroom/2026/platform-launch-notes')
+      expect(urls).to include('https://example.com/press/2026/api-announcement-for-enterprise-admins')
+      expect(urls).not_to include('https://example.com/category/company/platform-launch-notes-for-teams')
+      expect(urls).not_to include('https://example.com/privacy/api-announcement-for-enterprise-admins')
     end
   end
 

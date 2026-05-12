@@ -269,6 +269,46 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         expect(first_article[:url].to_s).to eq('http://example.com/news/launch-update')
       end
     end
+
+    context 'when repeated article-like cards use author and archive permalinks' do
+      let(:html) do
+        <<~HTML
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <section class="cards">
+                <article class="card">
+                  <h2><a href="/author/quarterly-platform-hardening-update">Quarterly platform hardening update</a></h2>
+                  <p>Incident follow-up, rollout sequencing, and operator guidance for the quarter.</p>
+                </article>
+                <article class="card">
+                  <h2><a href="/archive/launch-retrospective-notes-for-teams">Launch retrospective notes for teams</a></h2>
+                  <p>Migration notes, release learnings, and detailed guidance from the team.</p>
+                </article>
+                <article class="card">
+                  <h2><a href="/join">Subscribe</a></h2>
+                  <p>Membership upsell and account benefits.</p>
+                </article>
+                <article class="card">
+                  <h2><a href="/account/settings/security-notifications">Security notifications</a></h2>
+                  <p>Account settings and notification controls.</p>
+                </article>
+              </section>
+            </body>
+          </html>
+        HTML
+      end
+
+      it 'keeps ambiguous deep routes with article-like card context while filtering clear utility cards',
+         :aggregate_failures do
+        urls = articles.to_a.map { |article| article[:url].to_s }
+
+        expect(urls).to include('http://example.com/author/quarterly-platform-hardening-update')
+        expect(urls).to include('http://example.com/archive/launch-retrospective-notes-for-teams')
+        expect(urls).not_to include('http://example.com/join')
+        expect(urls).not_to include('http://example.com/account/settings/security-notifications')
+      end
+    end
   end
 
   describe '.simplify_xpath' do
