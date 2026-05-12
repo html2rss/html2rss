@@ -13,6 +13,11 @@ RSpec.describe Html2rss::Url do
         expect(url.to_s).to eq(expected_absolute)
       end
     end
+
+    it 'raises ArgumentError for malformed URLs' do
+      expect { described_class.from_relative('http://example .com', base_url) }
+        .to raise_error(ArgumentError, 'URL could not be parsed')
+    end
   end
 
   describe '.sanitize' do
