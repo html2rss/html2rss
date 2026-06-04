@@ -43,6 +43,8 @@ module Html2rss
       base_uri.path = '/' if base_uri.path.empty?
 
       new(base_uri.join(url).normalize)
+    rescue Addressable::URI::InvalidURIError
+      raise ArgumentError, 'URL could not be parsed'
     end
 
     ##
