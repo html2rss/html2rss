@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
 RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
   subject(:heuristics) { described_class.new('https://example.com/articles/') }
 
@@ -45,5 +46,57 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
       expect(heuristics.destination_facts('/newsroom/2026/platform-launch-notes'))
         .to have_attributes(content_path: true, strong_post_suffix: true)
     end
+
+    context 'with German routes and text' do
+      it 'classifies news, category, and utility routes', :aggregate_failures do
+        expect(heuristics.destination_facts('/nachrichten/2026/neuigkeiten-zum-produkt'))
+          .to have_attributes(content_path: true, strong_post_suffix: true)
+        expect(heuristics.destination_facts('/kategorie/politik'))
+          .to have_attributes(taxonomy_path: true, high_confidence_junk_path: true)
+        expect(heuristics.destination_facts('/agb'))
+          .to have_attributes(utility_path: true, high_confidence_junk_path: true)
+      end
+
+      it 'classifies utility prefix, general utility, and recommended text', :aggregate_failures do
+        expect(heuristics.utility_prefix_text?('Newsletter abonnieren')).to be(true)
+        expect(heuristics.utility_text?('über uns')).to be(true)
+        expect(heuristics.recommended_text?('Empfohlen für dich')).to be(true)
+      end
+    end
+
+    context 'with Spanish routes and text' do
+      it 'classifies news, category, and utility routes', :aggregate_failures do
+        expect(heuristics.destination_facts('/noticias/2026/lanzamiento-del-producto'))
+          .to have_attributes(content_path: true, strong_post_suffix: true)
+        expect(heuristics.destination_facts('/categoria/economia'))
+          .to have_attributes(taxonomy_path: true, high_confidence_junk_path: true)
+        expect(heuristics.destination_facts('/privacidad'))
+          .to have_attributes(utility_path: true, high_confidence_junk_path: true)
+      end
+
+      it 'classifies utility prefix, general utility, and recommended text', :aggregate_failures do
+        expect(heuristics.utility_prefix_text?('Suscribirse al boletín')).to be(true)
+        expect(heuristics.utility_text?('Contacto')).to be(true)
+        expect(heuristics.recommended_text?('Recomendado para ti')).to be(true)
+      end
+    end
+
+    context 'with French routes and text' do
+      it 'classifies news, category, and utility routes', :aggregate_failures do
+        expect(heuristics.destination_facts('/actualites/2026/lancement-du-produit'))
+          .to have_attributes(content_path: true, strong_post_suffix: true)
+        expect(heuristics.destination_facts('/categorie/technologie'))
+          .to have_attributes(taxonomy_path: true, high_confidence_junk_path: true)
+        expect(heuristics.destination_facts('/mentions-legales'))
+          .to have_attributes(utility_path: true, high_confidence_junk_path: true)
+      end
+
+      it 'classifies utility prefix, general utility, and recommended text', :aggregate_failures do
+        expect(heuristics.utility_prefix_text?("S'abonner")).to be(true)
+        expect(heuristics.utility_text?('À propos')).to be(true)
+        expect(heuristics.recommended_text?('Recommandé pour vous')).to be(true)
+      end
+    end
   end
 end
+# rubocop:enable RSpec/ExampleLength

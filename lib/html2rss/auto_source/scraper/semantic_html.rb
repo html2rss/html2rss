@@ -120,13 +120,30 @@ module Html2rss
           end
         end
 
+        # rubocop:disable Metrics/MethodLength
         def ranked_entries
           @ranked_entries ||= begin
-            entries = materialized_entries(extractable_entries)
-            entries = deduplicate_by_destination(entries)
-            stable_rank(entries)
+            entries = deduplicate_by_destination(extractable_entries)
+            entries = stable_rank(entries)
+
+            entries.filter_map do |entry|
+              article = entry_article(entry)
+              next unless article
+
+              Entry.new(
+                container: entry.container,
+                selected_anchor: entry.selected_anchor,
+                destination_facts: entry.destination_facts,
+                quality_score: entry.quality_score,
+                junk_score: entry.junk_score,
+                final_score: entry.final_score,
+                position: entry.position,
+                article:
+              )
+            end
           end
         end
+        # rubocop:enable Metrics/MethodLength
 
         def collect_candidate_containers
           HtmlExtractor::SemanticContainers.call(parsed_body)
@@ -237,25 +254,14 @@ module Html2rss
           text.to_s.scan(/\p{Alnum}+/).size
         end
 
-        def materialized_entries(entries) # rubocop:disable Metrics/MethodLength
-          entries.filter_map do |entry|
-            article = @extractor.new(
-              entry.container,
-              base_url: @url,
-              selected_anchor: entry.selected_anchor
-            ).call
-            next unless article
+        def entry_article(entry)
+          return entry.article if entry.article
 
-            Entry.new(
-              container: entry.container,
-              selected_anchor: entry.selected_anchor,
-              destination_facts: entry.destination_facts,
-              quality_score: entry.quality_score,
-              junk_score: entry.junk_score,
-              final_score: entry.final_score,
-              position: entry.position,
-              article:
-            )
+          @article_cache ||= {}.compare_by_identity
+          @article_cache.fetch(entry) do
+            @article_cache[entry] = @extractor.new(
+              entry.container, base_url: @url, selected_anchor: entry.selected_anchor
+            ).call
           end
         end
 
@@ -290,7 +296,7 @@ module Html2rss
         end
 
         def entry_destination(entry)
-          entry.article[:url]&.to_s || entry.destination_facts.destination
+          entry.destination_facts&.destination || entry.article&.[](:url)&.to_s
         end
 
         def stable_rank(entries)
@@ -304,10 +310,12 @@ module Html2rss
           quality_delta = left.quality_score <=> right.quality_score
           return quality_delta.positive? unless quality_delta.zero?
 
-          richness_delta = payload_richness_signature(left.article) <=> payload_richness_signature(right.article)
-          return richness_delta.positive? unless richness_delta.zero?
+          left_article = entry_article(left)
+          right_article = entry_article(right)
+          return !right_article if !left_article || !right_article
 
-          left.position < right.position
+          richness_delta = payload_richness_signature(left_article) <=> payload_richness_signature(right_article)
+          richness_delta.zero? ? left.position < right.position : richness_delta.positive?
         end
 
         def payload_richness_signature(article)

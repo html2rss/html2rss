@@ -72,28 +72,46 @@ module Html2rss
           # Prefix labels that usually identify navigation or subscription links.
           UTILITY_PREFIX_PATTERN = /
             \A\s*(
-              view\s+all|
-              see\s+all|
-              all\s+news|
-              subscribe|
-              newsletter|
-              comment\s+feed|
-              comments\s+feed|
-              join|
-              premium|
-              plus
+              # English
+              view\s+all|see\s+all|all\s+news|subscribe|newsletter|comment\s+feed|comments\s+feed|join|premium|plus|
+              # German
+              alle\s+anzeigen|alle\s+news|abonnieren|newsletter|kommentar\s+feed|mitmachen|
+              # Spanish
+              ver\s+todos|ver\s+todo|todas\s+las\s+noticias|suscribirse|bolet(i|í)n|comentarios\s+feed|unirse|
+              # French
+              voir\s+tout|voir\s+tous|toutes\s+les\s+nouvelles|s['’]abonner|flux\s+de\s+commentaires|rejoindre
             )\b
           /ix
           # Short labels that usually identify non-article navigation links.
           UTILITY_PATTERN = /
             \A\s*(
+              # English
               about|contact|comments?|join|log\s+in|login|member(ship)?|
               plus|premium|pricing|recommended(\s+for\s+you)?|
-              see\s+all|share|sign\s+up|signup|subscribe|view\s+all
+              see\s+all|share|sign\s+up|signup|subscribe|view\s+all|
+              # German
+              (ue|ü)ber(\s+uns)?|kontakt|kommentare?|mitmachen|anmelden|login|
+              mitglied(schaft)?|empfohlen(\s+f(ue|ü)r\s+dich)?|alle\s+anzeigen|
+              teilen|registrieren|abonnieren|newsletter|
+              # Spanish
+              sobre(\s+nosotros)?|contacto|comentarios?|unirse|iniciar\s+sesion|
+              login|miembro|membres(i|í)a|recomendado(\s+para\s+ti)?|ver\s+todo|
+              compartir|registrarse|suscribirse|bolet(i|í)n|
+              # French
+              (a|à)\s+propos|(a|à)propos|contact|commentaires?|rejoindre|
+              se\s+connecter|login|membre|abonnement|recommand(e|é)(\s+pour\s+vous)?|
+              voir\s+tout|partager|s['’]inscrire|s['’]abonner|newsletter
             )\b
           /ix
           # Labels for recommendation chrome rather than source articles.
-          RECOMMENDED_PATTERN = /\A\s*recommended(\s+for\s+you)?\b/i
+          RECOMMENDED_PATTERN = /
+            \A\s*(
+              recommended(\s+for\s+you)?|
+              empfohlen(\s+f(ue|ü)r\s+dich)?|
+              recomendado(\s+para\s+ti)?|
+              recommand(e|é)(\s+pour\s+vous)?
+            )\b
+          /ix
 
           # @param text [String, #to_s] visible anchor text
           # @return [Boolean] true when text matches a utility label
@@ -115,6 +133,7 @@ module Html2rss
         end
 
         # Classifies normalized destination path segments for scoring.
+        # rubocop:disable Metrics/ClassLength
         class PathClassifier
           attr_reader :segments
 
@@ -123,6 +142,9 @@ module Html2rss
             content: %w[
               article articles blog blogs changelog changelogs insight insights
               launch launches news post posts release releases story stories update updates
+              artikel beitrag beitraege nachrichten neuigkeiten aktuelles
+              articulo articulos noticia noticias entrada entradas publicacion publicaciones
+              actualite actualites nouvelle nouvelles
             ].to_set.freeze,
             utility: %w[
               about account archive archives author authors category categories comment comments
@@ -134,16 +156,48 @@ module Html2rss
               for-you
               privacy terms cookie cookies
               join member members membership plus premium plans pricing user users
+              kategorie kategorien schlagwort schlagworte thema themen autor autoren archiv
+              ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
+              konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
+              categoria categorias etiqueta etiquetas tema temas autores archivos
+              sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar
+              registrarse registro cuenta suscribirse boletin privacidad condiciones
+              categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
+              a-propos apropos recherche rechercher aide connexion s-inscrire
+              sinscrire inscription compte s-abonner saboner lettre-information confidentialite mentions-legales cgu
             ].to_set.freeze,
             high_confidence_junk: %w[
               about account archive archives author authors category categories comment comments
               contact cookie cookies feedback feed feeds help login logout notification notifications
               preference preferences privacy profile register search settings share signup subscribe
               tag tags terms topic topics comment-feed comments-feed user users
+              kategorie kategorien schlagwort schlagworte thema themen autor autoren archiv
+              ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
+              konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
+              categoria categorias etiqueta etiquetas tema temas autores archivos
+              sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar
+              registrarse registro cuenta suscribirse boletin privacidad condiciones
+              categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
+              a-propos apropos recherche rechercher aide connexion s-inscrire
+              sinscrire inscription compte s-abonner saboner lettre-information confidentialite mentions-legales cgu
             ].to_set.freeze,
-            taxonomy: %w[category categories tag tags topic topics].to_set.freeze,
-            vanity: %w[join membership plus premium pricing plans subscribe signup].to_set.freeze,
-            deep_post_context: %w[press newsroom].to_set.freeze
+            taxonomy: %w[
+              category categories tag tags topic topics
+              kategorie kategorien schlagwort schlagworte thema themen
+              categoria categorias etiqueta etiquetas tema temas
+              categorie etiquette etiquettes sujet sujets theme themes
+            ].to_set.freeze,
+            vanity: %w[
+              join membership plus premium pricing plans subscribe signup
+              abonnieren abo
+              suscribirse boletin
+              s-abonner saboner
+            ].to_set.freeze,
+            deep_post_context: %w[
+              press newsroom
+              presse pressemitteilungen
+              prensa
+            ].to_set.freeze
           }.freeze
           # Path segment that begins with a year-like publishing marker.
           YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/
@@ -248,6 +302,7 @@ module Html2rss
             LeadingSegments.new(segments).all_junk?
           end
         end
+        # rubocop:enable Metrics/ClassLength
 
         # Classifies high-confidence junk and utility routes from path facts.
         class ConfidenceClassifier

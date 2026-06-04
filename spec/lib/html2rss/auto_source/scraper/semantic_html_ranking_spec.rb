@@ -758,4 +758,48 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(deduplicated.size).to eq(4)
     end
   end
+
+  describe 'lazy article extraction verification' do
+    let(:parsed_body) do
+      Nokogiri::HTML.parse(<<~HTML)
+        <html><body>
+          <section class="list">
+            <article class="first">
+              <h2><a href="/news/story-a">Story A</a></h2>
+            </article>
+            <article class="second">
+              <h2><a href="/news/story-a">Story A</a></h2>
+              <time datetime="2026-03-28"></time>
+              <p>Much longer description with enough words to satisfy the descriptive context signal without a tie.</p>
+            </article>
+          </section>
+        </body></html>
+      HTML
+    end
+
+    # rubocop:disable RSpec/ExampleLength
+    it 'only instantiates/calls HtmlExtractor on the final winners', :aggregate_failures do
+      extractor_class = class_double(Html2rss::HtmlExtractor)
+      extractor_instance = instance_double(Html2rss::HtmlExtractor)
+
+      article_payload = {
+        title: 'Story A',
+        url: Html2rss::Url.from_relative('/news/story-a', 'https://example.com'),
+        image: nil,
+        description: 'Much longer description with enough words to satisfy context without a tie.',
+        published_at: Time.utc(2026, 3, 28),
+        categories: [],
+        enclosures: []
+      }
+      allow(extractor_class).to receive(:new).and_return(extractor_instance)
+      allow(extractor_instance).to receive(:call).and_return(article_payload)
+
+      scraper = described_class.new(parsed_body, url: 'https://example.com', extractor: extractor_class)
+      results = scraper.each.to_a
+
+      expect(results.size).to eq(1)
+      expect(extractor_class).to have_received(:new).once
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
 end
