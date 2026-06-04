@@ -546,7 +546,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe comparator precedence' do
-    subject(:scraper) { described_class.new(Nokogiri::HTML.parse('<html><body></body></html>'), url: 'https://example.com') }
+    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::HtmlExtractor) }
 
     let(:container) { Nokogiri::HTML.fragment('<article><a href="/news/story">Story</a></article>').at_css('article') }
     let(:anchor) { container.at_css('a') }
@@ -597,7 +597,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         )
       )
 
-      expect(scraper.instance_eval { stronger_entry?(higher_score, richer_payload) }).to be(true)
+      expect(deduplicator.stronger_entry?(higher_score, richer_payload)).to be(true)
     end
 
     it 'prefers higher quality_score when final_score is tied' do # rubocop:disable RSpec/ExampleLength
@@ -620,7 +620,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         )
       )
 
-      expect(scraper.instance_eval { stronger_entry?(higher_quality, richer_payload) }).to be(true)
+      expect(deduplicator.stronger_entry?(higher_quality, richer_payload)).to be(true)
     end
 
     it 'prefers richer payload when final_score and quality_score are tied' do # rubocop:disable RSpec/ExampleLength
@@ -645,7 +645,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         )
       )
 
-      expect(scraper.instance_eval { stronger_entry?(richer, leaner) }).to be(true)
+      expect(deduplicator.stronger_entry?(richer, leaner)).to be(true)
     end
 
     it 'falls back to DOM position on an exact tie' do # rubocop:disable RSpec/ExampleLength
@@ -664,7 +664,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         article: base_article
       )
 
-      expect(scraper.instance_eval { stronger_entry?(earlier, later) }).to be(true)
+      expect(deduplicator.stronger_entry?(earlier, later)).to be(true)
     end
   end
 
@@ -703,20 +703,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe perf shape' do
-    subject(:scraper) { described_class.new(parsed_body, url: 'https://example.com') }
-
-    let(:parsed_body) do
-      Nokogiri::HTML.parse(<<~HTML)
-        <html><body>
-          <section class="list">
-            <article><h2><a href="/news/story-1">Story 1</a></h2><time datetime="2026-03-28"></time><p>Useful context for story one.</p></article>
-            <article><h2><a href="/news/story-2">Story 2</a></h2><time datetime="2026-03-28"></time><p>Useful context for story two.</p></article>
-            <article><h2><a href="/news/story-3">Story 3</a></h2><time datetime="2026-03-28"></time><p>Useful context for story three.</p></article>
-            <article><h2><a href="/news/story-4">Story 4</a></h2><time datetime="2026-03-28"></time><p>Useful context for story four.</p></article>
-          </section>
-        </body></html>
-      HTML
-    end
+    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::HtmlExtractor) }
 
     let(:container) do
       instance_double(Nokogiri::XML::Node).tap do |node|
@@ -746,13 +733,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       end
     end
 
-    it 'skips nested-container checks for single-entry destination groups', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'skips nested-container checks for single-entry destination groups', :aggregate_failures do
       deduplicated = nil
 
       expect do
-        deduplicated = scraper.instance_exec(entries) do |candidate_entries|
-          deduplicate_by_destination(candidate_entries)
-        end
+        deduplicated = deduplicator.call(entries)
       end.not_to raise_error
 
       expect(deduplicated.size).to eq(4)

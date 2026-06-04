@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'semantic_html/anchor_selector'
+require_relative 'semantic_html/deduplicator'
 
 module Html2rss
   class AutoSource
@@ -123,11 +124,12 @@ module Html2rss
         # rubocop:disable Metrics/MethodLength
         def ranked_entries
           @ranked_entries ||= begin
-            entries = deduplicate_by_destination(extractable_entries)
+            deduplicator = Deduplicator.new(@url, @extractor)
+            entries = deduplicator.call(extractable_entries)
             entries = stable_rank(entries)
 
             entries.filter_map do |entry|
-              article = entry_article(entry)
+              article = deduplicator.article_for(entry)
               next unless article
 
               Entry.new(
@@ -259,79 +261,8 @@ module Html2rss
           (@junk_segments ||= LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:utility)).intersect?(tokens.to_set)
         end
 
-        def entry_article(entry)
-          article = entry.article
-          return article if article
-
-          @article_cache ||= {}.compare_by_identity
-          @article_cache.fetch(entry) do
-            @article_cache[entry] = @extractor.new(
-              entry.container, base_url: @url, selected_anchor: entry.selected_anchor
-            ).call
-          end
-        end
-
-        def deduplicate_by_destination(entries)
-          destination_groups(entries).filter_map do |group|
-            collapsed_group = collapse_nested_destination_group(group)
-            collapsed_group.reduce do |best, entry|
-              stronger_entry?(entry, best) ? entry : best
-            end
-          end
-        end
-
-        def destination_groups(entries)
-          entries.group_by { entry_destination(_1) }.values
-        end
-
-        def collapse_nested_destination_group(entries)
-          return entries if entries.size <= 1
-
-          entries.reject do |entry|
-            entries.any? do |other|
-              next if entry.equal?(other)
-              next unless nested_container_pair?(entry.container, other.container)
-
-              stronger_entry?(other, entry)
-            end
-          end
-        end
-
-        def nested_container_pair?(left, right)
-          left.ancestors.include?(right) || right.ancestors.include?(left)
-        end
-
-        def entry_destination(entry)
-          entry.destination_facts&.destination || entry.article&.[](:url)&.to_s
-        end
-
         def stable_rank(entries)
           entries.sort_by { |entry| [-entry.final_score, entry.position] }
-        end
-
-        def stronger_entry?(left, right) # rubocop:disable Metrics/AbcSize
-          final_delta = left.final_score <=> right.final_score
-          return final_delta.positive? unless final_delta.zero?
-
-          quality_delta = left.quality_score <=> right.quality_score
-          return quality_delta.positive? unless quality_delta.zero?
-
-          left_article = entry_article(left)
-          right_article = entry_article(right)
-          return !right_article if left_article.nil? || right_article.nil?
-
-          richness_delta = payload_richness_signature(left_article) <=> payload_richness_signature(right_article)
-          richness_delta.zero? ? left.position < right.position : richness_delta.positive?
-        end
-
-        def payload_richness_signature(article)
-          [
-            article[:published_at] ? 1 : 0,
-            word_count(article[:description]),
-            article[:image] ? 1 : 0,
-            Array(article[:categories]).length,
-            Array(article[:enclosures]).length
-          ]
         end
       end
     end

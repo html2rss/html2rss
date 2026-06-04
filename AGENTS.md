@@ -106,7 +106,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Do not define methods within \_spec.rb files. If unavoidable, consider creating a supporting file (helper/shared_example/...).
 - Never use `send(:method_name)`
 - Use of [rspec-matchers](https://rspec.info/features/3-13/rspec-expectations/built-in-matchers/) properly.
-- Fix Rubocop offense `RSpec/MultipleExpectations` by taging example with `:aggregate_failures`.
+- Fix Rubocop offense `RSpec/MultipleExpectations` by tagging example with `:aggregate_failures`.
 
 - Stub with `allow(...).to receive(...).and_return(...)`.
 - Prefer `expect(...).to eq(...)` and `expect(...).to have_received(...)` expectations.
