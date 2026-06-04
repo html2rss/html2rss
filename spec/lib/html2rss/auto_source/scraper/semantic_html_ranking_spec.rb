@@ -802,4 +802,38 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
     # rubocop:enable RSpec/ExampleLength
   end
+
+  describe 'CSS class and ID scoring' do
+    subject(:urls) do
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
+      scraper.each.to_a.map { |article| article[:url].to_s }
+    end
+
+    context 'when ordering containers with content vs junk classes' do
+      let(:parsed_body) do
+        Nokogiri::HTML.parse(<<~HTML)
+          <html><body>
+            <div class="sidebar-widget" id="footer-menu">
+              <h2><a href="/news/story-b">Story B in sidebar</a></h2>
+              <time datetime="2026-03-28"></time>
+              <p>Description text descriptive context word count limit here.</p>
+            </div>
+            <div class="blog-teaser" id="featured-story">
+              <h2><a href="/news/story-a">Story A in teaser</a></h2>
+              <time datetime="2026-03-28"></time>
+              <p>Description text descriptive context word count limit here.</p>
+            </div>
+          </body></html>
+        HTML
+      end
+
+      it 'ranks the content-like container before the junk-like container' do
+        expected = [
+          'https://example.com/news/story-a',
+          'https://example.com/news/story-b'
+        ]
+        expect(urls).to eq(expected)
+      end
+    end
+  end
 end

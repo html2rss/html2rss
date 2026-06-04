@@ -39,9 +39,7 @@ module Html2rss
         class HrefExtractor
           # @param anchor_or_href [Nokogiri::XML::Element, String, #to_s] anchor element or href-like value
           # @return [String, nil] href without fragment, or nil when blank
-          def self.call(anchor_or_href)
-            new(anchor_or_href).call
-          end
+          def self.call(anchor_or_href) = new(anchor_or_href).call
 
           # @param anchor_or_href [Nokogiri::XML::Element, String, #to_s] anchor element or href-like value
           def initialize(anchor_or_href)
@@ -115,21 +113,15 @@ module Html2rss
 
           # @param text [String, #to_s] visible anchor text
           # @return [Boolean] true when text matches a utility label
-          def utility?(text)
-            text.to_s.match?(UTILITY_PATTERN)
-          end
+          def utility?(text) = text.to_s.match?(UTILITY_PATTERN)
 
           # @param text [String, #to_s] visible anchor text
           # @return [Boolean] true when text begins with a utility label
-          def utility_prefix?(text)
-            text.to_s.match?(UTILITY_PREFIX_PATTERN)
-          end
+          def utility_prefix?(text) = text.to_s.match?(UTILITY_PREFIX_PATTERN)
 
           # @param text [String, #to_s] visible anchor text
           # @return [Boolean] true when text identifies recommendation chrome
-          def recommended?(text)
-            text.to_s.match?(RECOMMENDED_PATTERN)
-          end
+          def recommended?(text) = text.to_s.match?(RECOMMENDED_PATTERN)
         end
 
         # Classifies normalized destination path segments for scoring.
@@ -145,6 +137,7 @@ module Html2rss
               artikel beitrag beitraege nachrichten neuigkeiten aktuelles
               articulo articulos noticia noticias entrada entradas publicacion publicaciones
               actualite actualites nouvelle nouvelles
+              teaser teasers card cards
             ].to_set.freeze,
             utility: %w[
               about account archive archives author authors category categories comment comments
@@ -165,6 +158,8 @@ module Html2rss
               categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
               a-propos apropos recherche rechercher aide connexion s-inscrire
               sinscrire inscription compte s-abonner saboner lettre-information confidentialite mentions-legales cgu
+              menu sidebar widget social modal popup banner promo ad ads
+              related recommendation recommendations pagination pager
             ].to_set.freeze,
             high_confidence_junk: %w[
               about account archive archives author authors category categories comment comments
@@ -180,6 +175,8 @@ module Html2rss
               categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
               a-propos apropos recherche rechercher aide connexion s-inscrire
               sinscrire inscription compte s-abonner saboner lettre-information confidentialite mentions-legales cgu
+              menu sidebar widget social modal popup banner promo ad ads
+              related recommendation recommendations pagination pager
             ].to_set.freeze,
             taxonomy: %w[
               category categories tag tags topic topics
@@ -234,33 +231,23 @@ module Html2rss
 
           # @return [Boolean] true when the route has article-like path evidence
           def content_path?
-            @content_path ||= begin
-              content_segments = SEGMENT_SETS.fetch(:content)
-
-              segments.any? { |segment| content_segments.include?(segment) } ||
-                yearish_content_context?
-            end
+            @content_path ||= SEGMENT_SETS.fetch(:content).intersect?(segments.to_set) ||
+                              yearish_content_context?
           end
 
           # @return [Boolean] true when the route includes utility/navigation evidence
           def utility_path?
-            utility_segments = SEGMENT_SETS.fetch(:utility)
-
-            segments.any? { |segment| utility_segments.include?(segment) }
+            @utility_path ||= SEGMENT_SETS.fetch(:utility).intersect?(segments.to_set)
           end
 
           # @return [Boolean] true when the route points at conversion or account chrome
           def vanity_path?
-            vanity_segments = SEGMENT_SETS.fetch(:vanity)
-
-            segments.any? { |segment| vanity_segments.include?(segment) }
+            @vanity_path ||= SEGMENT_SETS.fetch(:vanity).intersect?(segments.to_set)
           end
 
           # @return [Boolean] true when the route points at taxonomy/listing chrome
           def taxonomy_path?
-            taxonomy_segments = SEGMENT_SETS.fetch(:taxonomy)
-
-            segments.any? { |segment| taxonomy_segments.include?(segment) }
+            @taxonomy_path ||= SEGMENT_SETS.fetch(:taxonomy).intersect?(segments.to_set)
           end
 
           # @return [Boolean] true when the route is too shallow to strongly indicate an article
@@ -442,21 +429,15 @@ module Html2rss
 
         # @param text [String, #to_s] visible anchor text
         # @return [Boolean] true when text matches a utility label
-        def utility_text?(text)
-          @text_classifier.utility?(text)
-        end
+        def utility_text?(text) = @text_classifier.utility?(text)
 
         # @param text [String, #to_s] visible anchor text
         # @return [Boolean] true when text begins with a utility label
-        def utility_prefix_text?(text)
-          @text_classifier.utility_prefix?(text)
-        end
+        def utility_prefix_text?(text) = @text_classifier.utility_prefix?(text)
 
         # @param text [String, #to_s] visible anchor text
         # @return [Boolean] true when text identifies recommendation chrome
-        def recommended_text?(text)
-          @text_classifier.recommended?(text)
-        end
+        def recommended_text?(text) = @text_classifier.recommended?(text)
       end
     end
   end

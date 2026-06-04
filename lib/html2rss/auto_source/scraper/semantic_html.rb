@@ -152,12 +152,10 @@ module Html2rss
         private
 
         def document_position(container)
-          @document_positions ||= candidate_containers.each_with_index.to_h
-
-          @document_positions.fetch(container)
+          (@document_positions ||= candidate_containers.each_with_index.to_h).fetch(container)
         end
 
-        def quality_score(container, selected_anchor, destination_facts) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+        def quality_score(container, selected_anchor, destination_facts) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
           title = entry_title(container, selected_anchor)
           words = word_count(title)
           container_text = visible_text(container)
@@ -170,6 +168,7 @@ module Html2rss
           score += 15 if publish_marker?(container)
           score += 10 if descriptive_context?(container_text, title)
           score += 10 if article_container?(container)
+          score += 10 if content_tokens?(container_tokens(container))
           score
         end
 
@@ -177,13 +176,14 @@ module Html2rss
           title = entry_title(container, selected_anchor)
           utility_text = @link_heuristics.utility_prefix_text?(title)
           recommended_text = @link_heuristics.recommended_text?(title)
+          content_signal = destination_facts.content_path
+          no_content_signal = !content_signal
           non_content_utility_path =
             destination_facts.utility_path &&
-            !destination_facts.content_path &&
+            no_content_signal &&
             !destination_facts.strong_post_suffix
           publish_signal = publish_marker?(container)
           descriptive_signal = descriptive_context?(visible_text(container), title)
-          content_signal = destination_facts.content_path
           weak_container = !publish_signal && !descriptive_signal
           score = 0
 
@@ -191,8 +191,9 @@ module Html2rss
           score += 15 if utility_text && word_count(title) <= 6
           score += 10 if destination_facts.shallow
           score += 10 if weak_container
-          score += 10 if recommended_text && !content_signal
+          score += 10 if recommended_text && no_content_signal
           score += 5 if destination_facts.high_confidence_junk_path
+          score += 15 if junk_tokens?(container_tokens(container))
           score
         end
 
@@ -223,22 +224,16 @@ module Html2rss
           [article_container?(container), publish_signal, descriptive_signal, content_signal].count(&:itself)
         end
 
-        def article_container?(container)
-          container.name == 'article'
-        end
+        def article_container?(container) = container.name == 'article'
 
         def descriptive_context?(container_text, title)
           snippet = container_text.to_s.sub(/\A#{Regexp.escape(title.to_s)}/i, '')
           word_count(snippet) >= 8
         end
 
-        def heading_for(container)
-          container.at_css(AnchorSelector::HEADING_SELECTOR)
-        end
+        def heading_for(container) = container.at_css(AnchorSelector::HEADING_SELECTOR)
 
-        def normalized_destination(anchor)
-          @link_heuristics.destination_facts(anchor)
-        end
+        def normalized_destination(anchor) = @link_heuristics.destination_facts(anchor)
 
         def visible_text(node)
           return '' unless node
@@ -246,16 +241,27 @@ module Html2rss
           HtmlExtractor.extract_visible_text(node).to_s.strip
         end
 
-        def entry_title(container, selected_anchor)
-          visible_text(heading_for(container) || selected_anchor)
+        def entry_title(container, selected_anchor) = visible_text(heading_for(container) || selected_anchor)
+
+        def word_count(text) = text.to_s.scan(/\p{Alnum}+/).size
+
+        def container_tokens(container)
+          classes = container['class'].to_s.split
+          id = container['id'].to_s
+          (classes << id).flat_map { |str| str.downcase.split(/[-_]+/) }.reject(&:empty?)
         end
 
-        def word_count(text)
-          text.to_s.scan(/\p{Alnum}+/).size
+        def content_tokens?(tokens)
+          (@content_segments ||= LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:content)).intersect?(tokens.to_set)
+        end
+
+        def junk_tokens?(tokens)
+          (@junk_segments ||= LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:utility)).intersect?(tokens.to_set)
         end
 
         def entry_article(entry)
-          return entry.article if entry.article
+          article = entry.article
+          return article if article
 
           @article_cache ||= {}.compare_by_identity
           @article_cache.fetch(entry) do
@@ -312,7 +318,7 @@ module Html2rss
 
           left_article = entry_article(left)
           right_article = entry_article(right)
-          return !right_article if !left_article || !right_article
+          return !right_article if left_article.nil? || right_article.nil?
 
           richness_delta = payload_richness_signature(left_article) <=> payload_richness_signature(right_article)
           richness_delta.zero? ? left.position < right.position : richness_delta.positive?

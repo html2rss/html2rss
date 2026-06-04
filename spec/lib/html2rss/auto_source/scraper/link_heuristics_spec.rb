@@ -96,6 +96,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
         expect(heuristics.utility_text?('À propos')).to be(true)
         expect(heuristics.recommended_text?('Recommandé pour vous')).to be(true)
       end
+
+      it 'classifies class/ID specific path segments correctly', :aggregate_failures do
+        expect(heuristics.destination_facts('/teaser/my-new-post'))
+          .to have_attributes(content_path: true)
+        expect(heuristics.destination_facts('/sidebar/some-link'))
+          .to have_attributes(utility_path: true)
+      end
     end
   end
 end
