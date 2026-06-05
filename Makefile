@@ -38,9 +38,11 @@ test: ## Run tests
 
 lint: ## Run linting
 	bin/rubocop
+
+lint-reek:
 	$(RUBY_RUNNER)bundle exec reek
 
-yard-lint: ## Run YARD linting on lib/
+lint-yard: ## Run YARD linting on lib/
 	$(RUBY_RUNNER)bundle exec yard-lint lib/
 
 shellcheck: ## Run shellcheck on maintained shell scripts
