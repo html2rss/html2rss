@@ -37,7 +37,7 @@ jobs:
       - name: Run linting
         run: make lint
       - name: Run YARD lint
-        run: make yard-lint
+        run: make lint-yard
       - name: Generate config schema
         run: bundle exec rake config:schema
       - name: Ensure config schema is committed

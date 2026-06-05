@@ -41,7 +41,7 @@ module Html2rss
       @headers = nil
       @default_strategy = nil
       @min_ttl = nil
-      @stylesheets = []
+      @stylesheets = [].freeze
     end
 
     ##
@@ -90,7 +90,7 @@ module Html2rss
         raise ArgumentError, 'headers must be a Hash or respond to #call'
       end
 
-      @headers = headers
+      @headers = headers.is_a?(Hash) ? headers.dup.freeze : headers
     end
 
     ##
@@ -103,6 +103,10 @@ module Html2rss
       if strategy.nil?
         @default_strategy = nil
       else
+        unless strategy.is_a?(Symbol) || strategy.is_a?(String)
+          raise ArgumentError, 'strategy must be a Symbol or String'
+        end
+
         normalized = strategy.to_sym
         raise ArgumentError, "unknown strategy: #{strategy}" unless RequestService.strategy_registered?(normalized)
 
@@ -139,7 +143,7 @@ module Html2rss
       raise ArgumentError, 'stylesheets must be an Array' unless stylesheets.is_a?(Array)
       raise ArgumentError, 'stylesheets must be an Array of Hashes' unless stylesheets.all?(Hash)
 
-      @stylesheets = stylesheets
+      @stylesheets = stylesheets.map { |h| h.dup.freeze }.freeze
     end
 
     protected

@@ -79,6 +79,14 @@ RSpec.describe Html2rss::Configuration do
         ArgumentError, /headers must be a Hash or respond to #call/
       )
     end
+
+    it 'dups and freezes the assigned Hash', :aggregate_failures do
+      headers_hash = { 'user-agent' => 'custom' }
+      config.headers = headers_hash
+      expect(config.headers).to be_frozen
+      headers_hash['user-agent'] = 'mutated'
+      expect(config.headers['user-agent']).to eq('custom')
+    end
   end
 
   describe '#default_strategy=' do
@@ -101,6 +109,13 @@ RSpec.describe Html2rss::Configuration do
 
     it 'raises ArgumentError for unregistered strategy' do
       expect { config.default_strategy = :invalid_strategy }.to raise_error(ArgumentError, /unknown strategy/)
+    end
+
+    it 'raises ArgumentError for invalid types', :aggregate_failures do
+      expect { config.default_strategy = 123 }
+        .to raise_error(ArgumentError, /strategy must be a Symbol or String/)
+      expect { config.default_strategy = { strategy: :faraday } }
+        .to raise_error(ArgumentError, /strategy must be a Symbol or String/)
     end
   end
 
@@ -147,6 +162,14 @@ RSpec.describe Html2rss::Configuration do
 
     it 'raises ArgumentError if any item in the Array is not a Hash' do
       expect { config.stylesheets = ['style.css'] }.to raise_error(ArgumentError, /must be an Array of Hashes/)
+    end
+
+    it 'copies and freezes the array and its hashes', :aggregate_failures do
+      sheet = { href: 'style.css', type: 'text/css' }
+      config.stylesheets = [sheet]
+      expect(config.stylesheets).to be_frozen.and(all(be_frozen))
+      sheet[:href] = 'mutated'
+      expect(config.stylesheets.first[:href]).to eq('style.css')
     end
   end
 
