@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+new_version = ARGV[0]
+if new_version.nil? || new_version.empty?
+  warn 'Usage: bin/bump-version <new_version>'
+  exit 1
+end
+
+# Strip leading 'v' if present (e.g. v1.2.3 -> 1.2.3)
+new_version = new_version.sub(/^v/, '')
+
+unless new_version.match?(/\A\d+\.\d+\.\d+(?:-\w+(?:\.\w+)*)?\z/)
+  warn "Error: Invalid version format '#{new_version}'. Must be a semantic version."
+  exit 1
+end
+
+version_file_path = File.expand_path('../lib/html2rss/version.rb', __dir__)
+unless File.exist?(version_file_path)
+  warn "Error: version file not found at #{version_file_path}"
+  exit 1
+end
+
+file_content = File.read(version_file_path)
+
+# Verify if VERSION constant is found
+unless file_content.match?(/VERSION = ['"].*?['"]/)
+  warn "Error: Could not find VERSION constant in #{version_file_path}"
+  exit 1
+end
+
+updated_content = file_content.sub(/VERSION = ['"].*?['"]/, "VERSION = '#{new_version}'")
+File.write(version_file_path, updated_content)
+puts "Successfully bumped version to #{new_version}"

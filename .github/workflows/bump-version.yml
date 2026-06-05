@@ -1,0 +1,53 @@
+name: Bump version
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump_version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Calculate next version
+        id: release_drafter
+        uses: release-drafter/release-drafter@v6
+        with:
+          disable-releaser: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+
+      - name: Run version bump script
+        run: bin/bump-version "${{ steps.release_drafter.outputs.resolved_version }}"
+
+      - name: Run bundle install
+        run: bundle install
+
+      - name: Run make schema
+        run: make schema
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.BUMP_VERSION_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(release): bump version to ${{ steps.release_drafter.outputs.resolved_version }}"
+          title: "chore(release): bump version to ${{ steps.release_drafter.outputs.resolved_version }}"
+          body: |
+            Bump version to ${{ steps.release_drafter.outputs.resolved_version }}.
+
+            This PR was automatically created by the manual version bump workflow.
+          branch: "release/v${{ steps.release_drafter.outputs.resolved_version }}"
+          delete-branch: true
