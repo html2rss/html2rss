@@ -41,13 +41,16 @@ module Html2rss
 
       # @return [Integer] cache time-to-live in minutes
       def ttl
-        return overrides[:ttl] if overrides[:ttl]
+        calculated = if overrides[:ttl]
+                       overrides[:ttl].to_i
+                     elsif (max_age = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1))
+                       max_age.to_i.fdiv(60).ceil
+                     else
+                       DEFAULT_TTL_IN_MINUTES
+                     end
 
-        if (ttl = headers['cache-control']&.match(/max-age=(\d+)/)&.[](1))
-          return ttl.to_i.fdiv(60).ceil
-        end
-
-        DEFAULT_TTL_IN_MINUTES
+        min_ttl = Html2rss.configuration.min_ttl
+        min_ttl ? [calculated, min_ttl].max : calculated
       end
 
       # @return [String, nil] ISO-like language code when available

@@ -9,14 +9,14 @@ SHELL_SCRIPTS = \
 	bin/ready \
 	bin/setup
 
-.PHONY: help lint-changed test-fast test lint yard-lint shellcheck schema validate-fixtures docs quick ready clean
+.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean
 
 help: ## Show available commands
 	@echo "Available commands:"
 	@echo "  make quick   - Run the fast local feedback loop"
 	@echo "  make test    - Run tests"
 	@echo "  make lint    - Run linting"
-	@echo "  make yard-lint - Run YARD linting on lib/"
+	@echo "  make lint-yard - Run YARD linting on lib/"
 	@echo "  make shellcheck - Run shellcheck on maintained shell scripts"
 	@echo "  make schema  - Regenerate and verify the config schema"
 	@echo "  make validate-fixtures - Validate fixture configs"
@@ -38,9 +38,11 @@ test: ## Run tests
 
 lint: ## Run linting
 	bin/rubocop
+
+lint-reek:
 	$(RUBY_RUNNER)bundle exec reek
 
-yard-lint: ## Run YARD linting on lib/
+lint-yard: ## Run YARD linting on lib/
 	$(RUBY_RUNNER)bundle exec yard-lint lib/
 
 shellcheck: ## Run shellcheck on maintained shell scripts

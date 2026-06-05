@@ -7,18 +7,21 @@ loader.inflector.inflect('cli' => 'CLI')
 loader.setup
 
 require 'logger'
+require 'forwardable'
+require 'html2rss/configuration'
 
 ##
 # The Html2rss namespace.
 module Html2rss
   ##
   # The logger instance.
-  Log = Logger.new($stdout)
+  module Log
+    class << self
+      extend Forwardable
 
-  Log.level = ENV.fetch('LOG_LEVEL', :warn).upcase.to_sym
-
-  Log.formatter = proc do |severity, datetime, _progname, msg|
-    "#{datetime} [#{severity}] #{msg}\n"
+      def_delegator 'Html2rss', :logger
+      def_delegators :logger, :debug, :info, :warn, :error, :fatal, :unknown, :level, :level=, :formatter, :formatter=
+    end
   end
 
   ##
@@ -75,6 +78,50 @@ module Html2rss
     json_feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:))
   end
 
+  # rubocop:disable ThreadSafety/ClassInstanceVariable
+  class << self
+    ##
+    # @return [Html2rss::Configuration] the global configuration instance
+    def configuration
+      @configuration ||= Configuration.new.freeze
+    end
+
+    ##
+    # Configures global library defaults.
+    #
+    # @yieldparam config [Html2rss::Configuration]
+    # @return [Html2rss::Configuration] the frozen configuration
+    def configure
+      config = configuration.dup
+      yield config
+      @configuration = config.freeze
+    end
+
+    ##
+    # @return [Object] the logger
+    def logger
+      configuration.logger
+    end
+
+    ##
+    # @param logger [Object] the new logger
+    def logger=(logger)
+      configure { |config| config.logger = logger }
+    end
+
+    private
+
+    ##
+    # Resets the global configuration to defaults (mainly for testing).
+    #
+    # @return [void]
+    def reset_configuration!
+      @configuration = nil
+      logger.level = configuration.log_level if logger.respond_to?(:level=)
+    end
+  end
+  # rubocop:enable ThreadSafety/ClassInstanceVariable
+
   class << self
     private
 
@@ -103,6 +150,8 @@ module Html2rss
       keys
     end
   end
+
+  logger.level = configuration.log_level if logger.respond_to?(:level=)
 end
 
 loader.eager_load
