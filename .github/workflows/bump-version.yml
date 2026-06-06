@@ -15,6 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: master
 
       - name: Calculate next version
         id: release_drafter
@@ -33,9 +34,6 @@ jobs:
       - name: Run version bump script
         run: bin/bump-version "${{ steps.release_drafter.outputs.resolved_version }}"
 
-      - name: Run bundle install
-        run: bundle install
-
       - name: Run make schema
         run: make schema
 
@@ -50,4 +48,5 @@ jobs:
 
             This PR was automatically created by the manual version bump workflow.
           branch: "release/v${{ steps.release_drafter.outputs.resolved_version }}"
+          base: master
           delete-branch: true
