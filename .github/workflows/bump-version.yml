@@ -83,15 +83,18 @@ jobs:
           ruby-version: "4.0"
           bundler-cache: true
 
-      - name: Run make schema
-        run: make schema
-
       - name: Perform Version Bump
         id: perform_bump
+        env:
+          BUNDLE_FROZEN: "false"
         run: |
           bundle exec ruby bin/bump-version "${{ steps.determine_version.outputs.target_version }}"
+          bundle install
           NEW_VERSION=$(ruby -I. -e "require 'lib/html2rss/version'; puts Html2rss::VERSION")
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Run make schema
+        run: make schema
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
