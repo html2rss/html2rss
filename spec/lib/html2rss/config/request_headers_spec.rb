@@ -16,6 +16,10 @@ RSpec.describe Html2rss::Config::RequestHeaders do
       expect { described_class.browser_defaults['User-Agent'] = 'Custom' }
         .not_to(change { described_class.browser_defaults['User-Agent'] })
     end
+
+    it 'sets the default User-Agent to the gem version' do
+      expect(described_class.browser_defaults['User-Agent']).to eq("html2rss/#{Html2rss::VERSION}")
+    end
   end
 
   describe '#to_h' do
@@ -31,7 +35,7 @@ RSpec.describe Html2rss::Config::RequestHeaders do
 
     context 'when overrides are provided' do
       let(:headers) do
-        { 'accept' => 'application/json', 'x-test-header' => 'abc' }
+        { 'accept' => 'application/json', 'x-test-header' => 'abc', 'user-agent' => 'MyCustomAgent/1.0' }
       end
 
       it 'capitalizes custom header keys' do
@@ -42,6 +46,10 @@ RSpec.describe Html2rss::Config::RequestHeaders do
         expected = "application/json,#{described_class::DEFAULT_ACCEPT}"
 
         expect(normalized).to include('Accept' => expected)
+      end
+
+      it 'uses the provided User-Agent, overriding the default' do
+        expect(normalized).to include('User-Agent' => 'MyCustomAgent/1.0')
       end
     end
 
