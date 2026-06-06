@@ -46,6 +46,7 @@ jobs:
         if: github.event.inputs.bump_type == 'auto'
         uses: release-drafter/release-drafter@v6
         with:
+          config-name: release-drafter.yml
           disable-releaser: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -82,15 +83,15 @@ jobs:
           ruby-version: "4.0"
           bundler-cache: true
 
+      - name: Run make schema
+        run: make schema
+
       - name: Perform Version Bump
         id: perform_bump
         run: |
           bundle exec ruby bin/bump-version "${{ steps.determine_version.outputs.target_version }}"
           NEW_VERSION=$(ruby -I. -e "require 'lib/html2rss/version'; puts Html2rss::VERSION")
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Run make schema
-        run: make schema
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
