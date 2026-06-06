@@ -93,8 +93,8 @@ jobs:
           NEW_VERSION=$(ruby -I. -e "require 'lib/html2rss/version'; puts Html2rss::VERSION")
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Run make schema
-        run: make schema
+      - name: Regenerate config schema
+        run: bundle exec rake config:schema
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
