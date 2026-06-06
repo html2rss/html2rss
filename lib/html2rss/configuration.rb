@@ -3,7 +3,6 @@
 module Html2rss
   ##
   # Global configuration defaults for the Html2rss gem.
-  #
   class Configuration
     # The valid symbol log levels.
     VALID_LOG_LEVELS = %i[debug info warn error fatal unknown].freeze
@@ -47,7 +46,7 @@ module Html2rss
     ##
     # Sets the logger.
     #
-    # @param logger [Object] the logger
+    # @param logger [Object]
     # @return [Object] the logger
     def logger=(logger)
       @logger = logger

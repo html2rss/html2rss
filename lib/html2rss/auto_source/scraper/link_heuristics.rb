@@ -263,12 +263,14 @@ module Html2rss
             PostSuffixClassifier.new(segments).strong?
           end
 
+          # @return [Boolean] true when every path segment is utility chrome
           def utility_only_route?
             junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
 
             segments.all? { |segment| junk_segments.include?(segment) }
           end
 
+          # @return [Boolean] true when the route is shallow and contains high-confidence noise
           def shallow_high_confidence_route?
             junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
             vanity_segments = SEGMENT_SETS.fetch(:vanity)
@@ -278,6 +280,7 @@ module Html2rss
             end
           end
 
+          # @return [Boolean] true when the leading segments are all utility chrome
           def deep_utility_context_route?
             LeadingSegments.new(segments).all_junk?
           end
