@@ -1,7 +1,23 @@
-name: Bump version
+name: Bump Version
 
 on:
   workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Bump Type (auto uses Release Drafter resolved version)"
+        required: true
+        default: "auto"
+        type: choice
+        options:
+          - "auto"
+          - "patch"
+          - "minor"
+          - "major"
+          - "custom"
+      custom_version:
+        description: "Custom Version (only used if Bump Type is 'custom', e.g. 1.4.0)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -11,19 +27,54 @@ jobs:
   bump_version:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
           ref: master
 
-      - name: Calculate next version
+      - name: Assert master branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/master" ]; then
+            echo "Error: This workflow must be run against the master branch (refs/heads/master); got ${{ github.ref }}" >&2
+            exit 1
+          fi
+
+      - name: Resolve Version from Release Drafter
         id: release_drafter
+        if: github.event.inputs.bump_type == 'auto'
         uses: release-drafter/release-drafter@v6
         with:
           disable-releaser: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine Target Version
+        id: determine_version
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+          RESOLVED_VERSION="${{ steps.release_drafter.outputs.resolved_version }}"
+
+          if [ "$BUMP_TYPE" = "auto" ]; then
+            if [ -z "$RESOLVED_VERSION" ]; then
+              echo "Error: Release Drafter did not return a resolved version." >&2
+              exit 1
+            fi
+            echo "target_version=$RESOLVED_VERSION" >> "$GITHUB_OUTPUT"
+            echo "Determined version: $RESOLVED_VERSION (via Release Drafter auto-resolve)"
+          elif [ "$BUMP_TYPE" = "custom" ]; then
+            if [ -z "$CUSTOM_VERSION" ]; then
+              echo "Error: Custom version must be provided if bump_type is 'custom'." >&2
+              exit 1
+            fi
+            echo "target_version=$CUSTOM_VERSION" >> "$GITHUB_OUTPUT"
+            echo "Determined version: $CUSTOM_VERSION (via manual input)"
+          else
+            echo "target_version=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+            echo "Determined version: $BUMP_TYPE (via manual bump type)"
+          fi
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -31,8 +82,12 @@ jobs:
           ruby-version: "4.0"
           bundler-cache: true
 
-      - name: Run version bump script
-        run: bin/bump-version "${{ steps.release_drafter.outputs.resolved_version }}"
+      - name: Perform Version Bump
+        id: perform_bump
+        run: |
+          bundle exec ruby bin/bump-version "${{ steps.determine_version.outputs.target_version }}"
+          NEW_VERSION=$(ruby -I. -e "require 'lib/html2rss/version'; puts Html2rss::VERSION")
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Run make schema
         run: make schema
@@ -40,13 +95,19 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.BUMP_VERSION_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: "chore(release): bump version to ${{ steps.release_drafter.outputs.resolved_version }}"
-          title: "chore(release): bump version to ${{ steps.release_drafter.outputs.resolved_version }}"
+          token: ${{ secrets.BUMP_VERSION_TOKEN || github.token }}
+          commit-message: "chore(release): bump version to v${{ steps.perform_bump.outputs.new_version }}"
+          branch: "release/v${{ steps.perform_bump.outputs.new_version }}"
+          title: "chore(release): bump version to v${{ steps.perform_bump.outputs.new_version }}"
           body: |
-            Bump version to ${{ steps.release_drafter.outputs.resolved_version }}.
+            Automated version bump to `v${{ steps.perform_bump.outputs.new_version }}`.
 
-            This PR was automatically created by the manual version bump workflow.
-          branch: "release/v${{ steps.release_drafter.outputs.resolved_version }}"
+            This PR contains the version update in `lib/html2rss/version.rb` and regenerated schema.
+
+            ### 🚀 Next Steps
+            1. Verify that all CI checks pass.
+            2. Merge this Pull Request.
+            3. Go to the draft release on GitHub and publish it.
+          assignees: ${{ github.actor }}
           base: master
           delete-branch: true
