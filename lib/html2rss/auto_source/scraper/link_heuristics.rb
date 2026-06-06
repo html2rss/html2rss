@@ -263,13 +263,6 @@ module Html2rss
             PostSuffixClassifier.new(segments).strong?
           end
 
-          private
-
-          def yearish_content_context?
-            segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
-              (strong_post_suffix? || LeadingSegments.new(segments).trusted_post_context?)
-          end
-
           def utility_only_route?
             junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
 
@@ -287,6 +280,13 @@ module Html2rss
 
           def deep_utility_context_route?
             LeadingSegments.new(segments).all_junk?
+          end
+
+          private
+
+          def yearish_content_context?
+            segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
+              (strong_post_suffix? || LeadingSegments.new(segments).trusted_post_context?)
           end
         end
         # rubocop:enable Metrics/ClassLength
@@ -312,9 +312,9 @@ module Html2rss
             return false if excluded_content_route?
 
             @path.taxonomy_path? ||
-              @path.send(:utility_only_route?) ||
-              @path.send(:deep_utility_context_route?) ||
-              @path.send(:shallow_high_confidence_route?)
+              @path.utility_only_route? ||
+              @path.deep_utility_context_route? ||
+              @path.shallow_high_confidence_route?
           end
 
           def utility_destination?
@@ -329,8 +329,8 @@ module Html2rss
 
           def utility_route?
             @path.taxonomy_path? ||
-              @path.send(:utility_only_route?) ||
-              @path.send(:deep_utility_context_route?) ||
+              @path.utility_only_route? ||
+              @path.deep_utility_context_route? ||
               shallow_utility_route?
           end
 
