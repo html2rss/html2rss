@@ -199,7 +199,10 @@ module Html2rss
     end
 
     def select_regular(_name, item:, config:, base_url:)
-      value = Extractors.get(config.merge(channel: channel_context(base_url)), item)
+      @merged_configs ||= {}
+      merged_config = @merged_configs[[config.object_id, base_url]] ||=
+        config.merge(channel: channel_context(base_url)).freeze
+      value = Extractors.get(merged_config, item)
 
       if value && (post_process_steps = config[:post_process])
         steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
@@ -210,8 +213,9 @@ module Html2rss
     end
 
     def post_process(item, value, post_process_steps, base_url:)
+      pp_context = channel_post_process_context(base_url)
       post_process_steps.each do |options|
-        context = Context.new(config: { channel: { url: base_url, time_zone: @time_zone } },
+        context = Context.new(config: pp_context,
                               item:, scraper: self, options:)
 
         value = PostProcessors.get(options[:name], value, context)
@@ -262,7 +266,11 @@ module Html2rss
     end
 
     def category_node_options(selector_config, base_url:)
-      selector_config.merge(channel: channel_context(base_url), selector: nil)
+      @category_node_configs ||= {}
+      @category_node_configs[[selector_config.object_id, base_url]] ||= selector_config.merge(
+        channel: channel_context(base_url),
+        selector: nil
+      ).freeze
     end
 
     def apply_post_process_steps(item:, value:, post_process_steps:, base_url:)
@@ -288,7 +296,13 @@ module Html2rss
     end
 
     def channel_context(base_url)
-      { url: base_url, time_zone: @time_zone }
+      @channel_contexts ||= {}
+      @channel_contexts[base_url] ||= { url: base_url, time_zone: @time_zone }.freeze
+    end
+
+    def channel_post_process_context(base_url)
+      @channel_pp_contexts ||= {}
+      @channel_pp_contexts[base_url] ||= { channel: channel_context(base_url) }.freeze
     end
 
     # @return [Hash] enclosure details.

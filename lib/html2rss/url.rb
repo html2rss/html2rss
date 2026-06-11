@@ -54,8 +54,8 @@ module Html2rss
     # @param raw_url [String] the raw URL string to sanitize
     # @return [Url, nil] the sanitized URL, or nil if no valid URL found
     def self.sanitize(raw_url)
-      matched_urls = raw_url.to_s.scan(%r{(?:(?:https?|ftp|mailto)://|mailto:)[^\s<>"]+})
-      url = matched_urls.first.to_s.strip
+      match = raw_url.to_s.match(%r{(?:(?:https?|ftp|mailto)://|mailto:)[^\s<>"]+})
+      url = match ? match[0].strip : ''
       return nil if url.empty?
 
       new(Addressable::URI.parse(url).normalize)

@@ -9,6 +9,7 @@ module Html2rss
     ##
     # Article is a simple data object representing an article extracted from a page.
     # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
+    # rubocop:disable Metrics/ClassLength
     class Article
       include Enumerable
       include Comparable
@@ -17,6 +18,11 @@ module Html2rss
       PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
       # Separator used to build deterministic deduplication fingerprints.
       DEDUP_FINGERPRINT_SEPARATOR = '#!/'
+      # Sentinel object used to pre-initialize instance variables in the constructor.
+      # This ensures all Article instances share the exact same object shape (Ruby 3.3+ optimization),
+      # preventing performance warnings and slower instance variable access due to shape transitions
+      # when attributes are lazily/conditionally accessed in different sequences.
+      NOT_SET = Object.new.freeze
 
       # @param options [Hash{Symbol => String}]
       # @option options [String] :id stable article identifier
@@ -31,9 +37,9 @@ module Html2rss
       # @option options [Array<String>] :categories category labels
       # @option options [Class] :scraper scraper class that produced the article
       def initialize(**options)
-        @to_h = {}
-        options.each_pair { |key, value| @to_h[key] = value.freeze if value }
-        @to_h.freeze
+        @to_h = options.each_with_object({}) { |(k, v), h| h[k] = v.freeze if v }.freeze
+
+        @description = @url = @image = @guid = @enclosures = @enclosure = @categories = @published_at = NOT_SET
 
         return unless (unknown_keys = options.keys - PROVIDED_KEYS).any?
 
@@ -62,7 +68,9 @@ module Html2rss
 
       # @return [String] rendered article description
       def description
-        @description ||= Rendering::DescriptionBuilder.new(
+        return @description unless @description == NOT_SET
+
+        @description = Rendering::DescriptionBuilder.new(
           base: @to_h[:description],
           title:,
           url:,
@@ -73,12 +81,16 @@ module Html2rss
 
       # @return [Url, nil]
       def url
-        @url ||= Url.sanitize(@to_h[:url])
+        return @url unless @url == NOT_SET
+
+        @url = Url.sanitize(@to_h[:url])
       end
 
       # @return [Url, nil]
       def image
-        @image ||= Url.sanitize(@to_h[:image])
+        return @image unless @image == NOT_SET
+
+        @image = Url.sanitize(@to_h[:image])
       end
 
       # @return [String, nil]
@@ -87,7 +99,9 @@ module Html2rss
       # Generates a unique identifier based on the URL and ID using CRC32.
       # @return [String]
       def guid
-        @guid ||= Zlib.crc32(fetch_guid).to_s(36).encode('utf-8')
+        return @guid unless @guid == NOT_SET
+
+        @guid = Zlib.crc32(fetch_guid).to_s(36).encode('utf-8')
       end
 
       ##
@@ -100,27 +114,32 @@ module Html2rss
 
       # @return [Array<Html2rss::RssBuilder::Enclosure>] normalized enclosure objects
       def enclosures
-        @enclosures ||= Array(@to_h[:enclosures])
-                        .map { |enclosure| Html2rss::RssBuilder::Enclosure.new(**enclosure) }
+        return @enclosures unless @enclosures == NOT_SET
+
+        @enclosures = Array(@to_h[:enclosures])
+                      .map { |enclosure| Html2rss::RssBuilder::Enclosure.new(**enclosure) }
       end
 
       # @return [Html2rss::RssBuilder::Enclosure, nil]
       def enclosure
-        return @enclosure if defined?(@enclosure)
+        return @enclosure unless @enclosure == NOT_SET
 
-        case (object = @to_h[:enclosures]&.first)
-        when Hash
-          @enclosure = Html2rss::RssBuilder::Enclosure.new(**object)
-        when nil
-          @enclosure = Html2rss::RssBuilder::Enclosure.new(url: image) if image
-        else
-          Log.warn "Article: unknown enclosure type: #{object.class}"
-        end
+        @enclosure = case (object = @to_h[:enclosures]&.first)
+                     when Hash
+                       Html2rss::RssBuilder::Enclosure.new(**object)
+                     when nil
+                       Html2rss::RssBuilder::Enclosure.new(url: image) if image
+                     else
+                       Log.warn "Article: unknown enclosure type: #{object.class}"
+                       nil
+                     end
       end
 
       # @return [Array<String>] normalized, unique category names
       def categories
-        @categories ||= @to_h[:categories].dup.to_a.tap do |categories|
+        return @categories unless @categories == NOT_SET
+
+        @categories = @to_h[:categories].dup.to_a.tap do |categories|
           categories.map! { |category| category.to_s.strip }
           categories.reject!(&:empty?)
           categories.uniq!
@@ -130,11 +149,12 @@ module Html2rss
       # Parses and returns the published_at time.
       # @return [DateTime, nil]
       def published_at
-        return if (string = @to_h[:published_at].to_s.strip).empty?
+        return @published_at unless @published_at == NOT_SET
 
-        @published_at ||= DateTime.parse(string)
+        string = @to_h[:published_at].to_s.strip
+        @published_at = string.empty? ? nil : DateTime.parse(string)
       rescue ArgumentError
-        nil
+        @published_at = nil
       end
 
       # @return [Class, nil] scraper class that produced this article
@@ -183,5 +203,6 @@ module Html2rss
         value
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end
