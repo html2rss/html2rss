@@ -379,6 +379,13 @@
           },
           "exclusiveMinimum": 0
         },
+        "total_timeout_seconds": {
+          "type": "integer",
+          "not": {
+            "type": "null"
+          },
+          "exclusiveMinimum": 0
+        },
         "browserless": {
           "type": "object",
           "properties": {

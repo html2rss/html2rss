@@ -102,6 +102,14 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       end
     end
 
+    context 'when total_timeout_seconds is configured' do
+      let(:config) { Html2rss::Config.from_hash(raw_config.merge(request: raw_config[:request].merge(total_timeout_seconds: 42))) }
+
+      it 'passes the timeout to the policy' do
+        expect(runtime_policy.total_timeout_seconds).to eq(42)
+      end
+    end
+
     context 'when preload only scrolls without waits' do
       let(:config) do
         Html2rss::Config.from_hash(

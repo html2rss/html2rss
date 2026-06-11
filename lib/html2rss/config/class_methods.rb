@@ -132,10 +132,7 @@ module Html2rss
       def default_config
         {
           strategy: default_strategy_name,
-          request: {
-            max_redirects: RequestService::Policy::DEFAULTS[:max_redirects],
-            max_requests: RequestService::Policy::DEFAULTS[:max_requests]
-          },
+          request: default_request_config,
           channel: { time_zone: 'UTC' },
           headers: RequestHeaders.browser_defaults,
           stylesheets: Html2rss.configuration.stylesheets || []
@@ -148,6 +145,14 @@ module Html2rss
       end
 
       private
+
+      def default_request_config
+        {
+          max_redirects: RequestService::Policy::DEFAULTS[:max_redirects],
+          max_requests: RequestService::Policy::DEFAULTS[:max_requests],
+          total_timeout_seconds: RequestService::Policy::DEFAULTS[:total_timeout_seconds]
+        }
+      end
 
       def resolve_effective_config(config, params:)
         effective_config = HashUtil.deep_symbolize_keys(config, context: 'config')

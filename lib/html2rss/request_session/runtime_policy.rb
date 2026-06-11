@@ -11,7 +11,8 @@ module Html2rss
       def self.from_config(config)
         RequestService::Policy.new(
           max_requests: effective_max_requests_for(config),
-          max_redirects: config.max_redirects
+          max_redirects: config.max_redirects,
+          total_timeout_seconds: config.total_timeout_seconds || RequestService::Policy::DEFAULTS[:total_timeout_seconds]
         )
       end
 

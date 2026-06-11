@@ -31,7 +31,8 @@ module Html2rss
       @request_controls = request_controls.with_effective_values(
         strategy: validated_config[:strategy],
         max_redirects: validated_config.dig(:request, :max_redirects),
-        max_requests: validated_config.dig(:request, :max_requests)
+        max_requests: validated_config.dig(:request, :max_requests),
+        total_timeout_seconds: validated_config.dig(:request, :total_timeout_seconds)
       )
     end
 
@@ -41,6 +42,8 @@ module Html2rss
     def max_redirects = request_controls.max_redirects
     # @return [Integer, nil] configured request budget
     def max_requests = request_controls.max_requests
+    # @return [Integer, nil] configured request timeout
+    def total_timeout_seconds = request_controls.total_timeout_seconds
     # @return [Array<Hash>] stylesheet definitions
     def stylesheets = config[:stylesheets]
 
