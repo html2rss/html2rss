@@ -4,15 +4,15 @@ module Html2rss
   ##
   # HtmlExtractor is responsible for extracting details (headline, url, images, etc.)
   # from an article_tag.
-  class HtmlExtractor
+  class HtmlExtractor # rubocop:disable Metrics/ClassLength
     # Tags ignored when extracting visible text content from article containers.
     INVISIBLE_CONTENT_TAGS = %w[svg script noscript style template].to_set.freeze
-    # Element path pattern ignored when traversing candidate article containers.
-    IGNORED_CONTAINER_PATH = /(nav|footer|header|svg|script|style)/i
     # Heading tags used to prioritize title extraction.
     HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
     # Selector used to derive non-headline description nodes.
     NON_HEADLINE_SELECTOR = (HEADING_TAGS.map { |tag| ":not(#{tag})" } + INVISIBLE_CONTENT_TAGS.to_a).freeze
+    # Element tags that indicate ignored DOM chrome when found in a container path.
+    IGNORED_CONTAINER_TAGS = %w[nav footer header svg script style].to_set.freeze
 
     # Anchor selector used to identify the canonical article link element.
     MAIN_ANCHOR_SELECTOR = begin
@@ -40,6 +40,28 @@ module Html2rss
         end
 
         parts.join(separator).squeeze(' ').strip unless parts.empty?
+      end
+
+      ##
+      # @param article_tag [Nokogiri::XML::Node] article-like container to search within
+      # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
+      def main_anchor_for(article_tag)
+        return article_tag if article_tag.name == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
+
+        article_tag.at_css(MAIN_ANCHOR_SELECTOR)
+      end
+
+      ##
+      # @param node [Nokogiri::XML::Node]
+      # @return [Boolean] true when the node belongs to ignored DOM chrome
+      def ignored_container_path?(node)
+        curr = node
+        while curr.respond_to?(:parent)
+          return true if IGNORED_CONTAINER_TAGS.include?(curr.name)
+
+          curr = curr.parent
+        end
+        false
       end
 
       private
@@ -80,26 +102,6 @@ module Html2rss
 
     attr_reader :article_tag, :base_url, :selected_anchor
 
-    class << self
-      ##
-      # @param article_tag [Nokogiri::XML::Node] article-like container to search within
-      # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
-      def main_anchor_for(article_tag)
-        return article_tag if article_tag.name == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
-
-        article_tag.at_css(MAIN_ANCHOR_SELECTOR)
-      end
-
-      ##
-      # @param node [Nokogiri::XML::Node, String] node or path to test
-      # @return [Boolean] true when the node belongs to ignored DOM chrome
-      def ignored_container_path?(node)
-        path = node.respond_to?(:path) ? node.path : node.to_s
-
-        path.match?(IGNORED_CONTAINER_PATH)
-      end
-    end
-
     def extract_url
       @extract_url ||= begin
         href = selected_anchor&.[]('href').to_s
@@ -115,14 +117,24 @@ module Html2rss
 
     def heading
       @heading ||= begin
-        heading_tags = article_tag.css(HEADING_TAGS.join(',')).group_by(&:name)
-        smallest_heading = heading_tags.keys.min
-        if smallest_heading
-          heading_tags[smallest_heading]&.max_by do |tag|
-            self.class.extract_visible_text(tag)&.size.to_i
-          end
-        end
+        tags = article_tag.css(HEADING_TAGS.join(','))
+        tags.any? ? select_best_heading(tags) : nil
       end
+    end
+
+    def select_best_heading(tags)
+      min_tag_name = tags.map(&:name).min
+      best_tag = nil
+      max_size = -1
+
+      tags.each do |tag|
+        next if tag.name != min_tag_name
+
+        size = self.class.extract_visible_text(tag)&.size.to_i
+        (best_tag = tag) && (max_size = size) if size > max_size
+      end
+
+      best_tag
     end
 
     def extract_description

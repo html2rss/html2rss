@@ -11,9 +11,6 @@ module Html2rss
     # Detection is intentionally shallow for most scrapers, but instance-based
     # matching is available for scrapers that need to carry expensive selection
     # state forward into extraction.
-    # Scrapers run in parallel threads, so implementations must avoid shared
-    # mutable state and degrade by returning no articles when a follow-up would
-    # be unsafe or unsupported.
     module Scraper
       # Root markers indicating likely app-shell/client-rendered surfaces.
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'

@@ -125,6 +125,7 @@ module Html2rss
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
     def initialize(uri)
       @uri = uri.freeze
+      @path_segments = @uri.path.to_s.split('/').reject(&:empty?).freeze
       freeze
     end
 
@@ -162,7 +163,7 @@ module Html2rss
     # Returns the URL path split into non-empty segments.
     #
     # @return [Array<String>] normalized path segments
-    def path_segments = @uri.path.to_s.split('/').reject(&:empty?)
+    attr_reader :path_segments
 
     ##
     # Returns a copy of the URL with the provided path.

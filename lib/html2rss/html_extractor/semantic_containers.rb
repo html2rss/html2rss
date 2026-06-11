@@ -27,43 +27,16 @@ module Html2rss
 
       # @return [Array<Nokogiri::XML::Node>] candidate semantic containers
       def call
-        containers = SELECTORS.each_with_object([]) do |selector, memo|
-          collect_selector_containers(selector, memo)
-        end
-
-        containers.sort_by { document_order.fetch(_1) }
-      end
-
-      private
-
-      def document_order
-        @document_order ||= begin
-          order = {}
-          index = 0
-
-          @parsed_body.traverse do |node|
-            next unless node.element?
-
-            order[node] = index
-            index += 1
+        candidate_set = {}.compare_by_identity
+        SELECTORS.each do |sel|
+          @parsed_body.css(sel).each do |c|
+            candidate_set[c] = true unless HtmlExtractor.ignored_container_path?(c)
           end
-
-          order.compare_by_identity
         end
-      end
 
-      def collect_selector_containers(selector, containers)
-        @parsed_body.css(selector).each do |container|
-          next if HtmlExtractor.ignored_container_path?(container)
-          next if seen[container]
-
-          seen[container] = true
-          containers << container
-        end
-      end
-
-      def seen
-        @seen ||= {}.compare_by_identity
+        ordered_candidates = []
+        @parsed_body.traverse { |n| ordered_candidates << n if candidate_set.delete(n) }
+        ordered_candidates
       end
     end
   end

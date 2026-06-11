@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'parallel'
 require 'dry-validation'
 
 module Html2rss
@@ -121,11 +120,8 @@ module Html2rss
       scraper_instances = Scraper.instances_for(parsed_body, url:, request_session:, opts: @opts[:scraper])
       return [] if scraper_instances.empty?
 
-      # Scrapers are instantiated and run in parallel threads. Implementations
-      # must avoid shared mutable state, treat request_session calls as
-      # concurrency-safe from the scraper side, and return no articles when a
-      # follow-up would be unsafe or unsupported.
-      articles = Parallel.flat_map(scraper_instances, in_threads: thread_count_for(scraper_instances)) do |instance|
+      # Scrapers are run sequentially.
+      articles = scraper_instances.flat_map do |instance|
         run_scraper(instance)
       end
       Cleanup.call(articles, url:, **cleanup_options)
@@ -139,11 +135,6 @@ module Html2rss
 
     def cleanup_options
       @opts.fetch(:cleanup, {})
-    end
-
-    def thread_count_for(scrapers)
-      count = [scrapers.size, Parallel.processor_count].min
-      count.zero? ? 1 : count
     end
   end
 end

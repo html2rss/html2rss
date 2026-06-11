@@ -230,35 +230,46 @@ module Html2rss
 
         def descriptive_context?(container_text, title)
           snippet = container_text.to_s.sub(/\A#{Regexp.escape(title.to_s)}/i, '')
-          word_count(snippet) >= 8
+          # Only check for existence of enough words if snippet is long enough to have them
+          snippet.length > 30 && word_count(snippet) >= 8
         end
 
         def heading_for(container) = container.at_css(AnchorSelector::HEADING_SELECTOR)
 
-        def normalized_destination(anchor) = @link_heuristics.destination_facts(anchor)
+        def normalized_destination(anchor)
+          (@normalized_destinations ||= {}.compare_by_identity)[anchor] ||= @link_heuristics.destination_facts(anchor)
+        end
 
         def visible_text(node)
           return '' unless node
 
-          HtmlExtractor.extract_visible_text(node).to_s.strip
+          (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlExtractor.extract_visible_text(node).to_s.strip
         end
 
         def entry_title(container, selected_anchor) = visible_text(heading_for(container) || selected_anchor)
 
-        def word_count(text) = text.to_s.scan(/\p{Alnum}+/).size
+        def word_count(text)
+          (@word_counts ||= {})[text] ||= text.to_s.scan(/\p{Alnum}+/).size
+        end
 
         def container_tokens(container)
-          classes = container['class'].to_s.split
-          id = container['id'].to_s
-          (classes << id).flat_map { |str| str.downcase.split(/[-_]+/) }.reject(&:empty?)
+          "#{container['class']} #{container['id']}"
         end
 
         def content_tokens?(tokens)
-          (@content_segments ||= LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:content)).intersect?(tokens.to_set)
+          @content_regexp ||= begin
+            words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:content)
+            /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+          end
+          tokens.match?(@content_regexp)
         end
 
         def junk_tokens?(tokens)
-          (@junk_segments ||= LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:utility)).intersect?(tokens.to_set)
+          @junk_regexp ||= begin
+            words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:utility)
+            /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+          end
+          tokens.match?(@junk_regexp)
         end
 
         def stable_rank(entries)

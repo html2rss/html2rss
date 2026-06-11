@@ -90,12 +90,6 @@ RSpec.describe Html2rss::AutoSource do
   describe '#articles' do
     subject(:articles) { auto_source.articles }
 
-    before do
-      allow(Parallel).to receive(:flat_map).and_wrap_original do |_original, scrapers, **_kwargs, &block|
-        scrapers.flat_map(&block)
-      end
-    end
-
     describe 'when scraping succeeds' do
       subject(:article) { articles.first }
 

@@ -80,7 +80,19 @@ module Html2rss
             end
           end
 
-          def nested_container_pair?(left, right) = left.ancestors.include?(right) || right.ancestors.include?(left)
+          def nested_container_pair?(left, right)
+            ancestor?(left, right) || ancestor?(right, left)
+          end
+
+          def ancestor?(child, parent)
+            curr = child.parent
+            while curr.respond_to?(:parent)
+              return true if curr == parent
+
+              curr = curr.parent
+            end
+            false
+          end
 
           def entry_destination(entry) = entry.destination_facts&.destination || article_for(entry)&.[](:url)&.to_s
 
@@ -94,7 +106,9 @@ module Html2rss
             ]
           end
 
-          def word_count(text) = text.to_s.scan(/\p{Alnum}+/).size
+          def word_count(text)
+            (@word_counts ||= {})[text] ||= text.to_s.scan(/\p{Alnum}+/).size
+          end
         end
       end
     end
