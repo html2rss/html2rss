@@ -80,6 +80,7 @@ module Html2rss
       RequestConfig = Dry::Schema.Params do
         optional(:max_redirects).filled(:integer, gteq?: 0)
         optional(:max_requests).filled(:integer, gt?: 0)
+        optional(:total_timeout_seconds).filled(:integer, gt?: 0)
         optional(:browserless).hash(BrowserlessRequestConfig)
         optional(:botasaurus).hash(BotasaurusRequestConfig)
       end

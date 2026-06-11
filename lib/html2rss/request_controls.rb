@@ -7,7 +7,7 @@ module Html2rss
     # Request-control keys accepted at the top level of feed config.
     TOP_LEVEL_KEYS = %i[strategy].freeze
     # Request-control keys accepted under the nested `request` config.
-    REQUEST_KEYS = %i[max_redirects max_requests].freeze
+    REQUEST_KEYS = %i[max_redirects max_requests total_timeout_seconds].freeze
 
     ##
     # @param config [Hash{Symbol => Object}] raw config input
@@ -20,6 +20,7 @@ module Html2rss
         strategy: config[:strategy],
         max_redirects: request_value_for(config, :max_redirects),
         max_requests: request_value_for(config, :max_requests),
+        total_timeout_seconds: request_value_for(config, :total_timeout_seconds),
         explicit_keys: explicit_keys_for(config)
       )
     end
@@ -47,11 +48,13 @@ module Html2rss
     # @param strategy [Symbol, nil] effective request strategy
     # @param max_redirects [Integer, nil] effective redirect limit
     # @param max_requests [Integer, nil] effective request budget
+    # @param total_timeout_seconds [Integer, nil] effective request timeout
     # @param explicit_keys [Array<Symbol>] controls explicitly supplied by the caller
-    def initialize(strategy: nil, max_redirects: nil, max_requests: nil, explicit_keys: [])
+    def initialize(strategy: nil, max_redirects: nil, max_requests: nil, total_timeout_seconds: nil, explicit_keys: [])
       @strategy = strategy
       @max_redirects = max_redirects
       @max_requests = max_requests
+      @total_timeout_seconds = total_timeout_seconds
       @explicit_keys = explicit_keys.map(&:to_sym).uniq.freeze
       freeze
     end
@@ -69,6 +72,10 @@ module Html2rss
     attr_reader :max_requests
 
     ##
+    # @return [Integer, nil] effective request timeout
+    attr_reader :total_timeout_seconds
+
+    ##
     # @param name [Symbol, String] request control name
     # @return [Boolean] whether the control was explicitly supplied
     def explicit?(name)
@@ -79,12 +86,14 @@ module Html2rss
     # @param strategy [Symbol, nil] validated request strategy
     # @param max_redirects [Integer, nil] validated redirect limit
     # @param max_requests [Integer, nil] validated request budget
+    # @param total_timeout_seconds [Integer, nil] validated request timeout
     # @return [RequestControls] controls updated with validated effective values
-    def with_effective_values(strategy:, max_redirects:, max_requests:)
+    def with_effective_values(strategy:, max_redirects:, max_requests:, total_timeout_seconds:)
       self.class.new(
         strategy:,
         max_redirects:,
         max_requests:,
+        total_timeout_seconds:,
         explicit_keys:
       )
     end
@@ -98,6 +107,7 @@ module Html2rss
       config[:strategy] = strategy if explicit?(:strategy)
       apply_request_value(config, :max_redirects, max_redirects)
       apply_request_value(config, :max_requests, max_requests)
+      apply_request_value(config, :total_timeout_seconds, total_timeout_seconds)
       config
     end
 
