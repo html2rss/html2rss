@@ -46,9 +46,6 @@ module Html2rss
         #
         # @return [String, nil] The extracted substring.
         def get
-          normalized_range = build_normalized_range
-          return nil unless normalized_range&.overlap?(0...value.length)
-
           value[range]
         end
 
@@ -67,27 +64,6 @@ module Html2rss
 
           (start..finish)
         end
-
-        private
-
-        def build_normalized_range
-          len = value.length
-          start_normalized = start_index.negative? ? len + start_index : start_index
-          return nil if start_normalized.negative?
-
-          if end_index?
-            end_normalized = end_index.negative? ? len + end_index : end_index
-            return nil if start_normalized > end_normalized
-
-            (start_normalized..end_normalized)
-          else
-            (start_normalized..)
-          end
-        end
-
-        def end_index?  = !context[:options][:end].to_s.empty?
-        def end_index   = context[:options][:end].to_i
-        def start_index = context[:options][:start].to_i
       end
     end
   end
