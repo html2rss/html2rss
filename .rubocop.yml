@@ -9,6 +9,8 @@ plugins:
 AllCops:
   DisplayCopNames: true
   NewCops: enable
+  TargetRubyVersion: 3.3
+  ParserEngine: parser_prism
   Exclude:
     - vendor/**/*
 
