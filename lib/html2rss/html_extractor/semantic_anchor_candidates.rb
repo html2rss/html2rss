@@ -56,7 +56,7 @@ module Html2rss
         def visible_text(node)
           return '' unless node
 
-          HtmlExtractor.extract_visible_text(node).to_s.strip
+          (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlExtractor.extract_visible_text(node).to_s.strip
         end
 
         # @param anchor [Nokogiri::XML::Node] anchor candidate
@@ -69,12 +69,6 @@ module Html2rss
         # @return [Boolean] true when text is utility chrome
         def utility_text?(text)
           @link_heuristics.utility_text?(text)
-        end
-
-        # @param ancestors [Array<Nokogiri::XML::Node>]
-        # @return [Boolean] true when the anchor lives inside navigation chrome
-        def utility_landmark?(ancestors)
-          ancestors.any? { |node| UTILITY_LANDMARK_TAGS.include?(node.name) }
         end
       end
 
@@ -131,7 +125,7 @@ module Html2rss
 
         # @return [Boolean] true when visible anchor text has words
         def meaningful_text?
-          text.scan(/\p{Alnum}+/).any?
+          @meaningful_text ||= text.match?(/\p{Alnum}/)
         end
 
         # @return [Boolean] true when the destination route has content signals
@@ -142,8 +136,16 @@ module Html2rss
         # @return [Boolean] true when the anchor is inside the selected heading
         def heading_anchor?
           heading = @context.heading
+          return false unless heading
 
-          heading && @anchor.ancestors.include?(heading)
+          # Optimization: check if anchor is heading or a descendant of heading
+          curr = @anchor
+          while curr.respond_to?(:parent)
+            return true if curr == heading
+
+            curr = curr.parent
+          end
+          false
         end
 
         # @return [Boolean] true when anchor text exactly matches heading text
@@ -151,14 +153,14 @@ module Html2rss
           heading_text = @context.heading_text
 
           meaningful_text? &&
-            heading_text.scan(/\p{Alnum}+/).any? &&
+            heading_text.match?(/\p{Alnum}/) &&
             heading_text == text
         end
 
         private
 
         def representative_content_anchor?
-          heading_anchor? || meaningful_text? || content_like_destination?
+          meaningful_text? || content_like_destination? || heading_anchor?
         end
 
         def utility_text_suppressed?
@@ -174,7 +176,17 @@ module Html2rss
         def ineligible_anchor?
           destination_facts.high_confidence_utility_destination ||
             icon_only_anchor? ||
-            @context.utility_landmark?(@anchor.ancestors.to_a)
+            utility_landmark_ancestor?
+        end
+
+        def utility_landmark_ancestor?
+          curr = @anchor.parent
+          while curr.respond_to?(:parent)
+            return true if Context::UTILITY_LANDMARK_TAGS.include?(curr.name)
+
+            curr = curr.parent
+          end
+          false
         end
 
         def icon_only_anchor?
