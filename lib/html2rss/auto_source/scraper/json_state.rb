@@ -184,8 +184,9 @@ module Html2rss
           # @param jsonish [String] JSON-like string with potentially unquoted keys
           # @return [String] payload with unquoted object keys quoted
           def quote_unquoted_keys(jsonish)
-            jsonish.gsub(/(\A\s*|[{,\[]\s*)([A-Za-z_]\w*)(\s*:)/) do
-              "#{Regexp.last_match(1)}\"#{Regexp.last_match(2)}\"#{Regexp.last_match(3)}"
+            jsonish.gsub(/(?<prefix>\A\s*|[{,\[]\s*)(?<key>[A-Za-z_]\w*)(?<suffix>\s*:)/) do
+              captures = Regexp.last_match.named_captures(symbolize_names: true)
+              "#{captures[:prefix]}\"#{captures[:key]}\"#{captures[:suffix]}"
             end
           end
 

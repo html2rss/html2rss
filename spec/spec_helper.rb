@@ -2,6 +2,8 @@
 
 require 'vcr'
 
+Warning[:performance] = true if defined?(Warning) && Warning.respond_to?(:[])
+
 if ENV['COVERAGE']
   require 'simplecov'
 
@@ -36,7 +38,9 @@ require_relative 'support/helpers/configuration_helpers'
 require_relative 'support/helpers/example_helpers'
 
 # Load shared examples
-Dir[File.join(__dir__, 'support', 'shared_examples', '**', '*.rb')].each { |f| require f }
+Dir.glob('**/*.rb', base: File.join(__dir__, 'support/shared_examples')).each do |f|
+  require File.join(__dir__, 'support/shared_examples', f)
+end
 
 Zeitwerk::Loader.eager_load_all # flush all potential loading issues
 

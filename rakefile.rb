@@ -15,4 +15,4 @@ RSpec::Core::RakeTask.new(:spec) do |t|
   t.ruby_opts = %w[-w]
 end
 
-Dir.glob('lib/tasks/**/*.rake').each { |file| import file }
+Dir.glob('**/*.rake', base: 'lib/tasks').each { |file| import File.join('lib/tasks', file) }
