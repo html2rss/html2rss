@@ -42,9 +42,6 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     before do
-      allow(Parallel).to receive(:flat_map).and_wrap_original do |_original, scrapers, **_kwargs, &block|
-        scrapers.flat_map(&block)
-      end
       allow(request_session).to receive(:follow_up).and_return(api_response)
     end
 

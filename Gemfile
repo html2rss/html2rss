@@ -29,6 +29,7 @@ group :development, :test do
   gem 'vcr', require: false
 
   # Development tools
+  gem 'benchmark', require: false
   gem 'debug', require: false
   gem 'irb', require: false
 end

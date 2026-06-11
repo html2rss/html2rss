@@ -11,7 +11,6 @@ PATH
       kramdown
       mime-types (> 3.0)
       nokogiri (>= 1.10, < 2.0)
-      parallel
       puppeteer-ruby
       regexp_parser
       reverse_markdown (~> 3.0)
@@ -28,6 +27,7 @@ GEM
       public_suffix (>= 2.0.2, < 8.0)
     ast (2.4.3)
     base64 (0.3.0)
+    benchmark (0.5.0)
     bigdecimal (4.1.0)
     brotli (0.7.0)
     byebug (12.0.0)
@@ -245,6 +245,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  benchmark
   byebug
   climate_control
   debug
@@ -272,6 +273,7 @@ CHECKSUMS
   addressable (2.9.0) sha256=7fdf6ac3660f7f4e867a0838be3f6cf722ace541dd97767fa42bc6cfa980c7af
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
+  benchmark (0.5.0) sha256=465df122341aedcb81a2a24b4d3bd19b6c67c1530713fd533f3ff034e419236c
   bigdecimal (4.1.0) sha256=6dc07767aa3dc456ccd48e7ae70a07b474e9afd7c5bc576f80bd6da5c8dd6cae
   brotli (0.7.0) sha256=e9e4fa5036e59e344798be8e35f44301ed8d10dc94d68195b6587e9c78b63a41
   byebug (12.0.0) sha256=d4a150d291cca40b66ec9ca31f754e93fed8aa266a17335f71bb0afa7fca1a1e
