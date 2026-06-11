@@ -9,6 +9,7 @@ module Html2rss
     ##
     # Article is a simple data object representing an article extracted from a page.
     # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
+    # rubocop:disable Metrics/ClassLength
     class Article
       include Enumerable
       include Comparable
@@ -36,20 +37,9 @@ module Html2rss
       # @option options [Array<String>] :categories category labels
       # @option options [Class] :scraper scraper class that produced the article
       def initialize(**options)
-        @to_h = {}
-        options.each_pair { |key, value| @to_h[key] = value.freeze if value }
-        @to_h.freeze
+        @to_h = options.each_with_object({}) { |(k, v), h| h[k] = v.freeze if v }.freeze
 
-        # Eagerly initialize all memoized instance variables to the same sentinel
-        # to guarantee a single consistent object shape from instantiation.
-        @description = NOT_SET
-        @url = NOT_SET
-        @image = NOT_SET
-        @guid = NOT_SET
-        @enclosures = NOT_SET
-        @enclosure = NOT_SET
-        @categories = NOT_SET
-        @published_at = NOT_SET
+        @description = @url = @image = @guid = @enclosures = @enclosure = @categories = @published_at = NOT_SET
 
         return unless (unknown_keys = options.keys - PROVIDED_KEYS).any?
 
@@ -161,16 +151,10 @@ module Html2rss
       def published_at
         return @published_at unless @published_at == NOT_SET
 
-        @published_at = begin
-          string = @to_h[:published_at].to_s.strip
-          if string.empty?
-            nil
-          else
-            DateTime.parse(string)
-          end
-        rescue ArgumentError
-          nil
-        end
+        string = @to_h[:published_at].to_s.strip
+        @published_at = string.empty? ? nil : DateTime.parse(string)
+      rescue ArgumentError
+        @published_at = nil
       end
 
       # @return [Class, nil] scraper class that produced this article
@@ -219,5 +203,6 @@ module Html2rss
         value
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

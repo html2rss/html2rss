@@ -200,7 +200,8 @@ module Html2rss
 
     def select_regular(_name, item:, config:, base_url:)
       @merged_configs ||= {}
-      merged_config = @merged_configs[[config.object_id, base_url]] ||= config.merge(channel: channel_context(base_url)).freeze
+      merged_config = @merged_configs[[config.object_id, base_url]] ||=
+        config.merge(channel: channel_context(base_url)).freeze
       value = Extractors.get(merged_config, item)
 
       if value && (post_process_steps = config[:post_process])
