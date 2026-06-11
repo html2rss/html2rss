@@ -37,6 +37,9 @@ module Html2rss
 
         # Extracts a normalized href from a Nokogiri anchor or raw href value.
         class HrefExtractor
+          # Regexp to capture everything before the first '#'
+          HREF_BASE_PATTERN = /\A([^#]*)/
+
           # @param anchor_or_href [Nokogiri::XML::Element, String, #to_s] anchor element or href-like value
           # @return [String, nil] href without fragment, or nil when blank
           def self.call(anchor_or_href) = new(anchor_or_href).call
@@ -48,20 +51,18 @@ module Html2rss
 
           # @return [String, nil] href without fragment, or nil when blank
           def call
-            raw_href.to_s.split('#', 2).first.to_s.strip.then do |href|
-              href unless href.empty?
-            end
-          end
+            href = case @anchor_or_href
+                   when Nokogiri::XML::Node
+                     @anchor_or_href['href']
+                   else
+                     @anchor_or_href
+                   end
 
-          private
+            return unless href
 
-          def raw_href
-            case @anchor_or_href
-            when Nokogiri::XML::Node
-              @anchor_or_href['href']
-            else
-              @anchor_or_href
-            end
+            # Extract base part before # and strip whitespace
+            base = href.to_s[HREF_BASE_PATTERN, 1].strip
+            base unless base.empty?
           end
         end
 
@@ -125,8 +126,7 @@ module Html2rss
         end
 
         # Classifies normalized destination path segments for scoring.
-        # rubocop:disable Metrics/ClassLength
-        class PathClassifier
+        class PathClassifier # rubocop:disable Metrics/ClassLength
           attr_reader :segments
 
           # Segment groups used to classify article, taxonomy, utility, and vanity routes.
@@ -208,46 +208,35 @@ module Html2rss
 
           # @return [Hash] destination attributes consumed by DestinationFacts
           def destination_attributes
-            route_attributes.merge(confidence_attributes)
-          end
-
-          # @return [Hash] baseline path classification attributes
-          def route_attributes
             {
-              segments:,
-              content_path: content_path?,
-              utility_path: utility_path?,
-              taxonomy_path: taxonomy_path?,
-              vanity_path: vanity_path?,
+              segments:, strong_post_suffix: strong_post_suffix?,
+              content_path: content_path?, utility_path: utility_path?,
+              taxonomy_path: taxonomy_path?, vanity_path: vanity_path?,
               shallow: shallow?,
-              strong_post_suffix: strong_post_suffix?
+              high_confidence_junk_path: junk_path?,
+              high_confidence_utility_destination: utility_destination?
             }
-          end
-
-          # @return [Hash] high-confidence noise classification attributes
-          def confidence_attributes
-            ConfidenceClassifier.new(self).attributes
           end
 
           # @return [Boolean] true when the route has article-like path evidence
           def content_path?
-            @content_path ||= SEGMENT_SETS.fetch(:content).intersect?(segments.to_set) ||
+            @content_path ||= segments.any? { |s| SEGMENT_SETS[:content].include?(s) } ||
                               yearish_content_context?
           end
 
           # @return [Boolean] true when the route includes utility/navigation evidence
           def utility_path?
-            @utility_path ||= SEGMENT_SETS.fetch(:utility).intersect?(segments.to_set)
+            @utility_path ||= segments.any? { |s| SEGMENT_SETS[:utility].include?(s) }
           end
 
           # @return [Boolean] true when the route points at conversion or account chrome
           def vanity_path?
-            @vanity_path ||= SEGMENT_SETS.fetch(:vanity).intersect?(segments.to_set)
+            @vanity_path ||= segments.any? { |s| SEGMENT_SETS[:vanity].include?(s) }
           end
 
           # @return [Boolean] true when the route points at taxonomy/listing chrome
           def taxonomy_path?
-            @taxonomy_path ||= SEGMENT_SETS.fetch(:taxonomy).intersect?(segments.to_set)
+            @taxonomy_path ||= segments.any? { |s| SEGMENT_SETS[:taxonomy].include?(s) }
           end
 
           # @return [Boolean] true when the route is too shallow to strongly indicate an article
@@ -260,7 +249,9 @@ module Html2rss
 
           # @return [Boolean] true when the final path segment looks like a post slug
           def strong_post_suffix?
-            PostSuffixClassifier.new(segments).strong?
+            @strong_post_suffix ||= segments.any? &&
+                                    included_last_segment? &&
+                                    trusted_post_context?(segments.size - 1)
           end
 
           # @return [Boolean] true when every path segment is utility chrome
@@ -282,131 +273,79 @@ module Html2rss
 
           # @return [Boolean] true when the leading segments are all utility chrome
           def deep_utility_context_route?
-            LeadingSegments.new(segments).all_junk?
+            all_junk?(segments.size - 1)
           end
 
           private
 
           def yearish_content_context?
             segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
-              (strong_post_suffix? || LeadingSegments.new(segments).trusted_post_context?)
+              (strong_post_suffix? || trusted_post_context?(segments.size - 1))
           end
-        end
-        # rubocop:enable Metrics/ClassLength
-
-        # Classifies high-confidence junk and utility routes from path facts.
-        class ConfidenceClassifier
-          # @param path [PathClassifier] classified destination path
-          def initialize(path)
-            @path = path
-          end
-
-          # @return [Hash] high-confidence route classification attributes
-          def attributes
-            {
-              high_confidence_junk_path: junk_path?,
-              high_confidence_utility_destination: utility_destination?
-            }
-          end
-
-          private
 
           def junk_path?
             return false if excluded_content_route?
 
-            @path.taxonomy_path? ||
-              @path.utility_only_route? ||
-              @path.deep_utility_context_route? ||
-              @path.shallow_high_confidence_route?
+            taxonomy_path? ||
+              utility_only_route? ||
+              deep_utility_context_route? ||
+              shallow_high_confidence_route?
           end
 
           def utility_destination?
             return false if excluded_content_route?
 
-            @path.vanity_path? || utility_route?
+            vanity_path? || utility_route?
           end
 
           def excluded_content_route?
-            @path.segments.empty? || @path.content_path? || @path.strong_post_suffix?
+            segments.empty? || content_path? || strong_post_suffix?
           end
 
           def utility_route?
-            @path.taxonomy_path? ||
-              @path.utility_only_route? ||
-              @path.deep_utility_context_route? ||
+            taxonomy_path? ||
+              utility_only_route? ||
+              deep_utility_context_route? ||
               shallow_utility_route?
           end
 
           def shallow_utility_route?
-            @path.shallow? && @path.utility_path?
-          end
-        end
-
-        # Classifies route context before the final segment.
-        class LeadingSegments
-          # @param segments [Array<String>] normalized URL path segments
-          def initialize(segments)
-            @segments = segments[0...-1]
+            shallow? && utility_path?
           end
 
-          # @return [Boolean] true when every leading segment is utility chrome
-          def all_junk?
-            junk_segments = PathClassifier::SEGMENT_SETS.fetch(:high_confidence_junk)
+          def all_junk?(limit)
+            return false if limit <= 0
 
-            @segments.any? && @segments.all? { |segment| junk_segments.include?(segment) }
+            junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
+            (0...limit).all? { |i| junk_segments.include?(segments[i]) }
           end
 
-          # @return [Boolean] true when leading segments provide article context
-          def trusted_post_context?
-            content_segments = PathClassifier::SEGMENT_SETS.fetch(:content)
-            context_segments = PathClassifier::SEGMENT_SETS.fetch(:deep_post_context)
+          def trusted_post_context?(limit)
+            return false if limit <= 0
 
-            @segments.any? do |segment|
+            content_segments = SEGMENT_SETS.fetch(:content)
+            context_segments = SEGMENT_SETS.fetch(:deep_post_context)
+
+            (0...limit).any? do |i|
+              segment = segments[i]
               content_segments.include?(segment) ||
                 segment.match?(PathClassifier::YEARISH_SEGMENT) ||
                 context_segments.include?(segment)
             end
           end
-        end
-
-        # Classifies whether the final segment is a strong post-like suffix.
-        class PostSuffixClassifier
-          # @param segments [Array<String>] normalized URL path segments
-          def initialize(segments)
-            @segments = segments
-          end
-
-          # @return [Boolean] true when the final path segment looks like a post slug
-          def strong?
-            @segments.any? &&
-              included_last_segment? &&
-              LeadingSegments.new(@segments).trusted_post_context?
-          end
-
-          private
 
           def included_last_segment?
             !excluded_last_segment? && slug_last_segment?
           end
 
           def excluded_last_segment?
-            excluded_segments.any? { |segment| segment.include?(last_segment) }
-          end
-
-          def excluded_segments
-            [
-              PathClassifier::SEGMENT_SETS.fetch(:high_confidence_junk),
-              PathClassifier::SEGMENT_SETS.fetch(:vanity)
-            ]
+            last = segments.last
+            [SEGMENT_SETS[:high_confidence_junk], SEGMENT_SETS[:vanity]].any? { |set| set.include?(last) }
           end
 
           def slug_last_segment?
-            last_segment.match?(PathClassifier::YEARISH_SEGMENT) ||
-              last_segment.match?(PathClassifier::POST_SLUG_SEGMENT)
-          end
-
-          def last_segment
-            @segments.last
+            last = segments.last
+            last.match?(YEARISH_SEGMENT) || last.match?(POST_SLUG_SEGMENT)
           end
         end
 
@@ -424,8 +363,10 @@ module Html2rss
           href = HrefExtractor.call(anchor_or_href)
           return unless href
 
-          url = Html2rss::Url.from_relative(href, @base_url)
-          DestinationFacts.build(url)
+          (@destination_facts ||= {})[href] ||= begin
+            url = Html2rss::Url.from_relative(href, @base_url)
+            DestinationFacts.build(url)
+          end
         rescue ArgumentError
           nil
         end
