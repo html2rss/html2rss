@@ -34,23 +34,18 @@ module Html2rss
         # @param context [Selectors::Context] post-processor context
         # @return [void]
         def self.validate_args!(value, context)
-          assert_type value, String, :value, context:
+          assert_type(value, String, :value, context:)
 
           options = context[:options]
-          assert_type options[:start], Integer, :start, context:
-
-          end_index = options[:end]
-          assert_type(end_index, Integer, :end, context:) if end_index
+          assert_type(options[:start], Integer, :start, context:)
+          assert_type(options[:end], Integer, :end, context:) if options.key?(:end)
         end
 
         ##
         # Extracts the substring from the original string based on the provided start and end indices.
         #
-        # @return [String] The extracted substring.
+        # @return [String, nil] The extracted substring.
         def get
-          normalized_range = build_normalized_range
-          return nil unless normalized_range&.overlap?(0...value.length)
-
           value[range]
         end
 
@@ -59,36 +54,16 @@ module Html2rss
         #
         # @return [Range] The range object representing the start and end/Infinity (integers).
         def range
-          return (start_index..) unless end_index?
+          options = context[:options]
+          start = options[:start]
 
-          if start_index == end_index
-            raise ArgumentError,
-                  'The `start` value must be unequal to the `end` value.'
-          end
+          return (start..) unless options.key?(:end)
 
-          (start_index..end_index)
+          finish = options[:end]
+          raise ArgumentError, 'The `start` value must be unequal to the `end` value.' if start == finish
+
+          (start..finish)
         end
-
-        private
-
-        def build_normalized_range
-          len = value.length
-          start_normalized = start_index.negative? ? len + start_index : start_index
-          return nil if start_normalized.negative?
-
-          if end_index?
-            end_normalized = end_index.negative? ? len + end_index : end_index
-            return nil if start_normalized > end_normalized
-
-            (start_normalized..end_normalized)
-          else
-            (start_normalized..)
-          end
-        end
-
-        def end_index?  = !context[:options][:end].to_s.empty?
-        def end_index   = context[:options][:end].to_i
-        def start_index = context[:options][:start].to_i
       end
     end
   end
