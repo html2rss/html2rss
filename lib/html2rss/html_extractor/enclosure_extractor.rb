@@ -5,116 +5,87 @@ module Html2rss
     ##
     # Extracts enclosures from HTML tags using various strategies.
     class EnclosureExtractor
+      # CSS union query covering images, media, PDFs, iframes, and archives.
+      SELECTOR = [
+        'img[src]:not([src^="data"])',
+        'video source[src]',
+        'audio source[src]',
+        'audio[src]',
+        'a[href$=".pdf"]',
+        'iframe[src]',
+        'a[href$=".zip"]',
+        'a[href$=".tar.gz"]',
+        'a[href$=".tgz"]'
+      ].join(',').freeze
+
       # @param article_tag [Nokogiri::XML::Element] article container node
       # @param base_url [String, Html2rss::Url] base URL for relative enclosure links
       # @return [Array<Hash{Symbol => Object}>] normalized enclosure hashes
       def self.call(article_tag, base_url)
-        [
-          Extractors::Image,
-          Extractors::Media,
-          Extractors::Pdf,
-          Extractors::Iframe,
-          Extractors::Archive
-        ].flat_map { |strategy| strategy.call(article_tag, base_url:) }
-      end
-    end
-
-    # Extraction strategies for enclosure-like media/link tags.
-    module Extractors
-      # Extracts image enclosures from HTML tags.
-      # Finds all image sources and returns them in a format suitable for RSS.
-      class Image
-        # @param article_tag [Nokogiri::XML::Element] article container node
-        # @param base_url [String, Html2rss::Url] base URL for relative image sources
-        # @return [Array<Hash{Symbol => Object}>] image enclosure hashes
-        def self.call(article_tag, base_url:)
-          article_tag.css('img[src]:not([src^="data"])').filter_map do |img|
-            src = img['src'].to_s
-            next if src.empty?
-
-            abs_url = Url.from_relative(src, base_url)
-            {
-              url: abs_url,
-              type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'image/jpeg')
-            }
-          end
+        article_tag.css(SELECTOR).filter_map do |element|
+          extract_from_element(element, base_url)
         end
       end
 
-      # Extracts media enclosures (video/audio) from HTML tags.
-      class Media
-        # @param article_tag [Nokogiri::XML::Element] article container node
-        # @param base_url [String, Html2rss::Url] base URL for relative media sources
-        # @return [Array<Hash{Symbol => Object}>] media enclosure hashes
-        def self.call(article_tag, base_url:)
-          article_tag.css('video source[src], audio source[src], audio[src]').filter_map do |element|
-            src = element['src'].to_s
-            next if src.empty?
-
-            {
-              url: Url.from_relative(src, base_url),
-              type: element['type']
-            }
-          end
+      def self.extract_from_element(element, base_url)
+        case element.name
+        when 'img'
+          extract_image(element, base_url)
+        when 'video', 'audio', 'source'
+          extract_media(element, base_url)
+        when 'iframe'
+          extract_iframe(element, base_url)
+        when 'a'
+          extract_a(element, base_url)
         end
       end
 
-      # Extracts PDF enclosures from HTML tags.
-      class Pdf
-        # @param article_tag [Nokogiri::XML::Element] article container node
-        # @param base_url [String, Html2rss::Url] base URL for relative PDF links
-        # @return [Array<Hash{Symbol => Object}>] PDF enclosure hashes
-        def self.call(article_tag, base_url:)
-          article_tag.css('a[href$=".pdf"]').filter_map do |link|
-            href = link['href'].to_s
-            next if href.empty?
+      def self.extract_image(img, base_url)
+        src = img['src'].to_s
+        return if src.empty?
 
-            abs_url = Url.from_relative(href, base_url)
-            {
-              url: abs_url,
-              type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url)
-            }
-          end
+        abs_url = Url.from_relative(src, base_url)
+        {
+          url: abs_url,
+          type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'image/jpeg')
+        }
+      end
+
+      def self.extract_media(element, base_url)
+        src = element['src'].to_s
+        return if src.empty?
+
+        {
+          url: Url.from_relative(src, base_url),
+          type: element['type']
+        }
+      end
+
+      def self.extract_iframe(iframe, base_url)
+        src = iframe['src'].to_s
+        return if src.empty?
+
+        abs_url = Url.from_relative(src, base_url)
+        {
+          url: abs_url,
+          type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'text/html')
+        }
+      end
+
+      def self.extract_a(link, base_url)
+        href = link['href'].to_s
+        return if href.empty?
+
+        abs_url = Url.from_relative(href, base_url)
+
+        if href.end_with?('.pdf')
+          { url: abs_url, type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url) }
+        else
+          { url: abs_url, type: 'application/zip' }
         end
       end
 
-      # Extracts iframe enclosures from HTML tags.
-      class Iframe
-        # @param article_tag [Nokogiri::XML::Element] article container node
-        # @param base_url [String, Html2rss::Url] base URL for relative iframe links
-        # @return [Array<Hash{Symbol => Object}>] iframe enclosure hashes
-        def self.call(article_tag, base_url:)
-          article_tag.css('iframe[src]').filter_map do |iframe|
-            src = iframe['src']
-            next if src.nil? || src.empty?
-
-            abs_url = Url.from_relative(src, base_url)
-            {
-              url: abs_url,
-              type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'text/html')
-            }
-          end
-        end
-      end
-
-      # Extracts archive enclosures (zip, tar.gz, tgz) from HTML tags.
-      class Archive
-        # @param article_tag [Nokogiri::XML::Element] article container node
-        # @param base_url [String, Html2rss::Url] base URL for relative archive links
-        # @return [Array<Hash{Symbol => Object}>] archive enclosure hashes
-        def self.call(article_tag, base_url:)
-          article_tag.css('a[href$=".zip"], a[href$=".tar.gz"], a[href$=".tgz"]').filter_map do |link|
-            href = link['href'].to_s
-            next if href.empty?
-
-            abs_url = Url.from_relative(href, base_url)
-            {
-              url: abs_url,
-              type: 'application/zip'
-            }
-          end
-        end
-      end
+      private_class_method :extract_from_element, :extract_image, :extract_media, :extract_iframe, :extract_a
     end
   end
 end
