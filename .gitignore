@@ -11,3 +11,8 @@
 .rspec_status
 docs/
 /vendor/
+
+# Local/Dev environment files
+.codex/
+.tool-versions
+bin/rails

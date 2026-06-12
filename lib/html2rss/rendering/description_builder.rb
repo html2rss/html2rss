@@ -25,12 +25,12 @@ module Html2rss
       # @param end_of_range [Integer] Optional, defaults to half the text length
       # @return [String]
       def self.remove_pattern_from_start(text, pattern, end_of_range: (text.size * 0.5).to_i)
-        return text unless text.is_a?(String) && pattern.is_a?(String)
+        return text unless text.is_a?(String) && pattern.is_a?(String) && !pattern.empty?
 
         index = text.index(pattern)
-        return text if index.nil? || index >= end_of_range
+        return text if index.nil? || index > end_of_range
 
-        text.gsub(/^(.{0,#{end_of_range}})#{Regexp.escape(pattern)}/, '\1')
+        "#{text[0, index]}#{text[(index + pattern.size)..]}"
       end
 
       # @param base [String] The base text content for the description

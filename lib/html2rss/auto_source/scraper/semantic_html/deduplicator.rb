@@ -22,8 +22,7 @@ module Html2rss
           # @return [Array<Entry>] deduplicated list of scraper entries
           def call(entries)
             destination_groups(entries).filter_map do |group|
-              collapsed_group = collapse_nested_destination_group(group)
-              collapsed_group.reduce do |best, entry|
+              group.reduce do |best, entry|
                 stronger_entry?(entry, best) ? entry : best
               end
             end
@@ -66,33 +65,6 @@ module Html2rss
           private
 
           def destination_groups(entries) = entries.group_by { entry_destination(_1) }.values
-
-          def collapse_nested_destination_group(entries)
-            return entries if entries.size <= 1
-
-            entries.reject do |entry|
-              entries.any? do |other|
-                next if entry.equal?(other)
-                next unless nested_container_pair?(entry.container, other.container)
-
-                stronger_entry?(other, entry)
-              end
-            end
-          end
-
-          def nested_container_pair?(left, right)
-            ancestor?(left, right) || ancestor?(right, left)
-          end
-
-          def ancestor?(child, parent)
-            curr = child.parent
-            while curr.respond_to?(:parent)
-              return true if curr == parent
-
-              curr = curr.parent
-            end
-            false
-          end
 
           def entry_destination(entry) = entry.destination_facts&.destination || article_for(entry)&.[](:url)&.to_s
 

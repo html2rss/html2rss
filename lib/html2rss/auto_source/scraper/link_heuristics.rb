@@ -358,13 +358,15 @@ module Html2rss
         # @param anchor_or_href [Nokogiri::XML::Element, String, #to_s] anchor element or href-like value
         # @return [DestinationFacts, nil] normalized destination facts, or nil for blank/invalid URLs
         def destination_facts(anchor_or_href)
+          return node_facts[anchor_or_href] if node_facts.key?(anchor_or_href)
+
           href = HrefExtractor.call(anchor_or_href)
           return unless href
 
-          (@destination_facts ||= {})[href] ||= begin
-            url = Html2rss::Url.from_relative(href, @base_url)
-            DestinationFacts.build(url)
-          end
+          res = memoized_destination_facts(href)
+
+          node_facts[anchor_or_href] = res if anchor_or_href.is_a?(Nokogiri::XML::Node)
+          res
         rescue ArgumentError
           nil
         end
@@ -380,6 +382,19 @@ module Html2rss
         # @param text [String, #to_s] visible anchor text
         # @return [Boolean] true when text identifies recommendation chrome
         def recommended_text?(text) = @text_classifier.recommended?(text)
+
+        private
+
+        def node_facts
+          @node_facts ||= {}.compare_by_identity
+        end
+
+        def memoized_destination_facts(href)
+          (@destination_facts ||= {})[href] ||= begin
+            url = Html2rss::Url.from_relative(href, @base_url)
+            DestinationFacts.build(url)
+          end
+        end
       end
     end
   end
