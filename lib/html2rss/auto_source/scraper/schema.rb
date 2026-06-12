@@ -18,6 +18,13 @@ module Html2rss
         # Selector for JSON-LD script tags containing Schema.org objects.
         TAG_SELECTOR = 'script[type="application/ld+json"]'
 
+        # Pre-compiled regex union for supported schema types.
+        # Performs a single pass over script tag text instead of multiple regex matches.
+        SUPPORTED_TYPES_RE = begin
+          types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
+          /"@type"\s*:\s*"(?:#{Regexp.union(types.to_a).source})"/
+        end.freeze
+
         # @return [Symbol] scraper config key
         def self.options_key = :schema
 
@@ -31,8 +38,7 @@ module Html2rss
           # @param script [Nokogiri::XML::Element] schema JSON-LD script tag
           # @return [Boolean] whether the tag references a supported schema type
           def supported_schema_type?(script)
-            supported_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
-            supported_types.any? { |type| script.text.match?(/"@type"\s*:\s*"#{Regexp.escape(type)}"/) }
+            script.text.match?(SUPPORTED_TYPES_RE)
           end
 
           ##

@@ -8,8 +8,10 @@ module Html2rss
     # Common category-related terms to look for in class names
     CATEGORY_TERMS = %w[category tag topic section label theme subject].freeze
 
-    # CSS selectors to find elements with category-related class names
-    CATEGORY_SELECTORS = CATEGORY_TERMS.map { |term| "[class*=\"#{term}\"]" }.freeze
+    # CSS selectors to find elements with category-related class names or data attributes
+    CATEGORY_SELECTORS = CATEGORY_TERMS.flat_map do |term|
+      ["[class*=\"#{term}\"]", "[data-#{term}]", "[#{term}]"]
+    end.freeze
 
     # Regex pattern for matching category-related attribute names
     CATEGORY_ATTR_PATTERN = /#{CATEGORY_TERMS.join('|')}/i
@@ -36,12 +38,12 @@ module Html2rss
     # @return [Set<String>] Set of category strings
     def self.extract_all_categories(article_tag)
       Set.new.tap do |categories|
-        article_tag.css('*').each do |element|
+        article_tag.css(CATEGORY_SELECTORS.join(',')).each do |element|
           # Extract text categories from elements with category-related class names
-          categories.merge(extract_text_categories(element)) if element['class']&.match?(CATEGORY_ATTR_PATTERN)
+          extract_text_categories!(categories, element) if element['class']&.match?(CATEGORY_ATTR_PATTERN)
 
           # Extract data categories from all elements
-          categories.merge(extract_element_data_categories(element))
+          extract_element_data_categories!(categories, element)
         end
       end
     end
@@ -49,34 +51,66 @@ module Html2rss
     ##
     # Extracts categories from data attributes of a single element.
     #
+    # @param categories [Set<String>] Accumulator set
     # @param element [Nokogiri::XML::Element] metadata element that may contain category links
-    # @return [Set<String>] Set of category strings
-    def self.extract_element_data_categories(element)
-      Set.new.tap do |categories|
-        element.attributes.each_value do |attr|
-          next unless attr.name.match?(CATEGORY_ATTR_PATTERN)
+    # @return [void]
+    def self.extract_element_data_categories!(categories, element)
+      element.attributes.each_value do |attr|
+        next unless attr.name.match?(CATEGORY_ATTR_PATTERN)
 
-          value = attr.value&.strip
-          categories.add(value) if value && !value.empty?
-        end
+        value = attr.value&.strip
+        categories.add(value) if value && !value.empty?
       end
     end
 
     ##
     # Extracts text-based categories from elements, splitting content into discrete values.
     #
+    # @param categories [Set<String>] Accumulator set
     # @param element [Nokogiri::XML::Element] metadata element whose text may contain delimiters
-    # @return [Set<String>] Set of category strings
-    def self.extract_text_categories(element)
-      anchor_values = element.css('a').filter_map do |node|
-        HtmlExtractor.extract_visible_text(node)
+    # @return [void]
+    def self.extract_text_categories!(categories, element)
+      if element.name == 'a'
+        add_text_to_categories!(categories, element)
+        return
       end
-      return Set.new(anchor_values.reject(&:empty?)) if anchor_values.any?
 
-      text = HtmlExtractor.extract_visible_text(element)
-      return Set.new unless text
+      anchors = element.css('a')
 
-      Set.new(text.split(/\n+/).map(&:strip).reject(&:empty?))
+      if anchors.any?
+        anchors.each { |node| add_text_to_categories!(categories, node) }
+      else
+        extract_split_text_categories!(categories, element)
+      end
     end
+
+    ##
+    # Adds the visible text of the given element to the categories set.
+    #
+    # @param categories [Set<String>] Accumulator set
+    # @param element [Nokogiri::XML::Element] The element to extract text from
+    # @return [void]
+    def self.add_text_to_categories!(categories, element)
+      text = HtmlExtractor.extract_visible_text(element)
+      categories.add(text) if text && !text.empty?
+    end
+
+    ##
+    # Extracts categories from the element's text by splitting on newlines.
+    #
+    # @param categories [Set<String>] Accumulator set
+    # @param element [Nokogiri::XML::Element] The element to extract text from
+    # @return [void]
+    def self.extract_split_text_categories!(categories, element)
+      text = HtmlExtractor.extract_visible_text(element)
+      return unless text
+
+      text.split(/\n+/).each do |line|
+        line = line.strip
+        categories.add(line) unless line.empty?
+      end
+    end
+
+    private_class_method :add_text_to_categories!, :extract_split_text_categories!
   end
 end

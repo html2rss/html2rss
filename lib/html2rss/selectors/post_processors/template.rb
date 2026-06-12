@@ -54,12 +54,13 @@ module Html2rss
           @scraper = context[:scraper]
           @item = context[:item]
           @string = @options[:string].to_s
+          @getter = ->(key) { item_value(key) }
         end
 
         ##
         # @return [String]
         def get
-          Html2rss::Config::DynamicParams.call(@string, {}, getter: method(:item_value), replace_missing_with: '')
+          Html2rss::Config::DynamicParams.call(@string, {}, getter: @getter, replace_missing_with: '')
         end
 
         private
