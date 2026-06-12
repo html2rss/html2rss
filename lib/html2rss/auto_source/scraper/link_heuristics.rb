@@ -24,13 +24,21 @@ module Html2rss
         ) do
           # @param url [Html2rss::Url] normalized destination URL
           # @return [DestinationFacts] route facts for downstream link scoring
-          def self.build(url)
+          def self.build(url) # rubocop:disable Metrics/MethodLength
             classifier = PathClassifier.new(url.path_segments)
 
             new(
               url:,
               destination: url.to_s,
-              **classifier.destination_attributes
+              segments: classifier.segments,
+              strong_post_suffix: classifier.strong_post_suffix?,
+              content_path: classifier.content_path?,
+              utility_path: classifier.utility_path?,
+              taxonomy_path: classifier.taxonomy_path?,
+              vanity_path: classifier.vanity_path?,
+              shallow: classifier.shallow?,
+              high_confidence_junk_path: classifier.junk_path?,
+              high_confidence_utility_destination: classifier.utility_destination?
             )
           end
         end
@@ -206,18 +214,6 @@ module Html2rss
             @segments = segments
           end
 
-          # @return [Hash] destination attributes consumed by DestinationFacts
-          def destination_attributes
-            {
-              segments:, strong_post_suffix: strong_post_suffix?,
-              content_path: content_path?, utility_path: utility_path?,
-              taxonomy_path: taxonomy_path?, vanity_path: vanity_path?,
-              shallow: shallow?,
-              high_confidence_junk_path: junk_path?,
-              high_confidence_utility_destination: utility_destination?
-            }
-          end
-
           # @return [Boolean] true when the route has article-like path evidence
           def content_path?
             @content_path ||= segments.any? { |s| SEGMENT_SETS[:content].include?(s) } ||
@@ -276,13 +272,7 @@ module Html2rss
             all_junk?(segments.size - 1)
           end
 
-          private
-
-          def yearish_content_context?
-            segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
-              (strong_post_suffix? || trusted_post_context?(segments.size - 1))
-          end
-
+          # @return [Boolean] true when the route is shallow and contains high-confidence noise
           def junk_path?
             return false if excluded_content_route?
 
@@ -292,10 +282,18 @@ module Html2rss
               shallow_high_confidence_route?
           end
 
+          # @return [Boolean] true when the route points at conversion or account chrome
           def utility_destination?
             return false if excluded_content_route?
 
             vanity_path? || utility_route?
+          end
+
+          private
+
+          def yearish_content_context?
+            segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
+              (strong_post_suffix? || trusted_post_context?(segments.size - 1))
           end
 
           def excluded_content_route?

@@ -21,6 +21,18 @@ module Html2rss
       class SemanticHtml # rubocop:disable Metrics/ClassLength
         include Enumerable
 
+        # Regexp to match content-related tokens.
+        CONTENT_REGEXP = begin
+          words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:content)
+          /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+        end.freeze
+
+        # Regexp to match junk/utility-related tokens.
+        JUNK_REGEXP = begin
+          words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:utility)
+          /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+        end.freeze
+
         # Container plus selected anchor, scoring metadata, and extracted article.
         Entry = Data.define(
           :container,
@@ -218,14 +230,27 @@ module Html2rss
               weak_article_candidate)
         end
 
+        ##
+        # @param container [Nokogiri::XML::Node]
+        # @return [Boolean]
         def publish_marker?(container)
-          container.at_css('time, [datetime], [itemprop="datePublished"], [itemprop="dateModified"]')
+          (@publish_markers ||= {}.compare_by_identity)[container] ||=
+            !!container.at_css('time, [datetime], [itemprop="datePublished"], [itemprop="dateModified"]')
         end
 
+        ##
+        # @param container [Nokogiri::XML::Node]
+        # @param publish_signal [Boolean]
+        # @param descriptive_signal [Boolean]
+        # @param content_signal [Boolean]
+        # @return [Integer]
         def article_signal_count(container, publish_signal:, descriptive_signal:, content_signal:)
           [article_container?(container), publish_signal, descriptive_signal, content_signal].count(&:itself)
         end
 
+        ##
+        # @param container [Nokogiri::XML::Node]
+        # @return [Boolean]
         def article_container?(container) = container.name == 'article'
 
         def descriptive_context?(container_text, title)
@@ -234,7 +259,12 @@ module Html2rss
           snippet.length > 30 && word_count(snippet) >= 8
         end
 
-        def heading_for(container) = container.at_css(AnchorSelector::HEADING_SELECTOR)
+        ##
+        # @param container [Nokogiri::XML::Node]
+        # @return [Nokogiri::XML::Node, nil]
+        def heading_for(container)
+          (@headings ||= {}.compare_by_identity)[container] ||= container.at_css(AnchorSelector::HEADING_SELECTOR)
+        end
 
         def normalized_destination(anchor)
           (@normalized_destinations ||= {}.compare_by_identity)[anchor] ||= @link_heuristics.destination_facts(anchor)
@@ -246,30 +276,33 @@ module Html2rss
           (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlExtractor.extract_visible_text(node).to_s.strip
         end
 
+        ##
+        # @param container [Nokogiri::XML::Node]
+        # @param selected_anchor [Nokogiri::XML::Node]
+        # @return [String]
         def entry_title(container, selected_anchor) = visible_text(heading_for(container) || selected_anchor)
 
+        ##
+        # @param text [String, #to_s]
+        # @return [Integer]
         def word_count(text)
-          (@word_counts ||= {})[text] ||= text.to_s.scan(/\p{Alnum}+/).size
+          (@word_counts ||= {})[text] ||= begin
+            count = 0
+            text.to_s.scan(/\p{Alnum}+/) { count += 1 }
+            count
+          end
         end
 
         def container_tokens(container)
-          "#{container['class']} #{container['id']}"
+          (@container_tokens ||= {}.compare_by_identity)[container] ||= "#{container['class']} #{container['id']}"
         end
 
         def content_tokens?(tokens)
-          @content_regexp ||= begin
-            words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:content)
-            /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
-          end
-          tokens.match?(@content_regexp)
+          tokens.match?(CONTENT_REGEXP)
         end
 
         def junk_tokens?(tokens)
-          @junk_regexp ||= begin
-            words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:utility)
-            /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
-          end
-          tokens.match?(@junk_regexp)
+          tokens.match?(JUNK_REGEXP)
         end
 
         def stable_rank(entries)

@@ -91,7 +91,6 @@ module Html2rss
         end
 
         ##
-        # Shorthand method to get the sanitized HTML.
         # @param html [String]
         # @param url [String, Html2rss::Url]
         # @return [String, nil]
@@ -103,9 +102,33 @@ module Html2rss
         end
 
         ##
+        # @param channel_url [String, Html2rss::Url]
+        # @return [Hash] the memoized sanitize configuration
+        # rubocop:disable Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
+        def self.sanitize_config(channel_url)
+          @sanitize_configs ||= {}
+          @sanitize_configs[channel_url] ||= begin
+            config = Sanitize::Config.merge(
+              Sanitize::Config::RELAXED,
+              attributes: { all: %w[dir lang alt title translate] },
+              add_attributes: TAG_ATTRIBUTES,
+              transformers: [
+                lambda { |env|
+                  HtmlTransformers::TransformUrlsToAbsoluteOnes.new(channel_url).call(**env)
+                },
+                ->(env) { HtmlTransformers::WrapImgInA.new.call(**env) }
+              ]
+            )
+            config[:elements].push('audio', 'video', 'source')
+            config.freeze
+          end
+        end
+        # rubocop:enable Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
+
+        ##
         # @return [String, nil]
         def get
-          sanitized_html = Sanitize.fragment(value, sanitize_config).to_s
+          sanitized_html = Sanitize.fragment(value, self.class.sanitize_config(channel_url)).to_s
           sanitized_html.gsub!(/\s+/, ' ')
           sanitized_html.strip!
           sanitized_html.empty? ? nil : sanitized_html
@@ -114,40 +137,6 @@ module Html2rss
         private
 
         def channel_url = context.dig(:config, :channel, :url)
-
-        ##
-        # @return [Sanitize::Config]
-        def sanitize_config # rubocop:disable Metrics/MethodLength
-          config = Sanitize::Config.merge(
-            Sanitize::Config::RELAXED,
-            attributes: { all: %w[dir lang alt title translate] },
-            add_attributes: TAG_ATTRIBUTES,
-            transformers: [
-              method(:transform_urls_to_absolute_ones),
-              method(:wrap_img_in_a)
-            ]
-          )
-          config[:elements].push('audio', 'video', 'source')
-          config
-        end
-
-        ##
-        # Wrapper for transform_urls_to_absolute_ones to pass the channel_url.
-        #
-        # @param env [Hash]
-        # @return [nil]
-        def transform_urls_to_absolute_ones(env)
-          HtmlTransformers::TransformUrlsToAbsoluteOnes.new(channel_url).call(**env)
-        end
-
-        ##
-        # Wrapper for wrap_img_in_a.
-        #
-        # @param env [Hash]
-        # @return [nil]
-        def wrap_img_in_a(env)
-          HtmlTransformers::WrapImgInA.new.call(**env)
-        end
       end
     end
   end

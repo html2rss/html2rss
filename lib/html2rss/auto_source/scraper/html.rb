@@ -100,14 +100,24 @@ module Html2rss
 
         private
 
+        ##
+        # @return [Integer]
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
+
+        ##
+        # @return [Boolean]
         def use_top_selectors = @opts[:use_top_selectors] || DEFAULT_USE_TOP_SELECTORS
 
+        ##
+        # @param node [Nokogiri::XML::Node]
+        # @return [Integer]
         def anchor_count(node)
-          @anchor_counts ||= {}
-          @anchor_counts[node.path] ||= node.name == 'a' ? 1 : node.css('a').size
+          (@anchor_counts ||= {}.compare_by_identity)[node] ||= node.name == 'a' ? 1 : node.css('a').size
         end
 
+        ##
+        # @param node [Nokogiri::XML::Node]
+        # @return [Boolean]
         def relevant_anchor?(node)
           destination_facts = @link_heuristics.destination_facts(node)
           return false unless destination_facts
@@ -115,14 +125,24 @@ module Html2rss
           !noise_anchor?(node, destination_facts)
         end
 
+        ##
+        # @yield [article_tag, selected_anchor]
+        # @yieldparam article_tag [Nokogiri::XML::Node]
+        # @yieldparam selected_anchor [Nokogiri::XML::Node]
+        # @return [Enumerator, nil]
         def each_article_tag(&block)
           return enum_for(:each_article_tag) unless block
 
-          list_candidates.each_article_tag(anchor_filter: method(:relevant_anchor?),
-                                           boundary_condition: method(:article_tag_condition?),
-                                           &block)
+          anchor_filter = ->(node) { relevant_anchor?(node) }
+          boundary_condition = ->(node) { article_tag_condition?(node) }
+
+          list_candidates.each_article_tag(anchor_filter:, boundary_condition:, &block)
         end
 
+        ##
+        # @param article_tag [Nokogiri::XML::Node]
+        # @param selected_anchor [Nokogiri::XML::Node, nil]
+        # @return [Hash, nil]
         def extract_article(article_tag, selected_anchor: nil)
           selected_anchor ||= preferred_anchor_for(article_tag)
           return unless selected_anchor
@@ -131,18 +151,28 @@ module Html2rss
           @extractor.new(article_tag, base_url: @url, selected_anchor:).call
         end
 
+        ##
+        # @param anchor [Nokogiri::XML::Node]
+        # @param destination_facts [DestinationFacts]
+        # @return [Boolean]
         def noise_anchor?(anchor, destination_facts) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
           return true unless destination_facts
 
-          text = HtmlExtractor.extract_visible_text(anchor).to_s.strip
+          (@noise_anchors ||= {}.compare_by_identity)[anchor] ||= begin
+            text = HtmlExtractor.extract_visible_text(anchor).to_s.strip
 
-          destination_facts.taxonomy_path ||
-            short_utility_label?(text, destination_facts) ||
-            (@link_heuristics.recommended_text?(text) && destination_facts.shallow) ||
-            (@link_heuristics.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
-            (@link_heuristics.utility_text?(text) && destination_facts.vanity_path)
+            destination_facts.taxonomy_path ||
+              short_utility_label?(text, destination_facts) ||
+              (@link_heuristics.recommended_text?(text) && destination_facts.shallow) ||
+              (@link_heuristics.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
+              (@link_heuristics.utility_text?(text) && destination_facts.vanity_path)
+          end
         end
 
+        ##
+        # @param text [String]
+        # @param destination_facts [DestinationFacts]
+        # @return [Boolean]
         def short_utility_label?(text, destination_facts)
           destination_facts.utility_path &&
             !destination_facts.content_path &&
@@ -150,11 +180,16 @@ module Html2rss
             text.scan(/\p{Alnum}+/).size <= 3
         end
 
+        ##
+        # @param article_tag [Nokogiri::XML::Node]
+        # @return [Nokogiri::XML::Node, nil]
         def preferred_anchor_for(article_tag)
           article_tag.css(HtmlExtractor::MAIN_ANCHOR_SELECTOR).find { relevant_anchor?(_1) } ||
             HtmlExtractor.main_anchor_for(article_tag)
         end
 
+        ##
+        # @return [HtmlExtractor::ListCandidates]
         def list_candidates
           HtmlExtractor::ListCandidates.new(
             parsed_body,
