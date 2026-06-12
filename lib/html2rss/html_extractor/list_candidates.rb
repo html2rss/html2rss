@@ -75,15 +75,9 @@ module Html2rss
       def each_anchor(anchor_filter:)
         return enum_for(:each_anchor, anchor_filter:) unless block_given?
 
-        traversal_root&.traverse do |node|
-          yield node if relevant_anchor?(node, anchor_filter:)
+        traversal_root&.css(HtmlExtractor::MAIN_ANCHOR_SELECTOR)&.each do |node|
+          yield node if anchor_filter.call(node)
         end
-      end
-
-      def relevant_anchor?(node, anchor_filter:)
-        node.element? &&
-          node.matches?(HtmlExtractor::MAIN_ANCHOR_SELECTOR) &&
-          anchor_filter.call(node)
       end
 
       def traversal_root
