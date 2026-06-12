@@ -31,6 +31,8 @@ module Html2rss
 
       # Shared context for all anchors in one semantic container.
       class Context
+        attr_reader :container
+
         # Ancestor tags that usually indicate navigation/utility regions.
         UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].freeze
 
@@ -138,10 +140,11 @@ module Html2rss
           heading = @context.heading
           return false unless heading
 
-          # Optimization: check if anchor is heading or a descendant of heading
           curr = @anchor
+          container = @context.container
           while curr.respond_to?(:parent)
             return true if curr == heading
+            break if curr == container
 
             curr = curr.parent
           end
@@ -181,8 +184,10 @@ module Html2rss
 
         def utility_landmark_ancestor?
           curr = @anchor.parent
+          container = @context.container
           while curr.respond_to?(:parent)
             return true if Context::UTILITY_LANDMARK_TAGS.include?(curr.name)
+            break if curr == container
 
             curr = curr.parent
           end

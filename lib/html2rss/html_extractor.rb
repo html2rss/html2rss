@@ -53,8 +53,19 @@ module Html2rss
 
       ##
       # @param node [Nokogiri::XML::Node]
+      # @param cache [Hash, nil] identity cache used to store results (must use compare_by_identity)
       # @return [Boolean] true when the node belongs to ignored DOM chrome
-      def ignored_container_path?(node)
+      def ignored_container_path?(node, cache = nil)
+        return cache[node] if cache&.key?(node)
+
+        res = walk_ignored_container_path?(node)
+        cache[node] = res if cache
+        res
+      end
+
+      private
+
+      def walk_ignored_container_path?(node)
         curr = node
         while curr.respond_to?(:parent)
           return true if IGNORED_CONTAINER_TAGS.include?(curr.name)
@@ -63,8 +74,6 @@ module Html2rss
         end
         false
       end
-
-      private
 
       def visible_child?(node)
         !INVISIBLE_CONTENT_TAGS.include?(node.name) &&

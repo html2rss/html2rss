@@ -30,6 +30,9 @@ module Html2rss
           /(?:window|self|globalThis)\.angular\s*=\s*/m
         ].freeze
 
+        # Combined regex for faster matching of global assignments.
+        GLOBAL_ASSIGNMENT_REGEXP = Regexp.union(GLOBAL_ASSIGNMENT_PATTERNS).freeze
+
         # Preferred keys when extracting title-like values from state payloads.
         TITLE_KEYS = %i[title headline name text].freeze
         # Preferred keys when extracting URL-like values from state payloads.
@@ -53,7 +56,11 @@ module Html2rss
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @return [Array<Hash, Array>] parsed JSON documents discovered in scripts
           def json_documents(parsed_body)
-            script_documents(parsed_body) + assignment_documents(parsed_body)
+            # Use identity-based cache to avoid double-parsing of the same document.
+            # rubocop:disable ThreadSafety/ClassInstanceVariable
+            (@cache ||= {}.compare_by_identity)[parsed_body] ||=
+              script_documents(parsed_body) + assignment_documents(parsed_body)
+            # rubocop:enable ThreadSafety/ClassInstanceVariable
           end
 
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
@@ -80,15 +87,10 @@ module Html2rss
           def assignment_payload(text)
             trimmed = text.to_s.strip
             return if trimmed.empty?
+            return unless trimmed.match?(GLOBAL_ASSIGNMENT_REGEXP)
 
-            GLOBAL_ASSIGNMENT_PATTERNS.each do |pattern|
-              next unless trimmed.match?(pattern)
-
-              payload = trimmed.sub(pattern, '')
-              return extract_assignment_payload(payload)
-            end
-
-            nil
+            payload = trimmed.sub(GLOBAL_ASSIGNMENT_REGEXP, '')
+            extract_assignment_payload(payload)
           end
 
           # @param text [String] text potentially containing JSON-like payloads
@@ -116,8 +118,10 @@ module Html2rss
             in_string = false
             escape = false
 
-            text.each_char.with_index do |char, index|
-              next if index < start_index
+            i = start_index
+            len = text.length
+            while i < len
+              char = text[i]
 
               if in_string
                 if escape
@@ -127,24 +131,22 @@ module Html2rss
                 elsif char == '"'
                   in_string = false
                 end
-                next
+              else
+                case char
+                when '"' then in_string = true
+                when '{' then stack << '}'
+                when '[' then stack << ']'
+                when '}', ']'
+                  expected = stack.pop
+                  return i if expected == char && stack.empty?
+                end
               end
-
-              case char
-              when '"'
-                in_string = true
-              when '{'
-                stack << '}'
-              when '['
-                stack << ']'
-              when '}', ']'
-                expected = stack.pop
-                return index if expected == char && stack.empty?
-              end
+              i += 1
             end
 
             nil
           end
+
           # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
           # @param payload [String, nil] JSON payload to parse
@@ -416,12 +418,17 @@ module Html2rss
 
         attr_reader :parsed_body
 
+        # @return [Boolean] true when the page contains article-like arrays in JSON state
+        def extractable?
+          json_documents.any? { CandidateDetector.candidate_array?(_1) }
+        end
+
         # @yield [Hash{Symbol => Object}] normalized article hash
         # @return [Enumerator, void] article enumerator when no block is given
         def each
           return enum_for(:each) unless block_given?
 
-          DocumentScanner.json_documents(parsed_body).each do |document|
+          json_documents.each do |document|
             discover_articles(document) do |article|
               yield article if article
             end
@@ -431,6 +438,10 @@ module Html2rss
         private
 
         attr_reader :url
+
+        def json_documents
+          self.class.json_documents(parsed_body)
+        end
 
         def discover_articles(document, &block)
           case document

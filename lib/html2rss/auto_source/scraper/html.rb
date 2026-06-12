@@ -63,6 +63,7 @@ module Html2rss
           @extractor = extractor
           @opts = opts
           @link_heuristics = LinkHeuristics.new(url)
+          @ignored_cache = {}.compare_by_identity
         end
 
         attr_reader :parsed_body
@@ -73,10 +74,13 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          each_article_tag do |article_tag, selected_anchor|
-            article_hash = extract_article(article_tag, selected_anchor:)
-            yield article_hash if article_hash
-          end
+          articles.each { yield _1 }
+        end
+
+        ##
+        # @return [Boolean] true when the scraper can likely extract articles
+        def extractable?
+          articles.any?
         end
 
         ##
@@ -91,7 +95,7 @@ module Html2rss
         # @return [Boolean] true when the node is a good extraction boundary
         def article_tag_condition?(node)
           # Ignore tags that are below ignored DOM chrome.
-          return false if HtmlExtractor.ignored_container_path?(node)
+          return false if HtmlExtractor.ignored_container_path?(node, @ignored_cache)
           return true if %w[body html].include?(node.name)
           return false unless (parent = node.parent)
 
@@ -99,6 +103,12 @@ module Html2rss
         end
 
         private
+
+        def articles
+          @articles ||= each_article_tag.filter_map do |article_tag, selected_anchor|
+            extract_article(article_tag, selected_anchor:)
+          end
+        end
 
         ##
         # @return [Integer]
