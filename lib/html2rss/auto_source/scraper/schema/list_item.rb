@@ -16,9 +16,10 @@ module Html2rss
 
           # @return [Html2rss::Url, nil]
           def url
-            url = schema_object.dig(:item, :url) || super
+            return @url if defined?(@url)
 
-            Url.from_relative(url, base_url || url) if url
+            item_url = schema_object.dig(:item, :url)
+            @url = item_url ? Url.from_relative(item_url, base_url || item_url) : super
           end
         end
       end

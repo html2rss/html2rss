@@ -13,24 +13,10 @@ module Html2rss
         class Thing
           # Supported Schema.org `@type` values mapped to article extraction.
           SUPPORTED_TYPES = %w[
-            AdvertiserContentArticle
-            AnalysisNewsArticle
-            APIReference
-            Article
-            AskPublicNewsArticle
-            BackgroundNewsArticle
-            BlogPosting
-            DiscussionForumPosting
-            LiveBlogPosting
-            NewsArticle
-            OpinionNewsArticle
-            Report
-            ReportageNewsArticle
-            ReviewNewsArticle
-            SatiricalArticle
-            ScholarlyArticle
-            SocialMediaPosting
-            TechArticle
+            AdvertiserContentArticle AnalysisNewsArticle APIReference Article
+            AskPublicNewsArticle BackgroundNewsArticle BlogPosting DiscussionForumPosting
+            LiveBlogPosting NewsArticle OpinionNewsArticle Report ReportageNewsArticle
+            ReviewNewsArticle SatiricalArticle ScholarlyArticle SocialMediaPosting TechArticle
           ].to_set.freeze
 
           # Attributes exposed by `#call` in generated article hashes.
@@ -44,21 +30,14 @@ module Html2rss
           end
 
           # @return [Hash] the scraped article hash with DEFAULT_ATTRIBUTES
-          def call
-            DEFAULT_ATTRIBUTES.to_h do |attribute|
-              [attribute, public_send(attribute)]
-            end
-          end
+          def call = DEFAULT_ATTRIBUTES.to_h { [_1, public_send(_1)] }
 
           # @return [String, nil] stable schema object identifier
           def id
             return @id if defined?(@id)
 
             id = normalized_id(schema_object[:@id], reference_url: url || base_url) || url&.path.to_s
-
-            return if id.empty?
-
-            @id = id
+            @id = id.to_s.empty? ? nil : id
           end
 
           # @return [String, nil] article title
@@ -66,26 +45,28 @@ module Html2rss
 
           # @return [String, nil] longest available description field
           def description
-            schema_object.values_at(:description, :schema_object_body, :abstract)
-                         .max_by { |string| string.to_s.size }
+            schema_object.values_at(:description, :schema_object_body, :abstract).max_by { _1.to_s.size }
           end
 
           # @return [Html2rss::Url, nil] the URL of the schema object
           def url
+            return @url if defined?(@url)
+
             url = schema_object[:url]
             if url.to_s.empty?
               Log.debug("Schema#Thing.url: no url in schema_object: #{schema_object.inspect}")
-              return
+              return @url = nil
             end
 
-            Url.from_relative(url, base_url || url)
+            @url = Url.from_relative(url, base_url || url)
           end
 
           # @return [Html2rss::Url, nil] normalized article image URL
           def image
-            if (image_url = image_urls.first)
-              Url.from_relative(image_url, base_url || image_url)
-            end
+            return @image if defined?(@image)
+
+            img_url = image_urls.first
+            @image = img_url ? Url.from_relative(img_url, base_url || img_url) : nil
           end
 
           # @return [String, nil] published-at timestamp string
@@ -93,24 +74,23 @@ module Html2rss
 
           # @return [Array<String>, nil] extracted category labels
           def categories
-            return @categories if defined?(@categories)
-
-            @categories = CategoryExtractor.call(schema_object)
+            @categories ||= CategoryExtractor.call(schema_object)
           end
 
           attr_reader :schema_object, :base_url
 
           # @return [Array<String>] normalized image URL candidates
           def image_urls
-            schema_object.values_at(:image, :thumbnailUrl).filter_map do |object|
-              next unless object
+            @image_urls ||= schema_object.values_at(:image, :thumbnailUrl).filter_map { image_url_from(_1) }
+          end
 
-              if object.is_a?(String)
-                object
-              elsif object.is_a?(Hash) && object[:@type] == 'ImageObject'
-                object[:url] || object[:contentUrl]
-              end
-            end
+          private
+
+          def image_url_from(obj)
+            return obj if obj.is_a?(String)
+            return unless obj.is_a?(Hash) && obj[:@type] == 'ImageObject'
+
+            obj[:url] || obj[:contentUrl]
           end
 
           # @param value [String, Symbol, nil] candidate schema identifier
@@ -120,10 +100,8 @@ module Html2rss
             text = value.to_s
             return if text.empty?
 
-            normalized_url = normalized_id_url(text, reference_url:)
-            return text unless reference_url && normalized_url.host == reference_url.host
-
-            normalized_id_value(normalized_url)
+            norm_url = normalized_id_url(text, reference_url:)
+            reference_url && norm_url.host == reference_url.host ? normalized_id_value(norm_url) : text
           rescue ArgumentError
             text
           end
@@ -132,11 +110,7 @@ module Html2rss
           # @param reference_url [Html2rss::Url, nil] URL used to resolve relative IDs
           # @return [Html2rss::Url] normalized identifier URL
           def normalized_id_url(text, reference_url:)
-            if text.start_with?('/')
-              Url.from_relative(text, reference_url || text)
-            else
-              Url.from_absolute(text)
-            end
+            text.start_with?('/') ? Url.from_relative(text, reference_url || text) : Url.from_absolute(text)
           end
 
           # @param url [Html2rss::Url] normalized identifier URL
@@ -144,17 +118,14 @@ module Html2rss
           def normalized_id_value(url)
             path = url.path.to_s
             return "#{path}?#{url.query}" if (path.empty? || path == '/') && !url.query.to_s.empty?
-            return path unless path.empty?
 
-            url.query
+            path.empty? ? url.query : path
           end
 
           # @param url [String, Html2rss::Url, nil] candidate page URL
           # @return [Html2rss::Url, nil] normalized absolute URL for schema resolution
           def normalized_base_url(url)
-            return if url.to_s.strip.empty?
-
-            Url.from_absolute(url)
+            Url.from_absolute(url) unless url.to_s.strip.empty?
           rescue ArgumentError
             nil
           end
