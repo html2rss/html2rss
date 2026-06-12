@@ -72,19 +72,25 @@ module Html2rss
 
           # @return [Html2rss::Url, nil] the URL of the schema object
           def url
+            return @url if defined?(@url)
+
             url = schema_object[:url]
             if url.to_s.empty?
               Log.debug("Schema#Thing.url: no url in schema_object: #{schema_object.inspect}")
-              return
+              return @url = nil
             end
 
-            Url.from_relative(url, base_url || url)
+            @url = Url.from_relative(url, base_url || url)
           end
 
           # @return [Html2rss::Url, nil] normalized article image URL
           def image
+            return @image if defined?(@image)
+
             if (image_url = image_urls.first)
-              Url.from_relative(image_url, base_url || image_url)
+              @image = Url.from_relative(image_url, base_url || image_url)
+            else
+              @image = nil
             end
           end
 
@@ -102,7 +108,9 @@ module Html2rss
 
           # @return [Array<String>] normalized image URL candidates
           def image_urls
-            schema_object.values_at(:image, :thumbnailUrl).filter_map do |object|
+            return @image_urls if defined?(@image_urls)
+
+            @image_urls = schema_object.values_at(:image, :thumbnailUrl).filter_map do |object|
               next unless object
 
               if object.is_a?(String)
