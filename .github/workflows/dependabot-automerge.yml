@@ -1,6 +1,7 @@
 name: Dependabot Automerge
-on: pull_request_target
-
+on:
+  pull_request:
+    branches: [master]
 permissions:
   contents: write
   pull-requests: write
