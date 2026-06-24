@@ -97,6 +97,10 @@ module Html2rss
 
       attr_reader :ctx, :browser, :skip_request_resources, :referer, :latest_navigation_response, :main_frame
 
+      ##
+      # Re-raises a deferred navigation error when one was captured.
+      #
+      # @raise [Html2rss::Error] when a navigation request or response validation failed
       def raise_navigation_error_if_any
         raise @navigation_error if @navigation_error
       end
