@@ -305,7 +305,7 @@ module Html2rss
           # rubocop:disable Metrics/MethodLength
           # @param entry [Hash] raw article entry candidate
           # @param base_url [String, Html2rss::Url] base URL for relative link resolution
-          # @return [Hash{Symbol => Object}, nil] normalized article hash for downstream extraction
+          # @return [Hash{Symbol => Object, nil}] normalized article hash for downstream extraction
           def normalise(entry, base_url:)
             return unless entry.is_a?(Hash)
 

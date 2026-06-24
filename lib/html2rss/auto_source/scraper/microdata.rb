@@ -92,7 +92,7 @@ module Html2rss
         attr_reader :parsed_body, :url
 
         # @param root [Nokogiri::XML::Element] supported Microdata root node
-        # @return [Hash{Symbol => Object}, nil] normalized article hash
+        # @return [Hash{Symbol => Object, nil}] normalized article hash
         def article_from(root)
           schema_object = SchemaObjectBuilder.call(root)
           return unless schema_object
@@ -378,7 +378,7 @@ module Html2rss
           extend ValueNormalizer
 
           # @param root [Nokogiri::XML::Element] supported microdata root node
-          # @return [Hash{Symbol => Object}, nil] compact schema-like object
+          # @return [Hash{Symbol => Object, nil}] compact schema-like object
           def call(root)
             type = Microdata.supported_type_name(root)
             return unless type

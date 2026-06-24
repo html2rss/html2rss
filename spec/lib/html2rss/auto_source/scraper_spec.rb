@@ -63,7 +63,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         expect { described_class.from(parsed_body) }
           .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
             expect(error.category).to eq(:blocked_surface)
-            expect(error.message).to match(/blocked surface likely \(anti-bot or interstitial\)/)
+            expect(error.message).to include('blocked surface likely (anti-bot or interstitial)')
           }
       end
     end
@@ -79,7 +79,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         expect { described_class.from(parsed_body) }
           .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
             expect(error.category).to eq(:app_shell)
-            expect(error.message).to match(/app-shell surface detected/)
+            expect(error.message).to include('app-shell surface detected')
           }
       end
     end
@@ -98,7 +98,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         expect { described_class.from(parsed_body) }
           .to raise_error(Html2rss::AutoSource::Scraper::NoScraperFound) { |error|
             expect(error.category).to eq(:app_shell)
-            expect(error.message).to match(/app-shell surface detected/)
+            expect(error.message).to include('app-shell surface detected')
           }
       end
     end

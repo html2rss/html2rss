@@ -29,7 +29,7 @@ module Html2rss
       # Validates a configuration hash with the runtime validator.
       #
       # @param config [Hash{Symbol => Object}] the configuration hash
-      # @param params [Hash{Symbol => Object}, Hash{String => Object}, nil] dynamic parameters for string formatting
+      # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
       # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
       def validate(config, params: UNSET)
         prepared_config = prepare_for_validation(resolve_effective_config(config, params:))
@@ -56,7 +56,7 @@ module Html2rss
       # @param file [String] the YAML file to load
       # @param feed_name [String, nil] optional feed name for multi-feed files
       # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
-      # @param params [Hash{Symbol => Object}, Hash{String => Object}, nil] dynamic parameters for string formatting
+      # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
       # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
       def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
         validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
@@ -99,7 +99,7 @@ module Html2rss
       # and returns a new configuration object.
       #
       # @param config [Hash{Symbol => Object}] the configuration hash.
-      # @param params [Hash{Symbol => Object}, Hash{String => Object}, nil] dynamic parameters for string formatting.
+      # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting.
       # @return [Html2rss::Config] the configuration object.
       def from_hash(config, params: UNSET)
         new(resolve_effective_config(config, params:))
