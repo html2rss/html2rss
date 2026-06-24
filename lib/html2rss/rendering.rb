@@ -4,6 +4,8 @@ module Html2rss
   # Namespace for HTML rendering logic, used to generate rich content such as
   # images, audio, video, or embedded documents for feed descriptions.
   #
+  # @see Html2rss::Rendering::DescriptionBuilder
+  #
   # @example
   #   Html2rss::Rendering::ImageRenderer.new(
   #     url: "https://example.com/image.jpg",
@@ -16,8 +18,6 @@ module Html2rss
   #     image: "https://example.com/image.jpg",
   #     title: "Example"
   #   )
-  #
-  # @see Html2rss::Rendering::DescriptionBuilder
   module Rendering
   end
 end
