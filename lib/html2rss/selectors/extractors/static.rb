@@ -17,7 +17,7 @@ module Html2rss
       #    'Foobar'
       class Static
         # The available option for the static extractor.
-        Options = Struct.new('StaticOptions', :static, keyword_init: true) # rubocop:disable Style/RedundantStructKeywordInit
+        Options = Struct.new('StaticOptions', :static, keyword_init: true)
 
         ##
         # Initializes the Static extractor.

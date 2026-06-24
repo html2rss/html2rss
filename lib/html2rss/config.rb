@@ -69,9 +69,9 @@ module Html2rss
     # @return [Hash{Symbol => Object}] request envelope configuration
     def request = config[:request]
 
-    # @return [Hash{Symbol => Object}, nil] selectors configuration
+    # @return [Hash{Symbol => Object, nil}] selectors configuration
     def selectors = config[:selectors]
-    # @return [Hash{Symbol => Object}, nil] auto-source configuration
+    # @return [Hash{Symbol => Object, nil}] auto-source configuration
     def auto_source = config[:auto_source]
 
     private
