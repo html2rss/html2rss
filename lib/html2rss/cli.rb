@@ -48,6 +48,9 @@ module Html2rss
     method_option :max_requests,
                   type: :numeric,
                   desc: 'Maximum requests to allow for this feed build'
+    method_option :input,
+                  type: :string,
+                  desc: 'Local HTML file path to read input from'
     # @param yaml_file [String] path to YAML config
     # @param feed_name [String, nil] optional named feed in multi-feed config
     # @return [void]
@@ -55,6 +58,7 @@ module Html2rss
       config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
       config[:params] = options[:params] || {}
       apply_runtime_request_overrides!(config)
+      apply_local_file_input!(config, options[:input]) if options[:input]
 
       puts(execute_feed { Html2rss.feed(config) })
     end
@@ -76,20 +80,17 @@ module Html2rss
     method_option :max_requests,
                   type: :numeric,
                   desc: 'Maximum requests to allow for this feed build'
-    # @param url [String] source page URL for auto discovery
+    method_option :input,
+                  type: :string,
+                  desc: 'Local HTML file path to read input from'
+    # @param url [String, nil] source page URL for auto discovery
     # @return [void]
-    def auto(url) # rubocop:disable Metrics/MethodLength
+    def auto(url = nil)
       format = options.fetch(:format, 'rss')
-      source_method = format == 'jsonfeed' ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
+      strategy, local_file_path, url = prepare_auto_inputs(url, options[:input])
 
       result = execute_feed do
-        source_method.call(
-          url,
-          strategy: current_strategy,
-          items_selector: options[:items_selector],
-          max_redirects: options[:max_redirects],
-          max_requests: options[:max_requests]
-        )
+        source_call(url, strategy, local_file_path, format == 'jsonfeed')
       end
 
       puts(format == 'jsonfeed' ? JSON.pretty_generate(result) : result)
@@ -159,6 +160,33 @@ module Html2rss
       config.delete(:request) if request_config.empty?
     end
 
+    def apply_local_file_input!(config, input_path)
+      file_path = check_file_exists!(input_path)
+      config[:strategy] = :local_file
+      config[:request] = (config[:request] || {}).merge(local_file_path: file_path)
+
+      return unless config.dig(:channel, :url).to_s.empty?
+
+      config[:channel] = (config[:channel] || {}).merge(
+        url: detect_base_url!(file_path, 'Please specify a channel.url in the config.')
+      )
+    end
+
+    def prepare_auto_inputs(url, input_option)
+      if input_option.nil?
+        raise Thor::Error, 'A URL is required unless --input is specified' unless url
+
+        return [current_strategy, nil, url]
+      end
+
+      file_path = check_file_exists!(input_option)
+      detected_url = url || detect_base_url!(
+        file_path, 'Please specify a URL: html2rss auto [URL] --input <file>'
+      )
+
+      [:local_file, file_path, detected_url]
+    end
+
     def request_controls
       Html2rss::RequestControls.new(
         strategy: options[:strategy]&.to_sym,
@@ -212,6 +240,29 @@ module Html2rss
            Html2rss::RequestService::BlockedSurfaceDetected,
            Html2rss::NoFeedItemsExtracted => error
       raise Thor::Error, error.message
+    end
+
+    def source_call(url, strategy, local_file_path, is_json)
+      method = is_json ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
+      method.call(
+        url,
+        strategy:,
+        items_selector: options[:items_selector],
+        max_redirects: options[:max_redirects],
+        max_requests: options[:max_requests],
+        local_file_path:
+      )
+    end
+
+    def check_file_exists!(path)
+      File.expand_path(path).tap do |file_path|
+        raise Thor::Error, "Input file does not exist: #{path}" unless File.exist?(file_path)
+      end
+    end
+
+    def detect_base_url!(file_path, error_hint)
+      Html2rss::Url.extract_from_html(File.read(file_path))&.to_s ||
+        raise(Thor::Error, "Could not auto-detect a base URL from HTML metadata. #{error_hint}")
     end
   end
 end

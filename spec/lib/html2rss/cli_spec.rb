@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'tmpdir'
+require 'tempfile'
 
 RSpec.describe Html2rss::CLI do
   subject(:cli) { described_class.new }
@@ -89,6 +90,40 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:feed).with(hash_excluding(:request))
     end
+
+    context 'with input option' do
+      it 'uses local_file strategy and sets local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss).to receive(:config_from_yaml_file).and_return({ channel: { url: 'https://example.com' } })
+
+        cli.invoke(:feed, ['example.yml'], { input: 'spec/fixtures/local_feed_test.html' })
+
+        expect(Html2rss).to have_received(:feed).with(
+          hash_including(
+            strategy: :local_file,
+            request: hash_including(local_file_path: File.expand_path('spec/fixtures/local_feed_test.html'))
+          )
+        )
+      end
+
+      it 'auto-detects base URL from HTML input if config url is missing' do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss).to receive(:config_from_yaml_file).and_return({ channel: {} })
+
+        cli.invoke(:feed, ['example.yml'], { input: 'spec/fixtures/local_feed_test.html' })
+
+        expect(Html2rss).to have_received(:feed).with(
+          hash_including(
+            channel: hash_including(url: 'https://example.com/blog')
+          )
+        )
+      end
+
+      it 'raises Thor::Error when input file does not exist' do
+        allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+
+        expect { cli.invoke(:feed, ['example.yml'], { input: 'nonexistent.html' }) }
+          .to raise_error(Thor::Error, /Input file does not exist/)
+      end
+    end
   end
 
   describe '#auto' do
@@ -108,7 +143,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil)
+                                     max_requests: nil, local_file_path: nil)
     end
 
     it 'passes botasaurus strategy option to Html2rss.auto_source' do
@@ -116,7 +151,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :botasaurus, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil)
+                                     max_requests: nil, local_file_path: nil)
     end
 
     it 'passes the rss format option to Html2rss.auto_source' do
@@ -124,7 +159,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil)
+                                     max_requests: nil, local_file_path: nil)
     end
 
     it 'passes the jsonfeed format option to Html2rss.auto_json_feed' do
@@ -132,7 +167,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_json_feed)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil)
+                                     max_requests: nil, local_file_path: nil)
     end
 
     it 'prints the jsonfeed output when requested' do
@@ -147,21 +182,23 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: '.item', max_redirects: nil,
-                                     max_requests: nil)
+                                     max_requests: nil, local_file_path: nil)
     end
 
     it 'passes the max_redirects option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: 8, max_requests: nil)
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: 8, max_requests: nil,
+                                     local_file_path: nil)
     end
 
     it 'passes the max_requests option to Html2rss.auto_source' do
       cli.invoke(:auto, ['https://example.com'], { max_requests: 8 })
 
       expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: 8)
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: 8,
+                                     local_file_path: nil)
     end
 
     it 'passes auto strategy option to Html2rss.auto_source' do
@@ -169,7 +206,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil)
+                                     max_requests: nil, local_file_path: nil)
     end
 
     context 'when the redirect limit is hit' do
@@ -255,6 +292,49 @@ RSpec.describe Html2rss::CLI do
       it 'raises a CLI error with zero-items guidance' do
         expect { cli.auto('https://example.com') }
           .to raise_error(Thor::Error, /No feed items extracted after auto fallback/)
+      end
+    end
+
+    context 'with input option' do
+      it 'uses local_file strategy and extracts base URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        cli.invoke(:auto, [], { input: 'spec/fixtures/local_feed_test.html' })
+
+        expect(Html2rss).to have_received(:auto_source).with(
+          'https://example.com/blog',
+          strategy: :local_file,
+          items_selector: nil,
+          max_redirects: nil,
+          max_requests: nil,
+          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html')
+        )
+      end
+
+      it 'uses provided URL argument over auto-detection' do # rubocop:disable RSpec/ExampleLength
+        cli.invoke(:auto, ['https://custom-url.com'], { input: 'spec/fixtures/local_feed_test.html' })
+
+        expect(Html2rss).to have_received(:auto_source).with(
+          'https://custom-url.com',
+          strategy: :local_file,
+          items_selector: nil,
+          max_redirects: nil,
+          max_requests: nil,
+          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html')
+        )
+      end
+
+      it 'raises Thor::Error when input file does not exist' do
+        expect { cli.invoke(:auto, [], { input: 'nonexistent.html' }) }
+          .to raise_error(Thor::Error, /Input file does not exist/)
+      end
+
+      it 'raises Thor::Error when no URL is provided and no canonical metadata is found' do # rubocop:disable RSpec/ExampleLength
+        Tempfile.create(%w[test .html]) do |temp|
+          temp.write('<html><body>no url metadata</body></html>')
+          temp.close
+
+          expect { cli.invoke(:auto, [], { input: temp.path }) }
+            .to raise_error(Thor::Error, /Could not auto-detect a base URL/)
+        end
       end
     end
   end

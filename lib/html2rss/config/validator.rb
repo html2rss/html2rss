@@ -83,6 +83,7 @@ module Html2rss
         optional(:total_timeout_seconds).filled(:integer, gt?: 0)
         optional(:browserless).hash(BrowserlessRequestConfig)
         optional(:botasaurus).hash(BotasaurusRequestConfig)
+        optional(:local_file_path).filled(:string)
       end
 
       params do

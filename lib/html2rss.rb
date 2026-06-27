@@ -52,6 +52,8 @@ module Html2rss
     FeedPipeline.new(raw_config).to_json_feed
   end
 
+  # rubocop:disable Metrics/ParameterLists
+
   ##
   # Scrapes the provided URL and returns an RSS object.
   #
@@ -60,9 +62,15 @@ module Html2rss
   # @param items_selector [String, nil] optional selector hint for item extraction
   # @param max_redirects [Integer, nil] optional redirect limit override
   # @param max_requests [Integer, nil] optional request budget override
+  # @param local_file_path [String, nil] optional local HTML file path
   # @return [RSS::Rss] generated RSS feed
-  def self.auto_source(url, strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil)
-    feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:))
+  def self.auto_source(url,
+                       strategy: :auto,
+                       items_selector: nil,
+                       max_redirects: nil,
+                       max_requests: nil,
+                       local_file_path: nil)
+    feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:, local_file_path:))
   end
 
   ##
@@ -73,10 +81,19 @@ module Html2rss
   # @param items_selector [String, nil] optional selector hint for item extraction
   # @param max_redirects [Integer, nil] optional redirect limit override
   # @param max_requests [Integer, nil] optional request budget override
+  # @param local_file_path [String, nil] optional local HTML file path
   # @return [Hash] JSONFeed-compliant hash
-  def self.auto_json_feed(url, strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil)
-    json_feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:))
+  def self.auto_json_feed(url,
+                          strategy: :auto,
+                          items_selector: nil,
+                          max_redirects: nil,
+                          max_requests: nil,
+                          local_file_path: nil)
+    json_feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
+                                       local_file_path:))
   end
+
+  # rubocop:enable Metrics/ParameterLists
 
   # rubocop:disable ThreadSafety/ClassInstanceVariable
   class << self
@@ -125,12 +142,17 @@ module Html2rss
   class << self
     private
 
-    def build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:)
-      Config.auto_source_config(
+    def build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:, local_file_path: nil) # rubocop:disable Metrics/ParameterLists
+      config = Config.auto_source_config(
         url:,
         items_selector:,
         request_controls: shortcut_request_controls(strategy:, max_redirects:, max_requests:)
       )
+      if local_file_path
+        config[:request] ||= {}
+        config[:request][:local_file_path] = local_file_path
+      end
+      config
     end
 
     def shortcut_request_controls(strategy:, max_redirects:, max_requests:)
