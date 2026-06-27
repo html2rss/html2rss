@@ -1,0 +1,11 @@
+channel:
+  title: Local Test Feed
+  url: https://example.com/blog
+selectors:
+  items:
+    selector: ".item"
+  title:
+    selector: "h2"
+  link:
+    selector: "a"
+    extractor: href

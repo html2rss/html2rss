@@ -285,6 +285,38 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '.extract_from_html' do
+    it 'extracts canonical link' do
+      html = '<html><head><link rel="canonical" href="https://example.com/canonical"></head></html>'
+      expect(described_class.extract_from_html(html).to_s).to eq('https://example.com/canonical')
+    end
+
+    it 'extracts og:url' do
+      html = '<html><head><meta property="og:url" content="https://example.com/og-url"></head></html>'
+      expect(described_class.extract_from_html(html).to_s).to eq('https://example.com/og-url')
+    end
+
+    it 'extracts twitter:url' do
+      html = '<html><head><meta name="twitter:url" content="https://example.com/twitter-url"></head></html>'
+      expect(described_class.extract_from_html(html).to_s).to eq('https://example.com/twitter-url')
+    end
+
+    it 'extracts base href' do
+      html = '<html><head><base href="https://example.com/base-href"></head></html>'
+      expect(described_class.extract_from_html(html).to_s).to eq('https://example.com/base-href')
+    end
+
+    it 'returns nil if no indicator matches' do
+      html = '<html><head></head><body>hello</body></html>'
+      expect(described_class.extract_from_html(html)).to be_nil
+    end
+
+    it 'returns nil on invalid URL extracted' do
+      html = '<html><head><link rel="canonical" href="not-a-url"></head></html>'
+      expect(described_class.extract_from_html(html)).to be_nil
+    end
+  end
+
   describe 'immutability' do
     let(:url) { described_class.from_relative('/path', 'https://example.com') }
 

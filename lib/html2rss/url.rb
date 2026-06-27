@@ -2,6 +2,7 @@
 
 require 'addressable/uri'
 require 'cgi'
+require 'nokogiri'
 
 module Html2rss
   ##
@@ -55,10 +56,9 @@ module Html2rss
     # @return [Url, nil] the sanitized URL, or nil if no valid URL found
     def self.sanitize(raw_url)
       match = raw_url.to_s.match(%r{(?:(?:https?|ftp|mailto)://|mailto:)[^\s<>"]+})
-      url = match ? match[0].strip : ''
-      return nil if url.empty?
+      return unless match
 
-      new(Addressable::URI.parse(url).normalize)
+      new(Addressable::URI.parse(match[0].strip).normalize)
     end
 
     ##
@@ -70,10 +70,9 @@ module Html2rss
     def self.from_absolute(url_string)
       return url_string if url_string.is_a?(self)
 
-      url = new(Addressable::URI.parse(url_string.to_s.strip).normalize)
-      raise ArgumentError, 'URL must be absolute' unless url.absolute?
-
-      url
+      new(Addressable::URI.parse(url_string.to_s.strip).normalize).tap do |url|
+        raise ArgumentError, 'URL must be absolute' unless url.absolute?
+      end
     rescue Addressable::URI::InvalidURIError
       raise ArgumentError, 'URL must be absolute'
     end
@@ -92,14 +91,28 @@ module Html2rss
     #   Url.for_channel('/relative/path')
     #   # => raises ArgumentError: "URL must be absolute"
     def self.for_channel(url_string)
-      return nil if url_string.nil? || url_string.empty?
-
-      stripped = url_string.strip
+      stripped = url_string.to_s.strip
       return nil if stripped.empty?
 
-      url = from_absolute(stripped)
-      validate_channel_url(url)
-      url
+      from_absolute(stripped).tap { validate_channel_url(_1) }
+    end
+
+    ##
+    # Extracts a base URL from HTML metadata tags.
+    #
+    # @param html [String] raw HTML content
+    # @return [Url, nil] the extracted absolute URL, or nil if none is found
+    def self.extract_from_html(html)
+      doc = Nokogiri::HTML(html)
+      tags = { 'link[rel="canonical"]' => 'href', 'meta[property="og:url"]' => 'content',
+               'meta[name="twitter:url"]' => 'content', 'base[href]' => 'href' }
+      tags.each do |sel, attr|
+        val = doc.at_css(sel)&.[](attr).to_s.strip
+        return from_absolute(val) unless val.empty?
+      rescue ArgumentError
+        next
+      end
+      nil
     end
 
     ##

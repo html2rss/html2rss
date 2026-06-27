@@ -57,7 +57,8 @@ module Html2rss
       @strategies = {
         faraday: FaradayStrategy,
         botasaurus: BotasaurusStrategy,
-        browserless: BrowserlessStrategy
+        browserless: BrowserlessStrategy,
+        local_file: LocalFileStrategy
       }
       @default_strategy_name = :faraday
     end

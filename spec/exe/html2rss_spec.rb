@@ -112,4 +112,32 @@ RSpec.describe 'exe/html2rss', :slow do
       expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
     end
   end
+
+  context 'with option: --input' do
+    context 'with command: feed' do
+      it 'generates RSS using the local HTML file', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        output = `#{executable} feed spec/fixtures/local_feed_test.yml --input spec/fixtures/local_feed_test.html`
+
+        expect(output).to include(
+          '<title>Local Test Feed</title>',
+          '<title>Item 1</title>',
+          '<link>https://example.com/post-1</link>',
+          '<title>Item 2</title>',
+          '<link>https://example.com/post-2</link>'
+        )
+      end
+    end
+
+    context 'with command: auto' do
+      it 'automatically sources RSS using the local HTML file and canonical base URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        output = `#{executable} auto --input spec/fixtures/local_feed_test.html`
+
+        expect(output).to include(
+          '<channel>',
+          '<title>example.com: Blog</title>',
+          '<link>https://example.com/blog</link>'
+        )
+      end
+    end
+  end
 end

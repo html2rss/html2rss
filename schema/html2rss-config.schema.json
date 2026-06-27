@@ -535,6 +535,10 @@
             }
           },
           "required": []
+        },
+        "local_file_path": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": []
