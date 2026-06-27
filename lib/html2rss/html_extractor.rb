@@ -38,34 +38,21 @@ module Html2rss
       def extract_visible_text(tag, separator: ' ', exclude_nodes: nil)
         return tag.text.gsub(/\s+/, ' ').strip if tag.respond_to?(:text?) && tag.text?
 
-        parts = []
-        last_was_block = false
-
-        tag.children.each do |child|
-          next if exclude_nodes && exclude_nodes.include?(child)
-          next unless visible_child?(child)
-
-          child_text = if child.children.empty?
-                         child.text.to_s.gsub(/\s+/, ' ').strip
-                       else
-                         extract_visible_text(child, separator:, exclude_nodes:).to_s.strip
-                       end
-          next if child_text.empty?
-
-          child_text = "- #{child_text}" if child.name == 'li'
-
-          is_block = BLOCK_TAGS.include?(child.name)
-          if is_block || last_was_block
-            parts << (separator == ' ' ? "\n" : separator) unless parts.empty?
-          elsif !parts.empty?
-            parts << ' '
-          end
-
-          parts << child_text
-          last_was_block = is_block
-        end
-
+        parts = iterate_children(tag, separator, exclude_nodes)
         parts.join.squeeze(' ').gsub(/[ \t\r]*(\n|<br>)[ \t\r]*/, '\1').strip unless parts.empty?
+      end
+
+      def iterate_children(tag, separator, exclude_nodes)
+        last = false
+        tag.children.each_with_object([]) do |c, p|
+          next if exclude_nodes&.include?(c) || !visible_child?(c)
+
+          text, block = process_child_node(c, separator, exclude_nodes)
+          next if text.empty?
+
+          append_separator!(p, separator, block, last)
+          (p << text) && (last = block)
+        end
       end
 
       ##
@@ -90,6 +77,32 @@ module Html2rss
       end
 
       private
+
+      def process_child_node(child, separator, exclude_nodes)
+        child_text = get_child_text(child, separator, exclude_nodes)
+        return ['', false] if child_text.empty?
+
+        child_text = "- #{child_text}" if child.name == 'li'
+        [child_text, BLOCK_TAGS.include?(child.name)]
+      end
+
+      def get_child_text(child, separator, exclude_nodes)
+        if child.children.empty?
+          child.text.to_s.gsub(/\s+/, ' ').strip
+        else
+          extract_visible_text(child, separator:, exclude_nodes:).to_s.strip
+        end
+      end
+
+      def append_separator!(parts, separator, is_block, last_was_block)
+        return if parts.empty?
+
+        parts << if is_block || last_was_block
+                   (separator == ' ' ? "\n" : separator)
+                 else
+                   ' '
+                 end
+      end
 
       def walk_ignored_container_path?(node)
         curr = node
@@ -144,24 +157,34 @@ module Html2rss
         href = selected_anchor&.[]('href').to_s
 
         if href.empty?
-          if @fallback_anchorless
-            item_id = generate_id
-            Url.from_relative("##{item_id}", base_url) if item_id
-          end
+          anchorless_url_fallback
         else
           Url.from_relative(href.split('#').first.strip, base_url)
         end
       end
     end
 
+    def anchorless_url_fallback
+      return unless @fallback_anchorless
+
+      item_id = generate_id
+      Url.from_relative("##{item_id}", base_url) if item_id
+    end
+
     def extract_title
       title_source = heading || selected_anchor
       if title_source
         self.class.extract_visible_text(title_source)
-      elsif @fallback_anchorless && selected_anchor.nil?
-        text_node = article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }
-        text_node&.text&.strip
+      else
+        fallback_anchorless_title
       end
+    end
+
+    def fallback_anchorless_title
+      return unless @fallback_anchorless && selected_anchor.nil?
+
+      text_node = article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }
+      text_node&.text&.strip
     end
 
     def heading
@@ -169,11 +192,17 @@ module Html2rss
         tags = article_tag.css(HEADING_TAGS.join(','))
         if tags.any?
           select_best_heading(tags)
-        elsif @fallback_anchorless && selected_anchor.nil?
-          fallback_tags = article_tag.css('strong, b, [class*="title"], [class*="font-bold"], [class*="font-semibold"]')
-          fallback_tags.find { |t| !self.class.extract_visible_text(t).to_s.strip.empty? }
+        else
+          fallback_heading
         end
       end
+    end
+
+    def fallback_heading
+      return unless @fallback_anchorless && selected_anchor.nil?
+
+      fallback_tags = article_tag.css('strong, b, [class*="title"], [class*="font-bold"], [class*="font-semibold"]')
+      fallback_tags.find { |t| !self.class.extract_visible_text(t).to_s.strip.empty? }
     end
 
     def select_best_heading(tags)
@@ -200,32 +229,48 @@ module Html2rss
     end
 
     def generate_id
-      id_from_dom = [
-        article_tag['id'],
-        article_tag.at_css('[id]')&.attr('id')
-      ]
-      id_from_dom += [extract_url&.path, extract_url&.query] if selected_anchor
-      id_from_dom = id_from_dom.compact.reject(&:empty?).first
-
+      id_from_dom = parse_id_from_dom
       return id_from_dom if id_from_dom
 
-      heading_node = heading
-      heading_text = heading_node ? self.class.extract_visible_text(heading_node) : nil
-
-      if @fallback_anchorless && (heading_text.nil? || heading_text.strip.empty?)
-        text_node = article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }
-        heading_text = text_node&.text&.strip
-      end
-
+      heading_text = resolve_heading_text
       if heading_text && !heading_text.strip.empty?
-        slug = heading_text.downcase.gsub(/[^a-z0-9]+/, '-')
-        slug = slug[1..-1] if slug.start_with?('-')
-        slug = slug[0..-2] if slug.end_with?('-')
-        slug unless slug.empty?
+        generate_slug(heading_text)
       elsif @fallback_anchorless
-        text = self.class.extract_visible_text(article_tag).to_s.strip
-        Zlib.crc32(text).to_s(36) unless text.empty?
+        generate_content_hash
       end
+    end
+
+    def parse_id_from_dom
+      candidates = [article_tag['id'], article_tag.at_css('[id]')&.attr('id')]
+      candidates += [extract_url&.path, extract_url&.query] if selected_anchor
+      candidates.compact.reject(&:empty?).first
+    end
+
+    def resolve_heading_text
+      text = heading ? self.class.extract_visible_text(heading) : nil
+      if text.nil? || text.strip.empty?
+        fallback_text_node_content
+      else
+        text
+      end
+    end
+
+    def fallback_text_node_content
+      return unless @fallback_anchorless
+
+      article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }&.text&.strip
+    end
+
+    def generate_slug(text)
+      slug = text.downcase.gsub(/[^a-z0-9]+/, '-')
+      slug = slug[1..] if slug.start_with?('-')
+      slug = slug[0..-2] if slug.end_with?('-')
+      slug unless slug.empty?
+    end
+
+    def generate_content_hash
+      text = self.class.extract_visible_text(article_tag).to_s.strip
+      Zlib.crc32(text).to_s(36) unless text.empty?
     end
 
     def extract_image = ImageExtractor.call(article_tag, base_url:)

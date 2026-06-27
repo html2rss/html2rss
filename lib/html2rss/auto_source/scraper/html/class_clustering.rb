@@ -7,6 +7,7 @@ module Html2rss
         ##
         # ClassClustering clusters DOM elements on anchorless pages by class lists and scores
         # candidate groups to find the best list of content cards/articles.
+        # rubocop:disable Metrics/ClassLength
         class ClassClustering
           # Node tags considered layout containers
           LAYOUT_TAG_NAMES = Set['div', 'section', 'article'].freeze
@@ -51,17 +52,16 @@ module Html2rss
             class_groups = Hash.new { |h, k| h[k] = [] }
             cache = {}.compare_by_identity
 
-            @parsed_body.css('[class]').each do |node|
-              next if EXCLUDED_TAGS.include?(node.name)
-              next if HtmlExtractor.ignored_container_path?(node, cache)
-
-              cls = normalize_class(node['class'])
-              next if cls.empty?
-
-              class_groups[cls] << node
-            end
+            @parsed_body.css('[class]').each { |node| add_node_to_groups(node, class_groups, cache) }
 
             class_groups.select { |_, nodes| nodes.size >= @minimum_frequency }
+          end
+
+          def add_node_to_groups(node, class_groups, cache)
+            return if EXCLUDED_TAGS.include?(node.name) || HtmlExtractor.ignored_container_path?(node, cache)
+
+            cls = normalize_class(node['class'])
+            class_groups[cls] << node unless cls.empty?
           end
 
           def normalize_class(class_attr)
@@ -79,14 +79,15 @@ module Html2rss
           # Discard group A if any node of A contains > 1 node of another group B
           def filter_containers(groups)
             groups.reject do |cls_a, nodes_a|
-              groups.any? do |cls_b, nodes_b|
-                next false if cls_a == cls_b
-                next false unless LAYOUT_TAG_NAMES.include?(nodes_b.first.name)
+              groups.any? { |cls_b, nodes_b| cls_a != cls_b && container_of?(nodes_a, nodes_b) }
+            end
+          end
 
-                nodes_a.any? do |node_a|
-                  nodes_b.count { |node_b| node_a != node_b && node_b.ancestors.include?(node_a) } > 1
-                end
-              end
+          def container_of?(nodes_a, nodes_b)
+            return false unless LAYOUT_TAG_NAMES.include?(nodes_b.first.name)
+
+            nodes_a.any? do |node_a|
+              nodes_b.count { |node_b| node_a != node_b && node_b.ancestors.include?(node_a) } > 1
             end
           end
 
@@ -98,28 +99,27 @@ module Html2rss
             discarded = Set.new
             groups.each_key do |cls_a|
               groups.each_key do |cls_b|
-                next if cls_a == cls_b
-                next if discarded.include?(cls_a) || discarded.include?(cls_b)
+                next if cls_a == cls_b || discarded.include?(cls_a) || discarded.include?(cls_b)
 
-                nodes_a = groups[cls_a]
-                nodes_b = groups[cls_b]
-                next if nodes_a.size != nodes_b.size
-
-                # Fast Nokogiri-based 1-to-1 containment walk
-                next unless nodes_a.zip(nodes_b).all? { |a, b| a != b && b.ancestors.include?(a) }
-
-                words_a = avg_words(nodes_a)
-                words_b = avg_words(nodes_b)
-
-                discarded << if words_b >= 0.8 * words_a && LAYOUT_TAG_NAMES.include?(nodes_b.first.name)
-                               cls_a
-                             else
-                               cls_b
-                             end
+                resolve_1_to_1_overlap(cls_a, cls_b, groups, discarded)
               end
             end
 
-            groups.reject { |cls, _| discarded.include?(cls) }
+            groups.except(*discarded)
+          end
+
+          def resolve_1_to_1_overlap(cls_a, cls_b, groups, discarded)
+            nodes_a = groups[cls_a]
+            nodes_b = groups[cls_b]
+            return if nodes_a.size != nodes_b.size
+            return unless nodes_a.zip(nodes_b).all? { |a, b| a != b && b.ancestors.include?(a) }
+
+            discarded << (keep_descendant?(nodes_a, nodes_b) ? cls_a : cls_b)
+          end
+
+          def keep_descendant?(nodes_a, nodes_b)
+            avg_words(nodes_b) >= 0.8 * avg_words(nodes_a) &&
+              LAYOUT_TAG_NAMES.include?(nodes_b.first.name)
           end
 
           def select_best_group(groups)
@@ -127,27 +127,39 @@ module Html2rss
             best_score = -1
 
             groups.each_value do |nodes|
-              # Check words threshold for nodes (lazy word count evaluation)
-              # Exclude candidate groups with too few words to avoid small structural widgets
-              avg_w = avg_words(nodes)
-              next if avg_w < 5
+              score = score_group(nodes)
+              next if score.negative?
 
-              has_heading = nodes.any? { |n| n.at_css(HtmlExtractor::HEADING_TAGS.join(',')) || n.at_css('.font-bold, .font-semibold') }
-              has_time = nodes.any? { |n| n.at_css('time, [datetime]') }
-              contains_date = nodes.any? { |n| has_date?(n) }
-
-              score = nodes.size + (avg_w / 5.0)
-              score += 20 if has_heading
-              score += 20 if has_time
-              score += 40 if contains_date
-
-              if score > best_score
-                best_score = score
-                best_nodes = nodes
-              end
+              (best_nodes = nodes) && (best_score = score) if score > best_score
             end
 
             best_nodes
+          end
+
+          def score_group(nodes)
+            avg_w = avg_words(nodes)
+            return -1 if avg_w < 5
+
+            score = nodes.size + (avg_w / 5.0)
+            score += 20 if nodes_heading?(nodes)
+            score += 20 if nodes_time?(nodes)
+            score += 40 if nodes_date?(nodes)
+            score
+          end
+
+          def nodes_heading?(nodes)
+            nodes.any? do |n|
+              n.at_css(HtmlExtractor::HEADING_TAGS.join(',')) ||
+                n.at_css('.font-bold, .font-semibold')
+            end
+          end
+
+          def nodes_time?(nodes)
+            nodes.any? { |n| n.at_css('time, [datetime]') }
+          end
+
+          def nodes_date?(nodes)
+            nodes.any? { |n| date?(n) }
           end
 
           def avg_words(nodes)
@@ -158,12 +170,14 @@ module Html2rss
             @text_words[node] ||= HtmlExtractor.extract_visible_text(node).to_s.scan(/\p{Alnum}+/).size
           end
 
-          def has_date?(node)
+          def date?(node)
             @has_date[node] ||= begin
               text = HtmlExtractor.extract_visible_text(node).to_s
-              !!(text.match?(%r{\b\d{4}[-/]\d{2}[-/]\d{2}\b}) || text.match?(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i))
+              text.match?(%r{\b\d{4}[-/]\d{2}[-/]\d{2}\b}) ||
+                text.match?(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i)
             end
           end
+          # rubocop:enable Metrics/ClassLength
         end
       end
     end
