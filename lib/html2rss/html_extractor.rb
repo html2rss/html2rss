@@ -65,7 +65,7 @@ module Html2rss
           last_was_block = is_block
         end
 
-        parts.join.squeeze(' ').gsub(/\s*(\n|<br>)\s*/, '\1').strip unless parts.empty?
+        parts.join.squeeze(' ').gsub(/[ \t\r]*(\n|<br>)[ \t\r]*/, '\1').strip unless parts.empty?
       end
 
       ##

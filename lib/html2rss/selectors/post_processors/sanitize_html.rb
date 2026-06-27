@@ -134,7 +134,7 @@ module Html2rss
           sanitized_html.gsub!(/\s+/, ' ')
 
           # Restore newlines and clean up surrounding whitespace
-          sanitized_html.gsub!(/\s*__NEWLINE_PLACEHOLDER__\s*/, "\n")
+          sanitized_html.gsub!(/[ \t\r]*__NEWLINE_PLACEHOLDER__[ \t\r]*/, "\n")
           sanitized_html.gsub!(/\n{3,}/, "\n\n")
 
           sanitized_html.strip!
