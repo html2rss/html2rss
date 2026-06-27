@@ -203,4 +203,60 @@ RSpec.describe Html2rss::HtmlExtractor do
       end
     end
   end
+
+  context 'when fallback_anchorless is true and selected_anchor is nil' do
+    subject(:article_hash) do
+      described_class.new(
+        article_tag,
+        base_url: 'https://example.com',
+        selected_anchor: nil,
+        fallback_anchorless: true
+      ).call
+    end
+
+    context 'with strong fallback heading' do
+      let(:html) do
+        <<~HTML
+          <article>
+            <strong class="title">Fallback Article Title</strong>
+            <p>Some content description here.</p>
+          </article>
+        HTML
+      end
+      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+
+      it 'extracts the fallback title, url and id', :aggregate_failures do
+        expect(article_hash[:title]).to eq('Fallback Article Title')
+        expect(article_hash[:id]).to eq('fallback-article-title')
+        expect(article_hash[:url].to_s).to eq('https://example.com/#fallback-article-title')
+      end
+    end
+
+    context 'with no heading tags but has visible text' do
+      let(:html) do
+        <<~HTML
+          <article>
+            Some plain text description.
+          </article>
+        HTML
+      end
+      let(:article_tag) { Nokogiri::HTML.fragment(html) }
+
+      it 'falls back to text node content for title/id extraction', :aggregate_failures do
+        expect(article_hash[:title]).to eq('Some plain text description.')
+        expect(article_hash[:id]).to eq('some-plain-text-description')
+        expect(article_hash[:url].to_s).to eq('https://example.com/#some-plain-text-description')
+      end
+    end
+
+    context 'when article_tag is a text node' do
+      let(:article_tag) { Nokogiri::HTML.fragment('hello').children.first }
+
+      it 'falls back to generating a content hash ID', :aggregate_failures do
+        expect(article_hash[:title]).to be_nil
+        expect(article_hash[:id]).to eq('f01gna')
+        expect(article_hash[:url].to_s).to eq('https://example.com/#f01gna')
+      end
+    end
+  end
 end
