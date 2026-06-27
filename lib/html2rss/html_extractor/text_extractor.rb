@@ -21,7 +21,12 @@ module Html2rss
           return tag.text.gsub(/\s+/, ' ').strip if tag.respond_to?(:text?) && tag.text?
 
           parts = iterate_children(tag, separator, exclude_nodes)
-          parts.join.squeeze(' ').gsub(/[ \t\r]*(\n|<br>)[ \t\r]*/, '\1').strip unless parts.empty?
+          return if parts.empty?
+
+          parts.join.squeeze(' ')
+               .gsub(/[ \t\r]+(\n|<br>)/, '\1')
+               .gsub(/(\n|<br>)[ \t\r]+/, '\1')
+               .strip
         end
 
         private
