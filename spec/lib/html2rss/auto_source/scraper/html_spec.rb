@@ -81,7 +81,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       { title: 'Article 1 Headline',
         url: be_a(Html2rss::Url),
         image: nil,
-        description: 'Article 1 Headline Teaser for article 1. Read more',
+        description: 'Teaser for article 1.',
         id: '/article1/',
         published_at: nil,
         enclosures: [] }
@@ -90,7 +90,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       { title: 'Article 2 Headline',
         url: be_a(Html2rss::Url),
         image: nil,
-        description: 'Article 2 Headline Teaser for article 2. Read more',
+        description: 'Teaser for article 2.',
         id: '/article2/',
         published_at: nil,
         enclosures: [] }

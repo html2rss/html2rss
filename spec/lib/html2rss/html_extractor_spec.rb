@@ -61,7 +61,7 @@ RSpec.describe Html2rss::HtmlExtractor do
       it 'returns the article_hash', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(article_hash).to a_hash_including(
           title: 'Sample Heading',
-          description: 'Sample Heading FCK PTN Sample description',
+          description: "FCK PTN\nSample description",
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
           url: Html2rss::Url.from_absolute('https://example.com/sample'),
@@ -115,7 +115,7 @@ RSpec.describe Html2rss::HtmlExtractor do
       { title: nil,
         url: nil,
         image: be_a(Html2rss::Url),
-        description: 'FCK PTN Sample description',
+        description: "FCK PTN\nSample description",
         id: nil,
         published_at: be_a(DateTime),
         categories: [],

@@ -4,13 +4,9 @@ RSpec.describe Html2rss::Selectors::PostProcessors::MarkdownToHtml do
   subject { described_class.new(markdown, context).get }
 
   let(:html) do
-    ['<h1>Section</h1>',
-     '<p>Price: 12.34</p>',
-     '<ul>',
-     '<li>Item 1</li>',
-     '<li>Item 2</li>',
-     '</ul>',
-     "<p><code>puts 'hello world'</code></p>"].join(' ')
+    "<h1>Section</h1>\n\n<p>Price: 12.34</p>\n\n" \
+      "<ul>\n<li>Item 1</li>\n<li>Item 2</li>\n</ul>\n\n" \
+      "<p><code>puts 'hello world'</code></p>"
   end
   let(:markdown) do
     <<~MD

@@ -62,6 +62,7 @@ module Html2rss
           @url = url
           @extractor = extractor
           @opts = opts
+          @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
           @link_heuristics = LinkHeuristics.new(url)
           @ignored_cache = {}.compare_by_identity
         end
@@ -105,8 +106,19 @@ module Html2rss
         private
 
         def articles
-          @articles ||= each_article_tag.filter_map do |article_tag, selected_anchor|
-            extract_article(article_tag, selected_anchor:)
+          @articles ||= begin
+            extracted = each_article_tag.filter_map do |article_tag, selected_anchor|
+              extract_article(article_tag, selected_anchor:)
+            end
+
+            extracted += find_anchorless_articles if @fallback_anchorless
+            extracted
+          end
+        end
+
+        def find_anchorless_articles
+          ClassClustering.call(parsed_body, minimum_selector_frequency:).map do |node|
+            @extractor.new(node, base_url: @url, selected_anchor: nil, fallback_anchorless: true).call
           end
         end
 

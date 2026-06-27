@@ -37,7 +37,8 @@ module Html2rss
         html: {
           enabled: true,
           minimum_selector_frequency: Scraper::Html::DEFAULT_MINIMUM_SELECTOR_FREQUENCY,
-          use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS
+          use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS,
+          fallback_anchorless: true
         }
       },
       cleanup: Cleanup::DEFAULT_CONFIG
@@ -63,6 +64,7 @@ module Html2rss
         optional(:enabled).filled(:bool)
         optional(:minimum_selector_frequency).filled(:integer, gt?: 0)
         optional(:use_top_selectors).filled(:integer, gt?: 0)
+        optional(:fallback_anchorless).filled(:bool)
       end
     end.freeze
     private_constant :SCRAPER_CONFIG
