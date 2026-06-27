@@ -28,6 +28,7 @@ RSpec.describe Html2rss::AutoSource do
         <body>
           <article id="article-1">
             <h2>Article 1 Title <!-- remove this --></h2>
+            <p>This is some teaser content about Article 1.</p>
             <a href="/article1">Read more</a>
           </article>
         </body>
@@ -101,7 +102,7 @@ RSpec.describe Html2rss::AutoSource do
       it 'preserves article content', :aggregate_failures do
         expect(article.title).to eq('Article 1 Title')
         expect(article.id).to eq('article-1')
-        expect(article.description).to include('Read more')
+        expect(article.description).to eq('This is some teaser content about Article 1.')
         expect(article.scraper).to eq(Html2rss::AutoSource::Scraper::SemanticHtml)
       end
 

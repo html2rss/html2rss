@@ -193,7 +193,7 @@ RSpec.describe Html2rss do
         it 'has the description derived from markdown' do
           expect(
             xml.css('item > description').first.text
-          ).to eq '<h1>JUDAS AND THE BLACK MESSIAH</h1> <p>MPAA rating: R</p>'
+          ).to eq "<h1>JUDAS AND THE BLACK MESSIAH</h1>\n\n<p>MPAA rating: R</p>"
         end
       end
     end

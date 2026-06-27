@@ -5,10 +5,10 @@ RSpec.describe Html2rss::Selectors::PostProcessors::HtmlToMarkdown do
 
   let(:markdown) do
     [
-      "# Very interesting\n Breaking news: I'm a deprecated tag \n ",
-      '[![An animal looking cute](https://example.com/lol.gif)](https://example.com/lol.gif) ',
-      '[example.com](http://example.com "foo") ',
-      "[Click here!](https://example.com/article-123) \n"
+      "# Very interesting\nBreaking news: I'm a deprecated tag\n",
+      '[![An animal looking cute](https://example.com/lol.gif)](https://example.com/lol.gif)',
+      '[example.com](http://example.com "foo")',
+      "[Click here!](https://example.com/article-123)\n"
     ].join
   end
   let(:html) do

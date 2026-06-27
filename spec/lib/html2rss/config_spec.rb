@@ -497,7 +497,8 @@ RSpec.describe Html2rss::Config do
             html: {
               enabled: true,
               minimum_selector_frequency: 3,  # was explicitly set -> overrides default
-              use_top_selectors: 5            # wasn't explicitly set -> default
+              use_top_selectors: 5,           # wasn't explicitly set -> default
+              fallback_anchorless: true
             },
             json_state: { enabled: true },    # wasn't explicitly set -> default
             microdata: { enabled: true },     # wasn't explicitly set -> default

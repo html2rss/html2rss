@@ -4,13 +4,11 @@ module Html2rss
   ##
   # HtmlExtractor is responsible for extracting details (headline, url, images, etc.)
   # from an article_tag.
-  class HtmlExtractor # rubocop:disable Metrics/ClassLength
-    # Tags ignored when extracting visible text content from article containers.
-    INVISIBLE_CONTENT_TAGS = %w[svg script noscript style template].to_set.freeze
+  # rubocop:disable Metrics/ClassLength
+  class HtmlExtractor
     # Heading tags used to prioritize title extraction.
     HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
-    # Selector used to derive non-headline description nodes.
-    NON_HEADLINE_SELECTOR = (HEADING_TAGS.map { |tag| ":not(#{tag})" } + INVISIBLE_CONTENT_TAGS.to_a).freeze
+
     # Element tags that indicate ignored DOM chrome when found in a container path.
     IGNORED_CONTAINER_TAGS = %w[nav footer header svg script style].to_set.freeze
 
@@ -26,20 +24,14 @@ module Html2rss
     class << self
       ##
       # Extracts visible text from a given node and its children.
+      # Delegates to TextExtractor.
       #
       # @param tag [Nokogiri::XML::Node] the node from which to extract visible text
       # @param separator [String] separator used to join text fragments (default is a space)
+      # @param exclude_nodes [Array<Nokogiri::XML::Node>, nil] nodes to exclude from extraction
       # @return [String, nil] the concatenated visible text, or nil if none is found
-      def extract_visible_text(tag, separator: ' ')
-        parts = tag.children.filter_map do |child|
-          next unless visible_child?(child)
-
-          raw_text = child.children.empty? ? child.text : extract_visible_text(child)
-          text = raw_text&.strip
-          text unless text.to_s.empty?
-        end
-
-        parts.join(separator).squeeze(' ').strip unless parts.empty?
+      def extract_visible_text(tag, separator: ' ', exclude_nodes: nil)
+        TextExtractor.call(tag, separator:, exclude_nodes:)
       end
 
       ##
@@ -74,23 +66,20 @@ module Html2rss
         end
         false
       end
-
-      def visible_child?(node)
-        !INVISIBLE_CONTENT_TAGS.include?(node.name) &&
-          !(node.name == 'a' && node['href']&.start_with?('#'))
-      end
     end
 
     ##
     # @param article_tag [Nokogiri::XML::Node] article-like container to extract from
     # @param base_url [String, Html2rss::Url] base url used to resolve relative links
     # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
-    def initialize(article_tag, base_url:, selected_anchor:)
+    # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
+    def initialize(article_tag, base_url:, selected_anchor:, fallback_anchorless: false)
       raise ArgumentError, 'article_tag is required' unless article_tag
 
       @article_tag = article_tag
       @base_url = base_url
       @selected_anchor = selected_anchor
+      @fallback_anchorless = fallback_anchorless
     end
 
     # @return [Hash{Symbol => Object}] extracted article attributes
@@ -115,54 +104,62 @@ module Html2rss
       @extract_url ||= begin
         href = selected_anchor&.[]('href').to_s
 
-        Url.from_relative(href.split('#').first.strip, base_url) unless href.empty?
+        if href.empty?
+          anchorless_url_fallback
+        else
+          Url.from_relative(href.split('#').first.strip, base_url)
+        end
       end
+    end
+
+    def anchorless_url_fallback
+      return unless @fallback_anchorless
+
+      id = generate_id
+      Url.from_relative("##{id}", base_url) if id
     end
 
     def extract_title
       title_source = heading || selected_anchor
-      self.class.extract_visible_text(title_source) if title_source
+      if title_source
+        self.class.extract_visible_text(title_source)
+      else
+        fallback_anchorless_title
+      end
+    end
+
+    def fallback_anchorless_title
+      return unless @fallback_anchorless && selected_anchor.nil?
+
+      text_node = article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }
+      text_node&.text&.strip
     end
 
     def heading
-      @heading ||= begin
-        tags = article_tag.css(HEADING_TAGS.join(','))
-        tags.any? ? select_best_heading(tags) : nil
-      end
-    end
-
-    def select_best_heading(tags)
-      min_tag_name = tags.map(&:name).min
-      best_tag = nil
-      max_size = -1
-
-      tags.each do |tag|
-        next if tag.name != min_tag_name
-
-        size = self.class.extract_visible_text(tag)&.size.to_i
-        (best_tag = tag) && (max_size = size) if size > max_size
-      end
-
-      best_tag
+      @heading ||= HeadingExtractor.call(
+        article_tag,
+        fallback_anchorless: @fallback_anchorless,
+        selected_anchor:
+      )
     end
 
     def extract_description
-      text = self.class.extract_visible_text(article_tag.css(NON_HEADLINE_SELECTOR), separator: '<br>')
-      return text if text && !text.empty?
+      exclude = [heading, selected_anchor].compact.to_set
+      description = self.class.extract_visible_text(article_tag, exclude_nodes: exclude)
+      return if description.nil?
 
-      description = self.class.extract_visible_text(article_tag)
-      return nil if description.nil? || description.strip.empty?
-
-      description.strip
+      desc = description.strip
+      desc.empty? ? nil : desc
     end
 
     def generate_id
-      [
-        article_tag['id'],
-        article_tag.at_css('[id]')&.attr('id'),
-        extract_url&.path,
-        extract_url&.query
-      ].compact.reject(&:empty?).first
+      @generate_id ||= IdGenerator.call(
+        article_tag,
+        heading:,
+        url: (selected_anchor ? extract_url : nil),
+        selected_anchor:,
+        fallback_anchorless: @fallback_anchorless
+      )
     end
 
     def extract_image = ImageExtractor.call(article_tag, base_url:)
@@ -170,4 +167,5 @@ module Html2rss
     def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
     def extract_categories = CategoryExtractor.call(article_tag)
   end
+  # rubocop:enable Metrics/ClassLength
 end
