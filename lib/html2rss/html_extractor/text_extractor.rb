@@ -10,8 +10,6 @@ module Html2rss
       BLOCK_TAGS = %w[p div li ul ol h1 h2 h3 h4 h5 h6 tr br].to_set.freeze
       # Tags ignored when extracting visible text content.
       INVISIBLE_CONTENT_TAGS = %w[svg script noscript style template].to_set.freeze
-      # Delimiters used to split text fragments during cleanup.
-      CLEANUP_DELIMITERS = ["\n", '<br>'].to_set.freeze
 
       class << self
         ##
@@ -25,11 +23,7 @@ module Html2rss
           parts = iterate_children(tag, separator, exclude_nodes)
           return if parts.empty?
 
-          parts.join.squeeze(' ')
-               .split(/(\n|<br>)/)
-               .map { |part| CLEANUP_DELIMITERS.include?(part) ? part : part.gsub(/\A[ \t\r]+|[ \t\r]+\z/, '') }
-               .join
-               .strip
+          parts.join.squeeze(' ').strip
         end
 
         private
