@@ -10,7 +10,7 @@ module Html2rss
         # rubocop:disable Metrics/ClassLength
         class ClassClustering
           # Node tags considered layout containers
-          LAYOUT_TAG_NAMES = Set['div', 'section', 'article'].freeze
+          LAYOUT_TAG_NAMES = Set['div', 'section', 'article', 'li', 'ul', 'ol'].freeze
           # HTML/layout tags excluded from candidate nodes
           EXCLUDED_TAGS = Set['html', 'body', 'nav', 'footer', 'header', 'svg', 'script', 'style'].freeze
 
