@@ -16,9 +16,9 @@ module Html2rss
       # @raise [BotasaurusConnectionFailed] when Botasaurus cannot be reached or returns an invalid payload
       # @raise [RequestTimedOut] when the Botasaurus request exceeds configured timeout
       def execute
+        check_timeout!
         validate_request!
-        transport_response = client.post('/scrape', JSON.generate(contract.request_payload), content_type_header)
-        parsed_response = contract.parse_response(transport_response)
+        parsed_response = post_scrape_request
         raise_if_challenge_blocked!(parsed_response)
         raise_if_upstream_failed!(parsed_response)
         build_response(parsed_response)
@@ -29,6 +29,11 @@ module Html2rss
       end
 
       private
+
+      def post_scrape_request
+        transport_response = client.post('/scrape', JSON.generate(contract.request_payload), content_type_header)
+        contract.parse_response(transport_response)
+      end
 
       def validate_request!
         ctx.budget.consume!
@@ -76,7 +81,10 @@ module Html2rss
       end
 
       def request_options
-        { timeout: ctx.policy.total_timeout_seconds }
+        timeout = ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds
+        raise RequestTimedOut, 'Request timed out' if timeout <= 0
+
+        { timeout: timeout.to_i }
       end
 
       def content_type_header
