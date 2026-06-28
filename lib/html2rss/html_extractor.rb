@@ -69,11 +69,7 @@ module Html2rss
           visited << curr
           curr = curr.parent
         end
-
-        if cache
-          visited.each { |n| cache[n] = is_ignored }
-          cache[node] = is_ignored
-        end
+        visited.each { |n| cache[n] = is_ignored } if cache
 
         is_ignored
       end

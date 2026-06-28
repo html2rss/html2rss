@@ -32,9 +32,34 @@ module Html2rss
           HtmlExtractor.ignored_container_path?(node, cache)
         end
 
-        # Preserve the original post-order traversal intent (specific-first)
-        # by sorting candidates by depth (descending) while keeping original document
-        # order for nodes at the same depth.
+        candidates = filter_nested_containers(candidates)
+        sort_by_depth(candidates)
+      end
+
+      private
+
+      def filter_nested_containers(candidates)
+        candidate_set = Set.new(candidates)
+        rejected = Set.new
+
+        candidates.each do |candidate_b|
+          next if candidate_b.name == 'div'
+
+          find_and_reject_ancestors(candidate_b, candidate_set, rejected)
+        end
+
+        candidates.reject { |c| rejected.include?(c) }
+      end
+
+      def find_and_reject_ancestors(node, candidate_set, rejected)
+        curr = node.parent
+        while curr && !curr.document? && curr.name != 'html'
+          rejected << curr if candidate_set.include?(curr)
+          curr = curr.parent
+        end
+      end
+
+      def sort_by_depth(candidates)
         candidates.each_with_index
                   .sort_by { |node, index| [-node.ancestors.size, index] }
                   .map!(&:first)
