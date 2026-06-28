@@ -138,17 +138,7 @@ module Html2rss
         # @return [Boolean] true when the anchor is inside the selected heading
         def heading_anchor?
           heading = @context.heading
-          return false unless heading
-
-          curr = @anchor
-          container = @context.container
-          while curr.respond_to?(:parent)
-            return true if curr == heading
-            break if curr == container
-
-            curr = curr.parent
-          end
-          false
+          heading && (@anchor == heading || HtmlNavigator.descendant_of?(@anchor, heading))
         end
 
         # @return [Boolean] true when anchor text exactly matches heading text
@@ -183,15 +173,11 @@ module Html2rss
         end
 
         def utility_landmark_ancestor?
-          curr = @anchor.parent
           container = @context.container
-          while curr.respond_to?(:parent)
-            return true if Context::UTILITY_LANDMARK_TAGS.include?(curr.name)
-            break if curr == container
+          condition = proc { |node| node == container || Context::UTILITY_LANDMARK_TAGS.include?(node.name) }
+          landmark = HtmlNavigator.parent_until_condition(@anchor.parent, condition)
 
-            curr = curr.parent
-          end
-          false
+          landmark && landmark != container
         end
 
         def icon_only_anchor?
