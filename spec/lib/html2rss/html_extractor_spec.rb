@@ -204,6 +204,24 @@ RSpec.describe Html2rss::HtmlExtractor do
     end
   end
 
+  describe 'kicker extraction' do
+    let(:html) do
+      <<~HTML
+        <article>
+          <span class="teaser-kicker">Kicker Text</span>
+          <h3>Headline Text</h3>
+          <p>Description Text</p>
+        </article>
+      HTML
+    end
+    let(:article_tag) { Nokogiri::HTML.fragment(html) }
+
+    it 'prepends kicker to title and excludes it from description', :aggregate_failures do
+      expect(article_hash[:title]).to eq('Kicker Text: Headline Text')
+      expect(article_hash[:description]).to eq('Description Text')
+    end
+  end
+
   context 'when fallback_anchorless is true and selected_anchor is nil' do
     subject(:article_hash) do
       described_class.new(

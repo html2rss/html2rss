@@ -131,14 +131,16 @@ module Html2rss
       Url.from_relative("##{id}", base_url) if id
     end
 
+    # rubocop:disable Metrics/CyclomaticComplexity
     def extract_title
-      title_source = heading || selected_anchor
-      if title_source
-        self.class.extract_visible_text(title_source)
-      else
-        fallback_anchorless_title
-      end
+      source = heading || selected_anchor
+      title_text = source ? self.class.extract_visible_text(source) : fallback_anchorless_title
+      return unless title_text
+
+      kicker = kicker_node ? self.class.extract_visible_text(kicker_node).to_s.strip : nil
+      kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
     end
+    # rubocop:enable Metrics/CyclomaticComplexity
 
     def fallback_anchorless_title
       return unless @fallback_anchorless && selected_anchor.nil?
@@ -155,8 +157,17 @@ module Html2rss
       )
     end
 
+    def kicker_node
+      @kicker_node ||= begin
+        selector = '[data-tb-kicker], [class*="kicker"], [class*="eyebrow"], ' \
+                   '[class*="pre-title"], [class*="pretitle"], [class*="overline"]'
+        node = article_tag.at_css(selector)
+        node && heading && (node == heading || HtmlNavigator.descendant_of?(node, heading)) ? nil : node
+      end
+    end
+
     def extract_description
-      exclude = [heading, selected_anchor].compact.to_set
+      exclude = [heading, selected_anchor, kicker_node].compact.to_set
       description = self.class.extract_visible_text(article_tag, exclude_nodes: exclude)
       return if description.nil?
 
