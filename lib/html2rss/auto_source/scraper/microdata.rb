@@ -55,7 +55,13 @@ module Html2rss
           def top_level_item?(node)
             return false if node.attribute('itemprop')
 
-            node.ancestors.none? { |ancestor| ancestor.attribute('itemscope') && ancestor.attribute('itemprop') }
+            curr = node.parent
+            while curr && !curr.document? && curr.name != 'html'
+              return false if curr.attribute('itemscope') && curr.attribute('itemprop')
+
+              curr = curr.parent
+            end
+            true
           end
         end
 
@@ -147,7 +153,13 @@ module Html2rss
           def direct_property?(root, node)
             return false if node == root
 
-            node.ancestors.take_while { _1 != root }.none? { |ancestor| ancestor.attribute('itemscope') }
+            curr = node.parent
+            while curr && curr != root
+              return false if curr.attribute('itemscope')
+
+              curr = curr.parent
+            end
+            true
           end
 
           # @param node [Nokogiri::XML::Element] itemprop node
