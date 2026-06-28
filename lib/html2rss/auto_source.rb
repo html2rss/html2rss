@@ -32,7 +32,8 @@ module Html2rss
           enabled: true
         },
         semantic_html: {
-          enabled: true
+          enabled: true,
+          fallback_anchorless: true
         },
         html: {
           enabled: true,
@@ -59,6 +60,7 @@ module Html2rss
       end
       optional(:semantic_html).hash do
         optional(:enabled).filled(:bool)
+        optional(:fallback_anchorless).filled(:bool)
       end
       optional(:html).hash do
         optional(:enabled).filled(:bool)

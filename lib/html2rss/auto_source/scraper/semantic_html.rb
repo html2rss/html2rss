@@ -60,12 +60,13 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @param url [String, Html2rss::Url] base url
         # @param extractor [Class] extractor class used for article extraction
-        # @param _opts [Hash] scraper-specific options
-        # @option _opts [Object] :_reserved reserved for future scraper-specific options
-        def initialize(parsed_body, url:, extractor: HtmlExtractor, **_opts)
+        # @param opts [Hash] scraper-specific options
+        # @option opts [Boolean] :fallback_anchorless whether to extract anchorless blocks
+        def initialize(parsed_body, url:, extractor: HtmlExtractor, **opts)
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor
+          @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
           @link_heuristics = LinkHeuristics.new(url)
           @anchor_selector = AnchorSelector.new(url)
         end
@@ -107,14 +108,15 @@ module Html2rss
           @anchor_selector.primary_anchor_for(container)
         end
 
-        def extractable_entries # rubocop:disable Metrics/MethodLength
+        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        def extractable_entries
           @extractable_entries ||= candidate_containers.filter_map do |container|
             selected_anchor = primary_anchor_for(container)
 
-            next unless selected_anchor
+            next unless selected_anchor || @fallback_anchorless
 
-            destination_facts = normalized_destination(selected_anchor)
-            next unless destination_facts
+            destination_facts = selected_anchor ? normalized_destination(selected_anchor) : nil
+            next if selected_anchor && !destination_facts
             next if hard_junk_entry?(container, selected_anchor, destination_facts)
 
             quality = quality_score(container, selected_anchor, destination_facts)
@@ -132,6 +134,7 @@ module Html2rss
             )
           end
         end
+        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
         # rubocop:disable Metrics/MethodLength
         def ranked_entries
@@ -177,8 +180,8 @@ module Html2rss
 
           score += 40 if words >= 3
           score += 15 if words >= 7
-          score += 20 if destination_facts.url.path.to_s.length > 6
-          score += 15 if destination_facts.content_path
+          score += 20 if destination_facts&.url&.path.to_s.length > 6
+          score += 15 if destination_facts&.content_path
           score += 15 if publish_marker?(container)
           score += 10 if descriptive_context?(container_text, title)
           score += 10 if article_container?(container)
@@ -190,12 +193,12 @@ module Html2rss
           title = entry_title(container, selected_anchor)
           utility_text = @link_heuristics.utility_prefix_text?(title)
           recommended_text = @link_heuristics.recommended_text?(title)
-          content_signal = destination_facts.content_path
+          content_signal = destination_facts&.content_path
           no_content_signal = !content_signal
           non_content_utility_path =
-            destination_facts.utility_path &&
+            destination_facts&.utility_path &&
             no_content_signal &&
-            !destination_facts.strong_post_suffix
+            !destination_facts&.strong_post_suffix
           publish_signal = publish_marker?(container)
           descriptive_signal = descriptive_context?(visible_text(container), title)
           weak_container = !publish_signal && !descriptive_signal
@@ -203,19 +206,20 @@ module Html2rss
 
           score += 25 if non_content_utility_path
           score += 15 if utility_text && word_count(title) <= 6
-          score += 10 if destination_facts.shallow
+          score += 10 if destination_facts&.shallow
           score += 10 if weak_container
           score += 10 if recommended_text && no_content_signal
-          score += 5 if destination_facts.high_confidence_junk_path
+          score += 5 if destination_facts&.high_confidence_junk_path
           score += 15 if junk_tokens?(container_tokens(container))
           score
         end
 
-        def hard_junk_entry?(container, selected_anchor, destination_facts) # rubocop:disable Metrics/MethodLength
+        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        def hard_junk_entry?(container, selected_anchor, destination_facts)
           title = entry_title(container, selected_anchor)
           publish_signal = publish_marker?(container)
           descriptive_signal = descriptive_context?(visible_text(container), title)
-          content_signal = destination_facts.content_path
+          content_signal = destination_facts&.content_path
           weak_article_candidate = article_signal_count(
             container,
             publish_signal:,
@@ -223,12 +227,16 @@ module Html2rss
             content_signal:
           ) < 2
 
-          destination_facts.high_confidence_junk_path ||
-            (@link_heuristics.recommended_text?(title) && destination_facts.shallow && weak_article_candidate) ||
-            (@link_heuristics.utility_prefix_text?(title) &&
-              destination_facts.high_confidence_utility_destination &&
+          destination_facts&.high_confidence_junk_path ||
+            (selected_anchor &&
+              @link_heuristics.recommended_text?(title) &&
+              destination_facts&.shallow &&
+              weak_article_candidate) ||
+            (selected_anchor && @link_heuristics.utility_prefix_text?(title) &&
+              destination_facts&.high_confidence_utility_destination &&
               weak_article_candidate)
         end
+        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
         ##
         # @param container [Nokogiri::XML::Node]

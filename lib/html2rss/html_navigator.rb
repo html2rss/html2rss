@@ -49,6 +49,23 @@ module Html2rss
 
         current_tag.ancestors(tag_name).first
       end
+
+      ##
+      # Returns true if child_node is a descendant of parent_node.
+      # Walks up using parent pointers to avoid NodeSet allocations.
+      #
+      # @param child_node [Nokogiri::XML::Node] potential descendant
+      # @param parent_node [Nokogiri::XML::Node] potential ancestor
+      # @return [Boolean] true when child_node is a descendant of parent_node
+      def descendant_of?(child_node, parent_node)
+        curr = child_node.respond_to?(:parent) ? child_node.parent : nil
+        while curr
+          return true if curr == parent_node
+
+          curr = curr.respond_to?(:parent) ? curr.parent : nil
+        end
+        false
+      end
     end
   end
 end

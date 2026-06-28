@@ -47,25 +47,37 @@ module Html2rss
       # @param node [Nokogiri::XML::Node]
       # @param cache [Hash, nil] identity cache used to store results (must use compare_by_identity)
       # @return [Boolean] true when the node belongs to ignored DOM chrome
+      # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def ignored_container_path?(node, cache = nil)
         return cache[node] if cache&.key?(node)
 
-        res = walk_ignored_container_path?(node)
-        cache[node] = res if cache
-        res
-      end
-
-      private
-
-      def walk_ignored_container_path?(node)
         curr = node
-        while curr.respond_to?(:parent)
-          return true if IGNORED_CONTAINER_TAGS.include?(curr.name)
+        visited = []
+        is_ignored = false
 
+        while curr.respond_to?(:parent) && curr
+          if cache&.key?(curr)
+            is_ignored = cache[curr]
+            break
+          end
+
+          if IGNORED_CONTAINER_TAGS.include?(curr.name)
+            is_ignored = true
+            break
+          end
+
+          visited << curr
           curr = curr.parent
         end
-        false
+
+        if cache
+          visited.each { |n| cache[n] = is_ignored }
+          cache[node] = is_ignored
+        end
+
+        is_ignored
       end
+      # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     end
 
     ##
