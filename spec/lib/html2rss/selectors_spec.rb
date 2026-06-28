@@ -166,6 +166,19 @@ RSpec.describe Html2rss::Selectors do
         expect(enhanced_article).to be(article_hash)
       end
     end
+
+    context 'when the container has no anchor tag' do
+      let(:body) do
+        <<~HTML
+          <html><body><article><h1>No Link Article</h1><p>Teaser text</p></article></body></html>
+        HTML
+      end
+
+      it 'enhances the article_hash anchorlessly', :aggregate_failures do
+        expect(enhanced_article[:title]).to eq('No Link Article')
+        expect(enhanced_article[:url].to_s).to eq('http://example.com/#no-link-article')
+      end
+    end
   end
 
   describe '#select' do

@@ -492,7 +492,7 @@ RSpec.describe Html2rss::Config do
       let(:expected_auto_source_config) do
         {
           scraper: {
-            semantic_html: { enabled: true }, # wasn't explicitly set -> default
+            semantic_html: { enabled: true, fallback_anchorless: true }, # wasn't explicitly set -> default
             schema: { enabled: false },       # keeps the value from the config
             html: {
               enabled: true,

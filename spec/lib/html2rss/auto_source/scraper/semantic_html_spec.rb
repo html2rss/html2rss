@@ -66,5 +66,34 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     it 'reduces raw candidate volume on the large semantic fixture', :slow do
       expect(articles.size).to be < 100
     end
+
+    context 'when fallback_anchorless is true and page has no anchors' do
+      subject(:new) { described_class.new(parsed_body, url: 'https://page.com', fallback_anchorless: true) }
+
+      let(:parsed_body) do
+        Nokogiri::HTML.parse <<~HTML
+          <html>
+            <body>
+              <article>
+                <h2>No Link Article 1</h2>
+                <p>Description text 1</p>
+              </article>
+              <article>
+                <h2>No Link Article 2</h2>
+                <p>Description text 2</p>
+              </article>
+            </body>
+          </html>
+        HTML
+      end
+
+      it 'extracts semantic articles anchorlessly', :aggregate_failures do
+        expect(articles.size).to eq(2)
+        expect(articles.first[:title]).to eq('No Link Article 1')
+        expect(articles.first[:url].to_s).to eq('https://page.com/#no-link-article-1')
+        expect(articles.last[:title]).to eq('No Link Article 2')
+        expect(articles.last[:url].to_s).to eq('https://page.com/#no-link-article-2')
+      end
+    end
   end
 end

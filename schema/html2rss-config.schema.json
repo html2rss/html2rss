@@ -153,6 +153,12 @@
                   "not": {
                     "type": "null"
                   }
+                },
+                "fallback_anchorless": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
                 }
               },
               "required": []
@@ -228,7 +234,8 @@
             "enabled": true
           },
           "semantic_html": {
-            "enabled": true
+            "enabled": true,
+            "fallback_anchorless": true
           },
           "html": {
             "enabled": true,

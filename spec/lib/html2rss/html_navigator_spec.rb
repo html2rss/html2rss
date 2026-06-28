@@ -126,4 +126,31 @@ RSpec.describe Html2rss::HtmlNavigator do
       end
     end
   end
+
+  describe '.descendant_of?' do
+    let(:document) do
+      Nokogiri::HTML <<-HTML
+        <div id="parent">
+          <section id="child">
+            <p id="grandchild">Content</p>
+          </section>
+          <div id="other"></div>
+        </div>
+      HTML
+    end
+
+    it 'returns true if the node is a direct child' do
+      expect(described_class.descendant_of?(document.at_css('#child'), document.at_css('#parent'))).to be(true)
+    end
+
+    it 'returns true if the node is a nested grandchild' do
+      expect(described_class.descendant_of?(document.at_css('#grandchild'), document.at_css('#parent'))).to be(true)
+    end
+
+    it 'returns false if the node is not a descendant', :aggregate_failures do
+      child = document.at_css('#child')
+      expect(described_class.descendant_of?(document.at_css('#parent'), child)).to be(false)
+      expect(described_class.descendant_of?(document.at_css('#other'), child)).to be(false)
+    end
+  end
 end

@@ -83,13 +83,24 @@ module Html2rss
             end
           end
 
+          # rubocop:disable Metrics/MethodLength
           def container_of?(nodes_a, nodes_b)
             return false unless LAYOUT_TAG_NAMES.include?(nodes_b.first.name)
 
             nodes_a.any? do |node_a|
-              nodes_b.count { |node_b| node_a != node_b && node_b.ancestors.include?(node_a) } > 1
+              count = 0
+              nodes_b.each do |node_b|
+                next if node_a == node_b
+
+                if HtmlNavigator.descendant_of?(node_b, node_a)
+                  count += 1
+                  break if count > 1
+                end
+              end
+              count > 1
             end
           end
+          # rubocop:enable Metrics/MethodLength
 
           # If group A contains group B, and they have the same size:
           # - If B (the descendant) contains >= 80% of A's words, AND B's tag is div/section/article,
@@ -112,7 +123,7 @@ module Html2rss
             nodes_a = groups[cls_a]
             nodes_b = groups[cls_b]
             return if nodes_a.size != nodes_b.size
-            return unless nodes_a.zip(nodes_b).all? { |a, b| a != b && b.ancestors.include?(a) }
+            return unless nodes_a.zip(nodes_b).all? { |a, b| a != b && HtmlNavigator.descendant_of?(b, a) }
 
             discarded << (keep_descendant?(nodes_a, nodes_b) ? cls_a : cls_b)
           end
