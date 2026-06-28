@@ -34,6 +34,7 @@ module Html2rss
       #   SSRF protection here is pre-connection only (DNS resolution via Policy).
       #   A DNS rebinding attack between resolution and connect cannot be caught at this layer.
       def execute
+        check_timeout!
         deadline = request_deadline
         response_guard, response = perform_request(deadline:)
         response_guard.inspect_body!(response.body)
@@ -45,7 +46,7 @@ module Html2rss
       private
 
       def request_deadline
-        monotonic_now + ctx.policy.total_timeout_seconds
+        monotonic_now + (ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds)
       end
 
       def perform_request(deadline:)

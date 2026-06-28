@@ -17,7 +17,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       validate_remote_ip!: nil
     )
   end
-  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil) }
+  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, remaining_timeout_seconds: nil) }
   let(:ctx) do
     instance_double(
       Html2rss::RequestService::Context,

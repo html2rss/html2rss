@@ -13,7 +13,7 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
       validate_request!: nil
     )
   end
-  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil) }
+  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, remaining_timeout_seconds: nil) }
   let(:ctx) { Html2rss::RequestService::Context.new(url: 'https://example.com', policy:, budget:) }
 
   describe '#execute' do # rubocop:disable RSpec/MultipleMemoizedHelpers

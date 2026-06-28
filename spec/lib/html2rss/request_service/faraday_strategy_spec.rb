@@ -20,7 +20,7 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       validate_redirect!: nil
     )
   end
-  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil) }
+  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, remaining_timeout_seconds: nil) }
   let(:ctx) do
     Html2rss::RequestService::Context.new(
       url: 'https://example.com',

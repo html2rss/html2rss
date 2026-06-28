@@ -23,6 +23,11 @@ module Html2rss
 
       # @return [Context] the context for the request
       attr_reader :ctx
+
+      def check_timeout!
+        remaining = ctx.budget.remaining_timeout_seconds
+        raise RequestTimedOut, 'Request timed out' if remaining && remaining <= 0
+      end
     end
   end
 end

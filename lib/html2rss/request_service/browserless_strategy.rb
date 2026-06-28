@@ -37,6 +37,7 @@ module Html2rss
       # @return [Response] normalized request response
       # @raise [RequestTimedOut] if the browser session exceeds the configured timeout
       def execute
+        check_timeout!
         validate_request!
         execute_browserless_request
       rescue Puppeteer::TimeoutError => error
@@ -71,7 +72,10 @@ module Html2rss
       end
 
       def protocol_timeout_ms
-        ctx.policy.total_timeout_seconds * 1000
+        timeout = ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds
+        raise RequestTimedOut, 'Request timed out' if timeout <= 0
+
+        (timeout * 1000).to_i
       end
 
       def connect_with_timeout_support(&)
