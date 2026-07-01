@@ -252,7 +252,7 @@ GEM
       lint_roller (~> 1.1)
       rubocop (~> 1.72, >= 1.72.1)
       rubocop-ast (>= 1.44.0, < 2.0)
-    rubocop-yard (1.2.0)
+    rubocop-yard (1.3.0)
       lint_roller
       rubocop (~> 1.72)
       yard
@@ -411,7 +411,7 @@ CHECKSUMS
   rubocop-rake (0.7.1) sha256=3797f2b6810c3e9df7376c26d5f44f3475eda59eb1adc38e6f62ecf027cbae4d
   rubocop-rspec (3.10.2) sha256=0b3e2ecc592cd10ecbf0095bb58d1e357905276e069643523cc19eb7495f65e2
   rubocop-thread_safety (0.7.3) sha256=067cdd52fbf5deffc18995437e45b5194236eaff4f71de3375a1f6052e48f431
-  rubocop-yard (1.2.0) sha256=a749b1feccd16ca049d1c65c4b62dbfc8ce39904bfdbc6e5c08f6b5dc0422dc4
+  rubocop-yard (1.3.0) sha256=29bc44274e0b10d7db60655e84089328c0aceadd246d24f8e963c67949a60269
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
   sanitize (7.0.0) sha256=269d1b9d7326e69307723af5643ec032ff86ad616e72a3b36d301ac75a273984
   simplecov (0.22.0) sha256=fe2622c7834ff23b98066bb0a854284b2729a569ac659f82621fc22ef36213a5
