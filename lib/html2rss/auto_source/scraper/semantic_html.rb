@@ -56,7 +56,7 @@ module Html2rss
           @extractor = extractor
           @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
           @link_heuristics = LinkHeuristics.new(url)
-          @anchor_selector = AnchorSelector.new(url)
+          @anchor_selector = AnchorSelector.new(link_heuristics: @link_heuristics)
         end
 
         attr_reader :parsed_body
