@@ -56,6 +56,62 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 
 Auto fallback shares one request budget across all strategy attempts. For pagination-heavy or dynamic pages, increase `request.max_requests` (or `--max-requests`) when retries exhaust the budget.
 
+### Pagination Strategies
+
+Configure `selectors.items.pagination` to fetch items across multiple pages:
+
+- **`rel_next`** (default): Follows `<link rel="next">` or `<a rel="next">` tags.
+  ```yaml
+  selectors:
+    items:
+      selector: article
+      pagination: 5 # or { max_pages: 5 }
+  ```
+- **`custom_selector`**: Follows a custom CSS/XPath next-link selector.
+  ```yaml
+  selectors:
+    items:
+      selector: article
+      pagination:
+        strategy: custom_selector
+        selector: 'a.next-page'
+        max_pages: 5
+  ```
+- **`url_template`**: Increments a query parameter (`?page=N`) or path template (`/page/{page}/`).
+  ```yaml
+  selectors:
+    items:
+      selector: article
+      pagination:
+        strategy: url_template
+        param: page
+        max_pages: 5
+  ```
+- **`offset`**: Increments offset values (`?offset=N`).
+  ```yaml
+  selectors:
+    items:
+      selector: article
+      pagination:
+        strategy: offset
+        param: offset
+        increment: 20
+        max_pages: 5
+  ```
+- **`json_cursor`**: Digs next-page URLs or cursor tokens from JSON responses.
+  ```yaml
+  selectors:
+    items:
+      selector: items
+      pagination:
+        strategy: json_cursor
+        cursor_path: meta.next_cursor # or next_url_path: links.next
+        param: cursor
+        max_pages: 5
+  ```
+
+*Stop conditions*: Pagination stops automatically when `max_pages` or request budget is reached, a page yields 0 new items, an already visited URL is encountered, or a network error occurs.
+
 Auto fallback decisions are hidden at the default `LOG_LEVEL=warn`; run with `LOG_LEVEL=info` to include them in CLI output.
 
 Supported `request.botasaurus` options:
