@@ -151,11 +151,8 @@ module Html2rss
       end
 
       def build_response(page, navigation_response)
-        page_body = body(page)
-        ResponseGuard.new(policy: ctx.policy).inspect_body!(page_body)
-
         Response.new(
-          body: page_body,
+          body: body(page),
           headers: navigation_response&.headers || {},
           url: response_url(navigation_response, ctx.url),
           status: navigation_response&.status

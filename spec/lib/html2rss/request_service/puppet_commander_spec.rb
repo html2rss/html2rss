@@ -109,6 +109,14 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       )
     end
 
+    it 'does not run ResponseGuard so Strategy postflight remains the sole body check' do
+      allow(Html2rss::RequestService::ResponseGuard).to receive(:new).and_call_original
+
+      commander.call
+
+      expect(Html2rss::RequestService::ResponseGuard).not_to have_received(:new)
+    end
+
     it 'closes the page after execution' do
       commander.call
 
@@ -347,9 +355,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         HTML
       end
 
-      it 'raises blocked-surface classification from the response guard' do
-        expect { commander.call }
-          .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+      it 'returns the body for Strategy postflight to classify' do
+        expect(commander.call.body).to include('Just a moment...')
       end
     end
   end

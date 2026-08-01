@@ -43,6 +43,25 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
       expect(commander).to have_received(:call)
     end
 
+    it 'runs ResponseGuard postflight on the commander response body' do
+      allow(Html2rss::RequestService::ResponseGuard).to receive(:new).and_call_original
+
+      instance.execute
+
+      expect(Html2rss::RequestService::ResponseGuard).to have_received(:new).with(policy:)
+    end
+
+    it 'raises blocked-surface classification from Strategy postflight' do # rubocop:disable RSpec/ExampleLength
+      blocked_body = '<html><head><title>Just a moment...</title></head>' \
+                     '<body>Checking your browser before accessing itch.io.</body></html>'
+      allow(commander).to receive(:call).and_return(
+        instance_double(Html2rss::RequestService::Response, body: blocked_body)
+      )
+
+      expect { instance.execute }
+        .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+    end
+
     it 'maps Puppeteer timeout errors to RequestTimedOut' do
       allow(commander).to receive(:call).and_raise(Puppeteer::TimeoutError.new('Navigation timeout'))
 
