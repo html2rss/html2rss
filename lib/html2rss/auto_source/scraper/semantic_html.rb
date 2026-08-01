@@ -96,7 +96,7 @@ module Html2rss
           @anchor_selector.primary_anchor_for(container)
         end
 
-        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
         def extractable_entries
           @extractable_entries ||= candidate_containers.filter_map do |container|
             selected_anchor = primary_anchor_for(container)
@@ -105,23 +105,27 @@ module Html2rss
 
             destination_facts = selected_anchor ? normalized_destination(selected_anchor) : nil
             next if selected_anchor && !destination_facts
+            # Cheap path-only reject before title/DOM hard-junk observations.
+            next if destination_facts&.high_confidence_junk_path
+            next if hard_junk_entry?(container, selected_anchor, destination_facts)
 
             signals = container_signals(container, selected_anchor, destination_facts)
-            next if signals.hard_junk?
+            quality_score = signals.quality_score
+            junk_score = signals.junk_score
 
             Entry.new(
               container:,
               selected_anchor:,
               destination_facts:,
-              quality_score: signals.quality_score,
-              junk_score: signals.junk_score,
-              final_score: signals.final_score,
+              quality_score:,
+              junk_score:,
+              final_score: quality_score - junk_score,
               position: document_position(container),
               article: nil
             )
           end
         end
-        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
         # rubocop:disable Metrics/MethodLength
         def ranked_entries
@@ -158,6 +162,25 @@ module Html2rss
         def document_position(container)
           (@document_positions ||= candidate_containers.each_with_index.to_h).fetch(container)
         end
+
+        # rubocop:disable Metrics/MethodLength
+        def hard_junk_entry?(container, selected_anchor, destination_facts)
+          title = entry_title(container, selected_anchor)
+
+          LinkHeuristics::ContainerSignals.hard_junk?(
+            high_confidence_junk_path: false, # already gated on destination_facts above
+            selected_anchor_present: !selected_anchor.nil?,
+            recommended_title: @link_heuristics.recommended_text?(title),
+            shallow: destination_facts&.shallow,
+            utility_prefix_title: @link_heuristics.utility_prefix_text?(title),
+            high_confidence_utility_destination: destination_facts&.high_confidence_utility_destination,
+            article_container: container.name == 'article',
+            publish_marker: publish_marker?(container),
+            descriptive_context: descriptive_context?(visible_text(container), title),
+            content_path: destination_facts&.content_path
+          )
+        end
+        # rubocop:enable Metrics/MethodLength
 
         # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         def container_signals(container, selected_anchor, destination_facts)
