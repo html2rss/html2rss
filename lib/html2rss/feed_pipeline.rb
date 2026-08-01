@@ -73,12 +73,8 @@ module Html2rss
       ).call
     end
 
-    def run_auto_pipeline(config)
-      auto_fallback_for(config).call
-    end
-
     # rubocop:disable Metrics/MethodLength
-    def auto_fallback_for(config)
+    def run_auto_pipeline(config)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
         budget: auto_pipeline_budget(config),
@@ -92,7 +88,7 @@ module Html2rss
         articles_for: lambda do |response:, request_session:|
           deduplicated_articles(response:, config:, request_session:)
         end
-      )
+      ).call
     end
     # rubocop:enable Metrics/MethodLength
 

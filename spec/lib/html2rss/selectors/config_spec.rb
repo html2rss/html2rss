@@ -68,8 +68,9 @@ RSpec.describe Html2rss::Selectors::Config do
       end
 
       it 'fails validation', :aggregate_failures do
+        msg = '`json_cursor` strategy requires either `cursor_path` or `next_url_path`'
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('`json_cursor` strategy requires either `cursor_path` or `next_url_path`')
+        expect(result.errors.to_h.to_s).to include(msg)
       end
     end
 

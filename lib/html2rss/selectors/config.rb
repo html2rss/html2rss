@@ -51,17 +51,21 @@ module Html2rss
         end
 
         def validate_strategy_fields(strategy, val_hash, key)
-          case strategy
-          when 'custom_selector'
-            if val_hash[:selector].nil? || val_hash[:selector].to_s.strip.empty?
-              key.failure('`custom_selector` strategy requires `selector` to be specified')
-            end
-          when 'json_cursor'
-            if (val_hash[:cursor_path].nil? || val_hash[:cursor_path].to_s.strip.empty?) &&
-               (val_hash[:next_url_path].nil? || val_hash[:next_url_path].to_s.strip.empty?)
-              key.failure('`json_cursor` strategy requires either `cursor_path` or `next_url_path`')
-            end
-          end
+          validate_custom_selector(val_hash, key) if strategy == 'custom_selector'
+          validate_json_cursor(val_hash, key) if strategy == 'json_cursor'
+        end
+
+        def validate_custom_selector(val_hash, key)
+          return unless val_hash[:selector].nil? || val_hash[:selector].to_s.strip.empty?
+
+          key.failure('`custom_selector` strategy requires `selector` to be specified')
+        end
+
+        def validate_json_cursor(val_hash, key)
+          return unless (val_hash[:cursor_path].nil? || val_hash[:cursor_path].to_s.strip.empty?) &&
+                        (val_hash[:next_url_path].nil? || val_hash[:next_url_path].to_s.strip.empty?)
+
+          key.failure('`json_cursor` strategy requires either `cursor_path` or `next_url_path`')
         end
       end
 

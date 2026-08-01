@@ -187,17 +187,13 @@ RSpec.describe Html2rss::FeedPipeline do
     end
 
     context 'with selector pagination strategies' do
-      let(:page1_response) do
-        build_response.call(body: '<html><body><article><h1>Item 1</h1></article></body></html>', url: 'https://example.com/news')
-      end
-      let(:page2_response) do
-        build_response.call(body: '<html><body><article><h1>Item 2</h1></article></body></html>', url: 'https://example.com/news?page=2')
-      end
-      let(:empty_page3_response) do
-        build_response.call(body: '<html><body><div>No items here</div></body></html>', url: 'https://example.com/news?page=3')
-      end
-
+      # rubocop:disable RSpec/ExampleLength
       it 'paginates using url_template strategy and content-stops on empty page', :aggregate_failures do
+        p1 = build_response.call(body: '<html><body><article><h1>Item 1</h1></article></body></html>', url: 'https://example.com/news')
+        p2 = build_response.call(body: '<html><body><article><h1>Item 2</h1></article></body></html>', url: 'https://example.com/news?page=2')
+        p3 = build_response.call(body: '<html><body><div>No items</div></body></html>', url: 'https://example.com/news?page=3')
+        responses = { 'https://example.com/news' => p1, 'https://example.com/news?page=2' => p2, 'https://example.com/news?page=3' => p3 }
+
         config = base_config.merge(
           strategy: :faraday,
           selectors: base_config[:selectors].merge(
@@ -205,22 +201,16 @@ RSpec.describe Html2rss::FeedPipeline do
           )
         )
 
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
           ctx.budget.consume!
-          case ctx.url.to_s
-          when 'https://example.com/news' then page1_response
-          when 'https://example.com/news?page=2' then page2_response
-          when 'https://example.com/news?page=3' then empty_page3_response
-          else raise "Unexpected URL #{ctx.url}"
-          end
+          responses.fetch(ctx.url.to_s)
         end
 
-        pipeline = described_class.new(config)
-        rss = pipeline.to_rss
-
+        rss = described_class.new(config).to_rss
         expect(rss.items.map(&:title)).to eq(['Item 1', 'Item 2'])
         expect(Html2rss::RequestService).to have_received(:execute).exactly(3).times
       end
+      # rubocop:enable RSpec/ExampleLength
     end
   end
 end
