@@ -66,11 +66,13 @@ module Html2rss
       # Enforces response-size and blocked-surface checks after transport work.
       #
       # @param response [Response, nil] adapter response
+      # @param response_guard [ResponseGuard, nil] existing guard to reuse (e.g. streaming)
       # @return [void]
-      def postflight!(response)
+      def postflight!(response, response_guard: nil)
         return if skip_postflight? || response.nil?
 
-        ResponseGuard.new(policy: ctx.policy).inspect_body!(response.body)
+        guard = response_guard || ResponseGuard.new(policy: ctx.policy)
+        guard.inspect_body!(response.body)
       end
 
       ##

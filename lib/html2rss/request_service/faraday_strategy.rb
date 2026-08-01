@@ -36,9 +36,9 @@ module Html2rss
       def execute
         check_timeout!
         deadline = request_deadline
-        _response_guard, raw_response = perform_request(deadline:)
+        response_guard, raw_response = perform_request(deadline:)
         response = build_response(raw_response)
-        postflight!(response)
+        postflight!(response, response_guard:)
         response
       rescue Faraday::TimeoutError, Timeout::Error => error
         raise RequestTimedOut, error.message
