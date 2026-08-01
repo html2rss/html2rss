@@ -37,7 +37,7 @@ module Html2rss
           private
 
           def facts_for(container)
-            HtmlExtractor::SemanticAnchorCandidates.new(
+            Discovery::SemanticAnchorCandidates.new(
               container,
               link_heuristics: @link_heuristics
             ).to_a

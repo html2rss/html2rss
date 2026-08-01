@@ -163,7 +163,7 @@ module Html2rss
         # rubocop:enable Metrics/MethodLength
 
         def collect_candidate_containers
-          HtmlExtractor::SemanticContainers.call(parsed_body)
+          Discovery::SemanticContainers.call(parsed_body)
         end
 
         private

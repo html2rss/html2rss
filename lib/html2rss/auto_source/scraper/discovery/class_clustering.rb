@@ -3,7 +3,7 @@
 module Html2rss
   class AutoSource
     module Scraper
-      class Html
+      module Discovery
         ##
         # ClassClustering clusters DOM elements on anchorless pages by class lists and scores
         # candidate groups to find the best list of content cards/articles.

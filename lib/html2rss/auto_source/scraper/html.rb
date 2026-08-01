@@ -48,7 +48,7 @@ module Html2rss
         # @param xpath [String] original XPath
         # @return [String] XPath without positional indexes
         def self.simplify_xpath(xpath)
-          HtmlExtractor::ListCandidates.simplify_xpath(xpath)
+          Discovery::ListCandidates.simplify_xpath(xpath)
         end
 
         # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
@@ -117,7 +117,7 @@ module Html2rss
         end
 
         def find_anchorless_articles
-          ClassClustering.call(parsed_body, minimum_selector_frequency:).map do |node|
+          Discovery::ClassClustering.call(parsed_body, minimum_selector_frequency:).map do |node|
             @extractor.new(node, base_url: @url, selected_anchor: nil, fallback_anchorless: true).call
           end
         end
@@ -211,9 +211,9 @@ module Html2rss
         end
 
         ##
-        # @return [HtmlExtractor::ListCandidates]
+        # @return [Discovery::ListCandidates]
         def list_candidates
-          HtmlExtractor::ListCandidates.new(
+          Discovery::ListCandidates.new(
             parsed_body,
             minimum_selector_frequency:,
             use_top_selectors:
