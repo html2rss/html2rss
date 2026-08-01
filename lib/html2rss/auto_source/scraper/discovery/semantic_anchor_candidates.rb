@@ -23,10 +23,15 @@ module Html2rss
             # @param candidate [Candidate] eligible semantic anchor candidate
             # @return [AnchorFacts] serializable facts used for ranking and dedupe
             def self.from_candidate(candidate)
+              signals = candidate.anchor_signals
+
               new(
                 **candidate.anchor_identity_attributes,
-                **candidate.anchor_signal_attributes,
-                score: candidate.anchor_score
+                meaningful_text: signals.meaningful_text,
+                content_like_destination: signals.content_like_destination,
+                heading_anchor: signals.heading_anchor,
+                heading_text_match: signals.heading_text_match,
+                score: signals.score
               )
             end
           end
@@ -117,19 +122,14 @@ module Html2rss
               }
             end
 
-            # @return [Hash] anchor signal attributes used to build AnchorFacts
-            def anchor_signal_attributes
-              {
+            # @return [Html2rss::AutoSource::Scraper::LinkHeuristics::AnchorSignals] ranking signals
+            def anchor_signals
+              LinkHeuristics::AnchorSignals.new(
                 meaningful_text: meaningful_text?,
                 content_like_destination: content_like_destination?,
                 heading_anchor: heading_anchor?,
                 heading_text_match: heading_text_match?
-              }
-            end
-
-            # @return [Integer] policy score for ranking anchors in one container
-            def anchor_score
-              LinkHeuristics::AnchorSignals.new(**anchor_signal_attributes).score
+              )
             end
 
             # @return [Boolean] true when visible anchor text has words
