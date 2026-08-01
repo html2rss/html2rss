@@ -21,18 +21,6 @@ module Html2rss
       class SemanticHtml # rubocop:disable Metrics/ClassLength
         include Enumerable
 
-        # Regexp to match content-related tokens.
-        CONTENT_REGEXP = begin
-          words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:content)
-          /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
-        end.freeze
-
-        # Regexp to match junk/utility-related tokens.
-        JUNK_REGEXP = begin
-          words = LinkHeuristics::PathClassifier::SEGMENT_SETS.fetch(:utility)
-          /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
-        end.freeze
-
         # Container plus selected anchor, scoring metadata, and extracted article.
         Entry = Data.define(
           :container,
@@ -68,7 +56,7 @@ module Html2rss
           @extractor = extractor
           @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
           @link_heuristics = LinkHeuristics.new(url)
-          @anchor_selector = AnchorSelector.new(url)
+          @anchor_selector = AnchorSelector.new(link_heuristics: @link_heuristics)
         end
 
         attr_reader :parsed_body
@@ -108,7 +96,7 @@ module Html2rss
           @anchor_selector.primary_anchor_for(container)
         end
 
-        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
         def extractable_entries
           @extractable_entries ||= candidate_containers.filter_map do |container|
             selected_anchor = primary_anchor_for(container)
@@ -117,24 +105,27 @@ module Html2rss
 
             destination_facts = selected_anchor ? normalized_destination(selected_anchor) : nil
             next if selected_anchor && !destination_facts
+            # Cheap path-only reject before title/DOM hard-junk observations.
+            next if destination_facts&.high_confidence_junk_path
             next if hard_junk_entry?(container, selected_anchor, destination_facts)
 
-            quality = quality_score(container, selected_anchor, destination_facts)
-            junk = junk_score(container, selected_anchor, destination_facts)
+            signals = container_signals(container, selected_anchor, destination_facts)
+            quality_score = signals.quality_score
+            junk_score = signals.junk_score
 
             Entry.new(
               container:,
               selected_anchor:,
               destination_facts:,
-              quality_score: quality,
-              junk_score: junk,
-              final_score: quality - junk,
+              quality_score:,
+              junk_score:,
+              final_score: quality_score - junk_score,
               position: document_position(container),
               article: nil
             )
           end
         end
-        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
         # rubocop:disable Metrics/MethodLength
         def ranked_entries
@@ -163,7 +154,7 @@ module Html2rss
         # rubocop:enable Metrics/MethodLength
 
         def collect_candidate_containers
-          HtmlExtractor::SemanticContainers.call(parsed_body)
+          Discovery::SemanticContainers.call(parsed_body)
         end
 
         private
@@ -172,71 +163,50 @@ module Html2rss
           (@document_positions ||= candidate_containers.each_with_index.to_h).fetch(container)
         end
 
-        def quality_score(container, selected_anchor, destination_facts) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-          title = entry_title(container, selected_anchor)
-          words = word_count(title)
-          container_text = visible_text(container)
-          score = 0
-
-          score += 40 if words >= 3
-          score += 15 if words >= 7
-          score += 20 if destination_facts&.url&.path.to_s.length > 6
-          score += 15 if destination_facts&.content_path
-          score += 15 if publish_marker?(container)
-          score += 10 if descriptive_context?(container_text, title)
-          score += 10 if article_container?(container)
-          score += 10 if content_tokens?(container_tokens(container))
-          score
-        end
-
-        def junk_score(container, selected_anchor, destination_facts) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-          title = entry_title(container, selected_anchor)
-          utility_text = @link_heuristics.utility_prefix_text?(title)
-          recommended_text = @link_heuristics.recommended_text?(title)
-          content_signal = destination_facts&.content_path
-          no_content_signal = !content_signal
-          non_content_utility_path =
-            destination_facts&.utility_path &&
-            no_content_signal &&
-            !destination_facts&.strong_post_suffix
-          publish_signal = publish_marker?(container)
-          descriptive_signal = descriptive_context?(visible_text(container), title)
-          weak_container = !publish_signal && !descriptive_signal
-          score = 0
-
-          score += 25 if non_content_utility_path
-          score += 15 if utility_text && word_count(title) <= 6
-          score += 10 if destination_facts&.shallow
-          score += 10 if weak_container
-          score += 10 if recommended_text && no_content_signal
-          score += 5 if destination_facts&.high_confidence_junk_path
-          score += 15 if junk_tokens?(container_tokens(container))
-          score
-        end
-
-        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        # rubocop:disable Metrics/MethodLength
         def hard_junk_entry?(container, selected_anchor, destination_facts)
           title = entry_title(container, selected_anchor)
-          publish_signal = publish_marker?(container)
-          descriptive_signal = descriptive_context?(visible_text(container), title)
-          content_signal = destination_facts&.content_path
-          weak_article_candidate = article_signal_count(
-            container,
-            publish_signal:,
-            descriptive_signal:,
-            content_signal:
-          ) < 2
 
-          destination_facts&.high_confidence_junk_path ||
-            (selected_anchor &&
-              @link_heuristics.recommended_text?(title) &&
-              destination_facts&.shallow &&
-              weak_article_candidate) ||
-            (selected_anchor && @link_heuristics.utility_prefix_text?(title) &&
-              destination_facts&.high_confidence_utility_destination &&
-              weak_article_candidate)
+          LinkHeuristics::ContainerSignals.hard_junk?(
+            high_confidence_junk_path: false, # already gated on destination_facts above
+            selected_anchor_present: !selected_anchor.nil?,
+            recommended_title: @link_heuristics.recommended_text?(title),
+            shallow: destination_facts&.shallow,
+            utility_prefix_title: @link_heuristics.utility_prefix_text?(title),
+            high_confidence_utility_destination: destination_facts&.high_confidence_utility_destination,
+            article_container: container.name == 'article',
+            publish_marker: publish_marker?(container),
+            descriptive_context: descriptive_context?(visible_text(container), title),
+            content_path: destination_facts&.content_path
+          )
         end
-        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        # rubocop:enable Metrics/MethodLength
+
+        # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+        def container_signals(container, selected_anchor, destination_facts)
+          title = entry_title(container, selected_anchor)
+          tokens = container_tokens(container)
+
+          LinkHeuristics::ContainerSignals.new(
+            title_word_count: word_count(title),
+            path_length: destination_facts&.url&.path.to_s.length,
+            content_path: destination_facts&.content_path,
+            publish_marker: publish_marker?(container),
+            descriptive_context: descriptive_context?(visible_text(container), title),
+            article_container: container.name == 'article',
+            content_tokens: @link_heuristics.content_tokens?(tokens),
+            junk_tokens: @link_heuristics.junk_tokens?(tokens),
+            utility_prefix_title: @link_heuristics.utility_prefix_text?(title),
+            recommended_title: @link_heuristics.recommended_text?(title),
+            utility_path: destination_facts&.utility_path,
+            strong_post_suffix: destination_facts&.strong_post_suffix,
+            shallow: destination_facts&.shallow,
+            high_confidence_junk_path: destination_facts&.high_confidence_junk_path,
+            high_confidence_utility_destination: destination_facts&.high_confidence_utility_destination,
+            selected_anchor_present: !selected_anchor.nil?
+          )
+        end
+        # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
         ##
         # @param container [Nokogiri::XML::Node]
@@ -246,24 +216,8 @@ module Html2rss
             !!container.at_css('time, [datetime], [itemprop="datePublished"], [itemprop="dateModified"]')
         end
 
-        ##
-        # @param container [Nokogiri::XML::Node]
-        # @param publish_signal [Boolean]
-        # @param descriptive_signal [Boolean]
-        # @param content_signal [Boolean]
-        # @return [Integer]
-        def article_signal_count(container, publish_signal:, descriptive_signal:, content_signal:)
-          [article_container?(container), publish_signal, descriptive_signal, content_signal].count(&:itself)
-        end
-
-        ##
-        # @param container [Nokogiri::XML::Node]
-        # @return [Boolean]
-        def article_container?(container) = container.name == 'article'
-
         def descriptive_context?(container_text, title)
           snippet = container_text.to_s.sub(/\A#{Regexp.escape(title.to_s)}/i, '')
-          # Only check for existence of enough words if snippet is long enough to have them
           snippet.length > 30 && word_count(snippet) >= 8
         end
 
@@ -303,14 +257,6 @@ module Html2rss
 
         def container_tokens(container)
           (@container_tokens ||= {}.compare_by_identity)[container] ||= "#{container['class']} #{container['id']}"
-        end
-
-        def content_tokens?(tokens)
-          tokens.match?(CONTENT_REGEXP)
-        end
-
-        def junk_tokens?(tokens)
-          tokens.match?(JUNK_REGEXP)
         end
 
         def stable_rank(entries)

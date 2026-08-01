@@ -105,5 +105,59 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
       end
     end
   end
+
+  describe '#noise_anchor?' do
+    it 'rejects taxonomy destinations so scrapers do not reimplement junk rules' do
+      facts = heuristics.destination_facts('/category/security')
+
+      expect(heuristics.noise_anchor?(text: 'Security', destination_facts: facts)).to be(true)
+    end
+
+    it 'keeps content permalinks eligible' do
+      facts = heuristics.destination_facts('/news/2024/platform-launch-notes')
+
+      expect(heuristics.noise_anchor?(text: 'Platform launch notes', destination_facts: facts)).to be(false)
+    end
+  end
+
+  describe 'ContainerSignals' do
+    subject(:signals) do
+      described_class::ContainerSignals.new(
+        title_word_count: 4,
+        path_length: 20,
+        content_path: false,
+        publish_marker: false,
+        descriptive_context: false,
+        article_container: false,
+        content_tokens: false,
+        junk_tokens: false,
+        utility_prefix_title: false,
+        recommended_title: false,
+        utility_path: false,
+        strong_post_suffix: false,
+        shallow: true,
+        high_confidence_junk_path: true,
+        high_confidence_utility_destination: false,
+        selected_anchor_present: true
+      )
+    end
+
+    it 'owns hard-junk rejection so SemanticHtml only orchestrates DOM facts' do
+      expect(signals.hard_junk?).to be(true)
+    end
+  end
+
+  describe 'AnchorSignals' do
+    it 'scores heading anchors highest so ranking weights stay local to policy' do
+      score = described_class::AnchorSignals.new(
+        heading_anchor: true,
+        heading_text_match: false,
+        meaningful_text: true,
+        content_like_destination: true
+      ).score
+
+      expect(score).to eq(120)
+    end
+  end
 end
 # rubocop:enable RSpec/ExampleLength

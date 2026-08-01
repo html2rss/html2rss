@@ -38,8 +38,7 @@ module Html2rss
       # @raise [RequestTimedOut] if the browser session exceeds the configured timeout
       def execute
         check_timeout!
-        validate_request!
-        execute_browserless_request
+        run_guarded_fetch
       rescue Puppeteer::TimeoutError => error
         raise RequestTimedOut, error.message
       end
@@ -58,12 +57,7 @@ module Html2rss
 
       private
 
-      def validate_request!
-        ctx.budget.consume!
-        ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
-      end
-
-      def execute_browserless_request
+      def fetch
         connect_with_timeout_support do |browser|
           PuppetCommander.new(ctx, browser).call
         ensure

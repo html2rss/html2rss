@@ -3,7 +3,11 @@
 module Html2rss
   class RequestSession
     ##
-    # Builds the runtime request policy for a feed run.
+    # Builds the runtime request policy and budgets for a feed run.
+    #
+    # HTTP request slots (pagination, document GETs, strategy fallback) are planned
+    # separately from Browserless preload interaction budget so preload cannot steal
+    # pagination slots.
     class RuntimePolicy
       ##
       # @param config [Html2rss::Config] validated feed config
@@ -16,6 +20,27 @@ module Html2rss
         )
       end
 
+      ##
+      # Builds a Budget with separate request and interaction slot pools.
+      #
+      # @param config [Html2rss::Config] validated feed config
+      # @return [Html2rss::RequestService::Budget] shared budget for the feed build
+      def self.budget_for(config)
+        policy = from_config(config)
+        RequestService::Budget.new(
+          max_requests: policy.max_requests,
+          max_interactions: interaction_budget_for(config),
+          total_timeout_seconds: policy.total_timeout_seconds
+        )
+      end
+
+      ##
+      # @param config [Html2rss::Config] validated feed config
+      # @return [Integer] preload interaction slots derived from browserless preload config
+      def self.interaction_budget_for(config)
+        browserless_preload_budget_for(config)
+      end
+
       class << self
         private
 
@@ -25,13 +50,12 @@ module Html2rss
           [baseline_request_budget_for(config), config.max_requests].max
         end
 
-        # Reserve enough budget for the initial request plus predictable follow-ups
-        # that the top-level pipeline may trigger during a normal feed build.
+        # Reserve enough HTTP request slots for the initial request plus predictable
+        # follow-ups. Preload interactions are planned separately.
         def baseline_request_budget_for(config)
           1 + pagination_follow_up_budget_for(config) +
             known_auto_source_follow_up_budget_for(config) +
-            auto_strategy_fallback_budget_for(config) +
-            browserless_preload_budget_for(config)
+            auto_strategy_fallback_budget_for(config)
         end
 
         def auto_strategy_fallback_budget_for(config)

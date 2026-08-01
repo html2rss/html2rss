@@ -16,3 +16,4 @@ docs/
 .codex/
 .tool-versions
 bin/rails
+CONTEXT.md

@@ -17,7 +17,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       validate_remote_ip!: nil
     )
   end
-  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, remaining_timeout_seconds: nil) }
+  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, consume_interaction!: nil, remaining_timeout_seconds: nil) }
   let(:ctx) do
     instance_double(
       Html2rss::RequestService::Context,
@@ -109,6 +109,14 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       )
     end
 
+    it 'does not run ResponseGuard so Strategy postflight remains the sole body check' do
+      allow(Html2rss::RequestService::ResponseGuard).to receive(:new).and_call_original
+
+      commander.call
+
+      expect(Html2rss::RequestService::ResponseGuard).not_to have_received(:new)
+    end
+
     it 'closes the page after execution' do
       commander.call
 
@@ -124,7 +132,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         commander.call
 
         expect(page).to have_received(:wait_for_timeout).with(1_000).twice
-        expect(budget).to have_received(:consume!).twice
+        expect(budget).to have_received(:consume_interaction!).twice
       end
     end
 
@@ -153,7 +161,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         expect(page).to have_received(:query_selector).with('.load-more').exactly(3).times
         expect(element).to have_received(:click).twice
         expect(page).to have_received(:wait_for_timeout).with(200).twice
-        expect(budget).to have_received(:consume!).exactly(4).times
+        expect(budget).to have_received(:consume_interaction!).exactly(4).times
         expect(result.body).to eq('<html data-loads="2"></html>')
       end
 
@@ -166,7 +174,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
 
         expect(element).to have_received(:click).twice
         expect(page).not_to have_received(:wait_for_timeout)
-        expect(budget).to have_received(:consume!).exactly(2).times
+        expect(budget).to have_received(:consume_interaction!).exactly(2).times
         expect(result.body).to eq('<html data-loads="2"></html>')
       end
 
@@ -295,7 +303,7 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         expect(page).to have_received(:evaluate)
           .with('() => window.scrollTo(0, document.body.scrollHeight)').exactly(3).times
         expect(page).to have_received(:wait_for_timeout).with(150).exactly(3).times
-        expect(budget).to have_received(:consume!).exactly(6).times
+        expect(budget).to have_received(:consume_interaction!).exactly(6).times
         expect(result.body).to eq('<html data-scrolls="3"></html>')
       end
 
@@ -309,12 +317,12 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         expect(page).to have_received(:evaluate)
           .with('() => window.scrollTo(0, document.body.scrollHeight)').exactly(3).times
         expect(page).not_to have_received(:wait_for_timeout)
-        expect(budget).to have_received(:consume!).exactly(3).times
+        expect(budget).to have_received(:consume_interaction!).exactly(3).times
         expect(result.body).to eq('<html data-scrolls="3"></html>')
       end
     end
 
-    context 'when preload exhausts the shared request budget' do
+    context 'when preload exhausts the interaction budget' do
       let(:element) { instance_double(Puppeteer::ElementHandle) }
 
       before do
@@ -323,16 +331,16 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         )
         allow(page).to receive(:query_selector).with('.load-more').and_return(element, element)
         allow(element).to receive(:click)
-        allow(budget).to receive(:consume!).and_raise(
-          Html2rss::RequestService::RequestBudgetExceeded,
-          'Request budget exhausted'
+        allow(budget).to receive(:consume_interaction!).and_raise(
+          Html2rss::RequestService::InteractionBudgetExceeded,
+          'Interaction budget exhausted'
         )
       end
 
-      it 'raises when preload actions exceed the shared budget' do
+      it 'raises when preload actions exceed the interaction budget' do
         expect { commander.call }.to raise_error(
-          Html2rss::RequestService::RequestBudgetExceeded,
-          'Request budget exhausted'
+          Html2rss::RequestService::InteractionBudgetExceeded,
+          'Interaction budget exhausted'
         )
       end
     end
@@ -347,9 +355,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         HTML
       end
 
-      it 'raises blocked-surface classification from the response guard' do
-        expect { commander.call }
-          .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+      it 'returns the body for Strategy postflight to classify' do
+        expect(commander.call.body).to include('Just a moment...')
       end
     end
   end
@@ -374,6 +381,14 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
 
       expect(page).to have_received(:default_navigation_timeout=).with(30_000)
       expect(page).to have_received(:default_timeout=).with(30_000)
+    end
+
+    it 'prefers remaining budget timeout for navigation so wall-clock deadline is honored' do
+      allow(budget).to receive(:remaining_timeout_seconds).and_return(12)
+
+      commander.new_page
+
+      expect(page).to have_received(:default_navigation_timeout=).with(12_000)
     end
 
     it 'sets up request interception and response guards', :aggregate_failures do

@@ -17,11 +17,7 @@ module Html2rss
       # @raise [RequestTimedOut] when the Botasaurus request exceeds configured timeout
       def execute
         check_timeout!
-        validate_request!
-        parsed_response = post_scrape_request
-        raise_if_challenge_blocked!(parsed_response)
-        raise_if_upstream_failed!(parsed_response)
-        build_response(parsed_response)
+        run_guarded_fetch
       rescue Faraday::TimeoutError, Timeout::Error => error
         raise RequestTimedOut, error.message
       rescue Faraday::ConnectionFailed, Faraday::SSLError => error
@@ -30,22 +26,21 @@ module Html2rss
 
       private
 
+      def fetch
+        parsed_response = post_scrape_request
+        raise_if_challenge_blocked!(parsed_response)
+        raise_if_upstream_failed!(parsed_response)
+        build_response(parsed_response)
+      end
+
       def post_scrape_request
         transport_response = client.post('/scrape', JSON.generate(contract.request_payload), content_type_header)
         contract.parse_response(transport_response)
       end
 
-      def validate_request!
-        ctx.budget.consume!
-        ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
-      end
-
       def build_response(parsed_response)
-        body = parsed_response.html
-        ResponseGuard.new(policy: ctx.policy).inspect_body!(body)
-
         Response.new(
-          body:,
+          body: parsed_response.html,
           headers: parsed_response.headers,
           url: response_url(parsed_response.final_url),
           status: parsed_response.status

@@ -106,7 +106,10 @@ module Html2rss
       end
 
       def navigation_timeout_ms
-        ctx.policy.total_timeout_seconds * 1000
+        timeout = ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds
+        raise RequestTimedOut, 'Request timed out' if timeout <= 0
+
+        (timeout * 1000).to_i
       end
 
       def browser_headers
@@ -148,11 +151,8 @@ module Html2rss
       end
 
       def build_response(page, navigation_response)
-        page_body = body(page)
-        ResponseGuard.new(policy: ctx.policy).inspect_body!(page_body)
-
         Response.new(
-          body: page_body,
+          body: body(page),
           headers: navigation_response&.headers || {},
           url: response_url(navigation_response, ctx.url),
           status: navigation_response&.status
@@ -214,7 +214,7 @@ module Html2rss
       def wait_after(page, timeout_ms)
         return unless timeout_ms
 
-        ctx.budget.consume!
+        ctx.budget.consume_interaction!
         page.wait_for_timeout(timeout_ms)
       end
 
@@ -243,14 +243,14 @@ module Html2rss
         max_clicks.times do
           break unless (element = page.query_selector(selector))
 
-          ctx.budget.consume!
+          ctx.budget.consume_interaction!
           element.click
           wait_after(page, wait_after_ms)
         end
       end
 
       def perform_scroll_iteration(page, wait_after_ms, previous_height)
-        ctx.budget.consume!
+        ctx.budget.consume_interaction!
         page.evaluate('() => window.scrollTo(0, document.body.scrollHeight)')
         wait_after(page, wait_after_ms)
 

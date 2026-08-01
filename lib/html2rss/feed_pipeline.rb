@@ -3,7 +3,7 @@
 module Html2rss
   ##
   # Builds feeds from validated config through request, extraction, and rendering stages.
-  class FeedPipeline # rubocop:disable Metrics/ClassLength
+  class FeedPipeline
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
@@ -97,11 +97,7 @@ module Html2rss
     # rubocop:enable Metrics/MethodLength
 
     def auto_pipeline_budget(config)
-      policy = RequestSession::RuntimePolicy.from_config(config)
-      RequestService::Budget.new(
-        max_requests: policy.max_requests,
-        total_timeout_seconds: policy.total_timeout_seconds
-      )
+      RequestSession::RuntimePolicy.budget_for(config)
     end
 
     def collect_articles(response:, config:, request_session:)

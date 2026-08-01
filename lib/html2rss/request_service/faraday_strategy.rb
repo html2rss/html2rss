@@ -36,9 +36,10 @@ module Html2rss
       def execute
         check_timeout!
         deadline = request_deadline
-        response_guard, response = perform_request(deadline:)
-        response_guard.inspect_body!(response.body)
-        build_response(response)
+        response_guard, raw_response = perform_request(deadline:)
+        response = build_response(raw_response)
+        postflight!(response, response_guard:)
+        response
       rescue Faraday::TimeoutError, Timeout::Error => error
         raise RequestTimedOut, error.message
       end
@@ -61,13 +62,8 @@ module Html2rss
                      status: response.status)
       end
 
-      def validate_request!(consume_budget: true)
-        ctx.budget.consume! if consume_budget
-        ctx.policy.validate_request!(url: ctx.url, origin_url: ctx.origin_url, relation: ctx.relation)
-      end
-
       def faraday_request(response_guard, deadline:, streaming_buffer:, consume_budget: true)
-        validate_request!(consume_budget:)
+        preflight!(consume_budget:)
 
         client.get do |req|
           apply_timeouts(req, deadline:)

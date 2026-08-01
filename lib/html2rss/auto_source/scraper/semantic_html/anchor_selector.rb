@@ -15,9 +15,9 @@ module Html2rss
           # Comma-separated heading selector used for heading/anchor matching.
           HEADING_SELECTOR = HtmlExtractor::HEADING_TAGS.join(',').freeze
 
-          # @param base_url [String, Html2rss::Url] page URL used to normalize href destinations
-          def initialize(base_url)
-            @link_heuristics = LinkHeuristics.new(base_url)
+          # @param link_heuristics [Html2rss::AutoSource::Scraper::LinkHeuristics] shared destination/text heuristics
+          def initialize(link_heuristics:)
+            @link_heuristics = link_heuristics
           end
 
           ##
@@ -37,7 +37,7 @@ module Html2rss
           private
 
           def facts_for(container)
-            HtmlExtractor::SemanticAnchorCandidates.new(
+            Discovery::SemanticAnchorCandidates.new(
               container,
               link_heuristics: @link_heuristics
             ).to_a
