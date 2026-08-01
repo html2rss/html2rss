@@ -114,6 +114,10 @@ module Html2rss
                 high_confidence_utility_destination && weak)
           end
 
+          # @param article_container [Boolean] container is an article element
+          # @param publish_marker [Boolean] container has a publish-time marker
+          # @param descriptive_context [Boolean] container has descriptive body text
+          # @param content_path [Boolean] destination looks content-like
           # @return [Boolean] true when article evidence is too weak to keep
           def self.weak_article_candidate?(article_container:, publish_marker:, descriptive_context:,
                                            content_path:)
