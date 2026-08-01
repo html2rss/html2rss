@@ -13,12 +13,54 @@ module Html2rss
       ##
       # Validates the configuration of the :items selector
       class Items < Dry::Validation::Contract
+        STRATEGY_NAMES = %w[rel_next custom_selector url_template offset json_cursor].freeze
+
         params do
           required(:selector).filled(:string)
           optional(:order).filled(included_in?: %w[reverse])
           optional(:enhance).filled(:bool?)
-          optional(:pagination).hash do
-            required(:max_pages).filled(:integer, gt?: 0)
+          optional(:pagination)
+        end
+
+        rule(:pagination) do
+          next if value.nil?
+
+          if value.is_a?(Integer)
+            key.failure('integer must be greater than 0') if value <= 0
+          elsif value.is_a?(Hash)
+            val_hash = value.transform_keys(&:to_sym)
+            validate_pagination_hash(val_hash, key)
+          else
+            key.failure('must be an integer or a hash')
+          end
+        end
+
+        private
+
+        def validate_pagination_hash(val_hash, key)
+          if val_hash[:max_pages] && (!val_hash[:max_pages].is_a?(Integer) || val_hash[:max_pages] <= 0)
+            key.failure('`max_pages` must be an integer greater than 0')
+          end
+
+          strategy = (val_hash[:strategy] || 'rel_next').to_s
+          unless STRATEGY_NAMES.include?(strategy)
+            key.failure("`strategy` must be one of: #{STRATEGY_NAMES.join(', ')}")
+          end
+
+          validate_strategy_fields(strategy, val_hash, key)
+        end
+
+        def validate_strategy_fields(strategy, val_hash, key)
+          case strategy
+          when 'custom_selector'
+            if val_hash[:selector].nil? || val_hash[:selector].to_s.strip.empty?
+              key.failure('`custom_selector` strategy requires `selector` to be specified')
+            end
+          when 'json_cursor'
+            if (val_hash[:cursor_path].nil? || val_hash[:cursor_path].to_s.strip.empty?) &&
+               (val_hash[:next_url_path].nil? || val_hash[:next_url_path].to_s.strip.empty?)
+              key.failure('`json_cursor` strategy requires either `cursor_path` or `next_url_path`')
+            end
           end
         end
       end
@@ -84,9 +126,9 @@ module Html2rss
         value.each_pair do |selector_key, selector|
           case selector_key.to_sym
           when Selectors::ITEMS_SELECTOR_KEY
-            Items.new.call(selector).errors.each { |error| key(selector_key).failure(error) }
+            Items.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
           when :enclosure
-            Enclosure.new.call(selector).errors.each { |error| key(selector_key).failure(error) }
+            Enclosure.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
           when :guid, :categories
             unless selector.is_a?(Array)
               key(selector_key).failure("`#{selector_key}` must be an array")
@@ -102,7 +144,7 @@ module Html2rss
             end
           else
             # From here on, the selector is found under its "dynamic" selector_key
-            Selector.new.call(selector).errors.each { |error| key(selector_key).failure(error) }
+            Selector.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
           end
         end
       end

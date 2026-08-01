@@ -65,7 +65,11 @@ module Html2rss
         end
 
         def pagination_follow_up_budget_for(config)
-          [config.selectors&.dig(:items, :pagination, :max_pages).to_i - 1, 0].max
+          pagination_config = config.selectors&.dig(:items, :pagination)
+          return 0 unless pagination_config
+
+          max_pages = Pager.normalize_config(pagination_config)[:max_pages] || Pager::Base::DEFAULT_MAX_PAGES
+          [max_pages - 1, 0].max
         end
 
         def known_auto_source_follow_up_budget_for(config)
