@@ -8,8 +8,16 @@ module Html2rss
       ##
       # Paginate using page number increments in query parameters or URL path templates.
       class UrlTemplate < Base
+        # Default query parameter name for page number pagination.
+        # @return [String]
         DEFAULT_PARAM = 'page'
+
+        # Default starting page number.
+        # @return [Integer]
         DEFAULT_START_PAGE = 1
+
+        # Default page number step increment.
+        # @return [Integer]
         DEFAULT_STEP = 1
 
         private

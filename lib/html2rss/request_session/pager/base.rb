@@ -10,6 +10,8 @@ module Html2rss
       class Base
         include Enumerable
 
+        # Default maximum number of pages to fetch if omitted.
+        # @return [Integer]
         DEFAULT_MAX_PAGES = 5
 
         # @param session [RequestSession] request session used to execute follow-ups

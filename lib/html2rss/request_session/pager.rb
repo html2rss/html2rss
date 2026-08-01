@@ -12,6 +12,8 @@ module Html2rss
     ##
     # Factory for building pagination strategy instances.
     module Pager
+      # Mapping of strategy symbols to strategy class implementations.
+      # @return [Hash{Symbol => Class}]
       STRATEGIES = {
         rel_next: RelNext,
         custom_selector: CustomSelector,

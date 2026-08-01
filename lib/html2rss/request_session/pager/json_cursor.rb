@@ -9,6 +9,8 @@ module Html2rss
       ##
       # Digs into JSON response payloads to extract next page URLs or cursor tokens.
       class JsonCursor < Base
+        # Default query parameter name for cursor token pagination.
+        # @return [String]
         DEFAULT_PARAM = 'cursor'
 
         private
