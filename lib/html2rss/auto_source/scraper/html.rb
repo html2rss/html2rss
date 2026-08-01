@@ -144,7 +144,7 @@ module Html2rss
           destination_facts = @link_heuristics.destination_facts(node)
           return false unless destination_facts
 
-          !noise_anchor?(node, destination_facts)
+          !noise_anchor?(node, destination_facts:)
         end
 
         ##
@@ -168,38 +168,21 @@ module Html2rss
         def extract_article(article_tag, selected_anchor: nil)
           selected_anchor ||= preferred_anchor_for(article_tag)
           return unless selected_anchor
-          return if noise_anchor?(selected_anchor, @link_heuristics.destination_facts(selected_anchor))
+          return if noise_anchor?(selected_anchor,
+                                  destination_facts: @link_heuristics.destination_facts(selected_anchor))
 
           @extractor.new(article_tag, base_url: @url, selected_anchor:).call
         end
 
         ##
         # @param anchor [Nokogiri::XML::Node]
-        # @param destination_facts [DestinationFacts]
+        # @param destination_facts [LinkHeuristics::DestinationFacts, nil]
         # @return [Boolean]
-        def noise_anchor?(anchor, destination_facts) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-          return true unless destination_facts
-
+        def noise_anchor?(anchor, destination_facts:)
           (@noise_anchors ||= {}.compare_by_identity)[anchor] ||= begin
             text = HtmlExtractor.extract_visible_text(anchor).to_s.strip
-
-            destination_facts.taxonomy_path ||
-              short_utility_label?(text, destination_facts) ||
-              (@link_heuristics.recommended_text?(text) && destination_facts.shallow) ||
-              (@link_heuristics.utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
-              (@link_heuristics.utility_text?(text) && destination_facts.vanity_path)
+            @link_heuristics.noise_anchor?(text:, destination_facts:)
           end
-        end
-
-        ##
-        # @param text [String]
-        # @param destination_facts [DestinationFacts]
-        # @return [Boolean]
-        def short_utility_label?(text, destination_facts)
-          destination_facts.utility_path &&
-            !destination_facts.content_path &&
-            !destination_facts.strong_post_suffix &&
-            text.scan(/\p{Alnum}+/).size <= 3
         end
 
         ##

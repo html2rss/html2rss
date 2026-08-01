@@ -26,7 +26,7 @@ module Html2rss
               new(
                 **candidate.anchor_identity_attributes,
                 **candidate.anchor_signal_attributes,
-                score: Score.new(candidate).value
+                score: candidate.anchor_score
               )
             end
           end
@@ -127,6 +127,11 @@ module Html2rss
               }
             end
 
+            # @return [Integer] policy score for ranking anchors in one container
+            def anchor_score
+              LinkHeuristics::AnchorSignals.new(**anchor_signal_attributes).score
+            end
+
             # @return [Boolean] true when visible anchor text has words
             def meaningful_text?
               @meaningful_text ||= text.match?(/\p{Alnum}/)
@@ -184,27 +189,6 @@ module Html2rss
 
             def icon_only_anchor?
               !meaningful_text? && @anchor.at_css('img, svg')
-            end
-          end
-
-          # Scores an eligible semantic anchor candidate.
-          class Score
-            # Score weights keyed by candidate signal predicate.
-            RULES = {
-              heading_anchor?: 100,
-              heading_text_match?: 20,
-              meaningful_text?: 10,
-              content_like_destination?: 10
-            }.freeze
-
-            # @param candidate [Candidate] eligible semantic anchor candidate
-            def initialize(candidate)
-              @candidate = candidate
-            end
-
-            # @return [Integer] ranking score
-            def value
-              RULES.sum { |predicate, weight| @candidate.public_send(predicate) ? weight : 0 }
             end
           end
 

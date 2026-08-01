@@ -4,10 +4,102 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Shared link-level heuristics used by scraper-local selection and
-      # scoring. This keeps normalization and route/text classification
-      # consistent without moving scraper policy into higher orchestration.
-      class LinkHeuristics
+      # Shared link eligibility and scoring policy for AutoSource scrapers.
+      #
+      # Scrapers collect DOM observations; this module owns junk/noise rules and
+      # numeric weights so eligibility policy stays in one place.
+      class LinkHeuristics # rubocop:disable Metrics/ClassLength
+        # Score weights keyed by AnchorSignals member name.
+        ANCHOR_SCORE_RULES = {
+          heading_anchor: 100,
+          heading_text_match: 20,
+          meaningful_text: 10,
+          content_like_destination: 10
+        }.freeze
+
+        # Anchor ranking signals used by semantic primary-link selection.
+        AnchorSignals = Data.define(
+          :heading_anchor,
+          :heading_text_match,
+          :meaningful_text,
+          :content_like_destination
+        ) do
+          # @return [Integer] ranking score for one eligible anchor
+          def score
+            ANCHOR_SCORE_RULES.sum { |signal, weight| public_send(signal) ? weight : 0 }
+          end
+        end
+
+        # Container observations used to compute quality/junk scores.
+        ContainerSignals = Data.define(
+          :title_word_count,
+          :path_length,
+          :content_path,
+          :publish_marker,
+          :descriptive_context,
+          :article_container,
+          :content_tokens,
+          :junk_tokens,
+          :utility_prefix_title,
+          :recommended_title,
+          :utility_path,
+          :strong_post_suffix,
+          :shallow,
+          :high_confidence_junk_path,
+          :high_confidence_utility_destination,
+          :selected_anchor_present
+        ) do
+          # @return [Integer] positive quality contribution for ranking
+          def quality_score # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+            score = 0
+            score += 40 if title_word_count >= 3
+            score += 15 if title_word_count >= 7
+            score += 20 if path_length > 6
+            score += 15 if content_path
+            score += 15 if publish_marker
+            score += 10 if descriptive_context
+            score += 10 if article_container
+            score += 10 if content_tokens
+            score
+          end
+
+          # @return [Integer] junk penalty subtracted from quality
+          def junk_score # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+            score = 0
+            score += 25 if non_content_utility_path?
+            score += 15 if utility_prefix_title && title_word_count <= 6
+            score += 10 if shallow
+            score += 10 if weak_container?
+            score += 10 if recommended_title && !content_path
+            score += 5 if high_confidence_junk_path
+            score += 15 if junk_tokens
+            score
+          end
+
+          # @return [Integer] quality minus junk for stable ranking
+          def final_score = quality_score - junk_score
+
+          # @return [Boolean] true when the entry should be dropped before ranking
+          def hard_junk? # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+            high_confidence_junk_path ||
+              (selected_anchor_present && recommended_title && shallow && weak_article_candidate?) ||
+              (selected_anchor_present && utility_prefix_title &&
+                high_confidence_utility_destination && weak_article_candidate?)
+          end
+
+          private
+
+          def non_content_utility_path?
+            utility_path && !content_path && !strong_post_suffix
+          end
+
+          def weak_container? = !publish_marker && !descriptive_context
+
+          def weak_article_candidate?
+            [article_container, publish_marker, descriptive_context, content_path].count(&:itself) < 2
+          end
+        end
+
         # Normalized URL plus reusable route-classification facts for one link.
         DestinationFacts = Data.define(
           :url,
@@ -347,6 +439,18 @@ module Html2rss
           end
         end
 
+        # Token pattern for content-like class/id markers on containers.
+        CONTENT_TOKEN_REGEXP = begin
+          words = PathClassifier::SEGMENT_SETS.fetch(:content)
+          /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+        end.freeze
+
+        # Token pattern for junk/utility class/id markers on containers.
+        JUNK_TOKEN_REGEXP = begin
+          words = PathClassifier::SEGMENT_SETS.fetch(:utility)
+          /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+        end.freeze
+
         # @param base_url [String, Html2rss::Url] page URL used to resolve relative hrefs
         def initialize(base_url)
           @base_url = base_url
@@ -383,7 +487,43 @@ module Html2rss
         # @return [Boolean] true when text identifies recommendation chrome
         def recommended_text?(text) = @text_classifier.recommended?(text)
 
+        ##
+        # Whether an anchor is junk chrome rather than a content permalink.
+        #
+        # Policy lives here so Html / SemanticHtml scrapers do not reimplement
+        # taxonomy/utility/recommended noise rules.
+        #
+        # @param text [String, #to_s] visible anchor text
+        # @param destination_facts [DestinationFacts, nil] route facts for the href
+        # @return [Boolean] true when the anchor should be ignored
+        def noise_anchor?(text:, destination_facts:) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+          return true unless destination_facts
+
+          destination_facts.taxonomy_path ||
+            short_utility_label?(text, destination_facts) ||
+            (recommended_text?(text) && destination_facts.shallow) ||
+            (utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
+            (utility_text?(text) && destination_facts.vanity_path)
+        end
+
+        ##
+        # @param tokens [String, #to_s] combined class/id token string
+        # @return [Boolean] true when tokens look content-like
+        def content_tokens?(tokens) = tokens.to_s.match?(CONTENT_TOKEN_REGEXP)
+
+        ##
+        # @param tokens [String, #to_s] combined class/id token string
+        # @return [Boolean] true when tokens look like utility chrome
+        def junk_tokens?(tokens) = tokens.to_s.match?(JUNK_TOKEN_REGEXP)
+
         private
+
+        def short_utility_label?(text, destination_facts)
+          destination_facts.utility_path &&
+            !destination_facts.content_path &&
+            !destination_facts.strong_post_suffix &&
+            text.to_s.scan(/\p{Alnum}+/).size <= 3
+        end
 
         def node_facts
           @node_facts ||= {}.compare_by_identity
