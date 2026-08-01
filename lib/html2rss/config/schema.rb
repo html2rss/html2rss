@@ -121,6 +121,37 @@ module Html2rss
           }
         end
 
+        # @return [Hash{Symbol => Object}] schema fragment for pagination configuration
+        def pagination
+          {
+            description: 'Pagination configuration or maximum page count integer.',
+            oneOf: [{ type: 'integer', exclusiveMinimum: 0 }, pagination_object_schema]
+          }
+        end
+
+        # @return [Hash{Symbol => Object}] schema fragment for object-style pagination configuration
+        def pagination_object_schema
+          {
+            type: 'object',
+            properties: pagination_properties,
+            additionalProperties: true
+          }
+        end
+
+        # @return [Hash{Symbol => Object}] schema fragment for pagination object properties
+        def pagination_properties
+          {
+            strategy: { type: 'string', enum: %w[rel_next custom_selector url_template offset json_cursor] },
+            max_pages: { type: 'integer', exclusiveMinimum: 0 },
+            selector: { type: 'string' },
+            param: { type: 'string' },
+            start: { type: 'integer' },
+            increment: { type: 'integer', exclusiveMinimum: 0 },
+            cursor_path: { type: 'string' },
+            next_url_path: { type: 'string' }
+          }
+        end
+
         # @return [Hash{Symbol => Object}] schema fragment for auto_source configuration
         def auto_source
           schema = Html2rss::AutoSource::Config.json_schema(loose: true)
@@ -179,9 +210,11 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] schema fragment for `items` selector configuration
         def items_schema
-          Html2rss::Selectors::Config::Items.new.schema.json_schema(loose: true).merge(
+          schema = Html2rss::Selectors::Config::Items.new.schema.json_schema(loose: true).merge(
             description: 'Defines the items selector and optional enhancement settings.'
           )
+          schema[:properties][:pagination] = Components.pagination
+          schema
         end
 
         # @return [Hash{Symbol => Object}] schema fragment for `enclosure` selector configuration
