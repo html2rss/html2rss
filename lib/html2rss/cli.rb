@@ -4,8 +4,6 @@ require 'fileutils'
 require 'json'
 require 'thor'
 
-##
-# The Html2rss namespace / command line interface.
 module Html2rss
   ##
   # The Html2rss command line interface.

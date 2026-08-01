@@ -216,23 +216,23 @@ module Html2rss
 
           # @return [Boolean] true when the route has article-like path evidence
           def content_path?
-            @content_path ||= segments.any? { |s| SEGMENT_SETS[:content].include?(s) } ||
+            @content_path ||= SEGMENT_SETS[:content].intersect?(segments) ||
                               yearish_content_context?
           end
 
           # @return [Boolean] true when the route includes utility/navigation evidence
           def utility_path?
-            @utility_path ||= segments.any? { |s| SEGMENT_SETS[:utility].include?(s) }
+            @utility_path ||= SEGMENT_SETS[:utility].intersect?(segments)
           end
 
           # @return [Boolean] true when the route points at conversion or account chrome
           def vanity_path?
-            @vanity_path ||= segments.any? { |s| SEGMENT_SETS[:vanity].include?(s) }
+            @vanity_path ||= SEGMENT_SETS[:vanity].intersect?(segments)
           end
 
           # @return [Boolean] true when the route points at taxonomy/listing chrome
           def taxonomy_path?
-            @taxonomy_path ||= segments.any? { |s| SEGMENT_SETS[:taxonomy].include?(s) }
+            @taxonomy_path ||= SEGMENT_SETS[:taxonomy].intersect?(segments)
           end
 
           # @return [Boolean] true when the route is too shallow to strongly indicate an article
