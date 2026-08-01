@@ -2,11 +2,7 @@
 
 require 'json'
 
-##
-# Main html2rss namespace.
 module Html2rss
-  ##
-  # Request transport orchestration and strategies.
   class RequestService
     ##
     # Maps html2rss request/response handling to the botasaurus-scrape-api contract.

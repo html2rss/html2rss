@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-##
-# The Html2rss namespace.
 module Html2rss
-  ##
-  # Coordinates feed generation pipeline stages.
   class FeedPipeline
     # Retries feed extraction across concrete request strategies for :auto mode.
     class AutoFallback

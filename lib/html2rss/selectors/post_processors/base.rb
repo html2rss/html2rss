@@ -29,7 +29,7 @@ module Html2rss
         # @param context [Selectors::Context] call-site context used for richer validation errors
         # @return [void]
         # @raise [InvalidType] if the value is not of the expected type(s)
-        def self.assert_type(value, types = [], name, context:)
+        def self.assert_type(value, types, name, context:)
           return if Array(types).any? { |type| value.is_a?(type) }
 
           options = if context.respond_to?(:options)
