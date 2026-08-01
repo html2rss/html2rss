@@ -376,6 +376,14 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       expect(page).to have_received(:default_timeout=).with(30_000)
     end
 
+    it 'prefers remaining budget timeout for navigation so wall-clock deadline is honored' do
+      allow(budget).to receive(:remaining_timeout_seconds).and_return(12)
+
+      commander.new_page
+
+      expect(page).to have_received(:default_navigation_timeout=).with(12_000)
+    end
+
     it 'sets up request interception and response guards', :aggregate_failures do
       commander.new_page
 

@@ -106,7 +106,10 @@ module Html2rss
       end
 
       def navigation_timeout_ms
-        ctx.policy.total_timeout_seconds * 1000
+        timeout = ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds
+        raise RequestTimedOut, 'Request timed out' if timeout <= 0
+
+        (timeout * 1000).to_i
       end
 
       def browser_headers

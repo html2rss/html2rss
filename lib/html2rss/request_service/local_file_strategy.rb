@@ -3,15 +3,23 @@
 module Html2rss
   class RequestService
     ##
-    # Strategy to read a local HTML file.
+    # Strategy to read a local HTML file (CLI `--input`).
+    #
+    # Intentionally skips remote budget/policy preflight and ResponseGuard
+    # postflight: this adapter never opens a network connection. SSRF controls
+    # remain on remote strategies; do not use this adapter for remote URLs.
     class LocalFileStrategy < Strategy
+      private
+
+      def skip_preflight? = true
+
+      def skip_postflight? = true
+
       ##
-      # Executes the local file read.
-      #
       # @return [Response] the mock response wrapped around the file contents
       # @raise [ArgumentError] if the local file path is missing
       # @raise [Errno::ENOENT] if the file does not exist
-      def execute
+      def fetch
         file_path = ctx.request[:local_file_path]
         raise ArgumentError, 'Local file path is required for local_file strategy' unless file_path
         raise Errno::ENOENT, "File not found: #{file_path}" unless File.exist?(file_path)

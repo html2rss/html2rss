@@ -10,6 +10,7 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
     instance_double(
       Html2rss::RequestService::Policy,
       total_timeout_seconds: 30,
+      max_decompressed_bytes: 1_000_000,
       validate_request!: nil
     )
   end
@@ -17,7 +18,7 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
   let(:ctx) { Html2rss::RequestService::Context.new(url: 'https://example.com', policy:, budget:) }
 
   describe '#execute' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    let(:response) { instance_double(Html2rss::RequestService::Response) }
+    let(:response) { instance_double(Html2rss::RequestService::Response, body: '<html></html>') }
     let(:commander) { instance_double(Html2rss::RequestService::PuppetCommander, call: response) }
     let(:browser) { instance_double(Puppeteer::Browser, disconnect: nil) }
 
