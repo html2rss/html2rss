@@ -3,6 +3,18 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService::Budget do
+  describe '.new' do
+    it 'rejects non-positive request slot limits' do
+      expect { described_class.new(max_requests: 0) }
+        .to raise_error(ArgumentError, 'max_requests must be positive')
+    end
+
+    it 'rejects negative interaction slot limits' do
+      expect { described_class.new(max_requests: 1, max_interactions: -1) }
+        .to raise_error(ArgumentError, 'max_interactions must be a non-negative integer')
+    end
+  end
+
   describe '#consume!' do
     let(:budget) { described_class.new(max_requests: 2) }
 

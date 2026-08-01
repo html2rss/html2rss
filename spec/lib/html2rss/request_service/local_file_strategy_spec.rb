@@ -19,10 +19,26 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
   end
 
   context 'with a valid file path' do
+    let(:policy) do
+      instance_double(
+        Html2rss::RequestService::Policy,
+        validate_request!: nil,
+        max_decompressed_bytes: 1_000_000
+      )
+    end
+    let(:budget) do
+      instance_double(
+        Html2rss::RequestService::Budget,
+        consume!: nil,
+        remaining_timeout_seconds: nil
+      )
+    end
     let(:ctx) do
       Html2rss::RequestService::Context.new(
         url: 'https://example.com',
-        request: { local_file_path: file_path }
+        request: { local_file_path: file_path },
+        policy:,
+        budget:
       )
     end
 
@@ -32,6 +48,16 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
       expect(response.status).to eq(200)
       expect(response.headers['content-type']).to include('text/html')
       expect(response.url.to_s).to eq('https://example.com/')
+    end
+
+    it 'skips remote budget and policy preflight for CLI --input', :aggregate_failures do
+      allow(Html2rss::RequestService::ResponseGuard).to receive(:new).and_call_original
+
+      execute
+
+      expect(budget).not_to have_received(:consume!)
+      expect(policy).not_to have_received(:validate_request!)
+      expect(Html2rss::RequestService::ResponseGuard).not_to have_received(:new)
     end
   end
 
