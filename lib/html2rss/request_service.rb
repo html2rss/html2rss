@@ -18,8 +18,10 @@ module Html2rss
     class UnsupportedUrlScheme < Html2rss::Error; end
     # Raised when a response type cannot be parsed.
     class UnsupportedResponseContentType < Html2rss::Error; end
-    # Raised when request limits are exceeded.
+    # Raised when HTTP request slot limits are exceeded.
     class RequestBudgetExceeded < Html2rss::Error; end
+    # Raised when Browserless preload interaction limits are exceeded.
+    class InteractionBudgetExceeded < Html2rss::Error; end
     # Raised when policy denies private-network access.
     class PrivateNetworkDenied < Html2rss::Error; end
     # Raised when cross-origin follow-up requests are denied.

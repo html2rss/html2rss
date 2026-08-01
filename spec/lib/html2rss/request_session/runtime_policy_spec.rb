@@ -35,9 +35,10 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
     context 'when max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
-      it 'adds predictable follow-up budget to the runtime policy', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(6)
+      it 'sizes HTTP request slots without stuffing preload into max_requests', :aggregate_failures do
+        expect(runtime_policy.max_requests).to eq(4)
         expect(runtime_policy.max_redirects).to eq(8)
+        expect(described_class.interaction_budget_for(config)).to eq(2)
       end
     end
 
@@ -47,7 +48,7 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       it 'adds auto fallback retry budget to the runtime policy', :aggregate_failures do
         expected_retry_budget = Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1
 
-        expect(runtime_policy.max_requests).to eq(6 + expected_retry_budget)
+        expect(runtime_policy.max_requests).to eq(4 + expected_retry_budget)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
@@ -55,8 +56,8 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
     context 'when strategy is non-auto and max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :faraday)) }
 
-      it 'keeps baseline budget unchanged for non-auto strategies' do
-        expect(runtime_policy.max_requests).to eq(6)
+      it 'keeps baseline request budget unchanged for non-auto strategies' do
+        expect(runtime_policy.max_requests).to eq(4)
       end
     end
 
@@ -79,8 +80,9 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
         )
       end
 
-      it 'does not reserve preload budget', :aggregate_failures do
+      it 'does not reserve preload interaction budget', :aggregate_failures do
         expect(runtime_policy.max_requests).to eq(4)
+        expect(described_class.interaction_budget_for(config)).to eq(0)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
@@ -97,8 +99,9 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
         )
       end
 
-      it 'counts click actions without extra wait budget' do
-        expect(runtime_policy.max_requests).to eq(6)
+      it 'counts click actions on the interaction budget, not request slots', :aggregate_failures do
+        expect(runtime_policy.max_requests).to eq(4)
+        expect(described_class.interaction_budget_for(config)).to eq(2)
       end
     end
 
@@ -122,9 +125,22 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
         )
       end
 
-      it 'counts scroll actions without extra wait budget' do
-        expect(runtime_policy.max_requests).to eq(7)
+      it 'counts scroll actions on the interaction budget so pagination keeps its HTTP slots',
+         :aggregate_failures do
+        expect(runtime_policy.max_requests).to eq(4)
+        expect(described_class.interaction_budget_for(config)).to eq(3)
       end
+    end
+  end
+
+  describe '.budget_for' do
+    let(:config) { Html2rss::Config.from_hash(raw_config) }
+
+    it 'builds a Budget with separate request and interaction pools', :aggregate_failures do
+      budget = described_class.budget_for(config)
+
+      expect(budget.remaining_requests).to eq(4)
+      expect(budget.remaining_interactions).to eq(2)
     end
   end
 end

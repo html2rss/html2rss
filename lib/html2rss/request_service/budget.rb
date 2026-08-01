@@ -3,40 +3,78 @@
 module Html2rss
   class RequestService
     ##
-    # Tracks how many outbound requests a single feed build may still perform.
+    # Tracks request slots, interaction budget, and wall-clock deadline for one feed build.
+    #
+    # HTTP fetches consume request slots; Browserless preload clicks/scrolls/waits consume
+    # interaction budget. Deadline remains on `#remaining_timeout_seconds`.
     class Budget
       ##
-      ##
-      # @param max_requests [Integer] the maximum number of requests allowed
-      # @param total_timeout_seconds [Integer, nil] the total timeout for the feed build
-      def initialize(max_requests:, total_timeout_seconds: nil)
-        unless max_requests.is_a?(Integer) && max_requests.positive?
-          raise ArgumentError, 'max_requests must be positive'
-        end
+      # @param max_requests [Integer] maximum HTTP request slots
+      # @param max_interactions [Integer] maximum preload interaction slots (default 0)
+      # @param total_timeout_seconds [Integer, nil] wall-clock timeout for the feed build
+      def initialize(max_requests:, max_interactions: 0, total_timeout_seconds: nil)
+        validate_slot_limits!(max_requests:, max_interactions:)
 
-        @remaining = max_requests
+        @remaining_requests = max_requests
+        @remaining_interactions = max_interactions
         @start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @total_timeout_seconds = total_timeout_seconds
         @mutex = Mutex.new
       end
 
       ##
-      # Consumes one request from the budget.
+      # Consumes one HTTP request slot.
       #
-      # @return [Integer] remaining request count after consumption
-      # @raise [RequestBudgetExceeded] if no requests remain
+      # @return [Integer] remaining request slots after consumption
+      # @raise [RequestBudgetExceeded] if no request slots remain
       def consume!
-        @mutex.synchronize do
-          raise RequestBudgetExceeded, 'Request budget exhausted' if @remaining.zero?
+        consume_request!
+      end
 
-          @remaining -= 1
+      ##
+      # Consumes one HTTP request slot.
+      #
+      # @return [Integer] remaining request slots after consumption
+      # @raise [RequestBudgetExceeded] if no request slots remain
+      def consume_request!
+        @mutex.synchronize do
+          raise RequestBudgetExceeded, 'Request budget exhausted' if @remaining_requests.zero?
+
+          @remaining_requests -= 1
         end
       end
 
       ##
-      # @return [Integer] requests still available
+      # Consumes one Browserless preload interaction slot.
+      #
+      # Preload must not steal pagination HTTP request slots.
+      #
+      # @return [Integer] remaining interaction slots after consumption
+      # @raise [InteractionBudgetExceeded] if no interaction slots remain
+      def consume_interaction!
+        @mutex.synchronize do
+          raise InteractionBudgetExceeded, 'Interaction budget exhausted' if @remaining_interactions.zero?
+
+          @remaining_interactions -= 1
+        end
+      end
+
+      ##
+      # @return [Integer] HTTP request slots still available
       def remaining
-        @mutex.synchronize { @remaining }
+        remaining_requests
+      end
+
+      ##
+      # @return [Integer] HTTP request slots still available
+      def remaining_requests
+        @mutex.synchronize { @remaining_requests }
+      end
+
+      ##
+      # @return [Integer] preload interaction slots still available
+      def remaining_interactions
+        @mutex.synchronize { @remaining_interactions }
       end
 
       ##
@@ -47,6 +85,18 @@ module Html2rss
         elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - @start_time
         remaining = @total_timeout_seconds - elapsed
         [remaining, 0.0].max
+      end
+
+      private
+
+      def validate_slot_limits!(max_requests:, max_interactions:)
+        unless max_requests.is_a?(Integer) && max_requests.positive?
+          raise ArgumentError,
+                'max_requests must be positive'
+        end
+        return if max_interactions.is_a?(Integer) && !max_interactions.negative?
+
+        raise ArgumentError, 'max_interactions must be a non-negative integer'
       end
     end
   end

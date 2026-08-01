@@ -217,7 +217,7 @@ module Html2rss
       def wait_after(page, timeout_ms)
         return unless timeout_ms
 
-        ctx.budget.consume!
+        ctx.budget.consume_interaction!
         page.wait_for_timeout(timeout_ms)
       end
 
@@ -246,14 +246,14 @@ module Html2rss
         max_clicks.times do
           break unless (element = page.query_selector(selector))
 
-          ctx.budget.consume!
+          ctx.budget.consume_interaction!
           element.click
           wait_after(page, wait_after_ms)
         end
       end
 
       def perform_scroll_iteration(page, wait_after_ms, previous_height)
-        ctx.budget.consume!
+        ctx.budget.consume_interaction!
         page.evaluate('() => window.scrollTo(0, document.body.scrollHeight)')
         wait_after(page, wait_after_ms)
 
