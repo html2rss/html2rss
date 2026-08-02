@@ -48,9 +48,10 @@ module Html2rss
 
         attr_reader :session, :initial_response, :config, :logger
 
-        # @return [Integer] configured maximum pages
+        # @return [Integer] configured maximum pages (always a positive Integer)
         def max_pages
-          config.fetch(:max_pages, DEFAULT_MAX_PAGES)
+          value = config.fetch(:max_pages, DEFAULT_MAX_PAGES)
+          value.is_a?(Integer) && value.positive? ? value : DEFAULT_MAX_PAGES
         end
 
         # @param next_url [String, URI, nil]

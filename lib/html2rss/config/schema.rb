@@ -139,18 +139,22 @@ module Html2rss
         end
 
         # @return [Hash{Symbol => Object}] schema fragment for pagination object properties
+        # rubocop:disable Metrics/MethodLength -- property map mirrors runtime pager keys 1:1
         def pagination_properties
           {
             strategy: { type: 'string', enum: %w[rel_next custom_selector url_template offset json_cursor] },
             max_pages: { type: 'integer', exclusiveMinimum: 0 },
             selector: { type: 'string' },
             param: { type: 'string' },
-            start: { type: 'integer' },
+            start_page: { type: 'integer' },
+            step: { type: 'integer', exclusiveMinimum: 0 },
+            start_offset: { type: 'integer' },
             increment: { type: 'integer', exclusiveMinimum: 0 },
             cursor_path: { type: 'string' },
             next_url_path: { type: 'string' }
           }
         end
+        # rubocop:enable Metrics/MethodLength
 
         # @return [Hash{Symbol => Object}] schema fragment for auto_source configuration
         def auto_source

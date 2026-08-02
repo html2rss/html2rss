@@ -38,16 +38,44 @@ RSpec.describe Html2rss::RequestSession::Pager do
     end
   end
 
+  describe Html2rss::RequestSession::Pager::Base do
+    # Hash#fetch returns nil when max_pages is explicitly nil, which would crash
+    # effective_page_budget via Integer comparison. Runtime must coerce to DEFAULT.
+    context 'when max_pages is explicitly nil' do
+      subject(:pager) do
+        Html2rss::RequestSession::Pager::RelNext.new(
+          session:,
+          initial_response:,
+          config: { strategy: :rel_next, max_pages: nil },
+          logger:
+        )
+      end
+
+      let(:initial_response) do
+        Html2rss::RequestService::Response.new(
+          body: '<html><body>page 1</body></html>',
+          url: Html2rss::Url.from_absolute('https://example.com/news'),
+          headers: { 'content-type' => 'text/html' }
+        )
+      end
+
+      it 'coerces to DEFAULT_MAX_PAGES without raising' do
+        expect(pager.to_a).to eq([initial_response])
+      end
+    end
+  end
+
   describe Html2rss::RequestSession::Pager::CustomSelector do
     subject(:pager) do
       described_class.new(
         session:,
         initial_response:,
-        config: { strategy: :custom_selector, selector: 'a.next-page', max_pages: 2 },
+        config: { strategy: :custom_selector, selector:, max_pages: 2 },
         logger:
       )
     end
 
+    let(:selector) { 'a.next-page' }
     let(:initial_response) do
       Html2rss::RequestService::Response.new(
         body: '<html><body><a class="next-page" href="/news?page=2">Next</a></body></html>',
@@ -69,6 +97,15 @@ RSpec.describe Html2rss::RequestSession::Pager do
 
     it 'extracts next URL using custom CSS selector' do
       expect(pager.to_a).to eq([initial_response, follow_up_response])
+    end
+
+    context 'with an XPath-only selector that at_css rejects' do
+      # descendant::a fails Nokogiri LOOKS_LIKE_XPATH / at_css; must fall back to at_xpath.
+      let(:selector) { 'descendant::a' }
+
+      it 'extracts next URL via XPath fallback' do
+        expect(pager.to_a).to eq([initial_response, follow_up_response])
+      end
     end
   end
 

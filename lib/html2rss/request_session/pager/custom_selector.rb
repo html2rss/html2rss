@@ -31,6 +31,9 @@ module Html2rss
         # @return [Nokogiri::XML::Node, nil]
         def extract_node(parsed_body, selector)
           parsed_body.at_css(selector) || parsed_body.at_xpath(selector)
+        rescue Nokogiri::CSS::SyntaxError, Nokogiri::XML::XPath::SyntaxError
+          # Pure XPath like `descendant::a` fails LOOKS_LIKE_XPATH / at_css; fall back explicitly.
+          parsed_body.at_xpath(selector)
         end
       end
     end

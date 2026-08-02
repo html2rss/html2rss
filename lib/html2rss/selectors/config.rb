@@ -40,7 +40,8 @@ module Html2rss
         private
 
         def validate_pagination_hash(val_hash, key)
-          if val_hash[:max_pages] && (!val_hash[:max_pages].is_a?(Integer) || val_hash[:max_pages] <= 0)
+          # Fail loud on explicit nil/non-positive: truthy checks would silently accept max_pages: nil.
+          if val_hash.key?(:max_pages) && (!val_hash[:max_pages].is_a?(Integer) || val_hash[:max_pages] <= 0)
             key.failure('`max_pages` must be an integer greater than 0')
           end
 

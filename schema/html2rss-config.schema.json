@@ -306,7 +306,14 @@
                     "param": {
                       "type": "string"
                     },
-                    "start": {
+                    "start_page": {
+                      "type": "integer"
+                    },
+                    "step": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "start_offset": {
                       "type": "integer"
                     },
                     "increment": {

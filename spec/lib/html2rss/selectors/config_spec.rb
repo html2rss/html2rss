@@ -84,6 +84,19 @@ RSpec.describe Html2rss::Selectors::Config do
         expect(result.errors.to_h.to_s).to include('must be an integer greater than 0')
       end
     end
+
+    context 'with explicit nil pagination max_pages' do
+      let(:config) do
+        { items: { selector: '.article', pagination: { max_pages: nil } } }
+      end
+
+      # Explicit nil must fail loud: a truthy check would silently accept it and
+      # leave runtime paging without a positive Integer budget.
+      it 'fails validation', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.to_h.to_s).to include('`max_pages` must be an integer greater than 0')
+      end
+    end
   end
 
   describe 'Selector' do
