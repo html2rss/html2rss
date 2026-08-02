@@ -73,12 +73,8 @@ module Html2rss
       ).call
     end
 
-    def run_auto_pipeline(config)
-      auto_fallback_for(config).call
-    end
-
     # rubocop:disable Metrics/MethodLength
-    def auto_fallback_for(config)
+    def run_auto_pipeline(config)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
         budget: auto_pipeline_budget(config),
@@ -92,7 +88,7 @@ module Html2rss
         articles_for: lambda do |response:, request_session:|
           deduplicated_articles(response:, config:, request_session:)
         end
-      )
+      ).call
     end
     # rubocop:enable Metrics/MethodLength
 
@@ -108,19 +104,24 @@ module Html2rss
     def selector_articles(response:, config:, request_session:) # rubocop:disable Metrics/MethodLength
       return [] unless (selectors = config.selectors)
 
-      page_responses = if (max_pages = selectors.dig(:items, :pagination, :max_pages))
-                         RequestSession::RelNextPager.new(
+      page_responses = if (pagination_config = selectors.dig(:items, :pagination))
+                         RequestSession::Pager.for(
+                           pagination_config,
                            session: request_session,
-                           initial_response: response,
-                           max_pages:
-                         ).to_a
+                           initial_response: response
+                         )
                        else
                          [response]
                        end
 
-      page_responses.flat_map do |page_response|
-        Selectors.new(page_response, selectors:, time_zone: config.time_zone).articles
+      articles = []
+      page_responses.each do |page_response|
+        page_articles = Selectors.new(page_response, selectors:, time_zone: config.time_zone).articles
+        break if page_articles.empty? && articles.any?
+
+        articles.concat(page_articles)
       end
+      articles
     end
 
     def auto_source_articles(response:, config:, request_session:)

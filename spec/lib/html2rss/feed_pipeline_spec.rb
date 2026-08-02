@@ -185,5 +185,32 @@ RSpec.describe Html2rss::FeedPipeline do
       end
       # rubocop:enable RSpec/ExampleLength
     end
+
+    context 'with selector pagination strategies' do
+      # rubocop:disable RSpec/ExampleLength
+      it 'paginates using url_template strategy and content-stops on empty page', :aggregate_failures do
+        p1 = build_response.call(body: '<html><body><article><h1>Item 1</h1></article></body></html>', url: 'https://example.com/news')
+        p2 = build_response.call(body: '<html><body><article><h1>Item 2</h1></article></body></html>', url: 'https://example.com/news?page=2')
+        p3 = build_response.call(body: '<html><body><div>No items</div></body></html>', url: 'https://example.com/news?page=3')
+        responses = { 'https://example.com/news' => p1, 'https://example.com/news?page=2' => p2, 'https://example.com/news?page=3' => p3 }
+
+        config = base_config.merge(
+          strategy: :faraday,
+          selectors: base_config[:selectors].merge(
+            items: { selector: 'article', pagination: { strategy: 'url_template', param: 'page', max_pages: 5 } }
+          )
+        )
+
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
+          ctx.budget.consume!
+          responses.fetch(ctx.url.to_s)
+        end
+
+        rss = described_class.new(config).to_rss
+        expect(rss.items.map(&:title)).to eq(['Item 1', 'Item 2'])
+        expect(Html2rss::RequestService).to have_received(:execute).exactly(3).times
+      end
+      # rubocop:enable RSpec/ExampleLength
+    end
   end
 end

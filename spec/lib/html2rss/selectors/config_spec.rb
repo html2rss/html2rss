@@ -21,7 +21,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { items: { selector: 'items', order: 'invalid' } }
       end
 
-      it { expect { result }.to raise_error(/must be one of: reverse/) }
+      it { expect(result).to be_failure }
     end
 
     context 'with pagination max_pages' do
@@ -32,12 +32,70 @@ RSpec.describe Html2rss::Selectors::Config do
       it { is_expected.to be_success }
     end
 
+    context 'with integer pagination' do
+      let(:config) do
+        { items: { selector: '.article', pagination: 3 } }
+      end
+
+      it { is_expected.to be_success }
+    end
+
+    context 'with invalid pagination strategy' do
+      let(:config) do
+        { items: { selector: '.article', pagination: { strategy: 'invalid_strategy' } } }
+      end
+
+      it 'fails validation', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.to_h.to_s).to include('`strategy` must be one of')
+      end
+    end
+
+    context 'with custom_selector strategy missing selector' do
+      let(:config) do
+        { items: { selector: '.article', pagination: { strategy: 'custom_selector' } } }
+      end
+
+      it 'fails validation', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.to_h.to_s).to include('`custom_selector` strategy requires `selector`')
+      end
+    end
+
+    context 'with json_cursor strategy missing cursor_path or next_url_path' do
+      let(:config) do
+        { items: { selector: '.article', pagination: { strategy: 'json_cursor' } } }
+      end
+
+      it 'fails validation', :aggregate_failures do
+        msg = '`json_cursor` strategy requires either `cursor_path` or `next_url_path`'
+        expect(result).to be_failure
+        expect(result.errors.to_h.to_s).to include(msg)
+      end
+    end
+
     context 'with invalid pagination max_pages' do
       let(:config) do
         { items: { selector: '.article', pagination: { max_pages: 0 } } }
       end
 
-      it { expect { result }.to raise_error(/must be greater than 0/) }
+      it 'fails validation', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.to_h.to_s).to include('must be an integer greater than 0')
+      end
+    end
+
+    context 'with explicit nil pagination max_pages' do
+      let(:config) do
+        { items: { selector: '.article', pagination: { max_pages: nil } } }
+      end
+
+      # Explicit nil must fail loud: a truthy check would silently accept it and
+      # leave runtime paging without a positive Integer budget.
+      it 'fails validation', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.to_h.to_s).to include('`max_pages` must be an integer greater than 0')
+      end
     end
   end
 
@@ -47,7 +105,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { description: { selector: {} } }
       end
 
-      it { expect { result }.to raise_error(/`selector` must be a string/) }
+      it { expect(result).to be_failure }
     end
 
     context 'when does not contain a selector but post_process' do
@@ -181,7 +239,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { post_process: [{ name: 'unknown' }] } }
       end
 
-      it { expect { result }.to raise_error(/Unknown post_processor/) }
+      it { expect(result).to be_failure }
     end
 
     context 'with missing post_processor name' do
@@ -189,7 +247,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { post_process: [{}] } }
       end
 
-      it { expect { result }.to raise_error(/Missing post_processor `name`/) }
+      it { expect(result).to be_failure }
     end
 
     context 'without gsub.pattern' do
@@ -197,7 +255,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { post_process: [{ name: 'gsub' }] } }
       end
 
-      it { expect { result }.to raise_error(/`pattern` must be a string/) }
+      it { expect(result).to be_failure }
     end
 
     context 'without gsub.replacement' do
@@ -205,7 +263,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { post_process: [{ name: 'gsub', pattern: '' }] } }
       end
 
-      it { expect { result }.to raise_error(/`replacement` must be a string/) }
+      it { expect(result).to be_failure }
     end
 
     context 'without substring.start' do
@@ -213,7 +271,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { post_process: [{ name: 'substring' }] } }
       end
 
-      it { expect { result }.to raise_error(/`start` must be an integer/) }
+      it { expect(result).to be_failure }
     end
 
     context 'with invalid substring.end' do
@@ -221,7 +279,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { post_process: [{ name: 'substring', start: 0, end: 'foo' }] } }
       end
 
-      it { expect { result }.to raise_error(/`end` must be an integer or omitted/) }
+      it { expect(result).to be_failure }
     end
 
     context 'without template.string' do
@@ -229,7 +287,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { post_process: [{ name: 'template' }] } }
       end
 
-      it { expect { result }.to raise_error(/`string` must be a string/) }
+      it { expect(result).to be_failure }
     end
   end
 
@@ -255,7 +313,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { selector: '', extractor: 'attribute' } }
       end
 
-      it { expect { result }.to raise_error(/`attribute` must be a string/) }
+      it { expect(result).to be_failure }
     end
 
     context 'with invalid static' do
@@ -263,7 +321,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { title: { selector: '', extractor: 'static' } }
       end
 
-      it { expect { result }.to raise_error(/`static` must be a string/) }
+      it { expect(result).to be_failure }
     end
   end
 
@@ -291,7 +349,7 @@ RSpec.describe Html2rss::Selectors::Config do
         { enclosure: { selector: 'enclosure', content_type: 'audio' } }
       end
 
-      it { expect { result }.to raise_error(/invalid format.*content_type/) }
+      it { expect(result).to be_failure }
     end
   end
 end

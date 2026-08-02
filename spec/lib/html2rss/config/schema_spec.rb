@@ -50,6 +50,24 @@ RSpec.describe Html2rss::Config::Schema do
       expect(pattern_schema.fetch('description')).to include('Dynamic selector definition')
     end
 
+    it 'documents pagination configuration under items selector', :aggregate_failures do
+      pagination_schema = json_schema.dig('properties', 'selectors', 'properties', 'items', 'properties', 'pagination')
+
+      expect(pagination_schema).to include('oneOf')
+      strategies = pagination_schema.fetch('oneOf')[1].dig('properties', 'strategy', 'enum')
+      expect(strategies).to contain_exactly('rel_next', 'custom_selector', 'url_template', 'offset', 'json_cursor')
+    end
+
+    it 'aligns pagination schema keys with runtime pager config keys', :aggregate_failures do
+      # Schema keys must match runtime pager keys (start_page/step/start_offset), not a generic `start`.
+      pagination_properties = json_schema.dig(
+        'properties', 'selectors', 'properties', 'items', 'properties', 'pagination', 'oneOf', 1, 'properties'
+      )
+
+      expect(pagination_properties.keys).to include('start_page', 'step', 'start_offset', 'increment')
+      expect(pagination_properties.keys).not_to include('start')
+    end
+
     it 'includes the runtime auto_source scraper options', :aggregate_failures do
       scraper_schema = json_schema.dig('properties', 'auto_source', 'properties', 'scraper', 'properties')
 

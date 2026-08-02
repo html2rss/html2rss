@@ -61,6 +61,23 @@ RSpec.describe Html2rss::RequestSession::RuntimePolicy do
       end
     end
 
+    context 'when pagination strategy omits max_pages' do
+      let(:config) do
+        Html2rss::Config.from_hash(
+          raw_config.merge(
+            strategy: :faraday,
+            selectors: raw_config[:selectors].merge(
+              items: { selector: 'article', pagination: { strategy: 'url_template' } }
+            )
+          )
+        )
+      end
+
+      it 'reserves request budget using default max_pages of 5' do
+        expect(runtime_policy.max_requests).to eq(6) # 1 initial + (5-1) pagination + 1 wordpress_api
+      end
+    end
+
     context 'when strategy is auto and max_requests is explicitly configured' do
       let(:config) do
         Html2rss::Config.from_hash(

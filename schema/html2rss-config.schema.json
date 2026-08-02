@@ -277,18 +277,58 @@
               }
             },
             "pagination": {
-              "type": "object",
-              "properties": {
-                "max_pages": {
+              "description": "Pagination configuration or maximum page count integer.",
+              "oneOf": [
+                {
                   "type": "integer",
-                  "not": {
-                    "type": "null"
-                  },
                   "exclusiveMinimum": 0
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "strategy": {
+                      "type": "string",
+                      "enum": [
+                        "rel_next",
+                        "custom_selector",
+                        "url_template",
+                        "offset",
+                        "json_cursor"
+                      ]
+                    },
+                    "max_pages": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "selector": {
+                      "type": "string"
+                    },
+                    "param": {
+                      "type": "string"
+                    },
+                    "start_page": {
+                      "type": "integer"
+                    },
+                    "step": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "start_offset": {
+                      "type": "integer"
+                    },
+                    "increment": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "cursor_path": {
+                      "type": "string"
+                    },
+                    "next_url_path": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true
                 }
-              },
-              "required": [
-                "max_pages"
               ]
             }
           },
