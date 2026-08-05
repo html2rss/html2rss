@@ -99,7 +99,7 @@ module Html2rss
             def date_scope
               return unless date_archive?
 
-              range = date_archive_range
+              range = DateArchiveRange.from_segments(scoped_path_segments)
               return unknown_archive_scope unless range
 
               PageScope.new(query: range, fetchable: true, reason: :archive)
@@ -195,45 +195,7 @@ module Html2rss
             end
 
             def date_archive_path?
-              !date_archive_segments.nil?
-            end
-
-            def date_archive_range
-              components = date_archive_components
-              return unless components
-
-              start_date = Date.new(*components.fetch(:start_date_parts))
-              {
-                'after' => iso8601_start(start_date),
-                'before' => iso8601_start(next_archive_boundary(start_date, components.fetch(:precision)))
-              }
-            rescue Date::Error
-              nil
-            end
-
-            def date_archive_components
-              segments = date_archive_segments
-              return unless segments
-
-              year = segments.fetch(0).to_i
-              month = parse_archive_segment(segments[1], 1, 12)
-              day = parse_archive_segment(segments[2], 1, 31)
-
-              {
-                start_date_parts: [year, month || 1, day || 1],
-                precision: archive_precision(month:, day:)
-              }
-            end
-
-            def date_archive_segments
-              year_index = scoped_path_segments.find_index { _1.match?(/\A\d{4}\z/) }
-              return unless year_index
-
-              segments = scoped_path_segments.drop(year_index)
-              return unless segments.length.between?(1, 3)
-              return unless archive_segment_shape?(segments)
-
-              segments
+              DateArchiveRange.path?(scoped_path_segments)
             end
 
             def paginated_path?
@@ -253,46 +215,8 @@ module Html2rss
               parse_positive_integer(path_segments[-1])
             end
 
-            def archive_segment_shape?(segments)
-              month = segments[1]
-              day = segments[2]
-              return false if day && month.nil?
-              return false unless month.nil? || month.match?(/\A\d+\z/)
-              return false unless day.nil? || day.match?(/\A\d+\z/)
-
-              true
-            end
-
             def same_origin_url?(left, right)
               [left.scheme, left.host, left.port] == [right.scheme, right.host, right.port]
-            end
-
-            def archive_precision(month:, day:)
-              return :day if day
-              return :month if month
-
-              :year
-            end
-
-            def next_archive_boundary(start_date, precision)
-              {
-                year: start_date.next_year,
-                month: start_date.next_month,
-                day: start_date.next_day
-              }.fetch(precision)
-            end
-
-            def iso8601_start(date)
-              date.strftime('%Y-%m-%dT00:00:00Z')
-            end
-
-            def parse_archive_segment(value, minimum, maximum)
-              return nil unless value&.match?(/\A\d+\z/)
-
-              number = value.to_i
-              return nil if number < minimum || number > maximum
-
-              number
             end
 
             def parse_positive_integer(value)

@@ -7,6 +7,35 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi::PageScope do
   let(:html) { '<html><body></body></html>' }
   let(:parsed_body) { Nokogiri::HTML(html) }
 
+  describe Html2rss::AutoSource::Scraper::WordpressApi::PageScope::DateArchiveRange do
+    describe '.from_segments' do
+      it 'maps year/month/day segments to exclusive after/before bounds' do
+        expect(described_class.from_segments(%w[2024 02 29])).to eq(
+          'after' => '2024-02-29T00:00:00Z',
+          'before' => '2024-03-01T00:00:00Z'
+        )
+      end
+
+      it 'returns nil for calendar-invalid date segments' do
+        expect(described_class.from_segments(%w[2023 02 29])).to be_nil
+      end
+
+      it 'returns nil when segments are not a date archive path' do
+        expect(described_class.from_segments(%w[category news])).to be_nil
+      end
+    end
+
+    describe '.path?' do
+      it 'is true for shape-valid date segments even when the calendar date is invalid' do
+        expect(described_class.path?(%w[2023 02 29])).to be(true)
+      end
+
+      it 'is false for non-date archive segments' do
+        expect(described_class.path?(%w[category news])).to be(false)
+      end
+    end
+  end
+
   describe '.from' do
     context 'when the page URL is a yearly archive' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/2024/') }
