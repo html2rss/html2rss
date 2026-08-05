@@ -4,7 +4,7 @@ Contributor map for the four Strong module deepenings on this branch. Prefer the
 
 ## Request Budget
 
-Shared wall-clock and HTTP/interaction meters for one feed build. Constructed only via `RequestSession::RuntimePolicy.budget_for(config)` on every `FeedPipeline` path (fixed strategy and `:auto` fallback). `RequestService::Context` requires an explicit `budget:` — it does not invent a `Budget` when the key is omitted.
+Shared wall-clock and HTTP/interaction meters for one feed build. Constructed only via `RequestSession::RuntimePolicy.budget_for(config)` on every `FeedPipeline` path (fixed strategy and `:auto` fallback). `RequestService::Context` requires an explicit `budget:` — it does not invent a `Budget` when the key is omitted. Auto fallback run state (`attempts` + selected result) lives on `FeedPipeline::AutoFallback::AttemptState`.
 
 ## DOM chrome
 
