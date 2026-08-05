@@ -1,32 +1,16 @@
 # frozen_string_literal: true
 
-require 'ipaddr'
-require 'resolv'
 require 'socket'
 
 module Html2rss
   class RequestService
     ##
     # Describes the runtime request envelope for a single feed build.
-    class Policy # rubocop:disable Metrics/ClassLength
+    #
+    # Public façade for request limits, same-origin/follow-up rules, and
+    # network reachability. DNS/host/IP enforcement lives on {NetworkGuard}.
+    class Policy
       MAX_REQUESTS_CEILING = 10
-      # Hostnames treated as local/private surfaces.
-      LOCAL_HOSTS = %w[localhost localhost.localdomain metadata.google.internal].to_set.freeze
-      # IP ranges blocked when private networks are disabled.
-      BLOCKED_IP_RANGES = [
-        IPAddr.new('0.0.0.0/8'),
-        IPAddr.new('10.0.0.0/8'),
-        IPAddr.new('127.0.0.0/8'),
-        IPAddr.new('169.254.0.0/16'),
-        IPAddr.new('172.16.0.0/12'),
-        IPAddr.new('192.168.0.0/16'),
-        IPAddr.new('224.0.0.0/4'),
-        IPAddr.new('::/128'),
-        IPAddr.new('::1/128'),
-        IPAddr.new('fe80::/10'),
-        IPAddr.new('fc00::/7'),
-        IPAddr.new('ff00::/8')
-      ].freeze
 
       # Default policy values used when request controls are not explicitly set.
       DEFAULTS = {
@@ -71,7 +55,7 @@ module Html2rss
         @max_requests = [validate_positive_integer!(:max_requests, max_requests), MAX_REQUESTS_CEILING].min
         @allow_private_networks = allow_private_networks ? true : false
         @allow_cross_origin_followups = allow_cross_origin_followups ? true : false
-        @resolver = resolver
+        @network_guard = NetworkGuard.new(allow_private_networks: @allow_private_networks, resolver:)
         freeze
       end
 
@@ -116,7 +100,7 @@ module Html2rss
       # @raise [PrivateNetworkDenied] if the target resolves to a private address
       def validate_request!(url:, origin_url:, relation:)
         enforce_same_origin!(url, origin_url, relation)
-        enforce_public_network!(url)
+        network_guard.enforce_public_network!(url)
       end
 
       ##
@@ -144,19 +128,12 @@ module Html2rss
       # @return [void]
       # @raise [PrivateNetworkDenied] if the response came from a blocked address
       def validate_remote_ip!(ip:, url:)
-        return if allow_private_networks?
-        return if ip.nil? || ip.empty?
-
-        parsed_ip = parse_ip(ip)
-        raise PrivateNetworkDenied, "Remote IP could not be validated for #{url}" unless parsed_ip
-        return unless blocked_ip?(parsed_ip)
-
-        raise PrivateNetworkDenied, "Private network target denied for #{url}"
+        network_guard.validate_remote_ip!(ip:, url:)
       end
 
       private
 
-      attr_reader :resolver
+      attr_reader :network_guard
 
       def validate_positive_integer!(name, value)
         raise ArgumentError, "#{name} must be positive" unless value.is_a?(Integer) && value.positive?
@@ -193,56 +170,6 @@ module Html2rss
         return url.port if url.port
 
         url.scheme == 'https' ? 443 : 80
-      end
-
-      def enforce_public_network!(url)
-        host = url.host
-        return if allow_private_networks?
-        return unless blocked_host?(host) || resolved_ip_addresses(host).any? { |address| blocked_ip?(address) }
-
-        raise PrivateNetworkDenied, "Private network target denied for #{url}"
-      end
-
-      def blocked_host?(host)
-        LOCAL_HOSTS.include?(host.to_s.downcase)
-      end
-
-      def resolved_ip_addresses(host)
-        literal = parse_ip(host)
-        return [literal] if literal
-
-        if resolver.respond_to?(:each_address)
-          addresses_from_each_address(host)
-        else
-          addresses_from_getaddrinfo(host)
-        end
-      rescue Resolv::ResolvError, SocketError, SystemCallError
-        []
-      end
-
-      def addresses_from_each_address(host)
-        [].tap do |addresses|
-          resolver.each_address(host) do |address|
-            parsed = parse_ip(address)
-            addresses << parsed if parsed
-          end
-        end
-      end
-
-      def addresses_from_getaddrinfo(host)
-        resolver.getaddrinfo(host, nil).filter_map do |entry|
-          parse_ip(entry[3])
-        end
-      end
-
-      def parse_ip(value)
-        IPAddr.new(value)
-      rescue IPAddr::AddressFamilyError, IPAddr::InvalidAddressError
-        nil
-      end
-
-      def blocked_ip?(address)
-        BLOCKED_IP_RANGES.any? { |range| range.include?(address) }
       end
     end
 
