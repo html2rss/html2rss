@@ -105,7 +105,7 @@ module Html2rss
     # @return [Hash] The enhanced article hash.
     # rubocop:disable Metrics/MethodLength
     def enhance_article_hash(article_hash, article_tag, base_url = @url)
-      selected_anchor = HtmlExtractor.main_anchor_for(article_tag)
+      selected_anchor = HtmlNavigator.main_anchor_for(article_tag)
       extracted = HtmlExtractor.new(
         article_tag,
         base_url:,
@@ -257,7 +257,7 @@ module Html2rss
     def extract_category_text(category)
       text = case category
              when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
-               HtmlExtractor.extract_visible_text(category)
+               HtmlNavigator.extract_visible_text(category)
              else
                category&.to_s
              end

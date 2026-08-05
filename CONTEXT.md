@@ -8,7 +8,7 @@ Shared wall-clock and HTTP/interaction meters for one feed build. Constructed on
 
 ## DOM chrome
 
-Layout noise and primary-link recognition for HTML trees: ignored container tags/paths, heading tags, main-anchor CSS, and visible-text extraction (`HtmlNavigator::TextExtractor`). Owned by `HtmlNavigator`. `HtmlExtractor` keeps thin constant/method aliases (including `HtmlExtractor::TextExtractor`) that delegate for compatibility; discovery and AutoSource scrapers call `HtmlNavigator` directly.
+Layout noise and primary-link recognition for HTML trees: ignored container tags/paths, heading tags, main-anchor CSS, and visible-text extraction (`HtmlNavigator::TextExtractor`). Owned solely by `HtmlNavigator`. Article field extraction (`HtmlExtractor`) and AutoSource discovery/scrapers call `HtmlNavigator` for chrome and visible text.
 
 ## Container assessment
 
@@ -17,5 +17,3 @@ Observing a semantic container plus its selected anchor and destination facts in
 ## Pagination strategy registry
 
 Supported pagination strategy names and factory classes live in `RequestSession::Pager::STRATEGIES` / `Pager.strategy_names`. Selectors validation (`Selectors::Config::Items`) and the exported JSON schema enum consume that list. Runtime pagination uses `Pager.for` (e.g. `rel_next` → `Pager::RelNext`).
-
-**Breaking:** `Html2rss::RequestSession::RelNextPager` was removed. Call `Pager.for` / `Pager::RelNext` instead of the old wrapper class.

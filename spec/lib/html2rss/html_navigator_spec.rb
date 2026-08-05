@@ -3,6 +3,33 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss::HtmlNavigator do
+  describe '.extract_visible_text' do
+    subject(:visible_text) { described_class.extract_visible_text(tag) }
+
+    let(:tag) do
+      Nokogiri::HTML.fragment('<div>Hello <span>World</span><script>App = {}</script></div>').at_css('div')
+    end
+
+    it 'returns the visible text from the tag and its children' do
+      expect(visible_text).to eq('Hello World')
+    end
+  end
+
+  describe '.main_anchor_for' do
+    let(:article_tag) do
+      Nokogiri::HTML.fragment(<<~HTML).at_css('article')
+        <article>
+          <a href="/category/news">News</a>
+          <h2><a href="/article/42">Correct Story</a></h2>
+        </article>
+      HTML
+    end
+
+    it 'returns the first eligible descendant anchor' do
+      expect(described_class.main_anchor_for(article_tag)['href']).to eq('/category/news')
+    end
+  end
+
   describe '.parent_until_condition' do
     let(:html) do
       <<-HTML

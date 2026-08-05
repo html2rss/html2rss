@@ -91,7 +91,7 @@ module Html2rss
     # @param element [Nokogiri::XML::Element] The element to extract text from
     # @return [void]
     def self.add_text_to_categories!(categories, element)
-      text = HtmlExtractor.extract_visible_text(element)
+      text = HtmlNavigator.extract_visible_text(element)
       categories.add(text) if text && !text.empty?
     end
 
@@ -102,7 +102,7 @@ module Html2rss
     # @param element [Nokogiri::XML::Element] The element to extract text from
     # @return [void]
     def self.extract_split_text_categories!(categories, element)
-      text = HtmlExtractor.extract_visible_text(element)
+      text = HtmlNavigator.extract_visible_text(element)
       return unless text
 
       text.split(/\n+/).each do |line|
