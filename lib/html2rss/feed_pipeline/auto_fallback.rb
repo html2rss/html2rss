@@ -2,9 +2,11 @@
 
 module Html2rss
   class FeedPipeline
-    # Retries feed extraction across concrete request strategies for :auto mode.
+    # Retries feed extraction across concrete request strategies for the :auto plan.
+    #
+    # Owned by {FeedPipeline}; invoked only after {StrategyPlan} resolves +:auto+.
     class AutoFallback
-      # Ordered list of concrete request strategies attempted by auto mode.
+      # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[faraday botasaurus browserless].freeze
 
       # Error classes that should abort auto fallback immediately.

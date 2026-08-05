@@ -1,0 +1,48 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+
+RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
+  describe '.resolve' do
+    it 'resolves :auto to the Auto plan' do
+      expect(described_class.resolve(:auto)).to eq(described_class::Auto.new)
+    end
+
+    it 'resolves a registered strategy to Concrete', :aggregate_failures do
+      plan = described_class.resolve(:faraday)
+
+      expect(plan).to be_a(described_class::Concrete)
+      expect(plan.strategy).to eq(:faraday)
+    end
+
+    it 'accepts string names' do
+      expect(described_class.resolve('browserless')).to eq(described_class::Concrete.new(strategy: :browserless))
+    end
+
+    it 'raises ArgumentError for an unknown plan' do
+      expect { described_class.resolve(:unknown) }.to raise_error(ArgumentError, /unknown strategy plan/)
+    end
+  end
+
+  describe '.valid?' do
+    it 'accepts :auto and registered strategies', :aggregate_failures do
+      expect(described_class.valid?(:auto)).to be true
+      expect(described_class.valid?(:faraday)).to be true
+      expect(described_class.valid?('botasaurus')).to be true
+    end
+
+    it 'rejects unknown names and non-names', :aggregate_failures do
+      expect(described_class.valid?(:unknown)).to be false
+      expect(described_class.valid?(nil)).to be false
+      expect(described_class.valid?(123)).to be false
+    end
+  end
+
+  describe '.accepted_names' do
+    it 'lists :auto ahead of concrete transport strategies' do
+      expect(described_class.accepted_names).to eq(
+        [:auto, *Html2rss::RequestService.strategy_names.map(&:to_sym)].uniq
+      )
+    end
+  end
+end

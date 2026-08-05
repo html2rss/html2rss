@@ -42,10 +42,11 @@ module Html2rss
     end
 
     def pipeline_state_for(config)
-      if config.strategy == :auto
+      plan = StrategyPlan.resolve(config.strategy)
+      if plan.is_a?(StrategyPlan::Auto)
         run_auto_pipeline(config)
       else
-        run_pipeline_for_strategy(config, strategy: config.strategy, budget: pipeline_budget(config))
+        run_pipeline_for_strategy(config, strategy: plan.strategy, budget: pipeline_budget(config))
       end
     end
 

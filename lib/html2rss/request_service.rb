@@ -6,7 +6,10 @@ require 'forwardable'
 module Html2rss
   ##
   # Requests website URLs to retrieve their HTML for further processing.
-  # Provides strategies, e.g. integrating Browserless.io.
+  # Provides concrete transport strategies (e.g. Faraday, Browserless).
+  #
+  # Feed-level +:auto+ is not registered here — {FeedPipeline::StrategyPlan} resolves
+  # it to a concrete strategy (or {FeedPipeline::AutoFallback} chain) before execute.
   class RequestService
     include Singleton
 

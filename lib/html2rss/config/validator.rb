@@ -13,8 +13,8 @@ module Html2rss
       STYLESHEET_TYPES = RssBuilder::Stylesheet::TYPES
       # Optional language/region format (`en` or `en-US`).
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
-      # Baseline strategy enum exported in static schema artifacts.
-      BASE_STRATEGY_OPTIONS = ([:auto] + Html2rss::RequestService.strategy_names.map(&:to_sym)).uniq.freeze
+      # Baseline strategy-plan enum (:auto plus concrete RequestService strategies).
+      BASE_STRATEGY_OPTIONS = Html2rss::FeedPipeline::StrategyPlan.accepted_names.freeze
 
       # Contract for the top-level `channel` section.
       ChannelConfig = Dry::Schema.Params do
@@ -111,7 +111,7 @@ module Html2rss
 
       rule(:strategy) do
         next if value.nil?
-        next if value == :auto || Html2rss::RequestService.strategy_registered?(value)
+        next if Html2rss::FeedPipeline::StrategyPlan.valid?(value)
 
         key.failure("must be one of: #{BASE_STRATEGY_OPTIONS.join(', ')}")
       end

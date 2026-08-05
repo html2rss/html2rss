@@ -92,9 +92,14 @@ RSpec.describe Html2rss::Configuration do
   describe '#default_strategy=' do
     subject(:config) { described_class.new }
 
-    it 'accepts a registered strategy' do
+    it 'accepts a registered concrete strategy' do
       config.default_strategy = :faraday
       expect(config.default_strategy).to eq(:faraday)
+    end
+
+    it 'accepts the feed-level :auto plan' do
+      config.default_strategy = :auto
+      expect(config.default_strategy).to eq(:auto)
     end
 
     it 'accepts string and normalizes to symbol' do
@@ -324,6 +329,14 @@ RSpec.describe Html2rss::Configuration do
       it 'uses global default strategy when strategy in config is default_strategy_name', :aggregate_failures do
         expect(Html2rss::Config.default_strategy_name).to eq(:faraday)
         expect(Html2rss::Config.default_config[:strategy]).to eq(:faraday)
+      end
+
+      it 'allows configure to set the feed-level :auto plan', :aggregate_failures do
+        Html2rss.configure { |config| config.default_strategy = :auto }
+
+        expect(Html2rss.configuration.default_strategy).to eq(:auto)
+        expect(Html2rss::Config.default_strategy_name).to eq(:auto)
+        expect(Html2rss::Config.default_config[:strategy]).to eq(:auto)
       end
 
       it 'uses global stylesheets in default_config' do

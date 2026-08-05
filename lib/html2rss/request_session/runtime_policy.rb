@@ -59,7 +59,8 @@ module Html2rss
         end
 
         def auto_strategy_fallback_budget_for(config)
-          return 0 unless config.strategy == :auto
+          plan = FeedPipeline::StrategyPlan.resolve(config.strategy)
+          return 0 unless plan.is_a?(FeedPipeline::StrategyPlan::Auto)
 
           [FeedPipeline::AutoFallback::CHAIN.size - 1, 0].max
         end
