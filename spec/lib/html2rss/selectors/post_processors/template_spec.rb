@@ -28,4 +28,22 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
 
     it { is_expected.to eq 'Hi! My name is Slim Shady! ' }
   end
+
+  context 'when Context carries an ItemScope' do
+    subject(:rendered) { described_class.new('Hi', context).get }
+
+    let(:item_scope) { instance_double(Html2rss::Selectors::ItemScope) }
+    let(:context) { Html2rss::Selectors::Context.new(options:, item:, scraper:, item_scope:) }
+    let(:options) { { string: '%{name}' } } # rubocop:disable Style/FormatStringToken
+
+    before do
+      allow(item_scope).to receive(:select).with(:name).and_return('Scoped')
+    end
+
+    it 'routes nested selects through the ItemScope', :aggregate_failures do
+      expect(rendered).to eq('Scoped')
+      expect(item_scope).to have_received(:select).with(:name)
+      expect(scraper).not_to have_received(:select)
+    end
+  end
 end
