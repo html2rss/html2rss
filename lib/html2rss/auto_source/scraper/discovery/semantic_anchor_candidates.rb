@@ -41,7 +41,7 @@ module Html2rss
             attr_reader :container
 
             # Ancestor tags that usually indicate navigation/utility regions.
-            UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].freeze
+            UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].to_set.freeze
 
             # @param container [Nokogiri::XML::Node] semantic container
             # @param link_heuristics [Html2rss::AutoSource::Scraper::LinkHeuristics] destination/text heuristics

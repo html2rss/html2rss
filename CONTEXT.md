@@ -8,7 +8,7 @@ Shared wall-clock and HTTP/interaction meters for one feed build. Constructed on
 
 ## DOM chrome
 
-Layout noise and primary-link recognition for HTML trees: ignored container tags/paths, heading tags, main-anchor CSS, and visible-text extraction. Owned by `HtmlNavigator`. `HtmlExtractor` keeps thin constant/method aliases that delegate for compatibility; discovery and AutoSource scrapers call `HtmlNavigator` directly.
+Layout noise and primary-link recognition for HTML trees: ignored container tags/paths, heading tags, main-anchor CSS, and visible-text extraction (`HtmlNavigator::TextExtractor`). Owned by `HtmlNavigator`. `HtmlExtractor` keeps thin constant/method aliases (including `HtmlExtractor::TextExtractor`) that delegate for compatibility; discovery and AutoSource scrapers call `HtmlNavigator` directly.
 
 ## Container assessment
 

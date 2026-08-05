@@ -36,7 +36,7 @@ module Html2rss
         end
 
         def resolve_heading_text(article_tag, heading, fallback_anchorless)
-          text = heading ? TextExtractor.call(heading) : nil
+          text = heading ? HtmlNavigator::TextExtractor.call(heading) : nil
           if text.nil? || text.strip.empty?
             fallback_text_node_content(article_tag, fallback_anchorless)
           else
@@ -58,7 +58,7 @@ module Html2rss
         end
 
         def generate_content_hash(article_tag)
-          text = TextExtractor.call(article_tag).to_s.strip
+          text = HtmlNavigator::TextExtractor.call(article_tag).to_s.strip
           Zlib.crc32(text).to_s(36) unless text.empty?
         end
       end

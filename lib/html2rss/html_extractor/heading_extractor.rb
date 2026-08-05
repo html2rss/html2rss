@@ -33,7 +33,7 @@ module Html2rss
           tags.each do |tag|
             next if tag.name != min_tag_name
 
-            size = TextExtractor.call(tag)&.size.to_i
+            size = HtmlNavigator::TextExtractor.call(tag)&.size.to_i
             (best_tag = tag) && (max_size = size) if size > max_size
           end
 
@@ -42,7 +42,7 @@ module Html2rss
 
         def fallback_heading(article_tag)
           fallback_tags = article_tag.css('strong, b, [class*="title"], [class*="font-bold"], [class*="font-semibold"]')
-          fallback_tags.find { |t| !TextExtractor.call(t).to_s.strip.empty? }
+          fallback_tags.find { |t| !HtmlNavigator::TextExtractor.call(t).to_s.strip.empty? }
         end
       end
     end
