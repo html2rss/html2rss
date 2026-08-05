@@ -4,11 +4,12 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService::Context do
   describe '#initialize' do
-    subject(:instance) { described_class.new(url:, headers:, request:) }
+    subject(:instance) { described_class.new(url:, headers:, request:, budget:) }
 
     let(:url) { 'http://www.example.com' }
     let(:headers) { {} }
     let(:request) { {} }
+    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 1) }
 
     context 'with a valid URL (String)' do
       it 'does not raise an error' do
@@ -74,10 +75,18 @@ RSpec.describe Html2rss::RequestService::Context do
     end
 
     context 'when policy is explicitly nil' do
-      subject(:instance) { described_class.new(url:, policy: nil) }
+      subject(:instance) { described_class.new(url:, policy: nil, budget:) }
 
       it 'raises an argument error' do
         expect { instance }.to raise_error(ArgumentError, 'policy must not be nil')
+      end
+    end
+
+    context 'when budget is omitted' do
+      subject(:instance) { described_class.new(url:) }
+
+      it 'raises an argument error' do
+        expect { instance }.to raise_error(ArgumentError, 'budget is required')
       end
     end
 

@@ -7,6 +7,13 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
   subject(:execute) { described_class.new(ctx).execute }
 
   let(:file_path) { temp_file.path }
+  let(:budget) do
+    instance_double(
+      Html2rss::RequestService::Budget,
+      consume!: nil,
+      remaining_timeout_seconds: nil
+    )
+  end
   let(:temp_file) do
     Tempfile.new(%w[test .html]).tap do |f|
       f.write('<html><body><h1>Hello World</h1></body></html>')
@@ -24,13 +31,6 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
         Html2rss::RequestService::Policy,
         validate_request!: nil,
         max_decompressed_bytes: 1_000_000
-      )
-    end
-    let(:budget) do
-      instance_double(
-        Html2rss::RequestService::Budget,
-        consume!: nil,
-        remaining_timeout_seconds: nil
       )
     end
     let(:ctx) do
@@ -65,7 +65,8 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
     let(:ctx) do
       Html2rss::RequestService::Context.new(
         url: 'https://example.com',
-        request: { local_file_path: '/nonexistent/file.html' }
+        request: { local_file_path: '/nonexistent/file.html' },
+        budget:
       )
     end
 
@@ -78,7 +79,8 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
     let(:ctx) do
       Html2rss::RequestService::Context.new(
         url: 'https://example.com',
-        request: {}
+        request: {},
+        budget:
       )
     end
 

@@ -42,18 +42,18 @@ module Html2rss
       if config.strategy == :auto
         run_auto_pipeline(config)
       else
-        run_pipeline_for_strategy(config, strategy: config.strategy)
+        run_pipeline_for_strategy(config, strategy: config.strategy, budget: pipeline_budget(config))
       end
     end
 
-    def run_pipeline_for_strategy(config, strategy:, budget: nil)
+    def run_pipeline_for_strategy(config, strategy:, budget:)
       request_session = request_session_for(config, strategy:, budget:)
       response = request_session.fetch_initial_response
       articles = deduplicated_articles(response:, config:, request_session:)
       { response:, articles: }
     end
 
-    def request_session_for(config, strategy:, budget: nil)
+    def request_session_for(config, strategy:, budget:)
       RequestSession.from_runtime_input(runtime_input_for(config, strategy:), budget:)
     end
 
@@ -77,7 +77,7 @@ module Html2rss
     def run_auto_pipeline(config)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
-        budget: auto_pipeline_budget(config),
+        budget: pipeline_budget(config),
         session_for: lambda do |strategy:, budget:|
           if budget.remaining_timeout_seconds && budget.remaining_timeout_seconds <= 0
             raise RequestService::RequestTimedOut, 'Request timed out'
@@ -92,7 +92,7 @@ module Html2rss
     end
     # rubocop:enable Metrics/MethodLength
 
-    def auto_pipeline_budget(config)
+    def pipeline_budget(config)
       RequestSession::RuntimePolicy.budget_for(config)
     end
 
