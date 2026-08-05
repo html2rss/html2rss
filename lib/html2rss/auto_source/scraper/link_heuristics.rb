@@ -80,33 +80,8 @@ module Html2rss
           def final_score = quality_score - junk_score
 
           # @return [Boolean] true when the entry should be dropped before ranking
-          def hard_junk?
-            self.class.hard_junk?(
-              high_confidence_junk_path:, selected_anchor_present:, recommended_title:,
-              shallow:, utility_prefix_title:, high_confidence_utility_destination:,
-              article_container:, publish_marker:, descriptive_context:, content_path:
-            )
-          end
-
-          # Hard-junk gate that only needs rejection-relevant observations.
-          #
-          # @param high_confidence_junk_path [Boolean] destination is high-confidence junk
-          # @param selected_anchor_present [Boolean] container selected a primary anchor
-          # @param recommended_title [Boolean] title looks like recommendation chrome
-          # @param shallow [Boolean] destination path is shallow
-          # @param utility_prefix_title [Boolean] title begins with a utility label
-          # @param high_confidence_utility_destination [Boolean] destination is utility chrome
-          # @param article_container [Boolean] container is an article element
-          # @param publish_marker [Boolean] container has a publish-time marker
-          # @param descriptive_context [Boolean] container has descriptive body text
-          # @param content_path [Boolean] destination looks content-like
-          # @return [Boolean] true when the entry should be dropped before ranking
-          def self.hard_junk?(high_confidence_junk_path:, selected_anchor_present:, recommended_title:, # rubocop:disable Metrics/ParameterLists, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-                              shallow:, utility_prefix_title:, high_confidence_utility_destination:,
-                              article_container:, publish_marker:, descriptive_context:, content_path:)
-            weak = weak_article_candidate?(
-              article_container:, publish_marker:, descriptive_context:, content_path:
-            )
+          def hard_junk? # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+            weak = weak_article_candidate?
 
             high_confidence_junk_path ||
               (selected_anchor_present && recommended_title && shallow && weak) ||
@@ -114,17 +89,12 @@ module Html2rss
                 high_confidence_utility_destination && weak)
           end
 
-          # @param article_container [Boolean] container is an article element
-          # @param publish_marker [Boolean] container has a publish-time marker
-          # @param descriptive_context [Boolean] container has descriptive body text
-          # @param content_path [Boolean] destination looks content-like
+          private
+
           # @return [Boolean] true when article evidence is too weak to keep
-          def self.weak_article_candidate?(article_container:, publish_marker:, descriptive_context:,
-                                           content_path:)
+          def weak_article_candidate?
             [article_container, publish_marker, descriptive_context, content_path].count(&:itself) < 2
           end
-
-          private
 
           def non_content_utility_path?
             utility_path && !content_path && !strong_post_suffix

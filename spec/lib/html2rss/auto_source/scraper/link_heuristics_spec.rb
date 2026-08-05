@@ -164,6 +164,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
     it 'owns hard-junk rejection so SemanticHtml only orchestrates DOM facts' do
       expect(signals.hard_junk?).to be(true)
     end
+
+    it 'keeps content articles with publish markers off the hard-junk path' do
+      keep = described_class::ContainerSignals.new(
+        title_word_count: 7,
+        path_length: 12,
+        content_path: true,
+        publish_marker: true,
+        descriptive_context: true,
+        article_container: true,
+        content_tokens: true,
+        junk_tokens: false,
+        utility_prefix_title: false,
+        recommended_title: false,
+        utility_path: false,
+        strong_post_suffix: true,
+        shallow: false,
+        high_confidence_junk_path: false,
+        high_confidence_utility_destination: false,
+        selected_anchor_present: true
+      )
+
+      expect(keep.hard_junk?).to be(false)
+    end
   end
 
   describe 'AnchorSignals' do
