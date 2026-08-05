@@ -13,12 +13,13 @@ module Html2rss
       #
       # @param name [Symbol, String]
       # @return [Object, Array<Object>]
-      def select(name) = scraper.select(name, item, base_url:)
+      def select(name) = scraper.select_in_scope(name, self)
 
       ##
       # Builds a post-processor {Context} carrying this scope for nested selects.
       #
       # @param options [Hash] post-processor options from the selector config
+      # @option options [String] :name post-processor name
       # @return [Context]
       def context_for(options:)
         Context.new(options:, item:, config: post_process_config, scraper:, item_scope: self)

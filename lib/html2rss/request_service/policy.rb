@@ -10,6 +10,7 @@ module Html2rss
     # Public façade for request limits, same-origin/follow-up rules, and
     # network reachability. DNS/host/IP enforcement lives on {NetworkGuard}.
     class Policy
+      # Hard ceiling for configured max_requests during a feed build.
       MAX_REQUESTS_CEILING = 10
 
       # Default policy values used when request controls are not explicitly set.

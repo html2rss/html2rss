@@ -5,6 +5,7 @@ module Html2rss
     ##
     # Commands the Puppeteer Browser to the website and builds the Response.
     class PuppetCommander
+      # Request header names that must not be forwarded to the browser session.
       BROWSER_UNSAFE_HEADERS = %w[
         host connection content-length transfer-encoding
         sec-fetch-dest sec-fetch-mode sec-fetch-site sec-fetch-user
