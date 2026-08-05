@@ -120,6 +120,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
     end
   end
 
+  describe '#assess_container' do
+    it 'owns observation and hard-junk so SemanticHtml only orchestrates extraction', :aggregate_failures do
+      html = Nokogiri::HTML(<<~HTML)
+        <article class="recommended">
+          <h2><a href="/about">Recommended for you</a></h2>
+        </article>
+      HTML
+      container = html.at_css('article')
+      anchor = container.at_css('a')
+      facts = heuristics.destination_facts(anchor)
+
+      signals = heuristics.assess_container(container, anchor, destination_facts: facts)
+
+      expect(signals).to be_a(described_class::ContainerSignals)
+      expect(signals.hard_junk?).to be(true)
+      expect(signals.selected_anchor_present).to be(true)
+    end
+  end
+
   describe 'ContainerSignals' do
     subject(:signals) do
       described_class::ContainerSignals.new(

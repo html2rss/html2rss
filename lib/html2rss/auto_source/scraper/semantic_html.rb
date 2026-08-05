@@ -18,7 +18,7 @@ module Html2rss
       # The result is lower recall on weak-signal blocks, but much better link
       # quality on modern teaser cards that mix headlines, utility links, and
       # duplicate image overlays.
-      class SemanticHtml # rubocop:disable Metrics/ClassLength
+      class SemanticHtml
         include Enumerable
 
         # Container plus selected anchor, scoring metadata, and extracted article.
@@ -107,9 +107,10 @@ module Html2rss
             next if selected_anchor && !destination_facts
             # Cheap path-only reject before title/DOM hard-junk observations.
             next if destination_facts&.high_confidence_junk_path
-            next if hard_junk_entry?(container, selected_anchor, destination_facts)
 
-            signals = container_signals(container, selected_anchor, destination_facts)
+            signals = @link_heuristics.assess_container(container, selected_anchor, destination_facts:)
+            next if signals.hard_junk?
+
             quality_score = signals.quality_score
             junk_score = signals.junk_score
 
@@ -163,100 +164,8 @@ module Html2rss
           (@document_positions ||= candidate_containers.each_with_index.to_h).fetch(container)
         end
 
-        # rubocop:disable Metrics/MethodLength
-        def hard_junk_entry?(container, selected_anchor, destination_facts)
-          title = entry_title(container, selected_anchor)
-
-          LinkHeuristics::ContainerSignals.hard_junk?(
-            high_confidence_junk_path: false, # already gated on destination_facts above
-            selected_anchor_present: !selected_anchor.nil?,
-            recommended_title: @link_heuristics.recommended_text?(title),
-            shallow: destination_facts&.shallow,
-            utility_prefix_title: @link_heuristics.utility_prefix_text?(title),
-            high_confidence_utility_destination: destination_facts&.high_confidence_utility_destination,
-            article_container: container.name == 'article',
-            publish_marker: publish_marker?(container),
-            descriptive_context: descriptive_context?(visible_text(container), title),
-            content_path: destination_facts&.content_path
-          )
-        end
-        # rubocop:enable Metrics/MethodLength
-
-        # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-        def container_signals(container, selected_anchor, destination_facts)
-          title = entry_title(container, selected_anchor)
-          tokens = container_tokens(container)
-
-          LinkHeuristics::ContainerSignals.new(
-            title_word_count: word_count(title),
-            path_length: destination_facts&.url&.path.to_s.length,
-            content_path: destination_facts&.content_path,
-            publish_marker: publish_marker?(container),
-            descriptive_context: descriptive_context?(visible_text(container), title),
-            article_container: container.name == 'article',
-            content_tokens: @link_heuristics.content_tokens?(tokens),
-            junk_tokens: @link_heuristics.junk_tokens?(tokens),
-            utility_prefix_title: @link_heuristics.utility_prefix_text?(title),
-            recommended_title: @link_heuristics.recommended_text?(title),
-            utility_path: destination_facts&.utility_path,
-            strong_post_suffix: destination_facts&.strong_post_suffix,
-            shallow: destination_facts&.shallow,
-            high_confidence_junk_path: destination_facts&.high_confidence_junk_path,
-            high_confidence_utility_destination: destination_facts&.high_confidence_utility_destination,
-            selected_anchor_present: !selected_anchor.nil?
-          )
-        end
-        # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
-
-        ##
-        # @param container [Nokogiri::XML::Node]
-        # @return [Boolean]
-        def publish_marker?(container)
-          (@publish_markers ||= {}.compare_by_identity)[container] ||=
-            !!container.at_css('time, [datetime], [itemprop="datePublished"], [itemprop="dateModified"]')
-        end
-
-        def descriptive_context?(container_text, title)
-          snippet = container_text.to_s.sub(/\A#{Regexp.escape(title.to_s)}/i, '')
-          snippet.length > 30 && word_count(snippet) >= 8
-        end
-
-        ##
-        # @param container [Nokogiri::XML::Node]
-        # @return [Nokogiri::XML::Node, nil]
-        def heading_for(container)
-          (@headings ||= {}.compare_by_identity)[container] ||= container.at_css(AnchorSelector::HEADING_SELECTOR)
-        end
-
         def normalized_destination(anchor)
           (@normalized_destinations ||= {}.compare_by_identity)[anchor] ||= @link_heuristics.destination_facts(anchor)
-        end
-
-        def visible_text(node)
-          return '' unless node
-
-          (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlNavigator.extract_visible_text(node).to_s.strip
-        end
-
-        ##
-        # @param container [Nokogiri::XML::Node]
-        # @param selected_anchor [Nokogiri::XML::Node]
-        # @return [String]
-        def entry_title(container, selected_anchor) = visible_text(heading_for(container) || selected_anchor)
-
-        ##
-        # @param text [String, #to_s]
-        # @return [Integer]
-        def word_count(text)
-          (@word_counts ||= {})[text] ||= begin
-            count = 0
-            text.to_s.scan(/\p{Alnum}+/) { count += 1 }
-            count
-          end
-        end
-
-        def container_tokens(container)
-          (@container_tokens ||= {}.compare_by_identity)[container] ||= "#{container['class']} #{container['id']}"
         end
 
         def stable_rank(entries)
