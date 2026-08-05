@@ -6,7 +6,7 @@ module Html2rss
     # HeadingExtractor identifies and returns the best heading element within a container.
     class HeadingExtractor
       # Heading tags used to prioritize title extraction.
-      HEADING_TAGS = HtmlExtractor::HEADING_TAGS
+      HEADING_TAGS = HtmlNavigator::HEADING_TAGS
 
       class << self
         ##

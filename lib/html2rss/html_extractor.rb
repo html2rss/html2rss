@@ -4,76 +4,30 @@ module Html2rss
   ##
   # HtmlExtractor is responsible for extracting details (headline, url, images, etc.)
   # from an article_tag.
-  # rubocop:disable Metrics/ClassLength
   class HtmlExtractor
-    # Heading tags used to prioritize title extraction.
-    HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
-
-    # Element tags that indicate ignored DOM chrome when found in a container path.
-    IGNORED_CONTAINER_TAGS = %w[nav footer header svg script style].to_set.freeze
-
-    # Anchor selector used to identify the canonical article link element.
-    MAIN_ANCHOR_SELECTOR = begin
-      buf = +'a[href]:not([href=""])'
-      %w[# javascript: mailto: tel: file:// sms: data:].each do |prefix|
-        buf << %[:not([href^="#{prefix}"])]
-      end
-      buf.freeze
-    end
+    # Thin aliases: DOM chrome ownership lives on HtmlNavigator.
+    HEADING_TAGS = HtmlNavigator::HEADING_TAGS
+    IGNORED_CONTAINER_TAGS = HtmlNavigator::IGNORED_CONTAINER_TAGS
+    MAIN_ANCHOR_SELECTOR = HtmlNavigator::MAIN_ANCHOR_SELECTOR
 
     class << self
       ##
-      # Extracts visible text from a given node and its children.
-      # Delegates to TextExtractor.
-      #
       # @param tag [Nokogiri::XML::Node] the node from which to extract visible text
       # @param separator [String] separator used to join text fragments (default is a space)
       # @param exclude_nodes [Array<Nokogiri::XML::Node>, nil] nodes to exclude from extraction
       # @return [String, nil] the concatenated visible text, or nil if none is found
-      def extract_visible_text(tag, separator: ' ', exclude_nodes: nil)
-        TextExtractor.call(tag, separator:, exclude_nodes:)
-      end
+      def extract_visible_text(...) = HtmlNavigator.extract_visible_text(...)
 
       ##
       # @param article_tag [Nokogiri::XML::Node] article-like container to search within
       # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
-      def main_anchor_for(article_tag)
-        return article_tag if article_tag.name == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
-
-        article_tag.at_css(MAIN_ANCHOR_SELECTOR)
-      end
+      def main_anchor_for(...) = HtmlNavigator.main_anchor_for(...)
 
       ##
       # @param node [Nokogiri::XML::Node]
       # @param cache [Hash, nil] identity cache used to store results (must use compare_by_identity)
       # @return [Boolean] true when the node belongs to ignored DOM chrome
-      # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-      def ignored_container_path?(node, cache = nil)
-        return cache[node] if cache&.key?(node)
-
-        curr = node
-        visited = []
-        is_ignored = false
-
-        while curr.respond_to?(:parent) && curr
-          if cache&.key?(curr)
-            is_ignored = cache[curr]
-            break
-          end
-
-          if IGNORED_CONTAINER_TAGS.include?(curr.name)
-            is_ignored = true
-            break
-          end
-
-          visited << curr
-          curr = curr.parent
-        end
-        visited.each { |n| cache[n] = is_ignored } if cache
-
-        is_ignored
-      end
-      # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+      def ignored_container_path?(...) = HtmlNavigator.ignored_container_path?(...)
     end
 
     ##
@@ -130,10 +84,10 @@ module Html2rss
     # rubocop:disable Metrics/CyclomaticComplexity
     def extract_title
       source = heading || selected_anchor
-      title_text = source ? self.class.extract_visible_text(source) : fallback_anchorless_title
+      title_text = source ? HtmlNavigator.extract_visible_text(source) : fallback_anchorless_title
       return unless title_text
 
-      kicker = kicker_node ? self.class.extract_visible_text(kicker_node).to_s.strip : nil
+      kicker = kicker_node ? HtmlNavigator.extract_visible_text(kicker_node).to_s.strip : nil
       kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
     end
     # rubocop:enable Metrics/CyclomaticComplexity
@@ -164,7 +118,7 @@ module Html2rss
 
     def extract_description
       exclude = [heading, selected_anchor, kicker_node].compact.to_set
-      description = self.class.extract_visible_text(article_tag, exclude_nodes: exclude)
+      description = HtmlNavigator.extract_visible_text(article_tag, exclude_nodes: exclude)
       return if description.nil?
 
       desc = description.strip
@@ -186,5 +140,4 @@ module Html2rss
     def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
     def extract_categories = CategoryExtractor.call(article_tag)
   end
-  # rubocop:enable Metrics/ClassLength
 end

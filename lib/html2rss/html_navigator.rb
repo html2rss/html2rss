@@ -2,9 +2,77 @@
 
 module Html2rss
   ##
-  # HtmlNavigator provides methods to navigate through HTML nodes.
+  # HtmlNavigator owns DOM chrome recognition and node traversal helpers.
   class HtmlNavigator
+    # Heading tags used to prioritize title extraction and container assessment.
+    HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
+
+    # Element tags that indicate ignored DOM chrome when found in a container path.
+    IGNORED_CONTAINER_TAGS = %w[nav footer header svg script style].to_set.freeze
+
+    # Anchor selector used to identify the canonical article link element.
+    MAIN_ANCHOR_SELECTOR = begin
+      buf = +'a[href]:not([href=""])'
+      %w[# javascript: mailto: tel: file:// sms: data:].each do |prefix|
+        buf << %[:not([href^="#{prefix}"])]
+      end
+      buf.freeze
+    end
+
     class << self
+      ##
+      # Extracts visible text from a given node and its children.
+      # Delegates to TextExtractor.
+      #
+      # @param tag [Nokogiri::XML::Node] the node from which to extract visible text
+      # @param separator [String] separator used to join text fragments (default is a space)
+      # @param exclude_nodes [Array<Nokogiri::XML::Node>, nil] nodes to exclude from extraction
+      # @return [String, nil] the concatenated visible text, or nil if none is found
+      def extract_visible_text(tag, separator: ' ', exclude_nodes: nil)
+        HtmlExtractor::TextExtractor.call(tag, separator:, exclude_nodes:)
+      end
+
+      ##
+      # @param article_tag [Nokogiri::XML::Node] article-like container to search within
+      # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
+      def main_anchor_for(article_tag)
+        return article_tag if article_tag.name == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
+
+        article_tag.at_css(MAIN_ANCHOR_SELECTOR)
+      end
+
+      ##
+      # @param node [Nokogiri::XML::Node]
+      # @param cache [Hash, nil] identity cache used to store results (must use compare_by_identity)
+      # @return [Boolean] true when the node belongs to ignored DOM chrome
+      # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+      def ignored_container_path?(node, cache = nil)
+        return cache[node] if cache&.key?(node)
+
+        curr = node
+        visited = []
+        is_ignored = false
+
+        while curr.respond_to?(:parent) && curr
+          if cache&.key?(curr)
+            is_ignored = cache[curr]
+            break
+          end
+
+          if IGNORED_CONTAINER_TAGS.include?(curr.name)
+            is_ignored = true
+            break
+          end
+
+          visited << curr
+          curr = curr.parent
+        end
+        visited.each { |n| cache[n] = is_ignored } if cache
+
+        is_ignored
+      end
+      # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+
       ##
       # Returns the first parent that satisfies the condition.
       # If the condition is met, it returns the node itself.

@@ -96,7 +96,7 @@ module Html2rss
         # @return [Boolean] true when the node is a good extraction boundary
         def article_tag_condition?(node)
           # Ignore tags that are below ignored DOM chrome.
-          return false if HtmlExtractor.ignored_container_path?(node, @ignored_cache)
+          return false if HtmlNavigator.ignored_container_path?(node, @ignored_cache)
           return true if %w[body html].include?(node.name)
           return false unless (parent = node.parent)
 
@@ -180,7 +180,7 @@ module Html2rss
         # @return [Boolean]
         def noise_anchor?(anchor, destination_facts:)
           (@noise_anchors ||= {}.compare_by_identity)[anchor] ||= begin
-            text = HtmlExtractor.extract_visible_text(anchor).to_s.strip
+            text = HtmlNavigator.extract_visible_text(anchor).to_s.strip
             @link_heuristics.noise_anchor?(text:, destination_facts:)
           end
         end
@@ -189,8 +189,8 @@ module Html2rss
         # @param article_tag [Nokogiri::XML::Node]
         # @return [Nokogiri::XML::Node, nil]
         def preferred_anchor_for(article_tag)
-          article_tag.css(HtmlExtractor::MAIN_ANCHOR_SELECTOR).find { relevant_anchor?(_1) } ||
-            HtmlExtractor.main_anchor_for(article_tag)
+          article_tag.css(HtmlNavigator::MAIN_ANCHOR_SELECTOR).find { relevant_anchor?(_1) } ||
+            HtmlNavigator.main_anchor_for(article_tag)
         end
 
         ##

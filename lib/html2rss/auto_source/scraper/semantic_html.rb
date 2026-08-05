@@ -235,7 +235,7 @@ module Html2rss
         def visible_text(node)
           return '' unless node
 
-          (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlExtractor.extract_visible_text(node).to_s.strip
+          (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlNavigator.extract_visible_text(node).to_s.strip
         end
 
         ##
