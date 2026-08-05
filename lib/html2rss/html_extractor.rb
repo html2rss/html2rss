@@ -5,9 +5,11 @@ module Html2rss
   # HtmlExtractor is responsible for extracting details (headline, url, images, etc.)
   # from an article_tag.
   class HtmlExtractor
-    # Thin aliases: DOM chrome ownership lives on HtmlNavigator.
+    # @see HtmlNavigator::HEADING_TAGS
     HEADING_TAGS = HtmlNavigator::HEADING_TAGS
+    # @see HtmlNavigator::IGNORED_CONTAINER_TAGS
     IGNORED_CONTAINER_TAGS = HtmlNavigator::IGNORED_CONTAINER_TAGS
+    # @see HtmlNavigator::MAIN_ANCHOR_SELECTOR
     MAIN_ANCHOR_SELECTOR = HtmlNavigator::MAIN_ANCHOR_SELECTOR
 
     class << self
@@ -16,18 +18,23 @@ module Html2rss
       # @param separator [String] separator used to join text fragments (default is a space)
       # @param exclude_nodes [Array<Nokogiri::XML::Node>, nil] nodes to exclude from extraction
       # @return [String, nil] the concatenated visible text, or nil if none is found
-      def extract_visible_text(...) = HtmlNavigator.extract_visible_text(...)
+      # @see HtmlNavigator.extract_visible_text
+      def extract_visible_text(tag, separator: ' ', exclude_nodes: nil)
+        HtmlNavigator.extract_visible_text(tag, separator:, exclude_nodes:)
+      end
 
       ##
       # @param article_tag [Nokogiri::XML::Node] article-like container to search within
       # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
-      def main_anchor_for(...) = HtmlNavigator.main_anchor_for(...)
+      # @see HtmlNavigator.main_anchor_for
+      def main_anchor_for(article_tag) = HtmlNavigator.main_anchor_for(article_tag)
 
       ##
       # @param node [Nokogiri::XML::Node]
       # @param cache [Hash, nil] identity cache used to store results (must use compare_by_identity)
       # @return [Boolean] true when the node belongs to ignored DOM chrome
-      def ignored_container_path?(...) = HtmlNavigator.ignored_container_path?(...)
+      # @see HtmlNavigator.ignored_container_path?
+      def ignored_container_path?(node, cache = nil) = HtmlNavigator.ignored_container_path?(node, cache)
     end
 
     ##
