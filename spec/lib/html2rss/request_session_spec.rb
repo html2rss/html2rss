@@ -53,7 +53,7 @@ RSpec.describe Html2rss::RequestSession do
       let(:configured_max_requests) { 4 }
       let(:budget) { Html2rss::RequestService::Budget.new(max_requests: configured_max_requests) }
 
-      it 'infers the baseline request budget while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'threads the required budget: while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         session = described_class.from_runtime_input(runtime_input, budget:, logger:)
         context = session.instance_variable_get(:@context)
 

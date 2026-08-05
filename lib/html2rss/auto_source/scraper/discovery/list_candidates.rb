@@ -68,8 +68,10 @@ module Html2rss
           def anchor_counts(anchor_filter:)
             Hash.new(0).tap do |counts|
               each_anchor(anchor_filter:) do |node|
+                next if HtmlNavigator.ignored_container_path?(node)
+
                 path = self.class.simplify_xpath(node.path)
-                counts[path] += 1 unless HtmlNavigator.ignored_container_path?(path)
+                counts[path] += 1
               end
             end
           end

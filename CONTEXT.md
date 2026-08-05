@@ -16,4 +16,6 @@ Observing a semantic container plus its selected anchor and destination facts in
 
 ## Pagination strategy registry
 
-Supported pagination strategy names and factory classes live in `RequestSession::Pager::STRATEGIES` / `Pager.strategy_names`. Selectors validation (`Selectors::Config::Items`) and the exported JSON schema enum consume that list. Runtime pagination uses `Pager.for`; there is no `RelNextPager` wrapper class.
+Supported pagination strategy names and factory classes live in `RequestSession::Pager::STRATEGIES` / `Pager.strategy_names`. Selectors validation (`Selectors::Config::Items`) and the exported JSON schema enum consume that list. Runtime pagination uses `Pager.for` (e.g. `rel_next` → `Pager::RelNext`).
+
+**Breaking:** `Html2rss::RequestSession::RelNextPager` was removed. Call `Pager.for` / `Pager::RelNext` instead of the old wrapper class.
