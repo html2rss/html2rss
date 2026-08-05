@@ -42,6 +42,10 @@ module Html2rss
 
           string = context[:options]&.dig(:string).to_s
           raise InvalidType, 'The `string` template is absent.' if string.empty?
+
+          return if context.item_scope
+
+          raise MissingOption, 'The post-processor context is missing `item_scope`.', [], cause: nil
         end
 
         ##
@@ -51,8 +55,6 @@ module Html2rss
           super
 
           @options = context[:options] || {}
-          @scraper = context[:scraper]
-          @item = context[:item]
           @string = @options[:string].to_s
           @getter = ->(key) { item_value(key) }
         end
@@ -71,11 +73,7 @@ module Html2rss
           key = key.to_sym
           return value if key == :self
 
-          if (scope = @context.item_scope)
-            scope.select(key)
-          else
-            @scraper.select(key, @item)
-          end
+          @context.item_scope.select(key)
         end
       end
     end

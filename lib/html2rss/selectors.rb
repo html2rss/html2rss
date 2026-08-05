@@ -134,12 +134,23 @@ module Html2rss
     # @return [Object, Array<Object>] The selected value(s).
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
     def select(name, item, base_url: @url)
+      select_in_scope(name, item_scope_for(item, base_url))
+    end
+
+    ##
+    # Selects the value for a given attribute within an existing {ItemScope}.
+    # Used by {ItemScope#select} so nested selects reuse one scope per extraction pass.
+    #
+    # @param name [Symbol, String] Name of the attribute.
+    # @param scope [ItemScope] Per-item extraction scope.
+    # @return [Object, Array<Object>] The selected value(s).
+    # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
+    def select_in_scope(name, scope)
       name = name.to_sym
 
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
 
       selector_key, config = selector_config_for(name)
-      scope = item_scope_for(item, base_url)
 
       if SPECIAL_ATTRIBUTES.member?(selector_key)
         select_special(selector_key, scope:, config:)
