@@ -139,7 +139,7 @@ module Html2rss
         }
       end
 
-      # @return [Symbol] the default strategy for feed orchestration
+      # @return [Symbol] the default feed-level strategy plan (+:auto+ or concrete)
       def default_strategy_name
         Html2rss.configuration.default_strategy || :auto
       end

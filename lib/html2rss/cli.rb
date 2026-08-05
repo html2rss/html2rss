@@ -9,14 +9,15 @@ module Html2rss
   # The Html2rss command line interface.
   class CLI < Thor # rubocop:disable Metrics/ClassLength
     check_unknown_options!
-    # Ordered fallback chain attempted by auto strategy.
+    # Ordered fallback chain attempted by the feed-level :auto plan.
     #
     # @return [Array<Symbol>]
     AUTO_FALLBACK_CHAIN = Html2rss::FeedPipeline::AutoFallback::CHAIN.freeze
-    # Supported CLI strategy option values.
+    # Supported CLI strategy plan option values (:auto plus concrete strategies).
     #
     # @return [Array<String>]
-    STRATEGY_OPTION_ENUM = (['auto'] + Html2rss::RequestService.strategy_names).uniq.freeze
+    STRATEGY_OPTION_ENUM = Html2rss::FeedPipeline::StrategyPlan.accepted_names.map(&:to_s).freeze
+
     # User-facing strategy help text that reflects the current fallback chain.
     #
     # @return [String]

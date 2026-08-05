@@ -93,11 +93,13 @@ module Html2rss
     end
 
     ##
-    # Sets the default strategy.
+    # Sets the default feed-level strategy plan (+:auto+ or a concrete transport strategy).
     #
-    # @param strategy [Symbol, String, nil] the strategy name
-    # @return [Symbol, nil] the normalized strategy name
-    # @raise [ArgumentError] if the strategy is not registered
+    # +:auto+ is not a {RequestService} adapter — it is resolved by {FeedPipeline::StrategyPlan}.
+    #
+    # @param strategy [Symbol, String, nil] the strategy plan name
+    # @return [Symbol, nil] the normalized strategy plan name
+    # @raise [ArgumentError] if the strategy plan is unknown
     def default_strategy=(strategy)
       if strategy.nil?
         @default_strategy = nil
@@ -107,7 +109,7 @@ module Html2rss
         end
 
         normalized = strategy.to_sym
-        raise ArgumentError, "unknown strategy: #{strategy}" unless RequestService.strategy_registered?(normalized)
+        raise ArgumentError, "unknown strategy: #{strategy}" unless FeedPipeline::StrategyPlan.valid?(normalized)
 
         @default_strategy = normalized
       end
