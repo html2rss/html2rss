@@ -69,7 +69,13 @@ module Html2rss
         # @return [String]
         def item_value(key)
           key = key.to_sym
-          key == :self ? value : @scraper.select(key, @item)
+          return value if key == :self
+
+          if (scope = @context.item_scope)
+            scope.select(key)
+          else
+            @scraper.select(key, @item)
+          end
         end
       end
     end

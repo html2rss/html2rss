@@ -197,5 +197,33 @@ RSpec.describe Html2rss::Selectors do
         expect { value }.to raise_error(described_class::InvalidSelectorName, "Selector for 'unknown' is not defined.")
       end
     end
+
+    context 'when a template nested select resolves relative urls' do
+      subject(:value) do
+        instance.select(:title, item, base_url: 'https://other.example/section/').to_s
+      end
+
+      let(:selectors) do
+        {
+          items: { selector: 'article' },
+          path: { selector: 'a', extractor: 'href' },
+          title: {
+            selector: 'h1',
+            # rubocop:disable Style/FormatStringToken -- template post-processor uses %{key}
+            post_process: { name: 'template', string: '%{path}' }
+            # rubocop:enable Style/FormatStringToken
+          }
+        }
+      end
+      let(:body) do
+        <<~HTML
+          <html><body><article><h1>Title</h1><a href="/item">x</a></article></body></html>
+        HTML
+      end
+
+      it 'honors the per-call base_url for nested template selects' do
+        expect(value).to eq('https://other.example/item')
+      end
+    end
   end
 end

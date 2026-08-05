@@ -18,7 +18,9 @@ module Html2rss
     include Enumerable
 
     # A context instance passed to item extractors and post-processors.
-    Context = Struct.new('Context', :options, :item, :config, :scraper, keyword_init: true)
+    # When built via {ItemScope#context_for}, +item_scope+ carries the per-item
+    # extraction base_url for nested selects (e.g. Template).
+    Context = Struct.new('Context', :options, :item, :config, :scraper, :item_scope, keyword_init: true)
 
     # Default selectors options merged into user configuration.
     DEFAULT_CONFIG = { items: { enhance: true } }.freeze
@@ -92,7 +94,8 @@ module Html2rss
     # @param page_response [RequestService::Response] response used for selector extraction context
     # @return [Hash] Hash of attributes for the article.
     def extract_article(item, page_response = response)
-      @rss_item_attributes.to_h { |key| [key, select(key, item, base_url: page_response.url)] }.compact
+      scope = item_scope_for(item, page_response.url)
+      @rss_item_attributes.to_h { |key| [key, scope.select(key)] }.compact
     end
 
     ##
@@ -136,17 +139,28 @@ module Html2rss
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
 
       selector_key, config = selector_config_for(name)
+      scope = item_scope_for(item, base_url)
 
       if SPECIAL_ATTRIBUTES.member?(selector_key)
-        select_special(selector_key, item:, config:, base_url:)
+        select_special(selector_key, scope:, config:)
       else
-        select_regular(selector_key, item:, config:, base_url:)
+        select_regular(selector_key, scope:, config:)
       end
     end
 
     private
 
     attr_reader :response
+
+    def item_scope_for(item, base_url)
+      ItemScope.new(
+        item:,
+        base_url:,
+        scraper: self,
+        channel: channel_context(base_url),
+        post_process_config: channel_post_process_context(base_url)
+      )
+    end
 
     def prepare_selectors!
       validate_url_and_link_exclusivity!
@@ -192,64 +206,58 @@ module Html2rss
                                             end
     end
 
-    def select_special(name, item:, config:, base_url:)
+    def select_special(name, scope:, config:)
       case name
       when :enclosure
-        enclosure(item:, config:, base_url:)
+        enclosure(scope:, config:)
       when :guid
-        Array(config).map { |selector_name| select(selector_name, item, base_url:) }
+        Array(config).map { |selector_name| scope.select(selector_name) }
       when :categories
-        select_categories(category_selectors: config, item:, base_url:)
+        select_categories(category_selectors: config, scope:)
       end
     end
 
-    def select_regular(_name, item:, config:, base_url:)
+    def select_regular(_name, scope:, config:)
       @merged_configs ||= {}
-      merged_config = @merged_configs[[config.object_id, base_url]] ||=
-        config.merge(channel: channel_context(base_url)).freeze
-      value = Extractors.get(merged_config, item)
+      merged_config = @merged_configs[[config.object_id, scope.base_url]] ||=
+        config.merge(channel: scope.channel).freeze
+      value = Extractors.get(merged_config, scope.item)
 
       if value && (post_process_steps = config[:post_process])
         steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-        value = post_process(item, value, steps, base_url:)
+        value = post_process(scope, value, steps)
       end
 
       value
     end
 
-    def post_process(item, value, post_process_steps, base_url:)
-      pp_context = channel_post_process_context(base_url)
+    def post_process(scope, value, post_process_steps)
       post_process_steps.each do |options|
-        context = Context.new(config: pp_context,
-                              item:, scraper: self, options:)
-
-        value = PostProcessors.get(options[:name], value, context)
+        value = PostProcessors.get(options[:name], value, scope.context_for(options:))
       end
 
       value
     end
 
-    def select_categories(category_selectors:, item:, base_url:)
+    def select_categories(category_selectors:, scope:)
       Array(category_selectors).flat_map do |selector_name|
-        extract_category_values(selector_name, item:, base_url:)
+        extract_category_values(selector_name, scope:)
       end
     end
 
-    def extract_category_values(selector_name, item:, base_url:)
+    def extract_category_values(selector_name, scope:)
       selector_key, config = selector_config_for(selector_name, allow_nil: true)
       return [] unless config
 
-      nodes = extract_nodes(item:, config:)
-      unless node_set_with_multiple_elements?(nodes)
-        return Array(select_regular(selector_key, item:, config:, base_url:))
-      end
+      nodes = extract_nodes(item: scope.item, config:)
+      return Array(select_regular(selector_key, scope:, config:)) unless node_set_with_multiple_elements?(nodes)
 
-      Array(nodes).flat_map { |node| extract_categories_from_node(node, item:, config:, base_url:) }
+      Array(nodes).flat_map { |node| extract_categories_from_node(node, scope:, config:) }
     end
 
-    def extract_categories_from_node(node, item:, config:, base_url:)
-      values = Extractors.get(category_node_options(config, base_url:), node)
-      values = apply_post_process_steps(item:, value: values, post_process_steps: config[:post_process], base_url:)
+    def extract_categories_from_node(node, scope:, config:)
+      values = Extractors.get(category_node_options(config, scope:), node)
+      values = apply_post_process_steps(scope:, value: values, post_process_steps: config[:post_process])
 
       Array(values).filter_map { |category| extract_category_text(category) }
     end
@@ -270,19 +278,19 @@ module Html2rss
       nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
     end
 
-    def category_node_options(selector_config, base_url:)
+    def category_node_options(selector_config, scope:)
       @category_node_configs ||= {}
-      @category_node_configs[[selector_config.object_id, base_url]] ||= selector_config.merge(
-        channel: channel_context(base_url),
+      @category_node_configs[[selector_config.object_id, scope.base_url]] ||= selector_config.merge(
+        channel: scope.channel,
         selector: nil
       ).freeze
     end
 
-    def apply_post_process_steps(item:, value:, post_process_steps:, base_url:)
+    def apply_post_process_steps(scope:, value:, post_process_steps:)
       return value unless value && post_process_steps
 
       steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-      post_process(item, value, steps, base_url:)
+      post_process(scope, value, steps)
     end
 
     def selector_config_for(name, allow_nil: false)
@@ -311,8 +319,8 @@ module Html2rss
     end
 
     # @return [Hash] enclosure details.
-    def enclosure(item:, config:, base_url:)
-      url = Url.from_relative(select_regular(:enclosure, item:, config:, base_url:), base_url)
+    def enclosure(scope:, config:)
+      url = Url.from_relative(select_regular(:enclosure, scope:, config:), scope.base_url)
 
       { url:, type: config[:content_type] }
     end
