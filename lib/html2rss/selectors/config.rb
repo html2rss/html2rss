@@ -13,9 +13,9 @@ module Html2rss
       ##
       # Validates the configuration of the :items selector
       class Items < Dry::Validation::Contract
-        # Supported pagination strategy names.
+        # Supported pagination strategy names (sole source: RequestSession::Pager).
         # @return [Array<String>]
-        STRATEGY_NAMES = %w[rel_next custom_selector url_template offset json_cursor].freeze
+        STRATEGY_NAMES = Html2rss::RequestSession::Pager.strategy_names
 
         params do
           required(:selector).filled(:string)
