@@ -77,9 +77,7 @@ module Html2rss
         raise ArgumentError, 'policy must not be nil' if @policy.nil?
 
         @origin_url = normalized_origin_url(request_options[:origin_url])
-        @budget = request_options.fetch(:budget) do
-          Budget.new(max_requests: policy.max_requests, total_timeout_seconds: policy.total_timeout_seconds)
-        end
+        @budget = request_options.fetch(:budget) { raise ArgumentError, 'budget is required' }
         raise ArgumentError, 'budget must not be nil' if @budget.nil?
       end
 

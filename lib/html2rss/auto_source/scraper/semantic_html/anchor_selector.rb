@@ -13,7 +13,7 @@ module Html2rss
         # destinations, and weak textless affordances.
         class AnchorSelector
           # Comma-separated heading selector used for heading/anchor matching.
-          HEADING_SELECTOR = HtmlExtractor::HEADING_TAGS.join(',').freeze
+          HEADING_SELECTOR = HtmlNavigator::HEADING_TAGS.join(',').freeze
 
           # @param link_heuristics [Html2rss::AutoSource::Scraper::LinkHeuristics] shared destination/text heuristics
           def initialize(link_heuristics:)

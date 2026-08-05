@@ -142,7 +142,7 @@ module Html2rss
         # rubocop:disable Metrics/MethodLength -- property map mirrors runtime pager keys 1:1
         def pagination_properties
           {
-            strategy: { type: 'string', enum: %w[rel_next custom_selector url_template offset json_cursor] },
+            strategy: { type: 'string', enum: Html2rss::RequestSession::Pager.strategy_names },
             max_pages: { type: 'integer', exclusiveMinimum: 0 },
             selector: { type: 'string' },
             param: { type: 'string' },

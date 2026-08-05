@@ -23,6 +23,14 @@ module Html2rss
       }.freeze
 
       ##
+      # Returns the supported pagination strategy names.
+      #
+      # @return [Array<String>] strategy names derived from {STRATEGIES}
+      def self.strategy_names
+        STRATEGIES.keys.map(&:to_s).freeze
+      end
+
+      ##
       # Returns a pager instance for the provided configuration.
       #
       # @param config [Hash, Integer, nil] pagination configuration

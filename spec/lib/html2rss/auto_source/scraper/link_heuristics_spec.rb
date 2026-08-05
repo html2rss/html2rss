@@ -120,6 +120,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
     end
   end
 
+  describe '#assess_container' do
+    it 'owns observation and hard-junk so SemanticHtml only orchestrates extraction', :aggregate_failures do
+      html = Nokogiri::HTML(<<~HTML)
+        <article class="recommended">
+          <h2><a href="/about">Recommended for you</a></h2>
+        </article>
+      HTML
+      container = html.at_css('article')
+      anchor = container.at_css('a')
+      facts = heuristics.destination_facts(anchor)
+
+      signals = heuristics.assess_container(container, anchor, destination_facts: facts)
+
+      expect(signals).to be_a(described_class::ContainerSignals)
+      expect(signals.hard_junk?).to be(true)
+      expect(signals.selected_anchor_present).to be(true)
+    end
+  end
+
   describe 'ContainerSignals' do
     subject(:signals) do
       described_class::ContainerSignals.new(
@@ -144,6 +163,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
 
     it 'owns hard-junk rejection so SemanticHtml only orchestrates DOM facts' do
       expect(signals.hard_junk?).to be(true)
+    end
+
+    it 'keeps content articles with publish markers off the hard-junk path' do
+      keep = described_class::ContainerSignals.new(
+        title_word_count: 7,
+        path_length: 12,
+        content_path: true,
+        publish_marker: true,
+        descriptive_context: true,
+        article_container: true,
+        content_tokens: true,
+        junk_tokens: false,
+        utility_prefix_title: false,
+        recommended_title: false,
+        utility_path: false,
+        strong_post_suffix: true,
+        shallow: false,
+        high_confidence_junk_path: false,
+        high_confidence_utility_destination: false,
+        selected_anchor_present: true
+      )
+
+      expect(keep.hard_junk?).to be(false)
     end
   end
 

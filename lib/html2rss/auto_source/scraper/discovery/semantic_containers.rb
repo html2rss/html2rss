@@ -31,7 +31,7 @@ module Html2rss
           def call
             cache = {}.compare_by_identity
             candidates = @parsed_body.css(SELECTORS.join(',')).reject do |node|
-              HtmlExtractor.ignored_container_path?(node, cache)
+              HtmlNavigator.ignored_container_path?(node, cache)
             end
 
             candidates = filter_nested_containers(candidates)

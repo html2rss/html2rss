@@ -80,33 +80,8 @@ module Html2rss
           def final_score = quality_score - junk_score
 
           # @return [Boolean] true when the entry should be dropped before ranking
-          def hard_junk?
-            self.class.hard_junk?(
-              high_confidence_junk_path:, selected_anchor_present:, recommended_title:,
-              shallow:, utility_prefix_title:, high_confidence_utility_destination:,
-              article_container:, publish_marker:, descriptive_context:, content_path:
-            )
-          end
-
-          # Hard-junk gate that only needs rejection-relevant observations.
-          #
-          # @param high_confidence_junk_path [Boolean] destination is high-confidence junk
-          # @param selected_anchor_present [Boolean] container selected a primary anchor
-          # @param recommended_title [Boolean] title looks like recommendation chrome
-          # @param shallow [Boolean] destination path is shallow
-          # @param utility_prefix_title [Boolean] title begins with a utility label
-          # @param high_confidence_utility_destination [Boolean] destination is utility chrome
-          # @param article_container [Boolean] container is an article element
-          # @param publish_marker [Boolean] container has a publish-time marker
-          # @param descriptive_context [Boolean] container has descriptive body text
-          # @param content_path [Boolean] destination looks content-like
-          # @return [Boolean] true when the entry should be dropped before ranking
-          def self.hard_junk?(high_confidence_junk_path:, selected_anchor_present:, recommended_title:, # rubocop:disable Metrics/ParameterLists, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-                              shallow:, utility_prefix_title:, high_confidence_utility_destination:,
-                              article_container:, publish_marker:, descriptive_context:, content_path:)
-            weak = weak_article_candidate?(
-              article_container:, publish_marker:, descriptive_context:, content_path:
-            )
+          def hard_junk? # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+            weak = weak_article_candidate?
 
             high_confidence_junk_path ||
               (selected_anchor_present && recommended_title && shallow && weak) ||
@@ -114,17 +89,12 @@ module Html2rss
                 high_confidence_utility_destination && weak)
           end
 
-          # @param article_container [Boolean] container is an article element
-          # @param publish_marker [Boolean] container has a publish-time marker
-          # @param descriptive_context [Boolean] container has descriptive body text
-          # @param content_path [Boolean] destination looks content-like
+          private
+
           # @return [Boolean] true when article evidence is too weak to keep
-          def self.weak_article_candidate?(article_container:, publish_marker:, descriptive_context:,
-                                           content_path:)
+          def weak_article_candidate?
             [article_container, publish_marker, descriptive_context, content_path].count(&:itself) < 2
           end
-
-          private
 
           def non_content_utility_path?
             utility_path && !content_path && !strong_post_suffix
@@ -549,6 +519,42 @@ module Html2rss
         # @return [Boolean] true when tokens look like utility chrome
         def junk_tokens?(tokens) = tokens.to_s.match?(JUNK_TOKEN_REGEXP)
 
+        ##
+        # Observes a container and builds ranking signals, including hard-junk.
+        #
+        # Owns DOM observation for container assessment so SemanticHtml only
+        # orchestrates candidates and extraction.
+        #
+        # @param container [Nokogiri::XML::Node] semantic container node
+        # @param selected_anchor [Nokogiri::XML::Node, nil] primary anchor for the container
+        # @param destination_facts [DestinationFacts, nil] route facts for the selected anchor
+        # @return [ContainerSignals] observation + scoring signals for the container
+        # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+        def assess_container(container, selected_anchor, destination_facts:)
+          title = entry_title(container, selected_anchor)
+          tokens = container_tokens(container)
+
+          ContainerSignals.new(
+            title_word_count: word_count(title),
+            path_length: destination_facts&.url&.path.to_s.length,
+            content_path: destination_facts&.content_path,
+            publish_marker: publish_marker?(container),
+            descriptive_context: descriptive_context?(visible_text(container), title),
+            article_container: container.name == 'article',
+            content_tokens: content_tokens?(tokens),
+            junk_tokens: junk_tokens?(tokens),
+            utility_prefix_title: utility_prefix_text?(title),
+            recommended_title: recommended_text?(title),
+            utility_path: destination_facts&.utility_path,
+            strong_post_suffix: destination_facts&.strong_post_suffix,
+            shallow: destination_facts&.shallow,
+            high_confidence_junk_path: destination_facts&.high_confidence_junk_path,
+            high_confidence_utility_destination: destination_facts&.high_confidence_utility_destination,
+            selected_anchor_present: !selected_anchor.nil?
+          )
+        end
+        # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
         private
 
         def short_utility_label?(text, destination_facts)
@@ -567,6 +573,41 @@ module Html2rss
             url = Html2rss::Url.from_relative(href, @base_url)
             DestinationFacts.build(url)
           end
+        end
+
+        def publish_marker?(container)
+          (@publish_markers ||= {}.compare_by_identity)[container] ||=
+            !!container.at_css('time, [datetime], [itemprop="datePublished"], [itemprop="dateModified"]')
+        end
+
+        def descriptive_context?(container_text, title)
+          snippet = container_text.to_s.sub(/\A#{Regexp.escape(title.to_s)}/i, '')
+          snippet.length > 30 && word_count(snippet) >= 8
+        end
+
+        def heading_for(container)
+          (@headings ||= {}.compare_by_identity)[container] ||=
+            container.at_css(HtmlNavigator::HEADING_TAGS.join(','))
+        end
+
+        def visible_text(node)
+          return '' unless node
+
+          (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlNavigator.extract_visible_text(node).to_s.strip
+        end
+
+        def entry_title(container, selected_anchor) = visible_text(heading_for(container) || selected_anchor)
+
+        def word_count(text)
+          (@word_counts ||= {})[text] ||= begin
+            count = 0
+            text.to_s.scan(/\p{Alnum}+/) { count += 1 }
+            count
+          end
+        end
+
+        def container_tokens(container)
+          (@container_tokens ||= {}.compare_by_identity)[container] ||= "#{container['class']} #{container['id']}"
         end
       end
     end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  class HtmlExtractor
+  class HtmlNavigator
     ##
     # TextExtractor extracts visible text from DOM elements, preserving lists
     # and block spacing while sanitizing white spaces.

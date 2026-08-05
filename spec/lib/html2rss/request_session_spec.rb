@@ -33,9 +33,10 @@ RSpec.describe Html2rss::RequestSession do
     # rubocop:disable RSpec/MultipleMemoizedHelpers
     context 'when max_requests is explicitly configured' do
       let(:configured_max_requests) { 1 }
+      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: configured_max_requests) }
 
       it 'honors the configured request ceiling while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        session = described_class.from_runtime_input(runtime_input, logger:)
+        session = described_class.from_runtime_input(runtime_input, budget:, logger:)
         context = session.instance_variable_get(:@context)
 
         expect(session).to be_a(described_class)
@@ -44,14 +45,16 @@ RSpec.describe Html2rss::RequestSession do
         expect(context.request).to eq(runtime_input.request)
         expect(context.policy.max_redirects).to eq(8)
         expect(context.policy.max_requests).to eq(1)
+        expect(context.budget).to equal(budget)
       end
     end
 
     context 'when max_requests is omitted' do
       let(:configured_max_requests) { 4 }
+      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: configured_max_requests) }
 
-      it 'infers the baseline request budget while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        session = described_class.from_runtime_input(runtime_input, logger:)
+      it 'threads the required budget: while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        session = described_class.from_runtime_input(runtime_input, budget:, logger:)
         context = session.instance_variable_get(:@context)
 
         expect(session).to be_a(described_class)
@@ -60,6 +63,7 @@ RSpec.describe Html2rss::RequestSession do
         expect(context.request).to eq(runtime_input.request)
         expect(context.policy.max_redirects).to eq(8)
         expect(context.policy.max_requests).to eq(4)
+        expect(context.budget).to equal(budget)
       end
     end
 

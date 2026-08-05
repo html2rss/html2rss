@@ -186,6 +186,51 @@ RSpec.describe Html2rss::FeedPipeline do
       # rubocop:enable RSpec/ExampleLength
     end
 
+    context 'when fixed strategy uses browserless preload' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) do
+        base_config.merge(
+          strategy: :browserless,
+          request: { browserless: { preload: { wait_after_ms: 500 } } }
+        )
+      end
+      let(:pipeline) { described_class.new(config) }
+      let(:response) do
+        build_response.call(body: '<html><body><article><h1>browser</h1></article></body></html>')
+      end
+      let(:captured_budget) { [] }
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          captured_budget << {
+            remaining_requests: ctx.budget.remaining_requests,
+            remaining_interactions: ctx.budget.remaining_interactions
+          }
+          ctx.budget.consume!
+          raise "Unexpected strategy #{strategy}" unless strategy == :browserless
+
+          response
+        end
+      end
+
+      # rubocop:disable RSpec/ExampleLength
+      it 'locks the executed budget to RuntimePolicy.budget_for', :aggregate_failures do
+        expected = Html2rss::RequestSession::RuntimePolicy.budget_for(
+          Html2rss::Config.from_hash(config)
+        )
+
+        rss = pipeline.to_rss
+
+        expect(rss.items.map(&:title)).to eq(['browser'])
+        expect(captured_budget).to eq(
+          [{
+            remaining_requests: expected.remaining_requests,
+            remaining_interactions: expected.remaining_interactions
+          }]
+        )
+      end
+      # rubocop:enable RSpec/ExampleLength
+    end
+
     context 'with selector pagination strategies' do
       # rubocop:disable RSpec/ExampleLength
       it 'paginates using url_template strategy and content-stops on empty page', :aggregate_failures do
