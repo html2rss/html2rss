@@ -48,12 +48,15 @@ module Html2rss
         # @param url [String, Html2rss::Url] base url
         # @param extractor [Class] extractor class used for article extraction
         # @param opts [Hash] scraper-specific options
-        # @option opts [Boolean] :fallback_anchorless whether to extract anchorless blocks
+        # @option opts [Boolean] :fallback_anchorless whether to keep containers without a primary anchor
+        #   (Discovery::Anchorless.permit_unanchored? — not Html class-clustering)
         def initialize(parsed_body, url:, extractor: Html2rss::Html::Extractor, **opts)
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor
-          @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
+          @permit_unanchored = Discovery::Anchorless.permit_unanchored?(
+            opts.fetch(:fallback_anchorless, false)
+          )
           @link_heuristics = LinkHeuristics.new(url)
         end
 
@@ -102,7 +105,7 @@ module Html2rss
           @extractable_entries ||= candidate_containers.filter_map do |container|
             selected_anchor = primary_anchor_for(container)
 
-            next unless selected_anchor || @fallback_anchorless
+            next unless selected_anchor || @permit_unanchored
 
             destination_facts = selected_anchor ? normalized_destination(selected_anchor) : nil
             next if selected_anchor && !destination_facts

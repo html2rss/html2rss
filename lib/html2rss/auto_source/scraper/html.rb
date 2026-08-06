@@ -117,7 +117,10 @@ module Html2rss
         end
 
         def find_anchorless_articles
-          Discovery::ClassClustering.call(parsed_body, minimum_selector_frequency:).map do |node|
+          Discovery::Anchorless.class_cluster_containers(
+            parsed_body,
+            minimum_selector_frequency:
+          ).map do |node|
             @extractor.new(node, base_url: @url, selected_anchor: nil, fallback_anchorless: true).call
           end
         end
