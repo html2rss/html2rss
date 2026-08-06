@@ -168,8 +168,7 @@ module Html2rss
         item:,
         base_url:,
         scraper: self,
-        channel: channel_context(base_url),
-        post_process_config: channel_post_process_context(base_url)
+        channel: channel_context(base_url)
       )
     end
 
@@ -322,11 +321,6 @@ module Html2rss
     def channel_context(base_url)
       @channel_contexts ||= {}
       @channel_contexts[base_url] ||= { url: base_url, time_zone: @time_zone }.freeze
-    end
-
-    def channel_post_process_context(base_url)
-      @channel_pp_contexts ||= {}
-      @channel_pp_contexts[base_url] ||= { channel: channel_context(base_url) }.freeze
     end
 
     # @return [Hash] enclosure details.

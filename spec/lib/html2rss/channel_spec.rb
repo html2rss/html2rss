@@ -4,7 +4,7 @@
 
 require 'timecop'
 
-RSpec.describe Html2rss::RssBuilder::Channel do
+RSpec.describe Html2rss::Channel do
   subject(:instance) { described_class.new(response, overrides:) }
 
   let(:overrides) { {} }

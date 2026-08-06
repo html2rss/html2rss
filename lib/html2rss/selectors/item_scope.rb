@@ -7,7 +7,8 @@ module Html2rss
     # extraction pass. Channel hashes are injected (and cached) by {Selectors}.
     #
     # Distinct from {Context}, which is the post-processor invocation bag (+options+).
-    ItemScope = Data.define(:item, :base_url, :scraper, :channel, :post_process_config) do
+    # Post-processor +config+ is derived from {#channel} — not a parallel bag.
+    ItemScope = Data.define(:item, :base_url, :scraper, :channel) do
       ##
       # Selects an attribute using this scope's item and base_url.
       #
@@ -22,7 +23,7 @@ module Html2rss
       # @option options [String] :name post-processor name
       # @return [Context]
       def context_for(options:)
-        Context.new(options:, item:, config: post_process_config, scraper:, item_scope: self)
+        Context.new(options:, item:, config: { channel: }, scraper:, item_scope: self)
       end
     end
   end

@@ -5,7 +5,7 @@ RSpec.describe Html2rss::JsonFeedBuilder do
 
   let(:channel) do
     instance_double(
-      Html2rss::RssBuilder::Channel,
+      Html2rss::Channel,
       title: 'Feed title',
       url: Html2rss::Url.sanitize('https://example.com'),
       description: 'Feed description',

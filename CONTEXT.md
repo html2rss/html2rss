@@ -27,6 +27,14 @@ Two distinct jobs historically toggled by scraper option `:fallback_anchorless`.
 
 The config key remains for compatibility; scrapers must call the named APIs. `Html::Extractor`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
 
+## Channel
+
+Feed channel metadata (title, description, ttl, language, author, image, last_build_date) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `RssBuilder` and `JsonFeedBuilder` are format adapters that consume Channel + Article — they do not own channel extraction.
+
+## ItemScope post-process config
+
+Per-item extraction scope carries `channel` (url/time_zone). Post-processor `Context` config is derived as `{ channel: scope.channel }` in `ItemScope#context_for` — there is no parallel `post_process_config` bag.
+
 ## Pagination strategy registry
 
 Supported pagination strategy names and factory classes live in `RequestSession::Pager::STRATEGIES` / `Pager.strategy_names`. Selectors validation (`Selectors::Config::Items`) and the exported JSON schema enum consume that list. Runtime pagination uses `Pager.for` (e.g. `rel_next` → `Pager::RelNext`).

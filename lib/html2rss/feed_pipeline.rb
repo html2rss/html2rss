@@ -17,7 +17,7 @@ module Html2rss
     # @return [RSS::Rss] generated RSS feed
     def to_rss
       run do |response:, config:, articles:|
-        channel = RssBuilder::Channel.new(response, overrides: config.channel)
+        channel = Html2rss::Channel.new(response, overrides: config.channel)
         RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
       end
     end
@@ -26,7 +26,7 @@ module Html2rss
     # @return [Hash] generated JSONFeed 1.1 payload
     def to_json_feed
       run do |response:, config:, articles:|
-        channel = RssBuilder::Channel.new(response, overrides: config.channel)
+        channel = Html2rss::Channel.new(response, overrides: config.channel)
         JsonFeedBuilder.new(channel:, articles:).call
       end
     end
