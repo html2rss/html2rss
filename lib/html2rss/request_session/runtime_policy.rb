@@ -3,7 +3,7 @@
 module Html2rss
   class RequestSession
     ##
-    # Builds the runtime request policy and budgets for a feed run.
+    # Planner for the runtime request policy and budgets of a feed run.
     #
     # HTTP request slots (pagination, document GETs, strategy fallback) are planned
     # separately from Browserless preload interaction budget so preload cannot steal

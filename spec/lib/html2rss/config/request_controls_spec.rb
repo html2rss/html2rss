@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::RequestControls do
+RSpec.describe Html2rss::Config::RequestControls do
   describe '.from_config' do
     let(:symbol_config) { { strategy: :browserless, request: { max_redirects: 3, max_requests: 9 } } }
 

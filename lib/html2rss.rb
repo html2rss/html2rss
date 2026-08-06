@@ -156,7 +156,7 @@ module Html2rss
     end
 
     def shortcut_request_controls(strategy:, max_redirects:, max_requests:)
-      RequestControls.new(
+      Config::RequestControls.new(
         strategy:,
         max_redirects:,
         max_requests:,

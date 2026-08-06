@@ -110,7 +110,7 @@ module Html2rss
       #
       # @param url [String] source page URL
       # @param items_selector [String, nil] optional selector hint for item extraction
-      # @param request_controls [Html2rss::RequestControls, nil] explicit request controls to write
+      # @param request_controls [Html2rss::Config::RequestControls, nil] explicit request controls to write
       # @return [Hash{Symbol => Object}] feed config hash ready for {from_hash}
       def auto_source_config(url:, items_selector: nil, request_controls: nil)
         config = {
@@ -118,7 +118,7 @@ module Html2rss
           auto_source: AutoSource::DEFAULT_CONFIG
         }
 
-        request_controls ||= Html2rss::RequestControls.new
+        request_controls ||= RequestControls.new
         request_controls.apply_to(config)
 
         config[:selectors] = { items: { selector: items_selector, enhance: true } } if items_selector

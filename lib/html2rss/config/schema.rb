@@ -3,7 +3,7 @@
 module Html2rss
   class Config
     ##
-    # Builds the exported configuration JSON Schema from the runtime validators.
+    # JSON export adapter from the runtime validators to the packaged schema artifact.
     module Schema
       module_function
 
