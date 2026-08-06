@@ -18,6 +18,15 @@ Observing a semantic container plus its selected anchor and destination facts in
 
 Whether an anchor is junk chrome vs a content permalink. Owned solely by `AutoSource::Scraper::LinkHeuristics#noise_anchor?` (text/destination rules plus optional icon-only and utility-landmark DOM checks). `Html` and `Discovery::SemanticAnchorCandidates` consume that method; they must not keep parallel `ineligible_anchor?` / `utility_text_suppressed?` policy. Heading-linked “Recommended …” titles are not rejected at this gate so container `hard_junk?` can keep real posts with publish markers.
 
+## Anchorless discovery
+
+Two distinct jobs historically toggled by scraper option `:fallback_anchorless`. Owned by `AutoSource::Scraper::Discovery::Anchorless`:
+
+- `class_cluster_containers` — Html discovers card-like nodes via `ClassClustering` when anchors are weak/absent.
+- `permit_unanchored?` — SemanticHtml keeps already-found semantic containers without a primary content anchor.
+
+The config key remains for compatibility; scrapers must call the named APIs. `Html::Extractor`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
+
 ## Pagination strategy registry
 
 Supported pagination strategy names and factory classes live in `RequestSession::Pager::STRATEGIES` / `Pager.strategy_names`. Selectors validation (`Selectors::Config::Items`) and the exported JSON schema enum consume that list. Runtime pagination uses `Pager.for` (e.g. `rel_next` → `Pager::RelNext`).
