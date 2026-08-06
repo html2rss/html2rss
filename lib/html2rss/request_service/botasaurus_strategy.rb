@@ -76,8 +76,7 @@ module Html2rss
       end
 
       def request_options
-        timeout = ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds
-        raise RequestTimedOut, 'Request timed out' if timeout <= 0
+        timeout = ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
 
         { timeout: timeout.to_i }
       end

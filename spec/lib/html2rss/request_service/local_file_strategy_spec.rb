@@ -11,7 +11,8 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
     instance_double(
       Html2rss::RequestService::Budget,
       consume!: nil,
-      remaining_timeout_seconds: nil
+      remaining_timeout_seconds: nil,
+      effective_timeout_seconds: 30.0
     )
   end
   let(:temp_file) do
@@ -30,7 +31,8 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
       instance_double(
         Html2rss::RequestService::Policy,
         validate_request!: nil,
-        max_decompressed_bytes: 1_000_000
+        max_decompressed_bytes: 1_000_000,
+        total_timeout_seconds: 30
       )
     end
     let(:ctx) do

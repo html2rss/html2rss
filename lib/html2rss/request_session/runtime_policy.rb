@@ -9,6 +9,9 @@ module Html2rss
     # separately from Browserless preload interaction budget so preload cannot steal
     # pagination slots.
     class RuntimePolicy
+      # Policy plus Budget from one config expansion (shared meters for a feed run).
+      Resources = Data.define(:policy, :budget)
+
       ##
       # @param config [Html2rss::Config] validated feed config
       # @return [Html2rss::RequestService::Policy] request policy derived from runtime config
@@ -21,18 +24,28 @@ module Html2rss
       end
 
       ##
+      # Builds policy and budget from one `from_config` so FeedPipeline does not dual-own expansion.
+      #
+      # @param config [Html2rss::Config] validated feed config
+      # @return [Resources] shared policy + budget for the feed build
+      def self.resources_for(config)
+        policy = from_config(config)
+        Resources.new(
+          policy:,
+          budget: RequestService::Budget.new(
+            max_requests: policy.max_requests,
+            max_interactions: interaction_budget_for(config),
+            total_timeout_seconds: policy.total_timeout_seconds
+          )
+        )
+      end
+
+      ##
       # Builds a Budget with separate request and interaction slot pools.
       #
       # @param config [Html2rss::Config] validated feed config
       # @return [Html2rss::RequestService::Budget] shared budget for the feed build
-      def self.budget_for(config)
-        policy = from_config(config)
-        RequestService::Budget.new(
-          max_requests: policy.max_requests,
-          max_interactions: interaction_budget_for(config),
-          total_timeout_seconds: policy.total_timeout_seconds
-        )
-      end
+      def self.budget_for(config) = resources_for(config).budget
 
       ##
       # @param config [Html2rss::Config] validated feed config

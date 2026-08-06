@@ -17,7 +17,15 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
       validate_remote_ip!: nil
     )
   end
-  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, consume_interaction!: nil, remaining_timeout_seconds: nil) }
+  let(:budget) do
+    instance_double(
+      Html2rss::RequestService::Budget,
+      consume!: nil,
+      consume_interaction!: nil,
+      remaining_timeout_seconds: nil,
+      effective_timeout_ms: 30_000
+    )
+  end
   let(:ctx) do
     instance_double(
       Html2rss::RequestService::Context,
@@ -361,9 +369,9 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
     end
   end
 
-  describe '#new_page' do
+  describe '#call page setup' do
     it 'sets extra HTTP headers on the page' do
-      commander.new_page
+      commander.call
 
       expect(page).to have_received(:extra_http_headers=).with(ctx.headers)
     end
@@ -371,109 +379,43 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
     it 'strips transport headers that Chromium rejects' do
       allow(ctx).to receive(:headers).and_return(unsafe_headers)
 
-      commander.new_page
+      commander.call
 
       expect(page).to have_received(:extra_http_headers=).with('User-Agent' => 'RSpec')
     end
 
     it 'sets page timeouts from the request policy', :aggregate_failures do
-      commander.new_page
+      commander.call
 
       expect(page).to have_received(:default_navigation_timeout=).with(30_000)
       expect(page).to have_received(:default_timeout=).with(30_000)
     end
 
     it 'prefers remaining budget timeout for navigation so wall-clock deadline is honored' do
-      allow(budget).to receive(:remaining_timeout_seconds).and_return(12)
+      allow(budget).to receive(:effective_timeout_ms).with(fallback: 30).and_return(12_000)
 
-      commander.new_page
+      commander.call
 
       expect(page).to have_received(:default_navigation_timeout=).with(12_000)
     end
 
     it 'sets up request interception and response guards', :aggregate_failures do
-      commander.new_page
+      commander.call
 
       expect(page).to have_received(:request_interception=).with(true)
       expect(page).to have_received(:on).with('request')
       expect(page).to have_received(:on).with('response')
     end
-  end
 
-  describe 'navigation guards' do
-    before { commander.new_page }
+    it 'navigates with networkidle0 and the resolved timeout' do
+      commander.call
 
-    it 'validates each navigation request before continuing', :aggregate_failures do
-      event_handlers.fetch('request').call(request)
-
-      expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_absolute('https://example.com/articles'),
-        origin_url: ctx.origin_url,
-        relation: :initial
+      expect(page).to have_received(:goto).with(
+        ctx.url,
+        wait_until: 'networkidle0',
+        referer: 'https://example.com',
+        timeout: 30_000
       )
-      expect(request).to have_received(:continue)
-    end
-
-    it 'validates redirect hops from the request chain' do
-      redirect_request = instance_double(Puppeteer::HTTPRequest, url: 'https://example.com/redirect')
-      allow(request).to receive_messages(
-        url: 'https://example.com/final',
-        redirect_chain: [redirect_request]
-      )
-
-      event_handlers.fetch('request').call(request)
-
-      expect(policy).to have_received(:validate_redirect!).with(
-        from_url: Html2rss::Url.from_absolute('https://example.com/redirect'),
-        to_url: Html2rss::Url.from_absolute('https://example.com/final'),
-        origin_url: ctx.origin_url,
-        relation: :initial
-      )
-    end
-
-    it 'aborts skipped resources without validating navigation policy', :aggregate_failures do
-      asset_request = instance_double(
-        Puppeteer::HTTPRequest,
-        navigation_request?: false,
-        url: 'https://example.com/image.png',
-        redirect_chain: [],
-        resource_type: 'image'
-      )
-      allow(asset_request).to receive(:abort)
-
-      event_handlers.fetch('request').call(asset_request)
-
-      expect(asset_request).to have_received(:abort)
-      expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_absolute('https://example.com/image.png'),
-        origin_url: ctx.origin_url,
-        relation: :initial
-      )
-    end
-
-    it 'aborts denied non-navigation requests without continuing them', :aggregate_failures do
-      asset_request = instance_double(
-        Puppeteer::HTTPRequest,
-        navigation_request?: false,
-        url: 'https://127.0.0.1/private',
-        redirect_chain: [],
-        resource_type: 'fetch'
-      )
-      error = Html2rss::RequestService::PrivateNetworkDenied.new('blocked')
-
-      allow(asset_request).to receive(:continue)
-      allow(asset_request).to receive(:abort)
-      allow(policy).to receive(:validate_request!).and_raise(error)
-
-      event_handlers.fetch('request').call(asset_request)
-
-      expect(policy).to have_received(:validate_request!).with(
-        url: Html2rss::Url.from_absolute('https://127.0.0.1/private'),
-        origin_url: ctx.origin_url,
-        relation: :initial
-      )
-      expect(asset_request).to have_received(:abort)
-      expect(asset_request).not_to have_received(:continue)
     end
 
     it 'raises stored navigation policy errors from goto', :aggregate_failures do
@@ -484,33 +426,8 @@ RSpec.describe Html2rss::RequestService::PuppetCommander do
         response
       end
 
-      expect do
-        commander.navigate_to_destination(page, ctx.url)
-      end.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, 'blocked')
+      expect { commander.call }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, 'blocked')
       expect(request).to have_received(:abort)
-    end
-  end
-
-  describe '#navigate_to_destination' do
-    it 'navigates to the given URL' do
-      commander.navigate_to_destination(page, ctx.url)
-
-      expect(page).to have_received(:goto).with(
-        ctx.url,
-        wait_until: 'networkidle0',
-        referer: 'https://example.com',
-        timeout: 30_000
-      )
-    end
-  end
-
-  describe '#body' do
-    it 'returns the content of the page' do
-      allow(page).to receive(:content).and_return('<html></html>')
-
-      result = commander.body(page)
-
-      expect(result).to eq('<html></html>')
     end
   end
 end

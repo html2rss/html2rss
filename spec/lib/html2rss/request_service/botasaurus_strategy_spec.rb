@@ -15,7 +15,14 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       validate_request!: nil
     )
   end
-  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, remaining_timeout_seconds: nil) }
+  let(:budget) do
+    instance_double(
+      Html2rss::RequestService::Budget,
+      consume!: nil,
+      remaining_timeout_seconds: nil,
+      effective_timeout_seconds: 30.0
+    )
+  end
   let(:request_config) { {} }
   let(:ctx) { Html2rss::RequestService::Context.new(url: 'https://example.com', request: request_config, policy:, budget:) }
   let(:connection) { instance_double(Faraday::Connection) }

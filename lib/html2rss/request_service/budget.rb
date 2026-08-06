@@ -87,6 +87,30 @@ module Html2rss
         [remaining, 0.0].max
       end
 
+      ##
+      # Resolves wall-clock seconds for the next adapter attempt.
+      #
+      # Prefers the tracked deadline remainder; falls back to the policy total when
+      # this Budget was constructed without a timeout (common in unit tests).
+      #
+      # @param fallback [Numeric] policy total timeout when remaining is untracked
+      # @return [Float] seconds available for this attempt
+      # @raise [RequestTimedOut] when no time remains
+      def effective_timeout_seconds(fallback:)
+        timeout = remaining_timeout_seconds || fallback
+        raise RequestTimedOut, 'Request timed out' if timeout <= 0
+
+        timeout.to_f
+      end
+
+      ##
+      # @param fallback [Numeric] policy total timeout when remaining is untracked
+      # @return [Integer] milliseconds available for this attempt
+      # @raise [RequestTimedOut] when no time remains
+      def effective_timeout_ms(fallback:)
+        (effective_timeout_seconds(fallback:) * 1000).to_i
+      end
+
       private
 
       def validate_slot_limits!(max_requests:, max_interactions:)

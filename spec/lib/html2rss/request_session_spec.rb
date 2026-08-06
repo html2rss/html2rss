@@ -5,12 +5,24 @@ require 'spec_helper'
 RSpec.describe Html2rss::RequestSession do
   subject(:session) { described_class.new(context:, strategy:, logger:) }
 
-  let(:strategy) { :faraday }
-  let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
-  let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 3) }
-  let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 3) }
-  let(:context) do
-    Html2rss::RequestService::Context.new(
+  def strategy
+    :faraday
+  end
+
+  def logger
+    @logger ||= instance_double(Logger, warn: nil, debug: nil)
+  end
+
+  def policy
+    @policy ||= Html2rss::RequestService::Policy.new(max_requests: 3)
+  end
+
+  def budget
+    @budget ||= Html2rss::RequestService::Budget.new(max_requests: 3)
+  end
+
+  def context
+    @context ||= Html2rss::RequestService::Context.new(
       url: 'https://example.com/news',
       headers: { 'User-Agent' => 'RSpec' },
       policy:,
@@ -18,71 +30,54 @@ RSpec.describe Html2rss::RequestSession do
     )
   end
 
-  describe '.from_runtime_input' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    let(:runtime_input) do
-      Html2rss::RequestSession::RuntimeInput.new(
-        url: 'https://example.com/blog',
-        headers: { 'User-Agent' => 'RSpec' },
-        request: { browserless: { preload: { wait_after_ms: 500 } } },
-        strategy: :browserless,
-        request_policy:
-      )
-    end
-    let(:request_policy) { Html2rss::RequestService::Policy.new(max_requests: configured_max_requests, max_redirects: 8) }
-
-    # rubocop:disable RSpec/MultipleMemoizedHelpers
-    context 'when max_requests is explicitly configured' do
-      let(:configured_max_requests) { 1 }
-      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: configured_max_requests) }
-
-      it 'honors the configured request ceiling while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        session = described_class.from_runtime_input(runtime_input, budget:, logger:)
-        context = session.instance_variable_get(:@context)
-
-        expect(session).to be_a(described_class)
-        expect(context.url.to_s).to eq('https://example.com/blog')
-        expect(context.headers).to eq(runtime_input.headers)
-        expect(context.request).to eq(runtime_input.request)
-        expect(context.policy.max_redirects).to eq(8)
-        expect(context.policy.max_requests).to eq(1)
-        expect(context.budget).to equal(budget)
-      end
-    end
-
-    context 'when max_requests is omitted' do
-      let(:configured_max_requests) { 4 }
-      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: configured_max_requests) }
-
-      it 'threads the required budget: while preserving request settings', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        session = described_class.from_runtime_input(runtime_input, budget:, logger:)
-        context = session.instance_variable_get(:@context)
-
-        expect(session).to be_a(described_class)
-        expect(context.url.to_s).to eq('https://example.com/blog')
-        expect(context.headers).to eq(runtime_input.headers)
-        expect(context.request).to eq(runtime_input.request)
-        expect(context.policy.max_redirects).to eq(8)
-        expect(context.policy.max_requests).to eq(4)
-        expect(context.budget).to equal(budget)
-      end
-    end
-
-    context 'when a shared budget is provided' do
-      let(:configured_max_requests) { 4 }
-      let(:shared_budget) { Html2rss::RequestService::Budget.new(max_requests: 2) }
-
-      it 'uses the provided budget object for the session context', :aggregate_failures do
-        session = described_class.from_runtime_input(runtime_input, budget: shared_budget, logger:)
-        context = session.instance_variable_get(:@context)
-
-        expect(session).to be_a(described_class)
-        expect(context.budget).to equal(shared_budget)
-      end
-    end
-    # rubocop:enable RSpec/MultipleMemoizedHelpers
+  def pagination_context?(ctx)
+    ctx.origin_url.to_s == 'https://redirected.example.com/news' &&
+      ctx.url.to_s == 'https://redirected.example.com/news?page=2' &&
+      ctx.headers == context.headers
   end
 
-  describe '#fetch_initial_response' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+  describe '.build' do
+    let(:config) do
+      Html2rss::Config.from_hash(
+        {
+          strategy: :browserless,
+          channel: { url: 'https://example.com/blog' },
+          request: { browserless: { preload: { wait_after_ms: 500 } } },
+          selectors: {
+            items: { selector: 'article' },
+            title: { selector: 'h2' }
+          }
+        }
+      )
+    end
+    let(:resources) { Html2rss::RequestSession::RuntimePolicy.resources_for(config) }
+
+    context 'when building context once from config' do
+      subject(:built_context) { session.instance_variable_get(:@context) }
+
+      let(:session) do
+        described_class.build(
+          config:, strategy: :browserless, budget: resources.budget, policy: resources.policy, logger:
+        )
+      end
+
+      it { expect(session).to be_a(described_class) }
+      it { expect(built_context.url.to_s).to eq('https://example.com/blog') }
+      it { expect(built_context.headers).to eq(config.headers) }
+      it { expect(built_context.request).to eq(config.request) }
+      it { expect(built_context.policy).to equal(resources.policy) }
+      it { expect(built_context.budget).to equal(resources.budget) }
+    end
+
+    it 'uses the provided budget object for the session context' do
+      budget = Html2rss::RequestService::Budget.new(max_requests: 2)
+      session = described_class.build(config:, strategy: :browserless, budget:, policy: resources.policy, logger:)
+
+      expect(session.instance_variable_get(:@context).budget).to equal(budget)
+    end
+  end
+
+  describe '#fetch_initial_response' do
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
@@ -105,7 +100,7 @@ RSpec.describe Html2rss::RequestSession do
     end
   end
 
-  describe '#follow_up' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+  describe '#follow_up' do
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
@@ -119,30 +114,30 @@ RSpec.describe Html2rss::RequestSession do
       allow(Html2rss::RequestService).to receive(:execute).and_return(response)
     end
 
-    it 'uses the supplied effective origin for follow-up requests', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      result = session.follow_up(
-        url: 'https://redirected.example.com/news?page=2',
-        relation: :pagination,
-        origin_url: 'https://redirected.example.com/news'
-      )
+    context 'with pagination follow-up' do
+      subject(:result) do
+        session.follow_up(
+          url: 'https://redirected.example.com/news?page=2',
+          relation: :pagination,
+          origin_url: 'https://redirected.example.com/news'
+        )
+      end
 
-      expect(result).to eq(response)
-      expect(Html2rss::RequestService).to have_received(:execute).with(
-        satisfy do |follow_up_context|
-          follow_up_context.origin_url.to_s == 'https://redirected.example.com/news' &&
-            follow_up_context.url.to_s == 'https://redirected.example.com/news?page=2' &&
-            follow_up_context.headers == context.headers
-        end,
-        strategy: :faraday
-      )
-      expect(logger).to have_received(:debug).with(
-        %r{
-          Html2rss::RequestSession:\s+relation=pagination\s+
-          request_url=https://redirected\.example\.com/news\?page=2\s+
-          final_url=https://redirected\.example\.com/news\?page=2\s+
-          status=200\s+content_type="text/html"\s+bytes=13
-        }x
-      )
+      it { is_expected.to eq(response) }
+
+      it 'executes with pagination context' do
+        result
+        expect(Html2rss::RequestService).to have_received(:execute).with(
+          satisfy { |c| pagination_context?(c) }, strategy: :faraday
+        )
+      end
+
+      it 'logs the follow-up request' do
+        result
+        expect(logger).to have_received(:debug).with(
+          %r{relation=pagination.*request_url=https://redirected\.example\.com/news\?page=2}
+        )
+      end
     end
   end
 

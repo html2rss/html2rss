@@ -66,10 +66,7 @@ module Html2rss
       end
 
       def protocol_timeout_ms
-        timeout = ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds
-        raise RequestTimedOut, 'Request timed out' if timeout <= 0
-
-        (timeout * 1000).to_i
+        ctx.budget.effective_timeout_ms(fallback: ctx.policy.total_timeout_seconds)
       end
 
       def connect_with_timeout_support(&)

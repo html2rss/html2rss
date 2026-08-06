@@ -47,7 +47,7 @@ module Html2rss
       private
 
       def request_deadline
-        monotonic_now + (ctx.budget.remaining_timeout_seconds || ctx.policy.total_timeout_seconds)
+        monotonic_now + ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
       end
 
       def perform_request(deadline:)
