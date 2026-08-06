@@ -75,13 +75,13 @@ module Html2rss
 
           def heading_for(container)
             (@headings ||= {}.compare_by_identity)[container] ||=
-              container.at_css(HtmlNavigator::HEADING_TAGS.join(','))
+              container.at_css(Html2rss::Html::Navigator::HEADING_TAGS.join(','))
           end
 
           def visible_text(node)
             return '' unless node
 
-            (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlNavigator.extract_visible_text(node).to_s.strip
+            (@visible_texts ||= {}.compare_by_identity)[node] ||= Html2rss::Html::Navigator.extract_visible_text(node).to_s.strip
           end
 
           def entry_title(container, selected_anchor) = visible_text(heading_for(container) || selected_anchor)

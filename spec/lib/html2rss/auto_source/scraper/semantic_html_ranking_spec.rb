@@ -546,7 +546,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe comparator precedence' do
-    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::HtmlExtractor) }
+    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::Html::Extractor) }
 
     let(:container) { Nokogiri::HTML.fragment('<article><a href="/news/story">Story</a></article>').at_css('article') }
     let(:anchor) { container.at_css('a') }
@@ -703,7 +703,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe perf shape' do
-    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::HtmlExtractor) }
+    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::Html::Extractor) }
 
     let(:container) do
       instance_double(Nokogiri::XML::Node).tap do |node|
@@ -763,9 +763,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     # rubocop:disable RSpec/ExampleLength
-    it 'only instantiates/calls HtmlExtractor on the final winners', :aggregate_failures do
-      extractor_class = class_double(Html2rss::HtmlExtractor)
-      extractor_instance = instance_double(Html2rss::HtmlExtractor)
+    it 'only instantiates/calls Html2rss::Html::Extractor on the final winners', :aggregate_failures do
+      extractor_class = class_double(Html2rss::Html::Extractor)
+      extractor_instance = instance_double(Html2rss::Html::Extractor)
 
       article_payload = {
         title: 'Story A',

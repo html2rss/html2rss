@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::CategoryExtractor do
+RSpec.describe Html2rss::Html::CategoryExtractor do
   describe '.call' do
     let(:html) { Nokogiri::HTML.fragment(html_content) }
     let(:article_tag) { html.at_css('article') }

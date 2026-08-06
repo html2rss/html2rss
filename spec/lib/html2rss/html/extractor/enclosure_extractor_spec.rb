@@ -2,7 +2,7 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::HtmlExtractor::EnclosureExtractor do
+RSpec.describe Html2rss::Html::Extractor::EnclosureExtractor do
   describe '.call' do
     subject(:enclosures) { described_class.call(article_tag, base_url) }
 

@@ -57,7 +57,7 @@ module Html2rss
         # @param opts [Hash] Additional options.
         # @option opts [Integer] :minimum_selector_frequency minimum count before a selector is considered stable
         # @option opts [Integer] :use_top_selectors number of top selectors to keep
-        def initialize(parsed_body, url:, extractor: HtmlExtractor, **opts)
+        def initialize(parsed_body, url:, extractor: Html2rss::Html::Extractor, **opts)
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor
@@ -96,7 +96,7 @@ module Html2rss
         # @return [Boolean] true when the node is a good extraction boundary
         def article_tag_condition?(node)
           # Ignore tags that are below ignored DOM chrome.
-          return false if HtmlNavigator.ignored_container_path?(node, @ignored_cache)
+          return false if Html2rss::Html::Navigator.ignored_container_path?(node, @ignored_cache)
           return true if %w[body html].include?(node.name)
           return false unless (parent = node.parent)
 
@@ -180,7 +180,7 @@ module Html2rss
         # @return [Boolean]
         def noise_anchor?(anchor, destination_facts:)
           (@noise_anchors ||= {}.compare_by_identity)[anchor] ||= begin
-            text = HtmlNavigator.extract_visible_text(anchor).to_s.strip
+            text = Html2rss::Html::Navigator.extract_visible_text(anchor).to_s.strip
             @link_heuristics.noise_anchor?(text:, destination_facts:)
           end
         end
@@ -189,8 +189,8 @@ module Html2rss
         # @param article_tag [Nokogiri::XML::Node]
         # @return [Nokogiri::XML::Node, nil]
         def preferred_anchor_for(article_tag)
-          article_tag.css(HtmlNavigator::MAIN_ANCHOR_SELECTOR).find { relevant_anchor?(_1) } ||
-            HtmlNavigator.main_anchor_for(article_tag)
+          article_tag.css(Html2rss::Html::Navigator::MAIN_ANCHOR_SELECTOR).find { relevant_anchor?(_1) } ||
+            Html2rss::Html::Navigator.main_anchor_for(article_tag)
         end
 
         ##

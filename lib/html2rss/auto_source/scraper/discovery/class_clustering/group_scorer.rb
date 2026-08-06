@@ -50,7 +50,7 @@ module Html2rss
 
             def nodes_heading?(nodes)
               nodes.any? do |n|
-                n.at_css(HtmlNavigator::HEADING_TAGS.join(',')) ||
+                n.at_css(Html2rss::Html::Navigator::HEADING_TAGS.join(',')) ||
                   n.at_css('.font-bold, .font-semibold')
               end
             end
@@ -64,12 +64,12 @@ module Html2rss
             end
 
             def text_words(node)
-              @text_words[node] ||= HtmlNavigator.extract_visible_text(node).to_s.scan(/\p{Alnum}+/).size
+              @text_words[node] ||= Html2rss::Html::Navigator.extract_visible_text(node).to_s.scan(/\p{Alnum}+/).size
             end
 
             def date?(node)
               @has_date[node] ||= begin
-                text = HtmlNavigator.extract_visible_text(node).to_s
+                text = Html2rss::Html::Navigator.extract_visible_text(node).to_s
                 text.match?(%r{\b\d{4}[-/]\d{2}[-/]\d{2}\b}) ||
                   text.match?(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i)
               end

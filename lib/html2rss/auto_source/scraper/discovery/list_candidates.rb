@@ -49,9 +49,9 @@ module Html2rss
 
           def article_tags_for_selector(selector, boundary_condition)
             parsed_body.xpath(selector).filter_map do |selected_tag|
-              next if HtmlNavigator.ignored_container_path?(selected_tag)
+              next if Html2rss::Html::Navigator.ignored_container_path?(selected_tag)
 
-              article_tag = HtmlNavigator.parent_until_condition(selected_tag, boundary_condition)
+              article_tag = Html2rss::Html::Navigator.parent_until_condition(selected_tag, boundary_condition)
               next unless article_tag
 
               { article_tag:, selected_anchor: selected_tag }
@@ -68,7 +68,7 @@ module Html2rss
           def anchor_counts(anchor_filter:)
             Hash.new(0).tap do |counts|
               each_anchor(anchor_filter:) do |node|
-                next if HtmlNavigator.ignored_container_path?(node)
+                next if Html2rss::Html::Navigator.ignored_container_path?(node)
 
                 path = self.class.simplify_xpath(node.path)
                 counts[path] += 1
@@ -79,7 +79,7 @@ module Html2rss
           def each_anchor(anchor_filter:)
             return enum_for(:each_anchor, anchor_filter:) unless block_given?
 
-            traversal_root&.css(HtmlNavigator::MAIN_ANCHOR_SELECTOR)&.each do |node|
+            traversal_root&.css(Html2rss::Html::Navigator::MAIN_ANCHOR_SELECTOR)&.each do |node|
               yield node if anchor_filter.call(node)
             end
           end

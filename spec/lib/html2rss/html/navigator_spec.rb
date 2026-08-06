@@ -2,7 +2,7 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::HtmlNavigator do
+RSpec.describe Html2rss::Html::Navigator do
   describe '.extract_visible_text' do
     subject(:visible_text) { described_class.extract_visible_text(tag) }
 
