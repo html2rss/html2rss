@@ -52,7 +52,7 @@ module Html2rss
 
             # @return [Nokogiri::XML::Node, nil] heading used to identify title anchors
             def heading
-              @heading ||= @container.at_css(HtmlNavigator::HEADING_TAGS.join(','))
+              @heading ||= @container.at_css(Html2rss::Html::Navigator::HEADING_TAGS.join(','))
             end
 
             # @return [String] visible heading text
@@ -65,7 +65,7 @@ module Html2rss
             def visible_text(node)
               return '' unless node
 
-              (@visible_texts ||= {}.compare_by_identity)[node] ||= HtmlNavigator.extract_visible_text(node).to_s.strip
+              (@visible_texts ||= {}.compare_by_identity)[node] ||= Html2rss::Html::Navigator.extract_visible_text(node).to_s.strip
             end
 
             # @param anchor [Nokogiri::XML::Node] anchor candidate
@@ -145,7 +145,7 @@ module Html2rss
             # @return [Boolean] true when the anchor is inside the selected heading
             def heading_anchor?
               heading = @context.heading
-              heading && (@anchor == heading || HtmlNavigator.descendant_of?(@anchor, heading))
+              heading && (@anchor == heading || Html2rss::Html::Navigator.descendant_of?(@anchor, heading))
             end
 
             # @return [Boolean] true when anchor text exactly matches heading text
@@ -182,7 +182,7 @@ module Html2rss
             def utility_landmark_ancestor?
               container = @context.container
               condition = proc { |node| node == container || Context::UTILITY_LANDMARK_TAGS.include?(node.name) }
-              landmark = HtmlNavigator.parent_until_condition(@anchor.parent, condition)
+              landmark = Html2rss::Html::Navigator.parent_until_condition(@anchor.parent, condition)
 
               landmark && landmark != container
             end
@@ -228,7 +228,7 @@ module Html2rss
 
           # @return [Array<AnchorFacts>] strongest candidate per destination
           def to_a
-            @container.css(HtmlNavigator::MAIN_ANCHOR_SELECTOR)
+            @container.css(Html2rss::Html::Navigator::MAIN_ANCHOR_SELECTOR)
                       .each_with_object(DestinationWinners.new) { |anchor, winners| add_anchor(anchor, winners) }
                       .to_a
           end
@@ -236,7 +236,7 @@ module Html2rss
           private
 
           def add_anchor(anchor, winners)
-            return if HtmlNavigator.ignored_container_path?(anchor)
+            return if Html2rss::Html::Navigator.ignored_container_path?(anchor)
 
             facts = Candidate.new(anchor, @context).facts
             winners.add(facts) if facts

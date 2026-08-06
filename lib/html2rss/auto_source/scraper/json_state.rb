@@ -9,7 +9,7 @@ module Html2rss
       # Scrapes JSON state blobs embedded in script tags such as Next.js, Nuxt,
       # or custom window globals. The scraper searches `<script type="application/json">`
       # tags and well-known JavaScript globals for arrays of article-like hashes
-      # and normalises them to a structure compatible with HtmlExtractor.
+      # and normalises them to a structure compatible with Html2rss::Html::Extractor.
       class JsonState
         include Enumerable
 

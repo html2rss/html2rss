@@ -50,7 +50,7 @@ module Html2rss
         # @param extractor [Class] extractor class used for article extraction
         # @param opts [Hash] scraper-specific options
         # @option opts [Boolean] :fallback_anchorless whether to extract anchorless blocks
-        def initialize(parsed_body, url:, extractor: HtmlExtractor, **opts)
+        def initialize(parsed_body, url:, extractor: Html2rss::Html::Extractor, **opts)
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor

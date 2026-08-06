@@ -55,7 +55,7 @@ module Html2rss
                 nodes_b.each do |node_b|
                   next if node_a == node_b
 
-                  if HtmlNavigator.descendant_of?(node_b, node_a)
+                  if Html2rss::Html::Navigator.descendant_of?(node_b, node_a)
                     count += 1
                     break if count > 1
                   end
@@ -69,7 +69,9 @@ module Html2rss
               nodes_a = groups[cls_a]
               nodes_b = groups[cls_b]
               return if nodes_a.size != nodes_b.size
-              return unless nodes_a.zip(nodes_b).all? { |a, b| a != b && HtmlNavigator.descendant_of?(b, a) }
+
+              nested = nodes_a.zip(nodes_b).all? { |a, b| a != b && Html2rss::Html::Navigator.descendant_of?(b, a) }
+              return unless nested
 
               discarded << (keep_descendant?(nodes_a, nodes_b) ? cls_a : cls_b)
             end

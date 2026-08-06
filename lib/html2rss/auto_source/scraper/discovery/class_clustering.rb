@@ -58,7 +58,8 @@ module Html2rss
           end
 
           def add_node_to_groups(node, class_groups, cache)
-            return if EXCLUDED_TAGS.include?(node.name) || HtmlNavigator.ignored_container_path?(node, cache)
+            return if EXCLUDED_TAGS.include?(node.name)
+            return if Html2rss::Html::Navigator.ignored_container_path?(node, cache)
 
             cls = normalize_class(node['class'])
             class_groups[cls] << node unless cls.empty?
