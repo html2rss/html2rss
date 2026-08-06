@@ -3,7 +3,7 @@
 require 'set' # rubocop:disable Lint/RedundantRequireStatement
 
 module Html2rss
-  # Shared helpers that operate on `RssBuilder::Article` collections.
+  # Shared helpers that operate on `Html2rss::Article` collections.
   module Articles
     ##
     # Deduplicates a list of articles while preserving their original order.
@@ -15,7 +15,7 @@ module Html2rss
     # defaults to the article object's hash to preserve the original entry.
     class Deduplicator
       ##
-      # @param articles [Array<Html2rss::RssBuilder::Article>]
+      # @param articles [Array<Html2rss::Article>]
       # @raise [ArgumentError] if articles are not provided
       def initialize(articles)
         raise ArgumentError, 'articles must be provided' unless articles
@@ -26,7 +26,7 @@ module Html2rss
       ##
       # Returns the list of unique articles, preserving the order of the
       # original collection and keeping the first occurrence of a duplicate.
-      # @return [Array<Html2rss::RssBuilder::Article>]
+      # @return [Array<Html2rss::Article>]
       def call
         seen = Set.new
 

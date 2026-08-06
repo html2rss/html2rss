@@ -26,7 +26,7 @@ RSpec.describe Html2rss::Articles::Deduplicator do
         ]
 
         article_args.map do |attrs|
-          Html2rss::RssBuilder::Article.new(**defaults, **attrs)
+          Html2rss::Article.new(**defaults, **attrs)
         end
       end
       let(:expected_articles) { articles.values_at(0, 1, 3) }
@@ -49,21 +49,21 @@ RSpec.describe Html2rss::Articles::Deduplicator do
         unique_url = instance_double(Html2rss::Url, to_s: 'https://example.com/unique')
 
         first_article = instance_double(
-          Html2rss::RssBuilder::Article,
+          Html2rss::Article,
           guid: nil,
           id: 'shared',
           url: shared_url,
           scraper:
         )
         second_article = instance_double(
-          Html2rss::RssBuilder::Article,
+          Html2rss::Article,
           guid: nil,
           id: 'shared',
           url: shared_url,
           scraper:
         )
         third_article = instance_double(
-          Html2rss::RssBuilder::Article,
+          Html2rss::Article,
           guid: nil,
           id: 'unique',
           url: unique_url,
