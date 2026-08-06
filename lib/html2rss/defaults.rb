@@ -2,8 +2,8 @@
 
 module Html2rss
   ##
-  # Global configuration defaults for the Html2rss gem.
-  class Configuration
+  # Global defaults for the Html2rss gem.
+  class Defaults
     # The valid symbol log levels.
     VALID_LOG_LEVELS = %i[debug info warn error fatal unknown].freeze
 
@@ -29,7 +29,7 @@ module Html2rss
     attr_reader :stylesheets
 
     ##
-    # Initializes a new Configuration instance with defaults.
+    # Initializes a new Defaults instance.
     def initialize
       @logger_formatter = proc do |severity, datetime, _progname, msg|
         "#{datetime} [#{severity}] #{msg}\n"
@@ -150,9 +150,9 @@ module Html2rss
     protected
 
     ##
-    # Copy constructor for duplicating configuration.
+    # Copy constructor for duplicating defaults.
     #
-    # @param other [Html2rss::Configuration] the original configuration
+    # @param other [Html2rss::Defaults] the original defaults
     # @return [void]
     def initialize_copy(other)
       super

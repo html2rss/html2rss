@@ -41,7 +41,7 @@ module Html2rss
         # @return [Hash{String => String}] the default header set merged with global defaults
         def browser_defaults
           defaults = DEFAULT_HEADERS.dup
-          global_headers = Html2rss.configuration.headers
+          global_headers = Html2rss.defaults.headers
           global_headers = global_headers.call if global_headers.respond_to?(:call)
 
           if global_headers.is_a?(Hash)

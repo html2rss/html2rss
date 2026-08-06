@@ -2,8 +2,8 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Configuration do
-  after { Html2rss.send(:reset_configuration!) }
+RSpec.describe Html2rss::Defaults do
+  after { Html2rss.send(:reset_defaults!) }
 
   describe 'defaults' do
     subject(:config) { described_class.new }
@@ -187,7 +187,7 @@ RSpec.describe Html2rss::Configuration do
       Html2rss.configure { |config| config.logger = custom_logger }
     end
 
-    it 'delegates to the active configuration logger' do
+    it 'delegates to the active defaults logger' do
       Html2rss::Log.info('delegated message')
       expect(custom_logger).to have_received(:info).with('delegated message')
     end
@@ -250,7 +250,7 @@ RSpec.describe Html2rss::Configuration do
     end
   end
 
-  describe 'global configuration integration' do
+  describe 'global defaults integration' do
     context 'when configuring min_ttl and stylesheets' do
       before do
         Html2rss.configure do |config|
@@ -259,15 +259,15 @@ RSpec.describe Html2rss::Configuration do
         end
       end
 
-      it 'freezes the configuration', :aggregate_failures do
-        expect(Html2rss.configuration).to be_frozen
-        expect(Html2rss.configuration.min_ttl).to eq(45)
-        expect(Html2rss.configuration.stylesheets).to eq([{ href: 'global.css' }])
+      it 'freezes the defaults', :aggregate_failures do
+        expect(Html2rss.defaults).to be_frozen
+        expect(Html2rss.defaults.min_ttl).to eq(45)
+        expect(Html2rss.defaults.stylesheets).to eq([{ href: 'global.css' }])
       end
     end
 
     context 'when evaluating RCU behavior' do
-      let!(:initial_config) { Html2rss.configuration }
+      let!(:initial_config) { Html2rss.defaults }
 
       before do
         Html2rss.configure do |config|
@@ -277,13 +277,13 @@ RSpec.describe Html2rss::Configuration do
 
       it 'is thread-safe and implements RCU duplicate/freeze', :aggregate_failures do
         expect(initial_config).to be_frozen
-        expect(Html2rss.configuration).to be_frozen
-        expect(Html2rss.configuration).not_to eq(initial_config)
+        expect(Html2rss.defaults).to be_frozen
+        expect(Html2rss.defaults).not_to eq(initial_config)
       end
     end
 
-    it 'raises FrozenError when trying to modify configuration directly' do
-      expect { Html2rss.configuration.min_ttl = 15 }.to raise_error(FrozenError)
+    it 'raises FrozenError when trying to modify defaults directly' do
+      expect { Html2rss.defaults.min_ttl = 15 }.to raise_error(FrozenError)
     end
 
     context 'with global static headers' do
@@ -334,7 +334,7 @@ RSpec.describe Html2rss::Configuration do
       it 'allows configure to set the feed-level :auto plan', :aggregate_failures do
         Html2rss.configure { |config| config.default_strategy = :auto }
 
-        expect(Html2rss.configuration.default_strategy).to eq(:auto)
+        expect(Html2rss.defaults.default_strategy).to eq(:auto)
         expect(Html2rss::Config.default_strategy_name).to eq(:auto)
         expect(Html2rss::Config.default_config[:strategy]).to eq(:auto)
       end
