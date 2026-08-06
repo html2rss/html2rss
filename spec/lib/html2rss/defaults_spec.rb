@@ -347,7 +347,7 @@ RSpec.describe Html2rss::Defaults do
       end
     end
 
-    describe 'integration with RssBuilder::Channel#ttl' do
+    describe 'integration with Html2rss::Channel#ttl' do
       let(:response) do
         instance_double(
           Html2rss::RequestService::Response,
@@ -361,21 +361,21 @@ RSpec.describe Html2rss::Defaults do
       it 'enforces min_ttl as a strict lower bound' do
         Html2rss.configure { |config| config.min_ttl = 60 }
 
-        channel = Html2rss::RssBuilder::Channel.new(response)
+        channel = Html2rss::Channel.new(response)
         expect(channel.ttl).to eq(60) # 30 mins clamped to min_ttl (60)
       end
 
       it 'does not clamp if computed ttl is larger than min_ttl' do
         Html2rss.configure { |config| config.min_ttl = 15 }
 
-        channel = Html2rss::RssBuilder::Channel.new(response)
+        channel = Html2rss::Channel.new(response)
         expect(channel.ttl).to eq(30) # 30 mins is > 15, so unchanged
       end
 
       it 'clamps config overrides for ttl as well' do
         Html2rss.configure { |config| config.min_ttl = 60 }
 
-        channel = Html2rss::RssBuilder::Channel.new(response, overrides: { ttl: 20 })
+        channel = Html2rss::Channel.new(response, overrides: { ttl: 20 })
         expect(channel.ttl).to eq(60) # override 20 clamped to min_ttl (60)
       end
     end

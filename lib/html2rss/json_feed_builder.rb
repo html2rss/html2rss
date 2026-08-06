@@ -10,7 +10,7 @@ module Html2rss
     VERSION_URL = 'https://jsonfeed.org/version/1.1'
 
     ##
-    # @param channel [Html2rss::RssBuilder::Channel]
+    # @param channel [Html2rss::Channel]
     # @param articles [Array<Html2rss::Article>]
     def initialize(channel:, articles:)
       @channel = channel
