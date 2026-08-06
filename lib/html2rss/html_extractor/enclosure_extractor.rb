@@ -47,7 +47,7 @@ module Html2rss
         abs_url = Url.from_relative(src, base_url)
         {
           url: abs_url,
-          type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'image/jpeg')
+          type: Article::Enclosure.guess_content_type_from_url(abs_url, default: 'image/jpeg')
         }
       end
 
@@ -68,7 +68,7 @@ module Html2rss
         abs_url = Url.from_relative(src, base_url)
         {
           url: abs_url,
-          type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url, default: 'text/html')
+          type: Article::Enclosure.guess_content_type_from_url(abs_url, default: 'text/html')
         }
       end
 
@@ -79,7 +79,7 @@ module Html2rss
         abs_url = Url.from_relative(href, base_url)
 
         if href.end_with?('.pdf')
-          { url: abs_url, type: RssBuilder::Enclosure.guess_content_type_from_url(abs_url) }
+          { url: abs_url, type: Article::Enclosure.guess_content_type_from_url(abs_url) }
         else
           { url: abs_url, type: 'application/zip' }
         end

@@ -4,27 +4,27 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
   let(:url) { Html2rss::Url.from_absolute('http://example.com') }
   let(:articles) do
     [
-      instance_double(Html2rss::RssBuilder::Article,
+      instance_double(Html2rss::Article,
                       valid?: true,
                       url: Html2rss::Url.from_relative('http://example.com/article0', 'http://example.com'),
                       title: 'Valid Article One'),
-      instance_double(Html2rss::RssBuilder::Article,
+      instance_double(Html2rss::Article,
                       valid?: true,
                       url: Html2rss::Url.from_relative('http://example.com/article1', 'http://example.com'),
                       title: 'Valid Article Two'),
-      instance_double(Html2rss::RssBuilder::Article,
+      instance_double(Html2rss::Article,
                       valid?: false,
                       url: Html2rss::Url.from_relative('http://example.com/article2', 'http://example.com'),
                       title: 'Invalid Article'),
-      instance_double(Html2rss::RssBuilder::Article,
+      instance_double(Html2rss::Article,
                       valid?: true,
                       url: Html2rss::Url.from_relative('http://otherdomain.com/article3', 'http://example.com'),
                       title: 'Different Domain Article'),
-      instance_double(Html2rss::RssBuilder::Article,
+      instance_double(Html2rss::Article,
                       valid?: true,
                       url: Html2rss::Url.from_relative('ftp://example.com/article4', 'http://example.com'),
                       title: 'Non-HTTP Article'),
-      instance_double(Html2rss::RssBuilder::Article,
+      instance_double(Html2rss::Article,
                       valid?: true,
                       url: Html2rss::Url.from_relative('http://example.com/article5', 'http://example.com'),
                       title: 'Short')
@@ -43,7 +43,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     context 'with duplicated articles' do
       let(:duplicated_url_article) do
-        instance_double(Html2rss::RssBuilder::Article,
+        instance_double(Html2rss::Article,
                         valid?: true,
                         url: articles.first.url,
                         title: 'Duplicated Article')
@@ -90,12 +90,12 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     let(:articles) do
       [
-        instance_double(Html2rss::RssBuilder::Article, title: 'A valid title'),
-        instance_double(Html2rss::RssBuilder::Article, title: 'Short'),
-        instance_double(Html2rss::RssBuilder::Article, title: 'Another valid article title'),
-        instance_double(Html2rss::RssBuilder::Article, title: nil),
-        instance_double(Html2rss::RssBuilder::Article, title: ''),
-        instance_double(Html2rss::RssBuilder::Article, title: 'Two words')
+        instance_double(Html2rss::Article, title: 'A valid title'),
+        instance_double(Html2rss::Article, title: 'Short'),
+        instance_double(Html2rss::Article, title: 'Another valid article title'),
+        instance_double(Html2rss::Article, title: nil),
+        instance_double(Html2rss::Article, title: ''),
+        instance_double(Html2rss::Article, title: 'Two words')
       ]
     end
 
@@ -122,8 +122,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     context 'when all titles are nil or empty' do
       let(:articles) do
         [
-          instance_double(Html2rss::RssBuilder::Article, title: nil),
-          instance_double(Html2rss::RssBuilder::Article, title: '')
+          instance_double(Html2rss::Article, title: nil),
+          instance_double(Html2rss::Article, title: '')
         ]
       end
       let(:min_words_title) { 2 }
@@ -137,11 +137,11 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     context 'with non-Latin titles' do
       let(:articles) do
         [
-          instance_double(Html2rss::RssBuilder::Article, title: 'Привет мир'),
-          instance_double(Html2rss::RssBuilder::Article, title: 'مرحبا بالعالم'),
-          instance_double(Html2rss::RssBuilder::Article, title: '你好 世界'),
-          instance_double(Html2rss::RssBuilder::Article, title: '你好世界'),
-          instance_double(Html2rss::RssBuilder::Article, title: nil)
+          instance_double(Html2rss::Article, title: 'Привет мир'),
+          instance_double(Html2rss::Article, title: 'مرحبا بالعالم'),
+          instance_double(Html2rss::Article, title: '你好 世界'),
+          instance_double(Html2rss::Article, title: '你好世界'),
+          instance_double(Html2rss::Article, title: nil)
         ]
       end
       let(:min_words_title) { 2 }

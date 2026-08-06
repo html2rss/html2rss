@@ -75,8 +75,8 @@ RSpec.describe Html2rss::Selectors do
 
     it 'yields the articles to given block' do
       expect { |b| instance.each(&b) }.to yield_successive_args(
-        Html2rss::RssBuilder::Article,
-        Html2rss::RssBuilder::Article
+        Html2rss::Article,
+        Html2rss::Article
       )
     end
   end

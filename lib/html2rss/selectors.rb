@@ -48,14 +48,14 @@ module Html2rss
       @time_zone = time_zone
 
       prepare_selectors!
-      @rss_item_attributes = @selectors.keys & Html2rss::RssBuilder::Article::PROVIDED_KEYS
+      @rss_item_attributes = @selectors.keys & Html2rss::Article::PROVIDED_KEYS
     end
 
     ##
     # Returns articles extracted from the response.
     # Reverses order if config specifies reverse ordering.
     #
-    # @return [Array<Html2rss::RssBuilder::Article>]
+    # @return [Array<Html2rss::Article>]
     def articles
       @articles ||= @selectors.dig(ITEMS_SELECTOR_KEY, :order) == 'reverse' ? to_a.tap(&:reverse!) : to_a
     end
@@ -63,7 +63,7 @@ module Html2rss
     ##
     # Iterates over each scraped article.
     #
-    # @yield [article] Gives each article as an Html2rss::RssBuilder::Article.
+    # @yield [article] Gives each article as an Html2rss::Article.
     # @return [Enumerator] An enumerator if no block is given.
     def each(&)
       return enum_for(:each) unless block_given?
@@ -75,7 +75,7 @@ module Html2rss
 
         enhance_article_hash(article_hash, item, response.url) if enhance
 
-        yield Html2rss::RssBuilder::Article.new(**article_hash, scraper: self.class)
+        yield Html2rss::Article.new(**article_hash, scraper: self.class)
       end
     end
 

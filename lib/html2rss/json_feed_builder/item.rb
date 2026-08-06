@@ -3,10 +3,10 @@
 module Html2rss
   class JsonFeedBuilder
     ##
-    # Maps an {Html2rss::RssBuilder::Article} to a JSONFeed 1.1 item hash.
+    # Maps an {Html2rss::Article} to a JSONFeed 1.1 item hash.
     class Item
       ##
-      # @param article [Html2rss::RssBuilder::Article]
+      # @param article [Html2rss::Article]
       def initialize(article)
         @article = article
       end
@@ -78,10 +78,10 @@ module Html2rss
       end
 
       ##
-      # @param enclosure [Html2rss::RssBuilder::Article::Enclosure]
+      # @param enclosure [Html2rss::Article::Enclosure]
       # @return [Hash]
       def attachment_hash(enclosure)
-        size = enclosure.bits_length
+        size = enclosure.bytes_length
 
         {
           url: enclosure.url.to_s,

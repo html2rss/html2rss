@@ -4,7 +4,7 @@ module Html2rss
   module Rendering
     # Factory: picks the appropriate renderer for a given enclosure or fallback image.
     class MediaRenderer
-      # @param enclosure [Html2rss::RssBuilder::Enclosure, nil]
+      # @param enclosure [Html2rss::Article::Enclosure, nil]
       # @param image [String, Html2rss::Url, nil] Fallback image URL
       # @param title [String]
       # @return [ImageRenderer, VideoRenderer, AudioRenderer, PdfRenderer, nil]

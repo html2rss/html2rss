@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::JsonFeedBuilder::Item do
   subject(:item_hash) { described_class.new(article).to_h }
 
-  let(:build_article) { ->(**attrs) { Html2rss::RssBuilder::Article.new(**attrs) } }
+  let(:build_article) { ->(**attrs) { Html2rss::Article.new(**attrs) } }
   let(:article) { build_article.call(**attributes) }
   let(:attributes) do
     {
@@ -45,7 +45,7 @@ RSpec.describe Html2rss::JsonFeedBuilder::Item do
   context 'with an enclosure' do
     let(:attributes) do
       super().merge(
-        enclosures: [{ url: Html2rss::Url.sanitize('https://example.com/audio.mp3'), bits_length: 123,
+        enclosures: [{ url: Html2rss::Url.sanitize('https://example.com/audio.mp3'), bytes_length: 123,
                        type: 'audio/mpeg' }]
       )
     end
