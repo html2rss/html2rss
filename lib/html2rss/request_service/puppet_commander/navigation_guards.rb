@@ -9,6 +9,19 @@ module Html2rss
       #
       # Does not re-own Policy rules — only calls +validate_*!+ on +ctx.policy+.
       class NavigationGuards
+        class << self
+          ##
+          # Resolves the final response URL for Response building and IP validation.
+          #
+          # @param navigation_response [Puppeteer::HTTPResponse, nil]
+          # @param fallback_url [String, Html2rss::Url]
+          # @return [Html2rss::Url]
+          def response_url(navigation_response, fallback_url)
+            raw_url = navigation_response&.url || fallback_url.to_s
+            Html2rss::Url.from_absolute(raw_url)
+          end
+        end
+
         ##
         # @param ctx [Context] request context providing policy and origin
         # @param skip_request_resources [Set<String>] resource types to abort
@@ -60,7 +73,7 @@ module Html2rss
         # @param navigation_response [Puppeteer::HTTPResponse, nil]
         # @return [void]
         def validate_final!(navigation_response)
-          final_url = response_url(navigation_response, ctx.url)
+          final_url = self.class.response_url(navigation_response, ctx.url)
           ctx.policy.validate_remote_ip!(ip: remote_ip(navigation_response), url: final_url)
         end
 
@@ -100,11 +113,6 @@ module Html2rss
           return true unless frame.respond_to?(:parent_frame)
 
           frame.parent_frame.nil?
-        end
-
-        def response_url(navigation_response, fallback_url)
-          raw_url = navigation_response&.url || fallback_url.to_s
-          Html2rss::Url.from_absolute(raw_url)
         end
 
         def remote_ip(navigation_response)

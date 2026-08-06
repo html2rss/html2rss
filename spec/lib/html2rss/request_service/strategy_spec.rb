@@ -10,10 +10,18 @@ RSpec.describe Html2rss::RequestService::Strategy do
     instance_double(
       Html2rss::RequestService::Policy,
       validate_request!: nil,
-      max_decompressed_bytes: 1_000_000
+      max_decompressed_bytes: 1_000_000,
+      total_timeout_seconds: 30
     )
   end
-  let(:budget) { instance_double(Html2rss::RequestService::Budget, consume!: nil, remaining_timeout_seconds: nil) }
+  let(:budget) do
+    instance_double(
+      Html2rss::RequestService::Budget,
+      consume!: nil,
+      remaining_timeout_seconds: nil,
+      effective_timeout_seconds: 30.0
+    )
+  end
   let(:ctx) do
     instance_double(
       Html2rss::RequestService::Context,

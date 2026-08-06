@@ -84,8 +84,7 @@ module Html2rss
       def skip_postflight? = false
 
       def check_timeout!
-        remaining = ctx.budget.remaining_timeout_seconds
-        raise RequestTimedOut, 'Request timed out' if remaining && remaining <= 0
+        ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
       end
     end
   end

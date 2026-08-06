@@ -6,24 +6,22 @@ module Html2rss
   class RequestSession
     class << self
       ##
-      # Builds a request session from translated runtime request inputs.
+      # Builds a request session from config, strategy, and shared budget/policy.
       #
-      # @param runtime_input [RuntimeInput] translated runtime request inputs
-      # @param budget [RequestService::Budget] shared request budget for the session
+      # Context owns URL/header/request normalization once; callers must not
+      # pre-normalize through a passthrough bag.
+      #
+      # @param config [Html2rss::Config] validated feed config
+      # @param strategy [Symbol] request strategy for the session
+      # @param budget [RequestService::Budget] shared request budget
+      # @param policy [RequestService::Policy] request policy (from RuntimePolicy.resources_for)
       # @param logger [Logger] logger used for operational warnings
       # @return [RequestSession] configured request session
-      def from_runtime_input(runtime_input, budget:, logger: Html2rss::Log) # rubocop:disable Metrics/MethodLength
-        new(
-          context: RequestService::Context.new(
-            url: runtime_input.url,
-            headers: runtime_input.headers,
-            request: runtime_input.request,
-            policy: runtime_input.request_policy,
-            budget:
-          ),
-          strategy: runtime_input.strategy,
-          logger:
+      def build(config:, strategy:, budget:, policy:, logger: Html2rss::Log)
+        context = RequestService::Context.new(
+          url: config.url, headers: config.headers, request: config.request, policy:, budget:
         )
+        new(context:, strategy:, logger:)
       end
     end
 

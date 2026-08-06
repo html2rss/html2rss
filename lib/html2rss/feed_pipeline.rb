@@ -43,15 +43,16 @@ module Html2rss
 
     def pipeline_state_for(config)
       plan = StrategyPlan.resolve(config.strategy)
+      resources = RequestSession::RuntimePolicy.resources_for(config)
       if plan.is_a?(StrategyPlan::Auto)
-        run_auto_pipeline(config)
+        run_auto_pipeline(config, resources:)
       else
-        run_pipeline_for_strategy(config, strategy: plan.strategy, budget: pipeline_budget(config))
+        run_pipeline_for_strategy(config, strategy: plan.strategy, resources:)
       end
     end
 
-    def run_pipeline_for_strategy(config, strategy:, budget:)
-      request_session = request_session_for(config, strategy:, budget:)
+    def run_pipeline_for_strategy(config, strategy:, resources:)
+      request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
       articles = deduplicated_articles(
         ExtractionContext.new(config:, response:, request_session:)
@@ -59,17 +60,12 @@ module Html2rss
       { response:, articles: }
     end
 
-    def request_session_for(config, strategy:, budget:)
-      RequestSession.from_runtime_input(runtime_input_for(config, strategy:), budget:)
-    end
-
-    def runtime_input_for(config, strategy:)
-      RequestSession::RuntimeInput.new(
-        url: config.url,
-        headers: config.headers,
-        request: config.request,
+    def request_session_for(config, strategy:, resources:)
+      RequestSession.build(
+        config:,
         strategy:,
-        request_policy: RequestSession::RuntimePolicy.from_config(config)
+        budget: resources.budget,
+        policy: resources.policy
       )
     end
 
@@ -78,16 +74,13 @@ module Html2rss
     end
 
     # rubocop:disable Metrics/MethodLength
-    def run_auto_pipeline(config)
+    def run_auto_pipeline(config, resources:)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
-        budget: pipeline_budget(config),
+        budget: resources.budget,
         session_for: lambda do |strategy:, budget:|
-          if budget.remaining_timeout_seconds && budget.remaining_timeout_seconds <= 0
-            raise RequestService::RequestTimedOut, 'Request timed out'
-          end
-
-          request_session_for(config, strategy:, budget:)
+          budget.effective_timeout_seconds(fallback: resources.policy.total_timeout_seconds)
+          request_session_for(config, strategy:, resources:)
         end,
         articles_for: lambda do |response:, request_session:|
           deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
@@ -95,10 +88,6 @@ module Html2rss
       ).call
     end
     # rubocop:enable Metrics/MethodLength
-
-    def pipeline_budget(config)
-      RequestSession::RuntimePolicy.budget_for(config)
-    end
 
     def collect_articles(extraction)
       selector_articles(extraction) + auto_source_articles(extraction)

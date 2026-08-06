@@ -60,4 +60,27 @@ RSpec.describe Html2rss::RequestService::Budget do
       expect(budget.remaining_timeout_seconds).to be_within(0.5).of(10)
     end
   end
+
+  describe '#effective_timeout_seconds' do
+    it 'owns remaining-or-fallback resolution so adapters do not reimplement it' do
+      budget = described_class.new(max_requests: 2)
+
+      expect(budget.effective_timeout_seconds(fallback: 30)).to eq(30.0)
+    end
+
+    it 'raises when the tracked deadline is exhausted' do
+      budget = described_class.new(max_requests: 2, total_timeout_seconds: 0)
+
+      expect { budget.effective_timeout_seconds(fallback: 30) }
+        .to raise_error(Html2rss::RequestService::RequestTimedOut, 'Request timed out')
+    end
+  end
+
+  describe '#effective_timeout_ms' do
+    it 'converts the effective timeout for browser protocol APIs' do
+      budget = described_class.new(max_requests: 2)
+
+      expect(budget.effective_timeout_ms(fallback: 12)).to eq(12_000)
+    end
+  end
 end
