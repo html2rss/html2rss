@@ -135,13 +135,13 @@ module Html2rss
           request: default_request_config,
           channel: { time_zone: 'UTC' },
           headers: RequestHeaders.browser_defaults,
-          stylesheets: Html2rss.configuration.stylesheets || []
+          stylesheets: Html2rss.defaults.stylesheets || []
         }
       end
 
       # @return [Symbol] the default feed-level strategy plan (+:auto+ or concrete)
       def default_strategy_name
-        Html2rss.configuration.default_strategy || :auto
+        Html2rss.defaults.default_strategy || :auto
       end
 
       private

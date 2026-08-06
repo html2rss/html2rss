@@ -49,7 +49,7 @@ module Html2rss
                        DEFAULT_TTL_IN_MINUTES
                      end
 
-        min_ttl = Html2rss.configuration.min_ttl
+        min_ttl = Html2rss.defaults.min_ttl
         min_ttl ? [calculated, min_ttl].max : calculated
       end
 

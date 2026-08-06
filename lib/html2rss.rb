@@ -8,7 +8,7 @@ loader.setup
 
 require 'logger'
 require 'forwardable'
-require 'html2rss/configuration'
+require 'html2rss/defaults'
 
 ##
 # The Html2rss namespace.
@@ -98,26 +98,26 @@ module Html2rss
   # rubocop:disable ThreadSafety/ClassInstanceVariable
   class << self
     ##
-    # @return [Html2rss::Configuration] the global configuration instance
-    def configuration
-      @configuration ||= Configuration.new.freeze
+    # @return [Html2rss::Defaults] the global defaults instance
+    def defaults
+      @defaults ||= Defaults.new.freeze
     end
 
     ##
     # Configures global library defaults.
     #
-    # @yieldparam config [Html2rss::Configuration]
-    # @return [Html2rss::Configuration] the frozen configuration
+    # @yieldparam config [Html2rss::Defaults]
+    # @return [Html2rss::Defaults] the frozen defaults
     def configure
-      config = configuration.dup
+      config = defaults.dup
       yield config
-      @configuration = config.freeze
+      @defaults = config.freeze
     end
 
     ##
     # @return [Object] the logger
     def logger
-      configuration.logger
+      defaults.logger
     end
 
     ##
@@ -129,12 +129,12 @@ module Html2rss
     private
 
     ##
-    # Resets the global configuration to defaults (mainly for testing).
+    # Resets the global defaults (mainly for testing).
     #
     # @return [void]
-    def reset_configuration!
-      @configuration = nil
-      logger.level = configuration.log_level if logger.respond_to?(:level=)
+    def reset_defaults!
+      @defaults = nil
+      logger.level = defaults.log_level if logger.respond_to?(:level=)
     end
   end
   # rubocop:enable ThreadSafety/ClassInstanceVariable
@@ -173,7 +173,7 @@ module Html2rss
     end
   end
 
-  logger.level = configuration.log_level if logger.respond_to?(:level=)
+  logger.level = defaults.log_level if logger.respond_to?(:level=)
 end
 
 loader.eager_load
