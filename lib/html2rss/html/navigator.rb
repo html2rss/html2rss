@@ -11,6 +11,12 @@ module Html2rss
       # Element tags that indicate ignored DOM chrome when found in a container path.
       IGNORED_CONTAINER_TAGS = %w[nav footer header svg script style].to_set.freeze
 
+      # Layout roots and chrome tags excluded from class-clustering candidate nodes.
+      CLUSTER_EXCLUDED_TAGS = Set['html', 'body', 'nav', 'footer', 'header', 'svg', 'script', 'style'].freeze
+
+      # Ancestor tags that usually indicate navigation/utility regions inside a content container.
+      UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].to_set.freeze
+
       # Anchor selector used to identify the canonical article link element.
       MAIN_ANCHOR_SELECTOR = begin
         buf = +'a[href]:not([href=""])'

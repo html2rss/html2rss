@@ -38,10 +38,7 @@ module Html2rss
 
           # Shared context for all anchors in one semantic container.
           class Context
-            attr_reader :container
-
-            # Ancestor tags that usually indicate navigation/utility regions.
-            UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].to_set.freeze
+            attr_reader :container, :link_heuristics
 
             # @param container [Nokogiri::XML::Node] semantic container
             # @param link_heuristics [Html2rss::AutoSource::Scraper::LinkHeuristics] destination/text heuristics
@@ -73,12 +70,6 @@ module Html2rss
             def destination_facts(anchor)
               @link_heuristics.destination_facts(anchor)
             end
-
-            # @param text [String] visible anchor text
-            # @return [Boolean] true when text is utility chrome
-            def utility_text?(text)
-              @link_heuristics.utility_text?(text)
-            end
           end
 
           # One anchor plus the facts needed to decide whether it represents content.
@@ -95,7 +86,7 @@ module Html2rss
             # @return [AnchorFacts, nil] ranked anchor facts when the anchor is eligible
             def facts
               return unless destination_facts
-              return if utility_text_suppressed? || ineligible_anchor?
+              return if noise_anchor?
               return unless representative_content_anchor?
 
               AnchorFacts.from_candidate(self)
@@ -163,32 +154,14 @@ module Html2rss
               meaningful_text? || content_like_destination? || heading_anchor?
             end
 
-            def utility_text_suppressed?
-              !content_like_destination? &&
-                @context.utility_text?(text) &&
-                (destination_facts.high_confidence_utility_destination || non_heading_weak_post?)
-            end
-
-            def non_heading_weak_post?
-              !heading_anchor? && !destination_facts.strong_post_suffix
-            end
-
-            def ineligible_anchor?
-              destination_facts.high_confidence_utility_destination ||
-                icon_only_anchor? ||
-                utility_landmark_ancestor?
-            end
-
-            def utility_landmark_ancestor?
-              container = @context.container
-              condition = proc { |node| node == container || Context::UTILITY_LANDMARK_TAGS.include?(node.name) }
-              landmark = Html2rss::Html::Navigator.parent_until_condition(@anchor.parent, condition)
-
-              landmark && landmark != container
-            end
-
-            def icon_only_anchor?
-              !meaningful_text? && @anchor.at_css('img, svg')
+            def noise_anchor?
+              @context.link_heuristics.noise_anchor?(
+                text:,
+                destination_facts:,
+                anchor: @anchor,
+                container: @context.container,
+                heading_anchor: heading_anchor?
+              )
             end
           end
 

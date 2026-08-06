@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'semantic_html/anchor_selector'
 require_relative 'semantic_html/entry_deduplicator'
 
 module Html2rss
@@ -56,7 +55,6 @@ module Html2rss
           @extractor = extractor
           @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
           @link_heuristics = LinkHeuristics.new(url)
-          @anchor_selector = AnchorSelector.new(link_heuristics: @link_heuristics)
         end
 
         attr_reader :parsed_body
@@ -93,7 +91,10 @@ module Html2rss
         end
 
         def primary_anchor_for(container)
-          @anchor_selector.primary_anchor_for(container)
+          Discovery::SemanticAnchorCandidates.new(
+            container,
+            link_heuristics: @link_heuristics
+          ).to_a.max_by(&:score)&.anchor
         end
 
         # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
@@ -111,16 +112,13 @@ module Html2rss
             signals = @link_heuristics.assess_container(container, selected_anchor, destination_facts:)
             next if signals.hard_junk?
 
-            quality_score = signals.quality_score
-            junk_score = signals.junk_score
-
             Entry.new(
               container:,
               selected_anchor:,
               destination_facts:,
-              quality_score:,
-              junk_score:,
-              final_score: quality_score - junk_score,
+              quality_score: signals.quality_score,
+              junk_score: signals.junk_score,
+              final_score: signals.final_score,
               position: document_position(container),
               article: nil
             )
