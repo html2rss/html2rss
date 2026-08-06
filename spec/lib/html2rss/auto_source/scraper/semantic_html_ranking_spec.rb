@@ -546,7 +546,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe comparator precedence' do
-    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::Html::Extractor) }
+    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com', Html2rss::Html::Extractor) }
 
     let(:container) { Nokogiri::HTML.fragment('<article><a href="/news/story">Story</a></article>').at_css('article') }
     let(:anchor) { container.at_css('a') }
@@ -703,7 +703,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe perf shape' do
-    subject(:deduplicator) { described_class::Deduplicator.new('https://example.com', Html2rss::Html::Extractor) }
+    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com', Html2rss::Html::Extractor) }
 
     let(:container) do
       instance_double(Nokogiri::XML::Node).tap do |node|
