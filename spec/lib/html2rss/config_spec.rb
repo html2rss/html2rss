@@ -215,7 +215,7 @@ RSpec.describe Html2rss::Config do
       described_class.auto_source_config(
         url: 'https://example.com/blog',
         items_selector: '.post',
-        request_controls: Html2rss::RequestControls.new(
+        request_controls: Html2rss::Config::RequestControls.new(
           strategy: :browserless,
           max_redirects: 8,
           max_requests: 5,

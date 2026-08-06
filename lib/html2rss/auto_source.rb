@@ -71,7 +71,7 @@ module Html2rss
     end.freeze
     private_constant :SCRAPER_CONFIG
 
-    # Runtime schema used to validate auto-source config values.
+    # Runtime source of truth for validating auto-source config values.
     Config = Dry::Schema.Params do
       optional(:scraper).hash(&SCRAPER_CONFIG)
 

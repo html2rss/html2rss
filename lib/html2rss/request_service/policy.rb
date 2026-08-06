@@ -5,7 +5,7 @@ require 'socket'
 module Html2rss
   class RequestService
     ##
-    # Describes the runtime request envelope for a single feed build.
+    # Enforcer for the runtime request envelope of a single feed build.
     #
     # Public façade for request limits, same-origin/follow-up rules, and
     # network reachability. DNS/host/IP enforcement lives on {NetworkGuard}.

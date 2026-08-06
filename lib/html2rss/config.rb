@@ -54,7 +54,7 @@ module Html2rss
     end
 
     ##
-    # @return [Html2rss::RequestControls] request controls with provenance
+    # @return [Html2rss::Config::RequestControls] request controls with provenance
     attr_reader :request_controls
 
     # @return [Hash{String => String}] normalized HTTP headers

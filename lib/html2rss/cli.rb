@@ -187,7 +187,7 @@ module Html2rss
     end
 
     def request_controls
-      Html2rss::RequestControls.new(
+      Html2rss::Config::RequestControls.new(
         strategy: options[:strategy]&.to_sym,
         max_redirects: options[:max_redirects],
         max_requests: options[:max_requests],
