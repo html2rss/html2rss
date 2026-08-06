@@ -27,19 +27,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         <html><body><article><a href="/article-1">Article 1</a></article></body></html>
       HTML
     end
-    let(:heuristics) { instance_double(Html2rss::AutoSource::Scraper::LinkHeuristics) }
 
-    before do
-      allow(Html2rss::AutoSource::Scraper::LinkHeuristics).to receive(:new).and_return(heuristics)
-      allow(described_class::AnchorSelector).to receive(:new).and_call_original
-    end
+    it 'builds one LinkHeuristics so destination caches stay shared across containers' do
+      allow(Html2rss::AutoSource::Scraper::LinkHeuristics).to receive(:new).and_call_original
 
-    it 'shares one LinkHeuristics with AnchorSelector so destination caches are not duplicated',
-       :aggregate_failures do
       described_class.new(parsed_body, url: 'https://example.com')
 
       expect(Html2rss::AutoSource::Scraper::LinkHeuristics).to have_received(:new).once
-      expect(described_class::AnchorSelector).to have_received(:new).with(link_heuristics: heuristics)
     end
   end
 

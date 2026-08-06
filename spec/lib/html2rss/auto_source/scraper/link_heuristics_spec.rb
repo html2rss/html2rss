@@ -118,6 +118,57 @@ RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
 
       expect(heuristics.noise_anchor?(text: 'Platform launch notes', destination_facts: facts)).to be(false)
     end
+
+    it 'rejects utility-prefix labels on high-confidence utility destinations' do
+      facts = heuristics.destination_facts('/login')
+
+      expect(heuristics.noise_anchor?(text: 'Login to continue', destination_facts: facts)).to be(true)
+    end
+
+    it 'rejects icon-only anchors so SemanticHtml does not keep a parallel eligibility rule' do
+      html = Nokogiri::HTML('<article><a href="/news/2024/platform-launch-notes"><img src="/i.png"></a></article>')
+      anchor = html.at_css('a')
+      facts = heuristics.destination_facts(anchor)
+
+      expect(heuristics.noise_anchor?(text: '', destination_facts: facts, anchor:)).to be(true)
+    end
+
+    it 'rejects anchors nested under utility landmarks outside the content container' do
+      html = Nokogiri::HTML(<<~HTML)
+        <article>
+          <nav><a href="/news/2024/platform-launch-notes">Related</a></nav>
+          <h2><a href="/news/2024/other-story">Other story</a></h2>
+        </article>
+      HTML
+      container = html.at_css('article')
+      landmark_anchor = container.at_css('nav a')
+      facts = heuristics.destination_facts(landmark_anchor)
+
+      expect(
+        heuristics.noise_anchor?(
+          text: 'Related',
+          destination_facts: facts,
+          anchor: landmark_anchor,
+          container:
+        )
+      ).to be(true)
+    end
+
+    it 'suppresses utility chrome text on weak destinations off the heading' do
+      facts = heuristics.destination_facts('/widget-xyz-detail')
+
+      expect(
+        heuristics.noise_anchor?(text: 'Contact', destination_facts: facts, heading_anchor: false)
+      ).to be(true)
+    end
+
+    it 'keeps heading-linked utility labels when the destination is not high-confidence utility' do
+      facts = heuristics.destination_facts('/widget-xyz-detail')
+
+      expect(
+        heuristics.noise_anchor?(text: 'Contact', destination_facts: facts, heading_anchor: true)
+      ).to be(false)
+    end
   end
 
   describe '#assess_container' do

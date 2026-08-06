@@ -168,8 +168,11 @@ module Html2rss
         def extract_article(article_tag, selected_anchor: nil)
           selected_anchor ||= preferred_anchor_for(article_tag)
           return unless selected_anchor
-          return if noise_anchor?(selected_anchor,
-                                  destination_facts: @link_heuristics.destination_facts(selected_anchor))
+          return if noise_anchor?(
+            selected_anchor,
+            destination_facts: @link_heuristics.destination_facts(selected_anchor),
+            container: article_tag
+          )
 
           @extractor.new(article_tag, base_url: @url, selected_anchor:).call
         end
@@ -178,10 +181,10 @@ module Html2rss
         # @param anchor [Nokogiri::XML::Node]
         # @param destination_facts [LinkHeuristics::DestinationFacts, nil]
         # @return [Boolean]
-        def noise_anchor?(anchor, destination_facts:)
+        def noise_anchor?(anchor, destination_facts:, container: nil)
           (@noise_anchors ||= {}.compare_by_identity)[anchor] ||= begin
             text = Html2rss::Html::Navigator.extract_visible_text(anchor).to_s.strip
-            @link_heuristics.noise_anchor?(text:, destination_facts:)
+            @link_heuristics.noise_anchor?(text:, destination_facts:, anchor:, container:)
           end
         end
 

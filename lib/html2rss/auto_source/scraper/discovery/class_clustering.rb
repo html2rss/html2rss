@@ -10,8 +10,8 @@ module Html2rss
         class ClassClustering
           # Node tags considered layout containers
           LAYOUT_TAG_NAMES = Set['div', 'section', 'article', 'li', 'ul', 'ol'].freeze
-          # HTML/layout tags excluded from candidate nodes
-          EXCLUDED_TAGS = Set['html', 'body', 'nav', 'footer', 'header', 'svg', 'script', 'style'].freeze
+          # HTML/layout tags excluded from candidate nodes (owned by Html::Navigator).
+          EXCLUDED_TAGS = Html2rss::Html::Navigator::CLUSTER_EXCLUDED_TAGS
 
           class << self
             ##

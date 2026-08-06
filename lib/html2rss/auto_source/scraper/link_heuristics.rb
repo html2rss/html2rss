@@ -482,20 +482,26 @@ module Html2rss
         ##
         # Whether an anchor is junk chrome rather than a content permalink.
         #
-        # Policy lives here so Html / SemanticHtml scrapers do not reimplement
-        # taxonomy/utility/recommended noise rules.
+        # One eligibility home for Html and SemanticHtml: taxonomy/utility text
+        # rules plus optional DOM checks (icon-only, utility landmarks).
         #
         # @param text [String, #to_s] visible anchor text
         # @param destination_facts [DestinationFacts, nil] route facts for the href
+        # @param anchor [Nokogiri::XML::Node, nil] anchor node for icon/landmark checks
+        # @param container [Nokogiri::XML::Node, nil] content container bounding landmark walks
+        # @param heading_anchor [Boolean] whether the anchor is the container heading link
         # @return [Boolean] true when the anchor should be ignored
-        def noise_anchor?(text:, destination_facts:) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+        def noise_anchor?(text:, destination_facts:, anchor: nil, container: nil, heading_anchor: false) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
           return true unless destination_facts
 
           destination_facts.taxonomy_path ||
             short_utility_label?(text, destination_facts) ||
-            (recommended_text?(text) && destination_facts.shallow) ||
+            recommended_chrome?(text, destination_facts, heading_anchor:) ||
             (utility_prefix_text?(text) && destination_facts.high_confidence_utility_destination) ||
-            (utility_text?(text) && destination_facts.vanity_path)
+            (utility_text?(text) && destination_facts.vanity_path) ||
+            utility_text_chrome?(text, destination_facts, heading_anchor:) ||
+            icon_only_anchor?(anchor, text) ||
+            utility_landmark_ancestor?(anchor, container)
         end
 
         ##
@@ -520,6 +526,36 @@ module Html2rss
             !destination_facts.content_path &&
             !destination_facts.strong_post_suffix &&
             text.to_s.scan(/\p{Alnum}+/).size <= 3
+        end
+
+        def recommended_chrome?(text, destination_facts, heading_anchor:)
+          # Heading-linked titles may start with "Recommended …" while still being
+          # real posts; container hard_junk? owns that call with publish markers.
+          !heading_anchor && recommended_text?(text) && destination_facts.shallow
+        end
+
+        def utility_text_chrome?(text, destination_facts, heading_anchor:)
+          return false if destination_facts.content_path
+          return false unless utility_text?(text)
+
+          !heading_anchor && !destination_facts.strong_post_suffix
+        end
+
+        def icon_only_anchor?(anchor, text)
+          return false unless anchor
+
+          !text.to_s.match?(/\p{Alnum}/) && !anchor.at_css('img, svg').nil?
+        end
+
+        def utility_landmark_ancestor?(anchor, container)
+          return false unless anchor && container
+
+          condition = lambda { |node|
+            node == container || Html2rss::Html::Navigator::UTILITY_LANDMARK_TAGS.include?(node.name)
+          }
+          landmark = Html2rss::Html::Navigator.parent_until_condition(anchor.parent, condition)
+
+          !landmark.nil? && landmark != container
         end
 
         def node_facts
