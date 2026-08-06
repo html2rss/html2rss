@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::RssBuilder::Article do
+RSpec.describe Html2rss::Article do
   subject(:instance) { described_class.new(**options) }
 
   let(:options) { { title: 'Sample instance', url: 'http://example.com', description: 'By John Doe' } }

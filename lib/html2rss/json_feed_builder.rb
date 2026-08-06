@@ -11,7 +11,7 @@ module Html2rss
 
     ##
     # @param channel [Html2rss::RssBuilder::Channel]
-    # @param articles [Array<Html2rss::RssBuilder::Article>]
+    # @param articles [Array<Html2rss::Article>]
     def initialize(channel:, articles:)
       @channel = channel
       @articles = articles

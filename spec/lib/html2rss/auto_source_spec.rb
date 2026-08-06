@@ -94,9 +94,9 @@ RSpec.describe Html2rss::AutoSource do
     describe 'when scraping succeeds' do
       subject(:article) { articles.first }
 
-      it 'returns a single Html2rss::RssBuilder::Article', :aggregate_failures do
+      it 'returns a single Html2rss::Article', :aggregate_failures do
         expect(articles.size).to eq(1)
-        expect(article).to be_a(Html2rss::RssBuilder::Article)
+        expect(article).to be_a(Html2rss::Article)
       end
 
       it 'preserves article content', :aggregate_failures do
@@ -239,7 +239,7 @@ RSpec.describe Html2rss::AutoSource do
         )
       end
 
-      it 'returns RssBuilder::Article objects from the Microdata scraper', :aggregate_failures do
+      it 'returns Article objects from the Microdata scraper', :aggregate_failures do
         expect(articles.size).to eq(1)
         expect(article.title).to eq('Microdata only story')
         expect(article.id).to eq('story-1')

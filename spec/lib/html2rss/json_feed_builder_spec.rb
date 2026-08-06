@@ -16,15 +16,15 @@ RSpec.describe Html2rss::JsonFeedBuilder do
   end
   let(:articles) do
     [
-      Html2rss::RssBuilder::Article.new(id: 'with-content', title: 'Visible', url: 'https://example.com/1'),
-      Html2rss::RssBuilder::Article.new(id: 'without-content', url: 'https://example.com/2')
+      Html2rss::Article.new(id: 'with-content', title: 'Visible', url: 'https://example.com/1'),
+      Html2rss::Article.new(id: 'without-content', url: 'https://example.com/2')
     ]
   end
 
   it 'filters out items that cannot satisfy the JSON Feed content requirement', :aggregate_failures do
     expect(feed_hash[:items].size).to eq(1)
-    expect(feed_hash[:items].first[:id]).to eq(Html2rss::RssBuilder::Article.new(id: 'with-content', title: 'Visible',
-                                                                                 url: 'https://example.com/1').guid)
+    expect(feed_hash[:items].first[:id]).to eq(Html2rss::Article.new(id: 'with-content', title: 'Visible',
+                                                                     url: 'https://example.com/1').guid)
     expect(feed_hash[:items].first[:content_text]).to eq('Visible')
   end
 end

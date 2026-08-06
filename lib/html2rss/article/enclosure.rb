@@ -3,9 +3,9 @@
 require 'mime/types'
 
 module Html2rss
-  class RssBuilder
+  class Article
     ##
-    # Represents an enclosure for an RSS item.
+    # Represents an enclosure attached to an article (RSS / JSON Feed media).
     class Enclosure
       ##
       # Guesses the content type based on the file extension of the URL.
@@ -24,38 +24,22 @@ module Html2rss
         content_type.first&.to_s || 'application/octet-stream'
       end
 
-      # @param enclosure [Html2rss::RssBuilder::Enclosure, nil] built enclosure object for the current RSS item
-      # @param maker [RSS::Maker::RSS20::ItemsBase::ItemBase] RSS item builder
-      # @return [void]
-      def self.add(enclosure, maker)
-        return unless enclosure
-
-        maker.enclosure.tap do |enclosure_maker|
-          enclosure_maker.url = enclosure.url.to_s
-          enclosure_maker.type = enclosure.type
-          enclosure_maker.length = enclosure.bits_length
-        end
-      end
-
       # @param url [Html2rss::Url] absolute enclosure URL
       # @param type [String, nil] optional enclosure MIME type
-      # @param bits_length [Integer] enclosure byte length (historical name)
-      def initialize(url:, type: nil, bits_length: 0)
+      # @param bytes_length [Integer] enclosure length in bytes
+      def initialize(url:, type: nil, bytes_length: 0)
         raise ArgumentError, 'An Enclosure requires an absolute URL' if !url || !url.absolute?
 
         @url = url
         @type = type
-        @bits_length = bits_length
+        @bytes_length = bytes_length
       end
 
       # @return [String] explicit MIME type or one inferred from URL extension
       def type = @type || self.class.guess_content_type_from_url(url)
 
       # @return [Integer] enclosure length in bytes
-      def bytes_length = @bits_length
-
-      # @return [Integer] enclosure length in bytes (legacy reader name)
-      def bits_length = bytes_length
+      attr_reader :bytes_length
 
       # @return [Html2rss::Url] absolute enclosure URL
       attr_reader :url

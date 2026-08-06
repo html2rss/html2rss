@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::RssBuilder::Enclosure do
+RSpec.describe Html2rss::Article::Enclosure do
   describe '.guess_content_type_from_url(url)' do
     {
       'https://example.com/image.jpg' => 'image/jpeg',
@@ -18,15 +18,15 @@ RSpec.describe Html2rss::RssBuilder::Enclosure do
   end
 
   describe '#initialize' do
-    subject { described_class.new(url:, type:, bits_length:) }
+    subject { described_class.new(url:, type:, bytes_length:) }
 
     let(:url) { Html2rss::Url.from_absolute('https://example.com/image.jpg') }
     let(:type) { 'image/jpeg' }
-    let(:bits_length) { 123 }
+    let(:bytes_length) { 123 }
 
     it { expect(subject.url).to eq url }
     it { expect(subject.type).to eq type }
-    it { expect(subject.bits_length).to eq bits_length }
+    it { expect(subject.bytes_length).to eq bytes_length }
 
     context 'when URL is nil' do
       let(:url) { nil }

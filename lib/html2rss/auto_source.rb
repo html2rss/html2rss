@@ -98,7 +98,7 @@ module Html2rss
     ##
     # Extracts article candidates by selecting every scraper that can explain the
     # page shape, running those scrapers, and normalizing the resulting hashes
-    # into `RssBuilder::Article` objects.
+    # into `Article` objects.
     #
     # The contributor-facing flow is:
     # 1. choose scraper instances that match the page
@@ -108,7 +108,7 @@ module Html2rss
     # Scrapers with expensive precomputation, such as `SemanticHtml`, keep that
     # state on the instance so detection and extraction can reuse the same work.
     #
-    # @return [Array<Html2rss::RssBuilder::Article>] extracted articles
+    # @return [Array<Html2rss::Article>] extracted articles
     def articles
       @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound => error
@@ -133,7 +133,7 @@ module Html2rss
 
     def run_scraper(instance)
       instance.each.map do |article_hash|
-        RssBuilder::Article.new(**article_hash, scraper: instance.class)
+        Article.new(**article_hash, scraper: instance.class)
       end
     end
 

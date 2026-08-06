@@ -7,14 +7,27 @@ module Html2rss
   # Builds an RSS Feed by providing channel, articles and stylesheets.
   class RssBuilder
     class << self
-      # @param article [Html2rss::RssBuilder::Article] source article
+      # @param article [Html2rss::Article] source article
       # @param item_maker [RSS::Maker::RSS20::ItemsBase::ItemBase] RSS item builder
       # @return [void]
       def add_item(article, item_maker)
         add_item_string_values(article, item_maker)
         add_item_categories(article, item_maker)
-        Enclosure.add(article.enclosure, item_maker)
+        add_enclosure(article.enclosure, item_maker)
         add_item_guid(article, item_maker)
+      end
+
+      # @param enclosure [Html2rss::Article::Enclosure, nil] built enclosure object for the current RSS item
+      # @param maker [RSS::Maker::RSS20::ItemsBase::ItemBase] RSS item builder
+      # @return [void]
+      def add_enclosure(enclosure, maker)
+        return unless enclosure
+
+        maker.enclosure.tap do |enclosure_maker|
+          enclosure_maker.url = enclosure.url.to_s
+          enclosure_maker.type = enclosure.type
+          enclosure_maker.length = enclosure.bytes_length
+        end
       end
 
       private
@@ -45,7 +58,7 @@ module Html2rss
 
     ##
     # @param channel [Html2rss::RssBuilder::Channel] The channel information for the RSS feed.
-    # @param articles [Array<Html2rss::RssBuilder::Article>] The list of articles to include in the RSS feed.
+    # @param articles [Array<Html2rss::Article>] The list of articles to include in the RSS feed.
     # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
     def initialize(channel:, articles:, stylesheets: [])
       @channel = channel
