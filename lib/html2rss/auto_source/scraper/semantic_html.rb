@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'semantic_html/anchor_selector'
-require_relative 'semantic_html/deduplicator'
+require_relative 'semantic_html/entry_deduplicator'
 
 module Html2rss
   class AutoSource
@@ -131,7 +131,7 @@ module Html2rss
         # rubocop:disable Metrics/MethodLength
         def ranked_entries
           @ranked_entries ||= begin
-            deduplicator = Deduplicator.new(@url, @extractor)
+            deduplicator = EntryDeduplicator.new(@url, @extractor)
             entries = deduplicator.call(extractable_entries)
             entries = stable_rank(entries)
 

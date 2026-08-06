@@ -7,7 +7,7 @@ module Html2rss
         ##
         # Collapses nested containers and deduplicates entries pointing to the same destination.
         # It resolves ties using scoring precedence and payload richness comparison.
-        class Deduplicator
+        class EntryDeduplicator
           # @param url [String, Html2rss::Url] base url used to resolve relative hrefs
           # @param extractor [Class] extractor class used to materialize articles
           def initialize(url, extractor)
