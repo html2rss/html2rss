@@ -10,13 +10,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Discovery::Anchorless do
   end
 
   describe '.class_cluster_containers' do
-    it 'delegates the Html job to ClassClustering rather than Semantic permit rules',
-       :aggregate_failures do
-      parsed_body = Nokogiri::HTML('<html><body><div class="card">One</div></body></html>')
-      node = parsed_body.at_css('div')
+    let(:parsed_body) { Nokogiri::HTML('<html><body><div class="card">One</div></body></html>') }
+    let(:node) { parsed_body.at_css('div') }
+
+    before do
       allow(Html2rss::AutoSource::Scraper::Discovery::ClassClustering)
         .to receive(:call).and_return([node])
+    end
 
+    it 'delegates the Html job to ClassClustering rather than Semantic permit rules',
+       :aggregate_failures do
       result = described_class.class_cluster_containers(parsed_body, minimum_selector_frequency: 2)
 
       expect(Html2rss::AutoSource::Scraper::Discovery::ClassClustering)
