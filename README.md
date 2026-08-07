@@ -29,7 +29,7 @@ Cloud development: [Open in GitHub Codespaces](https://github.com/codespaces/new
 2. **RequestService** — fetches pages (`faraday`, `botasaurus`, or `browserless`)
 3. **Selectors** — extracts content via CSS selectors with extractors/post-processors
 4. **AutoSource** — auto-detects content (Schema.org, JSON state, semantic HTML, structural patterns)
-5. **RssBuilder** — assembles Article objects and renders RSS 2.0
+5. **FeedBuilder** — assembles Article objects and renders feeds (RSS 2.0 / JSON Feed 1.1)
 
 ```text
 Config -> Request -> Extraction -> Processing -> Building -> Output
