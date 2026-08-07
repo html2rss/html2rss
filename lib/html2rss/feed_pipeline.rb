@@ -70,7 +70,7 @@ module Html2rss
     end
 
     def deduplicated_articles(extraction)
-      Articles::Deduplicator.new(collect_articles(extraction)).call
+      Article::Deduplicator.new(collect_articles(extraction)).call
     end
 
     # rubocop:disable Metrics/MethodLength

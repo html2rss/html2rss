@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Articles::Deduplicator do
+RSpec.describe Html2rss::Article::Deduplicator do
   subject(:deduplicated) { described_class.new(articles).call }
 
   let(:scraper) { Class.new }
