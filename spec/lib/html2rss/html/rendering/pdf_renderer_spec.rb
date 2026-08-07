@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Rendering::PdfRenderer do
+RSpec.describe Html2rss::Html::Rendering::PdfRenderer do
   describe '#to_html' do
     it 'renders compact iframe html with escaped src', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       renderer = described_class.new(url: 'https://example.com/doc.pdf?x=1&y=2')
