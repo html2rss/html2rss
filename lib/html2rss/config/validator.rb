@@ -10,7 +10,7 @@ module Html2rss
       # URI format used for channel URL validation.
       URI_REGEXP = Url::URI_REGEXP
       # Allowed stylesheet MIME types.
-      STYLESHEET_TYPES = RssBuilder::Stylesheet::TYPES
+      STYLESHEET_TYPES = FeedBuilder::Rss::Stylesheet::TYPES
       # Optional language/region format (`en` or `en-US`).
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
       # Baseline strategy-plan enum (:auto plus concrete RequestService strategies).

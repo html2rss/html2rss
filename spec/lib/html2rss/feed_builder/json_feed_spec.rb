@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::JsonFeedBuilder do
+RSpec.describe Html2rss::FeedBuilder::JsonFeed do
   subject(:feed_hash) { described_class.new(channel:, articles:).call }
 
   let(:channel) do

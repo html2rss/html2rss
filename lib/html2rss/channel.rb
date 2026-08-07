@@ -5,7 +5,7 @@ module Html2rss
   # Channel metadata for feed builders, extracted from the HTML document head
   # and HTTP response (with optional config overrides).
   #
-  # Format adapters ({RssBuilder}, {JsonFeedBuilder}) consume this type; they do
+  # Format adapters ({FeedBuilder::Rss}, {FeedBuilder::JsonFeed}) consume this type; they do
   # not own channel extraction.
   class Channel
     # Fallback RSS ttl (in minutes) when no cache directives are present.
