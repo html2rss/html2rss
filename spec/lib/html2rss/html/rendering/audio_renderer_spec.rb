@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Rendering::AudioRenderer do
+RSpec.describe Html2rss::Html::Rendering::AudioRenderer do
   describe '#to_html' do
     it 'renders compact audio html with escaped attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       renderer = described_class.new(url: 'https://example.com/audio.mp3?x=1&y=2', type: 'audio/mpeg')

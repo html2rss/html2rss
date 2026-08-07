@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Rendering::ImageRenderer do
+RSpec.describe Html2rss::Html::Rendering::ImageRenderer do
   describe '#to_html' do
     context 'with valid title' do
       it 'renders an img tag with escaped title', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

@@ -69,7 +69,7 @@ module Html2rss
     def description
       return @description unless @description == NOT_SET
 
-      @description = Rendering::DescriptionBuilder.new(
+      @description = Html::Rendering::DescriptionBuilder.new(
         base: @to_h[:description],
         title:,
         url:,
