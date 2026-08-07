@@ -29,7 +29,7 @@ The config key remains for compatibility; scrapers must call the named APIs. `Ht
 
 ## Channel
 
-Feed channel metadata (title, description, ttl, language, author, image, last_build_date) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `RssBuilder` and `JsonFeedBuilder` are format adapters that consume Channel + Article — they do not own channel extraction.
+Feed channel metadata (title, description, ttl, language, author, image, last_build_date) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article — they do not own channel extraction.
 
 ## ItemScope post-process config
 
