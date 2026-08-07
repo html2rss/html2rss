@@ -18,7 +18,7 @@ module Html2rss
     def to_rss
       run do |response:, config:, articles:|
         channel = Html2rss::Channel.new(response, overrides: config.channel)
-        RssBuilder.new(channel:, articles:, stylesheets: config.stylesheets).call
+        FeedBuilder.build(:rss, channel:, articles:, stylesheets: config.stylesheets)
       end
     end
 
@@ -27,7 +27,7 @@ module Html2rss
     def to_json_feed
       run do |response:, config:, articles:|
         channel = Html2rss::Channel.new(response, overrides: config.channel)
-        JsonFeedBuilder.new(channel:, articles:).call
+        FeedBuilder.build(:json_feed, channel:, articles:)
       end
     end
 

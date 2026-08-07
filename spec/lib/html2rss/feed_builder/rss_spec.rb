@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::RssBuilder do
+RSpec.describe Html2rss::FeedBuilder::Rss do
   subject(:instance) do
     described_class.new(channel:,
                         articles:,

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::RssBuilder::Stylesheet do
+RSpec.describe Html2rss::FeedBuilder::Rss::Stylesheet do
   let(:rss_maker) { RSS::Maker::RSS20.new }
   let(:stylesheet_config) do
     described_class.new(
