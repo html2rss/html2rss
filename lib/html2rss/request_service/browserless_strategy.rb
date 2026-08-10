@@ -32,18 +32,6 @@ module Html2rss
     # @see https://github.com/browserless/browserless/pkgs/container/chromium
     class BrowserlessStrategy < Strategy
       ##
-      # Executes a Browserless-backed request with the shared request policy.
-      #
-      # @return [Response] normalized request response
-      # @raise [RequestTimedOut] if the browser session exceeds the configured timeout
-      def execute
-        check_timeout!
-        run_guarded_fetch
-      rescue Puppeteer::TimeoutError => error
-        raise RequestTimedOut, error.message
-      end
-
-      ##
       # @return [String] the Browserless websocket endpoint with token query param
       # @raise [ArgumentError] if a custom endpoint is configured without an API token
       def browser_ws_endpoint

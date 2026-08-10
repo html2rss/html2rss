@@ -8,22 +8,6 @@ module Html2rss
     ##
     # Strategy to delegate fetching to a Botasaurus scrape API.
     class BotasaurusStrategy < Strategy
-      ##
-      # Executes a Botasaurus-backed request with shared request policy guards.
-      #
-      # @return [Response] normalized request response
-      # @raise [BotasaurusConfigurationError] when BOTASAURUS_SCRAPER_URL is missing or invalid
-      # @raise [BotasaurusConnectionFailed] when Botasaurus cannot be reached or returns an invalid payload
-      # @raise [RequestTimedOut] when the Botasaurus request exceeds configured timeout
-      def execute
-        check_timeout!
-        run_guarded_fetch
-      rescue Faraday::TimeoutError, Timeout::Error => error
-        raise RequestTimedOut, error.message
-      rescue Faraday::ConnectionFailed, Faraday::SSLError => error
-        raise BotasaurusConnectionFailed, "Botasaurus connection failed: #{error.message}"
-      end
-
       private
 
       def fetch
@@ -94,6 +78,10 @@ module Html2rss
         rescue ArgumentError => error
           raise BotasaurusConfigurationError, "BOTASAURUS_SCRAPER_URL is invalid: #{error.message}"
         end
+      end
+
+      def translate_connection_error(error)
+        raise BotasaurusConnectionFailed, "Botasaurus connection failed: #{error.message}"
       end
     end
   end

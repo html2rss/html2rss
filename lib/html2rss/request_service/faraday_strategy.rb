@@ -27,34 +27,24 @@ module Html2rss
       end
 
       ##
-      # Executes a request with runtime policy enforcement.
+      # @return [ResponseGuard]
+      attr_reader :response_guard
+
+      # Executes the request with runtime policy enforcement, returning the normalized response.
       #
-      # @return [Response] normalized request response
-      # @note Unlike BrowserlessStrategy, Faraday does not expose the remote IP after connect.
-      #   SSRF protection here is pre-connection only (DNS resolution via Policy).
-      #   A DNS rebinding attack between resolution and connect cannot be caught at this layer.
-      def execute
-        check_timeout!
+      # @return [Response] normalized response
+      def perform_execute
         deadline = request_deadline
-        response_guard, raw_response = perform_request(deadline:)
-        response = build_response(raw_response)
-        postflight!(response, response_guard:)
-        response
-      rescue Faraday::TimeoutError, Timeout::Error => error
-        raise RequestTimedOut, error.message
+        @response_guard = ResponseGuard.new(policy: ctx.policy)
+        raw_response = faraday_request(response_guard, deadline:, streaming_buffer: true)
+        raw_response = retry_without_streaming(response_guard, deadline:) if retry_without_streaming?(raw_response)
+        build_response(raw_response)
       end
 
       private
 
       def request_deadline
         monotonic_now + ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
-      end
-
-      def perform_request(deadline:)
-        response_guard = ResponseGuard.new(policy: ctx.policy)
-        response = faraday_request(response_guard, deadline:, streaming_buffer: true)
-        response = retry_without_streaming(response_guard, deadline:) if retry_without_streaming?(response)
-        [response_guard, response]
       end
 
       def build_response(response)

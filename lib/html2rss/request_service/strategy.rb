@@ -21,7 +21,11 @@ module Html2rss
       # @raise [NotImplementedError] if the subclass does not implement `#fetch`
       def execute
         check_timeout!
-        run_guarded_fetch
+        response = perform_execute
+        postflight!(response, response_guard:)
+        response
+      rescue StandardError => error
+        handle_error(error)
       end
 
       private
@@ -30,24 +34,21 @@ module Html2rss
       attr_reader :ctx
 
       ##
+      # Adapter hook: perform the preflight, fetch, and optional retry lifecycle.
+      #
+      # @return [Response] normalized response
+      def perform_execute
+        preflight!
+        fetch
+      end
+
+      ##
       # Adapter hook: perform the transport-specific fetch after preflight.
       #
       # @return [Response] normalized response
       # @raise [NotImplementedError] when a subclass omits the hook
       def fetch
         raise NotImplementedError, 'Subclass must implement #fetch'
-      end
-
-      ##
-      # Runs budget/policy preflight, adapter fetch, and ResponseGuard postflight.
-      #
-      # @param consume_budget [Boolean] whether this attempt consumes a request slot
-      # @return [Response] guarded response
-      def run_guarded_fetch(consume_budget: true)
-        preflight!(consume_budget:)
-        response = fetch
-        postflight!(response)
-        response
       end
 
       ##
@@ -85,6 +86,43 @@ module Html2rss
 
       def check_timeout!
         ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+      end
+
+      # @return [ResponseGuard, nil]
+      def response_guard = nil
+
+      # @param error [StandardError]
+      # @return [void]
+      # @raise [StandardError]
+      def handle_error(error)
+        if timeout_error?(error)
+          raise RequestTimedOut, error.message
+        elsif connection_error?(error)
+          translate_connection_error(error)
+        else
+          raise error
+        end
+      end
+
+      # @param error [StandardError]
+      # @return [void]
+      # @raise [StandardError]
+      def translate_connection_error(error)
+        raise error
+      end
+
+      # @param error [StandardError]
+      # @return [Boolean]
+      def timeout_error?(error)
+        error.is_a?(Faraday::TimeoutError) ||
+          error.is_a?(Timeout::Error) ||
+          (defined?(Puppeteer::TimeoutError) && error.is_a?(Puppeteer::TimeoutError))
+      end
+
+      # @param error [StandardError]
+      # @return [Boolean]
+      def connection_error?(error)
+        error.is_a?(Faraday::ConnectionFailed) || error.is_a?(Faraday::SSLError)
       end
     end
   end
