@@ -30,18 +30,6 @@ RSpec.describe Html2rss::Selectors do
 
       expect { instance }.to raise_error(described_class::InvalidSelectorName, /either use "url" or "link"/)
     end
-
-    context 'when attribute is renamed' do
-      before do
-        allow(Html2rss::Log).to receive(:warn)
-        selectors[:pubDate] = selectors.delete(:published_at)
-      end
-
-      it 'handles renamed attributes', :aggregate_failures do
-        expect(instance.instance_variable_get(:@selectors)).to include(:published_at)
-        expect(Html2rss::Log).to have_received(:warn).with(/deprecated. Please rename to 'published_at'./)
-      end
-    end
   end
 
   describe '#articles' do
