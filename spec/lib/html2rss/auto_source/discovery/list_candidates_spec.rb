@@ -2,7 +2,7 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::AutoSource::Scraper::Discovery::ListCandidates do
+RSpec.describe Html2rss::AutoSource::Discovery::ListCandidates do
   describe '#each_article_tag' do
     let(:html) do
       <<~HTML

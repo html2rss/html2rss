@@ -29,11 +29,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'builds one LinkHeuristics so destination caches stay shared across containers' do
-      allow(Html2rss::AutoSource::Scraper::LinkHeuristics).to receive(:new).and_call_original
+      allow(Html2rss::AutoSource::LinkHeuristics).to receive(:new).and_call_original
 
       described_class.new(parsed_body, url: 'https://example.com')
 
-      expect(Html2rss::AutoSource::Scraper::LinkHeuristics).to have_received(:new).once
+      expect(Html2rss::AutoSource::LinkHeuristics).to have_received(:new).once
     end
   end
 

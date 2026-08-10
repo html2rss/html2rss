@@ -2,7 +2,7 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::AutoSource::Scraper::Discovery::ClassClustering do
+RSpec.describe Html2rss::AutoSource::Discovery::ClassClustering do
   describe '.call' do
     let(:html) do
       <<~HTML

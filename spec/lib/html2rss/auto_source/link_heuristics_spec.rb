@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # rubocop:disable RSpec/ExampleLength
-RSpec.describe Html2rss::AutoSource::Scraper::LinkHeuristics do
+RSpec.describe Html2rss::AutoSource::LinkHeuristics do
   subject(:heuristics) { described_class.new('https://example.com/articles/') }
 
   describe '#destination_facts' do
