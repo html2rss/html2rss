@@ -86,14 +86,50 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
           <html>
             <head>
               <meta property="og:title" content="OG Title">
+              <meta name="twitter:description" content="Twitter Description">
               <meta name="twitter:image" content="https://example.com/twitter-card.jpg">
             </head>
           </html>
         HTML
       end
 
-      it 'uses twitter image tag when og:image is absent' do
+      it 'uses twitter image and description tags when og:image/og:description are absent', :aggregate_failures do
         expect(scraper.first[:image]).to eq('https://example.com/twitter-card.jpg')
+        expect(scraper.first[:description]).to eq('Twitter Description')
+      end
+    end
+
+    context 'when page has oEmbed photo type descriptor link and request_session is present' do
+      subject(:scraper) { described_class.new(parsed_body, url:, request_session:) }
+
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <html>
+            <head>
+              <meta property="og:title" content="OG Title">
+              <link rel="alternate" type="application/json+oembed" href="https://example.com/oembed.json">
+            </head>
+          </html>
+        HTML
+      end
+
+      let(:oembed_response) do
+        instance_double(
+          Html2rss::RequestService::Response,
+          parsed_body: {
+            'type' => 'photo',
+            'title' => 'oEmbed Photo Title',
+            'url' => 'https://example.com/photo.jpg'
+          }
+        )
+      end
+
+      before do
+        allow(request_session).to receive(:follow_up).and_return(oembed_response)
+      end
+
+      it 'uses oEmbed photo url as image when thumbnail_url is missing' do
+        expect(scraper.first[:image]).to eq('https://example.com/photo.jpg')
       end
     end
 
