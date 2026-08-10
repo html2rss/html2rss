@@ -573,35 +573,6 @@ RSpec.describe Html2rss::Config do
         expect { instance }.to raise_error(described_class::InvalidConfig, /max_clicks/)
       end
     end
-
-    context 'when configuration uses deprecated channel attributes' do
-      before do
-        allow(Html2rss::Log).to receive(:warn).and_return(nil)
-      end
-
-      let(:config) do
-        {
-          channel: { url: 'https://example.com',
-                     headers: { 'User-Agent': 'Agent-User', 'Content-Language': 'en' },
-                     strategy: :browserless },
-          auto_source: {}
-        }
-      end
-
-      %i[strategy headers].each do |key|
-        it "warns about deprecated #{key}" do
-          instance
-          expect(Html2rss::Log).to have_received(:warn).with(/`channel.#{key}` key is deprecated./)
-        end
-
-        it "moves deprecated #{key} to top level" do
-          value = config.dig(:channel, key)
-          matcher = key == :headers ? include(value.transform_keys(&:to_s)) : eq(value)
-
-          expect(instance.public_send(key)).to matcher
-        end
-      end
-    end
   end
 
   describe '#headers' do

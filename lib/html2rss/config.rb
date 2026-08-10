@@ -39,7 +39,7 @@ module Html2rss
       #
       # @param config [Hash{Symbol => Object}] the configuration hash
       # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
+      # @return [Dry::Validation::Result] validation result after defaults are applied
       def validate(config, params: UNSET)
         prepared_config = prepare_for_validation(resolve_effective_config(config, params:))
 
@@ -66,7 +66,7 @@ module Html2rss
       # @param feed_name [String, nil] optional feed name for multi-feed files
       # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
       # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Dry::Validation::Result] validation result after defaults and deprecations are applied
+      # @return [Dry::Validation::Result] validation result after defaults are applied
       def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
         validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
       end
@@ -164,16 +164,13 @@ module Html2rss
       end
 
       def resolve_effective_config(config, params:)
-        effective_config = HashUtil.deep_symbolize_keys(config, context: 'config')
-        resolved_params = parameter_defaults(effective_config)
-        unless params.equal?(UNSET) || params.nil?
-          resolved_params.merge!(HashUtil.deep_symbolize_keys(params, context: 'params'))
-        end
+        cfg = HashUtil.deep_symbolize_keys(config, context: 'config')
+        p = parameter_defaults(cfg)
+        p.merge!(HashUtil.deep_symbolize_keys(params, context: 'params')) unless params.equal?(UNSET) || params.nil?
 
-        effective_config[:headers] = DynamicParams.call(effective_config[:headers], resolved_params)
-        effective_config[:channel] = DynamicParams.call(effective_config[:channel], resolved_params)
-
-        effective_config
+        cfg[:headers] = DynamicParams.call(cfg[:headers], p) if cfg[:headers]
+        cfg[:channel] = DynamicParams.call(cfg[:channel], p) if cfg[:channel]
+        cfg
       end
 
       def parameter_defaults(config)
@@ -192,7 +189,7 @@ module Html2rss
     ##
     # Initializes the configuration object.
     #
-    # Processes deprecated attributes, applies default values, and validates the configuration.
+    # Applies default values and validates the configuration.
     #
     # @param config [Hash{Symbol => Object}] the configuration hash.
     # @raise [InvalidConfig] if the configuration fails validation.
@@ -256,11 +253,10 @@ module Html2rss
     class Preparer
       ##
       # @param config [Hash{Symbol => Object}] raw config input
-      # @return [Hash{Symbol => Object}] config with defaults and deprecations applied
+      # @return [Hash{Symbol => Object}] config with defaults applied
       def call(config)
         config = config.dup if config.frozen?
 
-        config = handle_deprecated_channel_attributes(config)
         config = apply_default_config(config)
         config = apply_default_selectors_config(config) if config[:selectors]
         config = apply_default_auto_source_config(config) if config[:auto_source]
@@ -269,19 +265,6 @@ module Html2rss
       end
 
       private
-
-      def handle_deprecated_channel_attributes(config)
-        { strategy: Config.default_strategy_name, headers: {} }.each_pair do |key, default_value|
-          if !config[key] && (value = config.dig(:channel, key))
-            Log.warn("The `channel.#{key}` key is deprecated. Please move the definition of `#{key}` to the top level.")
-            config[key] = value
-          end
-
-          config[key] ||= default_value
-        end
-
-        config
-      end
 
       def apply_default_config(config)
         HashUtil.deep_merge(Config.default_config, config)

@@ -32,9 +32,6 @@ module Html2rss
     # Item attributes that require dedicated extraction logic.
     SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
 
-    # Mapping of new attribute names to their legacy names for backward compatibility.
-    RENAMED_ATTRIBUTES = { published_at: %i[updated pubDate] }.freeze
-
     ##
     # Initializes a new Selectors instance.
     #
@@ -175,7 +172,6 @@ module Html2rss
     def prepare_selectors!
       validate_url_and_link_exclusivity!
       fix_url_and_link!
-      handle_renamed_attributes!
     end
 
     def validate_url_and_link_exclusivity!
@@ -189,17 +185,6 @@ module Html2rss
 
       @selectors = @selectors.dup
       @selectors[:url] = @selectors[:link]
-    end
-
-    def handle_renamed_attributes!
-      RENAMED_ATTRIBUTES.each_pair do |new_name, old_names|
-        old_names.each do |old_name|
-          next unless @selectors.key?(old_name)
-
-          Html2rss::Log.warn("Selector '#{old_name}' is deprecated. Please rename to '#{new_name}'.")
-          @selectors[new_name] ||= @selectors.delete(old_name)
-        end
-      end
     end
 
     def parsed_body
