@@ -37,7 +37,7 @@ module Html2rss
 
         # @param json_data [Hash]
         # @param origin_url [Html2rss::Url]
-        # @return [String, nil]
+        # @return [Html2rss::Url, nil]
         def url_from_cursor_path(json_data, origin_url)
           return nil unless (cursor_path = config[:cursor_path])
 
@@ -45,7 +45,8 @@ module Html2rss
           return nil if cursor_val.nil? || cursor_val.to_s.empty?
 
           param = config.fetch(:param, DEFAULT_PARAM)
-          build_url_with_param(origin_url.to_s, param, cursor_val.to_s)
+          url = Html2rss::Url.from_absolute(origin_url)
+          url.with_query_values(url.query_values.merge(param.to_s => cursor_val.to_s))
         end
 
         # @param page_response [RequestService::Response]
