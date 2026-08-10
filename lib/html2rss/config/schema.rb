@@ -158,7 +158,7 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] schema fragment for auto_source configuration
         def auto_source
-          schema = Html2rss::AutoSource::Config.json_schema(loose: true)
+          schema = Html2rss::Config::AutoSourceContract.json_schema(loose: true)
           schema[:default] = DeepStringifier.call(Html2rss::AutoSource::DEFAULT_CONFIG)
           schema
         end
@@ -207,14 +207,14 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] schema fragment for dynamic selector entries
         def dynamic_selector_schema
-          Html2rss::Selectors::Config::Selector.new.schema.json_schema(loose: true).merge(
+          Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true).merge(
             description: 'Dynamic selector definition keyed by attribute name.'
           )
         end
 
         # @return [Hash{Symbol => Object}] schema fragment for `items` selector configuration
         def items_schema
-          schema = Html2rss::Selectors::Config::Items.new.schema.json_schema(loose: true).merge(
+          schema = Html2rss::Config::SelectorsValidator::Items.new.schema.json_schema(loose: true).merge(
             description: 'Defines the items selector and optional enhancement settings.'
           )
           schema[:properties][:pagination] = Components.pagination
@@ -223,7 +223,7 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] schema fragment for `enclosure` selector configuration
         def enclosure_schema
-          Html2rss::Selectors::Config::Enclosure.new.schema.json_schema(loose: true).merge(
+          Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true).merge(
             description: 'Describes enclosure extraction settings.'
           )
         end

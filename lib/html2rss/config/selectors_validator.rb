@@ -3,10 +3,10 @@
 require 'dry-validation'
 
 module Html2rss
-  class Selectors
+  class Config
     ##
     # Validates the configuration hash for :selectors.
-    class Config < Dry::Validation::Contract
+    class SelectorsValidator < Dry::Validation::Contract
       # Required wrapper key used to validate dynamic selector names.
       NESTING_KEY = :dynamic_keys_workaround
 

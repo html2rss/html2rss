@@ -91,7 +91,7 @@ module Html2rss
         required(:channel).hash(ChannelConfig)
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)
-        optional(:auto_source).hash(AutoSource::Config)
+        optional(:auto_source).hash(Config::AutoSourceContract)
         optional(:selectors).hash
         optional(:dynamic_params_error).maybe(:string)
         optional(:request).hash(RequestConfig)
@@ -126,7 +126,7 @@ module Html2rss
       rule(:selectors) do
         next unless value
 
-        errors = Html2rss::Selectors::Config.call(value).errors
+        errors = Config::SelectorsValidator.call(value).errors
         errors.each { |error| key(:selectors).failure(error.text) } unless errors.empty?
       end
 

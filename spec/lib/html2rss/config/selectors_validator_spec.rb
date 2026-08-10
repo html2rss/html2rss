@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Selectors::Config do
+RSpec.describe Html2rss::Config::SelectorsValidator do
   subject(:result) { described_class.call(config) }
 
   let(:config) do
