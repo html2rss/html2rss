@@ -20,6 +20,15 @@ module Html2rss
         def self.options_key = :sitemap
 
         ##
+        # Returns the number of request slots needed for sitemap discovery and fan-out.
+        #
+        # @param _opts [Hash] unused options
+        # @return [Integer] number of follow-up requests needed
+        def self.request_slots(_opts = {})
+          1 + MAX_SUB_SITEMAPS
+        end
+
+        ##
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed document
         # @return [Boolean] whether the page links to a sitemap or is a sitemap
         def self.articles?(parsed_body)

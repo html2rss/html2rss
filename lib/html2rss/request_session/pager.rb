@@ -24,6 +24,18 @@ module Html2rss
       end
 
       ##
+      # Returns the number of request slots needed for the pagination configuration.
+      #
+      # @param config [Hash, Integer, nil] pagination configuration
+      # @return [Integer] number of follow-up requests needed
+      def self.request_slots_for(config)
+        return 0 unless config
+
+        max_pages = normalize_config(config)[:max_pages] || Base::DEFAULT_MAX_PAGES
+        [max_pages - 1, 0].max
+      end
+
+      ##
       # Returns a pager instance for the provided configuration.
       #
       # @param config [Hash, Integer, nil] pagination configuration

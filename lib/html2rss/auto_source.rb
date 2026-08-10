@@ -56,6 +56,26 @@ module Html2rss
       cleanup: Cleanup::DEFAULT_CONFIG
     }.freeze
 
+    class << self
+      ##
+      # Returns the sum of required request slots for all enabled scrapers in the config.
+      #
+      # @param config [Hash, nil] auto_source configuration hash
+      # @return [Integer] total request slots required by scrapers
+      def request_slots_for(config)
+        return 0 unless config
+
+        Scraper::SCRAPERS.sum do |scraper|
+          if config.dig(:scraper, scraper.options_key, :enabled)
+            opts = config.dig(:scraper, scraper.options_key)
+            scraper.respond_to?(:request_slots) ? scraper.request_slots(opts) : 0
+          else
+            0
+          end
+        end
+      end
+    end
+
     ##
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options

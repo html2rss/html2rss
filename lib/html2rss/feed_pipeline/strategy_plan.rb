@@ -9,10 +9,18 @@ module Html2rss
     # any session or adapter call — plan vs transport locality.
     class StrategyPlan
       # Feed-level auto plan: try {AutoFallback::CHAIN} until items are extracted.
-      Auto = Data.define
+      Auto = Data.define do
+        # @return [Integer]
+        def request_slots
+          [AutoFallback::CHAIN.size - 1, 0].max
+        end
+      end
 
       # Concrete transport strategy name for {RequestService}.
-      Concrete = Data.define(:strategy)
+      Concrete = Data.define(:strategy) do
+        # @return [Integer]
+        def request_slots = 0
+      end
 
       # Symbol used in config / configure for the auto plan.
       AUTO_NAME = :auto

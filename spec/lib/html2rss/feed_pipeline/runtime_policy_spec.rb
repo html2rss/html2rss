@@ -36,7 +36,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
       it 'sizes HTTP request slots without stuffing preload into max_requests', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(4)
+        expect(runtime_policy.max_requests).to eq(8)
         expect(runtime_policy.max_redirects).to eq(8)
         expect(described_class.interaction_budget_for(config)).to eq(2)
       end
@@ -48,7 +48,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       it 'adds auto fallback retry budget to the runtime policy', :aggregate_failures do
         expected_retry_budget = Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1
 
-        expect(runtime_policy.max_requests).to eq(4 + expected_retry_budget)
+        expect(runtime_policy.max_requests).to eq(8 + expected_retry_budget)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
@@ -57,7 +57,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :faraday)) }
 
       it 'keeps baseline request budget unchanged for non-auto strategies' do
-        expect(runtime_policy.max_requests).to eq(4)
+        expect(runtime_policy.max_requests).to eq(8)
       end
     end
 
@@ -74,7 +74,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       end
 
       it 'reserves request budget using default max_pages of 5' do
-        expect(runtime_policy.max_requests).to eq(6) # 1 initial + (5-1) pagination + 1 wordpress_api
+        expect(runtime_policy.max_requests).to eq(10) # 1 initial + (5-1) pagination + 1 wordpress_api + 4 sitemap
       end
     end
 
@@ -98,7 +98,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       end
 
       it 'does not reserve preload interaction budget', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(4)
+        expect(runtime_policy.max_requests).to eq(8)
         expect(described_class.interaction_budget_for(config)).to eq(0)
         expect(runtime_policy.max_redirects).to eq(8)
       end
@@ -117,7 +117,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       end
 
       it 'counts click actions on the interaction budget, not request slots', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(4)
+        expect(runtime_policy.max_requests).to eq(8)
         expect(described_class.interaction_budget_for(config)).to eq(2)
       end
     end
@@ -144,7 +144,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
 
       it 'counts scroll actions on the interaction budget so pagination keeps its HTTP slots',
          :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(4)
+        expect(runtime_policy.max_requests).to eq(8)
         expect(described_class.interaction_budget_for(config)).to eq(3)
       end
     end
@@ -156,7 +156,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     it 'builds a Budget with separate request and interaction pools', :aggregate_failures do
       budget = described_class.budget_for(config)
 
-      expect(budget.remaining_requests).to eq(4)
+      expect(budget.remaining_requests).to eq(8)
       expect(budget.remaining_interactions).to eq(2)
     end
   end
