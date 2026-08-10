@@ -1,12 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'pager/base'
-require_relative 'pager/rel_next'
-require_relative 'pager/custom_selector'
-require_relative 'pager/url_template'
-require_relative 'pager/offset'
-require_relative 'pager/json_cursor'
-
 module Html2rss
   class RequestSession
     ##

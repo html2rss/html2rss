@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require 'sanitize'
-require_relative 'html_transformers/transform_urls_to_absolute_ones'
-require_relative 'html_transformers/wrap_img_in_a'
 
 module Html2rss
   class Selectors

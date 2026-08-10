@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'kramdown'
-require_relative 'sanitize_html'
 
 module Html2rss
   class Selectors
