@@ -44,32 +44,32 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
-  describe '::Config' do
-    subject(:schema) { described_class::Config }
+  describe Html2rss::Config::AutoSourceContract do
+    subject(:schema) { described_class }
 
     it 'validates the default config' do
-      expect(schema.call(described_class::DEFAULT_CONFIG)).to be_success
+      expect(schema.call(Html2rss::AutoSource::DEFAULT_CONFIG)).to be_success
     end
 
     it 'allows toggling the json_state scraper' do
-      toggled_config = described_class::DEFAULT_CONFIG.merge(
-        scraper: described_class::DEFAULT_CONFIG[:scraper].merge(json_state: { enabled: false })
+      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(
+        scraper: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].merge(json_state: { enabled: false })
       )
 
       expect(schema.call(toggled_config)).to be_success
     end
 
     it 'allows toggling the wordpress_api scraper' do
-      toggled_config = described_class::DEFAULT_CONFIG.merge(
-        scraper: described_class::DEFAULT_CONFIG[:scraper].merge(wordpress_api: { enabled: false })
+      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(
+        scraper: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].merge(wordpress_api: { enabled: false })
       )
 
       expect(schema.call(toggled_config)).to be_success
     end
 
     it 'allows toggling the microdata scraper' do
-      toggled_config = described_class::DEFAULT_CONFIG.merge(
-        scraper: described_class::DEFAULT_CONFIG[:scraper].merge(microdata: { enabled: false })
+      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(
+        scraper: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].merge(microdata: { enabled: false })
       )
 
       expect(schema.call(toggled_config)).to be_success
@@ -77,8 +77,8 @@ RSpec.describe Html2rss::AutoSource do
 
     describe 'optional(:cleanup)' do
       let(:config) do
-        config = described_class::DEFAULT_CONFIG.dup
-        config[:auto_source] = { cleanup: described_class::Cleanup::DEFAULT_CONFIG }
+        config = Html2rss::AutoSource::DEFAULT_CONFIG.dup
+        config[:auto_source] = { cleanup: Html2rss::AutoSource::Cleanup::DEFAULT_CONFIG }
         config
       end
 
