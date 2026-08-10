@@ -13,6 +13,9 @@ module Html2rss
         # Selector for sitemap link tags in HTML head
         SITEMAP_LINK_SELECTOR = 'link[rel="sitemap"][href]'
 
+        # Maximum number of sub-sitemaps to fetch when fanning out through a sitemapindex.
+        MAX_SUB_SITEMAPS = 3
+
         # @return [Symbol] scraper config key
         def self.options_key = :sitemap
 
@@ -65,23 +68,56 @@ module Html2rss
           entries = parse_direct_sitemap
           return entries unless entries.empty?
 
-          xml_body = fetch_sitemap_xml
+          xml_body = fetch_xml(target_sitemap_url)
           return [] unless xml_body
 
-          Discovery::Sitemap.call(xml_body, min_priority:, max_age_days:)
+          parse_sitemap_xml(xml_body)
+        rescue Html2rss::RequestService::RequestBudgetExceeded
+          Log.warn("#{self.class}: sitemap fetch stopped — request budget exhausted")
+          []
+        end
+
+        def parse_sitemap_xml(xml_body)
+          result = Discovery::Sitemap.call(xml_body, min_priority:, max_age_days:)
+          return fetch_sub_sitemaps(result.sub_sitemap_urls) if result.sub_sitemap_urls.any?
+
+          result.entries
         end
 
         def parse_direct_sitemap
           return [] unless parsed_body.at_xpath('//*[local-name()="urlset" or local-name()="sitemapindex"]')
 
-          Discovery::Sitemap.call(parsed_body.to_s, min_priority:, max_age_days:)
+          Discovery::Sitemap.call(parsed_body.to_s, min_priority:, max_age_days:).entries
         end
 
-        def fetch_sitemap_xml
-          return unless request_session && target_sitemap_url
+        def fetch_sub_sitemaps(sub_urls)
+          entries = []
+          sub_urls.first(MAX_SUB_SITEMAPS).each do |sub_url|
+            sub_entries = fetch_sub_sitemap_entries(sub_url)
+            break unless sub_entries
 
-          response = request_session.follow_up(url: target_sitemap_url, relation: :auto_source, origin_url: url)
+            entries.concat(sub_entries)
+          end
+          entries
+        end
+
+        def fetch_sub_sitemap_entries(sub_url)
+          xml = fetch_xml(sub_url)
+          return [] unless xml
+
+          Discovery::Sitemap.call(xml, min_priority:, max_age_days:).entries
+        rescue Html2rss::RequestService::RequestBudgetExceeded
+          Log.warn("#{self.class}: sitemap fan-out stopped — request budget exhausted")
+          nil
+        end
+
+        def fetch_xml(target_url)
+          return unless request_session && target_url
+
+          response = request_session.follow_up(url: target_url, relation: :auto_source, origin_url: url)
           response&.body
+        rescue Html2rss::RequestService::RequestBudgetExceeded
+          raise
         rescue Html2rss::Error => error
           Log.warn("#{self.class}: failed to fetch sitemap (#{error.class}: #{error.message})")
           nil

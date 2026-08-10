@@ -4,7 +4,9 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::AutoSource::Discovery::Sitemap do
   describe '.call' do
-    let(:sample_xml) do
+    let(:now_iso) { Time.now.utc.iso8601 }
+
+    let(:urlset_xml) do
       <<~XML
         <?xml version="1.0" encoding="UTF-8"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -32,23 +34,69 @@ RSpec.describe Html2rss::AutoSource::Discovery::Sitemap do
       XML
     end
 
-    it 'extracts prioritized non-stale entries with titles', :aggregate_failures do
-      entries = described_class.call(sample_xml)
-
-      expect(entries.size).to eq(1)
-      expect(entries.first.url).to eq('https://example.com/article-1')
-      expect(entries.first.title).to eq('Google News Title 1')
-      expect(entries.first.priority).to eq(0.8)
+    let(:sitemapindex_xml) do
+      <<~XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <sitemap>
+            <loc>https://example.com/post-sitemap.xml</loc>
+            <lastmod>2026-08-01</lastmod>
+          </sitemap>
+          <sitemap>
+            <loc>https://example.com/page-sitemap.xml</loc>
+          </sitemap>
+        </sitemapindex>
+      XML
     end
 
-    it 'filters out entries below min_priority' do
-      entries = described_class.call(sample_xml, min_priority: 0.9)
+    context 'when given a urlset document' do
+      subject(:result) { described_class.call(urlset_xml) }
 
-      expect(entries).to be_empty
+      it 'returns a Result', :aggregate_failures do
+        expect(result).to be_a(described_class::Result)
+        expect(result.sub_sitemap_urls).to be_empty
+        expect(result.entries.size).to eq(1)
+        expect(result.entries.first.url).to eq('https://example.com/article-1')
+        expect(result.entries.first.title).to eq('Google News Title 1')
+        expect(result.entries.first.priority).to eq(0.8)
+      end
+
+      it 'filters out entries below min_priority' do
+        expect(described_class.call(urlset_xml, min_priority: 0.9).entries).to be_empty
+      end
     end
 
-    it 'returns empty array for invalid XML' do
-      expect(described_class.call('not xml')).to be_empty
+    context 'when given a sitemapindex document' do
+      subject(:result) { described_class.call(sitemapindex_xml) }
+
+      it 'returns a Result with entries empty and sub_sitemap_urls populated', :aggregate_failures do
+        expect(result).to be_a(described_class::Result)
+        expect(result.entries).to be_empty
+        expect(result.sub_sitemap_urls).to eq([
+                                                'https://example.com/post-sitemap.xml',
+                                                'https://example.com/page-sitemap.xml'
+                                              ])
+      end
+    end
+
+    context 'when given empty XML' do
+      subject(:result) { described_class.call('<?xml version="1.0"?><root/>') }
+
+      it 'returns a Result with both collections empty', :aggregate_failures do
+        expect(result).to be_a(described_class::Result)
+        expect(result.entries).to be_empty
+        expect(result.sub_sitemap_urls).to be_empty
+      end
+    end
+
+    context 'when given invalid XML' do
+      subject(:result) { described_class.call('not xml') }
+
+      it 'returns a Result with both collections empty', :aggregate_failures do
+        expect(result).to be_a(described_class::Result)
+        expect(result.entries).to be_empty
+        expect(result.sub_sitemap_urls).to be_empty
+      end
     end
   end
 end

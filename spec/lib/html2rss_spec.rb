@@ -759,12 +759,12 @@ RSpec.describe Html2rss do
       end
     end
 
-    it 'leaves max_requests unset when omitted so request budget can be inferred' do
+    it 'defaults max_requests to 4 in the generated config for auto_source sitemap sub-fetches' do
       allow(described_class).to receive(:feed).and_return(nil)
 
       described_class.auto_source(url)
 
-      expect(described_class).to have_received(:feed).with(hash_excluding(:request))
+      expect(described_class).to have_received(:feed).with(hash_including(request: hash_including(max_requests: 4)))
     end
   end
 
@@ -839,12 +839,14 @@ RSpec.describe Html2rss do
       end
     end
 
-    it 'leaves max_requests unset when omitted so request budget can be inferred' do
+    it 'defaults max_requests to 4 in the generated config for auto_source sitemap sub-fetches' do
       allow(described_class).to receive(:json_feed).and_return(nil)
 
       described_class.auto_json_feed(url)
 
-      expect(described_class).to have_received(:json_feed).with(hash_excluding(:request))
+      expect(described_class).to have_received(:json_feed).with(
+        hash_including(request: hash_including(max_requests: 4))
+      )
     end
   end
 end

@@ -16,17 +16,22 @@ module Html2rss
         # Google News sitemap XML namespace
         NEWS_NS = 'http://www.google.com/schemas/sitemap-news/0.9'
 
+        # Result value object returned by .call
+        # @!attribute entries [Array<SitemapEntry>] parsed entries (empty for sitemapindex docs)
+        # @!attribute sub_sitemap_urls [Array<String>] child sitemap URLs (empty for urlset docs)
+        Result = Data.define(:entries, :sub_sitemap_urls)
+
         # Immutable facts for one sitemap entry
         SitemapEntry = Data.define(:url, :title, :published_at, :priority, :changefreq)
 
         class << self
           ##
-          # Parses sitemap XML body and returns filtered SitemapEntry instances.
+          # Parses sitemap XML body and returns a Result.
           #
           # @param xml_content [String] sitemap XML body string
           # @param min_priority [Float] minimum priority score (0.0..1.0)
           # @param max_age_days [Integer] maximum age in days for entries
-          # @return [Array<SitemapEntry>] prioritized sitemap entries
+          # @return [Result] result with entries and/or sub_sitemap_urls
           def call(xml_content, min_priority: DEFAULT_MIN_PRIORITY, max_age_days: DEFAULT_MAX_AGE_DAYS)
             new(xml_content, min_priority:, max_age_days:).call
           end
@@ -43,17 +48,36 @@ module Html2rss
         end
 
         ##
-        # @return [Array<SitemapEntry>]
+        # @return [Result]
         def call
           document = Nokogiri::XML(xml_content)
-          return [] unless document.errors.empty? || document.at_css('urlset, sitemapindex')
+          return Result.new(entries: [], sub_sitemap_urls: []) if invalid_xml?(document)
 
-          extract_entries(document)
+          if sitemapindex?(document)
+            Result.new(entries: [], sub_sitemap_urls: extract_sub_sitemap_urls(document))
+          else
+            Result.new(entries: extract_entries(document), sub_sitemap_urls: [])
+          end
         end
 
         private
 
         attr_reader :xml_content, :min_priority, :max_age_days
+
+        def invalid_xml?(document)
+          document.errors.any? && document.at_css('urlset, sitemapindex').nil?
+        end
+
+        def sitemapindex?(document)
+          !document.at_xpath('//*[local-name()="sitemapindex"]').nil?
+        end
+
+        def extract_sub_sitemap_urls(document)
+          document.xpath('//*[local-name()="sitemap"]/*[local-name()="loc"]').filter_map do |node|
+            text = node.text.strip
+            text unless text.empty?
+          end
+        end
 
         def extract_entries(document)
           document.xpath('//*[local-name()="url"]').filter_map { build_entry(_1) }

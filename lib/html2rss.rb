@@ -61,14 +61,14 @@ module Html2rss
   # @param strategy [Symbol] request strategy to use
   # @param items_selector [String, nil] optional selector hint for item extraction
   # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer, nil] optional request budget override
+  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
   # @param local_file_path [String, nil] optional local HTML file path
   # @return [RSS::Rss] generated RSS feed
   def self.auto_source(url,
                        strategy: :auto,
                        items_selector: nil,
                        max_redirects: nil,
-                       max_requests: nil,
+                       max_requests: 4,
                        local_file_path: nil)
     feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:, local_file_path:))
   end
@@ -80,14 +80,14 @@ module Html2rss
   # @param strategy [Symbol] request strategy to use
   # @param items_selector [String, nil] optional selector hint for item extraction
   # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer, nil] optional request budget override
+  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
   # @param local_file_path [String, nil] optional local HTML file path
   # @return [Hash] JSONFeed-compliant hash
   def self.auto_json_feed(url,
                           strategy: :auto,
                           items_selector: nil,
                           max_redirects: nil,
-                          max_requests: nil,
+                          max_requests: 4,
                           local_file_path: nil)
     json_feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
                                        local_file_path:))
