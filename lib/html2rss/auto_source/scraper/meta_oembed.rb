@@ -100,13 +100,8 @@ module Html2rss
         end
 
         def fetch_oembed_data
-          return {} unless request_session
-
-          link_node = parsed_body.at_css(OEMBED_LINK_SELECTOR)
-          return {} unless link_node && link_node['href']
-
-          oembed_url = resolve_url(link_node['href'])
-          return {} unless oembed_url
+          return {} unless request_session && (link_node = parsed_body.at_css(OEMBED_LINK_SELECTOR))
+          return {} unless (oembed_url = resolve_url(link_node['href']))
 
           response = request_session.follow_up(url: oembed_url, relation: :auto_source, origin_url: url)
           parse_oembed_response(response)
@@ -133,11 +128,10 @@ module Html2rss
           {
             url: article_url,
             title:,
-            description: meta_data[:description],
+            description: meta_data[:description] || oembed_data[:html],
             author: oembed_data[:author] || meta_data[:author],
             published_at: meta_data[:published_at],
-            image: oembed_data[:thumbnail] || meta_data[:image],
-            html: oembed_data[:html]
+            image: oembed_data[:thumbnail] || meta_data[:image]
           }.compact
         end
 

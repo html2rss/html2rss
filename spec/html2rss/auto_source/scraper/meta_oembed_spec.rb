@@ -127,9 +127,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
         {
           url: Html2rss::Url.from_absolute(url),
           title: 'oEmbed Title',
+          description: '<iframe></iframe>',
           author: 'oEmbed Author',
-          image: 'https://example.com/thumb.jpg',
-          html: '<iframe></iframe>'
+          image: 'https://example.com/thumb.jpg'
         }
       end
 
@@ -141,7 +141,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
         ).and_return(oembed_response)
       end
 
-      it 'fetches oEmbed JSON and overrides/enriches article fields' do
+      it 'fetches oEmbed JSON and overrides/enriches article fields', :aggregate_failures do
         expect(scraper.first).to eq(expected_article)
       end
     end
