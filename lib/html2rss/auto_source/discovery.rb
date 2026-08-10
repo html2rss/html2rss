@@ -7,8 +7,7 @@ module Html2rss
     #
     # Html2rss::Html::Extractors fills article fields from a container; discovery finds those containers.
     #
-    # Anchorless work has two distinct jobs under the historical scraper option
-    # +:fallback_anchorless+ — see {Discovery::Anchorless}.
+    # DOM list discovery for anchorless or classless pages is owned by {Discovery::DomClustering}.
     module Discovery
     end
   end

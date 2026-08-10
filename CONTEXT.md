@@ -18,14 +18,9 @@ Observing a semantic container plus its selected anchor and destination facts in
 
 Whether an anchor is junk chrome vs a content permalink. Owned solely by `AutoSource::LinkHeuristics#noise_anchor?` (text/destination rules plus optional icon-only and utility-landmark DOM checks). `Html` and `Discovery::SemanticAnchorCandidates` consume that method; they must not keep parallel `ineligible_anchor?` / `utility_text_suppressed?` policy. Heading-linked “Recommended …” titles are not rejected at this gate so container `hard_junk?` can keep real posts with publish markers.
 
-## Anchorless discovery
+## DOM candidate clustering
 
-Two distinct jobs historically toggled by scraper option `:fallback_anchorless`. Owned by `AutoSource::Discovery::Anchorless`:
-
-- `class_cluster_containers` — Html discovers card-like nodes via `ClassClustering` when anchors are weak/absent.
-- `permit_unanchored?` — SemanticHtml keeps already-found semantic containers without a primary content anchor.
-
-The config key remains for compatibility; scrapers must call the named APIs. `Html::Extractors`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
+Candidate list discovery for anchorless or classless pages is owned by `AutoSource::Discovery::DomClustering`. It encapsulates class clustering with lazy fallback to 1-level tag structure clustering behind a single `#call` interface with shared scoring and overlap resolution. `SemanticHtml` uses its own `:fallback_anchorless` boolean directly. `Html::Extractors`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
 
 ## Channel
 
