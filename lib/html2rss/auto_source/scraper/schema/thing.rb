@@ -20,7 +20,7 @@ module Html2rss
           ].to_set.freeze
 
           # Attributes exposed by `#call` in generated article hashes.
-          DEFAULT_ATTRIBUTES = %i[id title description url image published_at categories].freeze
+          DEFAULT_ATTRIBUTES = %i[id title description author url image published_at categories].freeze
 
           # @param schema_object [Hash{Symbol => Object}] parsed schema.org object
           # @param url [String, Html2rss::Url, nil] base URL used for relative normalization
@@ -45,7 +45,12 @@ module Html2rss
 
           # @return [String, nil] longest available description field
           def description
-            schema_object.values_at(:description, :schema_object_body, :abstract).max_by { _1.to_s.size }
+            schema_object.values_at(:description, :articleBody, :abstract, :schema_object_body).max_by { _1.to_s.size }
+          end
+
+          # @return [String, nil] extracted author or publisher name
+          def author
+            extract_author_name(schema_object[:author]) || extract_author_name(schema_object[:publisher])
           end
 
           # @return [Html2rss::Url, nil] the URL of the schema object
@@ -86,6 +91,20 @@ module Html2rss
 
           private
 
+          # @param obj [String, Hash, Array, nil] schema author or publisher field
+          # @return [String, nil] extracted author name
+          def extract_author_name(obj)
+            case obj
+            when String then obj.strip unless obj.strip.empty?
+            when Hash then obj[:name].to_s.strip unless obj[:name].to_s.strip.empty?
+            when Array
+              names = obj.filter_map { extract_author_name(_1) }
+              names.join(', ') unless names.empty?
+            end
+          end
+
+          # @param obj [String, Hash, nil] image node
+          # @return [String, nil] image URL string
           def image_url_from(obj)
             return obj if obj.is_a?(String)
             return unless obj.is_a?(Hash) && obj[:@type] == 'ImageObject'

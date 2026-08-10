@@ -208,4 +208,56 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       end
     end
   end
+
+  describe '#description' do
+    subject(:description) { instance.description }
+
+    context 'when articleBody is longer than description' do
+      let(:schema_object) do
+        { '@type': 'Article', title: 'Test', description: 'Short', articleBody: 'This is a much longer article body' }
+      end
+
+      it 'selects articleBody' do
+        expect(description).to eq('This is a much longer article body')
+      end
+    end
+  end
+
+  describe '#author' do
+    subject(:author) { instance.author }
+
+    context 'when author is a string' do
+      let(:schema_object) { { '@type': 'Article', title: 'Test', author: ' Jane Doe ' } }
+
+      it { is_expected.to eq('Jane Doe') }
+    end
+
+    context 'when author is a Person hash with name' do
+      let(:schema_object) { { '@type': 'Article', title: 'Test', author: { '@type': 'Person', name: 'John Doe' } } }
+
+      it { is_expected.to eq('John Doe') }
+    end
+
+    context 'when author is an array of persons/strings' do
+      let(:schema_object) do
+        { '@type': 'Article', title: 'Test', author: ['Alice', { '@type': 'Person', name: 'Bob' }] }
+      end
+
+      it { is_expected.to eq('Alice, Bob') }
+    end
+
+    context 'when author is absent but publisher is present' do
+      let(:schema_object) do
+        { '@type': 'Article', title: 'Test', publisher: { '@type': 'Organization', name: 'Acme News' } }
+      end
+
+      it { is_expected.to eq('Acme News') }
+    end
+
+    context 'when both author and publisher are absent' do
+      let(:schema_object) { { '@type': 'Article', title: 'Test' } }
+
+      it { is_expected.to be_nil }
+    end
+  end
 end
