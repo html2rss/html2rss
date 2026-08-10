@@ -22,11 +22,13 @@ module Html2rss
           'twitter:title' => :title,
           'og:url' => :url,
           'og:description' => :description,
+          'twitter:description' => :description,
           'og:image' => :image,
           'twitter:image' => :image,
           'article:published_time' => :published_at,
           'article:author' => :author
         }.freeze
+        private_constant :META_MAP
 
         # @return [Symbol] scraper config key
         def self.options_key = :meta_oembed
@@ -70,6 +72,7 @@ module Html2rss
 
         attr_reader :parsed_body, :url, :request_session
 
+        # @return [Hash{Symbol => Object}, nil] assembled article hash or nil
         def build_article
           meta_data = extract_meta_data
           oembed_data = fetch_oembed_data
@@ -82,6 +85,7 @@ module Html2rss
           assemble_article(meta_data, oembed_data, article_url, title)
         end
 
+        # @return [Hash{Symbol => Object}] extracted metadata hash
         def extract_meta_data
           {}.tap do |data|
             parsed_body.css(OG_META_SELECTOR).each do |meta|
@@ -94,11 +98,16 @@ module Html2rss
           end
         end
 
+        # @param data [Hash{Symbol => Object}] target metadata accumulator
+        # @param prop [String] meta tag property/name
+        # @param content [String] meta tag content
+        # @return [void]
         def assign_meta_prop(data, prop, content)
           key = META_MAP[prop]
           data[key] ||= content if key
         end
 
+        # @return [Hash{Symbol => Object}] oEmbed fields hash
         def fetch_oembed_data
           return {} unless request_session && (link_node = parsed_body.at_css(OEMBED_LINK_SELECTOR))
           return {} unless (oembed_url = resolve_url(link_node['href']))
@@ -110,20 +119,24 @@ module Html2rss
           {}
         end
 
+        # @param response [Html2rss::RequestService::Response, nil] HTTP response
+        # @return [Hash{Symbol => Object}] parsed oEmbed fields
         def parse_oembed_response(response)
           return {} unless response
 
           payload = response.parsed_body
           return {} unless payload.is_a?(Hash)
 
-          {
-            title: payload['title'],
-            author: payload['author_name'],
-            thumbnail: payload['thumbnail_url'],
-            html: payload['html']
-          }.compact
+          thumbnail = payload['thumbnail_url'] || (payload['type'] == 'photo' ? payload['url'] : nil)
+
+          { title: payload['title'], author: payload['author_name'], thumbnail:, html: payload['html'] }.compact
         end
 
+        # @param meta_data [Hash{Symbol => Object}] extracted OpenGraph meta tags
+        # @param oembed_data [Hash{Symbol => Object}] parsed oEmbed fields
+        # @param article_url [Html2rss::Url] resolved article URL
+        # @param title [String] resolved article title
+        # @return [Hash{Symbol => Object}] final article hash
         def assemble_article(meta_data, oembed_data, article_url, title)
           {
             url: article_url,
@@ -135,6 +148,8 @@ module Html2rss
           }.compact
         end
 
+        # @param raw_url [String, nil] raw relative or absolute URL string
+        # @return [Html2rss::Url, nil] resolved absolute URL or nil
         def resolve_url(raw_url)
           return if raw_url.nil? || raw_url.empty?
 
