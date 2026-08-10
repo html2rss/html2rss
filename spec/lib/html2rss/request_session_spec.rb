@@ -154,4 +154,36 @@ RSpec.describe Html2rss::RequestSession do
       expect(logger).to have_received(:warn).with(/pagination max_pages=20 exceeds system ceiling=10/)
     end
   end
+
+  describe '#page_responses' do
+    let(:initial_response) do
+      Html2rss::RequestService::Response.new(
+        body: '<html></html>',
+        url: Html2rss::Url.from_absolute('https://example.com/news'),
+        headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+    end
+
+    context 'without pagination config' do
+      it 'returns array with initial response only' do
+        expect(session.page_responses(initial_response)).to eq([initial_response])
+      end
+    end
+
+    context 'with pagination config' do
+      let(:pagination_config) { { max_pages: 2 } }
+
+      before do
+        allow(Html2rss::RequestSession::Pager).to receive(:for).and_return([initial_response])
+      end
+
+      it 'delegates to Pager.for with self as session', :aggregate_failures do
+        expect(session.page_responses(initial_response, pagination_config:)).to eq([initial_response])
+        expect(Html2rss::RequestSession::Pager).to have_received(:for).with(
+          pagination_config, session:, initial_response:
+        )
+      end
+    end
+  end
 end
