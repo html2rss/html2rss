@@ -50,7 +50,7 @@ RSpec.describe Html2rss::RequestSession do
         }
       )
     end
-    let(:resources) { Html2rss::RequestSession::RuntimePolicy.resources_for(config) }
+    let(:resources) { Html2rss::FeedPipeline::RuntimePolicy.resources_for(config) }
 
     context 'when building context once from config' do
       subject(:built_context) { session.instance_variable_get(:@context) }

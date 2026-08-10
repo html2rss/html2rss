@@ -14,7 +14,7 @@ module Html2rss
       # @param config [Html2rss::Config] validated feed config
       # @param strategy [Symbol] request strategy for the session
       # @param budget [RequestService::Budget] shared request budget
-      # @param policy [RequestService::Policy] request policy (from RuntimePolicy.resources_for)
+      # @param policy [RequestService::Policy] request policy (from FeedPipeline::RuntimePolicy.resources_for)
       # @param logger [Logger] logger used for operational warnings
       # @return [RequestSession] configured request session
       def build(config:, strategy:, budget:, policy:, logger: Html2rss::Log)

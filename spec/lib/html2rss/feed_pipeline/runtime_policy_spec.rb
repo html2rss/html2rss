@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::RequestSession::RuntimePolicy do
+RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
   subject(:runtime_policy) { described_class.from_config(config) }
 
   let(:raw_config) do

@@ -214,7 +214,7 @@ RSpec.describe Html2rss::FeedPipeline do
 
       # rubocop:disable RSpec/ExampleLength
       it 'locks the executed budget to RuntimePolicy.budget_for', :aggregate_failures do
-        expected = Html2rss::RequestSession::RuntimePolicy.budget_for(
+        expected = Html2rss::FeedPipeline::RuntimePolicy.budget_for(
           Html2rss::Config.from_hash(config)
         )
 
