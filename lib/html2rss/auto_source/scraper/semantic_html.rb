@@ -47,14 +47,11 @@ module Html2rss
         # @param extractor [Class] extractor class used for article extraction
         # @param opts [Hash] scraper-specific options
         # @option opts [Boolean] :fallback_anchorless whether to keep containers without a primary anchor
-        #   (Discovery::Anchorless.permit_unanchored? — not Html class-clustering)
         def initialize(parsed_body, url:, extractor: Html2rss::Html::Extractors, **opts)
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor
-          @permit_unanchored = Discovery::Anchorless.permit_unanchored?(
-            opts.fetch(:fallback_anchorless, false)
-          )
+          @permit_unanchored = opts.fetch(:fallback_anchorless, false)
           @link_heuristics = LinkHeuristics.new(url)
         end
 

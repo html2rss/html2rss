@@ -3,7 +3,7 @@
 module Html2rss
   class AutoSource
     module Discovery
-      class ClassClustering
+      class DomClustering
         ##
         # Filters layout wrapper groups and resolves 1-to-1 nested card wrappers.
         class OverlapResolver
@@ -16,7 +16,7 @@ module Html2rss
 
           # Discard group A if any node of A contains > 1 node of another group B
           #
-          # @param groups [Hash{String => Array<Nokogiri::XML::Node>}] class groups
+          # @param groups [Hash{String => Array<Nokogiri::XML::Node>}] candidate groups
           # @return [Hash{String => Array<Nokogiri::XML::Node>}] groups that are not layout wrappers
           def filter_containers(groups)
             groups.reject do |cls_a, nodes_a|
@@ -26,7 +26,7 @@ module Html2rss
 
           # If group A contains group B with the same size, keep the real content card.
           #
-          # @param groups [Hash{String => Array<Nokogiri::XML::Node>}] class groups
+          # @param groups [Hash{String => Array<Nokogiri::XML::Node>}] candidate groups
           # @return [Hash{String => Array<Nokogiri::XML::Node>}] groups after 1-to-1 resolution
           def filter_1_to_1_overlap(groups)
             discarded = Set.new

@@ -3,16 +3,16 @@
 module Html2rss
   class AutoSource
     module Discovery
-      class ClassClustering
+      class DomClustering
         ##
-        # Scores class groups using heading, time, date, and word-count signals.
+        # Scores candidate DOM groups using heading, time, date, and word-count signals.
         class GroupScorer
           def initialize
             @text_words = {}.compare_by_identity
             @has_date = {}.compare_by_identity
           end
 
-          # @param groups [Hash{String => Array<Nokogiri::XML::Node>}] candidate class groups
+          # @param groups [Hash{String => Array<Nokogiri::XML::Node>}] candidate DOM groups
           # @return [Array<Nokogiri::XML::Node>] nodes from the highest-scoring group
           def select_best_group(groups)
             best_nodes = []

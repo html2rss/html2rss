@@ -117,7 +117,7 @@ module Html2rss
         end
 
         def find_anchorless_articles
-          Discovery::Anchorless.class_cluster_containers(
+          Discovery::DomClustering.call(
             parsed_body,
             minimum_selector_frequency:
           ).map do |node|

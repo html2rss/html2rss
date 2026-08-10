@@ -41,14 +41,15 @@ module Html2rss
         attr_reader :parsed_body, :minimum_selector_frequency, :use_top_selectors
 
         def article_tags(anchor_filter:, boundary_condition:)
+          cache = {}.compare_by_identity
           selectors(anchor_filter:).flat_map do |selector|
-            article_tags_for_selector(selector, boundary_condition)
+            article_tags_for_selector(selector, boundary_condition, cache)
           end
         end
 
-        def article_tags_for_selector(selector, boundary_condition)
+        def article_tags_for_selector(selector, boundary_condition, cache = {}.compare_by_identity)
           parsed_body.xpath(selector).filter_map do |selected_tag|
-            next if Html2rss::Html::Navigator.ignored_container_path?(selected_tag)
+            next if Html2rss::Html::Navigator.ignored_container_path?(selected_tag, cache)
 
             article_tag = Html2rss::Html::Navigator.parent_until_condition(selected_tag, boundary_condition)
             next unless article_tag
@@ -65,9 +66,10 @@ module Html2rss
         end
 
         def anchor_counts(anchor_filter:)
+          cache = {}.compare_by_identity
           Hash.new(0).tap do |counts|
             each_anchor(anchor_filter:) do |node|
-              next if Html2rss::Html::Navigator.ignored_container_path?(node)
+              next if Html2rss::Html::Navigator.ignored_container_path?(node, cache)
 
               path = self.class.simplify_xpath(node.path)
               counts[path] += 1
