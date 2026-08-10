@@ -25,10 +25,7 @@ module Html2rss
         # @return [Html2rss::Url]
         def next_page_url(page_response, page_number:)
           param = config.fetch(:param, DEFAULT_PARAM)
-          start_page = config.fetch(:start_page, DEFAULT_START_PAGE)
-          step = config.fetch(:step, DEFAULT_STEP)
-
-          target_page_val = start_page + ((page_number - 1) * step)
+          target_page_val = target_page_for(page_number)
           url = Html2rss::Url.from_absolute(page_response.url)
 
           if url.to_s.include?('{page}')
@@ -36,6 +33,12 @@ module Html2rss
           else
             url.with_query_values(url.query_values.merge(param.to_s => target_page_val.to_s))
           end
+        end
+
+        def target_page_for(page_number)
+          start_page = config.fetch(:start_page, DEFAULT_START_PAGE)
+          step = config.fetch(:step, DEFAULT_STEP)
+          start_page + ((page_number - 1) * step)
         end
       end
     end

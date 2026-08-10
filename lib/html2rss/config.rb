@@ -10,7 +10,7 @@ module Html2rss
   # supporting both single and multiple feed configurations.
   #
   # Configuration is validated during initialization.
-  class Config
+  class Config # rubocop:disable Metrics/ClassLength
     # Raised when a configuration hash fails runtime validation.
     class InvalidConfig < Html2rss::Error; end
     # Sentinel to differentiate omitted params from explicit `nil`.
