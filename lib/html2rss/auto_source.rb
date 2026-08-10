@@ -45,9 +45,6 @@ module Html2rss
       cleanup: Cleanup::DEFAULT_CONFIG
     }.freeze
 
-    # Runtime source of truth for validating auto-source config values.
-    Config = Html2rss::Config::AutoSourceContract
-
     ##
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
