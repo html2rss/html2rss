@@ -2,7 +2,7 @@
 
 module Html2rss
   module Html
-    class Extractor
+    class Extractors
       ##
       # HeadingExtractor identifies and returns the best heading element within a container.
       class HeadingExtractor

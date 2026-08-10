@@ -16,7 +16,7 @@ module Html2rss
         # - {permit_unanchored?} — SemanticHtml keeps already-found semantic
         #   containers even when no primary content anchor was selected.
         #
-        # Field extraction (`Html::Extractor` with `fallback_anchorless: true`)
+        # Field extraction (`Html::Extractors` with `fallback_anchorless: true`)
         # is a third, extractor-local concern and is not owned here.
         module Anchorless
           module_function

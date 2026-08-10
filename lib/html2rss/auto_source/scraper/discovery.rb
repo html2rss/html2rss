@@ -6,7 +6,7 @@ module Html2rss
       ##
       # Card/list discovery helpers used by AutoSource scrapers before field extraction.
       #
-      # Html2rss::Html::Extractor fills article fields from a container; discovery finds those containers.
+      # Html2rss::Html::Extractors fills article fields from a container; discovery finds those containers.
       #
       # Anchorless work has two distinct jobs under the historical scraper option
       # +:fallback_anchorless+ — see {Discovery::Anchorless}.

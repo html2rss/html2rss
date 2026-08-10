@@ -159,8 +159,8 @@ RSpec.describe Html2rss::Selectors do
 
     context 'when extractor returns nil' do
       before do
-        extractor = instance_double(Html2rss::Html::Extractor, call: nil)
-        allow(Html2rss::Html::Extractor).to receive(:new).and_return(extractor)
+        extractor = instance_double(Html2rss::Html::Extractors, call: nil)
+        allow(Html2rss::Html::Extractors).to receive(:new).and_return(extractor)
       end
 
       it 'returns article_hash' do

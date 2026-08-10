@@ -2,7 +2,7 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::Html::Extractor do
+RSpec.describe Html2rss::Html::Extractors do
   subject(:article_hash) { described_class.new(article_tag, base_url: 'https://example.com', selected_anchor:).call }
 
   let(:selected_anchor) { Html2rss::Html::Navigator.main_anchor_for(article_tag) }

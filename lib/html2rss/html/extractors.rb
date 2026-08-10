@@ -3,9 +3,9 @@
 module Html2rss
   module Html
     ##
-    # Extractor is responsible for extracting details (headline, url, images, etc.)
+    # Extractors is responsible for extracting details (headline, url, images, etc.)
     # from an article_tag. DOM chrome helpers live on {Navigator}.
-    class Extractor
+    class Extractors
       ##
       # @param article_tag [Nokogiri::XML::Node] article-like container to extract from
       # @param base_url [String, Html2rss::Url] base url used to resolve relative links
