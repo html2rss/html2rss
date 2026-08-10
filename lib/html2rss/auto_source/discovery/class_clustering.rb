@@ -34,8 +34,17 @@ module Html2rss
         # @return [Array<Nokogiri::XML::Node>]
         def call
           candidate_groups = collect_candidate_groups
-          return [] if candidate_groups.empty?
+          unless candidate_groups.empty?
+            result = score_candidate_groups(candidate_groups)
+            return result unless result.empty?
+          end
 
+          StructureClustering.call(@parsed_body, minimum_selector_frequency: @minimum_frequency)
+        end
+
+        private
+
+        def score_candidate_groups(candidate_groups)
           scorer = GroupScorer.new
           resolver = OverlapResolver.new(layout_tags: LAYOUT_TAG_NAMES, word_counter: scorer)
 
@@ -44,8 +53,6 @@ module Html2rss
 
           scorer.select_best_group(final_groups)
         end
-
-        private
 
         def collect_candidate_groups
           class_groups = Hash.new { |h, k| h[k] = [] }
