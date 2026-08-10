@@ -69,10 +69,10 @@ module Html2rss
         end
 
         def structure_signature(node)
-          child_tags = node.children.select(&:element?).map(&:name)
-          return '' if child_tags.empty?
+          child_elements = node.element_children
+          return '' if child_elements.empty?
 
-          child_tags.join('>')
+          child_elements.map(&:name).join('>')
         end
       end
     end
