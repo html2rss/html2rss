@@ -2,13 +2,16 @@
 
 module Html2rss
   module Html
-    class Extractors
+    class ArticleExtractor
       ##
       # CategoryExtractor is responsible for extracting categories from HTML elements
       # by looking for CSS class names containing common category-related terms.
       class CategoryExtractor
         # Common category-related terms to look for in class names
-        CATEGORY_TERMS = %w[category tag topic section label theme subject].freeze
+        CATEGORY_TERMS = %w[
+          category categories tag tags topic topics section sections
+          label labels theme themes subject subjects
+        ].freeze
 
         # CSS selectors to find elements with category-related class names or data attributes
         CATEGORY_SELECTORS = CATEGORY_TERMS.flat_map do |term|
@@ -104,7 +107,7 @@ module Html2rss
         # @param element [Nokogiri::XML::Element] The element to extract text from
         # @return [void]
         def self.extract_split_text_categories!(categories, element)
-          text = Navigator.extract_visible_text(element)
+          text = element.text
           return unless text
 
           text.split(/\n+/).each do |line|

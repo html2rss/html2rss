@@ -2,8 +2,8 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::Html::Extractors do
-  subject(:article_hash) { described_class.new(article_tag, base_url: 'https://example.com', selected_anchor:).call }
+RSpec.describe Html2rss::Html::ArticleExtractor do
+  subject(:article_hash) { described_class.call(article_tag, base_url: 'https://example.com', selected_anchor:) }
 
   let(:selected_anchor) { Html2rss::Html::Navigator.main_anchor_for(article_tag) }
 
@@ -212,12 +212,12 @@ RSpec.describe Html2rss::Html::Extractors do
 
   context 'when fallback_anchorless is true and selected_anchor is nil' do
     subject(:article_hash) do
-      described_class.new(
+      described_class.call(
         article_tag,
         base_url: 'https://example.com',
         selected_anchor: nil,
         fallback_anchorless: true
-      ).call
+      )
     end
 
     context 'with strong fallback heading' do

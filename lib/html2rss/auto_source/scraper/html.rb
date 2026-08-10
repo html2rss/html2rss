@@ -57,7 +57,7 @@ module Html2rss
         # @param opts [Hash] Additional options.
         # @option opts [Integer] :minimum_selector_frequency minimum count before a selector is considered stable
         # @option opts [Integer] :use_top_selectors number of top selectors to keep
-        def initialize(parsed_body, url:, extractor: Html2rss::Html::Extractors, **opts)
+        def initialize(parsed_body, url:, extractor: Html2rss::Html::ArticleExtractor, **opts)
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor

@@ -2,7 +2,7 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::Html::Extractors::ImageExtractor do
+RSpec.describe Html2rss::Html::ArticleExtractor::ImageExtractor do
   let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
   describe '.call' do

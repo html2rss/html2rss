@@ -47,7 +47,7 @@ module Html2rss
         # @param extractor [Class] extractor class used for article extraction
         # @param opts [Hash] scraper-specific options
         # @option opts [Boolean] :fallback_anchorless whether to keep containers without a primary anchor
-        def initialize(parsed_body, url:, extractor: Html2rss::Html::Extractors, **opts)
+        def initialize(parsed_body, url:, extractor: Html2rss::Html::ArticleExtractor, **opts)
           @parsed_body = parsed_body
           @url = url
           @extractor = extractor
