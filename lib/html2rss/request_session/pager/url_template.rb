@@ -22,19 +22,19 @@ module Html2rss
 
         # @param page_response [RequestService::Response]
         # @param page_number [Integer] 1-based target page number (e.g. 2 for 2nd page)
-        # @return [String]
+        # @return [Html2rss::Url]
         def next_page_url(page_response, page_number:)
           param = config.fetch(:param, DEFAULT_PARAM)
           start_page = config.fetch(:start_page, DEFAULT_START_PAGE)
           step = config.fetch(:step, DEFAULT_STEP)
 
           target_page_val = start_page + ((page_number - 1) * step)
-          base_url_str = page_response.url.to_s
+          url = Html2rss::Url.from_absolute(page_response.url)
 
-          if base_url_str.include?('{page}')
-            base_url_str.gsub('{page}', target_page_val.to_s)
+          if url.to_s.include?('{page}')
+            Html2rss::Url.from_absolute(url.to_s.gsub('{page}', target_page_val.to_s))
           else
-            build_url_with_param(base_url_str, param, target_page_val)
+            url.with_query_values(url.query_values.merge(param.to_s => target_page_val.to_s))
           end
         end
       end

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'uri'
-
 module Html2rss
   class RequestSession
     module Pager
@@ -54,14 +52,14 @@ module Html2rss
           value.is_a?(Integer) && value.positive? ? value : DEFAULT_MAX_PAGES
         end
 
-        # @param next_url [String, URI, nil]
+        # @param next_url [Html2rss::Url, String, nil]
         # @return [Boolean]
         def follow_up_allowed?(next_url)
           !next_url.nil? && !next_url.to_s.empty? && !session.visited?(next_url)
         end
 
-        # @param next_url [String, URI]
-        # @param origin_url [String, URI]
+        # @param next_url [Html2rss::Url, String]
+        # @param origin_url [Html2rss::Url, String]
         # @return [RequestService::Response, nil]
         def fetch_follow_up_response_or_stop(next_url, origin_url)
           session.follow_up(url: next_url, relation: :pagination, origin_url:)
@@ -73,22 +71,9 @@ module Html2rss
           nil
         end
 
-        # @param url_str [String]
-        # @param param_name [String, Symbol]
-        # @param param_val [Object]
-        # @return [String]
-        def build_url_with_param(url_str, param_name, param_val)
-          uri = URI.parse(url_str.to_s)
-          params = URI.decode_www_form(uri.query || '')
-          params.reject! { |k, _| k == param_name.to_s }
-          params << [param_name.to_s, param_val.to_s]
-          uri.query = URI.encode_www_form(params)
-          uri.to_s
-        end
-
         # @param page_response [RequestService::Response]
         # @param page_number [Integer] 1-based target page number (e.g. 2 for second page)
-        # @return [String, URI, nil]
+        # @return [Html2rss::Url, String, nil]
         def next_page_url(page_response, page_number:)
           raise NotImplementedError, "#{self.class}#next_page_url must be implemented by subclass"
         end
