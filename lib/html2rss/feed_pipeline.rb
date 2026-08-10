@@ -43,7 +43,7 @@ module Html2rss
 
     def pipeline_state_for(config)
       plan = StrategyPlan.resolve(config.strategy)
-      resources = RequestSession::RuntimePolicy.resources_for(config)
+      resources = RuntimePolicy.resources_for(config)
       if plan.is_a?(StrategyPlan::Auto)
         run_auto_pipeline(config, resources:)
       else

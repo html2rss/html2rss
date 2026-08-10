@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  class RequestSession
+  class FeedPipeline
     ##
     # Planner for the runtime request policy and budgets of a feed run.
     #
@@ -72,17 +72,17 @@ module Html2rss
         end
 
         def auto_strategy_fallback_budget_for(config)
-          plan = FeedPipeline::StrategyPlan.resolve(config.strategy)
-          return 0 unless plan.is_a?(FeedPipeline::StrategyPlan::Auto)
+          plan = StrategyPlan.resolve(config.strategy)
+          return 0 unless plan.is_a?(StrategyPlan::Auto)
 
-          [FeedPipeline::AutoFallback::CHAIN.size - 1, 0].max
+          [AutoFallback::CHAIN.size - 1, 0].max
         end
 
         def pagination_follow_up_budget_for(config)
           pagination_config = config.selectors&.dig(:items, :pagination)
           return 0 unless pagination_config
 
-          max_pages = Pager.normalize_config(pagination_config)[:max_pages] || Pager::Base::DEFAULT_MAX_PAGES
+          max_pages = RequestSession::Pager.normalize_config(pagination_config)[:max_pages] || RequestSession::Pager::Base::DEFAULT_MAX_PAGES
           [max_pages - 1, 0].max
         end
 
