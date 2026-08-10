@@ -4,7 +4,7 @@ require 'zlib'
 
 module Html2rss
   module Html
-    class Extractor
+    class Extractors
       ##
       # IdGenerator determines the unique ID for an article container node.
       class IdGenerator

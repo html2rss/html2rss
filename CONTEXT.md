@@ -8,7 +8,7 @@ Shared wall-clock and HTTP/interaction meters for one feed build. Constructed vi
 
 ## DOM chrome
 
-Layout noise and primary-link recognition for HTML trees: ignored container tags/paths (`IGNORED_CONTAINER_TAGS`), class-clustering exclusions (`CLUSTER_EXCLUDED_TAGS`), utility landmark tags (`UTILITY_LANDMARK_TAGS`), heading tags, main-anchor CSS, and visible-text extraction (`Html2rss::Html::Navigator::TextExtractor`). Owned solely by `Html2rss::Html::Navigator`. Article field extraction (`Html2rss::Html::Extractor`) and AutoSource discovery/scrapers import those constants — they do not redefine chrome tag sets.
+Layout noise and primary-link recognition for HTML trees: ignored container tags/paths (`IGNORED_CONTAINER_TAGS`), class-clustering exclusions (`CLUSTER_EXCLUDED_TAGS`), utility landmark tags (`UTILITY_LANDMARK_TAGS`), heading tags, main-anchor CSS, and visible-text extraction (`Html2rss::Html::Navigator::TextExtractor`). Owned solely by `Html2rss::Html::Navigator`. Article field extraction (`Html2rss::Html::Extractors`) and AutoSource discovery/scrapers import those constants — they do not redefine chrome tag sets.
 
 ## Container assessment
 
@@ -25,7 +25,7 @@ Two distinct jobs historically toggled by scraper option `:fallback_anchorless`.
 - `class_cluster_containers` — Html discovers card-like nodes via `ClassClustering` when anchors are weak/absent.
 - `permit_unanchored?` — SemanticHtml keeps already-found semantic containers without a primary content anchor.
 
-The config key remains for compatibility; scrapers must call the named APIs. `Html::Extractor`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
+The config key remains for compatibility; scrapers must call the named APIs. `Html::Extractors`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
 
 ## Channel
 

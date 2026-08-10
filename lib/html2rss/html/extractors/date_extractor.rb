@@ -2,7 +2,7 @@
 
 module Html2rss
   module Html
-    class Extractor
+    class Extractors
       # Extracts the earliest date from an article_tag.
       class DateExtractor
         # @param article_tag [Nokogiri::XML::Element] article container node

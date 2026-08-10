@@ -2,7 +2,7 @@
 
 module Html2rss
   module Html
-    class Extractor
+    class Extractors
       ##
       # Extracts enclosures from HTML tags using various strategies.
       class EnclosureExtractor

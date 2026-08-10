@@ -2,7 +2,7 @@
 
 module Html2rss
   module Html
-    class Extractor
+    class Extractors
       ##
       # CategoryExtractor is responsible for extracting categories from HTML elements
       # by looking for CSS class names containing common category-related terms.

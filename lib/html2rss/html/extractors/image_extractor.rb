@@ -2,7 +2,7 @@
 
 module Html2rss
   module Html
-    class Extractor
+    class Extractors
       ##
       # Image is responsible for extracting image URLs the article_tag.
       class ImageExtractor
