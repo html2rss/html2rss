@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::BlockedSurface do
+RSpec.describe Html2rss::RequestService::BlockedSurface do
   describe '.interstitial?' do
     let(:blocked_body) do
       '<html><head><title>Just a moment...</title></head>' \
