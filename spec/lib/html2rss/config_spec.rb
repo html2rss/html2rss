@@ -503,6 +503,7 @@ RSpec.describe Html2rss::Config do
             json_state: { enabled: true },    # wasn't explicitly set -> default
             meta_oembed: { enabled: true },   # wasn't explicitly set -> default
             microdata: { enabled: true },     # wasn't explicitly set -> default
+            microformats2: { enabled: true }, # wasn't explicitly set -> default
             sitemap: { enabled: true, max_age_days: 30, min_priority: 0.3 }, # wasn't explicitly set -> default
             wordpress_api: { enabled: true } # wasn't explicitly set -> default
           },

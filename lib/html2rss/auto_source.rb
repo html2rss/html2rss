@@ -33,6 +33,9 @@ module Html2rss
         microdata: {
           enabled: true
         },
+        microformats2: {
+          enabled: true
+        },
         json_state: {
           enabled: true
         },

@@ -21,6 +21,9 @@ module Html2rss
         optional(:microdata).hash do
           optional(:enabled).filled(:bool)
         end
+        optional(:microformats2).hash do
+          optional(:enabled).filled(:bool)
+        end
         optional(:json_state).hash do
           optional(:enabled).filled(:bool)
         end
