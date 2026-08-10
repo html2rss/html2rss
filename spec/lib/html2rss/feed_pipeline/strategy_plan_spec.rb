@@ -44,6 +44,8 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
         [:auto, *Html2rss::RequestService.strategy_names.map(&:to_sym)].uniq
       )
     end
+  end
+
   describe '#request_slots' do
     it 'returns the fallback retry budget size for Auto' do
       expect(described_class::Auto.new.request_slots).to eq(Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1)

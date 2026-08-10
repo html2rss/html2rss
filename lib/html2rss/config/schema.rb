@@ -60,7 +60,8 @@ module Html2rss
         def call
           schema = validator_schema
           apply_top_level(schema)
-          assign_properties(schema.fetch(:properties))
+          schema.fetch(:properties).merge!(overlay)
+          schema.fetch(:properties).delete(:dynamic_params_error)
           DeepStringifier.call(schema)
         end
 
@@ -78,161 +79,74 @@ module Html2rss
           ]
         end
 
-        def assign_properties(properties)
-          properties.merge!(
-            strategy: Components.strategy,
-            headers: Components.headers,
-            stylesheets: Components.stylesheets,
-            auto_source: Components.auto_source,
-            selectors: Components.selectors
-          )
-          properties.delete(:dynamic_params_error)
-        end
-      end
-
-      ##
-      # Exposes schema fragments that populate the top-level configuration schema.
-      module Components
-        module_function
-
-        # @return [Hash{Symbol => Object}] schema fragment for strategy selection
-        def strategy
-          {
-            type: 'string',
-            not: { type: 'null' }
-          }
-        end
-
-        # @return [Hash{Symbol => Object}] schema fragment for headers
-        def headers
-          {
-            type: 'object',
-            description: 'HTTP headers applied to every request.',
-            additionalProperties: { type: 'string' }
-          }
-        end
-
-        # @return [Hash{Symbol => Object}] schema fragment for stylesheet definitions
-        def stylesheets
-          {
-            type: 'array',
-            description: 'Collection of stylesheets to attach to the RSS feed.',
-            items: Html2rss::Config::Validator::StylesheetConfig.json_schema(loose: true)
-          }
-        end
-
-        # @return [Hash{Symbol => Object}] schema fragment for pagination configuration
-        def pagination
-          {
+        # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
+        def overlay
+          items_schema = Html2rss::Config::SelectorsValidator::Items.new.schema.json_schema(loose: true)
+          items_schema[:properties][:pagination] = {
             description: 'Pagination configuration or maximum page count integer.',
-            oneOf: [{ type: 'integer', exclusiveMinimum: 0 }, pagination_object_schema]
+            oneOf: [
+              { type: 'integer', exclusiveMinimum: 0 },
+              {
+                type: 'object',
+                properties: {
+                  strategy: { type: 'string', enum: Html2rss::RequestSession::Pager.strategy_names },
+                  max_pages: { type: 'integer', exclusiveMinimum: 0 },
+                  selector: { type: 'string' },
+                  param: { type: 'string' },
+                  start_page: { type: 'integer' },
+                  step: { type: 'integer', exclusiveMinimum: 0 },
+                  start_offset: { type: 'integer' },
+                  increment: { type: 'integer', exclusiveMinimum: 0 },
+                  cursor_path: { type: 'string' },
+                  next_url_path: { type: 'string' }
+                },
+                additionalProperties: true
+              }
+            ]
           }
-        end
 
-        # @return [Hash{Symbol => Object}] schema fragment for object-style pagination configuration
-        def pagination_object_schema
           {
-            type: 'object',
-            properties: pagination_properties,
-            additionalProperties: true
+            strategy: {
+              type: 'string',
+              not: { type: 'null' }
+            },
+            headers: {
+              type: 'object',
+              description: 'HTTP headers applied to every request.',
+              additionalProperties: { type: 'string' }
+            },
+            stylesheets: {
+              type: 'array',
+              description: 'Collection of stylesheets to attach to the RSS feed.',
+              items: Html2rss::Config::Validator::StylesheetConfig.json_schema(loose: true)
+            },
+            auto_source: Html2rss::Config::AutoSourceContract.json_schema(loose: true).merge(
+              default: DeepStringifier.call(Html2rss::AutoSource::DEFAULT_CONFIG)
+            ),
+            selectors: {
+              type: 'object',
+              description: 'Selectors used to extract article attributes.',
+              properties: {
+                items: items_schema.merge(
+                  description: 'Defines the items selector and optional enhancement settings.'
+                ),
+                enclosure: Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true).merge(
+                  description: 'Describes enclosure extraction settings.'
+                ),
+                guid: reference_array('List of selector keys used to build the GUID. Each entry must reference a sibling selector key; runtime validation enforces those references.'),
+                categories: reference_array('List of selector keys whose values will be used as categories. Each entry must reference a sibling selector key; runtime validation enforces those references.')
+              },
+              patternProperties: {
+                '^(?!items$|enclosure$|guid$|categories$).+$' => Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true).merge(
+                  description: 'Dynamic selector definition keyed by attribute name.'
+                )
+              },
+              additionalProperties: true
+            }
           }
         end
+        # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
 
-        # @return [Hash{Symbol => Object}] schema fragment for pagination object properties
-        # rubocop:disable Metrics/MethodLength -- property map mirrors runtime pager keys 1:1
-        def pagination_properties
-          {
-            strategy: { type: 'string', enum: Html2rss::RequestSession::Pager.strategy_names },
-            max_pages: { type: 'integer', exclusiveMinimum: 0 },
-            selector: { type: 'string' },
-            param: { type: 'string' },
-            start_page: { type: 'integer' },
-            step: { type: 'integer', exclusiveMinimum: 0 },
-            start_offset: { type: 'integer' },
-            increment: { type: 'integer', exclusiveMinimum: 0 },
-            cursor_path: { type: 'string' },
-            next_url_path: { type: 'string' }
-          }
-        end
-        # rubocop:enable Metrics/MethodLength
-
-        # @return [Hash{Symbol => Object}] schema fragment for auto_source configuration
-        def auto_source
-          schema = Html2rss::Config::AutoSourceContract.json_schema(loose: true)
-          schema[:default] = DeepStringifier.call(Html2rss::AutoSource::DEFAULT_CONFIG)
-          schema
-        end
-
-        # @return [Hash{Symbol => Object}] schema fragment for selectors configuration
-        def selectors
-          Selectors.schema
-        end
-      end
-
-      ##
-      # Provides schema fragments that document selector configuration.
-      module Selectors
-        module_function
-
-        # Pattern used for dynamic selector keys excluding reserved selector names.
-        RESERVED_SELECTOR_PATTERN = '^(?!items$|enclosure$|guid$|categories$).+$'
-
-        # @return [Hash{Symbol => Object}] schema fragment for selectors root object
-        def schema
-          {
-            type: 'object',
-            description: 'Selectors used to extract article attributes.',
-            properties: selector_properties,
-            patternProperties: pattern_properties,
-            additionalProperties: true
-          }
-        end
-
-        # rubocop:disable Layout/LineLength
-        # @return [Hash{Symbol => Object}] schema map for reserved selector properties
-        def selector_properties
-          {
-            items: items_schema,
-            enclosure: enclosure_schema,
-            guid: reference_array('List of selector keys used to build the GUID. Each entry must reference a sibling selector key; runtime validation enforces those references.'),
-            categories: reference_array('List of selector keys whose values will be used as categories. Each entry must reference a sibling selector key; runtime validation enforces those references.')
-          }
-        end
-        # rubocop:enable Layout/LineLength
-
-        # @return [Hash{String => Object}] schema map for dynamic selector keys
-        def pattern_properties
-          { RESERVED_SELECTOR_PATTERN => dynamic_selector_schema }
-        end
-
-        # @return [Hash{Symbol => Object}] schema fragment for dynamic selector entries
-        def dynamic_selector_schema
-          Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true).merge(
-            description: 'Dynamic selector definition keyed by attribute name.'
-          )
-        end
-
-        # @return [Hash{Symbol => Object}] schema fragment for `items` selector configuration
-        def items_schema
-          schema = Html2rss::Config::SelectorsValidator::Items.new.schema.json_schema(loose: true).merge(
-            description: 'Defines the items selector and optional enhancement settings.'
-          )
-          schema[:properties][:pagination] = Components.pagination
-          schema
-        end
-
-        # @return [Hash{Symbol => Object}] schema fragment for `enclosure` selector configuration
-        def enclosure_schema
-          Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true).merge(
-            description: 'Describes enclosure extraction settings.'
-          )
-        end
-
-        # JSON Schema can enforce non-empty reference arrays, while runtime
-        # validation remains authoritative for checking that each entry points
-        # to an existing sibling selector key.
-        # @param description [String] human-readable description for the reference field
-        # @return [Hash{Symbol => Object}] JSON schema fragment for selector references
         def reference_array(description)
           {
             type: 'array',
