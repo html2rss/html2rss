@@ -5,7 +5,7 @@ require 'dry-validation'
 module Html2rss
   class Config
     # Runtime source of truth for validating auto-source config values.
-    AutoSourceContract = Dry::Schema.Params do
+    AutoSourceContract = Dry::Schema.Params do # rubocop:disable Metrics/BlockLength
       optional(:scraper).hash do
         optional(:wordpress_api).hash do
           optional(:enabled).filled(:bool)
