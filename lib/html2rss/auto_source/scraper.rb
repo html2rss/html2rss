@@ -25,6 +25,7 @@ module Html2rss
         Sitemap,
         Schema,
         Microdata,
+        Microformats2,
         JsonState,
         MetaOembed,
         SemanticHtml,
@@ -69,11 +70,12 @@ module Html2rss
 
       ##
       # Returns an array of scraper classes that claim to find articles in the parsed body.
-      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
+      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
       # @param opts [Hash] The options hash.
       # @option opts [Hash] :wordpress_api scraper toggle and configuration
       # @option opts [Hash] :schema scraper toggle and configuration
       # @option opts [Hash] :microdata scraper toggle and configuration
+      # @option opts [Hash] :microformats2 scraper toggle and configuration
       # @option opts [Hash] :json_state scraper toggle and configuration
       # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration
@@ -89,13 +91,14 @@ module Html2rss
       end
 
       # Returns scraper instances ready for extraction.
-      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML body.
+      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
       # @param url [String, Html2rss::Url] The page url.
       # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
       # @param opts [Hash] The options hash.
       # @option opts [Hash] :wordpress_api scraper toggle and configuration
       # @option opts [Hash] :schema scraper toggle and configuration
       # @option opts [Hash] :microdata scraper toggle and configuration
+      # @option opts [Hash] :microformats2 scraper toggle and configuration
       # @option opts [Hash] :json_state scraper toggle and configuration
       # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration

@@ -158,6 +158,18 @@
               },
               "required": []
             },
+            "microformats2": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            },
             "json_state": {
               "type": "object",
               "properties": {
@@ -270,6 +282,9 @@
             "enabled": true
           },
           "microdata": {
+            "enabled": true
+          },
+          "microformats2": {
             "enabled": true
           },
           "json_state": {
