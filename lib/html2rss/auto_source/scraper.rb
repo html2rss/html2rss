@@ -26,6 +26,7 @@ module Html2rss
         Schema,
         Microdata,
         JsonState,
+        MetaOembed,
         SemanticHtml,
         Html
       ].freeze
@@ -74,6 +75,7 @@ module Html2rss
       # @option opts [Hash] :schema scraper toggle and configuration
       # @option opts [Hash] :microdata scraper toggle and configuration
       # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration
       # @option opts [Hash] :html scraper toggle and configuration
       # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
@@ -95,6 +97,7 @@ module Html2rss
       # @option opts [Hash] :schema scraper toggle and configuration
       # @option opts [Hash] :microdata scraper toggle and configuration
       # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration
       # @option opts [Hash] :html scraper toggle and configuration
       # @return [Array<Object>] An array of scraper instances that can handle the parsed body.

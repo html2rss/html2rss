@@ -170,6 +170,18 @@
               },
               "required": []
             },
+            "meta_oembed": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": []
+            },
             "semantic_html": {
               "type": "object",
               "properties": {
@@ -261,6 +273,9 @@
             "enabled": true
           },
           "json_state": {
+            "enabled": true
+          },
+          "meta_oembed": {
             "enabled": true
           },
           "semantic_html": {
