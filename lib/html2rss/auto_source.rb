@@ -22,6 +22,11 @@ module Html2rss
         wordpress_api: {
           enabled: true
         },
+        sitemap: {
+          enabled: true,
+          min_priority: Discovery::Sitemap::DEFAULT_MIN_PRIORITY,
+          max_age_days: Discovery::Sitemap::DEFAULT_MAX_AGE_DAYS
+        },
         schema: {
           enabled: true
         },
