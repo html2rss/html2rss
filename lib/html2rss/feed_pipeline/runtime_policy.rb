@@ -66,28 +66,10 @@ module Html2rss
         # Reserve enough HTTP request slots for the initial request plus predictable
         # follow-ups. Preload interactions are planned separately.
         def baseline_request_budget_for(config)
-          1 + pagination_follow_up_budget_for(config) +
-            known_auto_source_follow_up_budget_for(config) +
-            auto_strategy_fallback_budget_for(config)
-        end
-
-        def auto_strategy_fallback_budget_for(config)
-          plan = StrategyPlan.resolve(config.strategy)
-          return 0 unless plan.is_a?(StrategyPlan::Auto)
-
-          [AutoFallback::CHAIN.size - 1, 0].max
-        end
-
-        def pagination_follow_up_budget_for(config)
-          pagination_config = config.selectors&.dig(:items, :pagination)
-          return 0 unless pagination_config
-
-          max_pages = RequestSession::Pager.normalize_config(pagination_config)[:max_pages] || RequestSession::Pager::Base::DEFAULT_MAX_PAGES
-          [max_pages - 1, 0].max
-        end
-
-        def known_auto_source_follow_up_budget_for(config)
-          config.auto_source&.dig(:scraper, :wordpress_api, :enabled) ? 1 : 0
+          1 +
+            RequestSession::Pager.request_slots_for(config.selectors&.dig(:items, :pagination)) +
+            AutoSource.request_slots_for(config.auto_source) +
+            StrategyPlan.resolve(config.strategy).request_slots
         end
 
         def browserless_preload_budget_for(config)

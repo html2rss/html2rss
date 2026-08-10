@@ -25,6 +25,15 @@ module Html2rss
         def self.options_key = :wordpress_api
 
         ##
+        # Returns the number of request slots needed for WordPress API posts fetch.
+        #
+        # @param _opts [Hash] unused options
+        # @return [Integer] number of follow-up requests needed
+        def self.request_slots(_opts = {})
+          1
+        end
+
+        ##
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
         # @return [Boolean] whether the page advertises a WordPress REST API endpoint
         def self.articles?(parsed_body)
