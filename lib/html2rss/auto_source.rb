@@ -36,6 +36,9 @@ module Html2rss
         json_state: {
           enabled: true
         },
+        meta_oembed: {
+          enabled: true
+        },
         semantic_html: {
           enabled: true,
           fallback_anchorless: true
