@@ -93,19 +93,15 @@ module Html2rss
       selector_articles(extraction) + auto_source_articles(extraction)
     end
 
-    def selector_articles(extraction) # rubocop:disable Metrics/MethodLength
+    # rubocop:disable Metrics/MethodLength
+    def selector_articles(extraction)
       config = extraction.config
       return [] unless (selectors = config.selectors)
 
-      page_responses = if (pagination_config = selectors.dig(:items, :pagination))
-                         RequestSession::Pager.for(
-                           pagination_config,
-                           session: extraction.request_session,
-                           initial_response: extraction.response
-                         )
-                       else
-                         [extraction.response]
-                       end
+      page_responses = extraction.request_session.page_responses(
+        extraction.response,
+        pagination_config: selectors.dig(:items, :pagination)
+      )
 
       articles = []
       page_responses.each do |page_response|
@@ -116,6 +112,7 @@ module Html2rss
       end
       articles
     end
+    # rubocop:enable Metrics/MethodLength
 
     def auto_source_articles(extraction)
       return [] unless (auto_source = extraction.config.auto_source)

@@ -45,6 +45,19 @@ module Html2rss
     end
 
     ##
+    # Returns an enumerable sequence of page responses for the given initial response
+    # and optional pagination configuration.
+    #
+    # @param initial_response [RequestService::Response] initial page response
+    # @param pagination_config [Hash, Integer, nil] pagination configuration
+    # @return [Enumerable<RequestService::Response>] page responses
+    def page_responses(initial_response, pagination_config: nil)
+      return [initial_response] unless pagination_config
+
+      Pager.for(pagination_config, session: self, initial_response:)
+    end
+
+    ##
     # Executes a follow-up request sharing policy, headers, and budget.
     #
     # @param url [String, Html2rss::Url] follow-up request url
