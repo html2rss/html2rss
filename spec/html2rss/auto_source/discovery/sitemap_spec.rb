@@ -53,12 +53,10 @@ RSpec.describe Html2rss::AutoSource::Discovery::Sitemap do
       subject(:result) { described_class.call(urlset_xml) }
 
       it 'returns a Result', :aggregate_failures do
-        expect(result).to be_a(described_class::Result)
-        expect(result.sub_sitemap_urls).to be_empty
-        expect(result.entries.size).to eq(1)
-        expect(result.entries.first.url).to eq('https://example.com/article-1')
-        expect(result.entries.first.title).to eq('Google News Title 1')
-        expect(result.entries.first.priority).to eq(0.8)
+        expect(result).to have_attributes(sub_sitemap_urls: be_empty, entries: have_attributes(size: 1))
+        expect(result.entries.first).to have_attributes(
+          url: 'https://example.com/article-1', title: 'Google News Title 1', priority: 0.8
+        )
       end
 
       it 'filters out entries below min_priority' do
@@ -70,12 +68,8 @@ RSpec.describe Html2rss::AutoSource::Discovery::Sitemap do
       subject(:result) { described_class.call(sitemapindex_xml) }
 
       it 'returns a Result with entries empty and sub_sitemap_urls populated', :aggregate_failures do
-        expect(result).to be_a(described_class::Result)
-        expect(result.entries).to be_empty
-        expect(result.sub_sitemap_urls).to eq([
-                                                'https://example.com/post-sitemap.xml',
-                                                'https://example.com/page-sitemap.xml'
-                                              ])
+        expected_urls = ['https://example.com/post-sitemap.xml', 'https://example.com/page-sitemap.xml']
+        expect(result).to have_attributes(entries: be_empty, sub_sitemap_urls: expected_urls)
       end
     end
 

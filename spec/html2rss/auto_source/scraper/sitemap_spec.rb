@@ -57,51 +57,45 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
 
     context 'when the fetched sitemap is a sitemapindex (fan-out)' do
       it 'fans out to sub-sitemaps and yields entries from the leaves', :aggregate_failures do
-        leaf_resp = instance_double(Html2rss::RequestService::Response, body: leaf_sitemap_xml)
-        index_resp = instance_double(Html2rss::RequestService::Response, body: index_sitemap_xml)
-        session = instance_double(Html2rss::RequestSession)
-
-        # First call returns the index, subsequent calls return the leaf
-        allow(session).to receive(:follow_up).and_return(index_resp, leaf_resp, leaf_resp)
-
+        session = mock_session(index_sitemap_xml, leaf_sitemap_xml, leaf_sitemap_xml)
         articles = described_class.new(Nokogiri::HTML(link_html), url:, request_session: session).to_a
-        # index has 2 sub-sitemaps, each has 1 entry → 2 total
-        expect(articles.size).to eq(2)
-        expect(articles.map { _1[:url] }).to all(eq('https://example.com/post-1'))
+        expect(articles.map { _1[:url] }).to eq(['https://example.com/post-1', 'https://example.com/post-1'])
       end
     end
 
     context 'when fan-out is truncated by MAX_SUB_SITEMAPS' do
-      let(:large_index_xml) do
+      def large_index_xml
         locs = (1..5).map { |i| "<sitemap><loc>https://example.com/sitemap-#{i}.xml</loc></sitemap>" }.join
         "<?xml version=\"1.0\"?><sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">#{locs}</sitemapindex>"
       end
 
       it 'fetches at most MAX_SUB_SITEMAPS sub-sitemaps' do
-        index_resp = instance_double(Html2rss::RequestService::Response, body: large_index_xml)
-        leaf_resp = instance_double(Html2rss::RequestService::Response, body: leaf_sitemap_xml)
-        session = instance_double(Html2rss::RequestSession)
-
-        allow(session).to receive(:follow_up).and_return(index_resp, leaf_resp, leaf_resp, leaf_resp)
-
+        session = mock_session(large_index_xml, leaf_sitemap_xml, leaf_sitemap_xml, leaf_sitemap_xml)
         described_class.new(Nokogiri::HTML(link_html), url:, request_session: session).to_a
-        # index fetch + MAX_SUB_SITEMAPS (3) leaf fetches = 4 total
         expect(session).to have_received(:follow_up).exactly(4).times
       end
     end
 
     context 'when a sub-sitemap fetch raises RequestBudgetExceeded' do
       it 'stops fan-out gracefully without raising' do
-        index_resp = instance_double(Html2rss::RequestService::Response, body: index_sitemap_xml)
         session = instance_double(Html2rss::RequestSession)
-
-        allow(session).to receive(:follow_up).ordered.and_return(index_resp)
+        allow(session).to receive(:follow_up).ordered.and_return(mock_sitemap_response(index_sitemap_xml))
         allow(session).to receive(:follow_up).ordered.and_raise(Html2rss::RequestService::RequestBudgetExceeded)
 
-        expect do
-          described_class.new(Nokogiri::HTML(link_html), url:, request_session: session).to_a
-        end.not_to raise_error
+        expect { described_class.new(Nokogiri::HTML(link_html), url:, request_session: session).to_a }
+          .not_to raise_error
       end
+    end
+
+    def mock_session(*xml_bodies)
+      session = instance_double(Html2rss::RequestSession)
+      responses = xml_bodies.map { |xml| instance_double(Html2rss::RequestService::Response, body: xml) }
+      allow(session).to receive(:follow_up).and_return(*responses)
+      session
+    end
+
+    def mock_sitemap_response(xml)
+      instance_double(Html2rss::RequestService::Response, body: xml)
     end
   end
 end
