@@ -35,6 +35,8 @@ module Html2rss
           end
         end
 
+        # @param page_number [Integer]
+        # @return [Integer]
         def target_page_for(page_number)
           start_page = config.fetch(:start_page, DEFAULT_START_PAGE)
           step = config.fetch(:step, DEFAULT_STEP)

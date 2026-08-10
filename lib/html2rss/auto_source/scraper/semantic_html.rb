@@ -85,12 +85,13 @@ module Html2rss
           extractable_entries.any?
         end
 
-        protected
-
+        # @return [Array<Nokogiri::XML::Node>]
         def candidate_containers
           @candidate_containers ||= collect_candidate_containers
         end
 
+        # @param container [Nokogiri::XML::Node]
+        # @return [Nokogiri::XML::Node, nil]
         def primary_anchor_for(container)
           Discovery::SemanticAnchorCandidates.new(
             container,

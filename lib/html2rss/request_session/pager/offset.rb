@@ -35,6 +35,8 @@ module Html2rss
           end
         end
 
+        # @param page_number [Integer]
+        # @return [Integer]
         def target_offset_for(page_number)
           start_offset = config.fetch(:start_offset, DEFAULT_START_OFFSET)
           increment = config.fetch(:increment, DEFAULT_INCREMENT)
