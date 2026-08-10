@@ -177,7 +177,7 @@ module Html2rss
             container: article_tag
           )
 
-          @extractor.new(article_tag, base_url: @url, selected_anchor:).call
+          @extractor.call(article_tag, base_url: @url, selected_anchor:)
         end
 
         ##

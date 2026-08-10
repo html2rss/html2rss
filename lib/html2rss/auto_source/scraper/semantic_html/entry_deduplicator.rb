@@ -36,9 +36,9 @@ module Html2rss
             return entry.article if entry.article
 
             @article_cache.fetch(entry) do
-              @article_cache[entry] = @extractor.new(
+              @article_cache[entry] = @extractor.call(
                 entry.container, base_url: @url, selected_anchor: entry.selected_anchor, fallback_anchorless: true
-              ).call
+              )
             end
           end
 
