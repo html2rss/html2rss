@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'semantic_html/entry_deduplicator'
-
 module Html2rss
   class AutoSource
     module Scraper
