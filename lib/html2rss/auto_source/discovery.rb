@@ -5,7 +5,7 @@ module Html2rss
     ##
     # Card/list discovery helpers used by AutoSource scrapers before field extraction.
     #
-    # Html2rss::Html::Extractors fills article fields from a container; discovery finds those containers.
+    # Html2rss::Html::ArticleExtractor fills article fields from a container; discovery finds those containers.
     #
     # DOM list discovery for anchorless or classless pages is owned by {Discovery::DomClustering}.
     module Discovery

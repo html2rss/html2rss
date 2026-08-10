@@ -3,15 +3,29 @@
 module Html2rss
   module Html
     ##
-    # Extractors is responsible for extracting details (headline, url, images, etc.)
-    # from an article_tag. DOM chrome helpers live on {Navigator}.
-    class Extractors
+    # ArticleExtractor is responsible for extracting details (headline, url, images, etc.)
+    # from an article_tag DOM node. DOM chrome helpers live on {Navigator}.
+    class ArticleExtractor
+      class << self
+        ##
+        # Extracts article attributes from a DOM element.
+        #
+        # @param article_tag [Nokogiri::XML::Node] article-like container to extract from
+        # @param base_url [String, Html2rss::Url] base url used to resolve relative links
+        # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
+        # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
+        # @return [Hash{Symbol => Object}] extracted article attributes
+        def call(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false)
+          new(article_tag, base_url:, selected_anchor:, fallback_anchorless:).call
+        end
+      end
+
       ##
       # @param article_tag [Nokogiri::XML::Node] article-like container to extract from
       # @param base_url [String, Html2rss::Url] base url used to resolve relative links
       # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
       # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
-      def initialize(article_tag, base_url:, selected_anchor:, fallback_anchorless: false)
+      def initialize(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false)
         raise ArgumentError, 'article_tag is required' unless article_tag
 
         @article_tag = article_tag
@@ -93,7 +107,7 @@ module Html2rss
       end
 
       def extract_description
-        exclude = [heading, selected_anchor, kicker_node].compact.to_set
+        exclude = [heading, selected_anchor, kicker_node].compact
         description = Navigator.extract_visible_text(article_tag, exclude_nodes: exclude)
         return if description.nil?
 

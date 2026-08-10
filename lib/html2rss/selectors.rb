@@ -106,12 +106,12 @@ module Html2rss
     # rubocop:disable Metrics/MethodLength
     def enhance_article_hash(article_hash, article_tag, base_url = @url)
       selected_anchor = Html2rss::Html::Navigator.main_anchor_for(article_tag)
-      extracted = Html2rss::Html::Extractors.new(
+      extracted = Html2rss::Html::ArticleExtractor.call(
         article_tag,
         base_url:,
         selected_anchor:,
         fallback_anchorless: true
-      ).call
+      )
       return article_hash unless extracted
 
       extracted.each_with_object(article_hash) do |(key, value), hash|

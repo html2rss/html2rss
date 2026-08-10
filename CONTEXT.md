@@ -8,7 +8,7 @@ Shared wall-clock and HTTP/interaction meters for one feed build. Constructed vi
 
 ## DOM chrome
 
-Layout noise and primary-link recognition for HTML trees: ignored container tags/paths (`IGNORED_CONTAINER_TAGS`), class-clustering exclusions (`CLUSTER_EXCLUDED_TAGS`), utility landmark tags (`UTILITY_LANDMARK_TAGS`), heading tags, main-anchor CSS, and visible-text extraction (`Html2rss::Html::Navigator::TextExtractor`). Owned solely by `Html2rss::Html::Navigator`. Article field extraction (`Html2rss::Html::Extractors`) and AutoSource discovery/scrapers import those constants — they do not redefine chrome tag sets.
+Layout noise and primary-link recognition for HTML trees: ignored container tags/paths (`IGNORED_CONTAINER_TAGS`), class-clustering exclusions (`CLUSTER_EXCLUDED_TAGS`), utility landmark tags (`UTILITY_LANDMARK_TAGS`), heading tags, main-anchor CSS, and visible-text extraction (`Html2rss::Html::Navigator::TextExtractor`). Owned solely by `Html2rss::Html::Navigator`. Article field extraction (`Html2rss::Html::ArticleExtractor`) and AutoSource discovery/scrapers import those constants — they do not redefine chrome tag sets.
 
 ## Container assessment
 
@@ -20,7 +20,7 @@ Whether an anchor is junk chrome vs a content permalink. Owned solely by `AutoSo
 
 ## DOM candidate clustering
 
-Candidate list discovery for anchorless or classless pages is owned by `AutoSource::Discovery::DomClustering`. It encapsulates class clustering with lazy fallback to 1-level tag structure clustering behind a single `#call` interface with shared scoring and overlap resolution. `SemanticHtml` uses its own `:fallback_anchorless` boolean directly. `Html::Extractors`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
+Candidate list discovery for anchorless or classless pages is owned by `AutoSource::Discovery::DomClustering`. It encapsulates class clustering with lazy fallback to 1-level tag structure clustering behind a single `#call` interface with shared scoring and overlap resolution. `SemanticHtml` uses its own `:fallback_anchorless` boolean directly. `Html::ArticleExtractor`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
 
 ## Channel
 

@@ -2,7 +2,7 @@
 
 module Html2rss
   module Html
-    class Extractors
+    class ArticleExtractor
       ##
       # Extracts enclosures from HTML tags using various strategies.
       class EnclosureExtractor
@@ -23,6 +23,8 @@ module Html2rss
         # @param base_url [String, Html2rss::Url] base URL for relative enclosure links
         # @return [Array<Hash{Symbol => Object}>] normalized enclosure hashes
         def self.call(article_tag, base_url)
+          return [] unless article_tag
+
           article_tag.css(SELECTOR).filter_map do |element|
             extract_from_element(element, base_url)
           end
