@@ -22,6 +22,7 @@ module Html2rss
       # Ordered scraper classes considered during auto-source extraction.
       SCRAPERS = [
         WordpressApi,
+        Sitemap,
         Schema,
         Microdata,
         JsonState,

@@ -109,6 +109,31 @@
               },
               "required": []
             },
+            "sitemap": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "min_priority": {
+                  "type": "number",
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "max_age_days": {
+                  "type": "integer",
+                  "not": {
+                    "type": "null"
+                  },
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": []
+            },
             "schema": {
               "type": "object",
               "properties": {
@@ -223,6 +248,11 @@
         "scraper": {
           "wordpress_api": {
             "enabled": true
+          },
+          "sitemap": {
+            "enabled": true,
+            "min_priority": 0.3,
+            "max_age_days": 30
           },
           "schema": {
             "enabled": true
