@@ -12,15 +12,15 @@ Layout noise and primary-link recognition for HTML trees: ignored container tags
 
 ## Container assessment
 
-Observing a semantic container plus its selected anchor and destination facts into ranking/`hard_junk?` signals. Owned by `AutoSource::Scraper::LinkHeuristics#assess_container`, which builds `ContainerSignals` (including `#final_score`). `SemanticHtml` orchestrates candidates and extraction only — it does not rebuild observation kwargs husks or recompute `quality - junk`.
+Observing a semantic container plus its selected anchor and destination facts into ranking/`hard_junk?` signals. Owned by `AutoSource::LinkHeuristics#assess_container`, which builds `ContainerSignals` (including `#final_score`). `SemanticHtml` orchestrates candidates and extraction only — it does not rebuild observation kwargs husks or recompute `quality - junk`.
 
 ## Content-anchor eligibility
 
-Whether an anchor is junk chrome vs a content permalink. Owned solely by `AutoSource::Scraper::LinkHeuristics#noise_anchor?` (text/destination rules plus optional icon-only and utility-landmark DOM checks). `Html` and `Discovery::SemanticAnchorCandidates` consume that method; they must not keep parallel `ineligible_anchor?` / `utility_text_suppressed?` policy. Heading-linked “Recommended …” titles are not rejected at this gate so container `hard_junk?` can keep real posts with publish markers.
+Whether an anchor is junk chrome vs a content permalink. Owned solely by `AutoSource::LinkHeuristics#noise_anchor?` (text/destination rules plus optional icon-only and utility-landmark DOM checks). `Html` and `Discovery::SemanticAnchorCandidates` consume that method; they must not keep parallel `ineligible_anchor?` / `utility_text_suppressed?` policy. Heading-linked “Recommended …” titles are not rejected at this gate so container `hard_junk?` can keep real posts with publish markers.
 
 ## Anchorless discovery
 
-Two distinct jobs historically toggled by scraper option `:fallback_anchorless`. Owned by `AutoSource::Scraper::Discovery::Anchorless`:
+Two distinct jobs historically toggled by scraper option `:fallback_anchorless`. Owned by `AutoSource::Discovery::Anchorless`:
 
 - `class_cluster_containers` — Html discovers card-like nodes via `ClassClustering` when anchors are weak/absent.
 - `permit_unanchored?` — SemanticHtml keeps already-found semantic containers without a primary content anchor.

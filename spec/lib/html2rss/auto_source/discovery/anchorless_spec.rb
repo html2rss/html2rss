@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::Scraper::Discovery::Anchorless do
+RSpec.describe Html2rss::AutoSource::Discovery::Anchorless do
   describe '.permit_unanchored?' do
     it 'names the SemanticHtml job so fallback_anchorless is not silently class-clustering',
        :aggregate_failures do
@@ -14,7 +14,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Discovery::Anchorless do
     let(:node) { parsed_body.at_css('div') }
 
     before do
-      allow(Html2rss::AutoSource::Scraper::Discovery::ClassClustering)
+      allow(Html2rss::AutoSource::Discovery::ClassClustering)
         .to receive(:call).and_return([node])
     end
 
@@ -22,7 +22,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Discovery::Anchorless do
        :aggregate_failures do
       result = described_class.class_cluster_containers(parsed_body, minimum_selector_frequency: 2)
 
-      expect(Html2rss::AutoSource::Scraper::Discovery::ClassClustering)
+      expect(Html2rss::AutoSource::Discovery::ClassClustering)
         .to have_received(:call).with(parsed_body, minimum_selector_frequency: 2)
       expect(result).to eq([node])
     end
