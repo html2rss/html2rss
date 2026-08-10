@@ -46,7 +46,7 @@ module Html2rss
       attr_reader :policy
 
       def raise_if_blocked_surface!(body)
-        signature = Html2rss::BlockedSurface.interstitial_signature_for(body)
+        signature = BlockedSurface.interstitial_signature_for(body)
         return unless signature
 
         raise BlockedSurfaceDetected, signature.fetch(:message)

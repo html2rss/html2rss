@@ -139,7 +139,7 @@ module Html2rss
       private_class_method :classify_no_scraper_surface
 
       def self.blocked_surface?(parsed_body)
-        Html2rss::BlockedSurface.interstitial?(parsed_body.to_html)
+        Html2rss::RequestService::BlockedSurface.interstitial?(parsed_body.to_html)
       end
       private_class_method :blocked_surface?
 
