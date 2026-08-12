@@ -109,6 +109,10 @@ module Html2rss
       visited_urls.add(normalize_url(url))
     end
 
+    ##
+    # @return [Html2rss::Url] the session's current request URL
+    def url = context.url
+
     private
 
     attr_reader :context, :strategy, :logger, :visited_urls

@@ -5,6 +5,7 @@ module Html2rss
     # Retries feed extraction across concrete request strategies for the :auto plan.
     #
     # Owned by {FeedPipeline}; invoked only after {StrategyPlan} resolves +:auto+.
+    # Hosted by the pipeline instance: session + extract call back into FeedPipeline.
     class AutoFallback
       # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[faraday botasaurus browserless].freeze
@@ -51,27 +52,38 @@ module Html2rss
 
         # @param response [RequestService::Response] successful response
         # @param articles [Array] extracted articles
+        # @param dedup_dropped [Integer] articles removed by deduplication
+        # @param selected_strategy [Symbol] concrete strategy that produced items
+        # @param attempt_count [Integer] number of attempts recorded for this chain
         # @return [void]
-        def succeed!(response:, articles:)
-          @result = { response:, articles: }
+        def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:)
+          @result = PipelineOutcome.new(
+            response:,
+            articles:,
+            dedup_dropped:,
+            selected_strategy:,
+            attempt_count:
+          )
         end
       end
 
       ##
       # @param strategies [Array<Symbol>] ordered concrete strategies for fallback
       # @param budget [RequestService::Budget] shared request budget across retries
-      # @param session_for [Proc] request session factory proc
-      # @param articles_for [Proc] article extraction proc
+      # @param pipeline [Html2rss::FeedPipeline] host for session + article extraction
+      # @param config [Html2rss::Config] validated feed config
+      # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources] budget + policy
       # @return [void]
-      def initialize(strategies:, budget:, session_for:, articles_for:)
+      def initialize(strategies:, budget:, pipeline:, config:, resources:)
         @strategies = strategies
         @budget = budget
-        @session_for = session_for
-        @articles_for = articles_for
+        @pipeline = pipeline
+        @config = config
+        @resources = resources
       end
 
       ##
-      # @return [Hash{Symbol => Object}] pipeline state containing :response and :articles
+      # @return [Html2rss::FeedPipeline::PipelineOutcome] scrape-finished state for materialization
       def call
         state = run_attempts
         return state.result if state.succeeded?
@@ -81,7 +93,7 @@ module Html2rss
 
       private
 
-      attr_reader :strategies, :budget, :session_for, :articles_for
+      attr_reader :strategies, :budget, :pipeline, :config, :resources
 
       def run_attempts
         AttemptState.new.tap do |state|
@@ -93,7 +105,7 @@ module Html2rss
       end
 
       def attempt(strategy:, next_strategy:, state:)
-        request_session = session_for.call(strategy:, budget:)
+        request_session = pipeline.request_session_for(config, strategy:, resources:)
         response = fetch_response(request_session:, strategy:, next_strategy:, state:)
         return unless response
 
@@ -106,38 +118,65 @@ module Html2rss
         raise
       rescue StandardError => error
         state.record_error(strategy:, error:)
-        log_warn_fallback_error(strategy:, next_strategy:, error:) if next_strategy
-        Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message}")
+        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy
         nil
       end
 
       def process_response(response:, strategy:, next_strategy:, request_session:, state:)
-        articles = articles_for.call(response:, request_session:)
+        articles, dedup_dropped = articles_for(response:, request_session:)
         items_count = articles.size
         state.record_items(strategy:, items_count:)
-        Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count}")
-        return record_success(response:, strategy:, articles:, state:) if items_count.positive?
+        Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
+                  "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
+                  "budget_remaining=#{budget_remaining_label}")
+        return record_success(response:, strategy:, articles:, dedup_dropped:, state:) if items_count.positive?
 
-        log_info_fallback_zero_items(strategy:, next_strategy:) if next_strategy
+        log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
 
-      def record_success(response:, strategy:, articles:, state:)
-        state.succeed!(response:, articles:)
-        return unless state.attempts.size > 1
+      def articles_for(response:, request_session:)
+        pipeline.deduplicated_articles(config:, response:, request_session:)
+      end
 
-        Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{state.attempts.size}")
+      def record_success(response:, strategy:, articles:, dedup_dropped:, state:)
+        attempt_count = state.attempts.size
+        state.succeed!(response:, articles:, dedup_dropped:, selected_strategy: strategy, attempt_count:)
+        return unless attempt_count > 1
+
+        Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempt_count} " \
+                 "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
+                 "budget_remaining=#{budget_remaining_label}")
       end
 
       def finalize_failure(attempts:)
         raise NoFeedItemsExtracted.new(attempts:)
       end
 
-      def log_warn_fallback_error(strategy:, next_strategy:, error:)
-        Log.warn("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after error=#{error.class}")
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def log_fallback_error(strategy:, next_strategy:, error:, request_session:)
+        host = request_session.url.host
+        detail = "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
+                 "budget_remaining=#{budget_remaining_label}"
+        if error.is_a?(RequestService::RequestTimedOut)
+          Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
+                   "after timeout=#{error.class} #{detail}")
+        else
+          Log.warn("#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
+                   "after error=#{error.class} #{detail}")
+        end
+        Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message} #{detail}")
+      end
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+      def log_info_fallback_zero_items(strategy:, next_strategy:, response:)
+        Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items " \
+                 "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
+                 "budget_remaining=#{budget_remaining_label}")
       end
 
-      def log_info_fallback_zero_items(strategy:, next_strategy:)
-        Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items")
+      def budget_remaining_label
+        remaining = budget.remaining_timeout_seconds
+        remaining.nil? ? 'untracked' : format('%.3f', remaining)
       end
     end
   end
