@@ -7,22 +7,16 @@ RSpec.describe Html2rss::FeedResult do
     described_class.new(channel:, articles:, status:, stylesheets: [{ href: 'rss.xsl', type: 'text/xsl' }])
   end
 
-  let(:channel_response) do
-    Html2rss::RequestService::Response.new(
-      body: '<html><head><title>Example</title></head></html>',
-      url: Html2rss::Url.from_absolute('https://example.com'),
-      headers: {
-        'content-type' => 'text/html',
-        'content-language' => 'en',
-        'cache-control' => 'max-age=3600',
-        'last-modified' => 'Mon, 01 Jan 2024 00:00:00 GMT'
-      }
-    )
-  end
   let(:channel) do
     Html2rss::Channel.new(
-      channel_response,
-      overrides: { title: 'Example', description: 'Example feed', language: 'en', ttl: 60 }
+      title: 'Example',
+      url: Html2rss::Url.from_absolute('https://example.com'),
+      description: 'Example feed',
+      language: 'en',
+      ttl: 60,
+      last_build_date: Time.utc(2024, 1, 1),
+      image: nil,
+      author: nil
     )
   end
   let(:articles) do
@@ -63,21 +57,12 @@ RSpec.describe Html2rss::FeedResult do
       expect(result.channel_title).to eq('Example')
     end
 
-    context 'when the scrape produced no items' do
-      let(:page_channel) do
-        Html2rss::Channel.new(
-          channel_response,
-          overrides: { title: 'Page Title From Head', description: 'Example feed' }
-        )
-      end
+    it 'preserves page title when the scrape produced no items', :aggregate_failures do
+      empty = described_class.new(channel: channel.with(title: 'Page Title From Head'), articles: [],
+                                  status: Html2rss::Status.build(articles: []))
 
-      it 'preserves page title', :aggregate_failures do
-        empty = described_class.new(channel: page_channel, articles: [],
-                                    status: Html2rss::Status.build(articles: []))
-
-        expect(empty).to be_empty
-        expect(empty.channel_title).to eq('Page Title From Head')
-      end
+      expect(empty).to be_empty
+      expect(empty.channel_title).to eq('Page Title From Head')
     end
   end
 
@@ -133,16 +118,17 @@ RSpec.describe Html2rss::FeedResult do
     end
     # rubocop:enable RSpec/ExampleLength
 
-    it 'exposes channel_title for callers without a channel reader', :aggregate_failures do
-      expect(result.channel_title).to eq('Example')
-      expect(result).not_to respond_to(:channel)
+    it 'keeps channel_title immutable for callers', :aggregate_failures do
+      expect(result.channel_title).to be_frozen
+      expect { result.channel_title << 'X' }.to raise_error(FrozenError)
+      expect(result.to_json_feed[:title]).to eq('Example')
     end
   end
 
   describe 'Marshal contract' do
-    # Full render-after-load lands with materialized Channel/Article (later stack PRs).
+    # Render-after-load for articles lands with ItemPresentation/Article slice.
     # rubocop:disable RSpec/ExampleLength -- round-trip identity + status telemetry fields
-    it 'round-trips FeedResult and Status through Marshal', :aggregate_failures do
+    it 'round-trips FeedResult, Channel title, and Status through Marshal', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(result))
 
       expect(restored).to be_a(described_class)
