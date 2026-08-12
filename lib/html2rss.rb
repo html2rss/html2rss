@@ -35,21 +35,33 @@ module Html2rss
   end
 
   ##
+  # Returns an opaque, Marshal-cacheable result of one scrape.
+  #
+  # Prefer this when the same scrape must render as RSS and JSON Feed (e.g. web cache).
+  #
+  # @param raw_config [Hash{Symbol => Object}] feed configuration
+  # @return [Html2rss::FeedResult]
+  def self.feed_result(raw_config)
+    FeedPipeline.new(raw_config).to_result
+  end
+
+  ##
   # Returns an RSS object generated from the provided configuration.
   #
   # @param raw_config [Hash{Symbol => Object}] feed configuration
   # @return [RSS::Rss] generated RSS feed
   def self.feed(raw_config)
-    FeedPipeline.new(raw_config).to_rss
+    feed_result(raw_config).to_rss
   end
 
   ##
   # Returns a JSONFeed 1.1 hash generated from the provided configuration.
   #
   # @param raw_config [Hash{Symbol => Object}] feed configuration
+  # @param feed_url [String, nil] optional self URL for the feed (JSON Feed +feed_url+)
   # @return [Hash] JSONFeed-compliant hash
-  def self.json_feed(raw_config)
-    FeedPipeline.new(raw_config).to_json_feed
+  def self.json_feed(raw_config, feed_url: nil)
+    feed_result(raw_config).to_json_feed(feed_url:)
   end
 
   # rubocop:disable Metrics/ParameterLists
