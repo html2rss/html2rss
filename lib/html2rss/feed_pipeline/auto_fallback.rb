@@ -5,7 +5,7 @@ module Html2rss
     # Retries feed extraction across concrete request strategies for the :auto plan.
     #
     # Owned by {FeedPipeline}; invoked only after {StrategyPlan} resolves +:auto+.
-    class AutoFallback # rubocop:disable Metrics/ClassLength
+    class AutoFallback
       # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[faraday botasaurus browserless].freeze
 
