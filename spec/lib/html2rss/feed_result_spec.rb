@@ -75,6 +75,27 @@ RSpec.describe Html2rss::FeedResult do
       expect(payload[:items].first).not_to have_key(:content_html)
     end
     # rubocop:enable RSpec/ExampleLength
+
+    # rubocop:disable RSpec/ExampleLength -- builds article with image-only DescriptionBuilder path
+    it 'routes DescriptionBuilder media to content_html', :aggregate_failures do
+      image_article = Html2rss::Article.new(
+        id: 'gallery',
+        title: 'Gallery',
+        url: 'https://example.com/gallery',
+        image: 'https://example.com/cover.jpg'
+      )
+      payload = described_class.new(
+        channel:,
+        articles: [image_article],
+        status: Html2rss::Status.build(articles: [image_article])
+      ).to_json_feed
+
+      item = payload[:items].first
+      expect(item).to have_key(:content_html)
+      expect(item).not_to have_key(:content_text)
+      expect(item[:content_html]).to include('<img')
+    end
+    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#status' do
