@@ -54,7 +54,7 @@ module Html2rss
         # @param dedup_dropped [Integer] articles removed by deduplication
         # @return [void]
         def succeed!(response:, articles:, dedup_dropped:)
-          @result = { response:, articles:, dedup_dropped: }
+          @result = PipelineOutcome.new(response:, articles:, dedup_dropped:)
         end
       end
 
@@ -72,7 +72,7 @@ module Html2rss
       end
 
       ##
-      # @return [Hash{Symbol => Object}] pipeline state with :response, :articles, :dedup_dropped
+      # @return [Html2rss::FeedPipeline::PipelineOutcome] scrape-finished state for materialization
       def call
         state = run_attempts
         return state.result if state.succeeded?

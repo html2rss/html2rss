@@ -7,6 +7,9 @@ module Html2rss
     # Bundle of inputs shared by selector and auto-source article collection.
     ExtractionContext = Data.define(:config, :response, :request_session)
 
+    # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
+    PipelineOutcome = Data.define(:response, :articles, :dedup_dropped)
+
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
@@ -19,10 +22,10 @@ module Html2rss
     # @return [Html2rss::FeedResult]
     def to_result
       config = Config.from_hash(raw_config, params: raw_config[:params])
-      state = pipeline_state_for(config)
-      channel = Channel.from_response(state.fetch(:response), overrides: config.channel)
-      status = Status.build(articles: state.fetch(:articles), dedup_dropped: state.fetch(:dedup_dropped))
-      FeedResult.new(channel:, articles: state.fetch(:articles), status:, stylesheets: config.stylesheets)
+      outcome = pipeline_outcome_for(config)
+      channel = Channel.from_response(outcome.response, overrides: config.channel)
+      status = Status.build(articles: outcome.articles, dedup_dropped: outcome.dedup_dropped)
+      FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
 
     ##
@@ -37,7 +40,7 @@ module Html2rss
 
     attr_reader :raw_config
 
-    def pipeline_state_for(config)
+    def pipeline_outcome_for(config)
       plan = StrategyPlan.resolve(config.strategy)
       resources = RuntimePolicy.resources_for(config)
       if plan.is_a?(StrategyPlan::Auto)
@@ -51,7 +54,8 @@ module Html2rss
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
       extracted = deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
-      { response:, articles: extracted.fetch(:articles), dedup_dropped: extracted.fetch(:dedup_dropped) }
+      PipelineOutcome.new(response:, articles: extracted.fetch(:articles),
+                          dedup_dropped: extracted.fetch(:dedup_dropped))
     end
 
     def request_session_for(config, strategy:, resources:)
