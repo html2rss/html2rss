@@ -8,7 +8,17 @@ module Html2rss
     ExtractionContext = Data.define(:config, :response, :request_session)
 
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
-    PipelineOutcome = Data.define(:response, :articles, :dedup_dropped)
+    PipelineOutcome = Data.define(:response, :articles, :dedup_dropped, :selected_strategy, :attempt_count) do
+      ##
+      # @param response [RequestService::Response]
+      # @param articles [Array<Html2rss::Article>]
+      # @param dedup_dropped [Integer]
+      # @param selected_strategy [Symbol, nil] set on :auto success; nil otherwise
+      # @param attempt_count [Integer] auto attempts attempted; 0 outside :auto
+      def initialize(response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
+        super
+      end
+    end
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
@@ -24,7 +34,12 @@ module Html2rss
       config = Config.from_hash(raw_config, params: raw_config[:params])
       outcome = pipeline_outcome_for(config)
       channel = Channel.from_response(outcome.response, overrides: config.channel)
-      status = Status.build(articles: outcome.articles, dedup_dropped: outcome.dedup_dropped)
+      status = Status.build(
+        articles: outcome.articles,
+        dedup_dropped: outcome.dedup_dropped,
+        selected_strategy: outcome.selected_strategy,
+        attempt_count: outcome.attempt_count
+      )
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
 

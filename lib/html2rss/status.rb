@@ -9,18 +9,26 @@ module Html2rss
   #
   # @!method to_h
   #   @return [Hash{Symbol => Object}] keys: +:version+ (String), +:scraper_tallies+ (Hash),
-  #     +:dedup_dropped+ (Integer)
-  Status = Data.define(:version, :scraper_tallies, :dedup_dropped) do
+  #     +:dedup_dropped+ (Integer), +:selected_strategy+ (Symbol, nil), +:attempt_count+ (Integer)
+  Status = Data.define(:version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count) do
     class << self
       ##
-      # Builds status from extracted articles and a deduplication drop count.
+      # Builds status from extracted articles and scrape telemetry.
       #
       # @param articles [Array<Html2rss::Article>] articles kept after deduplication
       # @param dedup_dropped [Integer] number of articles removed by deduplication
+      # @param selected_strategy [Symbol, nil] concrete strategy that succeeded under +:auto+ (else +nil+)
+      # @param attempt_count [Integer] auto-fallback attempt count (0 when not under +:auto+)
       # @return [Html2rss::Status]
-      def build(articles:, dedup_dropped: 0)
+      def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0)
         tallies = articles.filter_map(&:scraper).tally.transform_keys { |klass| scraper_name(klass) }
-        new(version: Html2rss::VERSION, scraper_tallies: tallies.freeze, dedup_dropped:)
+        new(
+          version: Html2rss::VERSION,
+          scraper_tallies: tallies.freeze,
+          dedup_dropped:,
+          selected_strategy:,
+          attempt_count:
+        )
       end
 
       ##
@@ -32,7 +40,18 @@ module Html2rss
     end
 
     ##
+    # @param version [String]
+    # @param scraper_tallies [Hash{String => Integer}]
+    # @param dedup_dropped [Integer]
+    # @param selected_strategy [Symbol, nil]
+    # @param attempt_count [Integer]
+    def initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
+      super
+    end
+
+    ##
     # Formats the RSS +generator+ string and JSON Feed +user_comment+.
+    # Scraper-focused only — auto strategy summary stays on {#to_h}, not this string.
     #
     # @return [String]
     def to_generator_comment
