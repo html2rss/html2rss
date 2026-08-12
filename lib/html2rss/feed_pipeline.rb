@@ -4,8 +4,10 @@ module Html2rss
   ##
   # Builds feeds from validated config through request, extraction, and rendering stages.
   class FeedPipeline
-    # Bundle of inputs shared by selector and auto-source article collection.
-    ExtractionContext = Data.define(:config, :response, :request_session)
+    # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
+    # selected_strategy: set on :auto success; nil otherwise.
+    # attempt_count: auto attempts attempted; 0 outside :auto.
+    PipelineOutcome = Data.define(:response, :articles, :dedup_dropped, :selected_strategy, :attempt_count)
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
@@ -18,32 +20,48 @@ module Html2rss
     #
     # @return [Html2rss::FeedResult]
     def to_result
-      run do |response:, config:, articles:|
-        channel = Html2rss::Channel.from_response(response, overrides: config.channel)
-        status = Status.build(articles:)
-        FeedResult.new(channel:, articles:, status:, stylesheets: config.stylesheets)
-      end
+      config = Config.from_hash(raw_config, params: raw_config[:params])
+      outcome = pipeline_outcome_for(config)
+      channel = Channel.from_response(outcome.response, overrides: config.channel)
+      status = Status.build(
+        articles: outcome.articles,
+        dedup_dropped: outcome.dedup_dropped,
+        selected_strategy: outcome.selected_strategy,
+        attempt_count: outcome.attempt_count
+      )
+      FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
 
-    ##
-    # @return [RSS::Rss] generated RSS feed
-    def to_rss = to_result.to_rss
+    # @api private Host seam for {AutoFallback} (and single-strategy path).
+    # @param config [Html2rss::Config]
+    # @param strategy [Symbol]
+    # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
+    # @return [Html2rss::RequestSession]
+    def request_session_for(config, strategy:, resources:)
+      RequestSession.build(
+        config:,
+        strategy:,
+        budget: resources.budget,
+        policy: resources.policy
+      )
+    end
 
-    ##
-    # @return [Hash] generated JSONFeed 1.1 payload
-    def to_json_feed = to_result.to_json_feed
+    # @api private Host seam for {AutoFallback} (and single-strategy path).
+    # @param config [Html2rss::Config]
+    # @param response [Html2rss::RequestService::Response]
+    # @param request_session [Html2rss::RequestSession]
+    # @return [Array(Array<Html2rss::Article>, Integer)] unique articles and drop count
+    def deduplicated_articles(config:, response:, request_session:)
+      collected = collect_articles(config:, response:, request_session:)
+      unique = Article::Deduplicator.new(collected).call
+      [unique, collected.size - unique.size]
+    end
 
     private
 
     attr_reader :raw_config
 
-    def run
-      config = Config.from_hash(raw_config, params: raw_config[:params])
-      state = pipeline_state_for(config)
-      yield response: state.fetch(:response), config:, articles: state.fetch(:articles)
-    end
-
-    def pipeline_state_for(config)
+    def pipeline_outcome_for(config)
       plan = StrategyPlan.resolve(config.strategy)
       resources = RuntimePolicy.resources_for(config)
       if plan.is_a?(StrategyPlan::Auto)
@@ -56,52 +74,31 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
-      articles = deduplicated_articles(
-        ExtractionContext.new(config:, response:, request_session:)
-      )
-      { response:, articles: }
+      articles, dedup_dropped = deduplicated_articles(config:, response:, request_session:)
+      PipelineOutcome.new(response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
     end
 
-    def request_session_for(config, strategy:, resources:)
-      RequestSession.build(
-        config:,
-        strategy:,
-        budget: resources.budget,
-        policy: resources.policy
-      )
-    end
-
-    def deduplicated_articles(extraction)
-      Article::Deduplicator.new(collect_articles(extraction)).call
-    end
-
-    # rubocop:disable Metrics/MethodLength
     def run_auto_pipeline(config, resources:)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
         budget: resources.budget,
-        session_for: lambda do |strategy:, budget:|
-          budget.effective_timeout_seconds(fallback: resources.policy.total_timeout_seconds)
-          request_session_for(config, strategy:, resources:)
-        end,
-        articles_for: lambda do |response:, request_session:|
-          deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
-        end
+        pipeline: self,
+        config:,
+        resources:
       ).call
     end
-    # rubocop:enable Metrics/MethodLength
 
-    def collect_articles(extraction)
-      selector_articles(extraction) + auto_source_articles(extraction)
+    def collect_articles(config:, response:, request_session:)
+      selector_articles(config:, response:, request_session:) +
+        auto_source_articles(config:, response:, request_session:)
     end
 
     # rubocop:disable Metrics/MethodLength
-    def selector_articles(extraction)
-      config = extraction.config
+    def selector_articles(config:, response:, request_session:)
       return [] unless (selectors = config.selectors)
 
-      page_responses = extraction.request_session.page_responses(
-        extraction.response,
+      page_responses = request_session.page_responses(
+        response,
         pagination_config: selectors.dig(:items, :pagination)
       )
 
@@ -116,10 +113,10 @@ module Html2rss
     end
     # rubocop:enable Metrics/MethodLength
 
-    def auto_source_articles(extraction)
-      return [] unless (auto_source = extraction.config.auto_source)
+    def auto_source_articles(config:, response:, request_session:)
+      return [] unless (auto_source = config.auto_source)
 
-      AutoSource.new(extraction.response, auto_source, request_session: extraction.request_session).articles
+      AutoSource.new(response, auto_source, request_session:).articles
     end
   end
 end

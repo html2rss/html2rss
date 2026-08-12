@@ -35,7 +35,7 @@ RSpec.describe Html2rss::FeedPipeline do
     }
   end
 
-  describe '#to_rss' do
+  describe '#to_result' do
     context 'when strategy is non-auto' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) { base_config.merge(strategy: :faraday) }
       let(:pipeline) { described_class.new(config) }
@@ -53,7 +53,8 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       it 'runs the configured strategy path and does not invoke auto fallback', :aggregate_failures do
-        rss = pipeline.to_rss
+        result = pipeline.to_result
+        rss = result.to_rss
 
         expect(rss.items.map(&:title)).to eq(['faraday'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
@@ -94,7 +95,8 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       it 'uses auto fallback chain when the first strategy yields zero items', :aggregate_failures do
-        rss = pipeline.to_rss
+        result = pipeline.to_result
+        rss = result.to_rss
 
         expect(rss.items.map(&:title)).to eq(['bota'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
@@ -102,7 +104,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       it 'logs fallback transition when first strategy returns zero items' do
-        pipeline.to_rss
+        pipeline.to_result
 
         expect(Html2rss::Log).to have_received(:info).with(
           /auto fallback faraday -> botasaurus after zero extracted items/
@@ -110,7 +112,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       it 'logs selected strategy when fallback succeeds after retries' do
-        pipeline.to_rss
+        pipeline.to_result
 
         expect(Html2rss::Log).to have_received(:info).with(
           /auto selected strategy=botasaurus after attempts=2/
@@ -120,7 +122,7 @@ RSpec.describe Html2rss::FeedPipeline do
       it 'does not call fallback strategy when first strategy succeeds', :aggregate_failures do
         stub_first_strategy_success.call(item_response)
 
-        pipeline.to_rss
+        pipeline.to_result
 
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
@@ -129,7 +131,7 @@ RSpec.describe Html2rss::FeedPipeline do
       it 'does not emit fallback info when first strategy succeeds' do
         stub_first_strategy_success.call(item_response)
 
-        pipeline.to_rss
+        pipeline.to_result
 
         expect(Html2rss::Log).not_to have_received(:info)
       end
@@ -138,7 +140,8 @@ RSpec.describe Html2rss::FeedPipeline do
         strategy_results[:botasaurus] = Html2rss::RequestService::BotasaurusConfigurationError.new('missing url')
         strategy_results[:browserless] = browserless_response
 
-        rss = pipeline.to_rss
+        result = pipeline.to_result
+        rss = result.to_rss
 
         expect(rss.items.map(&:title)).to eq(['browser'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
@@ -153,11 +156,11 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
-        before { pipeline.to_rss }
+        before { pipeline.to_result }
 
-        it 'warns with class-only detail' do
-          expect(Html2rss::Log).to have_received(:warn).with(
-            /auto fallback faraday -> botasaurus after error=Html2rss::RequestService::RequestTimedOut/
+        it 'logs timeout fallback at info with host and budget context' do
+          expect(Html2rss::Log).to have_received(:info).with(
+            /auto fallback faraday -> botasaurus after timeout=Html2rss::RequestService::RequestTimedOut.*host=/
           ).once
         end
 
@@ -169,7 +172,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       # rubocop:disable RSpec/ExampleLength
-      it 'halts fallback chain immediately if the time budget is exhausted', :aggregate_failures do
+      it 'lets Strategy enforce exhausted time budget on later auto attempts', :aggregate_failures do
         t = 0.0
         allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC) { t }
         allow(Html2rss::RequestService).to receive(:execute).and_call_original
@@ -179,9 +182,13 @@ RSpec.describe Html2rss::FeedPipeline do
         end
 
         pipeline = described_class.new(base_config.merge(strategy: :auto, request: { total_timeout_seconds: 1 }))
-        expect { pipeline.to_rss }.to raise_error(Html2rss::RequestService::RequestTimedOut)
+        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+          expect(error.attempts.map { |attempt| attempt[:strategy] }).to include(:faraday, :botasaurus)
+          expect(error.attempts).to include(
+            hash_including(strategy: :botasaurus, error_class: 'Html2rss::RequestService::RequestTimedOut')
+          )
+        end
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
       end
       # rubocop:enable RSpec/ExampleLength
     end
@@ -218,7 +225,8 @@ RSpec.describe Html2rss::FeedPipeline do
           Html2rss::Config.from_hash(config)
         )
 
-        rss = pipeline.to_rss
+        result = pipeline.to_result
+        rss = result.to_rss
 
         expect(rss.items.map(&:title)).to eq(['browser'])
         expect(captured_budget).to eq(
@@ -251,11 +259,69 @@ RSpec.describe Html2rss::FeedPipeline do
           responses.fetch(ctx.url.to_s)
         end
 
-        rss = described_class.new(config).to_rss
+        rss = described_class.new(config).to_result.to_rss
         expect(rss.items.map(&:title)).to eq(['Item 1', 'Item 2'])
         expect(Html2rss::RequestService).to have_received(:execute).exactly(3).times
       end
       # rubocop:enable RSpec/ExampleLength
+    end
+
+    # rubocop:disable RSpec/ExampleLength -- inline config + duplicate HTML fixture
+    it 'reports dedup_dropped on status after pipeline deduplication', :aggregate_failures do
+      config = base_config.merge(
+        strategy: :faraday,
+        selectors: base_config[:selectors].merge(
+          url: { selector: 'a', extractor: 'href' },
+          id: { selector: 'a', extractor: 'href' }
+        )
+      )
+      response = build_response.call(
+        body: <<~HTML,
+          <html><body>
+            <article><a href="https://example.com/news/dup"><h1>First</h1></a></article>
+            <article><a href="https://example.com/news/dup"><h1>Second</h1></a></article>
+          </body></html>
+        HTML
+        url: 'https://example.com/news'
+      )
+      stub_first_strategy_success.call(response)
+
+      result = described_class.new(config).to_result
+
+      expect(result.status.dedup_dropped).to eq(1)
+      expect(result.status.selected_strategy).to be_nil
+      expect(result.status.attempt_count).to eq(0)
+      expect(result.to_rss.items.size).to eq(1)
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    context 'when strategy is auto and fallback succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) { base_config.merge(strategy: :auto, request: { max_requests: 3 }) }
+      let(:empty_response) do
+        build_response.call(body: '<html><body><div>empty</div></body></html>')
+      end
+      let(:item_response) do
+        build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+      end
+
+      before do
+        allow(Html2rss::Log).to receive(:info)
+        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::Log).to receive(:debug)
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          strategy == :faraday ? empty_response : item_response
+        end
+      end
+
+      it 'puts selected_strategy and attempt_count on status', :aggregate_failures do
+        result = described_class.new(config).to_result
+
+        expect(result.status.selected_strategy).to eq(:botasaurus)
+        expect(result.status.attempt_count).to eq(2)
+        expect(result.status.to_h).to include(selected_strategy: :botasaurus, attempt_count: 2)
+        expect(result.status.to_generator_comment).not_to include('botasaurus')
+      end
     end
   end
 end
