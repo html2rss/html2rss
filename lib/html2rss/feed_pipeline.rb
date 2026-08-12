@@ -35,6 +35,29 @@ module Html2rss
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
 
+    # @api private Host seam for {AutoFallback} (and single-strategy path).
+    # @param config [Html2rss::Config]
+    # @param strategy [Symbol]
+    # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
+    # @return [Html2rss::RequestSession]
+    def request_session_for(config, strategy:, resources:)
+      RequestSession.build(
+        config:,
+        strategy:,
+        budget: resources.budget,
+        policy: resources.policy
+      )
+    end
+
+    # @api private Host seam for {AutoFallback} (and single-strategy path).
+    # @param extraction [Html2rss::FeedPipeline::ExtractionContext]
+    # @return [Array(Array<Html2rss::Article>, Integer)] unique articles and drop count
+    def deduplicated_articles(extraction)
+      collected = collect_articles(extraction)
+      unique = Article::Deduplicator.new(collected).call
+      [unique, collected.size - unique.size]
+    end
+
     private
 
     attr_reader :raw_config
@@ -56,37 +79,15 @@ module Html2rss
       PipelineOutcome.new(response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
     end
 
-    def request_session_for(config, strategy:, resources:)
-      RequestSession.build(
-        config:,
-        strategy:,
-        budget: resources.budget,
-        policy: resources.policy
-      )
-    end
-
-    # @return [Array(Array<Html2rss::Article>, Integer)] unique articles and drop count
-    def deduplicated_articles(extraction)
-      collected = collect_articles(extraction)
-      unique = Article::Deduplicator.new(collected).call
-      [unique, collected.size - unique.size]
-    end
-
-    # rubocop:disable Metrics/MethodLength
     def run_auto_pipeline(config, resources:)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
         budget: resources.budget,
-        session_for: lambda do |strategy:, budget:|
-          budget.effective_timeout_seconds(fallback: resources.policy.total_timeout_seconds)
-          request_session_for(config, strategy:, resources:)
-        end,
-        articles_for: lambda do |response:, request_session:|
-          deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
-        end
+        pipeline: self,
+        config:,
+        resources:
       ).call
     end
-    # rubocop:enable Metrics/MethodLength
 
     def collect_articles(extraction)
       selector_articles(extraction) + auto_source_articles(extraction)

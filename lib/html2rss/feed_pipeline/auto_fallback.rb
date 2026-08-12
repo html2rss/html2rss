@@ -5,6 +5,7 @@ module Html2rss
     # Retries feed extraction across concrete request strategies for the :auto plan.
     #
     # Owned by {FeedPipeline}; invoked only after {StrategyPlan} resolves +:auto+.
+    # Hosted by the pipeline instance: session + extract call back into FeedPipeline.
     class AutoFallback
       # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[faraday botasaurus browserless].freeze
@@ -69,14 +70,16 @@ module Html2rss
       ##
       # @param strategies [Array<Symbol>] ordered concrete strategies for fallback
       # @param budget [RequestService::Budget] shared request budget across retries
-      # @param session_for [Proc] request session factory proc
-      # @param articles_for [Proc] article extraction proc (returns +[articles, dedup_dropped]+)
+      # @param pipeline [Html2rss::FeedPipeline] host for session + article extraction
+      # @param config [Html2rss::Config] validated feed config
+      # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources] budget + policy
       # @return [void]
-      def initialize(strategies:, budget:, session_for:, articles_for:)
+      def initialize(strategies:, budget:, pipeline:, config:, resources:)
         @strategies = strategies
         @budget = budget
-        @session_for = session_for
-        @articles_for = articles_for
+        @pipeline = pipeline
+        @config = config
+        @resources = resources
       end
 
       ##
@@ -90,7 +93,7 @@ module Html2rss
 
       private
 
-      attr_reader :strategies, :budget, :session_for, :articles_for
+      attr_reader :strategies, :budget, :pipeline, :config, :resources
 
       def run_attempts
         AttemptState.new.tap do |state|
@@ -102,7 +105,7 @@ module Html2rss
       end
 
       def attempt(strategy:, next_strategy:, state:)
-        request_session = session_for.call(strategy:, budget:)
+        request_session = pipeline.request_session_for(config, strategy:, resources:)
         response = fetch_response(request_session:, strategy:, next_strategy:, state:)
         return unless response
 
@@ -120,7 +123,7 @@ module Html2rss
       end
 
       def process_response(response:, strategy:, next_strategy:, request_session:, state:)
-        articles, dedup_dropped = articles_for.call(response:, request_session:)
+        articles, dedup_dropped = articles_for(response:, request_session:)
         items_count = articles.size
         state.record_items(strategy:, items_count:)
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
@@ -129,6 +132,12 @@ module Html2rss
         return record_success(response:, strategy:, articles:, dedup_dropped:, state:) if items_count.positive?
 
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
+      end
+
+      def articles_for(response:, request_session:)
+        pipeline.deduplicated_articles(
+          ExtractionContext.new(config:, response:, request_session:)
+        )
       end
 
       def record_success(response:, strategy:, articles:, dedup_dropped:, state:)

@@ -172,7 +172,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
 
       # rubocop:disable RSpec/ExampleLength
-      it 'halts fallback chain immediately if the time budget is exhausted', :aggregate_failures do
+      it 'lets Strategy enforce exhausted time budget on later auto attempts', :aggregate_failures do
         t = 0.0
         allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC) { t }
         allow(Html2rss::RequestService).to receive(:execute).and_call_original
@@ -182,9 +182,13 @@ RSpec.describe Html2rss::FeedPipeline do
         end
 
         pipeline = described_class.new(base_config.merge(strategy: :auto, request: { total_timeout_seconds: 1 }))
-        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut)
+        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+          expect(error.attempts.map { |attempt| attempt[:strategy] }).to include(:faraday, :botasaurus)
+          expect(error.attempts).to include(
+            hash_including(strategy: :botasaurus, error_class: 'Html2rss::RequestService::RequestTimedOut')
+          )
+        end
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
       end
       # rubocop:enable RSpec/ExampleLength
     end
