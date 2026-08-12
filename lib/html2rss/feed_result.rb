@@ -52,10 +52,16 @@ module Html2rss
     end
 
     ##
-    # @param feed_url [String, nil] optional self URL for JSON Feed (wired in a later phase)
+    # @param feed_url [String, nil] optional self URL for JSON Feed (+feed_url+)
     # @return [Hash] JSON Feed 1.1 hash
-    def to_json_feed(feed_url: nil) # rubocop:disable Lint/UnusedMethodArgument -- G2 wires feed_url
-      FeedBuilder.build(:json_feed, channel: @channel, articles: @articles)
+    def to_json_feed(feed_url: nil)
+      FeedBuilder.build(
+        :json_feed,
+        channel: @channel,
+        articles: @articles,
+        feed_url:,
+        user_comment: status.to_generator_comment
+      )
     end
 
     ##

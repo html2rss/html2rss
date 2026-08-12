@@ -60,12 +60,21 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   describe '#to_json_feed' do
-    it 'accepts feed_url and returns a JSON Feed hash', :aggregate_failures do
+    # rubocop:disable RSpec/ExampleLength -- asserts feed_url, user_comment, and content_text routing together
+    it 'wires feed_url and status user_comment into the JSON Feed hash', :aggregate_failures do
       payload = result.to_json_feed(feed_url: 'https://example.com/feed.json')
 
-      expect(payload).to include(version: Html2rss::FeedBuilder::JsonFeed::VERSION_URL, title: 'Example')
+      expect(payload).to include(
+        version: Html2rss::FeedBuilder::JsonFeed::VERSION_URL,
+        title: 'Example',
+        feed_url: 'https://example.com/feed.json',
+        user_comment: status.to_generator_comment
+      )
       expect(payload[:items].size).to eq(1)
+      expect(payload[:items].first[:content_text]).to eq('Body')
+      expect(payload[:items].first).not_to have_key(:content_html)
     end
+    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#status' do

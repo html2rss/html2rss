@@ -18,14 +18,30 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed::Item do
   it 'serializes an item with html content', :aggregate_failures do
     expect(item_hash[:title]).to eq('Sample title')
     expect(item_hash[:content_html]).to eq('<p>Sample description</p>')
+    expect(item_hash).not_to have_key(:content_text)
     expect(item_hash[:authors]).to eq([{ name: 'Author Name' }])
+  end
+
+  it 'maps a plain-text description to content_text', :aggregate_failures do
+    article = build_article.call(**attributes, description: 'Plain description without markup')
+    hash = described_class.new(article).to_h
+
+    expect(hash[:content_text]).to eq('Plain description without markup')
+    expect(hash).not_to have_key(:content_html)
   end
 
   it 'falls back to content_text when only a title is available', :aggregate_failures do
     article = build_article.call(id: 'article-1', title: 'Sample title', url: 'https://example.com/articles/1')
+    hash = described_class.new(article).to_h
 
-    expect(described_class.new(article).to_h[:content_text]).to eq('Sample title')
-    expect(described_class.new(article).to_h).not_to have_key(:content_html)
+    expect(hash[:content_text]).to eq('Sample title')
+    expect(hash).not_to have_key(:content_html)
+  end
+
+  it 'does not fall back to title when a description is present' do
+    article = build_article.call(**attributes, description: 'Only body')
+
+    expect(described_class.new(article).to_h[:content_text]).to eq('Only body')
   end
 
   it 'returns nil when the article has no usable content' do

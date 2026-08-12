@@ -58,9 +58,10 @@ module Html2rss
   # Returns a JSONFeed 1.1 hash generated from the provided configuration.
   #
   # @param raw_config [Hash{Symbol => Object}] feed configuration
+  # @param feed_url [String, nil] optional self URL for the feed (JSON Feed +feed_url+)
   # @return [Hash] JSONFeed-compliant hash
-  def self.json_feed(raw_config)
-    feed_result(raw_config).to_json_feed
+  def self.json_feed(raw_config, feed_url: nil)
+    feed_result(raw_config).to_json_feed(feed_url:)
   end
 
   # rubocop:disable Metrics/ParameterLists

@@ -2,7 +2,7 @@
 
 module Html2rss
   ##
-  # Shared generator / JSON Feed user_comment formatter string (JSON wiring is a later phase).
+  # Shared RSS +generator+ / JSON Feed +user_comment+ formatter string.
   #
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
   Status = Data.define(:version, :scraper_tallies, :dedup_dropped) do
@@ -27,7 +27,7 @@ module Html2rss
     end
 
     ##
-    # Formats the RSS +generator+ string (and later JSON Feed +user_comment+).
+    # Formats the RSS +generator+ string and JSON Feed +user_comment+.
     #
     # @return [String]
     def to_generator_comment
