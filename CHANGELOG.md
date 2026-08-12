@@ -9,6 +9,7 @@
 * `Article#description` returns raw extracted text only. Feed-rendered description HTML (media + sanitize) is owned by `FeedBuilder::ItemPresentation.description_for`.
 * `FeedBuilder.build` is removed. Construct `FeedBuilder::Rss` / `FeedBuilder::JsonFeed` via `FeedResult` (or directly with required `generator:` / `user_comment:`).
 * Format adapters require non-blank `generator:` (RSS) and `user_comment:` (JSON Feed); they no longer rebuild `Status` as a fallback.
+* `FeedPipeline#to_rss` and `#to_json_feed` are removed. Use `FeedPipeline#to_result` then `FeedResult#to_rss` / `#to_json_feed`, or the contributor-facing `Html2rss.feed` / `Html2rss.json_feed` APIs.
 
 ## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)
 
