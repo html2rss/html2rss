@@ -74,19 +74,10 @@ module Html2rss
 
     private
 
-    ##
-    # @return [Array] constructor payload for Marshal (avoids default ivar thaw)
-    def marshal_dump
-      [@channel, @articles, @status, @stylesheets]
-    end
+    # Constructor payload for Marshal (avoids default ivar thaw). Rebuilds via {#initialize}.
+    def marshal_dump = [@channel, @articles, @status, @stylesheets]
 
-    ##
-    # Rebuilds via {#initialize} so the restored object is frozen again.
-    #
-    # @param payload [Array] values from {#marshal_dump}
-    # @return [void]
-    def marshal_load(payload)
-      channel, articles, status, stylesheets = payload
+    def marshal_load((channel, articles, status, stylesheets))
       initialize(channel:, articles:, status:, stylesheets:)
     end
 

@@ -74,14 +74,8 @@ module Html2rss
 
     def marshal_dump = [version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count]
 
-    def marshal_load(payload)
-      initialize(
-        version: payload[0],
-        scraper_tallies: payload[1],
-        dedup_dropped: payload[2],
-        selected_strategy: payload[3],
-        attempt_count: payload[4]
-      )
+    def marshal_load((version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count))
+      initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:)
     end
 
     def freeze_tallies(tallies)
