@@ -9,10 +9,11 @@ Where contributor-facing seams live. Prefer these homes over a second owner.
 | Policy + budget for one feed build | `FeedPipeline::RuntimePolicy.resources_for` (`budget_for` is a thin alias) |
 | Session construction | `RequestSession.build` (Context normalizes once) |
 | Required on every request Context | explicit `budget:` |
-| Adapter attempt timeouts | `Budget#effective_timeout_seconds` / `#effective_timeout_ms` |
+| Adapter attempt timeouts | `Budget#effective_timeout_seconds` / `#effective_timeout_ms` (Strategy only — not a pipeline pre-check) |
 | Browserless puppet public API | `PuppetCommander#call`; navigation `response_url` on `PuppetCommander::NavigationGuards` |
 | Auto fallback run state | `FeedPipeline::AutoFallback::AttemptState` |
-| Article collection inputs | `FeedPipeline::ExtractionContext` |
+| Auto fallback host | `FeedPipeline::AutoFallback` via `pipeline:` → `request_session_for` / `deduplicated_articles` |
+| Article collection inputs | kwargs on `FeedPipeline` private collectors (`config:`, `response:`, `request_session:`) |
 
 ## HTML / AutoSource
 
@@ -51,8 +52,8 @@ Channel projection: Rss uses language/title/description/ttl/link/updated; JsonFe
 | Concern | Home |
 | --- | --- |
 | Telemetry on `FeedResult#status` | `Status.build` — version, scraper_tallies, dedup_dropped, auto `selected_strategy`, `attempt_count` (0 outside `:auto`) |
-| Generator / user_comment string | `Status#to_generator_comment` (scraper-focused) |
-| Observability hash for web | `Status#to_h` (`scraper_status`) — no article bodies/URLs |
+| Generator / user_comment string | `Status#to_generator_comment` (scraper-focused; omits `(scrapers: …)` when tallies empty) |
+| Observability hash for web | `Status#to_h` (`scraper_status`) — omits empty `scraper_tallies`, nil `selected_strategy`, zero `attempt_count`; no article bodies/URLs |
 | Typed scrape-finished handoff | `FeedPipeline::PipelineOutcome` |
 | Dedup before handoff | `#deduplicated_articles` → `[unique, dedup_dropped]` |
 
