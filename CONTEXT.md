@@ -30,6 +30,10 @@ Feed channel metadata (title, description, ttl, language, author, image, last_bu
 
 Closed Marshal-cacheable handle for one scrape. Frozen public query/render set: `empty?`, `channel_title`, `to_rss`, `to_json_feed`, `status`. Non-goals: do **not** expose Channel or Articles readers; do not grow this set without an explicit consumer-contract change. Materialization owns Channel + Status + articles internally; format adapters render from that private payload. `status.to_h` remains the observability payload for web (`scraper_status`).
 
+## Status
+
+Consumer-facing scrape telemetry on `FeedResult#status`: version, scraper_tallies, dedup_dropped, plus auto-path `selected_strategy` (Symbol or nil) and `attempt_count` (Integer; 0 outside `:auto`). Built via `Status.build`. `to_generator_comment` stays scraper-focused (no strategy bloat). `to_h` keys are additive for web. Must not include article bodies/URLs. Owned by `Html2rss::Status`; scrape-finished handoff arrives via `FeedPipeline::PipelineOutcome`.
+
 ## ItemScope post-process config
 
 Per-item extraction scope carries `channel` (url/time_zone). Post-processor `Context` config is derived as `{ channel: scope.channel }` in `ItemScope#context_for` — there is no parallel `post_process_config` bag.

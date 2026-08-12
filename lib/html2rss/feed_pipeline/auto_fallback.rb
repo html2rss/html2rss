@@ -5,7 +5,7 @@ module Html2rss
     # Retries feed extraction across concrete request strategies for the :auto plan.
     #
     # Owned by {FeedPipeline}; invoked only after {StrategyPlan} resolves +:auto+.
-    class AutoFallback
+    class AutoFallback # rubocop:disable Metrics/ClassLength
       # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[faraday botasaurus browserless].freeze
 
@@ -52,9 +52,17 @@ module Html2rss
         # @param response [RequestService::Response] successful response
         # @param articles [Array] extracted articles
         # @param dedup_dropped [Integer] articles removed by deduplication
+        # @param selected_strategy [Symbol] concrete strategy that produced items
+        # @param attempt_count [Integer] number of attempts recorded for this chain
         # @return [void]
-        def succeed!(response:, articles:, dedup_dropped:)
-          @result = PipelineOutcome.new(response:, articles:, dedup_dropped:)
+        def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:)
+          @result = PipelineOutcome.new(
+            response:,
+            articles:,
+            dedup_dropped:,
+            selected_strategy:,
+            attempt_count:
+          )
         end
       end
 
@@ -128,10 +136,11 @@ module Html2rss
       end
 
       def record_success(response:, strategy:, articles:, dedup_dropped:, state:)
-        state.succeed!(response:, articles:, dedup_dropped:)
-        return unless state.attempts.size > 1
+        attempt_count = state.attempts.size
+        state.succeed!(response:, articles:, dedup_dropped:, selected_strategy: strategy, attempt_count:)
+        return unless attempt_count > 1
 
-        Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{state.attempts.size} " \
+        Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempt_count} " \
                  "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                  "budget_remaining=#{budget_remaining_label}")
       end

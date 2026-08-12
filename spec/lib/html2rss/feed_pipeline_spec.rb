@@ -283,8 +283,39 @@ RSpec.describe Html2rss::FeedPipeline do
       result = described_class.new(config).to_result
 
       expect(result.status.dedup_dropped).to eq(1)
+      expect(result.status.selected_strategy).to be_nil
+      expect(result.status.attempt_count).to eq(0)
       expect(result.to_rss.items.size).to eq(1)
     end
     # rubocop:enable RSpec/ExampleLength
+
+    context 'when strategy is auto and fallback succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) { base_config.merge(strategy: :auto, request: { max_requests: 3 }) }
+      let(:empty_response) do
+        build_response.call(body: '<html><body><div>empty</div></body></html>')
+      end
+      let(:item_response) do
+        build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
+      end
+
+      before do
+        allow(Html2rss::Log).to receive(:info)
+        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::Log).to receive(:debug)
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          strategy == :faraday ? empty_response : item_response
+        end
+      end
+
+      it 'puts selected_strategy and attempt_count on status', :aggregate_failures do
+        result = described_class.new(config).to_result
+
+        expect(result.status.selected_strategy).to eq(:botasaurus)
+        expect(result.status.attempt_count).to eq(2)
+        expect(result.status.to_h).to include(selected_strategy: :botasaurus, attempt_count: 2)
+        expect(result.status.to_generator_comment).not_to include('botasaurus')
+      end
+    end
   end
 end
