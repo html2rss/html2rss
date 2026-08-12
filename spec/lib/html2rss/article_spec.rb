@@ -56,14 +56,15 @@ RSpec.describe Html2rss::Article do
   end
 
   describe '#description' do
-    before do
-      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new).and_call_original
-      instance.description
+    it 'returns the raw extracted description without DescriptionBuilder', :aggregate_failures do
+      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new)
+
+      expect(instance.description).to eq('By John Doe')
+      expect(Html2rss::Html::Rendering::DescriptionBuilder).not_to have_received(:new)
     end
 
-    it 'calls the DescriptionBuilder' do
-      expect(Html2rss::Html::Rendering::DescriptionBuilder).to have_received(:new)
-        .with(base: 'By John Doe', title: 'Sample instance', url: instance.url, enclosures: [], image: nil)
+    it 'returns nil for a blank description' do
+      expect(described_class.new(description: '  ').description).to be_nil
     end
   end
 
@@ -181,49 +182,6 @@ RSpec.describe Html2rss::Article do
 
       expect(article.deduplication_fingerprint).to eq(expected)
     end
-  end
-
-  describe '#enclosure' do
-    let(:audio_url) { Html2rss::Url.from_absolute('https://example.com/episode.mp3') }
-    let(:image_url) { Html2rss::Url.from_absolute('https://example.com/cover.jpg') }
-
-    it 'does not fall back to image when enclosures are absent' do
-      article = described_class.new(image: image_url)
-
-      expect(article.enclosure).to be_nil
-    end
-
-    it 'keeps image available for JSON Feed / description when enclosures are absent', :aggregate_failures do
-      article = described_class.new(image: image_url)
-
-      expect(article.image).to eq(image_url)
-      expect(article.enclosure).to be_nil
-    end
-
-    it 'skips image/* enclosures so RSS never uses an image as <enclosure>' do
-      article = described_class.new(
-        enclosures: [{ url: image_url, type: 'image/jpeg' }],
-        image: image_url
-      )
-
-      expect(article.enclosure).to be_nil
-    end
-
-    # rubocop:disable RSpec/ExampleLength -- prefers non-image enclosure while preserving image field
-    it 'prefers the first non-image enclosure over image enclosures', :aggregate_failures do
-      article = described_class.new(
-        enclosures: [
-          { url: image_url, type: 'image/jpeg' },
-          { url: audio_url, type: 'audio/mpeg' }
-        ],
-        image: image_url
-      )
-
-      expect(article.enclosure.url).to eq(audio_url)
-      expect(article.enclosure.type).to eq('audio/mpeg')
-      expect(article.image).to eq(image_url)
-    end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#categories' do

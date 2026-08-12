@@ -14,7 +14,7 @@ module Html2rss
         def add_item(article, item_maker)
           add_item_string_values(article, item_maker)
           add_item_categories(article, item_maker)
-          add_enclosure(article.enclosure, item_maker)
+          add_enclosure(ItemPresentation.rss_enclosure_for(article), item_maker)
           add_item_guid(article, item_maker)
         end
 
@@ -34,11 +34,14 @@ module Html2rss
         private
 
         def add_item_string_values(article, item_maker)
-          %i[title description author].each do |attr|
-            next unless (value = article.send(attr))
-            next if value.empty?
+          {
+            title: article.title,
+            description: ItemPresentation.description_for(article),
+            author: article.author
+          }.each do |attr, value|
+            next if value.nil? || value.empty?
 
-            item_maker.send(:"#{attr}=", value)
+            item_maker.public_send(:"#{attr}=", value)
           end
 
           item_maker.link = article.url.to_s if article.url

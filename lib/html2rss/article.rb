@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
 require 'zlib'
-require 'sanitize'
-require 'nokogiri'
 
 module Html2rss
   ##
   # Article is a simple data object representing an article extracted from a page.
   # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
-  # rubocop:disable Metrics/ClassLength
+  #
+  # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
   class Article
     include Enumerable
     include Comparable
@@ -26,7 +25,7 @@ module Html2rss
     # @param options [Hash{Symbol => String}]
     # @option options [String] :id stable article identifier
     # @option options [String] :title article title
-    # @option options [String] :description article description/content
+    # @option options [String] :description raw extracted description/content (not feed-rendered HTML)
     # @option options [String, Html2rss::Url] :url canonical article URL
     # @option options [String, Html2rss::Url] :image image URL for description / JSON Feed +image+
     # @option options [String] :author author name
@@ -38,7 +37,7 @@ module Html2rss
     def initialize(**options)
       @to_h = options.each_with_object({}) { |(k, v), h| h[k] = v.freeze if v }.freeze
 
-      @description = @url = @image = @guid = @enclosures = @enclosure = @categories = @published_at = NOT_SET
+      @url = @image = @guid = @enclosures = @categories = @published_at = NOT_SET
 
       return unless (unknown_keys = options.keys - PROVIDED_KEYS).any?
 
@@ -79,18 +78,10 @@ module Html2rss
     # @return [String, nil] article title
     def title = blank_string_to_nil(@to_h[:title])
 
-    # @return [String] rendered article description
-    def description
-      return @description unless @description == NOT_SET
-
-      @description = Html::Rendering::DescriptionBuilder.new(
-        base: @to_h[:description],
-        title:,
-        url:,
-        enclosures:,
-        image:
-      ).call
-    end
+    # Raw extracted description — feed HTML enrichment is {FeedBuilder::ItemPresentation.description_for}.
+    #
+    # @return [String, nil]
+    def description = blank_string_to_nil(@to_h[:description])
 
     # @return [Url, nil]
     def url
@@ -133,13 +124,6 @@ module Html2rss
                     .map { |enclosure| Enclosure.new(**enclosure) }
     end
 
-    # @return [Html2rss::Article::Enclosure, nil] first non-image entry from {#enclosures}
-    def enclosure
-      return @enclosure unless @enclosure == NOT_SET
-
-      @enclosure = enclosures.find { |enc| !image_mime_type?(enc.type) }
-    end
-
     # @return [Array<String>] normalized, unique category names
     def categories
       return @categories unless @categories == NOT_SET
@@ -177,10 +161,6 @@ module Html2rss
 
     private
 
-    def image_mime_type?(type)
-      type.to_s.downcase.start_with?('image/')
-    end
-
     def dedup_from_url
       return unless (value = url)
 
@@ -212,5 +192,4 @@ module Html2rss
       value
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end
