@@ -32,7 +32,7 @@ Closed Marshal-cacheable handle for one scrape. Frozen public query/render set: 
 
 ## Status
 
-Consumer-facing scrape telemetry on `FeedResult#status`: version, scraper_tallies, dedup_dropped, plus auto-path `selected_strategy` (Symbol or nil) and `attempt_count` (Integer; 0 outside `:auto`). Built via `Status.build`. `to_generator_comment` stays scraper-focused (no strategy bloat). `to_h` keys are additive for web. Must not include article bodies/URLs. Owned by `Html2rss::Status`; scrape-finished handoff arrives via `FeedPipeline::PipelineOutcome`. Deduplication before that handoff is `FeedPipeline::DedupResult` (articles + dedup_dropped) — not a parallel hash bag.
+Consumer-facing scrape telemetry on `FeedResult#status`: version, scraper_tallies, dedup_dropped, plus auto-path `selected_strategy` (Symbol or nil) and `attempt_count` (Integer; 0 outside `:auto`). Built via `Status.build`. `to_generator_comment` stays scraper-focused (no strategy bloat). `to_h` keys are additive for web. Must not include article bodies/URLs. Owned by `Html2rss::Status`; scrape-finished handoff arrives via `FeedPipeline::PipelineOutcome` (typed handoff). Deduplication before that handoff is `#deduplicated_articles` → `[unique, dedup_dropped]` — not a parallel hash bag.
 
 ## Item presentation
 
