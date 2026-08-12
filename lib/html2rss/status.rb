@@ -7,10 +7,6 @@ module Html2rss
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
-  #
-  # @!method to_h
-  #   @return [Hash{Symbol => Object}] keys: +:version+ (String), +:scraper_tallies+ (Hash),
-  #     +:dedup_dropped+ (Integer), +:selected_strategy+ (Symbol, nil), +:attempt_count+ (Integer)
   Status = Data.define(:version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count) do
     class << self
       ##
@@ -61,11 +57,31 @@ module Html2rss
     end
 
     ##
+    # Observability hash for web (+scraper_status+). Omits empty/absent optional keys:
+    # +:scraper_tallies+ when empty, +:selected_strategy+ when +nil+, +:attempt_count+ when zero.
+    # Data members remain available via readers even when omitted here.
+    #
+    # @return [Hash{Symbol => Object}] always +:version+ (String), +:dedup_dropped+ (Integer);
+    #   optionally +:scraper_tallies+, +:selected_strategy+, +:attempt_count+
+    def to_h
+      {
+        version:,
+        dedup_dropped:,
+        **(scraper_tallies.any? ? { scraper_tallies: } : {}),
+        **(selected_strategy.nil? ? {} : { selected_strategy: }),
+        **(attempt_count.positive? ? { attempt_count: } : {})
+      }
+    end
+
+    ##
     # Formats the RSS +generator+ string and JSON Feed +user_comment+.
     # Scraper-focused only — auto strategy summary stays on {#to_h}, not this string.
+    # Omits the +(scrapers: …)+ clause when tallies are empty.
     #
     # @return [String]
     def to_generator_comment
+      return "html2rss V. #{version}" if scraper_tallies.empty?
+
       counts = scraper_tallies.map { |name, count| "#{name} (#{count})" }
       "html2rss V. #{version} (scrapers: #{counts.join(', ')})"
     end

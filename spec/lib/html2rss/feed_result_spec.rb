@@ -95,7 +95,9 @@ RSpec.describe Html2rss::FeedResult do
     it 'exposes frozen telemetry including dedup_dropped', :aggregate_failures do
       expect(result.status.dedup_dropped).to eq(1)
       expect(result.status.scraper_tallies).to eq('Selectors' => 1)
-      expect(result.status.to_h).to include(selected_strategy: nil, attempt_count: 0)
+      expect(result.status.selected_strategy).to be_nil
+      expect(result.status.attempt_count).to eq(0)
+      expect(result.status.to_h).not_to include(:selected_strategy, :attempt_count)
     end
   end
 

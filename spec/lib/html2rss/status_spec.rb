@@ -85,17 +85,83 @@ RSpec.describe Html2rss::Status do
     # rubocop:enable RSpec/ExampleLength
   end
 
+  describe '#to_h' do
+    # rubocop:disable RSpec/ExampleLength -- tallies present for both scraper homes
+    it 'includes scraper_tallies for selector and auto-source scrapers', :aggregate_failures do
+      status = described_class.build(
+        articles: [
+          Html2rss::Article.new(id: '1', title: 'A', url: 'https://example.com/a',
+                                scraper: Html2rss::AutoSource::Scraper::Html),
+          Html2rss::Article.new(id: '2', title: 'B', url: 'https://example.com/b',
+                                scraper: Html2rss::Selectors)
+        ],
+        dedup_dropped: 0
+      )
+
+      expect(status.to_h).to include(
+        version: Html2rss::VERSION,
+        dedup_dropped: 0,
+        scraper_tallies: { 'AutoSource::Html' => 1, 'Selectors' => 1 }
+      )
+      expect(status.to_h).not_to include(:selected_strategy, :attempt_count)
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    # rubocop:disable RSpec/ExampleLength -- member vs to_h omission contract
+    it 'omits scraper_tallies when no article carries a scraper', :aggregate_failures do
+      status = described_class.build(
+        articles: [Html2rss::Article.new(id: '1', title: 'A', url: 'https://example.com/a')],
+        dedup_dropped: 0
+      )
+
+      expect(status.scraper_tallies).to eq({})
+      expect(status.to_h).to eq(version: Html2rss::VERSION, dedup_dropped: 0)
+      expect(status.to_h).not_to have_key(:scraper_tallies)
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'omits nil selected_strategy and zero attempt_count from the hash', :aggregate_failures do
+      status = described_class.build(articles: [], dedup_dropped: 3)
+
+      expect(status.selected_strategy).to be_nil
+      expect(status.attempt_count).to eq(0)
+      expect(status.to_h.keys).to contain_exactly(:version, :dedup_dropped)
+    end
+  end
+
   describe '#to_generator_comment' do
-    subject(:comment) do
-      described_class.new(
+    # rubocop:disable RSpec/ExampleLength -- setup + exact generator string
+    it 'formats the RSS generator / JSON Feed user_comment string' do
+      comment = described_class.new(
         version: '9.9.9',
         scraper_tallies: { 'Selectors' => 2, 'AutoSource::Html' => 1 },
         dedup_dropped: 0
       ).to_generator_comment
-    end
 
-    it 'formats the RSS generator / JSON Feed user_comment string' do
       expect(comment).to eq('html2rss V. 9.9.9 (scrapers: Selectors (2), AutoSource::Html (1))')
     end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'omits the scrapers clause when tallies are empty', :aggregate_failures do
+      comment = described_class.new(version: '9.9.9', scraper_tallies: {}, dedup_dropped: 0)
+                               .to_generator_comment
+
+      expect(comment).to eq('html2rss V. 9.9.9')
+      expect(comment).not_to include('scrapers:')
+    end
+  end
+
+  describe 'Marshal vs to_h' do
+    # rubocop:disable RSpec/ExampleLength -- round-trip keeps empty member tallies
+    it 'restores empty tallies on members even when to_h omitted them', :aggregate_failures do
+      status = described_class.build(articles: [], dedup_dropped: 0)
+      restored = Marshal.load(Marshal.dump(status))
+
+      expect(status.to_h).not_to have_key(:scraper_tallies)
+      expect(restored.scraper_tallies).to eq({})
+      expect(restored.attempt_count).to eq(0)
+      expect(restored.selected_strategy).to be_nil
+    end
+    # rubocop:enable RSpec/ExampleLength
   end
 end
