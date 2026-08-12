@@ -12,7 +12,8 @@ RSpec.describe Html2rss::RequestService::LocalFileStrategy do
       Html2rss::RequestService::Budget,
       consume!: nil,
       remaining_timeout_seconds: nil,
-      effective_timeout_seconds: 30.0
+      effective_timeout_seconds: 30.0,
+      elapsed_seconds: 0.0
     )
   end
   let(:temp_file) do
