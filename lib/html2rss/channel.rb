@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require 'time'
+
+# rubocop:disable Metrics/ModuleLength -- Channel value object owns extract + freeze + Marshal
 module Html2rss
   ##
   # Materialized channel metadata for feed builders and {FeedResult}.
   #
   # Extract once via {Channel.from_response}; builders consume this value object and
   # do not own channel extraction. Safe to Marshal (no Response / Nokogiri retained).
+  # Strings and image URL are normalized and frozen at construction (including Marshal load).
   #
   # @!attribute [r] title
   #   @return [String]
@@ -18,7 +22,7 @@ module Html2rss
   # @!attribute [r] ttl
   #   @return [Integer]
   # @!attribute [r] last_build_date
-  #   @return [String, Time]
+  #   @return [Time]
   # @!attribute [r] image
   #   @return [Html2rss::Url, nil]
   # @!attribute [r] author
@@ -119,7 +123,14 @@ module Html2rss
         parsed_body(response).at_css('meta[name="author"]')&.[]('content')
       end
 
-      def last_build_date_for(response) = headers(response)['last-modified'] || Time.now
+      def last_build_date_for(response)
+        header = headers(response)['last-modified']
+        return Time.now unless header
+
+        Time.httpdate(header)
+      rescue ArgumentError
+        Time.now
+      end
 
       def image_for(response, overrides)
         return overrides[:image] if overrides[:image]
@@ -134,5 +145,57 @@ module Html2rss
       def headers(response) = response.headers
       def html_response?(response) = response.html_response?
     end
+
+    ##
+    # @param title [String]
+    # @param url [Html2rss::Url, String]
+    # @param description [String]
+    # @param language [String, nil]
+    # @param ttl [Integer]
+    # @param last_build_date [Time, String]
+    # @param image [Html2rss::Url, String, nil]
+    # @param author [String, nil]
+    # rubocop:disable Metrics/ParameterLists -- Data.define members are the channel contract
+    def initialize(title:, url:, description:, language:, ttl:, last_build_date:, image:, author:)
+      super(
+        title: freeze_string(title),
+        url: url.is_a?(Url) ? url : Url.from_absolute(url),
+        description: freeze_string(description),
+        language: language && freeze_string(language),
+        ttl: Integer(ttl),
+        last_build_date: normalize_last_build_date(last_build_date),
+        image: normalize_image(image),
+        author: author && freeze_string(author)
+      )
+    end
+    # rubocop:enable Metrics/ParameterLists
+
+    private
+
+    def marshal_dump = [title, url, description, language, ttl, last_build_date, image, author]
+
+    def marshal_load(payload)
+      initialize(
+        title: payload[0], url: payload[1], description: payload[2], language: payload[3],
+        ttl: payload[4], last_build_date: payload[5], image: payload[6], author: payload[7]
+      )
+    end
+
+    def freeze_string(value) = value.to_s.dup.freeze
+
+    def normalize_image(value)
+      return value if value.is_a?(Url)
+      return if value.nil?
+
+      Url.sanitize(value.to_s)
+    end
+
+    def normalize_last_build_date(value)
+      return value if value.is_a?(Time)
+      raise ArgumentError, 'last_build_date must be a Time or HTTP-date String' unless value.is_a?(String)
+
+      Time.httpdate(value)
+    end
   end
+  # rubocop:enable Metrics/ModuleLength
 end

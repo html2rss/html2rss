@@ -179,7 +179,8 @@ RSpec.describe Html2rss::Channel do
       end
     end
 
-    it_behaves_like 'returns overridden value', :image, :image, 'https://example.com/override.jpg'
+    it_behaves_like 'returns overridden value', :image, :image,
+                    Html2rss::Url.from_absolute('https://example.com/override.jpg')
 
     context 'with og:image meta tag' do
       let(:body) { build_html_with_property.call(property: 'og:image', content: 'https://example.com/image.jpg') }
@@ -201,8 +202,8 @@ RSpec.describe Html2rss::Channel do
 
   describe '#last_build_date' do
     context 'with a last-modified header' do
-      it 'extracts the last-modified header' do
-        expect(instance.last_build_date).to eq('Tue, 01 Jan 2019 00:00:00 GMT')
+      it 'parses the header into a Time' do
+        expect(instance.last_build_date).to eq(Time.httpdate('Tue, 01 Jan 2019 00:00:00 GMT'))
       end
     end
 
@@ -252,6 +253,35 @@ RSpec.describe Html2rss::Channel do
         expect(instance.author).to be_nil
       end
     end
+  end
+
+  describe 'immutability' do
+    # rubocop:disable RSpec/ExampleLength -- freeze + Url normalize + caller isolation
+    it 'freezes retained strings and resists caller mutation of override image input', :aggregate_failures do
+      image = +'https://example.com/override.jpg'
+      channel = described_class.from_response(response, overrides: { title: +'Mutable', image: })
+
+      expect(channel.title).to be_frozen
+      expect(channel.image).to be_a(Html2rss::Url)
+      expect(channel.last_build_date).to be_a(Time)
+      expect { channel.title << 'X' }.to raise_error(FrozenError)
+
+      image.replace('https://evil.example/x.jpg')
+      expect(channel.image.to_s).to eq('https://example.com/override.jpg')
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    # rubocop:disable RSpec/ExampleLength -- Marshal round-trip freeze contract
+    it 're-freezes nested state after Marshal.round-trip', :aggregate_failures do
+      channel = described_class.from_response(response, overrides: { title: 'Cached' })
+      restored = Marshal.load(Marshal.dump(channel))
+
+      expect(restored).to be_frozen
+      expect(restored.title).to be_frozen
+      expect(restored.last_build_date).to be_a(Time)
+      expect { restored.title << 'X' }.to raise_error(FrozenError)
+    end
+    # rubocop:enable RSpec/ExampleLength
   end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

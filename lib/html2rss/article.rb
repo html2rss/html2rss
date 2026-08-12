@@ -8,6 +8,7 @@ module Html2rss
   # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
   #
   # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
+  # rubocop:disable Metrics/ClassLength -- value object retains Marshal + defensive freeze helpers
   class Article
     include Enumerable
     include Comparable
@@ -35,27 +36,13 @@ module Html2rss
     # @option options [Array<String>] :categories category labels
     # @option options [Class] :scraper scraper class that produced the article
     def initialize(**options)
-      @to_h = options.each_with_object({}) { |(k, v), h| h[k] = v.freeze if v }.freeze
+      @to_h = options.each_with_object({}) { |(key, value), hash| hash[key] = freeze_option(value) }.freeze
 
       @url = @image = @guid = @enclosures = @categories = @published_at = NOT_SET
 
       return unless (unknown_keys = options.keys - PROVIDED_KEYS).any?
 
       Log.warn "Article: unknown keys found: #{unknown_keys.join(', ')}"
-    end
-
-    ##
-    # Marshal only the constructor payload so lazy +NOT_SET+ sentinels do not break
-    # {FeedResult} cache round-trips.
-    #
-    # @return [Hash{Symbol => Object}]
-    def marshal_dump = @to_h
-
-    ##
-    # @param payload [Hash{Symbol => Object}] constructor options from {#marshal_dump}
-    # @return [void]
-    def marshal_load(payload)
-      initialize(**payload)
     end
 
     # Checks if the article is valid based on the presence of URL, ID, and either title or description.
@@ -122,6 +109,7 @@ module Html2rss
 
       @enclosures = Array(@to_h[:enclosures])
                     .map { |enclosure| Enclosure.new(**enclosure) }
+                    .freeze
     end
 
     # @return [Array<String>] normalized, unique category names
@@ -132,7 +120,7 @@ module Html2rss
         categories.map! { |category| category.to_s.strip }
         categories.reject!(&:empty?)
         categories.uniq!
-      end
+      end.freeze
     end
 
     # Parses and returns the published_at time.
@@ -160,6 +148,35 @@ module Html2rss
     end
 
     private
+
+    ##
+    # Marshal only the constructor payload so lazy +NOT_SET+ sentinels do not break
+    # {FeedResult} cache round-trips.
+    #
+    # @return [Hash{Symbol => Object}]
+    def marshal_dump = @to_h
+
+    ##
+    # @param payload [Hash{Symbol => Object}] constructor options from {#marshal_dump}
+    # @return [void]
+    def marshal_load(payload)
+      initialize(**payload)
+    end
+
+    def freeze_option(value)
+      case value
+      when String then value.dup.freeze
+      when Array then freeze_array_option(value)
+      when Hash then value.transform_values { freeze_option(_1) }.freeze
+      else value
+      end
+    end
+
+    def freeze_array_option(value)
+      value.map do |entry|
+        entry.is_a?(Hash) ? entry.transform_values { freeze_option(_1) }.freeze : freeze_option(entry)
+      end.freeze
+    end
 
     def dedup_from_url
       return unless (value = url)
@@ -192,4 +209,5 @@ module Html2rss
       value
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end
