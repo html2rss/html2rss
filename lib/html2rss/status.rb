@@ -5,6 +5,11 @@ module Html2rss
   # Shared RSS +generator+ / JSON Feed +user_comment+ formatter string.
   #
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
+  # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
+  #
+  # @!method to_h
+  #   @return [Hash{Symbol => Object}] keys: +:version+ (String), +:scraper_tallies+ (Hash),
+  #     +:dedup_dropped+ (Integer)
   Status = Data.define(:version, :scraper_tallies, :dedup_dropped) do
     class << self
       ##

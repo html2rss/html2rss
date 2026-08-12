@@ -65,7 +65,8 @@ module Html2rss
     end
 
     ##
-    # @return [Html2rss::Status] frozen scraper tallies, dedup_dropped, generator formatter
+    # @return [Html2rss::Status] frozen scraper tallies, dedup count, and generator formatter.
+    #   {#to_h} on +status+ is a stable consumer contract for observability payloads.
     attr_reader :status
   end
 end

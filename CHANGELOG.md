@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+* RSS `<enclosure>` is no longer emitted from item images alone; configure a non-image enclosure or use JSON Feed `image` / description media instead.
+
 ## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)
 
 

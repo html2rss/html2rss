@@ -258,4 +258,33 @@ RSpec.describe Html2rss::FeedPipeline do
       # rubocop:enable RSpec/ExampleLength
     end
   end
+
+  describe '#to_result' do
+    # rubocop:disable RSpec/ExampleLength -- inline config + duplicate HTML fixture
+    it 'reports dedup_dropped on status after pipeline deduplication', :aggregate_failures do
+      config = base_config.merge(
+        strategy: :faraday,
+        selectors: base_config[:selectors].merge(
+          url: { selector: 'a', extractor: 'href' },
+          id: { selector: 'a', extractor: 'href' }
+        )
+      )
+      response = build_response.call(
+        body: <<~HTML,
+          <html><body>
+            <article><a href="https://example.com/news/dup"><h1>First</h1></a></article>
+            <article><a href="https://example.com/news/dup"><h1>Second</h1></a></article>
+          </body></html>
+        HTML
+        url: 'https://example.com/news'
+      )
+      stub_first_strategy_success.call(response)
+
+      result = described_class.new(config).to_result
+
+      expect(result.status.dedup_dropped).to eq(1)
+      expect(result.to_rss.items.size).to eq(1)
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
 end
