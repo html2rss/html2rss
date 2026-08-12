@@ -19,7 +19,7 @@ module Html2rss
     # @return [Html2rss::FeedResult]
     def to_result
       run do |response:, config:, articles:|
-        channel = Html2rss::Channel.new(response, overrides: config.channel)
+        channel = Html2rss::Channel.from_response(response, overrides: config.channel)
         status = Status.build(articles:)
         FeedResult.new(channel:, articles:, status:, stylesheets: config.stylesheets)
       end
