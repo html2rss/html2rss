@@ -174,11 +174,8 @@ module Html2rss
 
     def marshal_dump = [title, url, description, language, ttl, last_build_date, image, author]
 
-    def marshal_load(payload)
-      initialize(
-        title: payload[0], url: payload[1], description: payload[2], language: payload[3],
-        ttl: payload[4], last_build_date: payload[5], image: payload[6], author: payload[7]
-      )
+    def marshal_load((title, url, description, language, ttl, last_build_date, image, author))
+      initialize(title:, url:, description:, language:, ttl:, last_build_date:, image:, author:)
     end
 
     def freeze_string(value) = value.to_s.dup.freeze

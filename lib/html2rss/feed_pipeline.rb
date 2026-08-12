@@ -8,20 +8,9 @@ module Html2rss
     ExtractionContext = Data.define(:config, :response, :request_session)
 
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
-    PipelineOutcome = Data.define(:response, :articles, :dedup_dropped, :selected_strategy, :attempt_count) do
-      ##
-      # @param response [RequestService::Response]
-      # @param articles [Array<Html2rss::Article>]
-      # @param dedup_dropped [Integer]
-      # @param selected_strategy [Symbol, nil] set on :auto success; nil otherwise
-      # @param attempt_count [Integer] auto attempts attempted; 0 outside :auto
-      def initialize(response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
-        super
-      end
-    end
-
-    # Deduplicated article list plus drop count from one extraction pass.
-    DedupResult = Data.define(:articles, :dedup_dropped)
+    # selected_strategy: set on :auto success; nil otherwise.
+    # attempt_count: auto attempts attempted; 0 outside :auto.
+    PipelineOutcome = Data.define(:response, :articles, :dedup_dropped, :selected_strategy, :attempt_count)
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
@@ -63,8 +52,8 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
-      extracted = deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
-      PipelineOutcome.new(response:, articles: extracted.articles, dedup_dropped: extracted.dedup_dropped)
+      articles, dedup_dropped = deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
+      PipelineOutcome.new(response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
     end
 
     def request_session_for(config, strategy:, resources:)
@@ -76,10 +65,11 @@ module Html2rss
       )
     end
 
+    # @return [Array(Array<Html2rss::Article>, Integer)] unique articles and drop count
     def deduplicated_articles(extraction)
       collected = collect_articles(extraction)
       unique = Article::Deduplicator.new(collected).call
-      DedupResult.new(articles: unique, dedup_dropped: collected.size - unique.size)
+      [unique, collected.size - unique.size]
     end
 
     # rubocop:disable Metrics/MethodLength

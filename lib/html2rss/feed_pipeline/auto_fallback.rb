@@ -70,7 +70,7 @@ module Html2rss
       # @param strategies [Array<Symbol>] ordered concrete strategies for fallback
       # @param budget [RequestService::Budget] shared request budget across retries
       # @param session_for [Proc] request session factory proc
-      # @param articles_for [Proc] article extraction proc (returns {DedupResult})
+      # @param articles_for [Proc] article extraction proc (returns +[articles, dedup_dropped]+)
       # @return [void]
       def initialize(strategies:, budget:, session_for:, articles_for:)
         @strategies = strategies
@@ -119,18 +119,14 @@ module Html2rss
         nil
       end
 
-      def process_response(response:, strategy:, next_strategy:, request_session:, state:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-        extracted = articles_for.call(response:, request_session:)
-        articles = extracted.articles
+      def process_response(response:, strategy:, next_strategy:, request_session:, state:)
+        articles, dedup_dropped = articles_for.call(response:, request_session:)
         items_count = articles.size
         state.record_items(strategy:, items_count:)
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
-        if items_count.positive?
-          return record_success(response:, strategy:, articles:, dedup_dropped: extracted.dedup_dropped,
-                                state:)
-        end
+        return record_success(response:, strategy:, articles:, dedup_dropped:, state:) if items_count.positive?
 
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
