@@ -2,8 +2,7 @@
 
 module Html2rss
   ##
-  # Frozen pipeline telemetry for one scrape: scraper tallies, dedup drops, and the
-  # shared generator / +user_comment+ formatter string.
+  # Shared generator / JSON Feed user_comment formatter string (JSON wiring is a later phase).
   #
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
   Status = Data.define(:version, :scraper_tallies, :dedup_dropped) do
@@ -28,7 +27,7 @@ module Html2rss
     end
 
     ##
-    # Formats the RSS +generator+ / JSON Feed +user_comment+ string.
+    # Formats the RSS +generator+ string (and later JSON Feed +user_comment+).
     #
     # @return [String]
     def to_generator_comment

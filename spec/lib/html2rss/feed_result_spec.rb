@@ -80,6 +80,7 @@ RSpec.describe Html2rss::FeedResult do
       restored = Marshal.load(Marshal.dump(result))
 
       expect(restored).to be_a(described_class)
+      expect(restored).to be_frozen
       expect(restored).not_to be_empty
       expect(restored.status.to_generator_comment).to eq(status.to_generator_comment)
       expect(restored.to_rss).to be_a(RSS::Rss)
