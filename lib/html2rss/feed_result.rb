@@ -2,18 +2,21 @@
 
 module Html2rss
   ##
-  # Opaque, Marshal-cacheable result of one scrape.
+  # Closed Marshal-cacheable handle for one scrape.
   #
-  # Public surface for consumers (including html2rss-web): {#empty?}, {#channel_title},
-  # {#to_rss}, {#to_json_feed}, and {#status}. Articles and the channel object are not exposed.
+  # Frozen consumer query/render set (do not grow without an explicit contract change):
+  # {#empty?}, {#channel_title}, {#to_rss}, {#to_json_feed}, and {#status}.
+  #
+  # Non-goals: no Channel reader, no Articles reader, no peephole into scrape internals.
+  # html2rss-web and other consumers must use only this surface.
   #
   # @note Gem contract: instances must round-trip through +Marshal.dump+ / +Marshal.load+
   #   so web can cache one scrape and render RSS or JSON Feed on read. Loaded results
   #   are re-frozen via {#marshal_load}.
   class FeedResult
     ##
-    # @param channel [Html2rss::Channel] channel metadata
-    # @param articles [Array<Html2rss::Article>] extracted articles (deduplicated)
+    # @param channel [Html2rss::Channel] channel metadata (internal; not exposed on the public API)
+    # @param articles [Array<Html2rss::Article>] extracted articles (deduplicated; not exposed)
     # @param status [Html2rss::Status] pipeline telemetry
     # @param stylesheets [Array<Hash>] optional RSS stylesheet configs
     def initialize(channel:, articles:, status:, stylesheets: [])

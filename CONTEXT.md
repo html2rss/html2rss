@@ -26,6 +26,10 @@ Candidate list discovery for anchorless or classless pages is owned by `AutoSour
 
 Feed channel metadata (title, description, ttl, language, author, image, last_build_date) materialized via `Html2rss::Channel.from_response` (or keyword attrs). Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article — they do not own channel extraction.
 
+## FeedResult
+
+Closed Marshal-cacheable handle for one scrape. Frozen public query/render set: `empty?`, `channel_title`, `to_rss`, `to_json_feed`, `status`. Non-goals: do **not** expose Channel or Articles readers; do not grow this set without an explicit consumer-contract change. Materialization owns Channel + Status + articles internally; format adapters render from that private payload. `status.to_h` remains the observability payload for web (`scraper_status`).
+
 ## ItemScope post-process config
 
 Per-item extraction scope carries `channel` (url/time_zone). Post-processor `Context` config is derived as `{ channel: scope.channel }` in `ItemScope#context_for` — there is no parallel `post_process_config` bag.
