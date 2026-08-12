@@ -26,6 +26,46 @@ RSpec.describe Html2rss do
     end
   end
 
+  describe '.feed_result' do
+    let(:config) do
+      {
+        channel: { url: 'https://example.com/news', title: 'Example News' },
+        strategy: :faraday,
+        selectors: {
+          items: { selector: 'article' },
+          title: { selector: 'h1' }
+        }
+      }
+    end
+    let(:response) do
+      Html2rss::RequestService::Response.new(
+        body: '<html><body><article><h1>item</h1></article></body></html>',
+        url: Html2rss::Url.from_absolute('https://example.com/news'),
+        headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+    end
+
+    before do
+      allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+        ctx.budget.consume!
+        raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+
+        response
+      end
+    end
+
+    it 'returns an opaque FeedResult that renders RSS and JSON Feed', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      result = described_class.feed_result(config)
+
+      expect(result).to be_a(Html2rss::FeedResult)
+      expect(result).not_to be_empty
+      expect(result.status).to be_a(Html2rss::Status)
+      expect(described_class.feed(config)).to be_a(RSS::Rss)
+      expect(described_class.json_feed(config)).to include(:version, :items)
+    end
+  end
+
   describe '.feed' do
     context 'with config being a Hash' do
       subject(:xml) { Nokogiri.XML(feed_return.to_s) }
@@ -622,6 +662,19 @@ RSpec.describe Html2rss do
   end
 
   describe '.json_feed' do
+    # rubocop:disable RSpec/ExampleLength -- stub chain asserts contributor feed_url boundary
+    it 'rejects a relative feed_url at the contributor API boundary' do
+      result = instance_double(Html2rss::FeedResult)
+      allow(described_class).to receive(:feed_result).and_return(result)
+      allow(result).to receive(:to_json_feed)
+        .with(feed_url: '/relative.json')
+        .and_raise(ArgumentError, 'URL must be absolute')
+
+      expect { described_class.json_feed({}, feed_url: '/relative.json') }
+        .to raise_error(ArgumentError, /absolute/)
+    end
+    # rubocop:enable RSpec/ExampleLength
+
     context 'with config being a Hash' do
       let(:config) do
         described_class.config_from_yaml_file(config_file, name)

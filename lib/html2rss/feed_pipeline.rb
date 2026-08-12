@@ -14,22 +14,24 @@ module Html2rss
     end
 
     ##
-    # @return [RSS::Rss] generated RSS feed
-    def to_rss
+    # Runs the pipeline once and returns an opaque, Marshal-cacheable result.
+    #
+    # @return [Html2rss::FeedResult]
+    def to_result
       run do |response:, config:, articles:|
         channel = Html2rss::Channel.new(response, overrides: config.channel)
-        FeedBuilder.build(:rss, channel:, articles:, stylesheets: config.stylesheets)
+        status = Status.build(articles:)
+        FeedResult.new(channel:, articles:, status:, stylesheets: config.stylesheets)
       end
     end
 
     ##
+    # @return [RSS::Rss] generated RSS feed
+    def to_rss = to_result.to_rss
+
+    ##
     # @return [Hash] generated JSONFeed 1.1 payload
-    def to_json_feed
-      run do |response:, config:, articles:|
-        channel = Html2rss::Channel.new(response, overrides: config.channel)
-        FeedBuilder.build(:json_feed, channel:, articles:)
-      end
-    end
+    def to_json_feed = to_result.to_json_feed
 
     private
 

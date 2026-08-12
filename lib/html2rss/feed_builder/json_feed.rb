@@ -13,9 +13,13 @@ module Html2rss
       ##
       # @param channel [Html2rss::Channel]
       # @param articles [Array<Html2rss::Article>]
-      def initialize(channel:, articles:)
+      # @param user_comment [String, nil] optional generator comment (from {Status})
+      # @param feed_url [String, nil] optional absolute self URL for the feed
+      def initialize(channel:, articles:, user_comment: nil, feed_url: nil)
         @channel = channel
         @articles = articles
+        @user_comment = user_comment
+        @feed_url = feed_url
       end
 
       ##
@@ -28,7 +32,7 @@ module Html2rss
 
       private
 
-      attr_reader :channel, :articles
+      attr_reader :channel, :articles, :user_comment, :feed_url
 
       ##
       # @return [Hash]
@@ -39,7 +43,9 @@ module Html2rss
           home_page_url: channel.url.to_s,
           description: channel.description,
           language: channel.language,
-          icon: channel.image&.to_s
+          icon: channel.image&.to_s,
+          feed_url:,
+          user_comment:
         }
       end
 
