@@ -24,7 +24,7 @@ Candidate list discovery for anchorless or classless pages is owned by `AutoSour
 
 ## Channel
 
-Feed channel metadata (title, description, ttl, language, author, image, last_build_date) materialized via `Html2rss::Channel.from_response` (or keyword attrs). Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article — they do not own channel extraction.
+Feed channel metadata (title, description, ttl, language, author, image, last_build_date) materialized via `Html2rss::Channel.from_response` (or keyword attrs). Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article — they do not own channel extraction. `FeedResult` constructs those adapters directly (no `FeedBuilder.build` dispatcher). Stylesheets are a cached scrape artifact on FeedResult; `feed_url` is a render-time JSON Feed-only option. Channel projection: Rss uses language/title/description/ttl/link/updated; JsonFeed adds icon/authors.
 
 ## FeedResult
 

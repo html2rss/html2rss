@@ -58,21 +58,24 @@ module Html2rss
     ##
     # @return [RSS::Rss] RSS 2.0 document
     def to_rss
-      FeedBuilder.build(:rss, channel: @channel, articles: @articles, stylesheets: @stylesheets,
-                              generator: status.to_generator_comment)
+      FeedBuilder::Rss.new(
+        channel: @channel,
+        articles: @articles,
+        stylesheets: @stylesheets,
+        generator: status.to_generator_comment
+      ).call
     end
 
     ##
     # @param feed_url [String, nil] optional self URL for JSON Feed (+feed_url+)
     # @return [Hash] JSON Feed 1.1 hash
     def to_json_feed(feed_url: nil)
-      FeedBuilder.build(
-        :json_feed,
+      FeedBuilder::JsonFeed.new(
         channel: @channel,
         articles: @articles,
         feed_url:,
         user_comment: status.to_generator_comment
-      )
+      ).call
     end
 
     ##

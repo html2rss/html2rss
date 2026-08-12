@@ -1,13 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::FeedBuilder do
-  describe '.build' do
-    context 'with an unknown feed type' do
-      it 'raises an ArgumentError' do
-        expect do
-          described_class.build(:unknown, channel: nil, articles: [])
-        end.to raise_error(ArgumentError, 'Unknown feed type: unknown')
-      end
-    end
+  it 'is a namespace module without a build dispatcher', :aggregate_failures do
+    expect(described_class).to be_a(Module)
+    expect(described_class).not_to respond_to(:build)
   end
 end
