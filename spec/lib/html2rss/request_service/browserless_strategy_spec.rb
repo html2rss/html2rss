@@ -20,8 +20,7 @@ RSpec.describe Html2rss::RequestService::BrowserlessStrategy do
       consume!: nil,
       remaining_timeout_seconds: nil,
       effective_timeout_seconds: 30.0,
-      effective_timeout_ms: 30_000,
-      elapsed_seconds: 0.0
+      effective_timeout_ms: 30_000
     )
   end
   let(:ctx) { Html2rss::RequestService::Context.new(url: 'https://example.com', policy:, budget:) }
