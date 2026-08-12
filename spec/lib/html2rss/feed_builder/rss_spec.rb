@@ -6,7 +6,8 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
                         articles:,
                         stylesheets: [
                           { href: 'rss.xsl', type: 'text/xsl' }
-                        ])
+                        ],
+                        generator: "html2rss V. #{Html2rss::VERSION} (scrapers: RSpec (1), AutoSource::Html (1))")
   end
 
   let(:channel) do
@@ -39,6 +40,12 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
   end
 
   it { expect(described_class).to be_a Class }
+
+  it 'requires a non-blank generator' do
+    expect do
+      described_class.new(channel:, articles:, generator: ' ')
+    end.to raise_error(ArgumentError, /generator/)
+  end
 
   describe '#call' do
     subject(:rss) { instance.call }
@@ -88,14 +95,17 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
       let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
       let(:article) { articles.first }
 
+      # rubocop:disable RSpec/ExampleLength -- title/guid/description/link/pubDate contract
       it 'has tags with correct values', :aggregate_failures do
-        %i[title description guid].each do |tag|
-          expect(item.css(tag).text).to eq(article.public_send(tag).to_s), tag
-        end
-
+        expect(item.css('title').text).to eq(article.title.to_s)
+        expect(item.css('guid').text).to eq(article.guid.to_s)
+        expect(item.css('description').text).to eq(
+          Html2rss::FeedBuilder::ItemPresentation.description_for(article).to_s
+        )
         expect(item.css('link').text).to eq(article.url.to_s), 'link'
         expect(item.css('pubDate').text).to eq(article.published_at.rfc822), 'pubDate'
       end
+      # rubocop:enable RSpec/ExampleLength
 
       it 'omits <enclosure> when the article only has an image' do
         expect(item.css('enclosure')).to be_empty
