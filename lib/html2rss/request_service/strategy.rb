@@ -86,6 +86,9 @@ module Html2rss
 
       def check_timeout!
         ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+      rescue RequestTimedOut
+        log_timeout!(reason: 'budget_exhausted')
+        raise
       end
 
       # @return [ResponseGuard, nil]
@@ -96,6 +99,8 @@ module Html2rss
       # @raise [StandardError]
       def handle_error(error)
         if timeout_error?(error)
+          log_timeout!(reason: 'transport')
+          Log.debug("#{self.class}: transport timeout message=#{error.message}")
           raise RequestTimedOut, error.message
         elsif connection_error?(error)
           translate_connection_error(error)
@@ -103,6 +108,23 @@ module Html2rss
           raise error
         end
       end
+
+      # @param reason [String] timeout classification (budget_exhausted / transport)
+      # @return [void]
+      # rubocop:disable Metrics/AbcSize -- structured timeout fields stay in one log line
+      def log_timeout!(reason:)
+        remaining = ctx.budget.remaining_timeout_seconds
+        remaining_label = remaining.nil? ? 'untracked' : format('%.3f', remaining)
+        detail = [
+          "strategy=#{self.class.name}",
+          "host=#{ctx.url.host}",
+          "elapsed=#{format('%.3f', ctx.budget.elapsed_seconds)}s",
+          "budget_remaining=#{remaining_label}",
+          "reason=#{reason}"
+        ]
+        Log.info("#{self.class}: request timeout #{detail.join(' ')}")
+      end
+      # rubocop:enable Metrics/AbcSize
 
       # @param error [StandardError]
       # @return [void]

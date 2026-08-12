@@ -82,9 +82,14 @@ module Html2rss
       def remaining_timeout_seconds
         return unless @total_timeout_seconds
 
-        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - @start_time
-        remaining = @total_timeout_seconds - elapsed
+        remaining = @total_timeout_seconds - elapsed_seconds
         [remaining, 0.0].max
+      end
+
+      ##
+      # @return [Float] seconds since this budget was created
+      def elapsed_seconds
+        Process.clock_gettime(Process::CLOCK_MONOTONIC) - @start_time
       end
 
       ##
