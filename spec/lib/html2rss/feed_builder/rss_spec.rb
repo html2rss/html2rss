@@ -95,14 +95,17 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
       let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
       let(:article) { articles.first }
 
+      # rubocop:disable RSpec/ExampleLength -- title/guid/description/link/pubDate contract
       it 'has tags with correct values', :aggregate_failures do
-        %i[title description guid].each do |tag|
-          expect(item.css(tag).text).to eq(article.public_send(tag).to_s), tag
-        end
-
+        expect(item.css('title').text).to eq(article.title.to_s)
+        expect(item.css('guid').text).to eq(article.guid.to_s)
+        expect(item.css('description').text).to eq(
+          Html2rss::FeedBuilder::ItemPresentation.description_for(article).to_s
+        )
         expect(item.css('link').text).to eq(article.url.to_s), 'link'
         expect(item.css('pubDate').text).to eq(article.published_at.rfc822), 'pubDate'
       end
+      # rubocop:enable RSpec/ExampleLength
 
       it 'has an enclosure tag with the correct attributes' do
         enclosure = item.css('enclosure').first

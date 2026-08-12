@@ -56,14 +56,15 @@ RSpec.describe Html2rss::Article do
   end
 
   describe '#description' do
-    before do
-      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new).and_call_original
-      instance.description
+    it 'returns the raw extracted description without DescriptionBuilder', :aggregate_failures do
+      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new)
+
+      expect(instance.description).to eq('By John Doe')
+      expect(Html2rss::Html::Rendering::DescriptionBuilder).not_to have_received(:new)
     end
 
-    it 'calls the DescriptionBuilder' do
-      expect(Html2rss::Html::Rendering::DescriptionBuilder).to have_received(:new)
-        .with(base: 'By John Doe', title: 'Sample instance', url: instance.url, enclosures: [], image: nil)
+    it 'returns nil for a blank description' do
+      expect(described_class.new(description: '  ').description).to be_nil
     end
   end
 

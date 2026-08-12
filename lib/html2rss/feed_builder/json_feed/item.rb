@@ -54,7 +54,7 @@ module Html2rss
         #
         # @return [Hash]
         def content_fields
-          if (description = article.description)
+          if (description = ItemPresentation.description_for(article))
             return content_for(description)
           end
 
