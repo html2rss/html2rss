@@ -20,6 +20,9 @@ module Html2rss
       end
     end
 
+    # Deduplicated article list plus drop count from one extraction pass.
+    DedupResult = Data.define(:articles, :dedup_dropped)
+
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
@@ -69,8 +72,7 @@ module Html2rss
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
       extracted = deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
-      PipelineOutcome.new(response:, articles: extracted.fetch(:articles),
-                          dedup_dropped: extracted.fetch(:dedup_dropped))
+      PipelineOutcome.new(response:, articles: extracted.articles, dedup_dropped: extracted.dedup_dropped)
     end
 
     def request_session_for(config, strategy:, resources:)
@@ -85,7 +87,7 @@ module Html2rss
     def deduplicated_articles(extraction)
       collected = collect_articles(extraction)
       unique = Article::Deduplicator.new(collected).call
-      { articles: unique, dedup_dropped: collected.size - unique.size }
+      DedupResult.new(articles: unique, dedup_dropped: collected.size - unique.size)
     end
 
     # rubocop:disable Metrics/MethodLength
