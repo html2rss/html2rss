@@ -97,10 +97,38 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
         expect(item.css('pubDate').text).to eq(article.published_at.rfc822), 'pubDate'
       end
 
-      it 'has an enclosure tag with the correct attributes' do
+      it 'omits <enclosure> when the article only has an image' do
+        expect(item.css('enclosure')).to be_empty
+      end
+    end
+
+    context 'with a non-image enclosure' do
+      let(:articles) do
+        [
+          Html2rss::Article.new(
+            url: 'http://example.com/1',
+            id: 1,
+            title: 'Title 1',
+            description: 'Description 1',
+            published_at: '1969-12-31 23:59:59',
+            image: 'http://example.com/image1.jpg',
+            enclosures: [{
+              url: Html2rss::Url.from_absolute('http://example.com/episode.mp3'),
+              type: 'audio/mpeg',
+              bytes_length: 0
+            }],
+            scraper: RSpec
+          )
+        ]
+      end
+      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
+
+      it 'emits <enclosure> for the audio attachment and keeps image off enclosure', :aggregate_failures do
         enclosure = item.css('enclosure').first
 
-        expect(enclosure[:url]).to match(article.image.to_s)
+        expect(enclosure[:url]).to eq('http://example.com/episode.mp3')
+        expect(enclosure[:type]).to eq('audio/mpeg')
+        expect(enclosure[:url]).not_to include('image1.jpg')
       end
     end
   end
