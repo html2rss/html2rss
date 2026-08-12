@@ -120,6 +120,40 @@ RSpec.describe Html2rss::Selectors do
         expect(instance.articles.map { |article| article.url.to_s }).to eq(['http://example.com/article1'])
       end
     end
+
+    context 'when an enclosure selector is configured' do
+      let(:selectors) do
+        {
+          items: { selector: 'article', enhance: false },
+          title: { selector: 'h1' },
+          enclosure: {
+            selector: 'audio',
+            extractor: 'attribute',
+            attribute: 'src',
+            content_type: 'audio/mpeg'
+          }
+        }
+      end
+      let(:body) do
+        <<~HTML
+          <html><body>
+            <article>
+              <h1>episode</h1>
+              <audio src="/media/episode.mp3"></audio>
+              <img src="/media/cover.jpg" alt="cover">
+            </article>
+          </body></html>
+        HTML
+      end
+
+      it 'maps selector :enclosure onto Article :enclosures', :aggregate_failures do
+        article = instance.articles.first
+
+        expect(article.enclosures.size).to eq(1)
+        expect(article.enclosures.first.url.to_s).to eq('http://example.com/media/episode.mp3')
+        expect(article.enclosures.first.type).to eq('audio/mpeg')
+      end
+    end
   end
 
   describe '#enhance_article_hash(article_hash, item)' do

@@ -170,6 +170,49 @@ RSpec.describe Html2rss::Article do
     end
   end
 
+  describe '#enclosure' do
+    let(:audio_url) { Html2rss::Url.from_absolute('https://example.com/episode.mp3') }
+    let(:image_url) { Html2rss::Url.from_absolute('https://example.com/cover.jpg') }
+
+    it 'does not fall back to image when enclosures are absent' do
+      article = described_class.new(image: image_url)
+
+      expect(article.enclosure).to be_nil
+    end
+
+    it 'keeps image available for JSON Feed / description when enclosures are absent', :aggregate_failures do
+      article = described_class.new(image: image_url)
+
+      expect(article.image).to eq(image_url)
+      expect(article.enclosure).to be_nil
+    end
+
+    it 'skips image/* enclosures so RSS never uses an image as <enclosure>' do
+      article = described_class.new(
+        enclosures: [{ url: image_url, type: 'image/jpeg' }],
+        image: image_url
+      )
+
+      expect(article.enclosure).to be_nil
+    end
+
+    # rubocop:disable RSpec/ExampleLength -- prefers non-image enclosure while preserving image field
+    it 'prefers the first non-image enclosure over image enclosures', :aggregate_failures do
+      article = described_class.new(
+        enclosures: [
+          { url: image_url, type: 'image/jpeg' },
+          { url: audio_url, type: 'audio/mpeg' }
+        ],
+        image: image_url
+      )
+
+      expect(article.enclosure.url).to eq(audio_url)
+      expect(article.enclosure.type).to eq('audio/mpeg')
+      expect(article.image).to eq(image_url)
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
+
   describe '#categories' do
     it 'returns an array of unique and present categories' do
       instance = described_class.new(categories: ['Category 1', '', 'Category 2', 'Category 1 '])
