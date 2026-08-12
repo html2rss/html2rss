@@ -31,6 +31,11 @@ module Html2rss
     ITEM_TAGS = %i[title url description author comments published_at guid enclosure categories].freeze
     # Item attributes that require dedicated extraction logic.
     SPECIAL_ATTRIBUTES = Set[:guid, :enclosure, :categories].freeze
+    # Config selector keys that map onto a different {Article} attribute.
+    # +:enclosure+ stays singular in YAML; Article stores +:enclosures+.
+    SELECTOR_TO_ARTICLE_KEY = { enclosure: :enclosures }.freeze
+    # Selector keys that may be copied onto an Article (PROVIDED_KEYS + mapped aliases).
+    SELECTABLE_SELECTOR_KEYS = (Html2rss::Article::PROVIDED_KEYS + SELECTOR_TO_ARTICLE_KEY.keys).to_set.freeze
 
     ##
     # Initializes a new Selectors instance.
@@ -45,7 +50,7 @@ module Html2rss
       @time_zone = time_zone
 
       prepare_selectors!
-      @rss_item_attributes = @selectors.keys & Html2rss::Article::PROVIDED_KEYS
+      @rss_item_attributes = @selectors.keys.select { |key| SELECTABLE_SELECTOR_KEYS.include?(key) }
     end
 
     ##
@@ -92,7 +97,13 @@ module Html2rss
     # @return [Hash] Hash of attributes for the article.
     def extract_article(item, page_response = response)
       scope = item_scope_for(item, page_response.url)
-      @rss_item_attributes.to_h { |key| [key, scope.select(key)] }.compact
+      @rss_item_attributes.each_with_object({}) do |selector_key, hash|
+        value = scope.select(selector_key)
+        next if value.nil?
+
+        article_key = SELECTOR_TO_ARTICLE_KEY.fetch(selector_key, selector_key)
+        hash[article_key] = article_key == :enclosures ? wrap_enclosure_value(value) : value
+      end
     end
 
     ##
@@ -308,9 +319,20 @@ module Html2rss
       @channel_contexts[base_url] ||= { url: base_url, time_zone: @time_zone }.freeze
     end
 
-    # @return [Hash] enclosure details.
+    # Keep a single enclosure Hash as one list entry; +Array(hash)+ would split pairs.
+    #
+    # @param value [Hash, Array] enclosure hash or list of hashes
+    # @return [Array]
+    def wrap_enclosure_value(value)
+      value.is_a?(Array) ? value : [value]
+    end
+
+    # @return [Hash, nil] enclosure details, or nil when the selector yields nothing.
     def enclosure(scope:, config:)
-      url = Url.from_relative(select_regular(:enclosure, scope:, config:), scope.base_url)
+      selected = select_regular(:enclosure, scope:, config:)
+      return if selected.nil? || selected.to_s.strip.empty?
+
+      url = Url.from_relative(selected, scope.base_url)
 
       { url:, type: config[:content_type] }
     end

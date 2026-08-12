@@ -65,7 +65,7 @@ RSpec.describe 'Media Enclosures Configuration', type: :example do
         ],
         categories: ['5400'],
         pub_date: 'Mon, 18 Dec 2023 10:00:00 +0000',
-        enclosure: nil
+        enclosure: { url: 'https://example.com/episodes/episode-38-live-coding.mp4', type: 'audio/mpeg', length: 0 }
       },
       {
         title: 'Episode 37: Text-Only Episode - Reading List',
