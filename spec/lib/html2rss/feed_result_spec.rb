@@ -33,12 +33,13 @@ RSpec.describe Html2rss::FeedResult do
   let(:status) { Html2rss::Status.build(articles:, dedup_dropped: 1) }
 
   describe 'public API surface' do
-    it 'exposes empty?, channel_title, to_rss, to_json_feed, and status without articles/channel readers',
+    it 'exposes only the frozen closed query/render set and never Channel/Articles',
        :aggregate_failures do
       expect(result).to respond_to(:empty?, :channel_title, :to_rss, :to_json_feed, :status)
       expect(result).not_to respond_to(:articles)
       expect(result).not_to respond_to(:channel)
       expect(result.public_methods(false)).not_to include(:articles, :channel)
+      expect(result.instance_variables).to include(:@channel, :@articles)
     end
   end
 
@@ -58,7 +59,8 @@ RSpec.describe Html2rss::FeedResult do
       expect(result.channel_title).to eq('Example')
     end
 
-    it 'preserves page title when the scrape produced no items' do
+    # rubocop:disable RSpec/ExampleLength -- empty Channel fixture + empty?/title contract
+    it 'preserves page title when the scrape produced no items', :aggregate_failures do
       empty_channel = Html2rss::Channel.new(
         title: 'Page Title From Head',
         url: Html2rss::Url.from_absolute('https://example.com/empty'),
@@ -78,6 +80,7 @@ RSpec.describe Html2rss::FeedResult do
       expect(empty).to be_empty
       expect(empty.channel_title).to eq('Page Title From Head')
     end
+    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#to_rss' do
