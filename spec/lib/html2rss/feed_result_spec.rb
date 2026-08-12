@@ -33,8 +33,9 @@ RSpec.describe Html2rss::FeedResult do
   let(:status) { Html2rss::Status.build(articles:, dedup_dropped: 1) }
 
   describe 'public API surface' do
-    it 'exposes empty?, to_rss, to_json_feed, and status without articles/channel readers', :aggregate_failures do
-      expect(result).to respond_to(:empty?, :to_rss, :to_json_feed, :status)
+    it 'exposes empty?, channel_title, to_rss, to_json_feed, and status without articles/channel readers',
+       :aggregate_failures do
+      expect(result).to respond_to(:empty?, :channel_title, :to_rss, :to_json_feed, :status)
       expect(result).not_to respond_to(:articles)
       expect(result).not_to respond_to(:channel)
       expect(result.public_methods(false)).not_to include(:articles, :channel)
@@ -49,6 +50,33 @@ RSpec.describe Html2rss::FeedResult do
     it 'is true when no articles were extracted' do
       empty = described_class.new(channel:, articles: [], status: Html2rss::Status.build(articles: []))
       expect(empty).to be_empty
+    end
+  end
+
+  describe '#channel_title' do
+    it 'returns the channel title string without exposing channel' do
+      expect(result.channel_title).to eq('Example')
+    end
+
+    it 'preserves page title when the scrape produced no items' do
+      empty_channel = Html2rss::Channel.new(
+        title: 'Page Title From Head',
+        url: Html2rss::Url.from_absolute('https://example.com/empty'),
+        description: 'Latest items from https://example.com/empty',
+        language: 'en',
+        ttl: 60,
+        last_build_date: Time.utc(2024, 1, 1),
+        image: nil,
+        author: nil
+      )
+      empty = described_class.new(
+        channel: empty_channel,
+        articles: [],
+        status: Html2rss::Status.build(articles: [])
+      )
+
+      expect(empty).to be_empty
+      expect(empty.channel_title).to eq('Page Title From Head')
     end
   end
 
