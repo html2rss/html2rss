@@ -14,7 +14,7 @@ module Html2rss
         def add_item(article, item_maker)
           add_item_string_values(article, item_maker)
           add_item_categories(article, item_maker)
-          add_enclosure(article.enclosure, item_maker)
+          add_enclosure(ItemPresentation.rss_enclosure_for(article), item_maker)
           add_item_guid(article, item_maker)
         end
 
@@ -34,11 +34,14 @@ module Html2rss
         private
 
         def add_item_string_values(article, item_maker)
-          %i[title description author].each do |attr|
-            next unless (value = article.send(attr))
-            next if value.empty?
+          {
+            title: article.title,
+            description: ItemPresentation.description_for(article),
+            author: article.author
+          }.each do |attr, value|
+            next if value.nil? || value.empty?
 
-            item_maker.send(:"#{attr}=", value)
+            item_maker.public_send(:"#{attr}=", value)
           end
 
           item_maker.link = article.url.to_s if article.url
@@ -61,8 +64,10 @@ module Html2rss
       # @param channel [Html2rss::Channel] The channel information for the RSS feed.
       # @param articles [Array<Html2rss::Article>] The list of articles to include in the RSS feed.
       # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
-      # @param generator [String, nil] optional preformatted generator (from {Status}); falls back to article tallies
-      def initialize(channel:, articles:, stylesheets: [], generator: nil)
+      # @param generator [String] required preformatted generator comment (from {Status})
+      def initialize(channel:, articles:, generator:, stylesheets: [])
+        raise ArgumentError, 'generator must be a non-blank String' if blank_string?(generator)
+
         @channel = channel
         @articles = articles
         @stylesheets = stylesheets
@@ -81,7 +86,11 @@ module Html2rss
 
       private
 
-      attr_reader :channel, :articles
+      attr_reader :channel, :articles, :generator
+
+      def blank_string?(value)
+        !value.is_a?(String) || value.strip.empty?
+      end
 
       def stylesheets
         @stylesheets.map { |style| Stylesheet.new(**style) }
@@ -101,19 +110,6 @@ module Html2rss
         articles.each do |article|
           maker.items.new_item { |item_maker| self.class.add_item(article, item_maker) }
         end
-      end
-
-      def generator
-        return @generator if @generator
-
-        scraper_namespace_regex = /(?<namespace>Html2rss|Scraper)::/
-
-        scraper_counts = articles.flat_map(&:scraper).tally.map do |klass, count|
-          scraper_name = klass.to_s.gsub(scraper_namespace_regex, '')
-          "#{scraper_name} (#{count})"
-        end
-
-        "html2rss V. #{Html2rss::VERSION} (scrapers: #{scraper_counts.join(', ')})"
       end
     end
   end
