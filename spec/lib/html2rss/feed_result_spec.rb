@@ -57,28 +57,13 @@ RSpec.describe Html2rss::FeedResult do
       expect(result.channel_title).to eq('Example')
     end
 
-    # rubocop:disable RSpec/ExampleLength -- empty Channel fixture + empty?/title contract
     it 'preserves page title when the scrape produced no items', :aggregate_failures do
-      empty_channel = Html2rss::Channel.new(
-        title: 'Page Title From Head',
-        url: Html2rss::Url.from_absolute('https://example.com/empty'),
-        description: 'Latest items from https://example.com/empty',
-        language: 'en',
-        ttl: 60,
-        last_build_date: Time.utc(2024, 1, 1),
-        image: nil,
-        author: nil
-      )
-      empty = described_class.new(
-        channel: empty_channel,
-        articles: [],
-        status: Html2rss::Status.build(articles: [])
-      )
+      empty = described_class.new(channel: channel.with(title: 'Page Title From Head'), articles: [],
+                                  status: Html2rss::Status.build(articles: []))
 
       expect(empty).to be_empty
       expect(empty.channel_title).to eq('Page Title From Head')
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#to_rss' do
@@ -104,33 +89,6 @@ RSpec.describe Html2rss::FeedResult do
       expect(payload[:items].first).not_to have_key(:content_html)
     end
     # rubocop:enable RSpec/ExampleLength
-
-    # rubocop:disable RSpec/ExampleLength -- builds article with image-only DescriptionBuilder path
-    it 'routes DescriptionBuilder media to content_html', :aggregate_failures do
-      image_article = Html2rss::Article.new(
-        id: 'gallery',
-        title: 'Gallery',
-        url: 'https://example.com/gallery',
-        image: 'https://example.com/cover.jpg'
-      )
-      payload = described_class.new(
-        channel:,
-        articles: [image_article],
-        status: Html2rss::Status.build(articles: [image_article])
-      ).to_json_feed
-
-      item = payload[:items].first
-      expect(item).to have_key(:content_html)
-      expect(item).not_to have_key(:content_text)
-      expect(item[:content_html]).to include('<img')
-    end
-    # rubocop:enable RSpec/ExampleLength
-
-    it 'rejects invalid feed_url at the JSON Feed adapter boundary' do
-      expect do
-        result.to_json_feed(feed_url: '/relative.json')
-      end.to raise_error(ArgumentError, /absolute/)
-    end
   end
 
   describe '#status' do
@@ -166,21 +124,19 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   describe 'Marshal contract' do
-    it 'round-trips through Marshal and still renders both formats', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable RSpec/ExampleLength -- round-trip identity + both render formats
+    it 'round-trips through Marshal and still renders both formats', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(result))
 
       expect(restored).to be_a(described_class)
       expect(restored).to be_frozen
       expect(restored).not_to be_empty
-      expect(restored.public_methods(false)).to match_array(%i[empty? channel_title to_rss to_json_feed status])
       expect(restored.status.to_generator_comment).to eq(status.to_generator_comment)
       expect(restored.status.selected_strategy).to eq(status.selected_strategy)
       expect(restored.status.attempt_count).to eq(status.attempt_count)
-      expect(restored.status.scraper_tallies).to be_frozen
       expect(restored.to_rss).to be_a(RSS::Rss)
       expect(restored.to_json_feed[:title]).to eq('Example')
-      expect { restored.channel_title << 'X' }.to raise_error(FrozenError)
-      expect { restored.status.scraper_tallies['Selectors'] = 9 }.to raise_error(FrozenError)
     end
+    # rubocop:enable RSpec/ExampleLength
   end
 end

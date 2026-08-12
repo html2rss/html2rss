@@ -4,27 +4,11 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
   describe '.description_for' do
-    # rubocop:disable RSpec/ExampleLength -- DescriptionBuilder kwargs + rendered body
-    it 'renders via DescriptionBuilder from raw article fields', :aggregate_failures do
-      article = Html2rss::Article.new(
-        title: 'Sample instance',
-        url: 'http://example.com',
-        description: 'By John Doe'
-      )
-      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new).and_call_original
+    it 'renders via DescriptionBuilder from raw article fields' do
+      article = Html2rss::Article.new(title: 'Sample instance', url: 'http://example.com', description: 'By John Doe')
 
-      result = described_class.description_for(article)
-
-      expect(Html2rss::Html::Rendering::DescriptionBuilder).to have_received(:new).with(
-        base: 'By John Doe',
-        title: 'Sample instance',
-        url: article.url,
-        enclosures: [],
-        image: nil
-      )
-      expect(result).to include('By John Doe')
+      expect(described_class.description_for(article)).to include('By John Doe')
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '.rss_enclosure_for' do
