@@ -46,14 +46,6 @@ module Html2rss
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
 
-    ##
-    # @return [RSS::Rss] generated RSS feed
-    def to_rss = to_result.to_rss
-
-    ##
-    # @return [Hash] generated JSONFeed 1.1 payload
-    def to_json_feed = to_result.to_json_feed
-
     private
 
     attr_reader :raw_config

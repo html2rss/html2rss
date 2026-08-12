@@ -4,7 +4,7 @@ Contributor map for the four Strong module deepenings on this branch. Prefer the
 
 ## Request Budget
 
-Shared wall-clock and HTTP/interaction meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once — no `RuntimeInput` passthrough). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms` — strategies must not reimplement `remaining || policy.total`. `PuppetCommander` public interface is `#call`; navigation `response_url` lives on `PuppetCommander::NavigationGuards`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
+Shared wall-clock and HTTP/interaction meters for one feed build. Constructed via `FeedPipeline::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once — no `RuntimeInput` passthrough). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms` — strategies must not reimplement `remaining || policy.total`. `PuppetCommander` public interface is `#call`; navigation `response_url` lives on `PuppetCommander::NavigationGuards`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
 
 ## DOM chrome
 
@@ -28,7 +28,7 @@ Feed channel metadata (title, description, ttl, language, author, image, last_bu
 
 ## FeedResult
 
-Closed Marshal-cacheable handle for one scrape. Frozen public query/render set: `empty?`, `channel_title`, `to_rss`, `to_json_feed`, `status`. Non-goals: do **not** expose Channel or Articles readers; do not grow this set without an explicit consumer-contract change. Materialization owns Channel + Status + articles internally; format adapters render from that private payload. `status.to_h` remains the observability payload for web (`scraper_status`).
+Closed Marshal-cacheable handle for one scrape. Frozen public query/render set: `empty?`, `channel_title`, `to_rss`, `to_json_feed`, `status`. Non-goals: do **not** expose Channel or Articles readers; do not grow this set without an explicit consumer-contract change. Materialization owns Channel + Status + articles internally; format adapters render from that private payload. `FeedPipeline#to_result` is the scrape handoff — pipeline does not own RSS/JSON Feed rendering. Contributor-facing `Html2rss.feed` / `Html2rss.json_feed` remain the format entrypoints. `status.to_h` remains the observability payload for web (`scraper_status`).
 
 ## Status
 
