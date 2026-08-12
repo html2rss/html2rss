@@ -6,7 +6,7 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
   end
 
   let(:feed_url) { nil }
-  let(:user_comment) { nil }
+  let(:user_comment) { 'html2rss V. test (scrapers: none)' }
   let(:channel) do
     instance_double(
       Html2rss::Channel,
@@ -25,6 +25,12 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
     ]
   end
 
+  it 'requires a non-blank user_comment' do
+    expect do
+      described_class.new(channel:, articles:, user_comment: nil)
+    end.to raise_error(ArgumentError, /user_comment/)
+  end
+
   it 'filters out items that cannot satisfy the JSON Feed content requirement', :aggregate_failures do
     expect(feed_hash[:items].size).to eq(1)
     expect(feed_hash[:items].first[:id]).to eq(Html2rss::Article.new(id: 'with-content', title: 'Visible',
@@ -40,11 +46,5 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
       expect(feed_hash[:feed_url]).to eq(feed_url)
       expect(feed_hash[:user_comment]).to eq(user_comment)
     end
-  end
-
-  it 'falls back to Status generator comment when user_comment is omitted' do
-    expect(feed_hash[:user_comment]).to eq(
-      Html2rss::Status.build(articles:).to_generator_comment
-    )
   end
 end
