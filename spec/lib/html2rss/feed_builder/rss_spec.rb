@@ -6,7 +6,8 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
                         articles:,
                         stylesheets: [
                           { href: 'rss.xsl', type: 'text/xsl' }
-                        ])
+                        ],
+                        generator: "html2rss V. #{Html2rss::VERSION} (scrapers: RSpec (1), AutoSource::Html (1))")
   end
 
   let(:channel) do
@@ -39,6 +40,12 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
   end
 
   it { expect(described_class).to be_a Class }
+
+  it 'requires a non-blank generator' do
+    expect do
+      described_class.new(channel:, articles:, generator: ' ')
+    end.to raise_error(ArgumentError, /generator/)
+  end
 
   describe '#call' do
     subject(:rss) { instance.call }

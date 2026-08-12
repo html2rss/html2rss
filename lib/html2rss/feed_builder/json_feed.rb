@@ -13,9 +13,11 @@ module Html2rss
       ##
       # @param channel [Html2rss::Channel]
       # @param articles [Array<Html2rss::Article>]
+      # @param user_comment [String] required generator comment (from {Status})
       # @param feed_url [String, nil] optional self URL for the feed (JSON Feed feed_url)
-      # @param user_comment [String, nil] optional generator comment (defaults to {Status})
-      def initialize(channel:, articles:, feed_url: nil, user_comment: nil)
+      def initialize(channel:, articles:, user_comment:, feed_url: nil)
+        raise ArgumentError, 'user_comment must be a non-blank String' if blank_string?(user_comment)
+
         @channel = channel
         @articles = articles
         @feed_url = feed_url
@@ -32,7 +34,11 @@ module Html2rss
 
       private
 
-      attr_reader :channel, :articles, :feed_url
+      attr_reader :channel, :articles, :feed_url, :user_comment
+
+      def blank_string?(value)
+        !value.is_a?(String) || value.strip.empty?
+      end
 
       ##
       # @return [Hash]
@@ -47,12 +53,6 @@ module Html2rss
           language: channel.language,
           icon: channel.image&.to_s
         }
-      end
-
-      ##
-      # @return [String]
-      def user_comment
-        @user_comment || Status.build(articles:).to_generator_comment
       end
 
       ##
