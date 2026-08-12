@@ -85,8 +85,8 @@ RSpec.describe Html2rss::FeedResult do
         user_comment: status.to_generator_comment
       )
       expect(payload[:items].size).to eq(1)
-      expect(payload[:items].first[:content_html]).to eq('Body')
-      expect(payload[:items].first).not_to have_key(:content_text)
+      expect(payload[:items].first[:content_text]).to eq('Body')
+      expect(payload[:items].first).not_to have_key(:content_html)
     end
     # rubocop:enable RSpec/ExampleLength
   end
@@ -126,18 +126,18 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   describe 'Marshal contract' do
-    # Render-after-load for articles lands with ItemPresentation/Article slice.
-    # rubocop:disable RSpec/ExampleLength -- round-trip identity + status telemetry fields
-    it 'round-trips FeedResult, Channel title, and Status through Marshal', :aggregate_failures do
+    # rubocop:disable RSpec/ExampleLength -- round-trip identity + both render formats
+    it 'round-trips through Marshal and still renders both formats', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(result))
 
       expect(restored).to be_a(described_class)
       expect(restored).to be_frozen
       expect(restored).not_to be_empty
-      expect(restored.channel_title).to eq('Example')
       expect(restored.status.to_generator_comment).to eq(status.to_generator_comment)
       expect(restored.status.selected_strategy).to eq(status.selected_strategy)
       expect(restored.status.attempt_count).to eq(status.attempt_count)
+      expect(restored.to_rss).to be_a(RSS::Rss)
+      expect(restored.to_json_feed[:title]).to eq('Example')
     end
     # rubocop:enable RSpec/ExampleLength
   end

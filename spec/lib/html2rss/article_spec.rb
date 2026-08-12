@@ -22,6 +22,41 @@ RSpec.describe Html2rss::Article do
     end
   end
 
+  describe 'Marshal round-trip' do
+    let(:options) do
+      { id: '1', title: 'Sample', url: 'http://example.com', description: 'Body', scraper: Html2rss::Selectors,
+        categories: ['News'], enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/a.mp3'),
+                                             type: 'audio/mpeg', bytes_length: 1 }] }
+    end
+
+    # rubocop:disable RSpec/ExampleLength -- asserts restored scalars + frozen collections
+    it 'restores attributes without NOT_SET sentinel leakage', :aggregate_failures do
+      restored = Marshal.load(Marshal.dump(instance))
+
+      expect(restored.title).to eq('Sample')
+      expect(restored.description).to include('Body')
+      expect(restored.categories).to eq(['News'])
+      expect(restored.categories).to be_frozen
+      expect(restored.enclosures).to be_frozen
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'keeps marshal hooks off the public API' do
+      expect(instance.public_methods(false)).not_to include(:marshal_dump, :marshal_load)
+    end
+  end
+
+  describe 'defensive copies' do
+    it 'does not freeze caller-owned option collections', :aggregate_failures do
+      categories = ['News']
+      article = described_class.new(id: '1', title: 'T', url: 'https://example.com/a', categories:)
+      categories << 'Extra'
+
+      expect(article.categories).to eq(['News'])
+      expect { article.categories << 'More' }.to raise_error(FrozenError)
+    end
+  end
+
   describe '#each' do
     let(:yields) do
       described_class::PROVIDED_KEYS.map do |key|
@@ -43,14 +78,15 @@ RSpec.describe Html2rss::Article do
   end
 
   describe '#description' do
-    before do
-      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new).and_call_original
-      instance.description
+    it 'returns the raw extracted description without DescriptionBuilder', :aggregate_failures do
+      allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new)
+
+      expect(instance.description).to eq('By John Doe')
+      expect(Html2rss::Html::Rendering::DescriptionBuilder).not_to have_received(:new)
     end
 
-    it 'calls the DescriptionBuilder' do
-      expect(Html2rss::Html::Rendering::DescriptionBuilder).to have_received(:new)
-        .with(base: 'By John Doe', title: 'Sample instance', url: instance.url, enclosures: [], image: nil)
+    it 'returns nil for a blank description' do
+      expect(described_class.new(description: '  ').description).to be_nil
     end
   end
 
@@ -168,49 +204,6 @@ RSpec.describe Html2rss::Article do
 
       expect(article.deduplication_fingerprint).to eq(expected)
     end
-  end
-
-  describe '#enclosure' do
-    let(:audio_url) { Html2rss::Url.from_absolute('https://example.com/episode.mp3') }
-    let(:image_url) { Html2rss::Url.from_absolute('https://example.com/cover.jpg') }
-
-    it 'does not fall back to image when enclosures are absent' do
-      article = described_class.new(image: image_url)
-
-      expect(article.enclosure).to be_nil
-    end
-
-    it 'keeps image available for JSON Feed / description when enclosures are absent', :aggregate_failures do
-      article = described_class.new(image: image_url)
-
-      expect(article.image).to eq(image_url)
-      expect(article.enclosure).to be_nil
-    end
-
-    it 'skips image/* enclosures so RSS never uses an image as <enclosure>' do
-      article = described_class.new(
-        enclosures: [{ url: image_url, type: 'image/jpeg' }],
-        image: image_url
-      )
-
-      expect(article.enclosure).to be_nil
-    end
-
-    # rubocop:disable RSpec/ExampleLength -- prefers non-image enclosure while preserving image field
-    it 'prefers the first non-image enclosure over image enclosures', :aggregate_failures do
-      article = described_class.new(
-        enclosures: [
-          { url: image_url, type: 'image/jpeg' },
-          { url: audio_url, type: 'audio/mpeg' }
-        ],
-        image: image_url
-      )
-
-      expect(article.enclosure.url).to eq(audio_url)
-      expect(article.enclosure.type).to eq('audio/mpeg')
-      expect(article.image).to eq(image_url)
-    end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#categories' do
