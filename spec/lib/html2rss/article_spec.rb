@@ -22,6 +22,19 @@ RSpec.describe Html2rss::Article do
     end
   end
 
+  describe 'Marshal round-trip' do
+    let(:options) do
+      { id: '1', title: 'Sample', url: 'http://example.com', description: 'Body', scraper: Html2rss::Selectors }
+    end
+
+    it 'restores attributes without NOT_SET sentinel leakage', :aggregate_failures do
+      restored = Marshal.load(Marshal.dump(instance))
+
+      expect(restored.title).to eq('Sample')
+      expect(restored.description).to include('Body')
+    end
+  end
+
   describe '#each' do
     let(:yields) do
       described_class::PROVIDED_KEYS.map do |key|

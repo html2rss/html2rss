@@ -58,13 +58,15 @@ module Html2rss
       end
 
       ##
-      # @param channel [Html2rss::Channel] The channel information for the RSS feed.
+      # @param channel [Html2rss::Channel, Html2rss::Channel::Snapshot] The channel information for the RSS feed.
       # @param articles [Array<Html2rss::Article>] The list of articles to include in the RSS feed.
       # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
-      def initialize(channel:, articles:, stylesheets: [])
+      # @param generator [String, nil] optional preformatted generator comment (from {Status})
+      def initialize(channel:, articles:, stylesheets: [], generator: nil)
         @channel = channel
         @articles = articles
         @stylesheets = stylesheets
+        @generator = generator
       end
 
       # @return [RSS::Rss] RSS 2.0 document instance
@@ -102,14 +104,7 @@ module Html2rss
       end
 
       def generator
-        scraper_namespace_regex = /(?<namespace>Html2rss|Scraper)::/
-
-        scraper_counts = articles.flat_map(&:scraper).tally.map do |klass, count|
-          scraper_name = klass.to_s.gsub(scraper_namespace_regex, '')
-          "#{scraper_name} (#{count})"
-        end
-
-        "html2rss V. #{Html2rss::VERSION} (scrapers: #{scraper_counts.join(', ')})"
+        @generator || Status.build(articles:).to_generator_comment
       end
     end
   end

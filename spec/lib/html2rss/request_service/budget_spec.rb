@@ -49,6 +49,13 @@ RSpec.describe Html2rss::RequestService::Budget do
     end
   end
 
+  describe '#elapsed_seconds' do
+    it 'reports wall-clock time since budget creation' do
+      budget = described_class.new(max_requests: 2)
+      expect(budget.elapsed_seconds).to be >= 0.0
+    end
+  end
+
   describe '#remaining_timeout_seconds' do
     it 'returns nil when total_timeout_seconds is not provided' do
       budget = described_class.new(max_requests: 2)

@@ -11,9 +11,10 @@ module Html2rss
       VERSION_URL = 'https://jsonfeed.org/version/1.1'
 
       ##
-      # @param channel [Html2rss::Channel]
+      # @param channel [Html2rss::Channel, Html2rss::Channel::Snapshot]
       # @param articles [Array<Html2rss::Article>]
-      def initialize(channel:, articles:)
+      # @param feed_url [String, nil] reserved for JSON Feed feed_url (wired later)
+      def initialize(channel:, articles:, feed_url: nil) # rubocop:disable Lint/UnusedMethodArgument -- G2 wires feed_url
         @channel = channel
         @articles = articles
       end
