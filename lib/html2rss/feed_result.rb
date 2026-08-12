@@ -12,12 +12,14 @@ module Html2rss
   #   are re-frozen via {#marshal_load}.
   class FeedResult
     ##
-    # @param channel [Html2rss::Channel, Html2rss::Channel::Snapshot] channel metadata
+    # @param channel [Html2rss::Channel] channel metadata
     # @param articles [Array<Html2rss::Article>] extracted articles (deduplicated)
     # @param status [Html2rss::Status] pipeline telemetry
     # @param stylesheets [Array<Hash>] optional RSS stylesheet configs
     def initialize(channel:, articles:, status:, stylesheets: [])
-      @channel = channel.is_a?(Channel::Snapshot) ? channel : Channel::Snapshot.from(channel)
+      raise ArgumentError, 'channel must be a Html2rss::Channel' unless channel.is_a?(Channel)
+
+      @channel = channel
       @articles = articles.freeze
       @status = status
       @stylesheets = Array(stylesheets).freeze
