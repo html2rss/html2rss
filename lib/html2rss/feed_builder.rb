@@ -6,7 +6,7 @@ module Html2rss
     # Builds the requested feed type from the channel and article list.
     #
     # @param type [Symbol] :rss or :json_feed
-    # @param channel [Html2rss::Channel]
+    # @param channel [Html2rss::Channel, Html2rss::Channel::Snapshot]
     # @param articles [Array<Html2rss::Article>]
     # @return [RSS::Rss, Hash] format-compliant representation of the feed
     def self.build(type, channel:, articles:, **)
@@ -14,7 +14,7 @@ module Html2rss
       when :rss
         Rss.new(channel:, articles:, **).call
       when :json_feed
-        JsonFeed.new(channel:, articles:).call
+        JsonFeed.new(channel:, articles:, **).call
       else
         raise ArgumentError, "Unknown feed type: #{type}"
       end

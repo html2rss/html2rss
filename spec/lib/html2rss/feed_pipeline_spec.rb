@@ -155,9 +155,9 @@ RSpec.describe Html2rss::FeedPipeline do
 
         before { pipeline.to_rss }
 
-        it 'warns with class-only detail' do
-          expect(Html2rss::Log).to have_received(:warn).with(
-            /auto fallback faraday -> botasaurus after error=Html2rss::RequestService::RequestTimedOut/
+        it 'logs timeout fallback at info with host and budget context' do
+          expect(Html2rss::Log).to have_received(:info).with(
+            /auto fallback faraday -> botasaurus after timeout=Html2rss::RequestService::RequestTimedOut.*host=/
           ).once
         end
 

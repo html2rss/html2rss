@@ -14,32 +14,30 @@ module Html2rss
     end
 
     ##
-    # @return [RSS::Rss] generated RSS feed
-    def to_rss
-      run do |response:, config:, articles:|
-        channel = Html2rss::Channel.new(response, overrides: config.channel)
-        FeedBuilder.build(:rss, channel:, articles:, stylesheets: config.stylesheets)
-      end
+    # Runs the pipeline once and returns an opaque, Marshal-cacheable result.
+    #
+    # @return [Html2rss::FeedResult]
+    def to_result
+      config = Config.from_hash(raw_config, params: raw_config[:params])
+      state = pipeline_state_for(config)
+      channel = Channel::Snapshot.from(
+        Channel.new(state.fetch(:response), overrides: config.channel)
+      )
+      status = Status.build(articles: state.fetch(:articles), dedup_dropped: state.fetch(:dedup_dropped))
+      FeedResult.new(channel:, articles: state.fetch(:articles), status:, stylesheets: config.stylesheets)
     end
 
     ##
+    # @return [RSS::Rss] generated RSS feed
+    def to_rss = to_result.to_rss
+
+    ##
     # @return [Hash] generated JSONFeed 1.1 payload
-    def to_json_feed
-      run do |response:, config:, articles:|
-        channel = Html2rss::Channel.new(response, overrides: config.channel)
-        FeedBuilder.build(:json_feed, channel:, articles:)
-      end
-    end
+    def to_json_feed = to_result.to_json_feed
 
     private
 
     attr_reader :raw_config
-
-    def run
-      config = Config.from_hash(raw_config, params: raw_config[:params])
-      state = pipeline_state_for(config)
-      yield response: state.fetch(:response), config:, articles: state.fetch(:articles)
-    end
 
     def pipeline_state_for(config)
       plan = StrategyPlan.resolve(config.strategy)
@@ -54,10 +52,8 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
-      articles = deduplicated_articles(
-        ExtractionContext.new(config:, response:, request_session:)
-      )
-      { response:, articles: }
+      extracted = deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
+      { response:, articles: extracted.fetch(:articles), dedup_dropped: extracted.fetch(:dedup_dropped) }
     end
 
     def request_session_for(config, strategy:, resources:)
@@ -70,7 +66,9 @@ module Html2rss
     end
 
     def deduplicated_articles(extraction)
-      Article::Deduplicator.new(collect_articles(extraction)).call
+      collected = collect_articles(extraction)
+      unique = Article::Deduplicator.new(collected).call
+      { articles: unique, dedup_dropped: collected.size - unique.size }
     end
 
     # rubocop:disable Metrics/MethodLength

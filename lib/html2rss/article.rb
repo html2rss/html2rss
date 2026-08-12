@@ -45,6 +45,20 @@ module Html2rss
       Log.warn "Article: unknown keys found: #{unknown_keys.join(', ')}"
     end
 
+    ##
+    # Marshal only the constructor payload so lazy +NOT_SET+ sentinels do not break
+    # {FeedResult} cache round-trips.
+    #
+    # @return [Hash{Symbol => Object}]
+    def marshal_dump = @to_h
+
+    ##
+    # @param payload [Hash{Symbol => Object}] constructor options from {#marshal_dump}
+    # @return [void]
+    def marshal_load(payload)
+      initialize(**payload)
+    end
+
     # Checks if the article is valid based on the presence of URL, ID, and either title or description.
     # @return [Boolean] True if the article is valid, otherwise false.
     def valid?
