@@ -19,7 +19,8 @@ RSpec.describe Html2rss::RequestService::Strategy do
       Html2rss::RequestService::Budget,
       consume!: nil,
       remaining_timeout_seconds: nil,
-      effective_timeout_seconds: 30.0
+      effective_timeout_seconds: 30.0,
+      elapsed_seconds: 0.0
     )
   end
   let(:ctx) do
@@ -72,5 +73,39 @@ RSpec.describe Html2rss::RequestService::Strategy do
 
       expect(Html2rss::RequestService::ResponseGuard).to have_received(:new).with(policy:)
     end
+  end
+
+  describe 'timeout logging' do
+    let(:adapter) do
+      Class.new(described_class) do
+        private
+
+        def fetch
+          raise Faraday::TimeoutError, 'execution expired for https://secret.example/path?token=abc'
+        end
+      end
+    end
+
+    before do
+      allow(Html2rss::Log).to receive(:info)
+      allow(Html2rss::Log).to receive(:debug)
+    end
+
+    # rubocop:disable RSpec/ExampleLength -- structured info fields + debug message redaction
+    it 'keeps transport details out of info logs', :aggregate_failures do
+      expect { adapter.new(ctx).execute }.to raise_error(Html2rss::RequestService::RequestTimedOut)
+
+      expect(Html2rss::Log).to have_received(:info) do |message|
+        expect(message).to include('request timeout')
+        expect(message).to include('host=example.com')
+        expect(message).to include('reason=transport')
+        expect(message).not_to include('token=abc')
+        expect(message).not_to include('secret.example')
+      end
+      expect(Html2rss::Log).to have_received(:debug).with(
+        a_string_matching(/transport timeout message=.*token=abc/)
+      )
+    end
+    # rubocop:enable RSpec/ExampleLength
   end
 end
