@@ -50,15 +50,32 @@ module Html2rss
 
         ##
         # JSON Feed items must include content_html or content_text.
+        # HTML descriptions use content_html; plain text uses content_text.
+        # Title is a fallback only when description is absent. Never put HTML in content_text.
+        #
         # @return [Hash]
         def content_fields
-          description = article.description
-          return { content_html: description } if description
+          if (description = article.description)
+            return content_for(description)
+          end
 
-          title = article.title
-          return { content_text: title } if title
+          return { content_text: article.title } if article.title
 
           {}
+        end
+
+        ##
+        # @param description [String]
+        # @return [Hash]
+        def content_for(description)
+          html?(description) ? { content_html: description } : { content_text: description }
+        end
+
+        ##
+        # @param value [String]
+        # @return [Boolean]
+        def html?(value)
+          Nokogiri::HTML.fragment(value).children.any?(&:element?)
         end
 
         ##

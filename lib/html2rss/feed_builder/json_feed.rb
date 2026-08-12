@@ -13,10 +13,13 @@ module Html2rss
       ##
       # @param channel [Html2rss::Channel, Html2rss::Channel::Snapshot]
       # @param articles [Array<Html2rss::Article>]
-      # @param feed_url [String, nil] reserved for JSON Feed feed_url (wired later)
-      def initialize(channel:, articles:, feed_url: nil) # rubocop:disable Lint/UnusedMethodArgument -- G2 wires feed_url
+      # @param feed_url [String, nil] optional self URL for the feed (JSON Feed feed_url)
+      # @param user_comment [String, nil] optional generator comment (defaults to {Status})
+      def initialize(channel:, articles:, feed_url: nil, user_comment: nil)
         @channel = channel
         @articles = articles
+        @feed_url = feed_url
+        @user_comment = user_comment
       end
 
       ##
@@ -29,7 +32,7 @@ module Html2rss
 
       private
 
-      attr_reader :channel, :articles
+      attr_reader :channel, :articles, :feed_url
 
       ##
       # @return [Hash]
@@ -38,10 +41,18 @@ module Html2rss
           version: VERSION_URL,
           title: channel.title,
           home_page_url: channel.url.to_s,
+          feed_url:,
           description: channel.description,
+          user_comment:,
           language: channel.language,
           icon: channel.image&.to_s
         }
+      end
+
+      ##
+      # @return [String]
+      def user_comment
+        @user_comment || Status.build(articles:).to_generator_comment
       end
 
       ##
