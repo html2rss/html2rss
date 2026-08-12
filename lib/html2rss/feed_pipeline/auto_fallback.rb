@@ -135,9 +135,7 @@ module Html2rss
       end
 
       def articles_for(response:, request_session:)
-        pipeline.deduplicated_articles(
-          ExtractionContext.new(config:, response:, request_session:)
-        )
+        pipeline.deduplicated_articles(config:, response:, request_session:)
       end
 
       def record_success(response:, strategy:, articles:, dedup_dropped:, state:)

@@ -4,9 +4,6 @@ module Html2rss
   ##
   # Builds feeds from validated config through request, extraction, and rendering stages.
   class FeedPipeline
-    # Bundle of inputs shared by selector and auto-source article collection.
-    ExtractionContext = Data.define(:config, :response, :request_session)
-
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.
     # attempt_count: auto attempts attempted; 0 outside :auto.
@@ -50,10 +47,12 @@ module Html2rss
     end
 
     # @api private Host seam for {AutoFallback} (and single-strategy path).
-    # @param extraction [Html2rss::FeedPipeline::ExtractionContext]
+    # @param config [Html2rss::Config]
+    # @param response [Html2rss::RequestService::Response]
+    # @param request_session [Html2rss::RequestSession]
     # @return [Array(Array<Html2rss::Article>, Integer)] unique articles and drop count
-    def deduplicated_articles(extraction)
-      collected = collect_articles(extraction)
+    def deduplicated_articles(config:, response:, request_session:)
+      collected = collect_articles(config:, response:, request_session:)
       unique = Article::Deduplicator.new(collected).call
       [unique, collected.size - unique.size]
     end
@@ -75,7 +74,7 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
-      articles, dedup_dropped = deduplicated_articles(ExtractionContext.new(config:, response:, request_session:))
+      articles, dedup_dropped = deduplicated_articles(config:, response:, request_session:)
       PipelineOutcome.new(response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
     end
 
@@ -89,17 +88,17 @@ module Html2rss
       ).call
     end
 
-    def collect_articles(extraction)
-      selector_articles(extraction) + auto_source_articles(extraction)
+    def collect_articles(config:, response:, request_session:)
+      selector_articles(config:, response:, request_session:) +
+        auto_source_articles(config:, response:, request_session:)
     end
 
     # rubocop:disable Metrics/MethodLength
-    def selector_articles(extraction)
-      config = extraction.config
+    def selector_articles(config:, response:, request_session:)
       return [] unless (selectors = config.selectors)
 
-      page_responses = extraction.request_session.page_responses(
-        extraction.response,
+      page_responses = request_session.page_responses(
+        response,
         pagination_config: selectors.dig(:items, :pagination)
       )
 
@@ -114,10 +113,10 @@ module Html2rss
     end
     # rubocop:enable Metrics/MethodLength
 
-    def auto_source_articles(extraction)
-      return [] unless (auto_source = extraction.config.auto_source)
+    def auto_source_articles(config:, response:, request_session:)
+      return [] unless (auto_source = config.auto_source)
 
-      AutoSource.new(extraction.response, auto_source, request_session: extraction.request_session).articles
+      AutoSource.new(response, auto_source, request_session:).articles
     end
   end
 end
