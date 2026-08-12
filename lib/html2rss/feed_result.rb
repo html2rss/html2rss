@@ -4,8 +4,8 @@ module Html2rss
   ##
   # Opaque, Marshal-cacheable result of one scrape.
   #
-  # Public surface for consumers (including html2rss-web): {#empty?}, {#to_rss},
-  # {#to_json_feed}, and {#status}. Articles and channel metadata are not exposed.
+  # Public surface for consumers (including html2rss-web): {#empty?}, {#channel_title},
+  # {#to_rss}, {#to_json_feed}, and {#status}. Articles and the channel object are not exposed.
   #
   # @note Gem contract: instances must round-trip through +Marshal.dump+ / +Marshal.load+
   #   so web can cache one scrape and render RSS or JSON Feed on read. Loaded results
@@ -45,6 +45,12 @@ module Html2rss
     ##
     # @return [Boolean] true when the scrape produced no items
     def empty? = @articles.empty?
+
+    ##
+    # Channel title string only — does not expose the channel object.
+    #
+    # @return [String] title from the materialized channel
+    def channel_title = @channel.title
 
     ##
     # @return [RSS::Rss] RSS 2.0 document
