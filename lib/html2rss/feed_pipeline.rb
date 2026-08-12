@@ -20,9 +20,7 @@ module Html2rss
     def to_result
       config = Config.from_hash(raw_config, params: raw_config[:params])
       state = pipeline_state_for(config)
-      channel = Channel::Snapshot.from(
-        Channel.new(state.fetch(:response), overrides: config.channel)
-      )
+      channel = Channel.from_response(state.fetch(:response), overrides: config.channel)
       status = Status.build(articles: state.fetch(:articles), dedup_dropped: state.fetch(:dedup_dropped))
       FeedResult.new(channel:, articles: state.fetch(:articles), status:, stylesheets: config.stylesheets)
     end

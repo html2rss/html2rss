@@ -8,7 +8,7 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   let(:channel) do
-    Html2rss::Channel::Snapshot.new(
+    Html2rss::Channel.new(
       title: 'Example',
       url: Html2rss::Url.from_absolute('https://example.com'),
       description: 'Example feed',

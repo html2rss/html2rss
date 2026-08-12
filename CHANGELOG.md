@@ -4,6 +4,7 @@
 
 ### Breaking changes
 
+* `Html2rss::Channel` is materialized metadata (`Data.define`). Construct via `Channel.from_response(response, overrides:)` or keyword attributes — not `Channel.new(response)`. `Channel::Snapshot` is removed.
 * RSS `<enclosure>` is no longer emitted from item images alone; configure a non-image enclosure or use JSON Feed `image` / description media instead.
 
 ## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)

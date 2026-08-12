@@ -58,7 +58,7 @@ module Html2rss
       end
 
       ##
-      # @param channel [Html2rss::Channel, Html2rss::Channel::Snapshot] The channel information for the RSS feed.
+      # @param channel [Html2rss::Channel] The channel information for the RSS feed.
       # @param articles [Array<Html2rss::Article>] The list of articles to include in the RSS feed.
       # @param stylesheets [Array<Hash>] An optional array of stylesheet configurations.
       # @param generator [String, nil] optional preformatted generator comment (from {Status})

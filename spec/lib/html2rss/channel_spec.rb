@@ -5,7 +5,7 @@
 require 'timecop'
 
 RSpec.describe Html2rss::Channel do
-  subject(:instance) { described_class.new(response, overrides:) }
+  subject(:instance) { described_class.from_response(response, overrides:) }
 
   let(:overrides) { {} }
   let(:response) { build_response.call(body:, headers:, url:) }

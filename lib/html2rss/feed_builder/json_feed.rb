@@ -11,7 +11,7 @@ module Html2rss
       VERSION_URL = 'https://jsonfeed.org/version/1.1'
 
       ##
-      # @param channel [Html2rss::Channel, Html2rss::Channel::Snapshot]
+      # @param channel [Html2rss::Channel]
       # @param articles [Array<Html2rss::Article>]
       # @param feed_url [String, nil] optional self URL for the feed (JSON Feed feed_url)
       # @param user_comment [String, nil] optional generator comment (defaults to {Status})
