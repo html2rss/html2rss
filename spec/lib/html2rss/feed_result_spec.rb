@@ -63,13 +63,21 @@ RSpec.describe Html2rss::FeedResult do
       expect(result.channel_title).to eq('Example')
     end
 
-    it 'preserves page title when the scrape produced no items', :aggregate_failures do
-      page_channel = Html2rss::Channel.new(channel_response, overrides: { title: 'Page Title From Head', description: 'Example feed' })
-      empty = described_class.new(channel: page_channel, articles: [],
-                                  status: Html2rss::Status.build(articles: []))
+    context 'when the scrape produced no items' do
+      let(:page_channel) do
+        Html2rss::Channel.new(
+          channel_response,
+          overrides: { title: 'Page Title From Head', description: 'Example feed' }
+        )
+      end
 
-      expect(empty).to be_empty
-      expect(empty.channel_title).to eq('Page Title From Head')
+      it 'preserves page title', :aggregate_failures do
+        empty = described_class.new(channel: page_channel, articles: [],
+                                    status: Html2rss::Status.build(articles: []))
+
+        expect(empty).to be_empty
+        expect(empty.channel_title).to eq('Page Title From Head')
+      end
     end
   end
 
@@ -125,7 +133,7 @@ RSpec.describe Html2rss::FeedResult do
     end
     # rubocop:enable RSpec/ExampleLength
 
-    it 'exposes channel_title for callers without a channel reader' do
+    it 'exposes channel_title for callers without a channel reader', :aggregate_failures do
       expect(result.channel_title).to eq('Example')
       expect(result).not_to respond_to(:channel)
     end
@@ -133,6 +141,7 @@ RSpec.describe Html2rss::FeedResult do
 
   describe 'Marshal contract' do
     # Full render-after-load lands with materialized Channel/Article (later stack PRs).
+    # rubocop:disable RSpec/ExampleLength -- round-trip identity + status telemetry fields
     it 'round-trips FeedResult and Status through Marshal', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(result))
 
@@ -144,5 +153,6 @@ RSpec.describe Html2rss::FeedResult do
       expect(restored.status.selected_strategy).to eq(status.selected_strategy)
       expect(restored.status.attempt_count).to eq(status.attempt_count)
     end
+    # rubocop:enable RSpec/ExampleLength
   end
 end
