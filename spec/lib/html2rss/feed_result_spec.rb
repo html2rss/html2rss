@@ -125,6 +125,12 @@ RSpec.describe Html2rss::FeedResult do
       expect(item[:content_html]).to include('<img')
     end
     # rubocop:enable RSpec/ExampleLength
+
+    it 'rejects invalid feed_url at the JSON Feed adapter boundary' do
+      expect do
+        result.to_json_feed(feed_url: '/relative.json')
+      end.to raise_error(ArgumentError, /absolute/)
+    end
   end
 
   describe '#status' do

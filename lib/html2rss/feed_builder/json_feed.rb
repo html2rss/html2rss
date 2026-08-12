@@ -14,13 +14,13 @@ module Html2rss
       # @param channel [Html2rss::Channel]
       # @param articles [Array<Html2rss::Article>]
       # @param user_comment [String] required generator comment (from {Status})
-      # @param feed_url [String, nil] optional self URL for the feed (JSON Feed feed_url)
+      # @param feed_url [String, nil] optional absolute self URL for the feed (JSON Feed feed_url)
       def initialize(channel:, articles:, user_comment:, feed_url: nil)
         raise ArgumentError, 'user_comment must be a non-blank String' if blank_string?(user_comment)
 
         @channel = channel
         @articles = articles
-        @feed_url = feed_url
+        @feed_url = normalize_feed_url(feed_url)
         @user_comment = user_comment
       end
 
@@ -38,6 +38,14 @@ module Html2rss
 
       def blank_string?(value)
         !value.is_a?(String) || value.strip.empty?
+      end
+
+      def normalize_feed_url(value)
+        return if value.nil?
+        raise ArgumentError, 'feed_url must be a String or nil' unless value.is_a?(String)
+        return if value.strip.empty?
+
+        Url.from_absolute(value).to_s
       end
 
       ##
