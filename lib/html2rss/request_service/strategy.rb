@@ -124,7 +124,6 @@ module Html2rss
         ]
         detail << "message=#{message}" if message
         Log.info("#{self.class}: request timeout #{detail.join(' ')}")
-        Log.debug("#{self.class}: request timeout detail #{detail.join(' ')}")
       end
       # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 

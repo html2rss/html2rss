@@ -50,8 +50,7 @@ module Html2rss
 
         ##
         # JSON Feed items must include content_html or content_text.
-        # HTML descriptions use content_html; plain text uses content_text.
-        # Title is a fallback only when description is absent. Never put HTML in content_text.
+        # Title is a fallback only when description is absent.
         #
         # @return [Hash]
         def content_fields

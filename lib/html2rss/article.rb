@@ -133,10 +133,7 @@ module Html2rss
                     .map { |enclosure| Enclosure.new(**enclosure) }
     end
 
-    # First non-image enclosure for RSS +<enclosure>+.
-    # Never falls back to {#image} — JSON Feed still emits +image+ separately.
-    #
-    # @return [Html2rss::Article::Enclosure, nil]
+    # @return [Html2rss::Article::Enclosure, nil] first non-image entry from {#enclosures}
     def enclosure
       return @enclosure unless @enclosure == NOT_SET
 
