@@ -28,7 +28,7 @@ module Html2rss
     # @option options [String] :title article title
     # @option options [String] :description article description/content
     # @option options [String, Html2rss::Url] :url canonical article URL
-    # @option options [String, Html2rss::Url] :image image URL for fallback enclosure rendering
+    # @option options [String, Html2rss::Url] :image image URL for description / JSON Feed +image+
     # @option options [String] :author author name
     # @option options [String] :guid explicit GUID override
     # @option options [String, Time, DateTime] :published_at publication timestamp
@@ -119,19 +119,14 @@ module Html2rss
                     .map { |enclosure| Enclosure.new(**enclosure) }
     end
 
+    # First non-image enclosure for RSS +<enclosure>+.
+    # Never falls back to {#image} — JSON Feed still emits +image+ separately.
+    #
     # @return [Html2rss::Article::Enclosure, nil]
     def enclosure
       return @enclosure unless @enclosure == NOT_SET
 
-      @enclosure = case (object = @to_h[:enclosures]&.first)
-                   when Hash
-                     Enclosure.new(**object)
-                   when nil
-                     Enclosure.new(url: image) if image
-                   else
-                     Log.warn "Article: unknown enclosure type: #{object.class}"
-                     nil
-                   end
+      @enclosure = enclosures.find { |enc| !image_mime_type?(enc.type) }
     end
 
     # @return [Array<String>] normalized, unique category names
@@ -170,6 +165,10 @@ module Html2rss
     end
 
     private
+
+    def image_mime_type?(type)
+      type.to_s.downcase.start_with?('image/')
+    end
 
     def dedup_from_url
       return unless (value = url)

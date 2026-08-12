@@ -20,12 +20,12 @@ RSpec.describe 'JSON API Site Configuration' do
         title: "ACME Corp's Revolutionary AI Breakthrough Changes Everything",
         link: nil,
         description_includes: [
-          '<img src="https://example.com/images/ai-breakthrough.jpg"',
+          '<source src="https://example.com/audio/ai-breakthrough-podcast.mp3"',
           "It can finally understand 'it works on my machine'"
         ],
         categories: ['Technology', 'Artificial Intelligence', 'Machine Learning', 'Innovation'],
         pub_date: 'Mon, 15 Jan 2024 14:30:00 +0000',
-        enclosure: { url: 'https://example.com/images/ai-breakthrough.jpg', type: 'image/jpeg', length: 0 }
+        enclosure: { url: 'https://example.com/audio/ai-breakthrough-podcast.mp3', type: 'audio/mpeg', length: 0 }
       },
       {
         title: 'Climate Change Summit Reaches Historic Agreement',
@@ -36,18 +36,18 @@ RSpec.describe 'JSON API Site Configuration' do
         ],
         categories: ['Environment', 'Climate Change', 'Sustainability', 'Policy'],
         pub_date: 'Sun, 14 Jan 2024 09:15:00 +0000',
-        enclosure: { url: 'https://example.com/images/climate-summit.jpg', type: 'image/jpeg', length: 0 }
+        enclosure: nil
       },
       {
         title: 'Space Exploration Mission Discovers New Planet',
         link: nil,
         description_includes: [
-          '<img src="https://example.com/images/space-discovery.jpg"',
+          '<source src="https://example.com/audio/space-discovery-podcast.mp3"',
           'This discovery opens up new possibilities for future space exploration'
         ],
         categories: ['Science', 'Space Exploration', 'Astronomy', 'Discovery'],
         pub_date: 'Sat, 13 Jan 2024 16:45:00 +0000',
-        enclosure: { url: 'https://example.com/images/space-discovery.jpg', type: 'image/jpeg', length: 0 }
+        enclosure: { url: 'https://example.com/audio/space-discovery-podcast.mp3', type: 'audio/mpeg', length: 0 }
       },
       {
         title: 'Medical Breakthrough Offers Hope for Cancer Patients',
@@ -58,18 +58,18 @@ RSpec.describe 'JSON API Site Configuration' do
         ],
         categories: ['Health', 'Cancer Research', 'Immunotherapy', 'Medical Breakthrough'],
         pub_date: 'Fri, 12 Jan 2024 11:20:00 +0000',
-        enclosure: { url: 'https://example.com/images/cancer-research.jpg', type: 'image/jpeg', length: 0 }
+        enclosure: nil
       },
       {
         title: 'Renewable Energy Reaches New Milestone',
         link: nil,
         description_includes: [
-          '<img src="https://example.com/images/renewable-energy.jpg"',
+          '<source src="https://example.com/audio/renewable-energy-podcast.mp3"',
           'Solar and wind power have led this transformation'
         ],
         categories: ['Energy', 'Renewable Energy', 'Solar Power', 'Wind Power'],
         pub_date: 'Thu, 11 Jan 2024 15:10:00 +0000',
-        enclosure: { url: 'https://example.com/images/renewable-energy.jpg', type: 'image/jpeg', length: 0 }
+        enclosure: { url: 'https://example.com/audio/renewable-energy-podcast.mp3', type: 'audio/mpeg', length: 0 }
       },
       {
         title: 'Cybersecurity Threats Reach All-Time High',
@@ -80,7 +80,7 @@ RSpec.describe 'JSON API Site Configuration' do
         ],
         categories: ['Security', 'Cybersecurity', 'Threat Detection', 'Infrastructure Security'],
         pub_date: 'Wed, 10 Jan 2024 08:30:00 +0000',
-        enclosure: { url: 'https://example.com/images/cybersecurity.jpg', type: 'image/jpeg', length: 0 }
+        enclosure: nil
       }
     ]
   end
