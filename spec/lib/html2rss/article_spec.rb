@@ -24,14 +24,36 @@ RSpec.describe Html2rss::Article do
 
   describe 'Marshal round-trip' do
     let(:options) do
-      { id: '1', title: 'Sample', url: 'http://example.com', description: 'Body', scraper: Html2rss::Selectors }
+      { id: '1', title: 'Sample', url: 'http://example.com', description: 'Body', scraper: Html2rss::Selectors,
+        categories: ['News'], enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/a.mp3'),
+                                             type: 'audio/mpeg', bytes_length: 1 }] }
     end
 
+    # rubocop:disable RSpec/ExampleLength -- asserts restored scalars + frozen collections
     it 'restores attributes without NOT_SET sentinel leakage', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(instance))
 
       expect(restored.title).to eq('Sample')
       expect(restored.description).to include('Body')
+      expect(restored.categories).to eq(['News'])
+      expect(restored.categories).to be_frozen
+      expect(restored.enclosures).to be_frozen
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'keeps marshal hooks off the public API' do
+      expect(instance.public_methods(false)).not_to include(:marshal_dump, :marshal_load)
+    end
+  end
+
+  describe 'defensive copies' do
+    it 'does not freeze caller-owned option collections', :aggregate_failures do
+      categories = ['News']
+      article = described_class.new(id: '1', title: 'T', url: 'https://example.com/a', categories:)
+      categories << 'Extra'
+
+      expect(article.categories).to eq(['News'])
+      expect { article.categories << 'More' }.to raise_error(FrozenError)
     end
   end
 

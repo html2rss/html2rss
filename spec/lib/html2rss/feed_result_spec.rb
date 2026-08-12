@@ -33,12 +33,10 @@ RSpec.describe Html2rss::FeedResult do
   let(:status) { Html2rss::Status.build(articles:, dedup_dropped: 1) }
 
   describe 'public API surface' do
-    it 'exposes only the frozen closed query/render set and never Channel/Articles',
-       :aggregate_failures do
-      expect(result).to respond_to(:empty?, :channel_title, :to_rss, :to_json_feed, :status)
+    it 'exposes exactly the frozen closed query/render set', :aggregate_failures do
+      expect(result.public_methods(false)).to match_array(%i[empty? channel_title to_rss to_json_feed status])
       expect(result).not_to respond_to(:articles)
       expect(result).not_to respond_to(:channel)
-      expect(result.public_methods(false)).not_to include(:articles, :channel)
       expect(result.instance_variables).to include(:@channel, :@articles)
     end
   end
@@ -137,6 +135,30 @@ RSpec.describe Html2rss::FeedResult do
     end
   end
 
+  describe 'immutability' do
+    # rubocop:disable RSpec/ExampleLength -- defensive copy of articles + stylesheet hashes
+    it 'defensively copies articles and stylesheets from the caller', :aggregate_failures do
+      articles_input = articles.dup
+      styles = [{ href: +'rss.xsl', type: +'text/xsl' }]
+      built = described_class.new(channel:, articles: articles_input, status:, stylesheets: styles)
+
+      articles_input << Html2rss::Article.new(id: '2', title: 'Nope', url: 'https://example.com/x')
+      styles.first[:href].replace('evil.xsl')
+
+      expect(built).not_to be_empty
+      expect(built.to_json_feed[:items].size).to eq(1)
+      expect(built.to_rss.to_s).to include('rss.xsl')
+      expect(built.to_rss.to_s).not_to include('evil.xsl')
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'keeps channel_title immutable for callers', :aggregate_failures do
+      expect(result.channel_title).to be_frozen
+      expect { result.channel_title << 'X' }.to raise_error(FrozenError)
+      expect(result.to_json_feed[:title]).to eq('Example')
+    end
+  end
+
   describe 'Marshal contract' do
     it 'round-trips through Marshal and still renders both formats', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       restored = Marshal.load(Marshal.dump(result))
@@ -144,11 +166,15 @@ RSpec.describe Html2rss::FeedResult do
       expect(restored).to be_a(described_class)
       expect(restored).to be_frozen
       expect(restored).not_to be_empty
+      expect(restored.public_methods(false)).to match_array(%i[empty? channel_title to_rss to_json_feed status])
       expect(restored.status.to_generator_comment).to eq(status.to_generator_comment)
       expect(restored.status.selected_strategy).to eq(status.selected_strategy)
       expect(restored.status.attempt_count).to eq(status.attempt_count)
+      expect(restored.status.scraper_tallies).to be_frozen
       expect(restored.to_rss).to be_a(RSS::Rss)
       expect(restored.to_json_feed[:title]).to eq('Example')
+      expect { restored.channel_title << 'X' }.to raise_error(FrozenError)
+      expect { restored.status.scraper_tallies['Selectors'] = 9 }.to raise_error(FrozenError)
     end
   end
 end

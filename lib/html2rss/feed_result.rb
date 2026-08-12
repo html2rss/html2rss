@@ -12,7 +12,8 @@ module Html2rss
   #
   # @note Gem contract: instances must round-trip through +Marshal.dump+ / +Marshal.load+
   #   so web can cache one scrape and render RSS or JSON Feed on read. Loaded results
-  #   are re-frozen via {#marshal_load}.
+  #   are re-frozen via private {#marshal_load}. For trusted cache reads only,
+  #   +Marshal.load(payload, freeze: true)+ is also safe.
   class FeedResult
     ##
     # @param channel [Html2rss::Channel] channel metadata (internal; not exposed on the public API)
@@ -21,28 +22,16 @@ module Html2rss
     # @param stylesheets [Array<Hash>] optional RSS stylesheet configs
     def initialize(channel:, articles:, status:, stylesheets: [])
       raise ArgumentError, 'channel must be a Html2rss::Channel' unless channel.is_a?(Channel)
+      raise ArgumentError, 'status must be a Html2rss::Status' unless status.is_a?(Status)
+
+      articles = Array(articles)
+      raise ArgumentError, 'articles must all be Html2rss::Article' unless articles.all?(Article)
 
       @channel = channel
-      @articles = articles.freeze
+      @articles = articles.dup.freeze
       @status = status
-      @stylesheets = Array(stylesheets).freeze
+      @stylesheets = freeze_stylesheets(stylesheets)
       freeze
-    end
-
-    ##
-    # @return [Array] constructor payload for Marshal (avoids default ivar thaw)
-    def marshal_dump
-      [@channel, @articles, @status, @stylesheets]
-    end
-
-    ##
-    # Rebuilds via {#initialize} so the restored object is frozen again.
-    #
-    # @param payload [Array] values from {#marshal_dump}
-    # @return [void]
-    def marshal_load(payload)
-      channel, articles, status, stylesheets = payload
-      initialize(channel:, articles:, status:, stylesheets:)
     end
 
     ##
@@ -82,5 +71,31 @@ module Html2rss
     # @return [Html2rss::Status] frozen scraper tallies, dedup count, and generator formatter.
     #   {#to_h} on +status+ is a stable consumer contract for observability payloads.
     attr_reader :status
+
+    private
+
+    ##
+    # @return [Array] constructor payload for Marshal (avoids default ivar thaw)
+    def marshal_dump
+      [@channel, @articles, @status, @stylesheets]
+    end
+
+    ##
+    # Rebuilds via {#initialize} so the restored object is frozen again.
+    #
+    # @param payload [Array] values from {#marshal_dump}
+    # @return [void]
+    def marshal_load(payload)
+      channel, articles, status, stylesheets = payload
+      initialize(channel:, articles:, status:, stylesheets:)
+    end
+
+    def freeze_stylesheets(stylesheets)
+      Array(stylesheets).map do |sheet|
+        sheet.to_h.transform_keys(&:to_sym).transform_values do |value|
+          value.is_a?(String) ? value.dup.freeze : value
+        end.freeze
+      end.freeze
+    end
   end
 end
