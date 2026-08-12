@@ -47,4 +47,31 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
       expect(feed_hash[:user_comment]).to eq(user_comment)
     end
   end
+
+  describe 'feed_url boundary validation' do
+    it 'omits feed_url when nil or blank', :aggregate_failures do
+      expect(described_class.new(channel:, articles:, user_comment:, feed_url: nil).call).not_to have_key(:feed_url)
+      expect(described_class.new(channel:, articles:, user_comment:, feed_url: '  ').call).not_to have_key(:feed_url)
+    end
+
+    it 'normalizes a valid absolute feed_url' do
+      payload = described_class.new(
+        channel:, articles:, user_comment:, feed_url: 'https://example.com/feed.json'
+      ).call
+
+      expect(payload[:feed_url]).to eq('https://example.com/feed.json')
+    end
+
+    it 'rejects a relative feed_url' do
+      expect do
+        described_class.new(channel:, articles:, user_comment:, feed_url: '/relative.json')
+      end.to raise_error(ArgumentError, /absolute/)
+    end
+
+    it 'rejects a non-string feed_url' do
+      expect do
+        described_class.new(channel:, articles:, user_comment:, feed_url: :symbol)
+      end.to raise_error(ArgumentError, /feed_url must be a String or nil/)
+    end
+  end
 end
