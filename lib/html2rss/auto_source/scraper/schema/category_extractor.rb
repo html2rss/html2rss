@@ -7,138 +7,53 @@ module Html2rss
         ##
         # Extracts categories from Schema.org structured data.
         module CategoryExtractor
+          # Schema.org fields checked for category-like string values.
+          CATEGORY_FIELDS = %i[articleSection keywords categories tags].freeze
+
           ##
-          # Extracts categories from a schema object.
-          #
           # @param schema_object [Hash] The schema object
           # @return [Array<String>] Array of category strings
           def self.call(schema_object)
             Set.new.tap do |categories|
-              extract_field_categories!(categories, schema_object)
-              extract_about_categories!(categories, schema_object)
+              CATEGORY_FIELDS.each { |field| add_field(categories, schema_object[field]) }
+              add_about(categories, schema_object[:about])
             end.to_a
           end
 
-          ##
-          # Extracts categories from keywords, categories, and tags fields.
-          #
-          # @param schema_object [Hash] The schema object
-          # @return [Set<String>] Set of category strings
-          def self.extract_field_categories(schema_object)
-            Set.new.tap { |categories| extract_field_categories!(categories, schema_object) }
-          end
+          class << self
+            private
 
-          ##
-          # Extracts categories from keywords, categories, and tags fields.
-          #
-          # @param categories [Set<String>] Accumulator set
-          # @param schema_object [Hash] The schema object
-          # @return [void]
-          def self.extract_field_categories!(categories, schema_object)
-            %i[keywords categories tags].each do |field|
-              extract_field_value!(categories, schema_object[field])
-            end
-          end
-
-          ##
-          # Extracts categories from the about field.
-          #
-          # @param schema_object [Hash] The schema object
-          # @return [Set<String>] Set of category strings
-          def self.extract_about_categories(schema_object)
-            Set.new.tap { |categories| extract_about_categories!(categories, schema_object) }
-          end
-
-          ##
-          # Extracts categories from the about field.
-          #
-          # @param categories [Set<String>] Accumulator set
-          # @param schema_object [Hash] The schema object
-          # @return [void]
-          def self.extract_about_categories!(categories, schema_object)
-            about = schema_object[:about]
-            return unless about
-
-            if about.is_a?(Array)
-              extract_about_array!(categories, about)
-            elsif about.is_a?(String)
-              extract_string_categories!(categories, about)
-            end
-          end
-
-          ##
-          # Extracts categories from a single field value.
-          #
-          # @param schema_object [Hash] The schema object
-          # @param field [String] The field name
-          # @return [Set<String>] Set of category strings
-          def self.extract_field_value(schema_object, field)
-            Set.new.tap { |categories| extract_field_value!(categories, schema_object[field.to_sym]) }
-          end
-
-          ##
-          # Extracts categories from a single field value.
-          #
-          # @param categories [Set<String>] Accumulator set
-          # @param value [Object] The field value
-          # @return [void]
-          def self.extract_field_value!(categories, value)
-            return unless value
-
-            if value.is_a?(Array)
-              value.each do |item|
-                s = item.to_s
-                categories.add(s) unless s.empty?
-              end
-            elsif value.is_a?(String)
-              extract_string_categories!(categories, value)
-            end
-          end
-
-          ##
-          # Extracts categories from an about array.
-          #
-          # @param about [Array] The about array
-          # @return [Set<String>] Set of category strings
-          def self.extract_about_array(about)
-            Set.new.tap { |categories| extract_about_array!(categories, about) }
-          end
-
-          ##
-          # Extracts categories from an about array.
-          #
-          # @param categories [Set<String>] Accumulator set
-          # @param about [Array] The about array
-          # @return [void]
-          def self.extract_about_array!(categories, about)
-            about.each do |item|
-              if item.is_a?(Hash) && item[:name]
-                categories.add(item[:name].to_s)
-              elsif item.is_a?(String)
-                categories.add(item)
+            def add_field(categories, value)
+              case value
+              when Array
+                value.each { |item| add_string(categories, item.to_s) }
+              when String
+                split_string(categories, value)
               end
             end
-          end
 
-          ##
-          # Extracts categories from a string by splitting on separators.
-          #
-          # @param string [String] source string that may contain category delimiters
-          # @return [Set<String>] Set of category strings
-          def self.extract_string_categories(string)
-            Set.new.tap { |categories| extract_string_categories!(categories, string) }
-          end
+            def add_about(categories, about)
+              case about
+              when Array then add_about_items(categories, about)
+              when String then split_string(categories, about)
+              end
+            end
 
-          ##
-          # Extracts categories from a string by splitting on separators.
-          #
-          # @param categories [Set<String>] Accumulator set
-          # @param string [String] source string that may contain category delimiters
-          # @return [void]
-          def self.extract_string_categories!(categories, string)
-            string.split(/[,;|]/).each do |part|
-              s = part.strip
-              categories.add(s) unless s.empty?
+            def add_about_items(categories, about)
+              about.each do |item|
+                case item
+                when Hash then add_string(categories, item[:name].to_s)
+                when String then add_string(categories, item)
+                end
+              end
+            end
+
+            def split_string(categories, string)
+              string.split(/[,;|]/).each { |part| add_string(categories, part.strip) }
+            end
+
+            def add_string(categories, string)
+              categories.add(string) unless string.empty?
             end
           end
         end

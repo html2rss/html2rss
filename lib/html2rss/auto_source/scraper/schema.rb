@@ -18,12 +18,24 @@ module Html2rss
         # Selector for JSON-LD script tags containing Schema.org objects.
         TAG_SELECTOR = 'script[type="application/ld+json"]'
 
-        # Pre-compiled regex union for supported schema types.
-        # Performs a single pass over script tag text instead of multiple regex matches.
+        # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
+        # Allows preceding entries in a JSON @type array (e.g. ["WebPage","NewsArticle"]).
         SUPPORTED_TYPES_RE = begin
           types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
-          /"@type"\s*:\s*"(?:#{Regexp.union(types.to_a).source})"/
+          type_re = Regexp.union(types.to_a)
+          %r{"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
         end.freeze
+
+        # Matches a leading schema.org URL prefix on @type values (http or https).
+        SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
+
+        # Prefer these keys when recursively walking unsupported container objects.
+        COLLECTION_KEYS = %i[itemListElement blogPost mainEntity hasPart].freeze
+
+        # Container types that must never be emitted as feed items (walk children only).
+        DENIED_CONTAINER_TYPES = Set[
+          'ItemList', 'Blog', 'BreadcrumbList', 'WebPage', 'CollectionPage'
+        ].freeze
 
         # @return [Symbol] scraper config key
         def self.options_key = :schema
@@ -46,19 +58,17 @@ module Html2rss
           # of all supported schema objects
           # by recursively traversing the given `object`.
           #
+          # Prefers collection keys ({COLLECTION_KEYS}) when walking containers.
+          #
           # @param object [Hash, Array, Nokogiri::XML::Element]
           # @return [Array<Hash>] the schema_objects, or an empty array
           # :reek:DuplicateMethodCall
           def from(object)
             case object
-            when Nokogiri::XML::Element
-              from(parse_script_tag(object))
-            when Hash
-              supported_schema_object?(object) ? [object] : object.values.flat_map { |item| from(item) }
-            when Array
-              object.flat_map { |item| from(item) }
-            else
-              []
+            when Nokogiri::XML::Element then from(parse_script_tag(object))
+            when Hash then from_hash(object)
+            when Array then object.flat_map { |item| from(item) }
+            else []
             end
           end
 
@@ -72,19 +82,52 @@ module Html2rss
           # @param schema_object [Hash{Symbol => Object}] schema object with an @type key
           # @return [Scraper::Schema::Thing, Scraper::Schema::ItemList, nil] a class responding to `#call`
           def scraper_for_schema_object(schema_object)
-            type = schema_object[:@type]
+            types = normalize_types(schema_object[:@type])
 
-            if Thing::SUPPORTED_TYPES.member?(type)
-              Thing
-            elsif ItemList::SUPPORTED_TYPES.member?(type)
-              ItemList
+            # Prefer article/list extractors over denied containers for multi-type @type arrays
+            # (e.g. ["NewsArticle","WebPage"]).
+            return ItemList if types.intersect?(ItemList::SUPPORTED_TYPES)
+            return Thing if types.intersect?(Thing::SUPPORTED_TYPES)
+            return nil if types.intersect?(DENIED_CONTAINER_TYPES)
+
+            Log.debug("#{name}: unsupported schema object @type=#{schema_object[:@type].inspect}")
+            nil
+          end
+
+          # Normalizes Schema.org `@type` wire forms to short type names.
+          #
+          # Handles String, Symbol, Array, and strips `https://schema.org/` / `http://schema.org/` prefixes.
+          #
+          # @param object [String, Symbol, Array, nil] raw `@type` value
+          # @return [Set<String>] short type names (e.g. "NewsArticle")
+          # @api private
+          def normalize_types(object)
+            case object
+            when Array
+              object.each_with_object(Set.new) { |item, set| set.merge(normalize_types(item)) }
+            when String, Symbol
+              short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
+              short.empty? ? Set.new : Set[short]
             else
-              Log.debug("#{name}: unsupported schema object @type=#{type.inspect}")
-              nil
+              Set.new
             end
           end
 
           private
+
+          # @param hash [Hash] candidate schema object
+          # @return [Array<Hash>] the object itself or nested supported objects
+          def from_hash(hash)
+            supported_schema_object?(hash) ? [hash] : walk_hash_values(hash)
+          end
+
+          # @param hash [Hash] schema object that is not itself extractable
+          # @return [Array<Hash>] nested supported objects
+          def walk_hash_values(hash)
+            preferred = COLLECTION_KEYS.filter_map { |key| hash[key] }
+            rest = hash.except(*COLLECTION_KEYS).values
+            (preferred + rest).flat_map { |item| from(item) }
+          end
 
           def parse_script_tag(script_tag)
             JSON.parse(script_tag.text, symbolize_names: true)

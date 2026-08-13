@@ -40,8 +40,13 @@ module Html2rss
             @id = id.to_s.empty? ? nil : id
           end
 
-          # @return [String, nil] article title
-          def title = schema_object[:title]
+          # @return [String, nil] article title (schema.org: headline → name → alternativeHeadline; legacy title)
+          def title
+            schema_object.values_at(:headline, :name, :alternativeHeadline, :title)
+                         .lazy
+                         .map { _1.to_s.strip }
+                         .find { !_1.empty? }
+          end
 
           # @return [String, nil] longest available description field
           def description
@@ -74,8 +79,11 @@ module Html2rss
             @image = img_url ? Url.from_relative(img_url, base_url || img_url) : nil
           end
 
-          # @return [String, nil] published-at timestamp string
-          def published_at = schema_object[:datePublished]
+          # @return [String, nil] published-at timestamp (datePublished, else dateModified)
+          def published_at
+            value = schema_object[:datePublished] || schema_object[:dateModified]
+            value.to_s.empty? ? nil : value
+          end
 
           # @return [Array<String>, nil] extracted category labels
           def categories
@@ -107,7 +115,8 @@ module Html2rss
           # @return [String, nil] image URL string
           def image_url_from(obj)
             return obj if obj.is_a?(String)
-            return unless obj.is_a?(Hash) && obj[:@type] == 'ImageObject'
+            return unless obj.is_a?(Hash)
+            return unless Schema.normalize_types(obj[:@type]).include?('ImageObject')
 
             obj[:url] || obj[:contentUrl]
           end

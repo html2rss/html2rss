@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   subject(:instance) { described_class.new(schema_object, url: 'https://example.com') }
 
   let(:schema_object) do
-    { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation' }
+    { '@type': 'ScholarlyArticle', headline: 'Baustellen der Nation' }
   end
 
   specify { expect(described_class::SUPPORTED_TYPES).to be_a(Set) }
@@ -12,8 +12,54 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#call' do
     subject(:call) { instance.call }
 
-    it 'sets the title' do
+    it 'sets the title from headline' do
       expect(call).to include(title: 'Baustellen der Nation')
+    end
+  end
+
+  describe '#title' do
+    subject(:title) { instance.title }
+
+    context 'when headline is present' do
+      let(:schema_object) { { '@type': 'Article', headline: 'From Headline', name: 'From Name', title: 'Legacy' } }
+
+      it { is_expected.to eq('From Headline') }
+    end
+
+    context 'when only name is present' do
+      let(:schema_object) { { '@type': 'Article', name: 'From Name', alternativeHeadline: 'Alt', title: 'Legacy' } }
+
+      it { is_expected.to eq('From Name') }
+    end
+
+    context 'when only alternativeHeadline is present' do
+      let(:schema_object) { { '@type': 'Article', alternativeHeadline: 'Alt', title: 'Legacy' } }
+
+      it { is_expected.to eq('Alt') }
+    end
+
+    context 'when only legacy title is present' do
+      let(:schema_object) { { '@type': 'Article', title: 'Legacy Title' } }
+
+      it { is_expected.to eq('Legacy Title') }
+    end
+  end
+
+  describe '#published_at' do
+    subject(:published_at) { instance.published_at }
+
+    context 'when datePublished is present' do
+      let(:schema_object) do
+        { '@type': 'Article', headline: 'T', datePublished: '2024-01-01', dateModified: '2024-02-01' }
+      end
+
+      it { is_expected.to eq('2024-01-01') }
+    end
+
+    context 'when only dateModified is present' do
+      let(:schema_object) { { '@type': 'Article', headline: 'T', dateModified: '2024-02-01' } }
+
+      it { is_expected.to eq('2024-02-01') }
     end
   end
 
@@ -125,6 +171,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
   describe '#categories' do
     subject(:categories) { instance.categories }
+
+    context 'when schema_object has articleSection' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', headline: 'Baustellen der Nation', articleSection: 'Politics' }
+      end
+
+      it 'includes articleSection as a category' do
+        expect(categories).to eq(%w[Politics])
+      end
+    end
 
     context 'when schema_object has keywords as array' do
       let(:schema_object) do
