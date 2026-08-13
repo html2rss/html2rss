@@ -7,7 +7,9 @@ module Html2rss
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
-  Status = Data.define(:version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count) do
+  Status = Data.define(
+    :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts
+  ) do
     class << self
       ##
       # Builds status from extracted articles and scrape telemetry.
@@ -16,15 +18,17 @@ module Html2rss
       # @param dedup_dropped [Integer] number of articles removed by deduplication
       # @param selected_strategy [Symbol, nil] concrete strategy that succeeded under +:auto+ (else +nil+)
       # @param attempt_count [Integer] auto-fallback attempt count (0 when not under +:auto+)
+      # @param strategy_attempts [Array<Hash>] auto-fallback attempt hashes (empty outside +:auto+)
       # @return [Html2rss::Status]
-      def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0)
+      def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0, strategy_attempts: [])
         tallies = articles.filter_map(&:scraper).tally.transform_keys { |klass| scraper_name(klass) }
         new(
           version: Html2rss::VERSION,
           scraper_tallies: tallies,
           dedup_dropped:,
           selected_strategy:,
-          attempt_count:
+          attempt_count:,
+          strategy_attempts:
         )
       end
 
@@ -42,7 +46,11 @@ module Html2rss
     # @param dedup_dropped [Integer]
     # @param selected_strategy [Symbol, nil]
     # @param attempt_count [Integer]
-    def initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
+    # @param strategy_attempts [Array<Hash>]
+    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- Status Data.define members
+    def initialize(
+      version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0, strategy_attempts: []
+    )
       dedup = Integer(dedup_dropped)
       attempts = Integer(attempt_count)
       validate_counters!(dedup:, attempts:, selected_strategy:)
@@ -52,24 +60,28 @@ module Html2rss
         scraper_tallies: freeze_tallies(scraper_tallies),
         dedup_dropped: dedup,
         selected_strategy:,
-        attempt_count: attempts
+        attempt_count: attempts,
+        strategy_attempts: freeze_attempts(strategy_attempts)
       )
     end
+    # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
     ##
     # Observability hash for web (+scraper_status+). Omits empty/absent optional keys:
-    # +:scraper_tallies+ when empty, +:selected_strategy+ when +nil+, +:attempt_count+ when zero.
+    # +:scraper_tallies+ when empty, +:selected_strategy+ when +nil+, +:attempt_count+ when zero,
+    # +:strategy_attempts+ when empty.
     # Data members remain available via readers even when omitted here.
     #
     # @return [Hash{Symbol => Object}] always +:version+ (String), +:dedup_dropped+ (Integer);
-    #   optionally +:scraper_tallies+, +:selected_strategy+, +:attempt_count+
+    #   optionally +:scraper_tallies+, +:selected_strategy+, +:attempt_count+, +:strategy_attempts+
     def to_h
       {
         version:,
         dedup_dropped:,
         **(scraper_tallies.any? ? { scraper_tallies: } : {}),
         **(selected_strategy.nil? ? {} : { selected_strategy: }),
-        **(attempt_count.positive? ? { attempt_count: } : {})
+        **(attempt_count.positive? ? { attempt_count: } : {}),
+        **(strategy_attempts.any? ? { strategy_attempts: } : {})
       }
     end
 
@@ -88,14 +100,20 @@ module Html2rss
 
     private
 
-    def marshal_dump = [version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count]
+    def marshal_dump
+      [version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count, strategy_attempts]
+    end
 
-    def marshal_load((version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count))
-      initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:)
+    def marshal_load((version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count, strategy_attempts))
+      initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:, strategy_attempts:)
     end
 
     def freeze_tallies(tallies)
       tallies.to_h.transform_keys(&:to_s).transform_values { |count| Integer(count) }.freeze
+    end
+
+    def freeze_attempts(attempts)
+      Array(attempts).map { |attempt| attempt.to_h.freeze }.freeze
     end
 
     def validate_counters!(dedup:, attempts:, selected_strategy:)

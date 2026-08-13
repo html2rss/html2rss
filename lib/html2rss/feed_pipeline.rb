@@ -7,7 +7,10 @@ module Html2rss
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.
     # attempt_count: auto attempts attempted; 0 outside :auto.
-    PipelineOutcome = Data.define(:response, :articles, :dedup_dropped, :selected_strategy, :attempt_count)
+    # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
+    PipelineOutcome = Data.define(
+      :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts
+    )
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
@@ -19,6 +22,7 @@ module Html2rss
     # Runs the pipeline once and returns an opaque, Marshal-cacheable result.
     #
     # @return [Html2rss::FeedResult]
+    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- Status kwargs stay co-located with Channel
     def to_result
       config = Config.from_hash(raw_config, params: raw_config[:params])
       outcome = pipeline_outcome_for(config)
@@ -27,10 +31,12 @@ module Html2rss
         articles: outcome.articles,
         dedup_dropped: outcome.dedup_dropped,
         selected_strategy: outcome.selected_strategy,
-        attempt_count: outcome.attempt_count
+        attempt_count: outcome.attempt_count,
+        strategy_attempts: outcome.strategy_attempts
       )
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
+    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
     # @api private Host seam for {AutoFallback} (and single-strategy path).
     # @param config [Html2rss::Config]
@@ -75,7 +81,9 @@ module Html2rss
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
       articles, dedup_dropped = deduplicated_articles(config:, response:, request_session:)
-      PipelineOutcome.new(response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0)
+      PipelineOutcome.new(
+        response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0, strategy_attempts: []
+      )
     end
 
     def run_auto_pipeline(config, resources:)

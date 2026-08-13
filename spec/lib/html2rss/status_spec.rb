@@ -30,12 +30,19 @@ RSpec.describe Html2rss::Status do
         articles:,
         dedup_dropped: 0,
         selected_strategy: :botasaurus,
-        attempt_count: 2
+        attempt_count: 2,
+        strategy_attempts: [
+          { strategy: :faraday, items_count: 0, error_class: nil },
+          { strategy: :botasaurus, items_count: 1, error_class: nil,
+            transport_meta: { 'request_id' => 'abc', 'render_ms' => 12 } }
+        ]
       )
 
       expect(status.selected_strategy).to eq(:botasaurus)
       expect(status.attempt_count).to eq(2)
+      expect(status.strategy_attempts.size).to eq(2)
       expect(status.to_h).to include(selected_strategy: :botasaurus, attempt_count: 2)
+      expect(status.to_h[:strategy_attempts].last[:transport_meta]).to include('request_id' => 'abc')
       expect(status.to_generator_comment).not_to include('botasaurus')
     end
     # rubocop:enable RSpec/ExampleLength
@@ -72,14 +79,21 @@ RSpec.describe Html2rss::Status do
       expect { status.scraper_tallies['Selectors'] = 2 }.to raise_error(FrozenError)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- Marshal freeze contract for tallies
-    it 're-freezes tallies after Marshal round-trip', :aggregate_failures do
-      status = described_class.build(articles: [], dedup_dropped: 1)
+    # rubocop:disable RSpec/ExampleLength -- Marshal freeze contract for tallies + attempts
+    it 're-freezes tallies and strategy_attempts after Marshal round-trip', :aggregate_failures do
+      status = described_class.build(
+        articles: [],
+        dedup_dropped: 1,
+        strategy_attempts: [{ strategy: :faraday, items_count: 0, error_class: nil }]
+      )
       restored = Marshal.load(Marshal.dump(status))
 
       expect(restored).to be_frozen
       expect(restored.scraper_tallies).to be_frozen
+      expect(restored.strategy_attempts).to be_frozen
+      expect(restored.strategy_attempts.first).to be_frozen
       expect(restored.dedup_dropped).to eq(1)
+      expect(restored.strategy_attempts).to eq([{ strategy: :faraday, items_count: 0, error_class: nil }])
       expect { restored.scraper_tallies['x'] = 1 }.to raise_error(FrozenError)
     end
     # rubocop:enable RSpec/ExampleLength
@@ -103,7 +117,7 @@ RSpec.describe Html2rss::Status do
         dedup_dropped: 0,
         scraper_tallies: { 'AutoSource::Html' => 1, 'Selectors' => 1 }
       )
-      expect(status.to_h).not_to include(:selected_strategy, :attempt_count)
+      expect(status.to_h).not_to include(:selected_strategy, :attempt_count, :strategy_attempts)
     end
     # rubocop:enable RSpec/ExampleLength
 
@@ -120,11 +134,12 @@ RSpec.describe Html2rss::Status do
     end
     # rubocop:enable RSpec/ExampleLength
 
-    it 'omits nil selected_strategy and zero attempt_count from the hash', :aggregate_failures do
+    it 'omits nil selected_strategy, zero attempt_count, and empty strategy_attempts', :aggregate_failures do
       status = described_class.build(articles: [], dedup_dropped: 3)
 
       expect(status.selected_strategy).to be_nil
       expect(status.attempt_count).to eq(0)
+      expect(status.strategy_attempts).to eq([])
       expect(status.to_h.keys).to contain_exactly(:version, :dedup_dropped)
     end
   end

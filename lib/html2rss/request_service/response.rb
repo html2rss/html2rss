@@ -7,12 +7,16 @@ module Html2rss
     ##
     # To be used by strategies to provide their response.
     class Response
+      # Default when a strategy does not attach transport telemetry.
+      EMPTY_TRANSPORT_META = {}.freeze
+
       ##
       # @param body [String] the body of the response
       # @param url [Html2rss::Url] the final request URL
       # @param headers [Hash] the headers of the response
       # @param status [Integer, nil] the HTTP status code when available
-      def initialize(body:, url:, headers: {}, status: nil)
+      # @param transport_meta [Hash] allowlisted upstream telemetry (frozen when present)
+      def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META)
         @body = body
 
         headers = headers.dup
@@ -22,6 +26,7 @@ module Html2rss
         @headers = headers
         @status = status
         @url = url
+        @transport_meta = transport_meta.nil? || transport_meta.empty? ? EMPTY_TRANSPORT_META : transport_meta.freeze
       end
 
       # @return [String] the raw body of the response
@@ -35,6 +40,9 @@ module Html2rss
 
       # @return [Html2rss::Url] the URL of the response
       attr_reader :url
+
+      # @return [Hash] allowlisted upstream transport telemetry
+      attr_reader :transport_meta
 
       # @return [String] normalized content type header value
       def content_type = header('content-type').to_s

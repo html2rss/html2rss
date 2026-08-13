@@ -10,7 +10,7 @@ module Html2rss
       # Default Botasaurus scrape options when no explicit config is provided.
       DEFAULT_OPTIONS = {
         navigation_mode: 'auto',
-        max_retries: 2,
+        max_retries: 1,
         headless: false
       }.freeze
 
@@ -29,6 +29,17 @@ module Html2rss
         window_size
         lang
       ].freeze
+
+      # Allowlisted upstream response keys exposed as Response#transport_meta.
+      META_KEYS = %w[
+        request_id strategy_used render_ms challenge_detected blocked_detected attempts error_category
+      ].freeze
+
+      # Remaining seconds at or below which Botasaurus retries are disabled.
+      TIGHT_BUDGET_SECONDS = 12
+
+      # Seconds reserved from remaining budget before setting wait_timeout_seconds.
+      BUDGET_WAIT_RESERVE_SECONDS = 2
 
       # Parsed Botasaurus response wrapper.
       class ParsedResponse
@@ -90,6 +101,9 @@ module Html2rss
         # @return [String, nil] final URL reported by upstream
         def final_url = payload['final_url']
 
+        # @return [Hash{String => Object}] allowlisted upstream telemetry (frozen)
+        def transport_meta = payload.slice(*META_KEYS).compact.freeze
+
         private
 
         attr_reader :payload, :transport_status
@@ -109,6 +123,7 @@ module Html2rss
       ##
       # @param url [Html2rss::Url] canonical URL to scrape
       # @param options [Hash] validated request.botasaurus options
+      # @param remaining_timeout_seconds [Numeric, nil] shared request budget remainder for clamps
       # @option options [String] :navigation_mode
       # @option options [Integer] :max_retries
       # @option options [String] :wait_for_selector
@@ -121,14 +136,15 @@ module Html2rss
       # @option options [String] :user_agent
       # @option options [Array<Integer>] :window_size
       # @option options [String] :lang
-      def initialize(url:, options: {})
+      def initialize(url:, options: {}, remaining_timeout_seconds: nil)
         @url = url
         @options = options
+        @remaining_timeout_seconds = remaining_timeout_seconds
       end
 
-      # @return [Hash] payload for POST /scrape
+      # @return [Hash] payload for POST /scrape (budget-clamped when remaining is known)
       def request_payload
-        DEFAULT_OPTIONS.merge(filtered_options).merge(url: url.to_s)
+        DEFAULT_OPTIONS.merge(filtered_options).merge(url: url.to_s).then { clamp_for_budget(_1) }
       end
 
       # @param transport_response [Faraday::Response] upstream HTTP response
@@ -145,12 +161,24 @@ module Html2rss
 
       private
 
-      attr_reader :url, :options
+      attr_reader :url, :options, :remaining_timeout_seconds
 
       def filtered_options
         OPTION_KEYS.each_with_object({}) do |key, normalized|
           normalized[key] = options[key] if options.key?(key)
         end
+      end
+
+      def clamp_for_budget(payload)
+        remaining = remaining_timeout_seconds
+        return payload if remaining.nil?
+
+        clamped = payload.dup
+        clamped[:max_retries] = 0 if remaining <= TIGHT_BUDGET_SECONDS
+        budget_wait = [1, (remaining - BUDGET_WAIT_RESERVE_SECONDS).floor].max
+        configured = clamped[:wait_timeout_seconds]
+        clamped[:wait_timeout_seconds] = configured ? [configured, budget_wait].min : budget_wait
+        clamped
       end
     end
   end

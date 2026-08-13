@@ -8,7 +8,7 @@ module Html2rss
     # Hosted by the pipeline instance: session + extract call back into FeedPipeline.
     class AutoFallback
       # Ordered list of concrete request strategies attempted by the :auto plan.
-      CHAIN = %i[faraday botasaurus browserless].freeze
+      CHAIN = %i[faraday botasaurus].freeze
 
       # Error classes that should abort auto fallback immediately.
       NON_FALLBACK_ERRORS = [
@@ -45,9 +45,12 @@ module Html2rss
 
         # @param strategy [Symbol] strategy that returned a response
         # @param items_count [Integer] extracted article count
+        # @param transport_meta [Hash, nil] optional allowlisted upstream telemetry
         # @return [void]
-        def record_items(strategy:, items_count:)
-          @attempts << { strategy:, items_count:, error_class: nil }
+        def record_items(strategy:, items_count:, transport_meta: nil)
+          attempt = { strategy:, items_count:, error_class: nil }
+          attempt[:transport_meta] = transport_meta if transport_meta && !transport_meta.empty?
+          @attempts << attempt
         end
 
         # @param response [RequestService::Response] successful response
@@ -62,7 +65,8 @@ module Html2rss
             articles:,
             dedup_dropped:,
             selected_strategy:,
-            attempt_count:
+            attempt_count:,
+            strategy_attempts: attempts
           )
         end
       end
@@ -125,7 +129,7 @@ module Html2rss
       def process_response(response:, strategy:, next_strategy:, request_session:, state:)
         articles, dedup_dropped = articles_for(response:, request_session:)
         items_count = articles.size
-        state.record_items(strategy:, items_count:)
+        state.record_items(strategy:, items_count:, transport_meta: response.transport_meta)
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")

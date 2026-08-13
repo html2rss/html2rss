@@ -71,9 +71,6 @@ RSpec.describe Html2rss::FeedPipeline do
       let(:item_response) do
         build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
       end
-      let(:browserless_response) do
-        build_response.call(body: '<html><body><article><h1>browser</h1></article></body></html>')
-      end
       let(:strategy_results) do
         {
           faraday: empty_response,
@@ -136,16 +133,16 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::Log).not_to have_received(:info)
       end
 
-      it 'continues auto fallback when botasaurus is not configured', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'raises when botasaurus is not configured (no browserless hop)', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         strategy_results[:botasaurus] = Html2rss::RequestService::BotasaurusConfigurationError.new('missing url')
-        strategy_results[:browserless] = browserless_response
 
-        result = pipeline.to_result
-        rss = result.to_rss
-
-        expect(rss.items.map(&:title)).to eq(['browser'])
+        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+          expect(error.attempts).to include(
+            hash_including(strategy: :botasaurus, error_class: 'Html2rss::RequestService::BotasaurusConfigurationError')
+          )
+        end
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
+        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
       end
 
       context 'when first strategy fails but fallback strategy succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups
@@ -314,12 +311,22 @@ RSpec.describe Html2rss::FeedPipeline do
         end
       end
 
-      it 'puts selected_strategy and attempt_count on status', :aggregate_failures do
+      it 'puts selected_strategy, attempt_count, and strategy_attempts on status', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         result = described_class.new(config).to_result
 
         expect(result.status.selected_strategy).to eq(:botasaurus)
         expect(result.status.attempt_count).to eq(2)
-        expect(result.status.to_h).to include(selected_strategy: :botasaurus, attempt_count: 2)
+        expect(result.status.strategy_attempts).to eq(
+          [
+            { strategy: :faraday, items_count: 0, error_class: nil },
+            { strategy: :botasaurus, items_count: 1, error_class: nil }
+          ]
+        )
+        expect(result.status.to_h).to include(
+          selected_strategy: :botasaurus,
+          attempt_count: 2,
+          strategy_attempts: result.status.strategy_attempts
+        )
         expect(result.status.to_generator_comment).not_to include('botasaurus')
       end
     end

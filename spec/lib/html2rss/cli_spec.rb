@@ -282,8 +282,7 @@ RSpec.describe Html2rss::CLI do
           Html2rss::NoFeedItemsExtracted.new(
             attempts: [
               { strategy: :faraday, items_count: 0, error_class: nil },
-              { strategy: :botasaurus, items_count: 0, error_class: nil },
-              { strategy: :browserless, items_count: 0, error_class: nil }
+              { strategy: :botasaurus, items_count: 0, error_class: nil }
             ]
           )
         )
