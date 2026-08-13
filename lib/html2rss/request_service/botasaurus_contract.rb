@@ -10,7 +10,7 @@ module Html2rss
       # Default Botasaurus scrape options when no explicit config is provided.
       DEFAULT_OPTIONS = {
         navigation_mode: 'auto',
-        max_retries: 2,
+        max_retries: 1,
         headless: false
       }.freeze
 

@@ -71,9 +71,6 @@ RSpec.describe Html2rss::FeedPipeline do
       let(:item_response) do
         build_response.call(body: '<html><body><article><h1>bota</h1></article></body></html>')
       end
-      let(:browserless_response) do
-        build_response.call(body: '<html><body><article><h1>browser</h1></article></body></html>')
-      end
       let(:strategy_results) do
         {
           faraday: empty_response,
@@ -136,16 +133,16 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::Log).not_to have_received(:info)
       end
 
-      it 'continues auto fallback when botasaurus is not configured', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'raises when botasaurus is not configured (no browserless hop)', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         strategy_results[:botasaurus] = Html2rss::RequestService::BotasaurusConfigurationError.new('missing url')
-        strategy_results[:browserless] = browserless_response
 
-        result = pipeline.to_result
-        rss = result.to_rss
-
-        expect(rss.items.map(&:title)).to eq(['browser'])
+        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+          expect(error.attempts).to include(
+            hash_including(strategy: :botasaurus, error_class: 'Html2rss::RequestService::BotasaurusConfigurationError')
+          )
+        end
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
+        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
       end
 
       context 'when first strategy fails but fallback strategy succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups

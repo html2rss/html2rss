@@ -470,13 +470,6 @@ RSpec.describe Html2rss do
           headers: { 'content-type' => 'text/html' }
         )
       end
-      let(:browserless_item_response) do
-        Html2rss::RequestService::Response.new(
-          body: '<html><body><article><h1>browser</h1></article></body></html>',
-          url: Html2rss::Url.from_absolute('https://example.com/news'),
-          headers: { 'content-type' => 'text/html' }
-        )
-      end
       let(:strategy_results) do
         {
           faraday: faraday_empty_response,
@@ -508,17 +501,16 @@ RSpec.describe Html2rss do
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
-      it 'falls back through browserless when first two strategies return zero items', :aggregate_failures do
+      it 'does not call browserless under auto when botasaurus also yields zero items', :aggregate_failures do
         strategy_results[:botasaurus] = faraday_empty_response
-        strategy_results[:browserless] = browserless_item_response
 
-        expect(feed.items.map(&:title)).to eq(['browser'])
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
+        expect { feed }
+          .to raise_error(Html2rss::NoFeedItemsExtracted, /No feed items extracted after auto fallback/)
+        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
       end
 
       it 'raises a specific zero-items error when all concrete strategies return zero items' do
         strategy_results[:botasaurus] = faraday_empty_response
-        strategy_results[:browserless] = faraday_empty_response
 
         expect { feed }
           .to raise_error(Html2rss::NoFeedItemsExtracted, /No feed items extracted after auto fallback/)
@@ -528,7 +520,6 @@ RSpec.describe Html2rss do
         before do
           strategy_results[:faraday] = Html2rss::RequestService::RequestTimedOut.new('timed out')
           strategy_results[:botasaurus] = faraday_empty_response
-          strategy_results[:browserless] = faraday_empty_response
         end
 
         it 'raises NoFeedItemsExtracted' do
@@ -544,17 +535,17 @@ RSpec.describe Html2rss do
               items_count: nil,
               error_class: 'Html2rss::RequestService::RequestTimedOut'
             },
-            { strategy: :botasaurus, items_count: 0, error_class: nil },
-            { strategy: :browserless, items_count: 0, error_class: nil }
+            { strategy: :botasaurus, items_count: 0, error_class: nil }
           ]
 
           expect { feed }.to raise_error(Html2rss::NoFeedItemsExtracted) { |error| expect(error.attempts).to eq(expected_attempts) }
         end
 
-        it 'tries browserless as the final fallback strategy' do
+        it 'stops at botasaurus without calling browserless', :aggregate_failures do
           feed
         rescue Html2rss::NoFeedItemsExtracted
-          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :browserless).once
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+          expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
         end
       end
 
@@ -562,7 +553,6 @@ RSpec.describe Html2rss do
         config[:request][:max_requests] = 1
 
         strategy_results[:botasaurus] = faraday_empty_response
-        strategy_results[:browserless] = faraday_empty_response
 
         expect { feed }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded, /Request budget exhausted/)
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once

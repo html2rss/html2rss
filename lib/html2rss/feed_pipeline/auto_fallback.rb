@@ -8,7 +8,7 @@ module Html2rss
     # Hosted by the pipeline instance: session + extract call back into FeedPipeline.
     class AutoFallback
       # Ordered list of concrete request strategies attempted by the :auto plan.
-      CHAIN = %i[faraday botasaurus browserless].freeze
+      CHAIN = %i[faraday botasaurus].freeze
 
       # Error classes that should abort auto fallback immediately.
       NON_FALLBACK_ERRORS = [

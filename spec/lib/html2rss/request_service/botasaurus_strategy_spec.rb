@@ -97,7 +97,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       expect(JSON.parse(body)).to eq(
         'url' => 'https://example.com/',
         'navigation_mode' => 'auto',
-        'max_retries' => 2,
+        'max_retries' => 1,
         'headless' => false
       )
     end
