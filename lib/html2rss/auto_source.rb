@@ -85,6 +85,7 @@ module Html2rss
     # @return [void]
     def initialize(response, opts = DEFAULT_CONFIG, request_session: nil)
       @parsed_body = response.parsed_body
+      @body = response.body
       @url = response.url
       @opts = opts
       @request_session = request_session
@@ -113,10 +114,11 @@ module Html2rss
 
     private
 
-    attr_reader :url, :parsed_body, :request_session
+    attr_reader :url, :parsed_body, :body, :request_session
 
     def extract_articles
-      scraper_instances = Scraper.instances_for(parsed_body, url:, request_session:, opts: @opts[:scraper])
+      scraper_instances = Scraper.instances_for(parsed_body, url:, request_session:, body:,
+                                                           opts: @opts[:scraper])
       return [] if scraper_instances.empty?
 
       # Scrapers are run sequentially.

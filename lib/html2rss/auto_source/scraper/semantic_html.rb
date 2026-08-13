@@ -23,17 +23,16 @@ module Html2rss
           new(parsed_body, url: 'https://example.com').extractable?
         end
 
-        # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
+        # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
         # @param url [String, Html2rss::Url] base url
+        # @param document [SST::Document, nil] memoized SST document from AutoSource
         # @param opts [Hash] scraper-specific options
         # @option opts [Boolean] :fallback_anchorless whether to keep containers without a primary anchor
-        def initialize(parsed_body, url:, **opts)
-          @parsed_body = parsed_body
+        def initialize(parsed_body = nil, url:, document: nil, **opts)
+          @document = document || SST::Normalizer.call(parsed_body)
           @url = url
           @permit_unanchored = opts.fetch(:fallback_anchorless, false)
         end
-
-        attr_reader :parsed_body
 
         ##
         # @yieldparam article [Html2rss::Article]
@@ -60,11 +59,10 @@ module Html2rss
           end
         end
 
-        def ranked_segments # rubocop:disable Metrics/MethodLength
+        def ranked_segments
           @ranked_segments ||= begin
-            document = SST::Normalizer.call(@parsed_body)
             segments = Segmenter.call(
-              document,
+              @document,
               base_url: @url,
               strategy: :semantic,
               permit_unanchored: @permit_unanchored

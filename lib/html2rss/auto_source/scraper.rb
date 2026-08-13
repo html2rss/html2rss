@@ -32,6 +32,9 @@ module Html2rss
         Html
       ].freeze
 
+      # Heuristic scrapers that share one memoized SST::Document per page.
+      HEURISTIC_SCRAPERS = [SemanticHtml, Html].freeze
+
       ##
       # Error raised when no suitable scraper is found.
       class NoScraperFound < Html2rss::Error
@@ -94,27 +97,29 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
       # @param url [String, Html2rss::Url] The page url.
       # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
+      # @param body [String, nil] raw response body (XML for direct sitemap pages).
       # @param opts [Hash] The options hash.
-      # @option opts [Hash] :wordpress_api scraper toggle and configuration
-      # @option opts [Hash] :schema scraper toggle and configuration
-      # @option opts [Hash] :microdata scraper toggle and configuration
-      # @option opts [Hash] :microformats2 scraper toggle and configuration
-      # @option opts [Hash] :json_state scraper toggle and configuration
-      # @option opts [Hash] :meta_oembed scraper toggle and configuration
-      # @option opts [Hash] :semantic_html scraper toggle and configuration
-      # @option opts [Hash] :html scraper toggle and configuration
       # @return [Array<Object>] An array of scraper instances that can handle the parsed body.
       #
       # `instances_for` is the main entrypoint for extraction. It lets a scraper
       # decide whether it matches using the same instance that will later yield
       # article hashes, which keeps precomputed state close to the scraper that
-      # owns it.
-      def self.instances_for(parsed_body, url:, request_session: nil,
+      # owns it. Heuristic scrapers share one +SST::Document+ normalized from
+      # +parsed_body+.
+      def self.instances_for(parsed_body, url:, request_session: nil, body: nil,
                              opts: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
+        sst_document = nil
         instances = SCRAPERS.filter_map do |scraper|
           next unless opts.dig(scraper.options_key, :enabled)
 
-          instance = scraper.new(parsed_body, url:, request_session:, **opts.fetch(scraper.options_key, {}))
+          scraper_opts = opts.fetch(scraper.options_key, {})
+          if HEURISTIC_SCRAPERS.include?(scraper)
+            sst_document ||= SST::Normalizer.call(parsed_body)
+            instance = scraper.new(parsed_body, url:, request_session:, body:, document: sst_document,
+                                                **scraper_opts)
+          else
+            instance = scraper.new(parsed_body, url:, request_session:, body:, **scraper_opts)
+          end
           next unless extractable_instance?(instance, parsed_body)
 
           instance
