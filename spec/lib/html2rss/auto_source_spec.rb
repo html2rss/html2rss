@@ -15,6 +15,7 @@ RSpec.describe Html2rss::AutoSource do
       {
         url:,
         request_session: nil,
+        body:,
         opts: hash_including(
           schema: hash_including(enabled: false),
           html: hash_including(enabled: false)
