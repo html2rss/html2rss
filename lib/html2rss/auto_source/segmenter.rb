@@ -17,6 +17,7 @@ module Html2rss
       # @option opts [Boolean] :permit_unanchored keep containers without a primary link
       # @option opts [Integer] :minimum_selector_frequency list strategy frequency floor
       # @option opts [Integer] :use_top_selectors list strategy selector budget
+      # @option opts [Scoring::LinkResolver, nil] :link_resolver page-scoped destination facts cache
       # @return [Array<Segment>]
       # rubocop:disable Style/ArgumentsForwarding -- keep named opts for YARD @option
       def self.call(document, base_url:, strategy:, **opts)
@@ -31,6 +32,7 @@ module Html2rss
       # @option opts [Boolean] :permit_unanchored keep containers without a primary link
       # @option opts [Integer] :minimum_selector_frequency list strategy frequency floor
       # @option opts [Integer] :use_top_selectors list strategy selector budget
+      # @option opts [Scoring::LinkResolver, nil] :link_resolver page-scoped destination facts cache
       def initialize(document, base_url:, strategy:, **opts)
         raise ArgumentError, 'document must be SST::Document' unless document.is_a?(SST::Document)
         raise ArgumentError, "unknown strategy: #{strategy.inspect}" unless Segment::STRATEGIES.include?(strategy)
@@ -41,7 +43,7 @@ module Html2rss
         @permit_unanchored = opts.fetch(:permit_unanchored, false)
         @minimum_selector_frequency = opts.fetch(:minimum_selector_frequency, 2)
         @use_top_selectors = opts.fetch(:use_top_selectors, 5)
-        @link_resolver = Scoring::LinkResolver.new(base_url)
+        @link_resolver = opts[:link_resolver] || Scoring::LinkResolver.new(base_url)
         @noise_policy = LinkDestination::NoisePolicy.new(link_resolver: @link_resolver, index: document.index)
       end
 

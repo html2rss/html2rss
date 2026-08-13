@@ -14,15 +14,15 @@ Heuristic auto-source chrome lives on `SST::Tags` / `SST::Text` after `SST::Norm
 
 ## Container assessment
 
-Observing a semantic container plus its selected anchor and destination facts into ranking/`hard_junk?` signals. Owned by `Html2rss::Scoring::Engine` (+ `ContainerAssessor`). `SemanticHtml` / `Html` orchestrate Normalizer → Segmenter → Scoring → Extractor only.
+Observing a semantic container plus its selected anchor and destination facts into ranking signals. Owned by `Html2rss::Scoring::Engine` (+ `ContainerAssessor`). Rank-time hard drops live on `Scoring::Observation#hard_junk?` (container assessment — not content-anchor eligibility). `SemanticHtml` / `Html` orchestrate Normalizer → Segmenter → Scoring → Extractor only. Scrapers supply one page-scoped `Scoring::LinkResolver` into Segmenter, Engine, and SemanticHtml dedup.
 
 ## Content-anchor eligibility
 
-Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::Scoring::NoisePolicy`. Primary-link ranking weights live in `Scoring::AnchorScore`. Segmenter discovers candidates; it does not own eligibility weights.
+Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Primary-link ranking weights live in `Scoring::AnchorScore`. Segmenter discovers candidates and may *call* NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
 
 ## DOM candidate clustering
 
-Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Discovery::Sitemap` (XML, not heuristic HTML).
+Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Scraper::Sitemap` (XML, not heuristic HTML).
 
 ## Channel
 

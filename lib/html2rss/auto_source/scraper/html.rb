@@ -82,7 +82,8 @@ module Html2rss
             strategy: :list,
             permit_unanchored: false,
             minimum_selector_frequency:,
-            use_top_selectors:
+            use_top_selectors:,
+            link_resolver:
           )
           materialize(engine.select_eligible(segments, limit: TOP_K))
         end
@@ -93,7 +94,8 @@ module Html2rss
             base_url: @url,
             strategy: :cluster,
             permit_unanchored: true,
-            minimum_selector_frequency:
+            minimum_selector_frequency:,
+            link_resolver:
           )
           materialize(engine.select_eligible(segments, limit: TOP_K), fallback_anchorless: true)
         end
@@ -105,7 +107,11 @@ module Html2rss
         end
 
         def engine
-          @engine ||= Scoring::Engine.new(link_resolver: Scoring::LinkResolver.new(@url))
+          @engine ||= Scoring::Engine.new(link_resolver:)
+        end
+
+        def link_resolver
+          @link_resolver ||= Scoring::LinkResolver.new(@url)
         end
 
         def document

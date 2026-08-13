@@ -58,7 +58,7 @@ module Html2rss
 
         def articles
           @articles ||= begin
-            deduplicator = EntryDeduplicator.new(@url, scraper: self.class)
+            deduplicator = EntryDeduplicator.new(@url, scraper: self.class, link_resolver:)
             entries = deduplicator.call(ranked_segments)
             entries.filter_map { |ranked| deduplicator.article_for(ranked) }
           end
@@ -72,11 +72,15 @@ module Html2rss
               document,
               base_url: @url,
               strategy: :semantic,
-              permit_unanchored: @permit_unanchored
+              permit_unanchored: @permit_unanchored,
+              link_resolver:
             )
-            link_resolver = Scoring::LinkResolver.new(@url)
             Scoring::Engine.new(link_resolver:).rank_top(segments, limit: TOP_K)
           end
+        end
+
+        def link_resolver
+          @link_resolver ||= Scoring::LinkResolver.new(@url)
         end
 
         def document

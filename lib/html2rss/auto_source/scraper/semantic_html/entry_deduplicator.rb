@@ -9,10 +9,11 @@ module Html2rss
         class EntryDeduplicator
           # @param url [String, Html2rss::Url] base url used to resolve relative hrefs
           # @param scraper [Class, nil] scraper class stamped onto extracted articles
-          def initialize(url, scraper: nil)
+          # @param link_resolver [Scoring::LinkResolver, nil] page-scoped destination facts cache
+          def initialize(url, scraper: nil, link_resolver: nil)
             @url = url
             @scraper = scraper
-            @link_resolver = Scoring::LinkResolver.new(url)
+            @link_resolver = link_resolver || Scoring::LinkResolver.new(url)
             @article_cache = {}.compare_by_identity
           end
 
