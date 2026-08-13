@@ -22,7 +22,7 @@ selectors:
       - name: substring
         start: 0
         end: -2
-  link:
+  url:
     selector: ".release-header .text-normal a"
     extractor: "href"
   description:

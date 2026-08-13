@@ -33,7 +33,7 @@ feeds:
           - name: substring
             start: 0
             end: -2
-      link:
+      url:
         selector: '.release-header .text-normal a'
         extractor: 'href'
       description:
@@ -55,7 +55,7 @@ feeds:
         extractor: 'attribute'
         attribute: 'src'
       guid:
-        - link
+        - url
   json:
     headers:
       Accept: application/json
@@ -75,7 +75,7 @@ feeds:
         selector: 'grade'
       movie_title:
         selector: 'movie_title'
-      link:
+      url:
         post_process:
           - name: 'template'
             string: 'https://www.metacritic.com/search/movie/%<movie_title>s/results'
@@ -111,7 +111,7 @@ feeds:
         selector: "div.main-horoscope"
       description:
         selector: "p"
-      link:
+      url:
         selector: "#src-horo-today"
         extractor: "href"
   withparams:

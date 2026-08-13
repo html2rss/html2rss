@@ -48,8 +48,6 @@ module Html2rss
       @url = response.url
       @selectors = selectors
       @time_zone = time_zone
-
-      prepare_selectors!
       @rss_item_attributes = @selectors.keys.select { |key| SELECTABLE_SELECTOR_KEYS.include?(key) }
     end
 
@@ -178,24 +176,6 @@ module Html2rss
         scraper: self,
         channel: channel_context(base_url)
       )
-    end
-
-    def prepare_selectors!
-      validate_url_and_link_exclusivity!
-      fix_url_and_link!
-    end
-
-    def validate_url_and_link_exclusivity!
-      return unless @selectors.key?(:url) && @selectors.key?(:link)
-
-      raise InvalidSelectorName, 'You must either use "url" or "link" your selectors. Using both is not supported.'
-    end
-
-    def fix_url_and_link!
-      return if @selectors[:url] || !@selectors.key?(:link)
-
-      @selectors = @selectors.dup
-      @selectors[:url] = @selectors[:link]
     end
 
     def parsed_body
