@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::LinkDestination::NoisePolicy do
   subject(:policy) { described_class.new(link_resolver:, index: document.index) }
 
@@ -10,7 +8,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
   let(:html) do
     '<html><body><article><a href="/news/2024/platform-launch-notes">Platform launch notes</a></article></body></html>'
   end
-  let(:document) { Html2rss::SST::Normalizer.call(Nokogiri::HTML(html)) }
+  let(:document) { Html2rss::SST::Normalizer.call(html) }
 
   describe '#noise_anchor?' do
     it 'rejects taxonomy destinations', :aggregate_failures do
@@ -29,11 +27,9 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
     end
 
     it 'rejects icon-only anchors' do # rubocop:disable RSpec/ExampleLength
-      doc = Html2rss::SST::Normalizer.call(
-        Nokogiri::HTML(<<~HTML)
-          <html><body><article><a href="/news/2024/platform-launch-notes"><img src="/i.png"></a></article></body></html>
-        HTML
-      )
+      doc = Html2rss::SST::Normalizer.call(<<~HTML)
+        <html><body><article><a href="/news/2024/platform-launch-notes"><img src="/i.png"></a></article></body></html>
+      HTML
       anchor = doc.root.find(&:link?)
       facts = link_resolver.destination_facts(anchor)
       policy = described_class.new(link_resolver:, index: doc.index)
@@ -42,7 +38,7 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
     end
 
     it 'rejects anchors nested under utility landmarks outside the content container' do # rubocop:disable RSpec/ExampleLength
-      doc = Html2rss::SST::Normalizer.call(Nokogiri::HTML(<<~HTML))
+      doc = Html2rss::SST::Normalizer.call(<<~HTML)
         <html><body>
           <article>
             <nav><a href="/news/2024/platform-launch-notes">Related</a></nav>

@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::AutoSource::Extractor do
   def segment_for(html, href: '/news/story') # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-    doc = Html2rss::SST::Normalizer.call(Nokogiri::HTML(html))
+    doc = Html2rss::SST::Normalizer.call(html)
     root = doc.root.find { |n| n.name == :article } || doc.root.find { |n| n.name == :div }
     link = root.find { |n| n.link? && n.attrs.href == href } || root.find(&:link?)
     Html2rss::AutoSource::Segment.build(root_node: root, primary_link: link, strategy: :semantic, position: 0)
@@ -37,7 +35,7 @@ RSpec.describe Html2rss::AutoSource::Extractor do
 
   it 'accepts RankedSegment and anchorless fallback', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = '<html><body><div><strong>Anchorless card text here</strong><p>More words.</p></div></body></html>'
-    doc = Html2rss::SST::Normalizer.call(Nokogiri::HTML(html))
+    doc = Html2rss::SST::Normalizer.call(html)
     root = doc.root.find { |n| n.name == :div && n.find { |c| c.name == :strong } }
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
     ranked = Html2rss::Scoring::RankedSegment.build(

@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::AutoSource::Segmenter do
   def document_for(html)
-    Html2rss::SST::Normalizer.call(Nokogiri::HTML(html))
+    Html2rss::SST::Normalizer.call(html)
   end
 
   describe '.call with :semantic' do

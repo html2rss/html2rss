@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'nokogiri'
+
 module Html2rss
   module SST
     ##
@@ -50,13 +52,27 @@ module Html2rss
 
       class << self
         ##
-        # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
+        # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
+        #   HTML string or already-parsed node (String is parsed once here)
         # @return [Document]
-        # @raise [ArgumentError] when parsed_body is nil
-        def call(parsed_body)
-          raise ArgumentError, 'parsed_body is required' unless parsed_body
+        # @raise [ArgumentError] when input is nil or unsupported
+        def call(input)
+          raise ArgumentError, 'input is required' if input.nil?
 
-          new(parsed_body).call
+          new(coerce(input)).call
+        end
+
+        private
+
+        # @param input [String, Nokogiri::XML::Node]
+        # @return [Nokogiri::XML::Node]
+        def coerce(input)
+          case input
+          when String then Nokogiri::HTML(input)
+          when Nokogiri::XML::Node then input
+          else
+            raise ArgumentError, "expected String or Nokogiri::XML::Node, got #{input.class}"
+          end
         end
       end
 

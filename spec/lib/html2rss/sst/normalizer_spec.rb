@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 RSpec.describe Html2rss::SST::Normalizer do
   describe '.call' do
     let(:simple_html) do
@@ -14,12 +12,12 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'strips script tags from the tree' do
-      doc = described_class.call(Nokogiri::HTML(simple_html))
+      doc = described_class.call(simple_html)
       expect(doc.root.find { |n| n.name == :script }).to be_nil
     end
 
     it 'builds typed Attrs on nodes', :aggregate_failures do
-      doc = described_class.call(Nokogiri::HTML(simple_html))
+      doc = described_class.call(simple_html)
       article = doc.root.find { |n| n.name == :article }
 
       expect(article.attrs).to be_a(Html2rss::SST::Attrs)
@@ -27,9 +25,14 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'indexes parent relationships' do
-      doc = described_class.call(Nokogiri::HTML(simple_html))
+      doc = described_class.call(simple_html)
       article = doc.root.find { |n| n.name == :article }
       expect(doc.index.parent_of(article.children.first)).to eq(article)
+    end
+
+    it 'accepts an already-parsed Nokogiri node without re-wrapping' do
+      node = Nokogiri::HTML(simple_html)
+      expect(described_class.call(node).root.find { |n| n.name == :article }).not_to be_nil
     end
 
     it 'degrades when MAX_NODES is breached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -37,7 +40,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       allow(Html2rss::Log).to receive(:warn)
 
       html = '<html><body><div><div><div><p>x</p></div></div></div></body></html>'
-      doc = described_class.call(Nokogiri::HTML(html))
+      doc = described_class.call(html)
 
       expect(doc.degraded).to be(true)
       expect(Html2rss::Log).to have_received(:warn).with(/sst\.normalizer MAX_NODES/)
