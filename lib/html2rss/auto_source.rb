@@ -15,6 +15,7 @@ module Html2rss
   # @see Html2rss::AutoSource::Scraper::Schema
   # @see Html2rss::AutoSource::Scraper::SemanticHtml
   # @see Html2rss::AutoSource::Scraper::Html
+  # rubocop:disable Metrics/ClassLength -- defaults + tiered extract stay on the contributor entry type
   class AutoSource
     # Minimum articles with url+title before later scraper tiers are skipped.
     SUFFICIENT_ARTICLE_COUNT = 5
@@ -113,6 +114,7 @@ module Html2rss
 
     attr_reader :url, :parsed_body, :body, :request_session
 
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
       articles = []
       matched = false
@@ -134,12 +136,12 @@ module Html2rss
           instance = Scraper.build_instance(
             scraper_class,
             parsed_body,
+            opts: scraper_opts,
             url:,
             request_session:,
             body:,
             document:,
-            link_resolver:,
-            opts: scraper_opts
+            link_resolver:
           )
           next unless instance
           next unless Scraper.extractable_instance?(instance, parsed_body)
@@ -153,6 +155,7 @@ module Html2rss
 
       Cleanup.call(articles, url:, **cleanup_options)
     end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     def sufficient?(articles)
       articles.count { |article| article.url && !article.title.to_s.empty? } >= SUFFICIENT_ARTICLE_COUNT
@@ -175,4 +178,5 @@ module Html2rss
       @opts.fetch(:cleanup, {})
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

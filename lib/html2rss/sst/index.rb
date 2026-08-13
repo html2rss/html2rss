@@ -10,6 +10,11 @@ module Html2rss
       NODE_BINDINGS = ObjectSpace::WeakMap.new
 
       ##
+      # @param node [Node]
+      # @return [Index, nil]
+      def self.for_node(node) = NODE_BINDINGS[node]
+
+      ##
       # @param root [Node]
       # @param parents [Hash{Node => Node, nil}]
       # @param depths [Hash{Node => Integer}]
@@ -25,11 +30,6 @@ module Html2rss
       end
 
       attr_reader :root
-
-      ##
-      # @param node [Node]
-      # @return [Index, nil]
-      def self.for_node(node) = NODE_BINDINGS[node]
 
       ##
       # @param node [Node]

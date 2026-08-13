@@ -146,7 +146,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
       [Html2rss::AutoSource::Scraper::SemanticHtml, Html2rss::AutoSource::Scraper::Html].each do |klass|
         instance = described_class.build_instance(
-          klass, parsed_body, url:, document:, link_resolver:, opts:
+          klass, parsed_body, opts:, url:, document:, link_resolver:
         )
         captured << [instance.instance_variable_get(:@provided_document),
                      instance.instance_variable_get(:@provided_link_resolver)]

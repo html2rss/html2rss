@@ -11,7 +11,7 @@ module Html2rss
     # Detection is intentionally shallow for most scrapers, but instance-based
     # matching is available for scrapers that need to carry expensive selection
     # state forward into extraction.
-    module Scraper # rubocop:disable Metrics/ModuleLength -- registry + surface classification stay colocated
+    module Scraper
       # Root markers indicating likely app-shell/client-rendered surfaces.
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       # Maximum anchors tolerated before app-shell detection is considered unlikely.
@@ -76,6 +76,15 @@ module Html2rss
       # Returns an array of scraper classes that claim to find articles in the parsed body.
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
       # @param opts [Hash] The options hash.
+      # @option opts [Hash] :wordpress_api scraper toggle and configuration
+      # @option opts [Hash] :schema scraper toggle and configuration
+      # @option opts [Hash] :microdata scraper toggle and configuration
+      # @option opts [Hash] :microformats2 scraper toggle and configuration
+      # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :meta_oembed scraper toggle and configuration
+      # @option opts [Hash] :semantic_html scraper toggle and configuration
+      # @option opts [Hash] :html scraper toggle and configuration
+      # @option opts [Hash] :sitemap scraper toggle and configuration
       # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
       def self.from(parsed_body, opts = Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
         scrapers = SCRAPERS.select { |scraper| opts.dig(scraper.options_key, :enabled) }
@@ -90,7 +99,7 @@ module Html2rss
       # @param tier [Array<Class>]
       # @return [Boolean]
       def self.heuristic_tier?(tier)
-        tier.any? { HEURISTIC_SCRAPERS.include?(_1) }
+        tier.intersect?(HEURISTIC_SCRAPERS)
       end
 
       ##
@@ -107,15 +116,25 @@ module Html2rss
       #
       # @param scraper [Class]
       # @param parsed_body [Nokogiri::HTML::Document]
+      # @param opts [Hash] full scraper options map
       # @param url [Html2rss::Url, String]
       # @param request_session [Html2rss::RequestSession, nil]
       # @param body [String, nil]
       # @param document [SST::Document, nil]
       # @param link_resolver [Scoring::LinkResolver, nil]
-      # @param opts [Hash] full scraper options map
+      # @option opts [Hash] :wordpress_api scraper toggle and configuration
+      # @option opts [Hash] :schema scraper toggle and configuration
+      # @option opts [Hash] :microdata scraper toggle and configuration
+      # @option opts [Hash] :microformats2 scraper toggle and configuration
+      # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :meta_oembed scraper toggle and configuration
+      # @option opts [Hash] :semantic_html scraper toggle and configuration
+      # @option opts [Hash] :html scraper toggle and configuration
+      # @option opts [Hash] :sitemap scraper toggle and configuration
       # @return [Object, nil]
-      def self.build_instance(scraper, parsed_body, url:, request_session: nil, body: nil, document: nil,
-                              link_resolver: nil, opts:)
+      # rubocop:disable Metrics/ParameterLists -- construction context for structured and heuristic scrapers
+      def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
+                              link_resolver: nil)
         return unless opts.dig(scraper.options_key, :enabled)
         return if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
@@ -123,6 +142,7 @@ module Html2rss
         kwargs = construction_kwargs(scraper, request_session:, body:, document:, link_resolver:)
         scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
       end
+      # rubocop:enable Metrics/ParameterLists
 
       ##
       # @param instance [Object]

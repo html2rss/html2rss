@@ -59,8 +59,8 @@ module Html2rss
 
         def top_paths(segmenter, by_path)
           by_path.select { |_path, nodes| nodes.size >= segmenter.minimum_selector_frequency }
-                .max_by(segmenter.use_top_selectors) { |_path, nodes| nodes.size }
-                .map(&:first)
+                 .max_by(segmenter.use_top_selectors) { |_path, nodes| nodes.size }
+                 .map(&:first)
         end
         module_function :top_paths
         private_class_method :top_paths
