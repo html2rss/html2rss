@@ -138,8 +138,62 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
         }
       end
 
-      it 'returns the ItemList' do
+      it 'returns the ItemList for element expansion' do
         expect(array).to include(hash_including('@type': 'ItemList'))
+      end
+    end
+
+    context 'with a Blog container and blogPost articles' do
+      let(:object) do
+        {
+          '@type': 'Blog',
+          name: 'My Blog',
+          blogPost: [
+            { '@type': 'BlogPosting', headline: 'First Post', url: 'https://example.com/1' },
+            { '@type': 'BlogPosting', headline: 'Second Post', url: 'https://example.com/2' }
+          ]
+        }
+      end
+
+      it 'walks blogPost and does not return the Blog container', :aggregate_failures do
+        expect(array).to contain_exactly(
+          hash_including('@type': 'BlogPosting', headline: 'First Post'),
+          hash_including('@type': 'BlogPosting', headline: 'Second Post')
+        )
+      end
+    end
+
+    context 'with a WebPage mainEntity Article' do
+      let(:object) do
+        {
+          '@type': 'WebPage',
+          name: 'Page shell',
+          mainEntity: {
+            '@type': 'Article',
+            headline: 'Main Entity Article',
+            url: 'https://example.com/main'
+          }
+        }
+      end
+
+      it 'prefers mainEntity and skips the WebPage container' do
+        expect(array).to contain_exactly(hash_including('@type': 'Article', headline: 'Main Entity Article'))
+      end
+    end
+
+    context 'with an @graph of mixed containers and articles' do
+      let(:object) do
+        {
+          '@context': 'https://schema.org',
+          '@graph': [
+            { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', name: 'Home' }] },
+            { '@type': 'NewsArticle', headline: 'Graph Article', url: 'https://example.com/g' }
+          ]
+        }
+      end
+
+      it 'returns only article-shaped nodes from @graph' do
+        expect(array).to contain_exactly(hash_including('@type': 'NewsArticle', headline: 'Graph Article'))
       end
     end
 
@@ -243,6 +297,24 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
           { title: 'Item 1' },
           { title: 'Item 2' }
         )
+      end
+    end
+
+    context 'with a Blog JSON-LD that must not emit the container' do
+      let(:parsed_body) do
+        script_tag.call({
+          '@type': 'Blog',
+          name: 'Container Blog',
+          blogPost: {
+            '@type': 'BlogPosting',
+            headline: 'Only Post',
+            url: 'https://example.com/only'
+          }
+        }.to_json)
+      end
+
+      it 'yields blog posts only' do
+        expect { |b| new.each(&b) }.to yield_with_args(hash_including(title: 'Only Post'))
       end
     end
 

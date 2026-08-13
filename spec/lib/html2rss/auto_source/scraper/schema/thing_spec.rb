@@ -172,6 +172,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#categories' do
     subject(:categories) { instance.categories }
 
+    context 'when schema_object has articleSection' do
+      let(:schema_object) do
+        { '@type': 'ScholarlyArticle', headline: 'Baustellen der Nation', articleSection: 'Politics' }
+      end
+
+      it 'includes articleSection as a category' do
+        expect(categories).to eq(%w[Politics])
+      end
+    end
+
     context 'when schema_object has keywords as array' do
       let(:schema_object) do
         { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', keywords: %w[Politics Society Analysis] }

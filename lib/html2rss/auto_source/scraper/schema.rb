@@ -27,6 +27,14 @@ module Html2rss
 
         SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
 
+        # Prefer these keys when recursively walking unsupported container objects.
+        COLLECTION_KEYS = %i[itemListElement blogPost mainEntity hasPart].freeze
+
+        # Container types that must never be emitted as feed items (walk children only).
+        DENIED_CONTAINER_TYPES = Set[
+          'ItemList', 'Blog', 'BreadcrumbList', 'WebPage', 'CollectionPage'
+        ].freeze
+
         # @return [Symbol] scraper config key
         def self.options_key = :schema
 
@@ -48,19 +56,17 @@ module Html2rss
           # of all supported schema objects
           # by recursively traversing the given `object`.
           #
+          # Prefers collection keys ({COLLECTION_KEYS}) when walking containers.
+          #
           # @param object [Hash, Array, Nokogiri::XML::Element]
           # @return [Array<Hash>] the schema_objects, or an empty array
           # :reek:DuplicateMethodCall
           def from(object)
             case object
-            when Nokogiri::XML::Element
-              from(parse_script_tag(object))
-            when Hash
-              supported_schema_object?(object) ? [object] : object.values.flat_map { |item| from(item) }
-            when Array
-              object.flat_map { |item| from(item) }
-            else
-              []
+            when Nokogiri::XML::Element then from(parse_script_tag(object))
+            when Hash then from_hash(object)
+            when Array then object.flat_map { |item| from(item) }
+            else []
             end
           end
 
@@ -76,10 +82,12 @@ module Html2rss
           def scraper_for_schema_object(schema_object)
             types = normalize_types(schema_object[:@type])
 
+            # ItemList is a denied container for emission, but still extracted for its elements.
+            return ItemList if types.intersect?(ItemList::SUPPORTED_TYPES)
+            return nil if types.intersect?(DENIED_CONTAINER_TYPES)
+
             if types.intersect?(Thing::SUPPORTED_TYPES)
               Thing
-            elsif types.intersect?(ItemList::SUPPORTED_TYPES)
-              ItemList
             else
               Log.debug("#{name}: unsupported schema object @type=#{schema_object[:@type].inspect}")
               nil
@@ -106,6 +114,20 @@ module Html2rss
           end
 
           private
+
+          # @param hash [Hash] candidate schema object
+          # @return [Array<Hash>] the object itself or nested supported objects
+          def from_hash(hash)
+            supported_schema_object?(hash) ? [hash] : walk_hash_values(hash)
+          end
+
+          # @param hash [Hash] schema object that is not itself extractable
+          # @return [Array<Hash>] nested supported objects
+          def walk_hash_values(hash)
+            preferred = COLLECTION_KEYS.filter_map { |key| hash[key] }
+            rest = hash.except(*COLLECTION_KEYS).values
+            (preferred + rest).flat_map { |item| from(item) }
+          end
 
           def parse_script_tag(script_tag)
             JSON.parse(script_tag.text, symbolize_names: true)
