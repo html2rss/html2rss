@@ -5,7 +5,7 @@ module Html2rss
     module Scraper
       ##
       # Fallback HTML list/cluster scraper via SST pipeline
-      # (Normalizer → Segmenter → Scoring::Engine → Extractor).
+      # (Normalizer → Segmenter → Scoring::Engine → Html::SstArticleExtractor).
       class Html
         include Enumerable
 
@@ -102,7 +102,7 @@ module Html2rss
 
         def materialize(ranked, fallback_anchorless: false)
           ranked.filter_map do |entry|
-            Extractor.call(entry, base_url: @url, scraper: self.class, fallback_anchorless:)
+            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class, fallback_anchorless:)
           end
         end
 

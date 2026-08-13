@@ -4,7 +4,7 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scrapes semantic containers via SST: Normalizer → Segmenter → Scoring → Extractor.
+      # Scrapes semantic containers via SST: Normalizer → Segmenter → Scoring → SstArticleExtractor.
       class SemanticHtml
         include Enumerable
 

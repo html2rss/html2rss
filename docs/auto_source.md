@@ -30,7 +30,7 @@ Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (rep
 | Sitemap detection (CSS/XPath) | Nokogiri; URL list parsing uses raw `response.body` (XML string) |
 | Selectors path / Sanitize transformers | Nokogiri (unchanged) |
 | `SST::Normalizer` | Sole Nokogiri consumer on the heuristic auto-source path |
-| Segmenter, Scoring, Extractor, heuristic chrome (`SST::Tags` / `SST::Text`) | SST only |
+| Segmenter, Scoring, `Html::SstArticleExtractor`, heuristic chrome (`SST::Tags` / `SST::Text`) | SST only |
 
 Production heuristic scrapers should reuse one `SST::Document` memoized from `parsed_body` (or a shared Document passed in), not re-parse HTML strings.
 

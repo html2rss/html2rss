@@ -15,11 +15,7 @@ module Html2rss
       ARCHIVE_HREF_SUFFIXES = %w[.pdf .zip .tar.gz .tgz].freeze
       # Inline emphasis tags used as title fallbacks when no heading exists.
       FALLBACK_HEADING_NAMES = %i[strong b].freeze
-      # Class / data attribute tokens that mark category metadata.
-      CATEGORY_TERMS = %w[
-        category categories tag tags topic topics section sections
-        label labels theme themes subject subjects
-      ].freeze
+      CATEGORY_TERMS = ArticleExtractor::CategoryExtractor::CATEGORY_TERMS
 
       class << self
         ##

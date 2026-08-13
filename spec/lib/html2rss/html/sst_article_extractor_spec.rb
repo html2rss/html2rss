@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::AutoSource::Extractor do
+RSpec.describe Html2rss::Html::SstArticleExtractor do
   def segment_for(html, href: '/news/story') # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
     doc = Html2rss::SST::Normalizer.call(html)
     root = doc.root.find { |n| n.name == :article } || doc.root.find { |n| n.name == :div }
