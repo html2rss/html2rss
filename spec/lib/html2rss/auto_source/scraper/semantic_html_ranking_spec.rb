@@ -7,7 +7,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/multi_link_block.html')) }
     let(:articles) { new.each.to_a }
     let(:articles_by_url) do
-      articles.to_h { |article| [article[:url].to_s, article] }
+      articles.to_h { |article| [article.url.to_s, article] }
     end
     let(:excluded_urls) do
       %w[
@@ -24,9 +24,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'prefers the intended content links', :aggregate_failures do
-      expect(articles_by_url.fetch('https://page.com/article/1')[:title]).to eq('Main Article Title')
-      expect(articles_by_url.fetch('https://page.com/article/3')[:title]).to eq('Correct Title Link')
-      expect(articles_by_url.fetch('https://page.com/article/4')[:title]).to eq('Actual Article Text')
+      expect(articles_by_url.fetch('https://page.com/article/1').title).to eq('Main Article Title')
+      expect(articles_by_url.fetch('https://page.com/article/3').title).to eq('Correct Title Link')
+      expect(articles_by_url.fetch('https://page.com/article/4').title).to eq('Actual Article Text')
     end
 
     it 'suppresses utility and duplicate link variants' do
@@ -45,7 +45,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'chrome suppression' do
     subject(:articles_by_url) do
       scraper = described_class.new(parsed_body, url: 'https://page.com')
-      scraper.each.to_a.to_h { |article| [article[:url].to_s, article] }
+      scraper.each.to_a.to_h { |article| [article.url.to_s, article] }
     end
 
     let(:parsed_body) do
@@ -75,7 +75,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'post-level ranking and contamination control' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: base_url)
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:base_url) { 'https://example.com' }
@@ -172,7 +172,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'non-regression baseline (Anthropic-like)' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://www.anthropic.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -215,7 +215,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: short recommended headline with article signals' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -244,7 +244,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: short utility headline with strong article signals' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -279,7 +279,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: publish marker counts as an article signal' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -303,7 +303,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: deep section permalinks with post-like suffixes' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -346,7 +346,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: deep taxonomy and account routes stay conservative' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -387,7 +387,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: bare year segments do not make utility routes content' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -427,7 +427,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: vanity CTA heading leak' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -456,7 +456,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'ordering and deduplication' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:parsed_body) do
@@ -528,8 +528,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       HTML
     end
 
-    let(:urls) { articles.map { |article| article[:url].to_s } }
-    let(:story_a) { articles.find { |article| article[:url].to_s == 'https://example.com/news/story-a' } }
+    let(:urls) { articles.map { |article| article.url.to_s } }
+    let(:story_a) { articles.find { |article| article.url.to_s == 'https://example.com/news/story-a' } }
     let(:expected_first_two_urls) do
       [
         'https://example.com/news/story-a',
@@ -540,39 +540,44 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     it 'retains the richer candidate for the shared destination URL', :aggregate_failures do
       expect(urls.first(2)).to eq(expected_first_two_urls)
       expect(urls.uniq).to eq(urls)
-      expect(story_a[:published_at]&.iso8601).to eq('2026-03-28T08:30:00+00:00')
-      expect(story_a[:description]).to include('Useful context paragraph')
+      expect(story_a.published_at&.iso8601).to eq('2026-03-28T08:30:00+00:00')
+      expect(story_a.description).to include('Useful context paragraph')
     end
   end
 
   describe 'dedupe comparator precedence' do
-    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com', Html2rss::Html::ArticleExtractor) }
+    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
 
-    let(:container) { Nokogiri::HTML.fragment('<article><a href="/news/story">Story</a></article>').at_css('article') }
-    let(:anchor) { container.at_css('a') }
+    let(:root_node) { Html2rss::SST::Node.build(name: :article) }
+    let(:primary_link) do
+      Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/news/story'))
+    end
     let(:base_article) do
-      {
+      Html2rss::Article.new(
         title: 'Story',
         url: Html2rss::Url.from_relative('/news/story', 'https://example.com'),
         image: nil,
         description: 'Short summary',
+        id: 'story',
         published_at: nil,
         categories: [],
         enclosures: []
-      }
+      )
     end
     let(:entry_builder) do
       lambda do |quality_score:, junk_score:, final_score:, position:, article:|
-        described_class::Entry.new(
-          container:,
-          selected_anchor: anchor,
-          destination_facts: nil,
-          quality_score:,
-          junk_score:,
-          final_score:,
-          position:,
-          article:
+        segment = Html2rss::AutoSource::Segment.build(
+          root_node:,
+          primary_link:,
+          strategy: :semantic,
+          position:
         )
+        ranked = Html2rss::Scoring::RankedSegment.build(
+          segment:,
+          score: Html2rss::Scoring::Score.build(composite: final_score, quality: quality_score, junk: junk_score)
+        )
+        allow(deduplicator).to receive(:article_for).with(ranked).and_return(article)
+        ranked
       end
     end
 
@@ -589,11 +594,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         junk_score: 10,
         final_score: 55,
         position: 0,
-        article: base_article.merge(
+        article: Html2rss::Article.new(
+          title: 'Story',
+          url: Html2rss::Url.from_relative('/news/story', 'https://example.com'),
           image: 'https://example.com/story.png',
           description: 'Much longer summary with additional supporting context for comparison',
+          id: 'story',
           categories: %w[news launch],
-          enclosures: [{ url: 'https://example.com/audio.mp3' }]
+          enclosures: [{ url: Html2rss::Url.from_relative('/audio.mp3', 'https://example.com') }]
         )
       )
 
@@ -613,9 +621,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         junk_score: 10,
         final_score: 60,
         position: 0,
-        article: base_article.merge(
+        article: Html2rss::Article.new(
+          title: 'Story',
+          url: Html2rss::Url.from_relative('/news/story', 'https://example.com'),
           image: 'https://example.com/story.png',
           description: 'Longer summary with more details for payload richness',
+          id: 'story',
           categories: %w[news launch]
         )
       )
@@ -636,12 +647,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         junk_score: 10,
         final_score: 65,
         position: 2,
-        article: base_article.merge(
+        article: Html2rss::Article.new(
+          title: 'Story',
+          url: Html2rss::Url.from_relative('/news/story', 'https://example.com'),
           image: 'https://example.com/story.png',
           description: 'Longer summary with materially richer extraction data for the duplicate',
+          id: 'story',
           published_at: Time.utc(2026, 3, 28),
           categories: %w[news launch],
-          enclosures: [{ url: 'https://example.com/audio.mp3' }]
+          enclosures: [{ url: Html2rss::Url.from_relative('/audio.mp3', 'https://example.com') }]
         )
       )
 
@@ -671,7 +685,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'regression: exact ties fall back to real DOM order' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     let(:expected_first_two_urls) do
@@ -703,32 +717,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe perf shape' do
-    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com', Html2rss::Html::ArticleExtractor) }
+    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
 
-    let(:container) do
-      instance_double(Nokogiri::XML::Node).tap do |node|
-        allow(node).to receive(:ancestors).and_raise('cross-group nested comparison executed')
-      end
-    end
     let(:entries) do
       Array.new(4) do |index|
-        described_class::Entry.new(
-          container:,
-          selected_anchor: nil,
-          destination_facts: nil,
-          quality_score: 70,
-          junk_score: 10,
-          final_score: 60,
-          position: index,
-          article: {
-            title: "Story #{index}",
-            url: Html2rss::Url.from_relative("/news/story-#{index}", 'https://example.com'),
-            image: nil,
-            description: 'Short summary',
-            published_at: nil,
-            categories: [],
-            enclosures: []
-          }
+        root = Html2rss::SST::Node.build(name: :article, attrs: Html2rss::SST::Attrs.build(id: "s#{index}"))
+        link = Html2rss::SST::Node.build(
+          name: :a,
+          attrs: Html2rss::SST::Attrs.build(href: "/news/story-#{index}"),
+          own_text: "Story #{index}"
+        )
+        segment = Html2rss::AutoSource::Segment.build(
+          root_node: root,
+          primary_link: link,
+          strategy: :semantic,
+          position: index
+        )
+        Html2rss::Scoring::RankedSegment.build(
+          segment:,
+          score: Html2rss::Scoring::Score.build(composite: 60, quality: 70, junk: 10)
         )
       end
     end
@@ -763,25 +770,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     # rubocop:disable RSpec/ExampleLength
-    it 'only calls Html2rss::Html::ArticleExtractor on the final winners', :aggregate_failures do
-      extractor_class = class_double(Html2rss::Html::ArticleExtractor)
-
-      article_payload = {
+    it 'only calls AutoSource::Extractor on the final winners', :aggregate_failures do
+      article = Html2rss::Article.new(
         title: 'Story A',
         url: Html2rss::Url.from_relative('/news/story-a', 'https://example.com'),
         image: nil,
         description: 'Much longer description with enough words to satisfy context without a tie.',
+        id: 'story-a',
         published_at: Time.utc(2026, 3, 28),
         categories: [],
-        enclosures: []
-      }
-      allow(extractor_class).to receive(:call).and_return(article_payload)
+        enclosures: [],
+        scraper: described_class
+      )
+      allow(Html2rss::AutoSource::Extractor).to receive(:call).and_return(article)
 
-      scraper = described_class.new(parsed_body, url: 'https://example.com', extractor: extractor_class)
+      scraper = described_class.new(parsed_body, url: 'https://example.com')
       results = scraper.each.to_a
 
       expect(results.size).to eq(1)
-      expect(extractor_class).to have_received(:call).once
+      expect(Html2rss::AutoSource::Extractor).to have_received(:call).once
     end
     # rubocop:enable RSpec/ExampleLength
   end
@@ -789,7 +796,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe 'CSS class and ID scoring' do
     subject(:urls) do
       scraper = described_class.new(parsed_body, url: 'https://example.com')
-      scraper.each.to_a.map { |article| article[:url].to_s }
+      scraper.each.to_a.map { |article| article.url.to_s }
     end
 
     context 'when ordering containers with content vs junk classes' do

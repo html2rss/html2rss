@@ -103,8 +103,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     it 'contains the two articles', :aggregate_failures do
       first, last = articles.to_a
 
-      expect(first).to include(first_article)
-      expect(last).to include(second_article)
+      expect(first).to have_attributes(first_article)
+      expect(last).to have_attributes(second_article)
     end
 
     context 'when parsed_body does not wrap article in an element' do
@@ -145,19 +145,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       it 'derives the first id from the selected anchor url' do
-        expect(articles.first[:id]).to eq('/')
+        expect(articles.first.id).to eq('/')
       end
 
       it 'derives the second id from the selected anchor url' do
-        expect(articles.to_a.last[:id]).to eq('/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html')
+        expect(articles.to_a.last.id).to eq('/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html')
       end
 
       it 'contains the first_article' do
-        expect(articles.first).to include(first_article)
+        expect(articles.first).to have_attributes(first_article)
       end
 
       it 'contains the second_article' do
-        expect(articles.to_a[-1]).to include(second_article)
+        expect(articles.to_a[-1]).to have_attributes(second_article)
       end
     end
 
@@ -210,7 +210,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       it 'reduces utility and taxonomy contamination in fallback extraction', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        urls = articles.to_a.map { |article| article[:url].to_s }
+        urls = articles.to_a.map { |article| article.url.to_s }
 
         expect(urls).to include('http://example.com/news/launch-update')
         expect(urls).to include('http://example.com/news/api-rollout')
@@ -254,7 +254,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
 
       it 'keeps the later story link that made the container relevant', :aggregate_failures do
-        urls = articles.to_a.map { |article| article[:url].to_s }
+        urls = articles.to_a.map { |article| article.url.to_s }
 
         expect(urls).to include('http://example.com/news/launch-update')
         expect(urls).to include('http://example.com/news/api-rollout')
@@ -265,8 +265,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       it 'uses the later story anchor instead of the first descendant chrome link', :aggregate_failures do
         first_article = articles.to_a.first
 
-        expect(first_article).to include(title: 'Launch update', id: '/news/launch-update')
-        expect(first_article[:url].to_s).to eq('http://example.com/news/launch-update')
+        expect(first_article).to have_attributes(title: 'Launch update', id: '/news/launch-update')
+        expect(first_article.url.to_s).to eq('http://example.com/news/launch-update')
       end
     end
 
@@ -301,7 +301,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       it 'keeps ambiguous deep routes with article-like card context while filtering clear utility cards',
          :aggregate_failures do
-        urls = articles.to_a.map { |article| article[:url].to_s }
+        urls = articles.to_a.map { |article| article.url.to_s }
 
         expect(urls).to include('http://example.com/author/quarterly-platform-hardening-update')
         expect(urls).to include('http://example.com/archive/launch-retrospective-notes-for-teams')
@@ -311,73 +311,4 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
   end
 
-  describe '.simplify_xpath' do
-    it 'converts an XPath selector to an index-less xpath' do
-      xpath = '/html/body/div[1]/div[2]/span[3]'
-      expected = '/html/body/div/div/span'
-
-      simplified = described_class.simplify_xpath(xpath)
-
-      expect(simplified).to eq(expected)
-    end
-  end
-
-  describe '#article_tag_condition' do
-    let(:html) do
-      <<-HTML
-      <html>
-        <body>
-          <nav>
-            <a href="link1">Link 1</a>
-          </nav>
-          <div class="content">
-            <a href="link2">Link 2</a>
-            <article>
-              <a href="link3">Link 3</a>
-              <div>
-                <a href="link6">Link 6</a>
-              </div>
-            </article>
-          </div>
-          <footer>
-            <a href="link4">Link 4</a>
-          </footer>
-          <div class="navigation">
-            <a href="link5">Link 5</a>
-          </div>
-        </body>
-      </html>
-      HTML
-    end
-
-    let(:parsed_body) { Nokogiri::HTML(html) }
-    let(:scraper) { described_class.new(parsed_body, url: 'http://example.com') }
-
-    it 'returns false for nodes within ignored tags' do
-      node = parsed_body.at_css('nav a')
-      expect(scraper).not_to be_article_tag_condition(node)
-    end
-
-    it 'returns true for body and html tags', :aggregate_failures do
-      body_node = parsed_body.at_css('html > body, body')
-      html_node = parsed_body.at_css('html')
-      expect(scraper).to be_article_tag_condition(body_node)
-      expect(scraper).to be_article_tag_condition(html_node)
-    end
-
-    it 'returns true if parent has 2 or more anchor tags' do
-      node = parsed_body.at_css('article a')
-      expect(scraper).to be_article_tag_condition(node)
-    end
-
-    it 'returns false if none of the conditions are met' do
-      node = parsed_body.at_css('footer a')
-      expect(scraper).not_to be_article_tag_condition(node)
-    end
-
-    it 'returns false if parent class matches' do
-      node = parsed_body.at_css('.navigation a')
-      expect(scraper).not_to be_article_tag_condition(node)
-    end
-  end
 end

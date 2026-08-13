@@ -3,11 +3,10 @@
 module Html2rss
   class AutoSource
     ##
-    # Card/list discovery helpers used by AutoSource scrapers before field extraction.
+    # Discovery helpers still used outside the SST heuristic pipeline.
     #
-    # Html2rss::Html::ArticleExtractor fills article fields from a container; discovery finds those containers.
-    #
-    # DOM list discovery for anchorless or classless pages is owned by {Discovery::DomClustering}.
+    # {Discovery::Sitemap} remains for the sitemap scraper. Card/list discovery
+    # for SemanticHtml/Html now lives in {Segmenter}.
     module Discovery
     end
   end

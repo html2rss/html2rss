@@ -127,8 +127,15 @@ module Html2rss
     end
 
     def run_scraper(instance)
-      instance.each.map do |article_hash|
-        Article.new(**article_hash, scraper: instance.class)
+      instance.each.map do |item|
+        case item
+        when Article
+          item
+        when Hash
+          Article.new(**item, scraper: instance.class)
+        else
+          raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
+        end
       end
     end
 
