@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Scoring
+  module LinkDestination
     ##
     # Noise / junk chrome eligibility for SST anchors (port of LinkHeuristics#noise_anchor?).
     class NoisePolicy
@@ -17,7 +17,7 @@ module Html2rss
 
       ##
       # @param text [String]
-      # @param destination_facts [DestinationFacts, nil]
+      # @param destination_facts [LinkDestination::DestinationFacts, nil]
       # @param anchor [SST::Node, nil]
       # @param container [SST::Node, nil]
       # @param heading_anchor [Boolean]

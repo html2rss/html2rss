@@ -3,46 +3,21 @@
 module Html2rss
   module SST
     ##
-    # Empty / default Attrs values (kept outside Data.define for RuboCop).
+    # Shared empty defaults for {Attrs} (kept outside Data.define for constant visibility).
     module AttrDefaults
-      # Shared empty class_names array for Attrs defaults.
       EMPTY_CLASS_NAMES = [].freeze
-      # Shared empty raw attribute hash for Attrs defaults.
       EMPTY_RAW = {}.freeze
-      # Maps HTML attribute names to Attrs readers (excluding class).
-      TYPED_READERS = {
-        'href' => :href,
-        'src' => :src,
-        'id' => :id,
-        'datetime' => :datetime,
-        'itemprop' => :itemprop,
-        'style' => :style,
-        'srcset' => :srcset,
-        'type' => :type
-      }.freeze
     end
 
     ##
-    # Typed HTML attributes for an SST node. Absent fields are +nil+; never a
-    # free-form attribute Hash at stage boundaries.
+    # Typed HTML attributes for an SST node. Absent fields are +nil+.
     Attrs = Data.define(
       :href, :src, :id, :class_names, :datetime, :itemprop, :style, :srcset, :type, :raw
     ) do
       class << self
         ##
-        # @param href [String, nil]
-        # @param src [String, nil]
-        # @param id [String, nil]
-        # @param class_names [Array<String>, nil]
-        # @param datetime [String, nil]
-        # @param itemprop [String, nil]
-        # @param style [String, nil]
-        # @param srcset [String, nil]
-        # @param type [String, nil]
-        # @param raw [Hash{String => String}, nil]
         # @return [Attrs]
-        # @raise [ArgumentError] when class_names or raw have the wrong type
-        # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists -- typed smart constructor
+        # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
         def build(href: nil, src: nil, id: nil, class_names: nil, datetime: nil, itemprop: nil,
                   style: nil, srcset: nil, type: nil, raw: nil)
           new(
@@ -61,7 +36,7 @@ module Html2rss
         # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
         ##
-        # @return [Attrs] empty attrs instance
+        # @return [Attrs]
         def empty = EMPTY_ATTRS
 
         private
@@ -77,8 +52,7 @@ module Html2rss
           case class_names
           when nil then AttrDefaults::EMPTY_CLASS_NAMES
           when Array then class_names.map { |token| token.to_s.freeze }.freeze
-          else
-            raise ArgumentError, "class_names must be an Array, got #{class_names.class}"
+          else raise ArgumentError, "class_names must be an Array, got #{class_names.class}"
           end
         end
 
@@ -86,35 +60,16 @@ module Html2rss
           case raw
           when nil then AttrDefaults::EMPTY_RAW
           when Hash then raw.transform_values { |v| v.to_s.freeze }.freeze
-          else
-            raise ArgumentError, "raw must be a Hash, got #{raw.class}"
+          else raise ArgumentError, "raw must be a Hash, got #{raw.class}"
           end
         end
       end
 
       ##
-      # @return [String] space-joined class attribute
+      # @return [String]
       def class_attr = class_names.join(' ')
-
-      ##
-      # @param name [String] attribute name
-      # @return [String, nil]
-      def [](name)
-        key = name.to_s
-        return class_value if key == 'class'
-        return public_send(AttrDefaults::TYPED_READERS.fetch(key)) if AttrDefaults::TYPED_READERS.key?(key)
-
-        raw[key]
-      end
-
-      private
-
-      def class_value
-        class_attr.empty? ? nil : class_attr
-      end
     end
 
-    # Shared empty Attrs instance for nodes without attributes.
     EMPTY_ATTRS = Attrs.new(
       href: nil, src: nil, id: nil, class_names: AttrDefaults::EMPTY_CLASS_NAMES, datetime: nil,
       itemprop: nil, style: nil, srcset: nil, type: nil, raw: AttrDefaults::EMPTY_RAW

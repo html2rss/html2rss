@@ -48,8 +48,8 @@ module Html2rss
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
           @request_session = request_session
-          @min_priority = opts.fetch(:min_priority, Discovery::Sitemap::DEFAULT_MIN_PRIORITY)
-          @max_age_days = opts.fetch(:max_age_days, Discovery::Sitemap::DEFAULT_MAX_AGE_DAYS)
+          @min_priority = opts.fetch(:min_priority, Scraper::Sitemap::Parser::DEFAULT_MIN_PRIORITY)
+          @max_age_days = opts.fetch(:max_age_days, Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS)
         end
 
         ##
@@ -87,7 +87,7 @@ module Html2rss
         end
 
         def parse_sitemap_xml(xml_body)
-          result = Discovery::Sitemap.call(xml_body, min_priority:, max_age_days:)
+          result = Scraper::Sitemap::Parser.call(xml_body, min_priority:, max_age_days:)
           return fetch_sub_sitemaps(result.sub_sitemap_urls) if result.sub_sitemap_urls.any?
 
           result.entries
@@ -96,7 +96,7 @@ module Html2rss
         def parse_direct_sitemap
           return [] unless parsed_body.at_xpath('//*[local-name()="urlset" or local-name()="sitemapindex"]')
 
-          Discovery::Sitemap.call(parsed_body.to_s, min_priority:, max_age_days:).entries
+          Scraper::Sitemap::Parser.call(parsed_body.to_s, min_priority:, max_age_days:).entries
         end
 
         def fetch_sub_sitemaps(sub_urls)
@@ -114,7 +114,7 @@ module Html2rss
           xml = fetch_xml(sub_url)
           return [] unless xml
 
-          Discovery::Sitemap.call(xml, min_priority:, max_age_days:).entries
+          Scraper::Sitemap::Parser.call(xml, min_priority:, max_age_days:).entries
         rescue Html2rss::RequestService::RequestBudgetExceeded
           Log.warn("#{self.class}: sitemap fan-out stopped — request budget exhausted")
           nil

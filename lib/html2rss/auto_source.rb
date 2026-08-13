@@ -24,8 +24,8 @@ module Html2rss
         },
         sitemap: {
           enabled: true,
-          min_priority: Discovery::Sitemap::DEFAULT_MIN_PRIORITY,
-          max_age_days: Discovery::Sitemap::DEFAULT_MAX_AGE_DAYS
+          min_priority: Scraper::Sitemap::Parser::DEFAULT_MIN_PRIORITY,
+          max_age_days: Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS
         },
         schema: {
           enabled: true

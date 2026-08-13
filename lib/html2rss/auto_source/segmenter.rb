@@ -42,7 +42,7 @@ module Html2rss
         @minimum_selector_frequency = opts.fetch(:minimum_selector_frequency, 2)
         @use_top_selectors = opts.fetch(:use_top_selectors, 5)
         @link_resolver = Scoring::LinkResolver.new(base_url)
-        @noise_policy = Scoring::NoisePolicy.new(link_resolver: @link_resolver, index: document.index)
+        @noise_policy = LinkDestination::NoisePolicy.new(link_resolver: @link_resolver, index: document.index)
       end
 
       # @return [Array<Segment>]

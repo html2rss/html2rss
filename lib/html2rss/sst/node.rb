@@ -118,7 +118,7 @@ module Html2rss
       # @param exclude [Array<Node>, nil]
       # @return [String, nil]
       def visible_text(separator: ' ', exclude: nil)
-        Text.extract(self, separator:, exclude:)
+        Html::SstText.extract(self, separator:, exclude:)
       end
 
       ##
@@ -134,22 +134,6 @@ module Html2rss
         links = descendants.count(&:link?)
         links.zero? ? words.to_f : words.to_f / links
       end
-
-      ##
-      # @return [Boolean] true when this node is a leaf-ish semantic container tag
-      def leaf_semantic_candidate?
-        nest_name = leaf_nest_name
-        return false unless nest_name
-
-        descendants.none? { |n| n.name == nest_name }
-      end
-
-      def leaf_nest_name
-        case name
-        when :article, :section, :li, :tr, :div then name
-        end
-      end
-      private :leaf_nest_name
     end
   end
 end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Scoring
+  module LinkDestination
     # Classifies visible anchor text for utility and recommendation chrome.
     class TextClassifier
       # Prefix labels that usually identify navigation or subscription links.

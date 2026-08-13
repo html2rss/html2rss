@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Scoring
+  module LinkDestination
     # Normalized URL plus reusable route-classification facts for one link.
     DestinationFacts = Data.define(
       :url,

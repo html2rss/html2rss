@@ -1,78 +1,64 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Scoring
+  module LinkDestination
     # Classifies normalized destination path segments for scoring.
     class PathClassifier # rubocop:disable Metrics/ClassLength
       attr_reader :segments
 
+      # Soft utility segments excluded from high-confidence junk (still utility_path).
+      SOFT_UTILITY = %w[
+        for-you join member members membership newsletter newsletters
+        plans plus premium pricing recommended
+      ].to_set.freeze
+
       # Segment groups used to classify article, taxonomy, utility, and vanity routes.
-      SEGMENT_SETS = {
-        content: %w[
+      SEGMENT_SETS = begin
+        content = %w[
           article articles blog blogs changelog changelogs insight insights
           launch launches news post posts release releases story stories update updates
           artikel beitrag beitraege nachrichten neuigkeiten aktuelles
           articulo articulos noticia noticias entrada entradas publicacion publicaciones
-          actualite actualites nouvelle nouvelles
-          teaser teasers card cards
-        ].to_set.freeze,
-        utility: %w[
-          about account archive archives author authors category categories comment comments
-          contact feedback help login logout newsletter newsletters notification notifications
-          preference preferences profile register search settings share signup subscribe
-          tag tags topic topics
-          feed feeds comment-feed comments-feed
-          recommended
-          for-you
-          privacy terms cookie cookies
-          join member members membership plus premium plans pricing user users
-          kategorie kategorien schlagwort schlagworte thema themen autor autoren archiv
-          ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
-          konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
-          categoria categorias etiqueta etiquetas tema temas autores archivos
-          sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar
-          registrarse registro cuenta suscribirse boletin privacidad condiciones
-          categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
-          a-propos apropos recherche rechercher aide connexion s-inscrire
-          sinscrire inscription compte s-abonner saboner lettre-information confidentialite mentions-legales cgu
-          menu sidebar widget social modal popup banner promo ad ads
-          related recommendation recommendations pagination pager
-        ].to_set.freeze,
-        high_confidence_junk: %w[
-          about account archive archives author authors category categories comment comments
-          contact cookie cookies feedback feed feeds help login logout notification notifications
-          preference preferences privacy profile register search settings share signup subscribe
-          tag tags terms topic topics comment-feed comments-feed user users
-          kategorie kategorien schlagwort schlagworte thema themen autor autoren archiv
-          ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
-          konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
-          categoria categorias etiqueta etiquetas tema temas autores archivos
-          sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar
-          registrarse registro cuenta suscribirse boletin privacidad condiciones
-          categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
-          a-propos apropos recherche rechercher aide connexion s-inscrire
-          sinscrire inscription compte s-abonner saboner lettre-information confidentialite mentions-legales cgu
-          menu sidebar widget social modal popup banner promo ad ads
-          related recommendation recommendations pagination pager
-        ].to_set.freeze,
-        taxonomy: %w[
+          actualite actualites nouvelle nouvelles teaser teasers card cards
+        ].to_set.freeze
+        taxonomy = %w[
           category categories tag tags topic topics
           kategorie kategorien schlagwort schlagworte thema themen
           categoria categorias etiqueta etiquetas tema temas
           categorie etiquette etiquettes sujet sujets theme themes
-        ].to_set.freeze,
-        vanity: %w[
-          join membership plus premium pricing plans subscribe signup
-          abonnieren abo
-          suscribirse boletin
-          s-abonner saboner
-        ].to_set.freeze,
-        deep_post_context: %w[
-          press newsroom
-          presse pressemitteilungen
-          prensa
         ].to_set.freeze
-      }.freeze
+        vanity = %w[
+          join membership plus premium pricing plans subscribe signup
+          abonnieren abo suscribirse boletin s-abonner saboner
+        ].to_set.freeze
+        utility = (
+          taxonomy.to_a + %w[
+            about account archive archives author authors comment comments
+            contact feedback help login logout notification notifications
+            preference preferences profile register search settings share signup subscribe
+            feed feeds comment-feed comments-feed privacy terms cookie cookies user users
+            kategorie kategorien schlagwort schlagworte thema themen autor autoren archiv
+            ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
+            konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
+            categoria categorias etiqueta etiquetas tema temas autores archivos
+            sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar
+            registrarse registro cuenta suscribirse boletin privacidad condiciones
+            categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
+            a-propos apropos recherche rechercher aide connexion s-inscrire
+            sinscrire inscription compte s-abonner saboner lettre-information confidentialite
+            mentions-legales cgu menu sidebar widget social modal popup banner promo ad ads
+            related recommendation recommendations pagination pager
+          ] + SOFT_UTILITY.to_a
+        ).to_set.freeze
+        {
+          content:,
+          utility:,
+          high_confidence_junk: (utility - SOFT_UTILITY).freeze,
+          taxonomy:,
+          vanity:,
+          deep_post_context: %w[press newsroom presse pressemitteilungen prensa].to_set.freeze
+        }.freeze
+      end
       # Path segment that begins with a year-like publishing marker.
       YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/
       # Hyphenated slug shape common to article permalinks.

@@ -3,7 +3,7 @@
 module Html2rss
   module Scoring
     ##
-    # Resolves href strings into memoized DestinationFacts for one page base URL.
+    # Resolves href strings into memoized LinkDestination::DestinationFacts for one page base URL.
     class LinkResolver
       # Captures the href portion before a fragment for memoization keys.
       HREF_BASE_PATTERN = /\A([^#]*)/
@@ -13,15 +13,15 @@ module Html2rss
         @base_url = base_url
         @by_href = {}
         @by_node = {}.compare_by_identity
-        @text_classifier = TextClassifier.new
+        @text_classifier = LinkDestination::TextClassifier.new
       end
 
-      # @return [TextClassifier]
+      # @return [LinkDestination::TextClassifier]
       attr_reader :text_classifier
 
       ##
       # @param node_or_href [SST::Node, String, #to_s]
-      # @return [DestinationFacts, nil]
+      # @return [LinkDestination::DestinationFacts, nil]
       def destination_facts(node_or_href)
         return @by_node[node_or_href] if node_or_href.is_a?(SST::Node) && @by_node.key?(node_or_href)
 
@@ -65,7 +65,7 @@ module Html2rss
 
       def build_facts(href)
         url = Html2rss::Url.from_relative(href, @base_url)
-        DestinationFacts.build(url)
+        LinkDestination::DestinationFacts.build(url)
       end
     end
   end

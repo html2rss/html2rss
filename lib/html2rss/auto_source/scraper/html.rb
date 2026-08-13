@@ -5,8 +5,7 @@ module Html2rss
     module Scraper
       ##
       # Fallback HTML list/cluster scraper via SST pipeline
-      # (Normalizer → Segmenter → NoisePolicy eligibility → Extractor).
-      # List order is discovery order; container quality ranking is SemanticHtml's job.
+      # (Normalizer → Segmenter → Scoring::Engine → Extractor).
       class Html
         include Enumerable
 
@@ -85,7 +84,7 @@ module Html2rss
             minimum_selector_frequency:,
             use_top_selectors:
           )
-          materialize_list(segments)
+          materialize(engine.select_eligible(segments, limit: TOP_K))
         end
 
         def cluster_articles
@@ -96,30 +95,17 @@ module Html2rss
             permit_unanchored: true,
             minimum_selector_frequency:
           )
-          segments.first(TOP_K).filter_map do |segment|
-            Extractor.call(segment, base_url: @url, scraper: self.class, fallback_anchorless: true)
+          materialize(engine.select_eligible(segments, limit: TOP_K), fallback_anchorless: true)
+        end
+
+        def materialize(ranked, fallback_anchorless: false)
+          ranked.filter_map do |entry|
+            Extractor.call(entry, base_url: @url, scraper: self.class, fallback_anchorless:)
           end
         end
 
-        def materialize_list(segments)
-          segments.first(TOP_K).filter_map do |segment|
-            anchor = segment.primary_link
-            next unless anchor
-
-            facts = link_resolver.destination_facts(anchor)
-            text = anchor.visible_text.to_s.strip
-            next if noise_policy.noise_anchor?(text:, destination_facts: facts, anchor:, container: segment.root_node)
-
-            Extractor.call(segment, base_url: @url, scraper: self.class)
-          end
-        end
-
-        def link_resolver
-          @link_resolver ||= Scoring::LinkResolver.new(@url)
-        end
-
-        def noise_policy
-          @noise_policy ||= Scoring::NoisePolicy.new(link_resolver:, index: sst_document.index)
+        def engine
+          @engine ||= Scoring::Engine.new(link_resolver: Scoring::LinkResolver.new(@url))
         end
 
         def sst_document

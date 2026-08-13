@@ -34,7 +34,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe '#each' do
-    subject(:new) { described_class.new(parsed_body, url: 'https://page.com') }
+    subject(:new) { described_class.new(parsed_body, url: 'https://page.com', fallback_anchorless: true) }
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
     let(:articles) { new.each.to_a }
@@ -75,7 +75,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(article_ids & excluded_ids).to be_empty
     end
 
-    it 'reduces raw candidate volume on the large semantic fixture', :slow do
+    it 'keeps a useful recall floor on the large semantic fixture', :aggregate_failures, :slow do
+      expect(articles.size).to be >= 60
       expect(articles.size).to be < 100
     end
 

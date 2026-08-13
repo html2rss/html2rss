@@ -25,8 +25,6 @@ RSpec.describe Html2rss::SST::Node do
       expect(img).to be_image
       expect(nav).to be_utility_landmark
       expect(nav).to be_ignored_container_name
-      expect(child_div).to be_leaf_semantic_candidate
-      expect(parent_div).not_to be_leaf_semantic_candidate
       expect(parent_div.word_count).to be >= 1
       expect(parent_div.text_density).to be_a(Float)
       expect(parent_div.descendants).to include(link)

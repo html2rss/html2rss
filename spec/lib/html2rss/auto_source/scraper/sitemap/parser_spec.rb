@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::AutoSource::Discovery::Sitemap do
+RSpec.describe Html2rss::AutoSource::Scraper::Sitemap::Parser do
   describe '.call' do
     let(:now_iso) { Time.now.utc.iso8601 }
 

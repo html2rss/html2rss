@@ -5,7 +5,7 @@ module Html2rss
     ##
     # Sole Nokogiri consumer on the heuristic auto-source path. Builds an
     # immutable SST::Document with parent/depth/chrome indices.
-    class Normalizer
+    class Normalizer # rubocop:disable Metrics/ClassLength
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
@@ -121,7 +121,31 @@ module Html2rss
       end
       # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
-      def extract_attrs(nk_node) = AttrBuilder.call(nk_node)
+      def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
+        Attrs.build(
+          href: nk_node['href'],
+          src: nk_node['src'],
+          id: nk_node['id'],
+          class_names: nk_node['class'].to_s.split(/\s+/).reject(&:empty?),
+          datetime: nk_node['datetime'],
+          itemprop: nk_node['itemprop'],
+          style: nk_node['style'],
+          srcset: nk_node['srcset'],
+          type: nk_node['type'],
+          raw: raw_attrs(nk_node)
+        )
+      end
+
+      def raw_attrs(nk_node)
+        typed = %w[href src id class datetime itemprop style srcset type].to_set
+        nk_node.attribute_nodes.each_with_object({}) do |attr, raw|
+          name = attr.name.to_s
+          next if typed.include?(name)
+          next unless name.match?(RAW_ATTR_KEEP)
+
+          raw[name] = attr.value.to_s
+        end
+      end
 
       def direct_text(nk_node)
         nk_node.children.select(&:text?).map(&:text).join

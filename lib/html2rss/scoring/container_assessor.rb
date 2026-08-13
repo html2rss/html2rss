@@ -3,40 +3,38 @@
 module Html2rss
   module Scoring
     ##
-    # Observes an SST container and builds quality/junk score inputs
-    # (port of LinkHeuristics::ContainerAssessor + ContainerSignals).
+    # Observes an SST container and builds typed {Observation} score inputs.
     class ContainerAssessor
       # Microdata itemprop values treated as publish/update markers.
       PUBLISH_ITEMPROPS = %w[datePublished dateModified].freeze
 
       # Matches content-like tokens in class/id strings.
       CONTENT_TOKEN_REGEXP = begin
-        words = PathClassifier::SEGMENT_SETS.fetch(:content)
+        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:content)
         /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
       end.freeze
 
       # Matches utility/junk tokens in class/id strings.
       JUNK_TOKEN_REGEXP = begin
-        words = PathClassifier::SEGMENT_SETS.fetch(:utility)
+        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:utility)
         /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
       end.freeze
 
-      # @param text_classifier [TextClassifier]
-      def initialize(text_classifier: TextClassifier.new)
+      # @param text_classifier [LinkDestination::TextClassifier]
+      def initialize(text_classifier: LinkDestination::TextClassifier.new)
         @text_classifier = text_classifier
       end
 
       ##
       # @param container [SST::Node]
       # @param selected_anchor [SST::Node, nil]
-      # @param destination_facts [DestinationFacts, nil]
-      # @return [Hash{Symbol => Object}] observation bag for Engine
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      def call(container, selected_anchor, destination_facts:)
+      # @param destination_facts [LinkDestination::DestinationFacts, nil]
+      # @return [Observation]
+      def call(container, selected_anchor, destination_facts:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         title = entry_title(container, selected_anchor)
         tokens = "#{container.attrs.class_attr} #{container.attrs.id}"
 
-        {
+        Observation.new(
           title_word_count: word_count(title),
           path_length: destination_facts&.url&.path.to_s.length,
           content_path: destination_facts&.content_path,
@@ -53,9 +51,8 @@ module Html2rss
           high_confidence_junk_path: destination_facts&.high_confidence_junk_path,
           high_confidence_utility_destination: destination_facts&.high_confidence_utility_destination,
           selected_anchor_present: !selected_anchor.nil?
-        }
+        )
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
       private
 

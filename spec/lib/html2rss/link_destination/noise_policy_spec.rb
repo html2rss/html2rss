@@ -2,7 +2,7 @@
 
 require 'nokogiri'
 
-RSpec.describe Html2rss::Scoring::NoisePolicy do
+RSpec.describe Html2rss::LinkDestination::NoisePolicy do
   subject(:policy) { described_class.new(link_resolver:, index: document.index) }
 
   let(:base_url) { 'https://example.com/articles/' }
