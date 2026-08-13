@@ -16,7 +16,14 @@ module Html2rss
         raise ArgumentError, 'node is required' unless node
 
         excluded = exclude ? Set.new(exclude) : nil
+        if node.children.empty?
+          text = node.own_text.to_s.gsub(/\s+/, ' ').strip
+          return text.empty? ? nil : text
+        end
+
         parts = collect_parts(node, separator, excluded)
+        own = node.own_text.to_s.gsub(/\s+/, ' ').strip
+        parts = [own, *parts] unless own.empty?
         return if parts.empty?
 
         parts.join.squeeze(' ').strip
