@@ -6,6 +6,8 @@ module Html2rss
       ##
       # DOM-agnostic image URL selection (srcset sizing, CSS background urls).
       module Image
+        # Caps attribute size before Regexp so CodeQL rb/polynomial-redos stays bounded.
+        MAX_ATTR_CHARS = 4_096
         # Matches a srcset candidate URL and its width/height descriptor.
         SRCSET_PAIR = /(\S+)\s+(\d+w|\d+h)[\s,]?/
         # Captures a CSS `url(...)` background image candidate.
@@ -26,7 +28,7 @@ module Html2rss
           # @return [String, nil] longest non-data background url
           def best_from_styles(style_strings)
             Array(style_strings)
-              .filter_map { |style| style.to_s[STYLE_URL, 1] }
+              .filter_map { |style| style_url(style) }
               .reject { |src| src.start_with?('data:') }
               .max_by(&:size)
           end
@@ -34,11 +36,21 @@ module Html2rss
           private
 
           def merge_srcset!(by_size, srcset)
-            srcset.to_s.scan(SRCSET_PAIR) do |url, width|
+            s = srcset.to_s
+            return if s.length > MAX_ATTR_CHARS
+
+            s.scan(SRCSET_PAIR) do |url, width|
               next if url.nil? || url.start_with?('data:')
 
               by_size[descriptor_size(width)] = url.strip
             end
+          end
+
+          def style_url(style)
+            s = style.to_s
+            return if s.length > MAX_ATTR_CHARS
+
+            s[STYLE_URL, 1]
           end
 
           def descriptor_size(width)

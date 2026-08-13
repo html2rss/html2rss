@@ -8,6 +8,11 @@ RSpec.describe Html2rss::Html::ArticleRules::Image do
       ]
       expect(described_class.largest_from_srcsets(srcsets)).to eq('https://example.com/b.jpg')
     end
+
+    it 'skips oversized srcset attributes' do
+      oversized = "#{'a' * (described_class::MAX_ATTR_CHARS + 1)} 800w"
+      expect(described_class.largest_from_srcsets([oversized])).to be_nil
+    end
   end
 
   describe '.best_from_styles' do
@@ -18,6 +23,11 @@ RSpec.describe Html2rss::Html::ArticleRules::Image do
         "background: url('/path/to/longer-image.jpg');"
       ]
       expect(described_class.best_from_styles(styles)).to eq('/path/to/longer-image.jpg')
+    end
+
+    it 'skips oversized style attributes' do
+      oversized = "background: url('#{'x' * (described_class::MAX_ATTR_CHARS + 1)}');"
+      expect(described_class.best_from_styles([oversized])).to be_nil
     end
   end
 end
