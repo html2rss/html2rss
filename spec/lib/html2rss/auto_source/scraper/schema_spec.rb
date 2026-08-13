@@ -97,6 +97,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
 
       it { is_expected.to be_truthy }
     end
+
+    context 'with multi-type @type array where supported type is not first' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":["WebPage","NewsArticle"]}</script>')
+      end
+
+      it { is_expected.to be_truthy }
+    end
   end
 
   describe '.self.from(object)' do
@@ -178,6 +186,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
 
       it 'prefers mainEntity and skips the WebPage container' do
         expect(array).to contain_exactly(hash_including('@type': 'Article', headline: 'Main Entity Article'))
+      end
+    end
+
+    context 'with multi-type NewsArticle and WebPage' do
+      let(:object) do
+        {
+          '@type': %w[NewsArticle WebPage],
+          headline: 'Hybrid Article',
+          url: 'https://example.com/hybrid'
+        }
+      end
+
+      it 'returns the article-shaped node despite denied WebPage' do
+        expect(array).to contain_exactly(
+          hash_including('@type': %w[NewsArticle WebPage], headline: 'Hybrid Article')
+        )
       end
     end
 
@@ -318,6 +342,20 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       end
     end
 
+    context 'with multi-type NewsArticle and WebPage' do
+      let(:parsed_body) do
+        script_tag.call({
+          '@type': %w[NewsArticle WebPage],
+          headline: 'Hybrid via each',
+          url: 'https://example.com/hybrid-each'
+        }.to_json)
+      end
+
+      it 'yields the article despite denied WebPage' do
+        expect { |b| new.each(&b) }.to yield_with_args(hash_including(title: 'Hybrid via each'))
+      end
+    end
+
     context 'with a scraper that returns nil' do
       let(:parsed_body) { script_tag.call('{"@type": "Article"}') }
 
@@ -380,6 +418,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       let(:object) { { '@type': %w[Article NewsArticle], url: 'https://example.com' } }
 
       it 'returns Thing class' do
+        expect(described_class.scraper_for_schema_object(object)).to eq(Html2rss::AutoSource::Scraper::Schema::Thing)
+      end
+    end
+
+    context 'with multi-type including a denied container' do
+      let(:object) { { '@type': %w[NewsArticle WebPage], url: 'https://example.com' } }
+
+      it 'prefers Thing over denied container' do
         expect(described_class.scraper_for_schema_object(object)).to eq(Html2rss::AutoSource::Scraper::Schema::Thing)
       end
     end

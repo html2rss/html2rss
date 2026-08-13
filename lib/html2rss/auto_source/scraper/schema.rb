@@ -19,10 +19,11 @@ module Html2rss
         TAG_SELECTOR = 'script[type="application/ld+json"]'
 
         # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
+        # Allows preceding entries in a JSON @type array (e.g. ["WebPage","NewsArticle"]).
         SUPPORTED_TYPES_RE = begin
           types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
           type_re = Regexp.union(types.to_a)
-          %r{"@type"\s*:\s*(?:\[\s*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
+          %r{"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
         end.freeze
 
         SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
@@ -82,16 +83,14 @@ module Html2rss
           def scraper_for_schema_object(schema_object)
             types = normalize_types(schema_object[:@type])
 
-            # ItemList is a denied container for emission, but still extracted for its elements.
+            # Prefer article/list extractors over denied containers for multi-type @type arrays
+            # (e.g. ["NewsArticle","WebPage"]).
             return ItemList if types.intersect?(ItemList::SUPPORTED_TYPES)
+            return Thing if types.intersect?(Thing::SUPPORTED_TYPES)
             return nil if types.intersect?(DENIED_CONTAINER_TYPES)
 
-            if types.intersect?(Thing::SUPPORTED_TYPES)
-              Thing
-            else
-              Log.debug("#{name}: unsupported schema object @type=#{schema_object[:@type].inspect}")
-              nil
-            end
+            Log.debug("#{name}: unsupported schema object @type=#{schema_object[:@type].inspect}")
+            nil
           end
 
           # Normalizes Schema.org `@type` wire forms to short type names.
