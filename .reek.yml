@@ -6,16 +6,47 @@ detectors:
     enabled: false
   UtilityFunction:
     enabled: false
+  NilCheck:
+    enabled: false
+  FeatureEnvy:
+    enabled: false
+  DuplicateMethodCall:
+    enabled: false
+  MissingSafeMethod:
+    enabled: false
+  UncommunicativeVariableName:
+    enabled: false
+  ControlParameter:
+    enabled: false
+  DataClump:
+    enabled: false
+  BooleanParameter:
+    enabled: false
+  ManualDispatch:
+    enabled: false
+  InstanceVariableAssumption:
+    enabled: false
+  RepeatedConditional:
+    enabled: false
+  UncommunicativeModuleName:
+    enabled: false
+  UnusedParameters:
+    enabled: false
+  LongParameterList:
+    enabled: false
+  NestedIterators:
+    max_allowed_nesting: 2
+  TooManyStatements:
+    max_statements: 25
+  TooManyInstanceVariables:
+    max_instance_variables: 10
+  TooManyMethods:
+    max_methods: 30
+  TooManyConstants:
+    max_constants: 12
 
 exclude_paths:
   - spec/
   - vendor/
   - tmp/
   - coverage/
-
-directories:
-  "lib/":
-    IrresponsibleModule:
-      enabled: false
-    UtilityFunction:
-      enabled: false
