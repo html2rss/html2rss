@@ -26,6 +26,7 @@ module Html2rss
           %r{"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
         end.freeze
 
+        # Matches a leading schema.org URL prefix on @type values (http or https).
         SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
 
         # Prefer these keys when recursively walking unsupported container objects.
