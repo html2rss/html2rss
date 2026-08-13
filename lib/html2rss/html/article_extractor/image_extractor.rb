@@ -32,27 +32,16 @@ module Html2rss
         # @see <https://developer.mozilla.org/en-US/docs/Learn/HTML/Multimedia_and_embedding/Responsive_images>
         # @see <https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#srcset>
         # @see <https://developer.mozilla.org/en-US/docs/Web/HTML/Element/picture>
-        def self.from_source(article_tag) # rubocop:disable Metrics/AbcSize
-          hash = article_tag.css('img[srcset], picture > source[srcset]').flat_map do |source|
-            source['srcset'].to_s.scan(/(\S+)\s+(\d+w|\d+h)[\s,]?/).map do |url, width|
-              next if url.nil? || url.start_with?('data:')
-
-              width_value = width.to_i.zero? ? 0 : width.scan(/\d+/).first.to_i
-
-              [width_value, url.strip]
-            end
-          end.compact.to_h
-
-          hash[hash.keys.max]
+        def self.from_source(article_tag)
+          srcsets = article_tag.css('img[srcset], picture > source[srcset]').map { |source| source['srcset'] }
+          ArticleRules::Image.largest_from_srcsets(srcsets)
         end
 
         # @param article_tag [Nokogiri::XML::Element] article container node
         # @return [String, nil] best style-based background image URL
         def self.from_style(article_tag)
-          article_tag.css('[style*="url"]')
-                     .filter_map { |tag| tag['style'][/url\(['"]?(.*?)['"]?\)/, 1] }
-                     .reject { |src| src.start_with?('data:') }
-                     .max_by(&:size)
+          styles = article_tag.css('[style*="url"]').map { |tag| tag['style'] }
+          ArticleRules::Image.best_from_styles(styles)
         end
       end
     end

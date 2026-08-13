@@ -11,12 +11,8 @@ module Html2rss
     class SstArticleExtractor
       # CSS class tokens that mark kicker / eyebrow text (excluded from titles).
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
-      # Href path suffixes treated as non-article download/archive links.
-      ARCHIVE_HREF_SUFFIXES = %w[.pdf .zip .tar.gz .tgz].freeze
       # Inline emphasis tags used as title fallbacks when no heading exists.
       FALLBACK_HEADING_NAMES = %i[strong b].freeze
-      # Shared with {ArticleExtractor::CategoryExtractor} — class/data tokens for category metadata.
-      CATEGORY_TERMS = ArticleExtractor::CategoryExtractor::CATEGORY_TERMS
 
       class << self
         ##
@@ -205,33 +201,19 @@ module Html2rss
         @root.find { |n| n.image? && n.attrs.src && !n.attrs.src.start_with?('data:') }&.attrs&.src
       end
 
-      def image_from_srcset # rubocop:disable Metrics/AbcSize
-        hash = {}
-        @root.find_all { |n| n.attrs.srcset }.each do |source|
-          source.attrs.srcset.to_s.scan(/(\S+)\s+(\d+w|\d+h)[\s,]?/) do |url, width|
-            next if url.nil? || url.start_with?('data:')
-
-            width_value = width.to_i.zero? ? 0 : width.scan(/\d+/).first.to_i
-            hash[width_value] = url.strip
-          end
-        end
-        hash[hash.keys.max]
+      def image_from_srcset
+        srcsets = @root.find_all { |n| n.attrs.srcset }.map { |n| n.attrs.srcset }
+        ArticleRules::Image.largest_from_srcsets(srcsets)
       end
 
       def image_from_style
-        @root.find_all { |n| n.attrs.style&.include?('url') }
-             .filter_map { |tag| tag.attrs.style[/url\(['"]?(.*?)['"]?\)/, 1] }
-             .reject { |src| src.start_with?('data:') }
-             .max_by(&:size)
+        styles = @root.find_all { |n| n.attrs.style&.include?('url') }.map { |n| n.attrs.style }
+        ArticleRules::Image.best_from_styles(styles)
       end
 
       def extract_published_at
-        times = @root.find_all { |n| n.attrs.datetime }.filter_map do |tag|
-          DateTime.parse(tag.attrs.datetime)
-        rescue ArgumentError, TypeError
-          nil
-        end
-        times.min
+        datetimes = @root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
+        ArticleRules::Date.earliest(datetimes)
       end
 
       def extract_enclosures
@@ -242,73 +224,53 @@ module Html2rss
         case node.name
         when :img then node.attrs.src && !node.attrs.src.start_with?('data:')
         when :source, :audio, :video, :iframe then node.attrs.src
-        when :a
-          href = node.attrs.href.to_s
-          ARCHIVE_HREF_SUFFIXES.any? { |suffix| href.end_with?(suffix) }
+        when :a then ArticleRules::Enclosure.archive_href?(node.attrs.href)
         else false
         end
       end
 
-      def enclosure_from(element) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def enclosure_from(element)
         case element.name
         when :img
-          abs = Url.from_relative(element.attrs.src, @base_url)
-          { url: abs, type: Article::Enclosure.guess_content_type_from_url(abs, default: 'image/jpeg') }
+          ArticleRules::Enclosure.from_image(element.attrs.src, @base_url)
         when :video, :audio, :source
-          { url: Url.from_relative(element.attrs.src, @base_url), type: element.attrs.type }
+          ArticleRules::Enclosure.from_media(element.attrs.src, element.attrs.type, @base_url)
         when :iframe
-          abs = Url.from_relative(element.attrs.src, @base_url)
-          { url: abs, type: Article::Enclosure.guess_content_type_from_url(abs, default: 'text/html') }
+          ArticleRules::Enclosure.from_iframe(element.attrs.src, @base_url)
         when :a
-          abs = Url.from_relative(element.attrs.href, @base_url)
-          type = pdf_or_zip_type(element.attrs.href, abs)
-          { url: abs, type: }
+          ArticleRules::Enclosure.from_anchor(element.attrs.href, @base_url)
         end
       end
 
-      def pdf_or_zip_type(href, abs)
-        return Article::Enclosure.guess_content_type_from_url(abs) if href.end_with?('.pdf')
-
-        'application/zip'
-      end
-
-      def extract_categories # rubocop:disable Metrics/AbcSize
-        pattern = /#{CATEGORY_TERMS.join('|')}/i
+      def extract_categories
         Set.new.tap do |categories|
-          @root.find_all { |n| category_candidate?(n, pattern) }.each do |element|
-            add_category_text!(categories, element) if element.attrs.class_attr.match?(pattern)
+          @root.find_all { |n| category_candidate?(n) }.each do |element|
+            add_category_text!(categories, element) if ArticleRules::Category.class_match?(element.attrs.class_attr)
             element.attrs.raw.each do |name, value|
-              next unless name.match?(pattern)
+              next unless ArticleRules::Category.attr_name_match?(name)
 
-              categories.add(value.strip) unless value.strip.empty?
+              ArticleRules::Category.add_text!(categories, value)
             end
           end
         end.to_a
       end
 
-      def category_candidate?(node, pattern)
-        node.attrs.class_attr.match?(pattern) ||
-          node.attrs.raw.keys.any? { |k| k.match?(pattern) }
+      def category_candidate?(node)
+        ArticleRules::Category.class_match?(node.attrs.class_attr) ||
+          node.attrs.raw.keys.any? { |k| ArticleRules::Category.attr_name_match?(k) }
       end
 
-      def add_category_text!(categories, element) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+      def add_category_text!(categories, element)
         if element.link?
-          text = element.visible_text
-          categories.add(text) if text && !text.empty?
+          ArticleRules::Category.add_text!(categories, element.visible_text)
           return
         end
 
         anchors = element.find_all(&:link?)
         if anchors.any?
-          anchors.each do |a|
-            text = a.visible_text
-            categories.add(text) if text && !text.empty?
-          end
+          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text) }
         else
-          element.visible_text.to_s.split(/\n+/).each do |line|
-            line = line.strip
-            categories.add(line) unless line.empty?
-          end
+          ArticleRules::Category.add_split_text!(categories, element.visible_text)
         end
       end
     end

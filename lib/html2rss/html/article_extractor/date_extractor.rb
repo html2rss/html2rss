@@ -8,13 +8,8 @@ module Html2rss
         # @param article_tag [Nokogiri::XML::Element] article container node
         # @return [DateTime, nil]
         def self.call(article_tag)
-          times = article_tag.css('[datetime]').filter_map do |tag|
-            DateTime.parse(tag['datetime'])
-          rescue ArgumentError, TypeError
-            nil
-          end
-
-          times.min
+          datetimes = article_tag.css('[datetime]').map { |tag| tag['datetime'] }
+          ArticleRules::Date.earliest(datetimes)
         end
       end
     end
