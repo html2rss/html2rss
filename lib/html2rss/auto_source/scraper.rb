@@ -34,6 +34,7 @@ module Html2rss
 
       # Heuristic scrapers that share one memoized SST::Document per page.
       HEURISTIC_SCRAPERS = [SemanticHtml, Html].freeze
+      # Scrapers that accept a shared follow-up +request_session+.
       REQUEST_SESSION_SCRAPERS = [WordpressApi, Sitemap, MetaOembed].freeze
 
       ##
