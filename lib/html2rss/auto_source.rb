@@ -123,7 +123,7 @@ module Html2rss
       scraper_opts = @opts.fetch(:scraper, {})
 
       Scraper::SCRAPER_TIERS.each do |tier|
-        break if sufficient?(articles)
+        break if sufficient_cleaned?(articles)
 
         if Scraper.heuristic_tier?(tier)
           document ||= Scraper.normalize_sst(parsed_body)
@@ -157,8 +157,11 @@ module Html2rss
     end
     # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
-    def sufficient?(articles)
-      articles.count { |article| article.url && !article.title.to_s.empty? } >= SUFFICIENT_ARTICLE_COUNT
+    def sufficient_cleaned?(articles)
+      return false if articles.size < SUFFICIENT_ARTICLE_COUNT
+
+      cleaned = Cleanup.call(articles.dup, url:, **cleanup_options)
+      cleaned.count { |article| article.url && !article.title.to_s.empty? } >= SUFFICIENT_ARTICLE_COUNT
     end
 
     def run_scraper(instance)

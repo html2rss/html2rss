@@ -174,7 +174,6 @@ RSpec.describe Html2rss::AutoSource do
         allow(Html2rss::SST::Normalizer).to receive(:call)
         allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new)
         allow(Html2rss::AutoSource::Scraper::Html).to receive(:new)
-        allow(Html2rss::AutoSource::Cleanup).to receive(:call) { |arts, **| arts }
       end
 
       it 'skips SST and heuristic scrapers', :aggregate_failures do
@@ -182,6 +181,63 @@ RSpec.describe Html2rss::AutoSource do
         expect(Html2rss::SST::Normalizer).not_to have_received(:call)
         expect(Html2rss::AutoSource::Scraper::SemanticHtml).not_to have_received(:new)
         expect(Html2rss::AutoSource::Scraper::Html).not_to have_received(:new)
+      end
+    end
+
+    context 'when structured articles fail Cleanup title floor' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(
+                                                              schema: { enabled: true },
+                                                              semantic_html: { enabled: true,
+                                                                               fallback_anchorless: true }
+                                                            )
+        )
+      end
+      let(:schema_articles) do
+        Array.new(described_class::SUFFICIENT_ARTICLE_COUNT) do |index|
+          {
+            id: "thin-#{index}",
+            title: 'News',
+            description: 'summary',
+            url: "https://example.com/thin-#{index}"
+          }
+        end
+      end
+      let(:semantic_articles) do
+        Array.new(described_class::SUFFICIENT_ARTICLE_COUNT) do |index|
+          Html2rss::Article.new(
+            id: "sem-#{index}",
+            title: "Semantic Story #{index} Extra Words",
+            description: 'summary',
+            url: "https://example.com/sem-#{index}",
+            scraper: Html2rss::AutoSource::Scraper::SemanticHtml
+          )
+        end
+      end
+      let(:schema_instance) do
+        instance = instance_double(Html2rss::AutoSource::Scraper::Schema, each: schema_articles.each)
+        allow(instance).to receive(:class).and_return(Html2rss::AutoSource::Scraper::Schema)
+        instance
+      end
+      let(:semantic_instance) do
+        instance_double(Html2rss::AutoSource::Scraper::SemanticHtml, each: semantic_articles.each, extractable?: true)
+      end
+      let(:document) { instance_double(Html2rss::SST::Document) }
+
+      before do
+        allow(Html2rss::AutoSource::Scraper::Schema).to receive_messages(
+          options_key: :schema, articles?: true, new: schema_instance
+        )
+        allow(Html2rss::AutoSource::Scraper).to receive(:normalize_sst).and_return(document)
+        allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_return(semantic_instance)
+      end
+
+      it 'continues into heuristics so Cleanup does not empty the feed', :aggregate_failures do
+        expect(articles.size).to eq(described_class::SUFFICIENT_ARTICLE_COUNT)
+        expect(articles.map(&:title)).to all(include('Semantic Story'))
+        expect(Html2rss::AutoSource::Scraper::SemanticHtml).to have_received(:new)
       end
     end
 
