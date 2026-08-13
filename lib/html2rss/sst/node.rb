@@ -118,7 +118,7 @@ module Html2rss
       # @param exclude [Array<Node>, nil]
       # @return [String, nil]
       def visible_text(separator: ' ', exclude: nil)
-        Html::SstText.extract(self, separator:, exclude:)
+        Text.extract(self, separator:, exclude:)
       end
 
       ##

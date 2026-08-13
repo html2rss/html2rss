@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module Html
+  module SST
     ##
     # Visible-text extraction for SST nodes (port of Navigator::TextExtractor).
-    module SstText
+    module Text
       module_function
 
       ##
@@ -53,7 +53,7 @@ module Html2rss
                  extract(child, separator:, exclude: excluded&.keys).to_s.strip
                end
         text = "- #{text}" if child.name == :li && !text.empty?
-        [text, SST::Tags::BLOCK_NAMES.include?(child.name)]
+        [text, Tags::BLOCK_NAMES.include?(child.name)]
       end
       module_function :child_text_and_block
       private_class_method :child_text_and_block
@@ -71,7 +71,7 @@ module Html2rss
       private_class_method :append_separator!
 
       def visible_child?(node)
-        !SST::Tags::INVISIBLE_NAMES.include?(node.name) &&
+        !Tags::INVISIBLE_NAMES.include?(node.name) &&
           !(node.name == :a && node.attrs.href&.start_with?('#'))
       end
       module_function :visible_child?
