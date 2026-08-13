@@ -1,0 +1,104 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Captures wall time + allocation baseline for the heuristic auto-source path.
+# Usage: mise exec -- bin/heuristic-perf-baseline [--write PATH]
+
+require 'bundler/setup'
+require 'nokogiri'
+require 'optparse'
+require_relative '../lib/html2rss'
+
+FIXTURES = [
+  'spec/fixtures/page_1.html',
+  'spec/fixtures/multi_link_block.html',
+  'spec/fixtures/local_feed_test.html'
+].freeze
+
+WARMUP = 1
+RUNS = 5
+
+def parse_fixture(path)
+  html = File.read(File.expand_path(path, File.join(__dir__, '..')))
+  Nokogiri::HTML(html)
+end
+
+def run_heuristics(parsed_body, url:)
+  semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(
+    parsed_body,
+    url:,
+    fallback_anchorless: true
+  )
+  html = Html2rss::AutoSource::Scraper::Html.new(
+    parsed_body,
+    url:,
+    fallback_anchorless: true,
+    minimum_selector_frequency: 2,
+    use_top_selectors: 5
+  )
+  [semantic.to_a.size, html.to_a.size]
+end
+
+def measure(parsed_bodies)
+  GC.start
+  before_alloc = GC.stat[:total_allocated_objects]
+  started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  counts = parsed_bodies.map { |body| run_heuristics(body, url: 'https://example.com/') }
+  wall = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+  allocs = GC.stat[:total_allocated_objects] - before_alloc
+  [wall, allocs, counts]
+end
+
+options = { write: nil }
+OptionParser.new do |opts|
+  opts.on('--write PATH', 'Write markdown baseline to PATH') { |path| options[:write] = path }
+end.parse!
+
+root = File.expand_path('..', __dir__)
+parsed_bodies = FIXTURES.map { |rel| parse_fixture(File.join(root, rel)) }
+
+WARMUP.times { measure(parsed_bodies) }
+
+walls = []
+allocs = []
+article_counts = nil
+RUNS.times do
+  wall, alloc, counts = measure(parsed_bodies)
+  walls << wall
+  allocs << alloc
+  article_counts = counts
+end
+
+median = ->(arr) { arr.sort[arr.size / 2] }
+wall_med = median.call(walls)
+alloc_med = median.call(allocs)
+
+lines = []
+lines << '# Heuristic auto-source performance baseline'
+lines << ''
+lines << "Captured: #{Time.now.utc.iso8601}"
+lines << "Ruby: #{RUBY_VERSION}"
+lines << "Fixtures: #{FIXTURES.join(', ')}"
+lines << "Warmup runs: #{WARMUP}; measured runs: #{RUNS} (median reported)"
+lines << ''
+lines << '| Metric | Value |'
+lines << '| --- | --- |'
+lines << "| wall_time_s (median) | #{format('%.6f', wall_med)} |"
+lines << "| allocations (median) | #{alloc_med} |"
+lines << "| wall_budget_1_1x | #{format('%.6f', wall_med * 1.1)} |"
+lines << "| alloc_budget_1_15x | #{(alloc_med * 1.15).ceil} |"
+lines << ''
+lines << 'Article counts per fixture (semantic, html):'
+article_counts.each_with_index do |(semantic_n, html_n), idx|
+  lines << "- #{FIXTURES[idx]}: semantic=#{semantic_n}, html=#{html_n}"
+end
+lines << ''
+
+report = lines.join("\n")
+puts report
+
+if options[:write]
+  path = File.expand_path(options[:write], root)
+  File.write(path, report)
+  warn "Wrote #{path}"
+end
