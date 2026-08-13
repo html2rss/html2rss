@@ -11,7 +11,7 @@ RSpec.describe Html2rss::Html::ArticleRules::Image do
   end
 
   describe '.best_from_styles' do
-    it 'returns the longest non-data background url' do
+    it 'returns the longest non-data background url' do # rubocop:disable RSpec/ExampleLength
       styles = [
         'background: url(data:image/png;base64,xx);',
         'background-image: url("short.jpg");',

@@ -182,11 +182,11 @@ RSpec.describe Html2rss::AutoSource do
         )
       end
 
-      it 'keeps Schema articles and skips heuristic titles', :aggregate_failures do
+      it 'keeps Schema articles and skips heuristic titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(articles.size).to eq(5)
         expect(articles.map(&:title)).to all(include('Schema Story'))
         expect(articles.map(&:scraper)).to all(eq(Html2rss::AutoSource::Scraper::Schema))
-        expect(articles.map(&:url).map(&:to_s)).to eq(
+        expect(articles.map { |article| article.url.to_s }).to eq(
           Array.new(5) { |index| "https://example.com/schema-#{index}" }
         )
       end
@@ -243,7 +243,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     context 'when SemanticHtml is sufficient before Html' do
-      let(:body) do
+      let(:articles_html) do
         Array.new(5) do |index|
           <<~HTML
             <article id="a#{index}">
@@ -251,8 +251,9 @@ RSpec.describe Html2rss::AutoSource do
               <p>This is teaser content about the story number #{index}.</p>
             </article>
           HTML
-        end.join.then { |articles_html| "<html><body>#{articles_html}</body></html>" }
+        end.join
       end
+      let(:body) { "<html><body>#{articles_html}</body></html>" }
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
           limit: 5,

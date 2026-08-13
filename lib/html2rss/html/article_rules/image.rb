@@ -6,7 +6,9 @@ module Html2rss
       ##
       # DOM-agnostic image URL selection (srcset sizing, CSS background urls).
       module Image
+        # Matches a srcset candidate URL and its width/height descriptor.
         SRCSET_PAIR = /(\S+)\s+(\d+w|\d+h)[\s,]?/
+        # Captures a CSS `url(...)` background image candidate.
         STYLE_URL = /url\(['"]?(.*?)['"]?\)/
 
         class << self
@@ -15,14 +17,7 @@ module Html2rss
           # @return [String, nil] URL of the largest width/height candidate
           def largest_from_srcsets(srcset_strings)
             by_size = {}
-            Array(srcset_strings).each do |srcset|
-              srcset.to_s.scan(SRCSET_PAIR) do |url, width|
-                next if url.nil? || url.start_with?('data:')
-
-                width_value = width.to_i.zero? ? 0 : width.scan(/\d+/).first.to_i
-                by_size[width_value] = url.strip
-              end
-            end
+            Array(srcset_strings).each { |srcset| merge_srcset!(by_size, srcset) }
             by_size[by_size.keys.max]
           end
 
@@ -34,6 +29,20 @@ module Html2rss
               .filter_map { |style| style.to_s[STYLE_URL, 1] }
               .reject { |src| src.start_with?('data:') }
               .max_by(&:size)
+          end
+
+          private
+
+          def merge_srcset!(by_size, srcset)
+            srcset.to_s.scan(SRCSET_PAIR) do |url, width|
+              next if url.nil? || url.start_with?('data:')
+
+              by_size[descriptor_size(width)] = url.strip
+            end
+          end
+
+          def descriptor_size(width)
+            width.to_i.zero? ? 0 : width.scan(/\d+/).first.to_i
           end
         end
       end

@@ -145,7 +145,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
         '&after=2024-04-01T00%3A00%3A00Z&before=2024-05-01T00%3A00%3A00Z&per_page=100'
     }
   ].each do |example|
-    it example.fetch(:description) do
+    it example.fetch(:description), :aggregate_failures do
       page_url = Html2rss::Url.from_absolute(example.fetch(:page_url, 'https://example.com/blog'))
       described_class.new(Nokogiri::HTML(example.fetch(:html)), url: page_url, request_session:).each.to_a
 

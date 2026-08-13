@@ -33,7 +33,7 @@ RSpec.describe Html2rss::CLI do
       'max_requests' => [{ max_requests: 8 }, { request: { max_requests: 8 } }],
       'params' => [{ params: { 'foo' => 'bar' } }, { params: { 'foo' => 'bar' } }]
     }.each do |label, (options, expected_attrs)|
-      it "forwards #{label} to Html2rss.feed" do
+      it "forwards #{label} to Html2rss.feed" do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
 
         cli.invoke(:feed, ['example.yml'], options)
@@ -138,7 +138,7 @@ RSpec.describe Html2rss::CLI do
         cli.invoke(:auto, ['https://example.com'], options)
 
         expect(Html2rss).to have_received(:auto_source)
-          .with('https://example.com', **auto_defaults.merge(expected_kwargs))
+          .with('https://example.com', **auto_defaults, **expected_kwargs)
       end
     end
 

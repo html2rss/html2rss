@@ -6,11 +6,13 @@ module Html2rss
       ##
       # Shared category term vocabulary and text accumulation (DOM walk stays in adapters).
       module Category
+        # Class/data attribute tokens that mark category metadata.
         CATEGORY_TERMS = %w[
           category categories tag tags topic topics section sections
           label labels theme themes subject subjects
         ].freeze
 
+        # Regex matching category-related attribute or class names.
         CATEGORY_ATTR_PATTERN = /#{CATEGORY_TERMS.join('|')}/i
 
         class << self

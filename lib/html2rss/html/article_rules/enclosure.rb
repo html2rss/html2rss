@@ -6,6 +6,7 @@ module Html2rss
       ##
       # DOM-agnostic enclosure URL/type normalization.
       module Enclosure
+        # Href path suffixes treated as download/archive enclosure links.
         ARCHIVE_HREF_SUFFIXES = %w[.pdf .zip .tar.gz .tgz].freeze
 
         class << self

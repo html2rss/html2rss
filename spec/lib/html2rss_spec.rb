@@ -88,7 +88,7 @@ RSpec.describe Html2rss do
 
       # Item XML shape (pubDate, category, enclosure attrs, description rel/target) is owned by
       # feed_builder/rss_spec + sanitize_html_spec. Keep one VCR smoke here.
-      it 'builds channel metadata and a guid/enclosure smoke item', :aggregate_failures do
+      it 'builds channel metadata and a guid/enclosure smoke item', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(xml.css('channel > title').text).to eq 'Releases · nuxt/nuxt.js · GitHub'
         expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
         expect(xml.css('channel > item').count).to be > 0

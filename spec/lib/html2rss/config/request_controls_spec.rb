@@ -28,7 +28,7 @@ RSpec.describe Html2rss::Config::RequestControls do
   end
 
   describe '.from_shortcut' do
-    it 'marks strategy explicit only when non-default', :aggregate_failures do
+    it 'marks strategy explicit only when non-default', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       default_name = Html2rss::Config.default_strategy_name
       omitted = described_class.from_shortcut(strategy: default_name, max_requests: 4)
       explicit = described_class.from_shortcut(strategy: :browserless, max_redirects: 2)

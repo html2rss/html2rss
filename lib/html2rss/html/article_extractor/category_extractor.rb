@@ -7,7 +7,9 @@ module Html2rss
       # CategoryExtractor is responsible for extracting categories from HTML elements
       # by looking for CSS class names containing common category-related terms.
       class CategoryExtractor
+        # Shared category vocabulary (owned by {ArticleRules::Category}).
         CATEGORY_TERMS = ArticleRules::Category::CATEGORY_TERMS
+        # Shared category attribute/class pattern (owned by {ArticleRules::Category}).
         CATEGORY_ATTR_PATTERN = ArticleRules::Category::CATEGORY_ATTR_PATTERN
 
         # CSS selectors to find elements with category-related class names or data attributes

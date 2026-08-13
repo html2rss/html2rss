@@ -12,7 +12,7 @@ RSpec.shared_examples 'compact media renderer html' do |tag:, url:, type:, open_
 end
 
 RSpec.shared_examples 'image renderer empty title attrs' do |title:|
-  it 'renders an img tag with empty alt and title attributes', :aggregate_failures do
+  it 'renders an img tag with empty alt and title attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = described_class.new(url: 'https://example.com/image.jpg', title:).to_html
 
     expect(html).to include('src="https://example.com/image.jpg"')

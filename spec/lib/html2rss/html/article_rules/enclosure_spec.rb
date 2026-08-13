@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Html::ArticleRules::Enclosure do
   end
 
   describe '.from_image' do
-    it 'guesses an image content type' do
+    it 'guesses an image content type', :aggregate_failures do
       result = described_class.from_image('/hero.jpg', base_url)
       expect(result[:url].to_s).to eq('https://example.com/hero.jpg')
       expect(result[:type]).to include('image')

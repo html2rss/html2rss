@@ -139,7 +139,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     let(:document) { described_class.normalize_sst(parsed_body) }
     let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
-    it 'reuses the provided SST::Document without re-normalizing' do
+    it 'reuses the provided SST::Document without re-normalizing' do # rubocop:disable RSpec/ExampleLength
       shared_document = document
       allow(Html2rss::SST::Normalizer).to receive(:call)
 
@@ -151,7 +151,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       expect(Html2rss::SST::Normalizer).not_to have_received(:call)
     end
 
-    it 'reuses the provided LinkResolver without constructing another' do
+    it 'reuses the provided LinkResolver without constructing another' do # rubocop:disable RSpec/ExampleLength
       shared_resolver = link_resolver
       allow(Html2rss::Scoring::LinkResolver).to receive(:new)
 

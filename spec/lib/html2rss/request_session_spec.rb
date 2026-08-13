@@ -68,7 +68,7 @@ RSpec.describe Html2rss::RequestSession do
       it { expect(session.url.to_s).to eq('https://example.com/blog') }
       it { expect(session.max_requests).to eq(resources.policy.max_requests) }
 
-      it 'wires config headers, request, policy, and budget into Context', :aggregate_failures do
+      it 'wires config headers, request, policy, and budget into Context', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(Html2rss::RequestService::Context).to have_received(:new).with(
           hash_including(
             headers: config.headers,

@@ -48,7 +48,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article.title).to eq('Anchorless card text here')
   end
 
-  it 'extracts a background-image style URL as the article image', :aggregate_failures do
+  it 'extracts a background-image style URL as the article image', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>
         <article>
@@ -64,7 +64,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article.image.to_s).to include('hero-banner.jpg')
   end
 
-  it 'extracts zip archive enclosures from normalized HTML', :aggregate_failures do
+  it 'extracts zip archive enclosures from normalized HTML', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>
         <article>
@@ -82,7 +82,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(zip.url.to_s).to eq('https://example.com/downloads/bundle.zip')
   end
 
-  it 'extracts iframe enclosures when present on an SST segment', :aggregate_failures do
+  it 'extracts iframe enclosures when present on an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     link = Html2rss::SST::Node.build(
       name: :a,
       attrs: Html2rss::SST::Attrs.build(href: '/news/embed'),
