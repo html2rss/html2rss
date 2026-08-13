@@ -29,6 +29,7 @@ module Html2rss
       end
 
       ##
+      # @param mode [Symbol] +:strict+ for rank/rank_top; +:lenient+ for select_eligible
       # @return [Boolean] true when the observation should be dropped before ranking
       def hard_junk?(mode: :strict)
         case mode

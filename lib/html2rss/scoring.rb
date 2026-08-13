@@ -7,6 +7,7 @@ module Html2rss
     ##
     # Closed set of feature identifiers used by the scoring registry.
     module FeatureId
+      # Closed set of allowed feature identifier symbols.
       IDS = %i[
         title_word_count_ge3 title_word_count_ge7 path_length_gt6 content_path
         publish_marker descriptive_context article_container content_tokens

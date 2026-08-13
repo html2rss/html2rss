@@ -5,7 +5,9 @@ module Html2rss
     ##
     # Shared empty defaults for {Attrs} (kept outside Data.define for constant visibility).
     module AttrDefaults
+      # Shared empty class_names array for Attrs defaults.
       EMPTY_CLASS_NAMES = [].freeze
+      # Shared empty raw attribute hash for Attrs defaults.
       EMPTY_RAW = {}.freeze
     end
 
@@ -16,6 +18,16 @@ module Html2rss
     ) do
       class << self
         ##
+        # @param href [String, nil]
+        # @param src [String, nil]
+        # @param id [String, nil]
+        # @param class_names [Array<String>, nil]
+        # @param datetime [String, nil]
+        # @param itemprop [String, nil]
+        # @param style [String, nil]
+        # @param srcset [String, nil]
+        # @param type [String, nil]
+        # @param raw [Hash{String => String}, nil]
         # @return [Attrs]
         # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
         def build(href: nil, src: nil, id: nil, class_names: nil, datetime: nil, itemprop: nil,
@@ -70,6 +82,7 @@ module Html2rss
       def class_attr = class_names.join(' ')
     end
 
+    # Shared empty Attrs instance for nodes without attributes.
     EMPTY_ATTRS = Attrs.new(
       href: nil, src: nil, id: nil, class_names: AttrDefaults::EMPTY_CLASS_NAMES, datetime: nil,
       itemprop: nil, style: nil, srcset: nil, type: nil, raw: AttrDefaults::EMPTY_RAW
