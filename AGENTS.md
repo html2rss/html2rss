@@ -125,10 +125,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - **Placeholder Newline Protection**: To collapse horizontal spaces without stripping structural newlines, temporarily replace newlines with a placeholder (e.g. ` __NEWLINE_PLACEHOLDER__ `) before calling standard whitespace-collapsing regular expressions (like `gsub(/\s+/, ' ')`), and restore them afterward.
 - **Excluding Redundant Titles & Anchors**: To keep descriptions clean and avoid duplicate data, always exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor elements (`a`) when extracting visible text for an article's description.
 - **Collapse Internal Text Wrapping**: Collapse consecutive wrapping whitespaces (including line breaks) inside raw HTML text nodes to a single space to prevent source code wrapping from turning into structural description newlines.
-- **Generic Layout Clustering**: When auto-sourcing feed lists from pages without anchor selectors:
-  - Class-cluster the DOM by grouping child elements of relevant containers by normalized class names.
-  - Filter out high-level layout containers (like `.body`, `.main`, `.footer`) using structural checks.
-  - Resolve 1-to-1 nested layout wrappers (discarding parent or child wrappers that contain identical content) to target the exact article/changelog card boundaries.
+- **Auto-source heuristic lists**: Anchorless/classless card discovery runs on `SST::Document` via `AutoSource::Segmenter` (`:cluster` / `:list` / `:semantic`), then `Scoring::Engine`. See `docs/auto_source.md`. Do not reintroduce Nokogiri class-clustering on the heuristic path.
 
 ## Operating Checklist
 
