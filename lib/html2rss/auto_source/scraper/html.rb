@@ -28,7 +28,7 @@ module Html2rss
         def self.articles?(parsed_body)
           return false unless parsed_body
 
-          new(parsed_body, url: DETECTION_BASE_URL).any?
+          new(parsed_body, url: DETECTION_BASE_URL).extractable?
         rescue ArgumentError
           false
         end
@@ -62,44 +62,53 @@ module Html2rss
         ##
         # @return [Boolean]
         def extractable?
-          articles.any?
+          ranked_segments.any?
+        rescue ArgumentError
+          false
         end
 
         private
 
         def articles
           @articles ||= begin
-            extracted = list_articles
-            extracted += cluster_articles if @fallback_anchorless && extracted.empty?
-            extracted
+            ranked = list_ranked
+            if ranked.empty? && @fallback_anchorless
+              materialize(cluster_ranked, fallback_anchorless: true)
+            else
+              materialize(ranked)
+            end
           end
         rescue ArgumentError
           []
         end
 
-        def list_articles
+        def ranked_segments
+          @ranked_segments ||= begin
+            ranked = list_ranked
+            ranked = cluster_ranked if @fallback_anchorless && ranked.empty?
+            ranked
+          end
+        end
+
+        def list_ranked
+          @list_ranked ||= rank_strategy(:list, permit_unanchored: false)
+        end
+
+        def cluster_ranked
+          @cluster_ranked ||= rank_strategy(:cluster, permit_unanchored: true)
+        end
+
+        def rank_strategy(strategy, permit_unanchored:)
           segments = Segmenter.call(
             document,
             base_url: @url,
-            strategy: :list,
-            permit_unanchored: false,
+            strategy:,
+            permit_unanchored:,
             minimum_selector_frequency:,
             use_top_selectors:,
             link_resolver:
           )
-          materialize(engine.select_eligible(segments, limit: TOP_K))
-        end
-
-        def cluster_articles
-          segments = Segmenter.call(
-            document,
-            base_url: @url,
-            strategy: :cluster,
-            permit_unanchored: true,
-            minimum_selector_frequency:,
-            link_resolver:
-          )
-          materialize(engine.select_eligible(segments, limit: TOP_K), fallback_anchorless: true)
+          engine.select_eligible(segments, limit: TOP_K)
         end
 
         def materialize(ranked, fallback_anchorless: false)
