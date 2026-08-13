@@ -79,7 +79,7 @@ module Html2rss
         RSS::Maker.make('2.0') do |maker|
           Stylesheet.add(maker, stylesheets)
 
-          make_channel(maker.channel)
+          make_channel(maker)
           make_items(maker)
         end
       end
@@ -96,14 +96,26 @@ module Html2rss
         @stylesheets.map { |style| Stylesheet.new(**style) }
       end
 
+      # rubocop:disable Metrics/AbcSize
       def make_channel(maker)
+        channel_maker = maker.channel
         %i[language title description ttl].each do |key|
-          maker.public_send(:"#{key}=", channel.public_send(key))
+          channel_maker.public_send(:"#{key}=", channel.public_send(key))
         end
 
-        maker.link = channel.url.to_s
-        maker.generator = generator
-        maker.updated = channel.last_build_date
+        channel_maker.managingEditor = channel.author if channel.author
+        channel_maker.author = channel.author if channel.author
+        channel_maker.link = channel.url.to_s
+        channel_maker.generator = generator
+        channel_maker.updated = channel.last_build_date
+
+        make_image(maker.image) if channel.image
+      end
+      # rubocop:enable Metrics/AbcSize
+
+      def make_image(image_maker)
+        image_maker.url = channel.image.to_s
+        image_maker.title = channel.title.to_s
       end
 
       def make_items(maker)

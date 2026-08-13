@@ -81,6 +81,10 @@ module Html2rss
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
       articles, dedup_dropped = deduplicated_articles(config:, response:, request_session:)
+      if config.auto_source && articles.empty?
+        raise NoFeedItemsExtracted.new(attempts: [{ strategy:, items_count: 0, error_class: nil }])
+      end
+
       PipelineOutcome.new(
         response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0, strategy_attempts: []
       )

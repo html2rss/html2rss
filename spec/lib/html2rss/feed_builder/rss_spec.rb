@@ -17,6 +17,7 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
                     description: 'A test channel',
                     language: 'en',
                     image: 'http://example.com/image.jpg',
+                    author: 'Channel Author',
                     ttl: 12,
                     last_build_date: 'Tue, 01 Jan 2019 00:00:00 GMT')
   end
@@ -72,6 +73,7 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
           'title' => 'Test Channel',
           'link' => 'http://example.com',
           'description' => 'A test channel',
+          'managingEditor' => 'Channel Author',
           'generator' => "html2rss V. #{Html2rss::VERSION} (scrapers: RSpec (1), AutoSource::Html (1))"
         }
       end
@@ -80,6 +82,8 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
         tags.each do |tag, matcher|
           expect(channel_tag.css(tag).text).to match(matcher), tag
         end
+        expect(channel_tag.css('image > url').text).to eq('http://example.com/image.jpg')
+        expect(channel_tag.css('image > title').text).to eq('Test Channel')
       end
     end
 

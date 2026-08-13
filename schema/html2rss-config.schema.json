@@ -45,6 +45,18 @@
             "null",
             "string"
           ]
+        },
+        "author": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "image": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
