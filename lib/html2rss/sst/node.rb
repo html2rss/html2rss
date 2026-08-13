@@ -118,12 +118,20 @@ module Html2rss
       # @param exclude [Array<Node>, nil]
       # @return [String, nil]
       def visible_text(separator: ' ', exclude: nil)
+        if exclude.nil? && separator == ' ' && (index = Index.for_node(self))
+          return index.memo_visible_text(self)
+        end
+
         Text.extract(self, separator:, exclude:)
       end
 
       ##
       # @return [Integer] alphanumeric word count of visible text
       def word_count
+        if (index = Index.for_node(self))
+          return index.memo_word_count(self)
+        end
+
         visible_text.to_s.scan(/\p{Alnum}+/).size
       end
 
