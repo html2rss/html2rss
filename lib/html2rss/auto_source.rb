@@ -17,11 +17,12 @@ module Html2rss
   # @see Html2rss::AutoSource::Scraper::Html
   # rubocop:disable Metrics/ClassLength -- defaults + tiered extract stay on the contributor entry type
   class AutoSource
-    # Minimum articles with url+title before later scraper tiers are skipped.
-    SUFFICIENT_ARTICLE_COUNT = 5
+    # Default minimum articles with url+title (post-Cleanup) before later scraper tiers are skipped.
+    SUFFICIENT_ARTICLE_COUNT = 25
 
     # Default auto-source configuration shipped for scraper and cleanup behavior.
     DEFAULT_CONFIG = {
+      sufficient_article_count: SUFFICIENT_ARTICLE_COUNT,
       scraper: {
         wordpress_api: {
           enabled: true
@@ -84,6 +85,7 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
     # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+    # @option opts [Integer] :sufficient_article_count stop later tiers after this many cleaned articles
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
@@ -100,7 +102,7 @@ module Html2rss
     #
     # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
     # SST is built only when a heuristic tier runs. Later tiers are skipped once
-    # {SUFFICIENT_ARTICLE_COUNT} articles with url+title are collected.
+    # +sufficient_article_count+ articles with url+title remain after Cleanup.
     #
     # @return [Array<Html2rss::Article>] extracted articles
     def articles
@@ -158,10 +160,15 @@ module Html2rss
     # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     def sufficient_cleaned?(articles)
-      return false if articles.size < SUFFICIENT_ARTICLE_COUNT
+      threshold = sufficient_article_count
+      return false if articles.size < threshold
 
       cleaned = Cleanup.call(articles.dup, url:, **cleanup_options)
-      cleaned.count { |article| article.url && !article.title.to_s.empty? } >= SUFFICIENT_ARTICLE_COUNT
+      cleaned.count { |article| article.url && !article.title.to_s.empty? } >= threshold
+    end
+
+    def sufficient_article_count
+      @opts.fetch(:sufficient_article_count, SUFFICIENT_ARTICLE_COUNT)
     end
 
     def run_scraper(instance)

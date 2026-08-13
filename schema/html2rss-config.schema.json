@@ -94,6 +94,13 @@
       "$schema": "http://json-schema.org/draft-06/schema#",
       "type": "object",
       "properties": {
+        "sufficient_article_count": {
+          "type": "integer",
+          "not": {
+            "type": "null"
+          },
+          "exclusiveMinimum": 0
+        },
         "scraper": {
           "type": "object",
           "properties": {
@@ -269,6 +276,7 @@
       },
       "required": [],
       "default": {
+        "sufficient_article_count": 25,
         "scraper": {
           "wordpress_api": {
             "enabled": true

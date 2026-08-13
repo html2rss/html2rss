@@ -32,8 +32,8 @@ RSpec.describe Html2rss::AutoSource do
   end
 
   describe '::SUFFICIENT_ARTICLE_COUNT' do
-    it 'stops later tiers after five url+title articles' do
-      expect(described_class::SUFFICIENT_ARTICLE_COUNT).to eq(5)
+    it 'defaults to twenty-five cleaned articles before skipping later tiers' do
+      expect(described_class::SUFFICIENT_ARTICLE_COUNT).to eq(25)
     end
   end
 
@@ -42,6 +42,12 @@ RSpec.describe Html2rss::AutoSource do
 
     it 'validates the default config' do
       expect(schema.call(Html2rss::AutoSource::DEFAULT_CONFIG)).to be_success
+    end
+
+    it 'allows overriding sufficient_article_count' do
+      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(sufficient_article_count: 10)
+
+      expect(schema.call(toggled_config)).to be_success
     end
 
     it 'allows toggling the json_state scraper' do
@@ -145,12 +151,13 @@ RSpec.describe Html2rss::AutoSource do
     context 'when structured scrapers already yield enough articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
+          sufficient_article_count: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(schema: { enabled: true })
         )
       end
       let(:schema_articles) do
-        Array.new(described_class::SUFFICIENT_ARTICLE_COUNT) do |index|
+        Array.new(5) do |index|
           {
             id: "schema-#{index}",
             title: "Schema Story #{index} Extra Words Here",
@@ -177,7 +184,7 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       it 'skips SST and heuristic scrapers', :aggregate_failures do
-        expect(articles.size).to eq(described_class::SUFFICIENT_ARTICLE_COUNT)
+        expect(articles.size).to eq(5)
         expect(Html2rss::SST::Normalizer).not_to have_received(:call)
         expect(Html2rss::AutoSource::Scraper::SemanticHtml).not_to have_received(:new)
         expect(Html2rss::AutoSource::Scraper::Html).not_to have_received(:new)
@@ -187,6 +194,7 @@ RSpec.describe Html2rss::AutoSource do
     context 'when structured articles fail Cleanup title floor' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
+          sufficient_article_count: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
                                                               schema: { enabled: true },
@@ -196,7 +204,7 @@ RSpec.describe Html2rss::AutoSource do
         )
       end
       let(:schema_articles) do
-        Array.new(described_class::SUFFICIENT_ARTICLE_COUNT) do |index|
+        Array.new(5) do |index|
           {
             id: "thin-#{index}",
             title: 'News',
@@ -206,7 +214,7 @@ RSpec.describe Html2rss::AutoSource do
         end
       end
       let(:semantic_articles) do
-        Array.new(described_class::SUFFICIENT_ARTICLE_COUNT) do |index|
+        Array.new(5) do |index|
           Html2rss::Article.new(
             id: "sem-#{index}",
             title: "Semantic Story #{index} Extra Words",
@@ -235,7 +243,7 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       it 'continues into heuristics so Cleanup does not empty the feed', :aggregate_failures do
-        expect(articles.size).to eq(described_class::SUFFICIENT_ARTICLE_COUNT)
+        expect(articles.size).to eq(5)
         expect(articles.map(&:title)).to all(include('Semantic Story'))
         expect(Html2rss::AutoSource::Scraper::SemanticHtml).to have_received(:new)
       end
@@ -244,6 +252,7 @@ RSpec.describe Html2rss::AutoSource do
     context 'when SemanticHtml is sufficient before Html' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
+          sufficient_article_count: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
                                                               semantic_html: { enabled: true,
@@ -258,7 +267,7 @@ RSpec.describe Html2rss::AutoSource do
         )
       end
       let(:semantic_articles) do
-        Array.new(described_class::SUFFICIENT_ARTICLE_COUNT) do |index|
+        Array.new(5) do |index|
           Html2rss::Article.new(
             id: "sem-#{index}",
             title: "Semantic Story #{index} Extra Words",
@@ -281,7 +290,7 @@ RSpec.describe Html2rss::AutoSource do
       end
 
       it 'does not instantiate Html when SemanticHtml is sufficient', :aggregate_failures do
-        expect(articles.size).to eq(described_class::SUFFICIENT_ARTICLE_COUNT)
+        expect(articles.size).to eq(5)
         expect(Html2rss::AutoSource::Scraper::Html).not_to have_received(:new)
       end
     end
