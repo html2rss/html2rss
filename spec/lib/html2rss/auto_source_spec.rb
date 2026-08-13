@@ -9,20 +9,6 @@ RSpec.describe Html2rss::AutoSource do
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
   let(:response) { Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/html' }, url:) }
   let(:request_session) { nil }
-  let(:instances_for_arguments) do
-    [
-      instance_of(Nokogiri::HTML::Document),
-      {
-        url:,
-        request_session: nil,
-        body:,
-        opts: hash_including(
-          schema: hash_including(enabled: false),
-          html: hash_including(enabled: false)
-        )
-      }
-    ]
-  end
   let(:body) do
     <<~HTML
       <html>
@@ -45,11 +31,23 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
+  describe '::DEFAULT_LIMIT' do
+    it 'defaults to twenty-five articles' do
+      expect(described_class::DEFAULT_LIMIT).to eq(25)
+    end
+  end
+
   describe Html2rss::Config::AutoSourceContract do
     subject(:schema) { described_class }
 
     it 'validates the default config' do
       expect(schema.call(Html2rss::AutoSource::DEFAULT_CONFIG)).to be_success
+    end
+
+    it 'allows overriding limit' do
+      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(limit: 10)
+
+      expect(schema.call(toggled_config)).to be_success
     end
 
     it 'allows toggling the json_state scraper' do
@@ -114,17 +112,14 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     context 'when no scrapers are found' do
-      before do
-        allow(Html2rss::AutoSource::Scraper)
-          .to receive(:instances_for)
-          .and_raise(Html2rss::AutoSource::Scraper::NoScraperFound, 'no scrapers')
-        allow(Html2rss::Log).to receive(:warn)
-      end
+      let(:body) { '<html><body></body></html>' }
+
+      before { allow(Html2rss::Log).to receive(:warn) }
 
       it 'logs a warning and returns an empty array', :aggregate_failures do
         expect(articles).to eq([])
         expect(Html2rss::Log).to have_received(:warn)
-          .with("#{described_class}: no scraper matched #{url} (no scrapers)")
+          .with(a_string_including("#{described_class}: no scraper matched #{url}"))
       end
     end
 
@@ -138,82 +133,165 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
-    context 'with custom configuration' do
+    context 'with custom configuration that disables matching scrapers' do
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
-          scraper: { schema: { enabled: false }, html: { enabled: false } },
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) },
           cleanup: { keep_different_domain: true, min_words_title: 5 }
-        ) { |_key, old_val, new_val| old_val.is_a?(Hash) ? old_val.merge(new_val) : new_val }
-      end
-
-      before do
-        allow(Html2rss::AutoSource::Scraper).to receive(:instances_for).and_raise(
-          Html2rss::AutoSource::Scraper::NoScraperFound, 'No scrapers found for URL.'
         )
-        articles
       end
 
-      it 'returns no articles when the custom scraper configuration matches nothing' do
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'returns no articles when every scraper is disabled' do
         expect(articles).to eq([])
       end
-
-      it 'passes the overrides to the scraper lookup' do
-        expect(Html2rss::AutoSource::Scraper).to have_received(:instances_for).with(*instances_for_arguments)
-      end
     end
 
-    context 'when multiple scrapers emit overlapping articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:first_scraper_articles) do
-        [
-          { id: 'shared-first', title: 'Shared Article Title', description: 'Same url',
-            url: 'https://example.com/shared' },
-          { id: 'first-only', title: 'First Exclusive Story', description: 'Only first', url: 'https://example.com/first' }
-        ]
+    context 'when structured scrapers already yield enough articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          limit: 5,
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(schema: { enabled: true })
+        )
       end
-      let(:second_scraper_articles) do
-        [
-          { id: 'shared-second', title: 'Shared Article Title', description: 'Same url',
-            url: 'https://example.com/shared' },
-          { id: 'second-only', title: 'Second Exclusive Story', description: 'Only second', url: 'https://example.com/second' }
-        ]
+      let(:schema_articles) do
+        Array.new(5) do |index|
+          {
+            id: "schema-#{index}",
+            title: "Schema Story #{index} Extra Words Here",
+            description: 'summary',
+            url: "https://example.com/schema-#{index}"
+          }
+        end
       end
-      let(:semantic_scraper_instance) do
-        instance_double(Html2rss::AutoSource::Scraper::SemanticHtml, each: first_scraper_articles.each)
-      end
-      let(:html_scraper_instance) do
-        instance_double(Html2rss::AutoSource::Scraper::Html, each: second_scraper_articles.each)
-      end
-      let(:semantic_scraper_class) do
-        class_double(Html2rss::AutoSource::Scraper::SemanticHtml,
-                     options_key: :semantic_html,
-                     new: semantic_scraper_instance)
-      end
-      let(:html_scraper_class) do
-        class_double(Html2rss::AutoSource::Scraper::Html,
-                     options_key: :html,
-                     new: html_scraper_instance)
+      let(:schema_instance) do
+        instance = instance_double(Html2rss::AutoSource::Scraper::Schema, each: schema_articles.each)
+        allow(instance).to receive(:class).and_return(Html2rss::AutoSource::Scraper::Schema)
+        instance
       end
 
       before do
-        allow(Html2rss::AutoSource::Scraper)
-          .to receive(:instances_for)
-          .and_return([semantic_scraper_instance, html_scraper_instance])
-        allow(Html2rss::AutoSource::Cleanup).to receive(:call).and_call_original
+        allow(Html2rss::AutoSource::Scraper::Schema).to receive_messages(
+          options_key: :schema,
+          articles?: true,
+          new: schema_instance
+        )
+        allow(Html2rss::SST::Normalizer).to receive(:call)
+        allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new)
+        allow(Html2rss::AutoSource::Scraper::Html).to receive(:new)
       end
 
-      it 'deduplicates aggregated articles by url' do
-        expect(articles.map { |article| article.url.to_s })
-          .to match_array(%w[https://example.com/shared https://example.com/first https://example.com/second])
+      it 'skips SST and heuristic scrapers', :aggregate_failures do
+        expect(articles.size).to eq(5)
+        expect(Html2rss::SST::Normalizer).not_to have_received(:call)
+        expect(Html2rss::AutoSource::Scraper::SemanticHtml).not_to have_received(:new)
+        expect(Html2rss::AutoSource::Scraper::Html).not_to have_received(:new)
       end
     end
 
-    context 'when scraper lookup raises an error' do
+    context 'when structured articles fail Cleanup title floor' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          limit: 5,
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(
+                                                              schema: { enabled: true },
+                                                              semantic_html: { enabled: true,
+                                                                               fallback_anchorless: true }
+                                                            )
+        )
+      end
+      let(:schema_articles) do
+        Array.new(5) do |index|
+          {
+            id: "thin-#{index}",
+            title: 'News',
+            description: 'summary',
+            url: "https://example.com/thin-#{index}"
+          }
+        end
+      end
+      let(:semantic_articles) do
+        Array.new(5) do |index|
+          Html2rss::Article.new(
+            id: "sem-#{index}",
+            title: "Semantic Story #{index} Extra Words",
+            description: 'summary',
+            url: "https://example.com/sem-#{index}",
+            scraper: Html2rss::AutoSource::Scraper::SemanticHtml
+          )
+        end
+      end
+      let(:schema_instance) do
+        instance = instance_double(Html2rss::AutoSource::Scraper::Schema, each: schema_articles.each)
+        allow(instance).to receive(:class).and_return(Html2rss::AutoSource::Scraper::Schema)
+        instance
+      end
+      let(:semantic_instance) do
+        instance_double(Html2rss::AutoSource::Scraper::SemanticHtml, each: semantic_articles.each, extractable?: true)
+      end
+      let(:document) { instance_double(Html2rss::SST::Document) }
+
       before do
-        allow(Html2rss::AutoSource::Scraper).to receive(:instances_for).and_raise(StandardError, 'Test error')
+        allow(Html2rss::AutoSource::Scraper::Schema).to receive_messages(
+          options_key: :schema, articles?: true, new: schema_instance
+        )
+        allow(Html2rss::AutoSource::Scraper).to receive(:normalize_sst).and_return(document)
+        allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_return(semantic_instance)
       end
 
-      it 're-raises the error' do
-        expect { articles }.to raise_error(StandardError, 'Test error')
+      it 'continues into heuristics so Cleanup does not empty the feed', :aggregate_failures do
+        expect(articles.size).to eq(5)
+        expect(articles.map(&:title)).to all(include('Semantic Story'))
+        expect(Html2rss::AutoSource::Scraper::SemanticHtml).to have_received(:new)
+      end
+    end
+
+    context 'when SemanticHtml is sufficient before Html' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          limit: 5,
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(
+                                                              semantic_html: { enabled: true,
+                                                                               fallback_anchorless: true },
+                                                              html: {
+                                                                enabled: true,
+                                                                minimum_selector_frequency: 2,
+                                                                use_top_selectors: 5,
+                                                                fallback_anchorless: true
+                                                              }
+                                                            )
+        )
+      end
+      let(:semantic_articles) do
+        Array.new(5) do |index|
+          Html2rss::Article.new(
+            id: "sem-#{index}",
+            title: "Semantic Story #{index} Extra Words",
+            description: 'summary',
+            url: "https://example.com/sem-#{index}",
+            scraper: Html2rss::AutoSource::Scraper::SemanticHtml
+          )
+        end
+      end
+      let(:document) { instance_double(Html2rss::SST::Document) }
+      let(:semantic_instance) do
+        instance_double(Html2rss::AutoSource::Scraper::SemanticHtml, each: semantic_articles.each, extractable?: true)
+      end
+
+      before do
+        allow(Html2rss::AutoSource::Scraper).to receive(:normalize_sst).and_return(document)
+        allow(Html2rss::AutoSource::Scraper::SemanticHtml).to receive(:new).and_return(semantic_instance)
+        allow(Html2rss::AutoSource::Scraper::Html).to receive(:new)
+        allow(Html2rss::AutoSource::Cleanup).to receive(:call) { |arts, **| arts }
+      end
+
+      it 'does not instantiate Html when SemanticHtml is sufficient', :aggregate_failures do
+        expect(articles.size).to eq(5)
+        expect(Html2rss::AutoSource::Scraper::Html).not_to have_received(:new)
       end
     end
 
@@ -239,6 +317,10 @@ RSpec.describe Html2rss::AutoSource do
             schema: { enabled: false },
             microdata: { enabled: true },
             json_state: { enabled: false },
+            wordpress_api: { enabled: false },
+            sitemap: { enabled: false },
+            microformats2: { enabled: false },
+            meta_oembed: { enabled: false },
             semantic_html: { enabled: false },
             html: {
               enabled: false,

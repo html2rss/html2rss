@@ -742,13 +742,13 @@ RSpec.describe Html2rss do
 
   describe '.auto_source' do
     let(:url) { 'https://www.welt.de/' }
-    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source(url) } }
+    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source(url, limit: 10_000) } }
 
     it 'returns a RSS::Rss instance with channel and items', :aggregate_failures, :slow do
       expect(feed_return).to be_a(RSS::Rss)
       expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
       expect(feed_return.channel.link).to eq 'https://www.welt.de/'
-      expect(feed_return.items.size >= 29).to be true
+      expect(feed_return.items.size).to eq(143)
     end
 
     context 'with items_selector' do
@@ -813,7 +813,7 @@ RSpec.describe Html2rss do
 
   describe '.auto_json_feed' do
     let(:url) { 'https://www.welt.de/' }
-    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_json_feed(url) } }
+    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_json_feed(url, limit: 10_000) } }
 
     it 'returns the channel metadata', :aggregate_failures, :slow do
       expect(feed_return).to include(
@@ -824,7 +824,7 @@ RSpec.describe Html2rss do
     end
 
     it 'returns items', :slow do
-      expect(feed_return[:items].size >= 29).to be true
+      expect(feed_return[:items].size).to eq(143)
     end
 
     context 'with items_selector' do

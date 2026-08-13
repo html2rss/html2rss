@@ -92,12 +92,19 @@ module Html2rss
         # @param html [String]
         # @param url [String, Html2rss::Url]
         # @return [String, nil]
+        # rubocop:disable ThreadSafety/ClassInstanceVariable
         def self.get(html, url)
           return nil if String(html).empty?
 
+          @fragment_cache ||= {}
+          key = [html, url.to_s]
+          return @fragment_cache[key] if @fragment_cache.key?(key)
+
+          @fragment_cache.clear if @fragment_cache.size > 256
           context = Selectors::Context.new(config: { channel: { url: } }, options: {})
-          new(html, context).get
+          @fragment_cache[key] = new(html, context).get
         end
+        # rubocop:enable ThreadSafety/ClassInstanceVariable
 
         ##
         # @param channel_url [String, Html2rss::Url]

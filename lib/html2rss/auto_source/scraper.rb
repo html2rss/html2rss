@@ -11,7 +11,7 @@ module Html2rss
     # Detection is intentionally shallow for most scrapers, but instance-based
     # matching is available for scrapers that need to carry expensive selection
     # state forward into extraction.
-    module Scraper # rubocop:disable Metrics/ModuleLength -- registry + surface classification stay colocated
+    module Scraper
       # Root markers indicating likely app-shell/client-rendered surfaces.
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       # Maximum anchors tolerated before app-shell detection is considered unlikely.
@@ -19,18 +19,17 @@ module Html2rss
       # Maximum visible text length tolerated for app-shell classification.
       APP_SHELL_MAX_VISIBLE_TEXT_LENGTH = 220
 
-      # Ordered scraper classes considered during auto-source extraction.
-      SCRAPERS = [
-        WordpressApi,
-        Sitemap,
-        Schema,
-        Microdata,
-        Microformats2,
-        JsonState,
-        MetaOembed,
-        SemanticHtml,
-        Html
+      # Extraction tiers: merge within a tier, then stop when AutoSource has enough articles.
+      # Heuristic scrapers are separate tiers so SemanticHtml can satisfy before Html runs.
+      SCRAPER_TIERS = [
+        [Schema, Microdata, Microformats2, JsonState].freeze,
+        [WordpressApi, Sitemap, MetaOembed].freeze,
+        [SemanticHtml].freeze,
+        [Html].freeze
       ].freeze
+
+      # Flat ordered list (request slot accounting, detection helpers).
+      SCRAPERS = SCRAPER_TIERS.flatten.freeze
 
       # Heuristic scrapers that share one memoized SST::Document per page.
       HEURISTIC_SCRAPERS = [SemanticHtml, Html].freeze
@@ -85,6 +84,7 @@ module Html2rss
       # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration
       # @option opts [Hash] :html scraper toggle and configuration
+      # @option opts [Hash] :sitemap scraper toggle and configuration
       # @return [Array<Class>] An array of scraper classes that can handle the parsed body.
       def self.from(parsed_body, opts = Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
         scrapers = SCRAPERS.select { |scraper| opts.dig(scraper.options_key, :enabled) }
@@ -95,14 +95,34 @@ module Html2rss
         scrapers
       end
 
-      # Returns scraper instances ready for extraction.
-      # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
-      # @param url [String, Html2rss::Url] The page url.
-      # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
-      # @param body [String, nil] raw response body (XML for direct sitemap pages).
-      # @param opts [Hash] The options hash.
+      ##
+      # @param tier [Array<Class>]
+      # @return [Boolean]
+      def self.heuristic_tier?(tier)
+        tier.intersect?(HEURISTIC_SCRAPERS)
+      end
+
+      ##
+      # @param parsed_body [Nokogiri::HTML::Document]
+      # @return [SST::Document, nil]
+      def self.normalize_sst(parsed_body)
+        SST::Normalizer.call(parsed_body)
+      rescue ArgumentError
+        nil
+      end
+
+      ##
+      # Builds a scraper when enabled; returns nil when disabled.
+      #
+      # @param scraper [Class]
+      # @param parsed_body [Nokogiri::HTML::Document]
+      # @param opts [Hash] full scraper options map
+      # @param url [Html2rss::Url, String]
+      # @param request_session [Html2rss::RequestSession, nil]
+      # @param body [String, nil]
+      # @param document [SST::Document, nil]
+      # @param link_resolver [Scoring::LinkResolver, nil]
       # @option opts [Hash] :wordpress_api scraper toggle and configuration
-      # @option opts [Hash] :sitemap scraper toggle and configuration
       # @option opts [Hash] :schema scraper toggle and configuration
       # @option opts [Hash] :microdata scraper toggle and configuration
       # @option opts [Hash] :microformats2 scraper toggle and configuration
@@ -110,72 +130,60 @@ module Html2rss
       # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration
       # @option opts [Hash] :html scraper toggle and configuration
-      # @return [Array<Object>] An array of scraper instances that can handle the parsed body.
-      #
-      # `instances_for` is the main entrypoint for extraction. It lets a scraper
-      # decide whether it matches using the same instance that will later yield
-      # article hashes, which keeps precomputed state close to the scraper that
-      # owns it. Heuristic scrapers share one +SST::Document+ normalized from
-      # +parsed_body+.
-      def self.instances_for(parsed_body, url:, request_session: nil, body: nil, # rubocop:disable Metrics/MethodLength
-                             opts: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
-        document = shared_sst_document(parsed_body, opts)
-        instances = SCRAPERS.filter_map do |scraper|
-          next unless opts.dig(scraper.options_key, :enabled)
-          next if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
+      # @option opts [Hash] :sitemap scraper toggle and configuration
+      # @return [Object, nil]
+      # rubocop:disable Metrics/ParameterLists -- construction context for structured and heuristic scrapers
+      def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
+                              link_resolver: nil)
+        return unless opts.dig(scraper.options_key, :enabled)
+        return if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
-          scraper_opts = opts.fetch(scraper.options_key, {}).except(:enabled)
-          instance = scraper.new(
-            parsed_body, url:, **construction_kwargs(scraper, request_session:, body:, document:), **scraper_opts
-          )
-          instance if extractable_instance?(instance, parsed_body)
-        end
-        raise no_scraper_found_for(parsed_body) if instances.empty?
-
-        instances
+        scraper_opts = opts.fetch(scraper.options_key, {}).except(:enabled)
+        kwargs = construction_kwargs(scraper, request_session:, body:, document:, link_resolver:)
+        scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
       end
+      # rubocop:enable Metrics/ParameterLists
 
-      def self.construction_kwargs(scraper, request_session:, body:, document:)
-        return { document: } if HEURISTIC_SCRAPERS.include?(scraper)
-
-        {}.tap do |kwargs|
-          kwargs[:request_session] = request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
-          kwargs[:body] = body if scraper == Sitemap
-        end
-      end
-      private_class_method :construction_kwargs
-
-      def self.shared_sst_document(parsed_body, scraper_config)
-        return unless HEURISTIC_SCRAPERS.any? { scraper_config.dig(_1.options_key, :enabled) }
-
-        SST::Normalizer.call(parsed_body)
-      rescue ArgumentError
-        nil
-      end
-      private_class_method :shared_sst_document
-
+      ##
+      # @param instance [Object]
+      # @param parsed_body [Nokogiri::HTML::Document]
+      # @return [Boolean]
       def self.extractable_instance?(instance, parsed_body)
         return instance.extractable? if instance.respond_to?(:extractable?)
 
         instance.class.articles?(parsed_body)
       end
-      private_class_method :extractable_instance?
 
-      def self.no_scraper_found_for(parsed_body)
-        NoScraperFound.new(category: classify_no_scraper_surface(parsed_body))
+      ##
+      # @param parsed_body [Nokogiri::HTML::Document]
+      # @param body [String, nil] raw response body (preferred for blocked-surface checks)
+      # @return [NoScraperFound]
+      def self.no_scraper_found_for(parsed_body, body: nil)
+        NoScraperFound.new(category: classify_no_scraper_surface(parsed_body, body:))
       end
-      private_class_method :no_scraper_found_for
 
-      def self.classify_no_scraper_surface(parsed_body)
-        return :blocked_surface if blocked_surface?(parsed_body)
+      def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:)
+        if HEURISTIC_SCRAPERS.include?(scraper)
+          { document:, link_resolver: }.compact
+        else
+          {}.tap do |kwargs|
+            kwargs[:request_session] = request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
+            kwargs[:body] = body if scraper == Sitemap
+          end
+        end
+      end
+      private_class_method :construction_kwargs
+
+      def self.classify_no_scraper_surface(parsed_body, body: nil)
+        return :blocked_surface if blocked_surface?(parsed_body, body:)
         return :app_shell if app_shell_surface?(parsed_body)
 
         :unsupported_surface
       end
       private_class_method :classify_no_scraper_surface
 
-      def self.blocked_surface?(parsed_body)
-        Html2rss::RequestService::BlockedSurface.interstitial?(parsed_body.to_html)
+      def self.blocked_surface?(parsed_body, body: nil)
+        Html2rss::RequestService::BlockedSurface.interstitial?(body || parsed_body.to_html)
       end
       private_class_method :blocked_surface?
 

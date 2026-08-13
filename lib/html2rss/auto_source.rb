@@ -15,9 +15,14 @@ module Html2rss
   # @see Html2rss::AutoSource::Scraper::Schema
   # @see Html2rss::AutoSource::Scraper::SemanticHtml
   # @see Html2rss::AutoSource::Scraper::Html
+  # rubocop:disable Metrics/ClassLength -- defaults + tiered extract stay on the contributor entry type
   class AutoSource
+    # Default max articles to keep (also the short-circuit floor across scraper tiers).
+    DEFAULT_LIMIT = 25
+
     # Default auto-source configuration shipped for scraper and cleanup behavior.
     DEFAULT_CONFIG = {
+      limit: DEFAULT_LIMIT,
       scraper: {
         wordpress_api: {
           enabled: true
@@ -80,6 +85,7 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response] initial page response
     # @param opts [Hash] validated auto-source options
     # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+    # @option opts [Integer] :limit max articles to keep; later tiers stop once this many survive Cleanup
     # @option opts [Hash] :scraper scraper configuration map
     # @option opts [Hash] :cleanup cleanup configuration map
     # @return [void]
@@ -92,17 +98,11 @@ module Html2rss
     end
 
     ##
-    # Extracts article candidates by selecting every scraper that can explain the
-    # page shape, running those scrapers, and normalizing the resulting hashes
-    # into `Article` objects.
+    # Extracts articles by running scraper tiers until a sufficient set is found.
     #
-    # The contributor-facing flow is:
-    # 1. choose scraper instances that match the page
-    # 2. let each scraper collect its own candidates
-    # 3. clean and deduplicate the merged article list
-    #
-    # Scrapers with expensive precomputation, such as `SemanticHtml`, keep that
-    # state on the instance so detection and extraction can reuse the same work.
+    # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
+    # SST is built only when a heuristic tier runs. Later tiers are skipped once
+    # +limit+ articles with url+title remain after Cleanup; the result is capped to +limit+.
     #
     # @return [Array<Html2rss::Article>] extracted articles
     def articles
@@ -116,17 +116,59 @@ module Html2rss
 
     attr_reader :url, :parsed_body, :body, :request_session
 
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
-      scraper_instances = Scraper.instances_for(
-        parsed_body, url:, request_session:, body:, opts: @opts[:scraper]
-      )
-      return [] if scraper_instances.empty?
+      articles = []
+      matched = false
+      document = nil
+      link_resolver = nil
+      scraper_opts = @opts.fetch(:scraper, {})
 
-      # Scrapers are run sequentially.
-      articles = scraper_instances.flat_map do |instance|
-        run_scraper(instance)
+      Scraper::SCRAPER_TIERS.each do |tier|
+        break if enough_articles?(articles)
+
+        if Scraper.heuristic_tier?(tier)
+          document ||= Scraper.normalize_sst(parsed_body)
+          next unless document
+
+          link_resolver ||= ::Html2rss::Scoring::LinkResolver.new(url)
+        end
+
+        tier.each do |scraper_class|
+          instance = Scraper.build_instance(
+            scraper_class,
+            parsed_body,
+            opts: scraper_opts,
+            url:,
+            request_session:,
+            body:,
+            document:,
+            link_resolver:
+          )
+          next unless instance
+          next unless Scraper.extractable_instance?(instance, parsed_body)
+
+          matched = true
+          articles.concat(run_scraper(instance))
+        end
       end
-      Cleanup.call(articles, url:, **cleanup_options)
+
+      raise Scraper.no_scraper_found_for(parsed_body, body:) unless matched
+
+      Cleanup.call(articles, url:, **cleanup_options).first(article_limit)
+    end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+
+    def enough_articles?(articles)
+      threshold = article_limit
+      return false if articles.size < threshold
+
+      cleaned = Cleanup.call(articles.dup, url:, **cleanup_options)
+      cleaned.count { |article| article.url && !article.title.to_s.empty? } >= threshold
+    end
+
+    def article_limit
+      @opts.fetch(:limit, DEFAULT_LIMIT)
     end
 
     def run_scraper(instance)
@@ -146,4 +188,5 @@ module Html2rss
       @opts.fetch(:cleanup, {})
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

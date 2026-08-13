@@ -120,11 +120,15 @@ module Html2rss
       # @param url [String] source page URL
       # @param items_selector [String, nil] optional selector hint for item extraction
       # @param request_controls [Html2rss::Config::RequestControls, nil] explicit request controls to write
+      # @param limit [Integer, nil] max articles to keep in the auto-sourced feed
       # @return [Hash{Symbol => Object}] feed config hash ready for {from_hash}
-      def auto_source_config(url:, items_selector: nil, request_controls: nil)
+      def auto_source_config(url:, items_selector: nil, request_controls: nil, limit: nil)
+        auto_source = AutoSource::DEFAULT_CONFIG
+        auto_source = auto_source.merge(limit:) unless limit.nil?
+
         config = {
           channel: default_config[:channel].merge(url:),
-          auto_source: AutoSource::DEFAULT_CONFIG
+          auto_source:
         }
 
         request_controls ||= RequestControls.new

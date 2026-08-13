@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Captures wall time + allocation baseline for the heuristic auto-source path.
+# Captures wall time + allocation baseline for auto-source paths.
 # Usage: mise exec -- bin/heuristic-perf-baseline [--write PATH]
 
 require 'bundler/setup'
@@ -17,21 +17,15 @@ FIXTURES = [
 
 WARMUP = 1
 RUNS = 5
+BASE_URL = 'https://example.com/'
 
-def parse_fixture(path)
-  html = File.read(File.expand_path(path, File.join(__dir__, '..')))
-  Nokogiri::HTML(html)
-end
-
-def run_heuristics(parsed_body, url:) # rubocop:disable Metrics/MethodLength
+def run_heuristics(parsed_body) # rubocop:disable Metrics/MethodLength
   semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(
-    parsed_body,
-    url:,
-    fallback_anchorless: true
+    parsed_body, url: BASE_URL, fallback_anchorless: true
   )
   html = Html2rss::AutoSource::Scraper::Html.new(
     parsed_body,
-    url:,
+    url: BASE_URL,
     fallback_anchorless: true,
     minimum_selector_frequency: 2,
     use_top_selectors: 5
@@ -39,14 +33,26 @@ def run_heuristics(parsed_body, url:) # rubocop:disable Metrics/MethodLength
   [semantic.to_a.size, html.to_a.size]
 end
 
-def measure(parsed_bodies)
+def run_auto_source(parsed_body, body)
+  url = Html2rss::Url.from_absolute(BASE_URL)
+  response = Html2rss::RequestService::Response.new(
+    body:,
+    headers: { 'content-type' => 'text/html' },
+    url:
+  )
+  response.instance_variable_set(:@parsed_body, parsed_body)
+  Html2rss::AutoSource.new(response).articles.size
+end
+
+def measure(parsed_bodies, bodies)
   GC.start
   before_alloc = GC.stat[:total_allocated_objects]
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  counts = parsed_bodies.map { |body| run_heuristics(body, url: 'https://example.com/') }
+  heuristic_counts = parsed_bodies.map { run_heuristics(_1) }
+  auto_counts = parsed_bodies.zip(bodies).map { |doc, body| run_auto_source(doc, body) }
   wall = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
   allocs = GC.stat[:total_allocated_objects] - before_alloc
-  [wall, allocs, counts]
+  [wall, allocs, heuristic_counts, auto_counts]
 end
 
 options = { write: nil }
@@ -55,18 +61,21 @@ OptionParser.new do |opts|
 end.parse!
 
 root = File.expand_path('..', __dir__)
-parsed_bodies = FIXTURES.map { |rel| parse_fixture(File.join(root, rel)) }
+bodies = FIXTURES.map { |rel| File.read(File.join(root, rel)) }
+parsed_bodies = bodies.map { Nokogiri::HTML(_1) }
 
-WARMUP.times { measure(parsed_bodies) }
+WARMUP.times { measure(parsed_bodies, bodies) }
 
 walls = []
 allocs = []
-article_counts = nil
+heuristic_counts = nil
+auto_counts = nil
 RUNS.times do
-  wall, alloc, counts = measure(parsed_bodies)
+  wall, alloc, h_counts, a_counts = measure(parsed_bodies, bodies)
   walls << wall
   allocs << alloc
-  article_counts = counts
+  heuristic_counts = h_counts
+  auto_counts = a_counts
 end
 
 median = ->(arr) { arr.sort[arr.size / 2] }
@@ -74,7 +83,7 @@ wall_med = median.call(walls)
 alloc_med = median.call(allocs)
 
 lines = []
-lines << '# Heuristic auto-source performance baseline'
+lines << '# Auto-source performance baseline'
 lines << ''
 lines << "Captured: #{Time.now.utc.iso8601}"
 lines << "Ruby: #{RUBY_VERSION}"
@@ -88,9 +97,10 @@ lines << "| allocations (median) | #{alloc_med} |"
 lines << "| wall_budget_1_1x | #{format('%.6f', wall_med * 1.1)} |"
 lines << "| alloc_budget_1_15x | #{(alloc_med * 1.15).ceil} |"
 lines << ''
-lines << 'Article counts per fixture (semantic, html):'
-article_counts.each_with_index do |(semantic_n, html_n), idx|
-  lines << "- #{FIXTURES[idx]}: semantic=#{semantic_n}, html=#{html_n}"
+lines << 'Article counts per fixture (semantic, html | AutoSource#articles):'
+FIXTURES.each_with_index do |fixture, idx|
+  semantic_n, html_n = heuristic_counts[idx]
+  lines << "- #{fixture}: semantic=#{semantic_n}, html=#{html_n}, auto_source=#{auto_counts[idx]}"
 end
 lines << ''
 
