@@ -16,6 +16,9 @@ module Html2rss
   # @see Html2rss::AutoSource::Scraper::SemanticHtml
   # @see Html2rss::AutoSource::Scraper::Html
   class AutoSource
+    # Minimum articles with url+title before later scraper tiers are skipped.
+    SUFFICIENT_ARTICLE_COUNT = 5
+
     # Default auto-source configuration shipped for scraper and cleanup behavior.
     DEFAULT_CONFIG = {
       scraper: {
@@ -92,17 +95,11 @@ module Html2rss
     end
 
     ##
-    # Extracts article candidates by selecting every scraper that can explain the
-    # page shape, running those scrapers, and normalizing the resulting hashes
-    # into `Article` objects.
+    # Extracts articles by running scraper tiers until a sufficient set is found.
     #
-    # The contributor-facing flow is:
-    # 1. choose scraper instances that match the page
-    # 2. let each scraper collect its own candidates
-    # 3. clean and deduplicate the merged article list
-    #
-    # Scrapers with expensive precomputation, such as `SemanticHtml`, keep that
-    # state on the instance so detection and extraction can reuse the same work.
+    # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
+    # SST is built only when a heuristic tier runs. Later tiers are skipped once
+    # {SUFFICIENT_ARTICLE_COUNT} articles with url+title are collected.
     #
     # @return [Array<Html2rss::Article>] extracted articles
     def articles
@@ -117,16 +114,48 @@ module Html2rss
     attr_reader :url, :parsed_body, :body, :request_session
 
     def extract_articles
-      scraper_instances = Scraper.instances_for(
-        parsed_body, url:, request_session:, body:, opts: @opts[:scraper]
-      )
-      return [] if scraper_instances.empty?
+      articles = []
+      matched = false
+      document = nil
+      link_resolver = nil
+      scraper_opts = @opts.fetch(:scraper, {})
 
-      # Scrapers are run sequentially.
-      articles = scraper_instances.flat_map do |instance|
-        run_scraper(instance)
+      Scraper::SCRAPER_TIERS.each do |tier|
+        break if sufficient?(articles)
+
+        if Scraper.heuristic_tier?(tier)
+          document ||= Scraper.normalize_sst(parsed_body)
+          next unless document
+
+          link_resolver ||= ::Html2rss::Scoring::LinkResolver.new(url)
+        end
+
+        tier.each do |scraper_class|
+          instance = Scraper.build_instance(
+            scraper_class,
+            parsed_body,
+            url:,
+            request_session:,
+            body:,
+            document:,
+            link_resolver:,
+            opts: scraper_opts
+          )
+          next unless instance
+          next unless Scraper.extractable_instance?(instance, parsed_body)
+
+          matched = true
+          articles.concat(run_scraper(instance))
+        end
       end
+
+      raise Scraper.no_scraper_found_for(parsed_body, body:) unless matched
+
       Cleanup.call(articles, url:, **cleanup_options)
+    end
+
+    def sufficient?(articles)
+      articles.count { |article| article.url && !article.title.to_s.empty? } >= SUFFICIENT_ARTICLE_COUNT
     end
 
     def run_scraper(instance)

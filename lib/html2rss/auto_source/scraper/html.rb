@@ -36,13 +36,15 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
         # @param url [String, Html2rss::Url]
         # @param document [SST::Document, nil] memoized SST document from AutoSource
+        # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
         # @param opts [Hash]
         # @option opts [Boolean] :fallback_anchorless keep anchorless cluster cards
         # @option opts [Integer] :minimum_selector_frequency list frequency floor
         # @option opts [Integer] :use_top_selectors list selector budget
-        def initialize(parsed_body = nil, url:, document: nil, **opts)
+        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **opts)
           @parsed_body = parsed_body
           @provided_document = document
+          @provided_link_resolver = link_resolver
           @url = url
           @opts = opts
           @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
@@ -111,7 +113,7 @@ module Html2rss
         end
 
         def link_resolver
-          @link_resolver ||= Scoring::LinkResolver.new(@url)
+          @link_resolver ||= @provided_link_resolver || Scoring::LinkResolver.new(@url)
         end
 
         def document

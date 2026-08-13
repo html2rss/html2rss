@@ -6,6 +6,27 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   it { is_expected.to be_a(Module) }
   it { expect(described_class::SCRAPERS).to be_an(Array) }
 
+  describe '::SCRAPER_TIERS' do
+    it 'runs in-page structured scrapers before follow-up IO and heuristics', :aggregate_failures do
+      expect(described_class::SCRAPER_TIERS[0]).to eq(
+        [
+          Html2rss::AutoSource::Scraper::Schema,
+          Html2rss::AutoSource::Scraper::Microdata,
+          Html2rss::AutoSource::Scraper::Microformats2,
+          Html2rss::AutoSource::Scraper::JsonState
+        ]
+      )
+      expect(described_class::SCRAPER_TIERS[1]).to include(
+        Html2rss::AutoSource::Scraper::WordpressApi,
+        Html2rss::AutoSource::Scraper::Sitemap,
+        Html2rss::AutoSource::Scraper::MetaOembed
+      )
+      expect(described_class::SCRAPER_TIERS[2]).to eq([Html2rss::AutoSource::Scraper::SemanticHtml])
+      expect(described_class::SCRAPER_TIERS[3]).to eq([Html2rss::AutoSource::Scraper::Html])
+      expect(described_class::SCRAPERS).to eq(described_class::SCRAPER_TIERS.flatten)
+    end
+  end
+
   describe '.from(parsed_body, opts)' do
     context 'when suitable scraper is found' do
       let(:parsed_body) do
@@ -104,46 +125,35 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     end
   end
 
-  describe '.instances_for(parsed_body, url:, opts:)' do
+  describe '.normalize_sst / .build_instance' do
     let(:parsed_body) do
       Nokogiri::HTML('<html><body><article><a href="/article-1">Article 1</a></article></body></html>')
     end
     let(:url) { Html2rss::Url.from_absolute('https://example.com') }
-
-    it 'returns scraper instances that can extract articles' do
-      expect(described_class.instances_for(parsed_body, url:)).to all(respond_to(:each))
+    let(:opts) do
+      Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].transform_values do |config|
+        config.merge(enabled: false)
+      end.merge(
+        semantic_html: { enabled: true },
+        html: { enabled: true }
+      )
     end
 
-    context 'when SemanticHtml and Html are both enabled' do
-      let(:opts) do
-        Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].transform_values do |config|
-          config.merge(enabled: false)
-        end.merge(
-          semantic_html: { enabled: true },
-          html: { enabled: true }
+    it 'shares one SST::Document and LinkResolver across heuristic scrapers', :aggregate_failures do
+      document = described_class.normalize_sst(parsed_body)
+      link_resolver = Html2rss::Scoring::LinkResolver.new(url)
+      captured = []
+
+      [Html2rss::AutoSource::Scraper::SemanticHtml, Html2rss::AutoSource::Scraper::Html].each do |klass|
+        instance = described_class.build_instance(
+          klass, parsed_body, url:, document:, link_resolver:, opts:
         )
-      end
-      let(:captured_documents) { [] }
-
-      before do
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
-
-        [Html2rss::AutoSource::Scraper::SemanticHtml, Html2rss::AutoSource::Scraper::Html].each do |klass|
-          allow(klass).to receive(:new).and_wrap_original do |original, *args, **kwargs|
-            captured_documents << kwargs.fetch(:document)
-            original.call(*args, **kwargs)
-          end
-        end
+        captured << [instance.instance_variable_get(:@provided_document),
+                     instance.instance_variable_get(:@provided_link_resolver)]
       end
 
-      it 'normalizes once and shares the same SST::Document', :aggregate_failures do
-        described_class.instances_for(parsed_body, url:, opts:)
-
-        expect(Html2rss::SST::Normalizer).to have_received(:call).once
-        expect(captured_documents.size).to eq(2)
-        expect(captured_documents).to all(be_a(Html2rss::SST::Document))
-        expect(captured_documents[0]).to equal(captured_documents[1])
-      end
+      expect(captured.map(&:first)).to all(equal(document))
+      expect(captured.map(&:last)).to all(equal(link_resolver))
     end
   end
 
