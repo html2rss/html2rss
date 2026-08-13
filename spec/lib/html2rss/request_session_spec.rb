@@ -53,27 +53,40 @@ RSpec.describe Html2rss::RequestSession do
     let(:resources) { Html2rss::FeedPipeline::RuntimePolicy.resources_for(config) }
 
     context 'when building context once from config' do
-      subject(:built_context) { session.instance_variable_get(:@context) }
-
       let(:session) do
         described_class.build(
           config:, strategy: :browserless, budget: resources.budget, policy: resources.policy, logger:
         )
       end
 
+      before do
+        allow(Html2rss::RequestService::Context).to receive(:new).and_call_original
+        session
+      end
+
       it { expect(session).to be_a(described_class) }
-      it { expect(built_context.url.to_s).to eq('https://example.com/blog') }
-      it { expect(built_context.headers).to eq(config.headers) }
-      it { expect(built_context.request).to eq(config.request) }
-      it { expect(built_context.policy).to equal(resources.policy) }
-      it { expect(built_context.budget).to equal(resources.budget) }
+      it { expect(session.url.to_s).to eq('https://example.com/blog') }
+      it { expect(session.max_requests).to eq(resources.policy.max_requests) }
+
+      it 'wires config headers, request, policy, and budget into Context', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        expect(Html2rss::RequestService::Context).to have_received(:new).with(
+          hash_including(
+            headers: config.headers,
+            request: config.request,
+            policy: resources.policy,
+            budget: resources.budget
+          )
+        )
+      end
     end
 
     it 'uses the provided budget object for the session context' do
       budget = Html2rss::RequestService::Budget.new(max_requests: 2)
-      session = described_class.build(config:, strategy: :browserless, budget:, policy: resources.policy, logger:)
+      allow(Html2rss::RequestService::Context).to receive(:new).and_call_original
 
-      expect(session.instance_variable_get(:@context).budget).to equal(budget)
+      described_class.build(config:, strategy: :browserless, budget:, policy: resources.policy, logger:)
+
+      expect(Html2rss::RequestService::Context).to have_received(:new).with(hash_including(budget:))
     end
   end
 

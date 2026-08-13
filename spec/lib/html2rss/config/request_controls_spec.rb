@@ -27,6 +27,29 @@ RSpec.describe Html2rss::Config::RequestControls do
     end
   end
 
+  describe '.from_shortcut' do
+    it 'marks strategy explicit only when non-default', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      default_name = Html2rss::Config.default_strategy_name
+      omitted = described_class.from_shortcut(strategy: default_name, max_requests: 4)
+      explicit = described_class.from_shortcut(strategy: :browserless, max_redirects: 2)
+
+      expect(omitted.explicit?(:strategy)).to be(false)
+      expect(omitted.explicit?(:max_requests)).to be(true)
+      expect(explicit.explicit?(:strategy)).to be(true)
+      expect(explicit.explicit?(:max_redirects)).to be(true)
+    end
+  end
+
+  describe '.from_cli_options' do
+    it 'marks strategy explicit when the CLI option is present', :aggregate_failures do
+      controls = described_class.from_cli_options(strategy: 'faraday', max_requests: nil)
+
+      expect(controls.strategy).to eq(:faraday)
+      expect(controls.explicit?(:strategy)).to be(true)
+      expect(controls.explicit?(:max_requests)).to be(false)
+    end
+  end
+
   describe '#apply_to' do
     it 'writes explicit request controls into the nested request config', :aggregate_failures do
       controls = described_class.new(max_requests: 4, explicit_keys: [:max_requests])

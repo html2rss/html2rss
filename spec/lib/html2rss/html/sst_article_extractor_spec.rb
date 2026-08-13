@@ -47,4 +47,67 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article).to be_a(Html2rss::Article)
     expect(article.title).to eq('Anchorless card text here')
   end
+
+  it 'extracts a background-image style URL as the article image', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body>
+        <article>
+          <h2><a href="/news/style">Style Image Story</a></h2>
+          <div style="background-image: url('/assets/hero-banner.jpg')"></div>
+          <p>Useful context paragraph with enough words for description extraction.</p>
+        </article>
+      </body></html>
+    HTML
+
+    article = described_class.call(segment_for(html, href: '/news/style'), base_url: 'https://example.com')
+
+    expect(article.image.to_s).to include('hero-banner.jpg')
+  end
+
+  it 'extracts zip archive enclosures from normalized HTML', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body>
+        <article>
+          <h2><a href="/news/media">Media Enclosures Story</a></h2>
+          <p>Useful context paragraph with enough words for description extraction.</p>
+          <a href="/downloads/bundle.zip">Download ZIP</a>
+        </article>
+      </body></html>
+    HTML
+
+    article = described_class.call(segment_for(html, href: '/news/media'), base_url: 'https://example.com')
+    zip = article.enclosures.find { |enclosure| enclosure.type == 'application/zip' }
+
+    expect(zip).not_to be_nil
+    expect(zip.url.to_s).to eq('https://example.com/downloads/bundle.zip')
+  end
+
+  it 'extracts iframe enclosures when present on an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    link = Html2rss::SST::Node.build(
+      name: :a,
+      attrs: Html2rss::SST::Attrs.build(href: '/news/embed'),
+      own_text: 'Embed Story'
+    )
+    iframe = Html2rss::SST::Node.build(
+      name: :iframe,
+      attrs: Html2rss::SST::Attrs.build(src: '/embeds/player.html')
+    )
+    root = Html2rss::SST::Node.build(
+      name: :article,
+      children: [
+        Html2rss::SST::Node.build(name: :h2, children: [link]),
+        Html2rss::SST::Node.build(name: :p, own_text: 'Useful context paragraph with enough words.'),
+        iframe
+      ]
+    )
+    segment = Html2rss::AutoSource::Segment.build(
+      root_node: root, primary_link: link, strategy: :semantic, position: 0
+    )
+
+    article = described_class.call(segment, base_url: 'https://example.com')
+    frame = article.enclosures.find { |enclosure| enclosure.type == 'text/html' }
+
+    expect(frame).not_to be_nil
+    expect(frame.url.to_s).to eq('https://example.com/embeds/player.html')
+  end
 end

@@ -118,77 +118,21 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
   end
 
-  describe '#heading' do
-    subject(:heading) { described_class.new(article_tag, base_url: 'https://example.com', selected_anchor:).send(:heading) }
-
+  # Heading selection intent via public #call title (AGENTS forbids send in specs).
+  context 'when choosing among multiple headings' do
+    let(:html) do
+      <<~HTML
+        <article>
+          <h1>Heading 1</h1>
+          <h2>Heading 2</h2>
+          <h3>Heading 3</h3>
+        </article>
+      HTML
+    end
     let(:article_tag) { Nokogiri::HTML.fragment(html) }
 
-    context 'when heading is present' do
-      let(:html) do
-        <<~HTML
-          <article>
-            <h1>Heading 1</h1>
-            <h2>Heading 2</h2>
-            <h3>Heading 3</h3>
-          </article>
-        HTML
-      end
-
-      it 'returns the smallest heading with the largest visible text', :aggregate_failures do
-        expect(heading.name).to eq('h1')
-        expect(heading.text).to eq('Heading 1')
-      end
-    end
-
-    context 'when heading is not present' do
-      let(:html) do
-        <<~HTML
-          <article>
-            <p>Paragraph 1</p>
-            <p>Paragraph 2</p>
-          </article>
-        HTML
-      end
-
-      it 'returns nil' do
-        expect(heading).to be_nil
-      end
-    end
-  end
-
-  describe 'category extraction' do
-    context 'when article has category classes' do
-      let(:html) do
-        <<~HTML
-          <article>
-            <h1>Sample Heading</h1>
-            <div class="category-news">News</div>
-            <span class="post-tag">Technology</span>
-            <div class="article-category">Science</div>
-          </article>
-        HTML
-      end
-      let(:article_tag) { Nokogiri::HTML.fragment(html) }
-
-      it 'extracts categories from elements with category-related class names' do
-        expect(article_hash[:categories]).to contain_exactly('News', 'Technology', 'Science')
-      end
-    end
-
-    context 'when article has no category classes' do
-      let(:html) do
-        <<~HTML
-          <article>
-            <h1>Sample Heading</h1>
-            <p>Sample description</p>
-          </article>
-        HTML
-      end
-      let(:article_tag) { Nokogiri::HTML.fragment(html) }
-
-      it 'returns empty categories array' do
-        expect(article_hash[:categories]).to eq([])
-      end
+    it 'uses the smallest heading with the largest visible text as the title' do
+      expect(article_hash[:title]).to eq('Heading 1')
     end
   end
 

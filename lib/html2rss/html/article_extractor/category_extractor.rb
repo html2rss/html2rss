@@ -7,19 +7,15 @@ module Html2rss
       # CategoryExtractor is responsible for extracting categories from HTML elements
       # by looking for CSS class names containing common category-related terms.
       class CategoryExtractor
-        # Common category-related terms to look for in class names
-        CATEGORY_TERMS = %w[
-          category categories tag tags topic topics section sections
-          label labels theme themes subject subjects
-        ].freeze
+        # Shared category vocabulary (owned by {ArticleRules::Category}).
+        CATEGORY_TERMS = ArticleRules::Category::CATEGORY_TERMS
+        # Shared category attribute/class pattern (owned by {ArticleRules::Category}).
+        CATEGORY_ATTR_PATTERN = ArticleRules::Category::CATEGORY_ATTR_PATTERN
 
         # CSS selectors to find elements with category-related class names or data attributes
         CATEGORY_SELECTORS = CATEGORY_TERMS.flat_map do |term|
           ["[class*=\"#{term}\"]", "[data-#{term}]", "[#{term}]"]
         end.freeze
-
-        # Regex pattern for matching category-related attribute names
-        CATEGORY_ATTR_PATTERN = /#{CATEGORY_TERMS.join('|')}/i
 
         ##
         # Extracts categories from the given article tag by looking for elements
@@ -30,7 +26,6 @@ module Html2rss
         def self.call(article_tag)
           return [] unless article_tag
 
-          # Single optimized traversal that extracts all category types
           extract_all_categories(article_tag)
             .map(&:strip)
             .reject(&:empty?)
@@ -44,10 +39,7 @@ module Html2rss
         def self.extract_all_categories(article_tag)
           Set.new.tap do |categories|
             article_tag.css(CATEGORY_SELECTORS.join(',')).each do |element|
-              # Extract text categories from elements with category-related class names
-              extract_text_categories!(categories, element) if element['class']&.match?(CATEGORY_ATTR_PATTERN)
-
-              # Extract data categories from all elements
+              extract_text_categories!(categories, element) if ArticleRules::Category.class_match?(element['class'])
               extract_element_data_categories!(categories, element)
             end
           end
@@ -61,10 +53,9 @@ module Html2rss
         # @return [void]
         def self.extract_element_data_categories!(categories, element)
           element.attributes.each_value do |attr|
-            next unless attr.name.match?(CATEGORY_ATTR_PATTERN)
+            next unless ArticleRules::Category.attr_name_match?(attr.name)
 
-            value = attr.value&.strip
-            categories.add(value) if value && !value.empty?
+            ArticleRules::Category.add_text!(categories, attr.value)
           end
         end
 
@@ -85,7 +76,7 @@ module Html2rss
           if anchors.any?
             anchors.each { |node| add_text_to_categories!(categories, node) }
           else
-            extract_split_text_categories!(categories, element)
+            ArticleRules::Category.add_split_text!(categories, element.text)
           end
         end
 
@@ -96,27 +87,10 @@ module Html2rss
         # @param element [Nokogiri::XML::Element] The element to extract text from
         # @return [void]
         def self.add_text_to_categories!(categories, element)
-          text = Navigator.extract_visible_text(element)
-          categories.add(text) if text && !text.empty?
+          ArticleRules::Category.add_text!(categories, Navigator.extract_visible_text(element))
         end
 
-        ##
-        # Extracts categories from the element's text by splitting on newlines.
-        #
-        # @param categories [Set<String>] Accumulator set
-        # @param element [Nokogiri::XML::Element] The element to extract text from
-        # @return [void]
-        def self.extract_split_text_categories!(categories, element)
-          text = element.text
-          return unless text
-
-          text.split(/\n+/).each do |line|
-            line = line.strip
-            categories.add(line) unless line.empty?
-          end
-        end
-
-        private_class_method :add_text_to_categories!, :extract_split_text_categories!
+        private_class_method :add_text_to_categories!
       end
     end
   end

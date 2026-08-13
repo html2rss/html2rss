@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'cgi'
-
 module Html2rss
   module Html
     module Rendering
       # Renders an HTML <img> tag from a URL and title.
       class ImageRenderer
+        include EscapedAttributes
+
         # @param url [String, Html2rss::Url] image URL for the src attribute
         # @param title [String, nil] title/alt text for the image
         def initialize(url:, title:)
@@ -26,16 +26,6 @@ module Html2rss
             'crossorigin="anonymous"'
           ]
           "<img #{attributes.join(' ')}>"
-        end
-
-        private
-
-        def escaped_url
-          CGI.escapeHTML(@url.to_s)
-        end
-
-        def escaped_title
-          CGI.escapeHTML(@title.to_s)
         end
       end
     end

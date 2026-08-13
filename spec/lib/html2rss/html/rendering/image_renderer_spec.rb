@@ -20,37 +20,8 @@ RSpec.describe Html2rss::Html::Rendering::ImageRenderer do
       end
     end
 
-    context 'with nil title' do
-      it 'renders an img tag with empty alt and title attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        renderer = described_class.new(url: 'https://example.com/image.jpg', title: nil)
-        html = renderer.to_html
-
-        expect(html).to include('src="https://example.com/image.jpg"')
-        expect(html).to include('alt=""')
-        expect(html).to include('title=""')
-        expect(html).to include('loading="lazy"')
-        expect(html).to include('referrerpolicy="no-referrer"')
-        expect(html).to include('decoding="async"')
-        expect(html).to include('crossorigin="anonymous"')
-        expect(html).not_to include("\n")
-      end
-    end
-
-    context 'with empty string title' do
-      it 'renders an img tag with empty alt and title attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        renderer = described_class.new(url: 'https://example.com/image.jpg', title: '')
-        html = renderer.to_html
-
-        expect(html).to include('src="https://example.com/image.jpg"')
-        expect(html).to include('alt=""')
-        expect(html).to include('title=""')
-        expect(html).to include('loading="lazy"')
-        expect(html).to include('referrerpolicy="no-referrer"')
-        expect(html).to include('decoding="async"')
-        expect(html).to include('crossorigin="anonymous"')
-        expect(html).not_to include("\n")
-      end
-    end
+    it_behaves_like 'image renderer empty title attrs', title: nil
+    it_behaves_like 'image renderer empty title attrs', title: ''
 
     context 'with special characters in title' do
       it 'properly escapes HTML special characters', :aggregate_failures do

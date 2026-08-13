@@ -293,5 +293,58 @@ RSpec.describe Html2rss::RequestSession::Pager do
     it 'digs cursor from JSON response body and appends cursor param' do
       expect(pager.to_a).to eq([initial_response, page2_response])
     end
+
+    context 'with next_url_path relative URL' do
+      subject(:pager) do
+        described_class.new(
+          session:,
+          initial_response:,
+          config: { strategy: :json_cursor, next_url_path: 'meta.next', max_pages: 2 },
+          logger:
+        )
+      end
+
+      let(:initial_response) do
+        Html2rss::RequestService::Response.new(
+          body: { meta: { next: '/api/posts?page=2' }, items: [] }.to_json,
+          url: Html2rss::Url.from_absolute('https://example.com/api/posts'),
+          headers: { 'content-type' => 'application/json' }
+        )
+      end
+      let(:page2_response) do
+        Html2rss::RequestService::Response.new(
+          body: { meta: { next: nil }, items: [] }.to_json,
+          url: Html2rss::Url.from_absolute('https://example.com/api/posts?page=2'),
+          headers: { 'content-type' => 'application/json' }
+        )
+      end
+
+      it 'resolves the relative next URL against the response origin' do
+        expect(pager.to_a).to eq([initial_response, page2_response])
+      end
+    end
+
+    context 'with empty next_url_path value' do
+      subject(:pager) do
+        described_class.new(
+          session:,
+          initial_response:,
+          config: { strategy: :json_cursor, next_url_path: 'meta.next', max_pages: 2 },
+          logger:
+        )
+      end
+
+      let(:initial_response) do
+        Html2rss::RequestService::Response.new(
+          body: { meta: { next: '' }, items: [] }.to_json,
+          url: Html2rss::Url.from_absolute('https://example.com/api/posts'),
+          headers: { 'content-type' => 'application/json' }
+        )
+      end
+
+      it 'stops pagination when the next path is empty' do
+        expect(pager.to_a).to eq([initial_response])
+      end
+    end
   end
 end

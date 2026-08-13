@@ -12,6 +12,12 @@ Each example consists of three files:
 
 ## Examples
 
+### Auto Source Listing
+
+- **Files**: `auto_source_listing_spec.rb`, `auto_source_listing.yml`, `auto_source_listing.html`
+- **Purpose**: Demonstrates pure auto-source extraction without manual selectors
+- **Features**: Semantic HTML discovery, channel metadata, fixture-backed feed items
+
 ### Combined Scraper Sources
 
 - **Files**: `combined_scraper_sources_spec.rb`, `combined_scraper_sources.yml`, `combined_scraper_sources.html`

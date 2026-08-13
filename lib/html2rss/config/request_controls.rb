@@ -43,6 +43,39 @@ module Html2rss
         request_config.is_a?(Hash) && request_config.key?(key)
       end
 
+      ##
+      # Builds controls for public API shortcuts ({Html2rss.auto_source}, etc.).
+      # Strategy is explicit only when non-nil and not the configured default.
+      #
+      # @param strategy [Symbol, nil]
+      # @param max_redirects [Integer, nil]
+      # @param max_requests [Integer, nil]
+      # @return [RequestControls]
+      def self.from_shortcut(strategy:, max_redirects: nil, max_requests: nil)
+        keys = []
+        keys << :strategy unless strategy.nil? || strategy == Config.default_strategy_name
+        keys << :max_redirects unless max_redirects.nil?
+        keys << :max_requests unless max_requests.nil?
+        new(strategy:, max_redirects:, max_requests:, explicit_keys: keys)
+      end
+
+      ##
+      # Builds controls from CLI option values. Strategy is explicit when the
+      # option was provided (truthy string/symbol), matching Thor option presence.
+      #
+      # @param strategy [Symbol, String, nil]
+      # @param max_redirects [Integer, nil]
+      # @param max_requests [Integer, nil]
+      # @return [RequestControls]
+      def self.from_cli_options(strategy:, max_redirects: nil, max_requests: nil)
+        strategy_sym = strategy&.to_sym
+        keys = []
+        keys << :strategy if strategy
+        keys << :max_redirects unless max_redirects.nil?
+        keys << :max_requests unless max_requests.nil?
+        new(strategy: strategy_sym, max_redirects:, max_requests:, explicit_keys: keys)
+      end
+
       private_class_method :explicit_keys_for, :request_value_for, :request_key?
 
       ##
