@@ -98,7 +98,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         'url' => 'https://example.com/',
         'navigation_mode' => 'auto',
         'max_retries' => 1,
-        'headless' => false
+        'headless' => false,
+        'wait_timeout_seconds' => 28
       )
     end
 
@@ -144,6 +145,42 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         expect(payload).not_to have_key('ignored_key')
       end
     end
+
+    # rubocop:disable RSpec/NestedGroups -- budget clamp matrix stays with request contract
+    context 'when remaining budget is tight' do
+      [
+        { remaining: 12, max_retries: 0, wait_timeout_seconds: 10 },
+        { remaining: 10.5, max_retries: 0, wait_timeout_seconds: 8 },
+        { remaining: 20, max_retries: 1, wait_timeout_seconds: 18 }
+      ].each do |example|
+        context "with remaining=#{example[:remaining]}" do
+          before do
+            allow(budget).to receive(:effective_timeout_seconds).and_return(example[:remaining])
+          end
+
+          it 'clamps max_retries and wait_timeout_seconds', :aggregate_failures do
+            execute
+
+            payload = JSON.parse(captured_post_args.first.fetch(1))
+            expect(payload['max_retries']).to eq(example[:max_retries])
+            expect(payload['wait_timeout_seconds']).to eq(example[:wait_timeout_seconds])
+          end
+        end
+      end
+
+      context 'when configured wait_timeout_seconds is below the budget cap' do
+        let(:request_config) { { botasaurus: { wait_timeout_seconds: 5 } } }
+
+        before { allow(budget).to receive(:effective_timeout_seconds).and_return(20) }
+
+        it 'keeps the lower configured wait timeout' do
+          execute
+
+          expect(JSON.parse(captured_post_args.first.fetch(1))['wait_timeout_seconds']).to eq(5)
+        end
+      end
+    end
+    # rubocop:enable RSpec/NestedGroups
   end
 
   describe 'response mapping' do
@@ -155,6 +192,15 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       expect(result.status).to eq(200)
       expect(result.headers.fetch('content-type')).to include('text/html')
       expect(result.body).to include('ok')
+      expect(result.transport_meta).to eq(
+        'request_id' => 'request-id',
+        'strategy_used' => 'google_get_bypass',
+        'render_ms' => 5000,
+        'blocked_detected' => false,
+        'challenge_detected' => false,
+        'attempts' => 2
+      )
+      expect(result.transport_meta).to be_frozen
     end
 
     context 'when response omits headers and url metadata' do

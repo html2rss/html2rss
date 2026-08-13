@@ -311,12 +311,22 @@ RSpec.describe Html2rss::FeedPipeline do
         end
       end
 
-      it 'puts selected_strategy and attempt_count on status', :aggregate_failures do
+      it 'puts selected_strategy, attempt_count, and strategy_attempts on status', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         result = described_class.new(config).to_result
 
         expect(result.status.selected_strategy).to eq(:botasaurus)
         expect(result.status.attempt_count).to eq(2)
-        expect(result.status.to_h).to include(selected_strategy: :botasaurus, attempt_count: 2)
+        expect(result.status.strategy_attempts).to eq(
+          [
+            { strategy: :faraday, items_count: 0, error_class: nil },
+            { strategy: :botasaurus, items_count: 1, error_class: nil }
+          ]
+        )
+        expect(result.status.to_h).to include(
+          selected_strategy: :botasaurus,
+          attempt_count: 2,
+          strategy_attempts: result.status.strategy_attempts
+        )
         expect(result.status.to_generator_comment).not_to include('botasaurus')
       end
     end

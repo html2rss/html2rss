@@ -27,7 +27,8 @@ module Html2rss
           body: parsed_response.html,
           headers: parsed_response.headers,
           url: response_url(parsed_response.final_url),
-          status: parsed_response.status
+          status: parsed_response.status,
+          transport_meta: parsed_response.transport_meta
         )
       end
 
@@ -52,7 +53,11 @@ module Html2rss
       end
 
       def contract
-        @contract ||= BotasaurusContract.new(url: ctx.url, options: ctx.request.fetch(:botasaurus, {}))
+        @contract ||= BotasaurusContract.new(
+          url: ctx.url,
+          options: ctx.request.fetch(:botasaurus, {}),
+          remaining_timeout_seconds: attempt_timeout_seconds
+        )
       end
 
       def client
@@ -60,9 +65,13 @@ module Html2rss
       end
 
       def request_options
-        timeout = ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+        { timeout: attempt_timeout_seconds.to_i }
+      end
 
-        { timeout: timeout.to_i }
+      def attempt_timeout_seconds
+        @attempt_timeout_seconds ||= ctx.budget.effective_timeout_seconds(
+          fallback: ctx.policy.total_timeout_seconds
+        )
       end
 
       def content_type_header
