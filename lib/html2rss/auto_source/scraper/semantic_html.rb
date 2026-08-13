@@ -21,6 +21,8 @@ module Html2rss
           return false unless parsed_body
 
           new(parsed_body, url: 'https://example.com').extractable?
+        rescue ArgumentError
+          false
         end
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
@@ -48,6 +50,8 @@ module Html2rss
         # @return [Boolean]
         def extractable?
           ranked_segments.any?
+        rescue ArgumentError
+          false
         end
 
         private
@@ -58,6 +62,8 @@ module Html2rss
             entries = deduplicator.call(ranked_segments)
             entries.filter_map { |ranked| deduplicator.article_for(ranked) }
           end
+        rescue ArgumentError
+          []
         end
 
         def ranked_segments

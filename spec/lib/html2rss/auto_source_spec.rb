@@ -128,6 +128,16 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when the response body is empty' do
+      let(:body) { '' }
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'returns an empty array without raising' do
+        expect(articles).to eq([])
+      end
+    end
+
     context 'with custom configuration' do
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(

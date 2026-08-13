@@ -11,7 +11,7 @@ module Html2rss
     # Detection is intentionally shallow for most scrapers, but instance-based
     # matching is available for scrapers that need to carry expensive selection
     # state forward into extraction.
-    module Scraper
+    module Scraper # rubocop:disable Metrics/ModuleLength -- registry + surface classification stay colocated
       # Root markers indicating likely app-shell/client-rendered surfaces.
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       # Maximum anchors tolerated before app-shell detection is considered unlikely.
@@ -34,6 +34,7 @@ module Html2rss
 
       # Heuristic scrapers that share one memoized SST::Document per page.
       HEURISTIC_SCRAPERS = [SemanticHtml, Html].freeze
+      REQUEST_SESSION_SCRAPERS = [WordpressApi, Sitemap, MetaOembed].freeze
 
       ##
       # Error raised when no suitable scraper is found.
@@ -120,20 +121,28 @@ module Html2rss
         document = shared_sst_document(parsed_body, opts)
         instances = SCRAPERS.filter_map do |scraper|
           next unless opts.dig(scraper.options_key, :enabled)
+          next if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
-          scraper_opts = opts.fetch(scraper.options_key, {})
-          instance = if HEURISTIC_SCRAPERS.include?(scraper)
-                       scraper.new(parsed_body, url:, request_session:, body:, document:, **scraper_opts)
-                     else
-                       scraper.new(parsed_body, url:, request_session:, body:, **scraper_opts)
-                     end
+          scraper_opts = opts.fetch(scraper.options_key, {}).except(:enabled)
+          instance = scraper.new(
+            parsed_body, url:, **construction_kwargs(scraper, request_session:, body:, document:), **scraper_opts
+          )
           instance if extractable_instance?(instance, parsed_body)
         end
-
         raise no_scraper_found_for(parsed_body) if instances.empty?
 
         instances
       end
+
+      def self.construction_kwargs(scraper, request_session:, body:, document:)
+        return { document: } if HEURISTIC_SCRAPERS.include?(scraper)
+
+        {}.tap do |kwargs|
+          kwargs[:request_session] = request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
+          kwargs[:body] = body if scraper == Sitemap
+        end
+      end
+      private_class_method :construction_kwargs
 
       def self.shared_sst_document(parsed_body, scraper_config)
         return unless HEURISTIC_SCRAPERS.any? { scraper_config.dig(_1.options_key, :enabled) }
