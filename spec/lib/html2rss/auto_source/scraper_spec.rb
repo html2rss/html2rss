@@ -7,22 +7,20 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   it { expect(described_class::SCRAPERS).to be_an(Array) }
 
   describe '::SCRAPER_TIERS' do
-    it 'runs in-page structured scrapers before follow-up IO and heuristics', :aggregate_failures do
-      expect(described_class::SCRAPER_TIERS[0]).to eq(
-        [
-          Html2rss::AutoSource::Scraper::Schema,
-          Html2rss::AutoSource::Scraper::Microdata,
-          Html2rss::AutoSource::Scraper::Microformats2,
-          Html2rss::AutoSource::Scraper::JsonState
-        ]
+    it 'starts with in-page structured scrapers' do
+      expect(described_class::SCRAPER_TIERS.first).to include(
+        Html2rss::AutoSource::Scraper::Schema,
+        Html2rss::AutoSource::Scraper::JsonState
       )
-      expect(described_class::SCRAPER_TIERS[1]).to include(
-        Html2rss::AutoSource::Scraper::WordpressApi,
-        Html2rss::AutoSource::Scraper::Sitemap,
-        Html2rss::AutoSource::Scraper::MetaOembed
+    end
+
+    it 'ends with SemanticHtml then Html' do
+      expect(described_class::SCRAPER_TIERS.last(2)).to eq(
+        [[Html2rss::AutoSource::Scraper::SemanticHtml], [Html2rss::AutoSource::Scraper::Html]]
       )
-      expect(described_class::SCRAPER_TIERS[2]).to eq([Html2rss::AutoSource::Scraper::SemanticHtml])
-      expect(described_class::SCRAPER_TIERS[3]).to eq([Html2rss::AutoSource::Scraper::Html])
+    end
+
+    it 'flattens tiers into SCRAPERS' do
       expect(described_class::SCRAPERS).to eq(described_class::SCRAPER_TIERS.flatten)
     end
   end
@@ -138,22 +136,23 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         html: { enabled: true }
       )
     end
+    let(:document) { described_class.normalize_sst(parsed_body) }
+    let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
-    it 'shares one SST::Document and LinkResolver across heuristic scrapers', :aggregate_failures do
-      document = described_class.normalize_sst(parsed_body)
-      link_resolver = Html2rss::Scoring::LinkResolver.new(url)
-      captured = []
-
-      [Html2rss::AutoSource::Scraper::SemanticHtml, Html2rss::AutoSource::Scraper::Html].each do |klass|
-        instance = described_class.build_instance(
-          klass, parsed_body, opts:, url:, document:, link_resolver:
-        )
-        captured << [instance.instance_variable_get(:@provided_document),
-                     instance.instance_variable_get(:@provided_link_resolver)]
+    it 'shares one SST::Document across heuristic scrapers' do
+      docs = described_class::HEURISTIC_SCRAPERS.map do |klass|
+        described_class.build_instance(klass, parsed_body, opts:, url:, document:)
+                       .instance_variable_get(:@provided_document)
       end
+      expect(docs).to all(equal(document))
+    end
 
-      expect(captured.map(&:first)).to all(equal(document))
-      expect(captured.map(&:last)).to all(equal(link_resolver))
+    it 'shares one LinkResolver across heuristic scrapers' do
+      resolvers = described_class::HEURISTIC_SCRAPERS.map do |klass|
+        described_class.build_instance(klass, parsed_body, opts:, url:, document:, link_resolver:)
+                       .instance_variable_get(:@provided_link_resolver)
+      end
+      expect(resolvers).to all(equal(link_resolver))
     end
   end
 

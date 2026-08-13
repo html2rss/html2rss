@@ -19,7 +19,7 @@ WARMUP = 1
 RUNS = 5
 BASE_URL = 'https://example.com/'
 
-def run_heuristics(parsed_body)
+def run_heuristics(parsed_body) # rubocop:disable Metrics/MethodLength
   semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(
     parsed_body, url: BASE_URL, fallback_anchorless: true
   )

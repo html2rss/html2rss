@@ -146,7 +146,7 @@ RSpec.describe Html2rss::AutoSource do
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
-                   .merge(schema: { enabled: true })
+                                                            .merge(schema: { enabled: true })
         )
       end
       let(:schema_articles) do
@@ -189,15 +189,16 @@ RSpec.describe Html2rss::AutoSource do
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
-                   .merge(
-                     semantic_html: { enabled: true, fallback_anchorless: true },
-                     html: {
-                       enabled: true,
-                       minimum_selector_frequency: 2,
-                       use_top_selectors: 5,
-                       fallback_anchorless: true
-                     }
-                   )
+                                                            .merge(
+                                                              semantic_html: { enabled: true,
+                                                                               fallback_anchorless: true },
+                                                              html: {
+                                                                enabled: true,
+                                                                minimum_selector_frequency: 2,
+                                                                use_top_selectors: 5,
+                                                                fallback_anchorless: true
+                                                              }
+                                                            )
         )
       end
       let(:semantic_articles) do
