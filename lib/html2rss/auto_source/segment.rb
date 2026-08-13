@@ -12,15 +12,18 @@ module Html2rss
       # @param position [Integer]
       # @return [Segment]
       # @raise [ArgumentError] on invalid construction
-      def self.build(root_node:, primary_link: nil, strategy:, position:)
+      def self.build(root_node:, strategy:, position:, primary_link: nil)
         raise ArgumentError, 'root_node must be SST::Node' unless root_node.is_a?(SST::Node)
-        raise ArgumentError, 'primary_link must be SST::Node or nil' unless primary_link.nil? || primary_link.is_a?(SST::Node)
+        unless primary_link.nil? || primary_link.is_a?(SST::Node)
+          raise ArgumentError, 'primary_link must be SST::Node or nil'
+        end
         raise ArgumentError, "unknown strategy: #{strategy.inspect}" unless Segment::STRATEGIES.include?(strategy)
         raise ArgumentError, 'position must be Integer' unless position.is_a?(Integer)
 
         new(root_node:, primary_link:, strategy:, position:)
       end
     end
+    # Allowed Segmenter strategies.
     Segment::STRATEGIES = %i[semantic list cluster].to_set.freeze
   end
 end

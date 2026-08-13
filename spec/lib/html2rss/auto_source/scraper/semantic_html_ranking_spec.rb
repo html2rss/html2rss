@@ -546,7 +546,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe 'dedupe comparator precedence' do
-    subject(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
+    let(:deduplicator) { described_class::EntryDeduplicator.new('https://example.com') }
 
     let(:root_node) { Html2rss::SST::Node.build(name: :article) }
     let(:primary_link) do

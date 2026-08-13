@@ -8,26 +8,28 @@ module Html2rss
       # Maximum segments to extract after ranking (lazy extraction guard).
       TOP_K = 50
 
-      QUALITY_WEIGHTS = {
-        title_word_count_ge3: 40,
-        title_word_count_ge7: 15,
-        path_length_gt6: 20,
-        content_path: 15,
-        publish_marker: 15,
-        descriptive_context: 10,
-        article_container: 10,
-        content_tokens: 10
-      }.freeze
+      # Quality feature triples: [FeatureId, predicate, weight].
+      QUALITY_RULES = [
+        [:title_word_count_ge3, ->(o) { o[:title_word_count] >= 3 }, 40],
+        [:title_word_count_ge7, ->(o) { o[:title_word_count] >= 7 }, 15],
+        [:path_length_gt6, ->(o) { o[:path_length] > 6 }, 20],
+        [:content_path, ->(o) { o[:content_path] }, 15],
+        [:publish_marker, ->(o) { o[:publish_marker] }, 15],
+        [:descriptive_context, ->(o) { o[:descriptive_context] }, 10],
+        [:article_container, ->(o) { o[:article_container] }, 10],
+        [:content_tokens, ->(o) { o[:content_tokens] }, 10]
+      ].freeze
 
-      JUNK_WEIGHTS = {
-        non_content_utility_path: 25,
-        utility_prefix_title_short: 15,
-        shallow: 10,
-        weak_container: 10,
-        recommended_title_non_content: 10,
-        high_confidence_junk_path: 5,
-        junk_tokens: 15
-      }.freeze
+      # Junk feature triples: [FeatureId, predicate, weight].
+      JUNK_RULES = [
+        [:non_content_utility_path, ->(o) { o[:utility_path] && !o[:content_path] && !o[:strong_post_suffix] }, 25],
+        [:utility_prefix_title_short, ->(o) { o[:utility_prefix_title] && o[:title_word_count] <= 6 }, 15],
+        [:shallow, ->(o) { o[:shallow] }, 10],
+        [:weak_container, ->(o) { !o[:publish_marker] && !o[:descriptive_context] }, 10],
+        [:recommended_title_non_content, ->(o) { o[:recommended_title] && !o[:content_path] }, 10],
+        [:high_confidence_junk_path, ->(o) { o[:high_confidence_junk_path] }, 5],
+        [:junk_tokens, ->(o) { o[:junk_tokens] }, 15]
+      ].freeze
 
       # @param link_resolver [LinkResolver]
       def initialize(link_resolver:)
@@ -53,16 +55,15 @@ module Html2rss
 
       private
 
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-      def rank_one(segment)
+      def rank_one(segment) # rubocop:disable Metrics/MethodLength
         facts = segment.primary_link ? @link_resolver.destination_facts(segment.primary_link) : nil
         return if facts&.high_confidence_junk_path && segment.primary_link
 
         obs = @assessor.call(segment.root_node, segment.primary_link, destination_facts: facts)
         return if hard_junk?(obs)
 
-        quality, quality_parts = quality_score(obs)
-        junk, junk_parts = junk_score(obs)
+        quality, quality_parts = apply_rules(QUALITY_RULES, obs)
+        junk, junk_parts = apply_rules(JUNK_RULES, obs)
         RankedSegment.build(
           segment:,
           score: Score.build(
@@ -73,36 +74,12 @@ module Html2rss
           )
         )
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
-      def quality_score(obs)
+      def apply_rules(rules, obs)
         parts = {}
-        parts[:title_word_count_ge3] = QUALITY_WEIGHTS[:title_word_count_ge3] if obs[:title_word_count] >= 3
-        parts[:title_word_count_ge7] = QUALITY_WEIGHTS[:title_word_count_ge7] if obs[:title_word_count] >= 7
-        parts[:path_length_gt6] = QUALITY_WEIGHTS[:path_length_gt6] if obs[:path_length] > 6
-        parts[:content_path] = QUALITY_WEIGHTS[:content_path] if obs[:content_path]
-        parts[:publish_marker] = QUALITY_WEIGHTS[:publish_marker] if obs[:publish_marker]
-        parts[:descriptive_context] = QUALITY_WEIGHTS[:descriptive_context] if obs[:descriptive_context]
-        parts[:article_container] = QUALITY_WEIGHTS[:article_container] if obs[:article_container]
-        parts[:content_tokens] = QUALITY_WEIGHTS[:content_tokens] if obs[:content_tokens]
-        [parts.values.sum, parts]
-      end
-
-      def junk_score(obs) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        parts = {}
-        if obs[:utility_path] && !obs[:content_path] && !obs[:strong_post_suffix]
-          parts[:non_content_utility_path] = JUNK_WEIGHTS[:non_content_utility_path]
+        rules.each do |feature_id, predicate, weight|
+          parts[feature_id] = weight if predicate.call(obs)
         end
-        if obs[:utility_prefix_title] && obs[:title_word_count] <= 6
-          parts[:utility_prefix_title_short] = JUNK_WEIGHTS[:utility_prefix_title_short]
-        end
-        parts[:shallow] = JUNK_WEIGHTS[:shallow] if obs[:shallow]
-        parts[:weak_container] = JUNK_WEIGHTS[:weak_container] if !obs[:publish_marker] && !obs[:descriptive_context]
-        if obs[:recommended_title] && !obs[:content_path]
-          parts[:recommended_title_non_content] = JUNK_WEIGHTS[:recommended_title_non_content]
-        end
-        parts[:high_confidence_junk_path] = JUNK_WEIGHTS[:high_confidence_junk_path] if obs[:high_confidence_junk_path]
-        parts[:junk_tokens] = JUNK_WEIGHTS[:junk_tokens] if obs[:junk_tokens]
         [parts.values.sum, parts]
       end
 

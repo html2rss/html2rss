@@ -310,5 +310,4 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       end
     end
   end
-
 end

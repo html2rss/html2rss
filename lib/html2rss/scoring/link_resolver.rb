@@ -5,6 +5,7 @@ module Html2rss
     ##
     # Resolves href strings into memoized DestinationFacts for one page base URL.
     class LinkResolver
+      # Captures the href portion before a fragment for memoization keys.
       HREF_BASE_PATTERN = /\A([^#]*)/
 
       # @param base_url [String, Html2rss::Url]

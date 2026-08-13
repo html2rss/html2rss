@@ -7,6 +7,7 @@ module Html2rss
       # Selects the strongest content-like primary link inside a container
       # (port of Discovery::SemanticAnchorCandidates).
       class PrimaryLink
+        # Anchor ranking weights keyed by signal name.
         ANCHOR_SCORE_RULES = {
           heading_anchor: 100,
           heading_text_match: 20,
@@ -25,7 +26,7 @@ module Html2rss
         ##
         # @param container [SST::Node]
         # @return [SST::Node, nil]
-        def select(container)
+        def select(container) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
           winners = {}
 
           container.find_all(&:link?).each do |anchor|

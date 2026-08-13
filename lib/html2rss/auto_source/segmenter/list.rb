@@ -15,10 +15,12 @@ module Html2rss
         def call(segmenter)
           primary = PrimaryLink.new(segmenter)
           pairs = article_pairs(segmenter)
-          seen = Set.new
+          seen = {}.compare_by_identity
 
           pairs.each_with_index.filter_map do |(article_tag, selected_anchor), position|
-            next unless seen.add?(article_tag)
+            next unless seen[article_tag].nil?
+
+            seen[article_tag] = true
 
             link = selected_anchor || primary.select(article_tag)
             next unless link || segmenter.permit_unanchored

@@ -13,6 +13,7 @@ AllCops:
   ParserEngine: parser_prism
   Exclude:
     - vendor/**/*
+    - docs/architectural_shift/**/*
 
 Metrics/BlockLength:
   Exclude:

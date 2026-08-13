@@ -13,38 +13,37 @@ module Html2rss
       # @param document [SST::Document]
       # @param base_url [String, Html2rss::Url]
       # @param strategy [Symbol]
-      # @param permit_unanchored [Boolean]
-      # @param minimum_selector_frequency [Integer]
-      # @param use_top_selectors [Integer]
+      # @param opts [Hash] segmentation options
+      # @option opts [Boolean] :permit_unanchored keep containers without a primary link
+      # @option opts [Integer] :minimum_selector_frequency list strategy frequency floor
+      # @option opts [Integer] :use_top_selectors list strategy selector budget
       # @return [Array<Segment>]
-      def self.call(document, base_url:, strategy:, permit_unanchored: false,
-                    minimum_selector_frequency: 2, use_top_selectors: 5)
-        new(
-          document,
-          base_url:,
-          strategy:,
-          permit_unanchored:,
-          minimum_selector_frequency:,
-          use_top_selectors:
-        ).call
+      # rubocop:disable Style/ArgumentsForwarding -- keep named opts for YARD @option
+      def self.call(document, base_url:, strategy:, **opts)
+        new(document, base_url:, strategy:, **opts).call
       end
+      # rubocop:enable Style/ArgumentsForwarding
 
-      # rubocop:disable Metrics/ParameterLists
-      def initialize(document, base_url:, strategy:, permit_unanchored: false,
-                     minimum_selector_frequency: 2, use_top_selectors: 5)
+      # @param document [SST::Document]
+      # @param base_url [String, Html2rss::Url]
+      # @param strategy [Symbol]
+      # @param opts [Hash] segmentation options
+      # @option opts [Boolean] :permit_unanchored keep containers without a primary link
+      # @option opts [Integer] :minimum_selector_frequency list strategy frequency floor
+      # @option opts [Integer] :use_top_selectors list strategy selector budget
+      def initialize(document, base_url:, strategy:, **opts)
         raise ArgumentError, 'document must be SST::Document' unless document.is_a?(SST::Document)
         raise ArgumentError, "unknown strategy: #{strategy.inspect}" unless Segment::STRATEGIES.include?(strategy)
 
         @document = document
         @base_url = base_url
         @strategy = strategy
-        @permit_unanchored = permit_unanchored
-        @minimum_selector_frequency = minimum_selector_frequency
-        @use_top_selectors = use_top_selectors
+        @permit_unanchored = opts.fetch(:permit_unanchored, false)
+        @minimum_selector_frequency = opts.fetch(:minimum_selector_frequency, 2)
+        @use_top_selectors = opts.fetch(:use_top_selectors, 5)
         @link_resolver = Scoring::LinkResolver.new(base_url)
         @noise_policy = Scoring::NoisePolicy.new(link_resolver: @link_resolver, index: document.index)
       end
-      # rubocop:enable Metrics/ParameterLists
 
       # @return [Array<Segment>]
       def call

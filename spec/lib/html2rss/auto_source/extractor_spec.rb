@@ -1,0 +1,52 @@
+# frozen_string_literal: true
+
+require 'nokogiri'
+
+RSpec.describe Html2rss::AutoSource::Extractor do
+  def segment_for(html, href: '/news/story') # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
+    doc = Html2rss::SST::Normalizer.call(Nokogiri::HTML(html))
+    root = doc.root.find { |n| n.name == :article } || doc.root.find { |n| n.name == :div }
+    link = root.find { |n| n.link? && n.attrs.href == href } || root.find(&:link?)
+    Html2rss::AutoSource::Segment.build(root_node: root, primary_link: link, strategy: :semantic, position: 0)
+  end
+
+  it 'extracts core article fields from an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body>
+        <article id="story-1" class="category-news" data-category="Launch">
+          <h2><a href="/news/story">Story Title</a></h2>
+          <time datetime="2026-03-28T12:00:00Z"></time>
+          <img src="/hero.jpg" alt="">
+          <p>Useful context paragraph with enough words for description extraction.</p>
+          <a href="/file.pdf">PDF</a>
+        </article>
+      </body></html>
+    HTML
+
+    article = described_class.call(segment_for(html), base_url: 'https://example.com', scraper: Object)
+
+    expect(article.title).to eq('Story Title')
+    expect(article.id).to eq('story-1')
+    expect(article.url.to_s).to eq('https://example.com/news/story')
+    expect(article.description).to include('Useful context')
+    expect(article.image.to_s).to include('hero.jpg')
+    expect(article.published_at).to be_a(DateTime)
+    expect(article.categories).to include('Launch')
+    expect(article.enclosures).not_to be_empty
+  end
+
+  it 'accepts RankedSegment and anchorless fallback', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = '<html><body><div><strong>Anchorless card text here</strong><p>More words.</p></div></body></html>'
+    doc = Html2rss::SST::Normalizer.call(Nokogiri::HTML(html))
+    root = doc.root.find { |n| n.name == :div && n.find { |c| c.name == :strong } }
+    segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
+    ranked = Html2rss::Scoring::RankedSegment.build(
+      segment:,
+      score: Html2rss::Scoring::Score.build(composite: 1)
+    )
+
+    article = described_class.call(ranked, base_url: 'https://example.com', fallback_anchorless: true)
+    expect(article).to be_a(Html2rss::Article)
+    expect(article.title).to eq('Anchorless card text here')
+  end
+end

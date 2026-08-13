@@ -6,6 +6,7 @@ module Html2rss
       ##
       # Collects leaf semantic containers (port of Discovery::SemanticContainers).
       module Semantic
+        # Tag names collected as leaf semantic containers.
         CANDIDATE_NAMES = %i[article section li tr div].to_set.freeze
 
         module_function
@@ -26,10 +27,14 @@ module Html2rss
         end
 
         def collect_containers(index)
-          candidates = index.each_node.select do |node|
-            CANDIDATE_NAMES.include?(node.name) &&
-              node.leaf_semantic_candidate? &&
-              !index.ignored_chrome?(node)
+          non_leaf = mark_non_leaf_candidates(index.root)
+          candidates = []
+          index.each_node do |node|
+            next unless CANDIDATE_NAMES.include?(node.name)
+            next if non_leaf.include?(node)
+            next if index.ignored_chrome?(node)
+
+            candidates << node
           end
 
           candidates = filter_nested(candidates, index)
@@ -38,9 +43,29 @@ module Html2rss
         module_function :collect_containers
         private_class_method :collect_containers
 
+        # Single O(N) post-order pass: mark candidate nodes that contain a same-name candidate.
+        def mark_non_leaf_candidates(root) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+          non_leaf = Set.new.compare_by_identity
+          visit = lambda do |node|
+            seen = Hash.new(false)
+            node.children.each do |child|
+              child_seen = visit.call(child)
+              child_seen.each_key { |name| seen[name] = true }
+              seen[child.name] = true if CANDIDATE_NAMES.include?(child.name)
+            end
+            non_leaf.add(node) if CANDIDATE_NAMES.include?(node.name) && seen[node.name]
+            seen
+          end
+          visit.call(root)
+          non_leaf
+        end
+        module_function :mark_non_leaf_candidates
+        private_class_method :mark_non_leaf_candidates
+
         def filter_nested(candidates, index)
-          candidate_set = Set.new(candidates)
-          rejected = Set.new
+          candidate_set = {}.compare_by_identity
+          candidates.each { |c| candidate_set[c] = true }
+          rejected = {}.compare_by_identity
 
           candidates.each do |candidate|
             next if candidate.name == :div
@@ -48,7 +73,7 @@ module Html2rss
             reject_ancestors(candidate, candidate_set, rejected, index)
           end
 
-          candidates.reject { |c| rejected.include?(c) }
+          candidates.reject { |c| rejected[c] }
         end
         module_function :filter_nested
         private_class_method :filter_nested
@@ -56,7 +81,7 @@ module Html2rss
         def reject_ancestors(node, candidate_set, rejected, index)
           curr = index.parent_of(node)
           while curr && curr.name != :html
-            rejected << curr if candidate_set.include?(curr)
+            rejected[curr] = true if candidate_set[curr]
             curr = index.parent_of(curr)
           end
         end

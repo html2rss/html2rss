@@ -12,10 +12,10 @@ module Html2rss
       # @param separator [String]
       # @param exclude [Array<Node>, nil]
       # @return [String, nil]
-      def extract(node, separator: ' ', exclude: nil)
+      def extract(node, separator: ' ', exclude: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
         raise ArgumentError, 'node is required' unless node
 
-        excluded = exclude ? Set.new(exclude) : nil
+        excluded = exclude&.each_with_object({}.compare_by_identity) { |n, h| h[n] = true }
         if node.children.empty?
           text = node.own_text.to_s.gsub(/\s+/, ' ').strip
           return text.empty? ? nil : text
@@ -32,7 +32,7 @@ module Html2rss
       def collect_parts(node, separator, excluded)
         last_block = false
         node.children.each_with_object([]) do |child, parts|
-          next if excluded&.include?(child)
+          next if excluded&.[](child)
           next unless visible_child?(child)
 
           text, block = child_text_and_block(child, separator, excluded)
@@ -50,7 +50,7 @@ module Html2rss
         text = if child.children.empty?
                  child.own_text.gsub(/\s+/, ' ').strip
                else
-                 extract(child, separator:, exclude: excluded&.to_a).to_s.strip
+                 extract(child, separator:, exclude: excluded&.keys).to_s.strip
                end
         text = "- #{text}" if child.name == :li && !text.empty?
         [text, Tags::BLOCK_NAMES.include?(child.name)]

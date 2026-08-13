@@ -8,9 +8,13 @@ module Html2rss
       class Html
         include Enumerable
 
+        # Absolute base URL used when probe-time detection needs to normalize relative hrefs.
         DETECTION_BASE_URL = 'https://example.com'
+        # Minimum selector frequency required to treat a path as a stable list signal.
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
+        # Number of most frequent selectors kept for container extraction.
         DEFAULT_USE_TOP_SELECTORS = 5
+        # Maximum articles materialized after ranking.
         TOP_K = Scoring::Engine::TOP_K
 
         ##
@@ -31,6 +35,9 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document]
         # @param url [String, Html2rss::Url]
         # @param opts [Hash]
+        # @option opts [Boolean] :fallback_anchorless keep anchorless cluster cards
+        # @option opts [Integer] :minimum_selector_frequency list frequency floor
+        # @option opts [Integer] :use_top_selectors list selector budget
         def initialize(parsed_body, url:, **opts)
           @parsed_body = parsed_body
           @url = url

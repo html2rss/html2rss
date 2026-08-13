@@ -23,7 +23,7 @@ def parse_fixture(path)
   Nokogiri::HTML(html)
 end
 
-def run_heuristics(parsed_body, url:)
+def run_heuristics(parsed_body, url:) # rubocop:disable Metrics/MethodLength
   semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(
     parsed_body,
     url:,

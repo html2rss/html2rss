@@ -15,12 +15,7 @@ module Html2rss
       def self.build(composite:, quality: nil, junk: nil, breakdown: nil)
         raise ArgumentError, 'composite must be Numeric' unless composite.is_a?(Numeric)
 
-        parts = if breakdown.nil?
-                  Score::EMPTY_BREAKDOWN
-                else
-                  breakdown.transform_keys { FeatureId.assert!(_1) }.freeze
-                end
-
+        parts = breakdown.nil? ? Score::EMPTY_BREAKDOWN : breakdown.transform_keys { FeatureId.assert!(_1) }.freeze
         new(
           composite: composite.to_f,
           quality: (quality.nil? ? composite : quality).to_f,
@@ -29,6 +24,7 @@ module Html2rss
         )
       end
     end
+    # Shared empty feature breakdown for scores without per-feature tallies.
     Score::EMPTY_BREAKDOWN = {}.freeze
   end
 end

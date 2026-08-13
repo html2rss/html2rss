@@ -51,7 +51,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       HTML
     end
 
-    it 'clusters repeated tag_path anchors into article segments', :aggregate_failures do
+    it 'clusters repeated tag_path anchors into article segments', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       segments = described_class.call(
         document_for(html),
         base_url: 'https://example.com',
@@ -88,7 +88,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       HTML
     end
 
-    it 'returns the highest scoring class group as cluster segments', :aggregate_failures do
+    it 'returns the highest scoring class group as cluster segments', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       segments = described_class.call(
         document_for(html),
         base_url: 'https://example.com',

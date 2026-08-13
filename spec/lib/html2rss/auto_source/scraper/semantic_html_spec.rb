@@ -38,7 +38,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
     let(:articles) { new.each.to_a }
-    let(:article_ids) { articles.filter_map { |article| article.id } }
+    let(:article_ids) { articles.filter_map(&:id) }
 
     let(:grouped_expected_articles) do
       # rubocop:disable Layout/LineLength

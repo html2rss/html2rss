@@ -33,7 +33,7 @@ module Html2rss
         module_function :best_group_nodes
         private_class_method :best_group_nodes
 
-        def collect_class_groups(segmenter)
+        def collect_class_groups(segmenter) # rubocop:disable Metrics/AbcSize
           groups = Hash.new { |h, k| h[k] = [] }
           segmenter.index.each_node do |node|
             next if SST::Tags::CLUSTER_EXCLUDED_NAMES.include?(node.name)
@@ -47,7 +47,7 @@ module Html2rss
         module_function :collect_class_groups
         private_class_method :collect_class_groups
 
-        def collect_structure_groups(segmenter)
+        def collect_structure_groups(segmenter) # rubocop:disable Metrics/AbcSize
           groups = Hash.new { |h, k| h[k] = [] }
           segmenter.index.each_node do |node|
             next if SST::Tags::CLUSTER_EXCLUDED_NAMES.include?(node.name)
@@ -81,27 +81,32 @@ module Html2rss
         ##
         # Filters layout wrapper groups and resolves 1-to-1 nested card wrappers.
         class OverlapResolver
+          # @param index [SST::Index]
           def initialize(index:)
             @index = index
             @layout_tags = SST::Tags::LAYOUT_NAMES
           end
 
+          # @param groups [Hash{String => Array<SST::Node>}]
+          # @return [Hash{String => Array<SST::Node>}]
           def filter_containers(groups)
             groups.reject do |cls_a, nodes_a|
               groups.any? { |cls_b, nodes_b| cls_a != cls_b && container_of?(nodes_a, nodes_b) }
             end
           end
 
+          # @param groups [Hash{String => Array<SST::Node>}]
+          # @return [Hash{String => Array<SST::Node>}]
           def filter_1_to_1_overlap(groups)
-            discarded = Set.new
+            discarded = {}
             groups.each_key do |cls_a|
               groups.each_key do |cls_b|
-                next if cls_a == cls_b || discarded.include?(cls_a) || discarded.include?(cls_b)
+                next if cls_a == cls_b || discarded[cls_a] || discarded[cls_b]
 
                 resolve_1_to_1_overlap(cls_a, cls_b, groups, discarded)
               end
             end
-            groups.except(*discarded)
+            groups.reject { |cls, _| discarded[cls] }
           end
 
           private
@@ -133,7 +138,7 @@ module Html2rss
             nested = nodes_a.zip(nodes_b).all? { |a, b| !a.equal?(b) && @index.descendant_of?(b, a) }
             return unless nested
 
-            discarded << (keep_descendant?(nodes_a, nodes_b) ? cls_a : cls_b)
+            discarded[keep_descendant?(nodes_a, nodes_b) ? cls_a : cls_b] = true
           end
 
           def keep_descendant?(nodes_a, nodes_b)
@@ -151,6 +156,8 @@ module Html2rss
             @has_date = {}.compare_by_identity
           end
 
+          # @param groups [Hash{String => Array<SST::Node>}]
+          # @return [Array<SST::Node>]
           def select_best_group(groups)
             best_nodes = []
             best_score = -1

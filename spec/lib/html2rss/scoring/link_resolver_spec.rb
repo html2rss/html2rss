@@ -105,5 +105,6 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
       end
     end
   end
-
 end
+
+# rubocop:enable RSpec/ExampleLength

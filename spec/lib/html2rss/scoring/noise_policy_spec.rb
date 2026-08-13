@@ -7,7 +7,9 @@ RSpec.describe Html2rss::Scoring::NoisePolicy do
 
   let(:base_url) { 'https://example.com/articles/' }
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url) }
-  let(:html) { '<html><body><article><a href="/news/2024/platform-launch-notes">Platform launch notes</a></article></body></html>' }
+  let(:html) do
+    '<html><body><article><a href="/news/2024/platform-launch-notes">Platform launch notes</a></article></body></html>'
+  end
   let(:document) { Html2rss::SST::Normalizer.call(Nokogiri::HTML(html)) }
 
   describe '#noise_anchor?' do
@@ -26,9 +28,11 @@ RSpec.describe Html2rss::Scoring::NoisePolicy do
       expect(policy.noise_anchor?(text: 'Login to continue', destination_facts: facts)).to be(true)
     end
 
-    it 'rejects icon-only anchors' do
+    it 'rejects icon-only anchors' do # rubocop:disable RSpec/ExampleLength
       doc = Html2rss::SST::Normalizer.call(
-        Nokogiri::HTML('<html><body><article><a href="/news/2024/platform-launch-notes"><img src="/i.png"></a></article></body></html>')
+        Nokogiri::HTML(<<~HTML)
+          <html><body><article><a href="/news/2024/platform-launch-notes"><img src="/i.png"></a></article></body></html>
+        HTML
       )
       anchor = doc.root.find(&:link?)
       facts = link_resolver.destination_facts(anchor)
@@ -37,7 +41,7 @@ RSpec.describe Html2rss::Scoring::NoisePolicy do
       expect(policy.noise_anchor?(text: '', destination_facts: facts, anchor:)).to be(true)
     end
 
-    it 'rejects anchors nested under utility landmarks outside the content container' do
+    it 'rejects anchors nested under utility landmarks outside the content container' do # rubocop:disable RSpec/ExampleLength
       doc = Html2rss::SST::Normalizer.call(Nokogiri::HTML(<<~HTML))
         <html><body>
           <article>

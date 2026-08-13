@@ -7,9 +7,14 @@ module Html2rss
     ##
     # Builds an {Html2rss::Article} from an SST segment / ranked segment.
     # Port of Html::ArticleExtractor field logic onto SST::Node.
+    # rubocop:disable Metrics/ClassLength -- field extractors kept colocated for parity with Html::ArticleExtractor
     class Extractor
+      # CSS class tokens that mark kicker / eyebrow text (excluded from titles).
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
+      # Href path suffixes treated as non-article download/archive links.
       ARCHIVE_HREF_SUFFIXES = %w[.pdf .zip .tar.gz .tgz].freeze
+      # Inline emphasis tags used as title fallbacks when no heading exists.
+      FALLBACK_HEADING_NAMES = %i[strong b].freeze
 
       class << self
         ##
@@ -41,7 +46,7 @@ module Html2rss
 
       ##
       # @return [Html2rss::Article, nil]
-      def call
+      def call # rubocop:disable Metrics/MethodLength
         attrs = {
           title: extract_title,
           url: extract_url,
@@ -116,14 +121,14 @@ module Html2rss
 
       def fallback_heading
         @root.find do |n|
-          next true if %i[strong b].include?(n.name)
+          next true if FALLBACK_HEADING_NAMES.include?(n.name)
 
           n.attrs.class_names.any? { |c| c.match?(/title|font-bold|font-semibold/) } &&
             !n.visible_text.to_s.strip.empty?
         end
       end
 
-      def kicker_node
+      def kicker_node # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         @kicker_node ||= begin
           node = @root.find do |n|
             n.attrs.raw.key?('data-tb-kicker') ||
@@ -149,7 +154,7 @@ module Html2rss
         desc.empty? ? nil : desc
       end
 
-      def generate_id
+      def generate_id # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
         @generate_id ||= begin
           id_from_dom = parse_id_from_dom
           if id_from_dom
@@ -198,7 +203,7 @@ module Html2rss
         @root.find { |n| n.image? && n.attrs.src && !n.attrs.src.start_with?('data:') }&.attrs&.src
       end
 
-      def image_from_srcset
+      def image_from_srcset # rubocop:disable Metrics/AbcSize
         hash = {}
         @root.find_all { |n| n.attrs.srcset }.each do |source|
           source.attrs.srcset.to_s.scan(/(\S+)\s+(\d+w|\d+h)[\s,]?/) do |url, width|
@@ -242,7 +247,7 @@ module Html2rss
         end
       end
 
-      def enclosure_from(element)
+      def enclosure_from(element) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         case element.name
         when :img
           abs = Url.from_relative(element.attrs.src, @base_url)
@@ -254,12 +259,18 @@ module Html2rss
           { url: abs, type: Article::Enclosure.guess_content_type_from_url(abs, default: 'text/html') }
         when :a
           abs = Url.from_relative(element.attrs.href, @base_url)
-          type = element.attrs.href.end_with?('.pdf') ? Article::Enclosure.guess_content_type_from_url(abs) : 'application/zip'
+          type = pdf_or_zip_type(element.attrs.href, abs)
           { url: abs, type: }
         end
       end
 
-      def extract_categories
+      def pdf_or_zip_type(href, abs)
+        return Article::Enclosure.guess_content_type_from_url(abs) if href.end_with?('.pdf')
+
+        'application/zip'
+      end
+
+      def extract_categories # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         terms = Html::ArticleExtractor::CategoryExtractor::CATEGORY_TERMS
         pattern = /#{terms.join('|')}/i
         Set.new.tap do |categories|
@@ -279,7 +290,7 @@ module Html2rss
           node.attrs.raw.keys.any? { |k| k.match?(pattern) }
       end
 
-      def add_category_text!(categories, element)
+      def add_category_text!(categories, element) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
         if element.link?
           text = element.visible_text
           categories.add(text) if text && !text.empty?
@@ -300,5 +311,6 @@ module Html2rss
         end
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

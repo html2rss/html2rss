@@ -5,8 +5,11 @@ module Html2rss
     ##
     # Empty / default Attrs values (kept outside Data.define for RuboCop).
     module AttrDefaults
+      # Shared empty class_names array for Attrs defaults.
       EMPTY_CLASS_NAMES = [].freeze
+      # Shared empty raw attribute hash for Attrs defaults.
       EMPTY_RAW = {}.freeze
+      # Maps HTML attribute names to Attrs readers (excluding class).
       TYPED_READERS = {
         'href' => :href,
         'src' => :src,
@@ -111,6 +114,7 @@ module Html2rss
       end
     end
 
+    # Shared empty Attrs instance for nodes without attributes.
     EMPTY_ATTRS = Attrs.new(
       href: nil, src: nil, id: nil, class_names: AttrDefaults::EMPTY_CLASS_NAMES, datetime: nil,
       itemprop: nil, style: nil, srcset: nil, type: nil, raw: AttrDefaults::EMPTY_RAW

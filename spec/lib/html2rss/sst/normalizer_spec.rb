@@ -32,7 +32,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.parent_of(article.children.first)).to eq(article)
     end
 
-    it 'degrades when MAX_NODES is breached', :aggregate_failures do
+    it 'degrades when MAX_NODES is breached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       stub_const('Html2rss::SST::Normalizer::MAX_NODES', 3)
       allow(Html2rss::Log).to receive(:warn)
 

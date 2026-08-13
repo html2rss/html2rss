@@ -60,7 +60,7 @@ module Html2rss
           end
         end
 
-        def ranked_segments
+        def ranked_segments # rubocop:disable Metrics/MethodLength
           @ranked_segments ||= begin
             document = SST::Normalizer.call(@parsed_body)
             segments = Segmenter.call(

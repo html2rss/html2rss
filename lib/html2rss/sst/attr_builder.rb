@@ -5,6 +5,7 @@ module Html2rss
     ##
     # Builds typed Attrs from a Nokogiri element (Normalizer-only helper).
     module AttrBuilder
+      # Attribute names promoted into typed Attrs fields (remainder goes to raw).
       TYPED_ATTR_NAMES = %w[href src id class datetime itemprop style srcset type].to_set.freeze
 
       module_function
@@ -12,7 +13,7 @@ module Html2rss
       ##
       # @param nk_node [Nokogiri::XML::Node]
       # @return [Attrs]
-      def call(nk_node)
+      def call(nk_node) # rubocop:disable Metrics/MethodLength
         Attrs.build(
           href: nk_node['href'],
           src: nk_node['src'],

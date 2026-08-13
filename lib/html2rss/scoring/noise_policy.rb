@@ -5,6 +5,9 @@ module Html2rss
     ##
     # Noise / junk chrome eligibility for SST anchors (port of LinkHeuristics#noise_anchor?).
     class NoisePolicy
+      # Child tag names that mark icon-only anchors as noise.
+      ICON_NAMES = %i[img svg].freeze
+
       # @param link_resolver [LinkResolver]
       # @param index [SST::Index]
       def initialize(link_resolver:, index:)
@@ -19,7 +22,7 @@ module Html2rss
       # @param container [SST::Node, nil]
       # @param heading_anchor [Boolean]
       # @return [Boolean]
-      def noise_anchor?(text:, destination_facts:, anchor: nil, container: nil, heading_anchor: false) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
+      def noise_anchor?(text:, destination_facts:, anchor: nil, container: nil, heading_anchor: false) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         return true unless destination_facts
 
         destination_facts.taxonomy_path ||
@@ -56,10 +59,10 @@ module Html2rss
         return false unless anchor
         return false if text.to_s.match?(/\p{Alnum}/)
 
-        !!anchor.find { |n| n.name == :img || n.name == :svg }
+        !!anchor.find { |n| ICON_NAMES.include?(n.name) }
       end
 
-      def utility_landmark_ancestor?(anchor, container)
+      def utility_landmark_ancestor?(anchor, container) # rubocop:disable Metrics/CyclomaticComplexity
         return false unless anchor && container
 
         curr = @index.parent_of(anchor)
