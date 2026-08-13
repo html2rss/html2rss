@@ -30,45 +30,40 @@ module Html2rss
         end
 
         def article_pairs(segmenter)
-          selectors(segmenter).flat_map do |path|
-            article_pairs_for_path(segmenter, path)
+          by_path = relevant_links_by_path(segmenter)
+          top_paths(segmenter, by_path).flat_map do |path|
+            by_path.fetch(path, []).filter_map do |node|
+              article_tag = parent_until_boundary(segmenter, node)
+              next unless article_tag
+
+              [article_tag, node]
+            end
           end
         end
         module_function :article_pairs
         private_class_method :article_pairs
 
-        def article_pairs_for_path(segmenter, path)
-          segmenter.index.each_node.filter_map do |node|
-            next unless node.link?
-            next unless node.tag_path == path
-            next if segmenter.index.ignored_chrome?(node)
-            next unless relevant_anchor?(segmenter, node)
-
-            article_tag = parent_until_boundary(segmenter, node)
-            next unless article_tag
-
-            [article_tag, node]
-          end
-        end
-        module_function :article_pairs_for_path
-        private_class_method :article_pairs_for_path
-
-        def selectors(segmenter)
-          counts = Hash.new(0)
+        def relevant_links_by_path(segmenter)
+          by_path = Hash.new { |hash, path| hash[path] = [] }
           segmenter.index.each_node do |node|
             next unless node.link?
             next if segmenter.index.ignored_chrome?(node)
             next unless relevant_anchor?(segmenter, node)
 
-            counts[node.tag_path] += 1
+            by_path[node.tag_path] << node
           end
+          by_path
+        end
+        module_function :relevant_links_by_path
+        private_class_method :relevant_links_by_path
 
-          counts.select { |_path, count| count >= segmenter.minimum_selector_frequency }
-                .max_by(segmenter.use_top_selectors, &:last)
+        def top_paths(segmenter, by_path)
+          by_path.select { |_path, nodes| nodes.size >= segmenter.minimum_selector_frequency }
+                .max_by(segmenter.use_top_selectors) { |_path, nodes| nodes.size }
                 .map(&:first)
         end
-        module_function :selectors
-        private_class_method :selectors
+        module_function :top_paths
+        private_class_method :top_paths
 
         def relevant_anchor?(segmenter, node)
           facts = segmenter.link_resolver.destination_facts(node)
@@ -82,14 +77,14 @@ module Html2rss
 
         def parent_until_boundary(segmenter, node)
           index = segmenter.index
-          anchor_counts = Hash.new { |h, n| h[n] = count_links(n) }
+          link_counts = Hash.new { |hash, curr| hash[curr] = count_links(curr) }
 
           index.parent_until(node, lambda { |curr|
             return true if %i[body html].include?(curr.name)
             return false if index.ignored_chrome?(curr)
 
             parent = index.parent_of(curr)
-            parent && anchor_counts[parent] > anchor_counts[curr]
+            parent && link_counts[parent] > link_counts[curr]
           })
         end
         module_function :parent_until_boundary

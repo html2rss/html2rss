@@ -81,17 +81,22 @@ module Html2rss
         ##
         # Filters layout wrapper groups and resolves 1-to-1 nested card wrappers.
         class OverlapResolver
+          # Cap pairwise work on dense class grids.
+          MAX_GROUPS = 40
+
           # @param index [SST::Index]
           def initialize(index:)
             @index = index
             @layout_tags = SST::Tags::LAYOUT_NAMES
+            @scorer = Scoring::ClusterScorer.new
           end
 
           # @param groups [Hash{String => Array<SST::Node>}]
           # @return [Hash{String => Array<SST::Node>}]
           def filter_containers(groups)
-            groups.reject do |cls_a, nodes_a|
-              groups.any? { |cls_b, nodes_b| cls_a != cls_b && container_of?(nodes_a, nodes_b) }
+            capped = cap_groups(groups)
+            capped.reject do |cls_a, nodes_a|
+              capped.any? { |cls_b, nodes_b| cls_a != cls_b && container_of?(nodes_a, nodes_b) }
             end
           end
 
@@ -110,6 +115,12 @@ module Html2rss
           end
 
           private
+
+          def cap_groups(groups)
+            return groups if groups.size <= MAX_GROUPS
+
+            groups.sort_by { |_key, nodes| -nodes.size }.first(MAX_GROUPS).to_h
+          end
 
           # rubocop:disable Metrics/MethodLength
           def container_of?(nodes_a, nodes_b)
@@ -142,8 +153,7 @@ module Html2rss
           end
 
           def keep_descendant?(nodes_a, nodes_b)
-            scorer = Scoring::ClusterScorer.new
-            scorer.avg_words(nodes_b) >= 0.8 * scorer.avg_words(nodes_a) &&
+            @scorer.avg_words(nodes_b) >= 0.8 * @scorer.avg_words(nodes_a) &&
               @layout_tags.include?(nodes_b.first.name)
           end
         end
