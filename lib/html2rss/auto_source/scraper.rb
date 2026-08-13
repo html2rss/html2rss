@@ -11,7 +11,7 @@ module Html2rss
     # Detection is intentionally shallow for most scrapers, but instance-based
     # matching is available for scrapers that need to carry expensive selection
     # state forward into extraction.
-    module Scraper
+    module Scraper # rubocop:disable Metrics/ModuleLength -- registry + surface classification stay colocated
       # Root markers indicating likely app-shell/client-rendered surfaces.
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       # Maximum anchors tolerated before app-shell detection is considered unlikely.
@@ -31,6 +31,11 @@ module Html2rss
         SemanticHtml,
         Html
       ].freeze
+
+      # Heuristic scrapers that share one memoized SST::Document per page.
+      HEURISTIC_SCRAPERS = [SemanticHtml, Html].freeze
+      # Scrapers that accept a shared follow-up +request_session+.
+      REQUEST_SESSION_SCRAPERS = [WordpressApi, Sitemap, MetaOembed].freeze
 
       ##
       # Error raised when no suitable scraper is found.
@@ -94,8 +99,10 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
       # @param url [String, Html2rss::Url] The page url.
       # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
+      # @param body [String, nil] raw response body (XML for direct sitemap pages).
       # @param opts [Hash] The options hash.
       # @option opts [Hash] :wordpress_api scraper toggle and configuration
+      # @option opts [Hash] :sitemap scraper toggle and configuration
       # @option opts [Hash] :schema scraper toggle and configuration
       # @option opts [Hash] :microdata scraper toggle and configuration
       # @option opts [Hash] :microformats2 scraper toggle and configuration
@@ -108,22 +115,44 @@ module Html2rss
       # `instances_for` is the main entrypoint for extraction. It lets a scraper
       # decide whether it matches using the same instance that will later yield
       # article hashes, which keeps precomputed state close to the scraper that
-      # owns it.
-      def self.instances_for(parsed_body, url:, request_session: nil,
+      # owns it. Heuristic scrapers share one +SST::Document+ normalized from
+      # +parsed_body+.
+      def self.instances_for(parsed_body, url:, request_session: nil, body: nil, # rubocop:disable Metrics/MethodLength
                              opts: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
+        document = shared_sst_document(parsed_body, opts)
         instances = SCRAPERS.filter_map do |scraper|
           next unless opts.dig(scraper.options_key, :enabled)
+          next if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
-          instance = scraper.new(parsed_body, url:, request_session:, **opts.fetch(scraper.options_key, {}))
-          next unless extractable_instance?(instance, parsed_body)
-
-          instance
+          scraper_opts = opts.fetch(scraper.options_key, {}).except(:enabled)
+          instance = scraper.new(
+            parsed_body, url:, **construction_kwargs(scraper, request_session:, body:, document:), **scraper_opts
+          )
+          instance if extractable_instance?(instance, parsed_body)
         end
-
         raise no_scraper_found_for(parsed_body) if instances.empty?
 
         instances
       end
+
+      def self.construction_kwargs(scraper, request_session:, body:, document:)
+        return { document: } if HEURISTIC_SCRAPERS.include?(scraper)
+
+        {}.tap do |kwargs|
+          kwargs[:request_session] = request_session if REQUEST_SESSION_SCRAPERS.include?(scraper)
+          kwargs[:body] = body if scraper == Sitemap
+        end
+      end
+      private_class_method :construction_kwargs
+
+      def self.shared_sst_document(parsed_body, scraper_config)
+        return unless HEURISTIC_SCRAPERS.any? { scraper_config.dig(_1.options_key, :enabled) }
+
+        SST::Normalizer.call(parsed_body)
+      rescue ArgumentError
+        nil
+      end
+      private_class_method :shared_sst_document
 
       def self.extractable_instance?(instance, parsed_body)
         return instance.extractable? if instance.respond_to?(:extractable?)

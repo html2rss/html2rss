@@ -15,6 +15,7 @@ RSpec.describe Html2rss::AutoSource do
       {
         url:,
         request_session: nil,
+        body:,
         opts: hash_including(
           schema: hash_including(enabled: false),
           html: hash_including(enabled: false)
@@ -124,6 +125,16 @@ RSpec.describe Html2rss::AutoSource do
         expect(articles).to eq([])
         expect(Html2rss::Log).to have_received(:warn)
           .with("#{described_class}: no scraper matched #{url} (no scrapers)")
+      end
+    end
+
+    context 'when the response body is empty' do
+      let(:body) { '' }
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'returns an empty array without raising' do
+        expect(articles).to eq([])
       end
     end
 

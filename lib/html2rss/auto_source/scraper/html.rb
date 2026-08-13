@@ -1,21 +1,11 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Scrapes article-like blocks from plain HTML by looking for repeated link
-      # structures when richer structured data is unavailable.
-      #
-      # The approach is intentionally heuristic:
-      # 1. collect repeated anchor paths
-      # 2. walk upward to a shared container shape
-      # 3. extract the best anchor found inside each container
-      #
-      # This scraper is broader and noisier than `SemanticHtml`, so it acts as a
-      # fallback for pages without stronger semantic signals.
+      # Fallback HTML list/cluster scraper via SST pipeline
+      # (Normalizer → Segmenter → Scoring::Engine → Html::SstArticleExtractor).
       class Html
         include Enumerable
 
@@ -25,53 +15,42 @@ module Html2rss
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
         # Number of most frequent selectors kept for container extraction.
         DEFAULT_USE_TOP_SELECTORS = 5
+        # Maximum articles materialized after eligibility filtering.
+        TOP_K = Scoring::Engine::TOP_K
 
         ##
-        # @return [Symbol] config key used to enable or configure this scraper
+        # @return [Symbol]
         def self.options_key = :html
 
         ##
-        # Probes whether the document appears to contain repeated anchor
-        # structures that this fallback scraper can cluster into article-like
-        # containers.
-        #
-        # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
-        # @return [Boolean] true when the scraper can likely extract articles
+        # @param parsed_body [Nokogiri::HTML::Document]
+        # @return [Boolean]
         def self.articles?(parsed_body)
+          return false unless parsed_body
+
           new(parsed_body, url: DETECTION_BASE_URL).any?
+        rescue ArgumentError
+          false
         end
 
-        ##
-        # Simplify an XPath selector by removing the index notation.
-        # This keeps repeated anchor paths comparable across sibling blocks.
-        #
-        # @param xpath [String] original XPath
-        # @return [String] XPath without positional indexes
-        def self.simplify_xpath(xpath)
-          Discovery::ListCandidates.simplify_xpath(xpath)
-        end
-
-        # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
-        # @param url [String] The base URL.
-        # @param extractor [Class] The extractor class to handle article extraction.
-        # @param opts [Hash] Additional options.
-        # @option opts [Integer] :minimum_selector_frequency minimum count before a selector is considered stable
-        # @option opts [Integer] :use_top_selectors number of top selectors to keep
-        def initialize(parsed_body, url:, extractor: Html2rss::Html::ArticleExtractor, **opts)
+        # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
+        # @param url [String, Html2rss::Url]
+        # @param document [SST::Document, nil] memoized SST document from AutoSource
+        # @param opts [Hash]
+        # @option opts [Boolean] :fallback_anchorless keep anchorless cluster cards
+        # @option opts [Integer] :minimum_selector_frequency list frequency floor
+        # @option opts [Integer] :use_top_selectors list selector budget
+        def initialize(parsed_body = nil, url:, document: nil, **opts)
           @parsed_body = parsed_body
+          @provided_document = document
           @url = url
-          @extractor = extractor
           @opts = opts
           @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
-          @link_heuristics = LinkHeuristics.new(url)
-          @ignored_cache = {}.compare_by_identity
         end
 
-        attr_reader :parsed_body
-
         ##
-        # @yieldparam [Hash] The scraped article hash
-        # @return [Enumerator] Enumerator for the scraped articles
+        # @yieldparam article [Html2rss::Article]
+        # @return [Enumerator]
         def each
           return enum_for(:each) unless block_given?
 
@@ -79,135 +58,68 @@ module Html2rss
         end
 
         ##
-        # @return [Boolean] true when the scraper can likely extract articles
+        # @return [Boolean]
         def extractable?
           articles.any?
-        end
-
-        ##
-        # Decides whether a traversed node has reached a useful article-like
-        # boundary for the generic HTML scraper.
-        #
-        # The predicate prefers containers that add surrounding link context,
-        # which helps the scraper move from a leaf anchor toward a repeated
-        # teaser/card wrapper.
-        #
-        # @param node [Nokogiri::XML::Node] candidate boundary node
-        # @return [Boolean] true when the node is a good extraction boundary
-        def article_tag_condition?(node)
-          # Ignore tags that are below ignored DOM chrome.
-          return false if Html2rss::Html::Navigator.ignored_container_path?(node, @ignored_cache)
-          return true if %w[body html].include?(node.name)
-          return false unless (parent = node.parent)
-
-          anchor_count(parent) > anchor_count(node)
         end
 
         private
 
         def articles
           @articles ||= begin
-            extracted = each_article_tag.filter_map do |article_tag, selected_anchor|
-              extract_article(article_tag, selected_anchor:)
-            end
-
-            extracted += find_anchorless_articles if @fallback_anchorless
+            extracted = list_articles
+            extracted += cluster_articles if @fallback_anchorless && extracted.empty?
             extracted
           end
+        rescue ArgumentError
+          []
         end
 
-        def find_anchorless_articles
-          Discovery::DomClustering.call(
-            parsed_body,
-            minimum_selector_frequency:
-          ).map do |node|
-            @extractor.new(node, base_url: @url, selected_anchor: nil, fallback_anchorless: true).call
-          end
-        end
-
-        ##
-        # @return [Integer]
-        def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
-
-        ##
-        # @return [Boolean]
-        def use_top_selectors = @opts[:use_top_selectors] || DEFAULT_USE_TOP_SELECTORS
-
-        ##
-        # @param node [Nokogiri::XML::Node]
-        # @return [Integer]
-        def anchor_count(node)
-          (@anchor_counts ||= {}.compare_by_identity)[node] ||= node.name == 'a' ? 1 : node.css('a').size
-        end
-
-        ##
-        # @param node [Nokogiri::XML::Node]
-        # @return [Boolean]
-        def relevant_anchor?(node)
-          destination_facts = @link_heuristics.destination_facts(node)
-          return false unless destination_facts
-
-          !noise_anchor?(node, destination_facts:)
-        end
-
-        ##
-        # @yield [article_tag, selected_anchor]
-        # @yieldparam article_tag [Nokogiri::XML::Node]
-        # @yieldparam selected_anchor [Nokogiri::XML::Node]
-        # @return [Enumerator, nil]
-        def each_article_tag(&block)
-          return enum_for(:each_article_tag) unless block
-
-          anchor_filter = ->(node) { relevant_anchor?(node) }
-          boundary_condition = ->(node) { article_tag_condition?(node) }
-
-          list_candidates.each_article_tag(anchor_filter:, boundary_condition:, &block)
-        end
-
-        ##
-        # @param article_tag [Nokogiri::XML::Node]
-        # @param selected_anchor [Nokogiri::XML::Node, nil]
-        # @return [Hash, nil]
-        def extract_article(article_tag, selected_anchor: nil)
-          selected_anchor ||= preferred_anchor_for(article_tag)
-          return unless selected_anchor
-          return if noise_anchor?(
-            selected_anchor,
-            destination_facts: @link_heuristics.destination_facts(selected_anchor),
-            container: article_tag
-          )
-
-          @extractor.call(article_tag, base_url: @url, selected_anchor:)
-        end
-
-        ##
-        # @param anchor [Nokogiri::XML::Node]
-        # @param destination_facts [LinkHeuristics::DestinationFacts, nil]
-        # @return [Boolean]
-        def noise_anchor?(anchor, destination_facts:, container: nil)
-          (@noise_anchors ||= {}.compare_by_identity)[anchor] ||= begin
-            text = Html2rss::Html::Navigator.extract_visible_text(anchor).to_s.strip
-            @link_heuristics.noise_anchor?(text:, destination_facts:, anchor:, container:)
-          end
-        end
-
-        ##
-        # @param article_tag [Nokogiri::XML::Node]
-        # @return [Nokogiri::XML::Node, nil]
-        def preferred_anchor_for(article_tag)
-          article_tag.css(Html2rss::Html::Navigator::MAIN_ANCHOR_SELECTOR).find { relevant_anchor?(_1) } ||
-            Html2rss::Html::Navigator.main_anchor_for(article_tag)
-        end
-
-        ##
-        # @return [Discovery::ListCandidates]
-        def list_candidates
-          Discovery::ListCandidates.new(
-            parsed_body,
+        def list_articles
+          segments = Segmenter.call(
+            document,
+            base_url: @url,
+            strategy: :list,
+            permit_unanchored: false,
             minimum_selector_frequency:,
-            use_top_selectors:
+            use_top_selectors:,
+            link_resolver:
           )
+          materialize(engine.select_eligible(segments, limit: TOP_K))
         end
+
+        def cluster_articles
+          segments = Segmenter.call(
+            document,
+            base_url: @url,
+            strategy: :cluster,
+            permit_unanchored: true,
+            minimum_selector_frequency:,
+            link_resolver:
+          )
+          materialize(engine.select_eligible(segments, limit: TOP_K), fallback_anchorless: true)
+        end
+
+        def materialize(ranked, fallback_anchorless: false)
+          ranked.filter_map do |entry|
+            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class, fallback_anchorless:)
+          end
+        end
+
+        def engine
+          @engine ||= Scoring::Engine.new(link_resolver:)
+        end
+
+        def link_resolver
+          @link_resolver ||= Scoring::LinkResolver.new(@url)
+        end
+
+        def document
+          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
+        end
+
+        def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
+        def use_top_selectors = @opts[:use_top_selectors] || DEFAULT_USE_TOP_SELECTORS
       end
     end
   end

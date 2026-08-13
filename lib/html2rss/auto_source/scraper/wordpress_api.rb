@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
+require 'cgi'
 require 'date'
-require 'nokogiri'
 
 module Html2rss
   class AutoSource
@@ -153,7 +153,11 @@ module Html2rss
         end
 
         def rendered_text(value)
-          rendered_html(value)&.then { Nokogiri::HTML.fragment(_1).text.strip }
+          html = rendered_html(value)
+          return unless html
+
+          text = CGI.unescapeHTML(html.gsub(/<[^>]*>/m, ' ')).gsub(/\s+/, ' ').strip
+          text unless text.empty?
         end
 
         def rendered_html(value)

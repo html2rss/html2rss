@@ -180,4 +180,30 @@ RSpec.describe Html2rss::Html::Navigator do
       expect(described_class.descendant_of?(document.at_css('#other'), child)).to be(false)
     end
   end
+
+  describe '.ignored_container_path?' do
+    let(:document) do
+      Nokogiri::HTML(<<~HTML)
+        <html><body>
+          <nav><a id="nav-link" href="/home">Home</a></nav>
+          <main><article><a id="story" href="/story">Story</a></article></main>
+          <footer><span id="foot">x</span></footer>
+        </body></html>
+      HTML
+    end
+
+    it 'returns true for nodes under nav/footer chrome', :aggregate_failures do
+      expect(described_class.ignored_container_path?(document.at_css('#nav-link'))).to be(true)
+      expect(described_class.ignored_container_path?(document.at_css('#foot'))).to be(true)
+    end
+
+    it 'returns false for content nodes and memoizes via identity cache', :aggregate_failures do
+      cache = {}.compare_by_identity
+      node = document.at_css('#story')
+
+      expect(described_class.ignored_container_path?(node, cache)).to be(false)
+      expect(described_class.ignored_container_path?(node, cache)).to be(false)
+      expect(cache).to include(node)
+    end
+  end
 end

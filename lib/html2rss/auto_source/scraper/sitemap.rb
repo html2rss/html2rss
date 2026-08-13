@@ -42,14 +42,16 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @param url [String, Html2rss::Url] canonical page URL
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
+        # @param body [String, nil] raw response body for direct sitemap XML parsing
         # @option _opts [Float] :min_priority minimum priority score (default: 0.3)
         # @option _opts [Integer] :max_age_days maximum entry age in days (default: 30)
-        def initialize(parsed_body, url:, request_session: nil, **opts)
+        def initialize(parsed_body, url:, request_session: nil, body: nil, **opts)
           @parsed_body = parsed_body
+          @body = body
           @url = Html2rss::Url.from_absolute(url)
           @request_session = request_session
-          @min_priority = opts.fetch(:min_priority, Discovery::Sitemap::DEFAULT_MIN_PRIORITY)
-          @max_age_days = opts.fetch(:max_age_days, Discovery::Sitemap::DEFAULT_MAX_AGE_DAYS)
+          @min_priority = opts.fetch(:min_priority, Scraper::Sitemap::Parser::DEFAULT_MIN_PRIORITY)
+          @max_age_days = opts.fetch(:max_age_days, Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS)
         end
 
         ##
@@ -71,7 +73,7 @@ module Html2rss
 
         private
 
-        attr_reader :parsed_body, :url, :request_session, :min_priority, :max_age_days
+        attr_reader :parsed_body, :body, :url, :request_session, :min_priority, :max_age_days
 
         def fetch_and_parse_entries
           entries = parse_direct_sitemap
@@ -87,16 +89,17 @@ module Html2rss
         end
 
         def parse_sitemap_xml(xml_body)
-          result = Discovery::Sitemap.call(xml_body, min_priority:, max_age_days:)
+          result = Scraper::Sitemap::Parser.call(xml_body, min_priority:, max_age_days:)
           return fetch_sub_sitemaps(result.sub_sitemap_urls) if result.sub_sitemap_urls.any?
 
           result.entries
         end
 
         def parse_direct_sitemap
+          return [] unless body
           return [] unless parsed_body.at_xpath('//*[local-name()="urlset" or local-name()="sitemapindex"]')
 
-          Discovery::Sitemap.call(parsed_body.to_s, min_priority:, max_age_days:).entries
+          Scraper::Sitemap::Parser.call(body, min_priority:, max_age_days:).entries
         end
 
         def fetch_sub_sitemaps(sub_urls)
@@ -114,7 +117,7 @@ module Html2rss
           xml = fetch_xml(sub_url)
           return [] unless xml
 
-          Discovery::Sitemap.call(xml, min_priority:, max_age_days:).entries
+          Scraper::Sitemap::Parser.call(xml, min_priority:, max_age_days:).entries
         rescue Html2rss::RequestService::RequestBudgetExceeded
           Log.warn("#{self.class}: sitemap fan-out stopped — request budget exhausted")
           nil

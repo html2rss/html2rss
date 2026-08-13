@@ -113,6 +113,38 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     it 'returns scraper instances that can extract articles' do
       expect(described_class.instances_for(parsed_body, url:)).to all(respond_to(:each))
     end
+
+    context 'when SemanticHtml and Html are both enabled' do
+      let(:opts) do
+        Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].transform_values do |config|
+          config.merge(enabled: false)
+        end.merge(
+          semantic_html: { enabled: true },
+          html: { enabled: true }
+        )
+      end
+      let(:captured_documents) { [] }
+
+      before do
+        allow(Html2rss::SST::Normalizer).to receive(:call).and_call_original
+
+        [Html2rss::AutoSource::Scraper::SemanticHtml, Html2rss::AutoSource::Scraper::Html].each do |klass|
+          allow(klass).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+            captured_documents << kwargs.fetch(:document)
+            original.call(*args, **kwargs)
+          end
+        end
+      end
+
+      it 'normalizes once and shares the same SST::Document', :aggregate_failures do
+        described_class.instances_for(parsed_body, url:, opts:)
+
+        expect(Html2rss::SST::Normalizer).to have_received(:call).once
+        expect(captured_documents.size).to eq(2)
+        expect(captured_documents).to all(be_a(Html2rss::SST::Document))
+        expect(captured_documents[0]).to equal(captured_documents[1])
+      end
+    end
   end
 
   describe Html2rss::AutoSource::Scraper::NoScraperFound do

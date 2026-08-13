@@ -80,6 +80,36 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       expect(articles.map { _1[:id] }).to eq(['/2024/04/wordpress-api-post/', '/2024/04/excerpt-only-post/'])
     end
 
+    it 'strips nested tags and HTML entities from rendered titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      posts_with_markup = <<~JSON
+        [
+          {
+            "id": 99,
+            "title": { "rendered": "<strong>Tom &amp; Jerry</strong> — <em>Nested</em>" },
+            "content": { "rendered": "<p>Body</p>" },
+            "excerpt": { "rendered": "<p>Excerpt</p>" },
+            "link": "https://example.com/2024/04/tom-jerry/",
+            "date": "2024-04-03T12:00:00",
+            "categories": []
+          }
+        ]
+      JSON
+      allow(request_session).to receive(:follow_up).and_return(
+        Html2rss::RequestService::Response.new(
+          body: posts_with_markup,
+          url: Html2rss::Url.from_absolute(
+            'https://example.com/wp-json/wp/v2/posts?_fields=id,title,excerpt,content,link,date,categories&per_page=100'
+          ),
+          headers: { 'content-type' => 'application/json' }
+        )
+      )
+
+      article = described_class.new(parsed_body, url:, request_session:).each.first
+
+      expect(article[:title]).to eq('Tom & Jerry — Nested')
+      expect(article[:description]).to eq('<p>Body</p>')
+    end
+
     context 'when the request session is unavailable' do
       let(:request_session) { nil }
 

@@ -24,8 +24,8 @@ module Html2rss
         },
         sitemap: {
           enabled: true,
-          min_priority: Discovery::Sitemap::DEFAULT_MIN_PRIORITY,
-          max_age_days: Discovery::Sitemap::DEFAULT_MAX_AGE_DAYS
+          min_priority: Scraper::Sitemap::Parser::DEFAULT_MIN_PRIORITY,
+          max_age_days: Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS
         },
         schema: {
           enabled: true
@@ -85,6 +85,7 @@ module Html2rss
     # @return [void]
     def initialize(response, opts = DEFAULT_CONFIG, request_session: nil)
       @parsed_body = response.parsed_body
+      @body = response.body
       @url = response.url
       @opts = opts
       @request_session = request_session
@@ -113,10 +114,12 @@ module Html2rss
 
     private
 
-    attr_reader :url, :parsed_body, :request_session
+    attr_reader :url, :parsed_body, :body, :request_session
 
     def extract_articles
-      scraper_instances = Scraper.instances_for(parsed_body, url:, request_session:, opts: @opts[:scraper])
+      scraper_instances = Scraper.instances_for(
+        parsed_body, url:, request_session:, body:, opts: @opts[:scraper]
+      )
       return [] if scraper_instances.empty?
 
       # Scrapers are run sequentially.
@@ -127,8 +130,15 @@ module Html2rss
     end
 
     def run_scraper(instance)
-      instance.each.map do |article_hash|
-        Article.new(**article_hash, scraper: instance.class)
+      instance.each.map do |item|
+        case item
+        when Article
+          item
+        when Hash
+          Article.new(**item, scraper: instance.class)
+        else
+          raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
+        end
       end
     end
 

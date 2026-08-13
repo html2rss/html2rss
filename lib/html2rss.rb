@@ -3,7 +3,10 @@
 require 'zeitwerk'
 
 loader = Zeitwerk::Loader.for_gem
-loader.inflector.inflect('cli' => 'CLI')
+loader.inflector.inflect(
+  'cli' => 'CLI',
+  'sst' => 'SST'
+)
 loader.setup
 
 require 'logger'
@@ -67,7 +70,10 @@ module Html2rss
   # rubocop:disable Metrics/ParameterLists
 
   ##
-  # Scrapes the provided URL and returns an RSS object.
+  # Scrapes the provided URL without hand-written selectors and returns an RSS object.
+  #
+  # Builds an auto_source config, then FeedPipeline runs structured scrapers and
+  # (when needed) the SST heuristic path — see docs/auto_source.md.
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy to use
@@ -86,7 +92,9 @@ module Html2rss
   end
 
   ##
-  # Scrapes the provided URL and returns a JSONFeed 1.1 hash.
+  # Scrapes the provided URL without hand-written selectors and returns a JSONFeed 1.1 hash.
+  #
+  # Same auto_source pipeline as {.auto_source}; see docs/auto_source.md.
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy to use

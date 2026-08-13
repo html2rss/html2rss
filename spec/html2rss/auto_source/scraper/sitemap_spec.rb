@@ -43,7 +43,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     let(:link_html) { '<html><head><link rel="sitemap" href="/sitemap.xml"></head></html>' }
 
     it 'yields articles parsed from direct XML body', :aggregate_failures do
-      articles = described_class.new(Nokogiri::HTML(leaf_sitemap_xml), url:).to_a
+      articles = described_class.new(Nokogiri::HTML(leaf_sitemap_xml), url:, body: leaf_sitemap_xml).to_a
       expect(articles.size).to eq(1)
       expect(articles.first[:url]).to eq('https://example.com/post-1')
     end
