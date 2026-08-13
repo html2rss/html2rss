@@ -584,33 +584,14 @@ RSpec.describe Html2rss::Config do
 
     let(:config) do
       {
-        channel: { url: 'https://example.com/articles', language: channel_language },
-        selectors: { items: { selector: '.item' } },
-        headers: custom_headers
+        channel: { url: 'https://example.com/articles', language: 'fr' },
+        selectors: { items: { selector: '.item' } }
       }
     end
 
-    let(:custom_headers) { { 'accept' => 'application/json', 'x-custom-id' => '123' } }
-    let(:channel_language) { 'fr' }
-    let(:expected_headers) do
-      {
-        'Host' => 'example.com',
-        'Accept-Language' => 'fr',
-        'X-Custom-Id' => '123',
-        'Accept' => "application/json,#{Html2rss::Config::RequestHeaders::DEFAULT_ACCEPT}"
-      }
-    end
-
-    it 'normalizes caller provided headers and adds defaults' do
-      expect(headers).to include(expected_headers)
-    end
-
-    context 'when the channel language is missing' do
-      let(:channel_language) { nil }
-
-      it 'falls back to en-US for Accept-Language' do
-        expect(headers).to include('Accept-Language' => 'en-US,en;q=0.9')
-      end
+    # Normalization details live in request_headers_spec; Config only needs Accept-Language smoke.
+    it 'exposes Accept-Language derived from channel language' do
+      expect(headers).to include('Accept-Language' => 'fr')
     end
   end
 end

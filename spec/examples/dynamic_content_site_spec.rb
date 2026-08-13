@@ -71,9 +71,11 @@ RSpec.describe 'Dynamic Content Site Configuration' do
     ]
   end
 
-  it 'builds the channel with the configured metadata', :aggregate_failures do
-    expect(feed.channel.title).to eq('ACME Dynamic Content Site News')
-    expect(feed.channel.link).to eq('https://example.com/news')
+  it_behaves_like 'example feed channel metadata',
+                  title: 'ACME Dynamic Content Site News',
+                  link: 'https://example.com/news'
+
+  it 'includes Selectors in the channel generator' do
     expect(feed.channel.generator).to include('Selectors')
   end
 

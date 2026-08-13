@@ -81,11 +81,10 @@ RSpec.describe 'Multi-Language Site Configuration' do
     ]
   end
 
-  it 'applies the configured channel metadata', :aggregate_failures do
-    expect(feed.channel.title).to eq('ACME Multi-Language Site News')
-    expect(feed.channel.link).to eq('https://example.com/')
-    expect(feed.channel.language).to eq('en')
-  end
+  it_behaves_like 'example feed channel metadata',
+                  title: 'ACME Multi-Language Site News',
+                  link: 'https://example.com/',
+                  language: 'en'
 
   it 'renders every post with language-prefixed titles and sanitised body copy' do
     expect_feed_items(items, expected_items)

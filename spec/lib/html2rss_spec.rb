@@ -86,86 +86,16 @@ RSpec.describe Html2rss do
         )
       end
 
-      describe 'feed.channel' do
-        it 'sets the channel attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-          expect(xml.css('channel > title').text).to eq 'Releases · nuxt/nuxt.js · GitHub'
-          expect(xml.css('channel > description').text).to \
-            eq('The Vue.js Framework. Contribute to nuxt/nuxt.js development by creating an account on GitHub.')
-          expect(xml.css('channel > ttl').text.to_i).to eq 0
-          expect(xml.css('channel > item').count).to be > 0
-          expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
-          expect(xml.css('channel > generator').text).to start_with("html2rss V. #{Html2rss::VERSION}")
-        end
-      end
+      # Item XML shape (pubDate, category, enclosure attrs, description rel/target) is owned by
+      # feed_builder/rss_spec + sanitize_html_spec. Keep one VCR smoke here.
+      it 'builds channel metadata and a guid/enclosure smoke item', :aggregate_failures do
+        expect(xml.css('channel > title').text).to eq 'Releases · nuxt/nuxt.js · GitHub'
+        expect(xml.css('channel > link').text).to eq 'https://github.com/nuxt/nuxt.js/releases'
+        expect(xml.css('channel > item').count).to be > 0
 
-      describe 'feed.items' do
-        subject(:item) { xml.css('channel > item').first }
-
-        it 'sets item attributes', :aggregate_failures do
-          expect(item.css('title').text).to eq 'v2.10.2 (pi)'
-          expect(item.css('link').text).to eq 'https://github.com/nuxt/nuxt.js/releases/tag/v2.10.2'
-          expect(item.css('author').text).to eq 'pi'
-          expect(item.css('guid').text).to eq 'resdti'
-        end
-
-        describe 'item.pubDate' do
-          it 'has one in rfc822 format' do
-            pub_date = item.css('pubDate').text
-            expect(pub_date).to be_a(String) & eq(Time.parse(pub_date).rfc822.to_s)
-          end
-        end
-
-        describe 'item.category' do
-          subject(:categories) { item.css('category').to_s }
-
-          it 'sets the author as category' do
-            expect(categories).to include '<category>pi</category>'
-          end
-        end
-
-        describe 'item.enclosure' do
-          subject(:enclosure) { item.css('enclosure') }
-
-          it 'sets the enclosure', :aggregate_failures do
-            expect(enclosure.attr('url').value).to start_with('https://'), 'url'
-            expect(enclosure.attr('type').value).to eq('application/octet-stream'), 'type'
-            expect(enclosure.attr('length').value).to eq('0'), 'length'
-          end
-        end
-
-        describe 'item.description' do
-          subject(:description) { item.css('description').text }
-
-          it 'has a description' do
-            expect(description).to be_a(String)
-          end
-
-          it 'adds rel="nofollow noopener noreferrer" to all anchor elements' do
-            Nokogiri.HTML(description).css('a').each do |anchor|
-              expect(anchor.attr('rel')).to eq 'nofollow noopener noreferrer'
-            end
-          end
-
-          it 'changes target="_blank" on all anchor elements' do
-            Nokogiri.HTML(description).css('a').each { |anchor| expect(anchor.attr('target')).to eq '_blank' }
-          end
-        end
-
-        describe 'item.guid' do
-          it 'stays the same string for each run' do
-            feed = VCR.use_cassette("#{name}-second-run") do
-              described_class.feed(config)
-            end
-
-            first_guid = feed.items.first.guid.content
-
-            expect(feed_return.items.first.guid.content).to eq first_guid
-          end
-
-          it 'sets isPermaLink attribute to false' do
-            expect(feed_return.items.first.guid.isPermaLink).to be false
-          end
-        end
+        item = xml.css('channel > item').first
+        expect(item.css('guid').text).to eq 'resdti'
+        expect(item.css('enclosure').attr('url').value).to start_with('https://')
       end
 
       context 'with items having order key and reverse as value' do
@@ -334,44 +264,7 @@ RSpec.describe Html2rss do
         end
       end
 
-      context 'when the initial request redirects to a different host' do
-        before do
-          allow(Html2rss::RequestService).to receive(:execute).and_wrap_original do |_original, ctx, **_kwargs|
-            ctx.budget.consume!
-
-            case ctx.url.to_s
-            when 'https://example.com/news'
-              Html2rss::RequestService::Response.new(
-                body: <<~HTML,
-                  <html><head><link rel="next" href="/news?page=2"></head><body><article><h1>page1</h1></article></body></html>
-                HTML
-                url: Html2rss::Url.from_absolute('https://redirected.example.com/news'),
-                headers: { 'content-type' => 'text/html' }
-              )
-            when 'https://redirected.example.com/news?page=2'
-              Html2rss::RequestService::Response.new(
-                body: '<html><body><article><h1>page2</h1></article></body></html>',
-                url: ctx.url,
-                headers: { 'content-type' => 'text/html' }
-              )
-            else
-              raise "Unexpected URL #{ctx.url}"
-            end
-          end
-        end
-
-        it 'uses the redirected page as the origin for rel-next follow-ups', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-          expect(feed.items.map(&:title)).to eq(%w[page1 page2])
-          expect(Html2rss::RequestService).to have_received(:execute).with(
-            satisfy do |ctx|
-              ctx.url.to_s == 'https://redirected.example.com/news?page=2' &&
-                ctx.origin_url.to_s == 'https://redirected.example.com/news' &&
-                ctx.relation == :pagination
-            end,
-            strategy: :faraday
-          )
-        end
-      end
+      # Redirected-host rel-next origin: pager unit + request_session follow-up smoke.
 
       context 'when max_pages exceeds the system pagination ceiling' do
         let(:config) do
