@@ -43,18 +43,21 @@ module Html2rss
         module_function :collect_containers
         private_class_method :collect_containers
 
+        TAG_MASKS = { article: 1, section: 2, li: 4, tr: 8, div: 16 }.freeze
+        private_constant :TAG_MASKS
+
         # Single O(N) post-order pass: mark candidate nodes that contain a same-name candidate.
         def mark_non_leaf_candidates(root) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
           non_leaf = Set.new.compare_by_identity
           visit = lambda do |node|
-            seen = Hash.new(false)
+            seen_mask = 0
             node.children.each do |child|
-              child_seen = visit.call(child)
-              child_seen.each_key { |name| seen[name] = true }
-              seen[child.name] = true if CANDIDATE_NAMES.include?(child.name)
+              child_mask = visit.call(child)
+              seen_mask |= child_mask | (TAG_MASKS[child.name] || 0)
             end
-            non_leaf.add(node) if CANDIDATE_NAMES.include?(node.name) && seen[node.name]
-            seen
+            node_mask = TAG_MASKS[node.name]
+            non_leaf.add(node) if node_mask && seen_mask.anybits?(node_mask)
+            seen_mask
           end
           visit.call(root)
           non_leaf
