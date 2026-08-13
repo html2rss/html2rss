@@ -274,6 +274,32 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(config_with_unknown_strategy)).to be_failure
     end
 
+    context 'when channel includes author and image' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com', author: 'Jane Doe', image: 'https://example.com/logo.png' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+        }
+      end
+
+      it 'accepts valid author and image' do
+        expect(described_class.validate(config)).to be_success
+      end
+    end
+
+    context 'when channel image has invalid format' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com', image: 'not-a-valid-url' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+        }
+      end
+
+      it 'rejects the invalid image format' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
     it 'accepts strategies registered after validator class load' do # rubocop:disable RSpec/ExampleLength
       described_class.validate(config)
       Html2rss::RequestService.register_strategy(:runtime_custom, Class.new)

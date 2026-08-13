@@ -24,6 +24,8 @@ module Html2rss
         optional(:language).maybe(:string, format?: LANGUAGE_FORMAT_REGEX)
         optional(:ttl).maybe(:integer, gt?: 0)
         optional(:time_zone).maybe(:string)
+        optional(:author).maybe(:string)
+        optional(:image).maybe(:string, format?: URI_REGEXP)
       end
 
       # Contract for a stylesheet entry in `stylesheets`.
@@ -132,15 +134,20 @@ module Html2rss
 
       # URL validation delegated to Url class
       rule(:channel) do
-        next unless values[:channel]&.key?(:url)
+        if (url_string = values.dig(:channel, :url)) && !url_string.empty?
+          begin
+            Html2rss::Url.for_channel(url_string)
+          rescue ArgumentError => error
+            key(%i[channel url]).failure(error.message)
+          end
+        end
 
-        url_string = values[:channel][:url]
-        next if url_string.nil? || url_string.empty?
-
-        begin
-          Html2rss::Url.for_channel(url_string)
-        rescue ArgumentError => error
-          key(%i[channel url]).failure(error.message)
+        if (image_string = values.dig(:channel, :image)) && !image_string.empty?
+          begin
+            Html2rss::Url.from_absolute(image_string)
+          rescue ArgumentError => error
+            key(%i[channel image]).failure(error.message)
+          end
         end
       end
     end

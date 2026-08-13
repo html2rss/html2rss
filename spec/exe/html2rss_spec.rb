@@ -120,9 +120,9 @@ RSpec.describe 'exe/html2rss', :slow do
 
         expect(output).to include(
           '<title>Local Test Feed</title>',
-          '<title>Item 1</title>',
+          '<title>First Post Item</title>',
           '<link>https://example.com/post-1</link>',
-          '<title>Item 2</title>',
+          '<title>Second Post Item</title>',
           '<link>https://example.com/post-2</link>'
         )
       end
@@ -135,7 +135,8 @@ RSpec.describe 'exe/html2rss', :slow do
         expect(output).to include(
           '<channel>',
           '<title>example.com: Blog</title>',
-          '<link>https://example.com/blog</link>'
+          '<link>https://example.com/blog</link>',
+          '<title>First Post Item</title>'
         )
       end
     end
