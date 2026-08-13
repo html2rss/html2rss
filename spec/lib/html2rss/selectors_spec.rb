@@ -23,15 +23,6 @@ RSpec.describe Html2rss::Selectors do
     HTML
   end
 
-  describe '#initialize' do
-    it 'raises an error if the URL and link selectors are both present' do
-      selectors[:link] = {}
-      selectors[:url] = {}
-
-      expect { instance }.to raise_error(described_class::InvalidSelectorName, /either use "url" or "link"/)
-    end
-  end
-
   describe '#articles' do
     subject(:titles) { instance.articles.map(&:title) }
 

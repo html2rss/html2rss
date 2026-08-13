@@ -107,7 +107,7 @@ RSpec.describe Html2rss::Config do
                         { href: '/special.css', type: 'text/css' }],
           channel: { language: 'en', url: String },
           selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                       link: { extractor: 'href', selector: '#src-horo-today' } }
+                       url: { extractor: 'href', selector: '#src-horo-today' } }
         }
       end
 
@@ -126,7 +126,7 @@ RSpec.describe Html2rss::Config do
                       { href: '/special.css', type: 'text/css' }],
         channel: { language: 'en', url: 'http://example.com' },
         selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                     link: { extractor: 'href', selector: '#src-horo-today' } }
+                     url: { extractor: 'href', selector: '#src-horo-today' } }
       }
     end
 
@@ -477,7 +477,7 @@ RSpec.describe Html2rss::Config do
                         { href: '/special.css', type: 'text/css' }],
           channel: { language: 'en', url: 'http://example.com' },
           selectors: { description: { selector: 'p' }, items: { selector: 'div.main-horoscope' },
-                       link: { extractor: 'href', selector: '#src-horo-today' } }
+                       url: { extractor: 'href', selector: '#src-horo-today' } }
         }
       end
 
