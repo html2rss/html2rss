@@ -29,7 +29,8 @@ module Html2rss
         # @param opts [Hash] scraper-specific options
         # @option opts [Boolean] :fallback_anchorless whether to keep containers without a primary anchor
         def initialize(parsed_body = nil, url:, document: nil, **opts)
-          @document = document || SST::Normalizer.call(parsed_body)
+          @parsed_body = parsed_body
+          @provided_document = document
           @url = url
           @permit_unanchored = opts.fetch(:fallback_anchorless, false)
         end
@@ -62,7 +63,7 @@ module Html2rss
         def ranked_segments
           @ranked_segments ||= begin
             segments = Segmenter.call(
-              @document,
+              document,
               base_url: @url,
               strategy: :semantic,
               permit_unanchored: @permit_unanchored
@@ -70,6 +71,10 @@ module Html2rss
             link_resolver = Scoring::LinkResolver.new(@url)
             Scoring::Engine.new(link_resolver:).rank_top(segments, limit: TOP_K)
           end
+        end
+
+        def document
+          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
         end
       end
     end

@@ -117,8 +117,9 @@ module Html2rss
     attr_reader :url, :parsed_body, :body, :request_session
 
     def extract_articles
-      scraper_instances = Scraper.instances_for(parsed_body, url:, request_session:, body:,
-                                                           opts: @opts[:scraper])
+      scraper_instances = Scraper.instances_for(
+        parsed_body, url:, request_session:, body:, opts: @opts[:scraper]
+      )
       return [] if scraper_instances.empty?
 
       # Scrapers are run sequentially.

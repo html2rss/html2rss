@@ -41,7 +41,8 @@ module Html2rss
         # @option opts [Integer] :minimum_selector_frequency list frequency floor
         # @option opts [Integer] :use_top_selectors list selector budget
         def initialize(parsed_body = nil, url:, document: nil, **opts)
-          @document = document || SST::Normalizer.call(parsed_body)
+          @parsed_body = parsed_body
+          @provided_document = document
           @url = url
           @opts = opts
           @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
@@ -76,7 +77,7 @@ module Html2rss
 
         def list_articles
           segments = Segmenter.call(
-            @document,
+            document,
             base_url: @url,
             strategy: :list,
             permit_unanchored: false,
@@ -88,7 +89,7 @@ module Html2rss
 
         def cluster_articles
           segments = Segmenter.call(
-            @document,
+            document,
             base_url: @url,
             strategy: :cluster,
             permit_unanchored: true,
@@ -105,6 +106,10 @@ module Html2rss
 
         def engine
           @engine ||= Scoring::Engine.new(link_resolver: Scoring::LinkResolver.new(@url))
+        end
+
+        def document
+          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
         end
 
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY

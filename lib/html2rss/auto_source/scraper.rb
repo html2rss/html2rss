@@ -99,6 +99,15 @@ module Html2rss
       # @param request_session [Html2rss::RequestSession, nil] Shared follow-up session.
       # @param body [String, nil] raw response body (XML for direct sitemap pages).
       # @param opts [Hash] The options hash.
+      # @option opts [Hash] :wordpress_api scraper toggle and configuration
+      # @option opts [Hash] :sitemap scraper toggle and configuration
+      # @option opts [Hash] :schema scraper toggle and configuration
+      # @option opts [Hash] :microdata scraper toggle and configuration
+      # @option opts [Hash] :microformats2 scraper toggle and configuration
+      # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :meta_oembed scraper toggle and configuration
+      # @option opts [Hash] :semantic_html scraper toggle and configuration
+      # @option opts [Hash] :html scraper toggle and configuration
       # @return [Array<Object>] An array of scraper instances that can handle the parsed body.
       #
       # `instances_for` is the main entrypoint for extraction. It lets a scraper
@@ -106,29 +115,34 @@ module Html2rss
       # article hashes, which keeps precomputed state close to the scraper that
       # owns it. Heuristic scrapers share one +SST::Document+ normalized from
       # +parsed_body+.
-      def self.instances_for(parsed_body, url:, request_session: nil, body: nil,
+      def self.instances_for(parsed_body, url:, request_session: nil, body: nil, # rubocop:disable Metrics/MethodLength
                              opts: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper])
-        sst_document = nil
+        document = shared_sst_document(parsed_body, opts)
         instances = SCRAPERS.filter_map do |scraper|
           next unless opts.dig(scraper.options_key, :enabled)
 
           scraper_opts = opts.fetch(scraper.options_key, {})
-          if HEURISTIC_SCRAPERS.include?(scraper)
-            sst_document ||= SST::Normalizer.call(parsed_body)
-            instance = scraper.new(parsed_body, url:, request_session:, body:, document: sst_document,
-                                                **scraper_opts)
-          else
-            instance = scraper.new(parsed_body, url:, request_session:, body:, **scraper_opts)
-          end
-          next unless extractable_instance?(instance, parsed_body)
-
-          instance
+          instance = if HEURISTIC_SCRAPERS.include?(scraper)
+                       scraper.new(parsed_body, url:, request_session:, body:, document:, **scraper_opts)
+                     else
+                       scraper.new(parsed_body, url:, request_session:, body:, **scraper_opts)
+                     end
+          instance if extractable_instance?(instance, parsed_body)
         end
 
         raise no_scraper_found_for(parsed_body) if instances.empty?
 
         instances
       end
+
+      def self.shared_sst_document(parsed_body, scraper_config)
+        return unless HEURISTIC_SCRAPERS.any? { scraper_config.dig(_1.options_key, :enabled) }
+
+        SST::Normalizer.call(parsed_body)
+      rescue ArgumentError
+        nil
+      end
+      private_class_method :shared_sst_document
 
       def self.extractable_instance?(instance, parsed_body)
         return instance.extractable? if instance.respond_to?(:extractable?)
