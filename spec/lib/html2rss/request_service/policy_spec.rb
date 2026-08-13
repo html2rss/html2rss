@@ -118,6 +118,31 @@ RSpec.describe Html2rss::RequestService::Policy do
       end
     end
 
+    context 'when DNS resolution returns no addresses' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
+
+      before do
+        allow(resolver).to receive(:each_address).with('example.com')
+      end
+
+      it 'rejects the request' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /example.com/)
+      end
+    end
+
+    context 'when DNS resolution encounters a socket error' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
+
+      before do
+        allow(resolver).to receive(:each_address).with('example.com')
+                                                 .and_raise(SocketError, 'getaddrinfo: nodename nor servname provided')
+      end
+
+      it 'rejects the request' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /example.com/)
+      end
+    end
+
     context 'when the host resolves to an IPv6 loopback address' do
       let(:url) { Html2rss::Url.from_absolute('https://example.com/feed') }
 
@@ -229,6 +254,37 @@ RSpec.describe Html2rss::RequestService::Policy do
       let(:ip) { '93.184.216.34' }
 
       it 'allows the response' do
+        expect { validate_remote_ip! }.not_to raise_error
+      end
+    end
+
+    context 'when the response IP is nil' do
+      let(:ip) { nil }
+
+      it 'rejects the response' do
+        expect { validate_remote_ip! }.to raise_error(
+          Html2rss::RequestService::PrivateNetworkDenied,
+          /Remote IP could not be validated/
+        )
+      end
+    end
+
+    context 'when the response IP is empty' do
+      let(:ip) { '' }
+
+      it 'rejects the response' do
+        expect { validate_remote_ip! }.to raise_error(
+          Html2rss::RequestService::PrivateNetworkDenied,
+          /Remote IP could not be validated/
+        )
+      end
+    end
+
+    context 'when private networks are allowed' do
+      let(:options) { { allow_private_networks: true } }
+      let(:ip) { '127.0.0.1' }
+
+      it 'allows private response IPs' do
         expect { validate_remote_ip! }.not_to raise_error
       end
     end

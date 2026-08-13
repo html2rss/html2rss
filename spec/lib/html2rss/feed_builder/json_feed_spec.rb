@@ -48,6 +48,23 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
     end
   end
 
+  context 'when article description contains a style tag' do
+    let(:articles) do
+      [
+        Html2rss::Article.new(
+          id: 'styled-desc',
+          title: 'Title',
+          url: 'https://example.com/1',
+          description: '<p>Content</p><style>p { color: red; }</style>'
+        )
+      ]
+    end
+
+    it 'strips style tags from content_html' do
+      expect(feed_hash[:items].first[:content_html]).to eq('<p>Content</p>')
+    end
+  end
+
   describe 'feed_url boundary validation' do
     it 'omits feed_url when nil or blank', :aggregate_failures do
       expect(described_class.new(channel:, articles:, user_comment:, feed_url: nil).call).not_to have_key(:feed_url)

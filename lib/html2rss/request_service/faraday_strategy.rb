@@ -66,14 +66,55 @@ module Html2rss
         faraday_request(response_guard, deadline:, streaming_buffer: false, consume_budget: false)
       end
 
+      ##
+      # Validates the remote socket peer IP during Net::HTTP start.
+      module PeerIpValidator
+        module_function
+
+        # @param http [Net::HTTP] connection to configure
+        # @param policy [Policy] request policy
+        # @return [void]
+        def install!(http, policy:)
+          orig_start = http.method(:start)
+          http.define_singleton_method(:start) do |&block|
+            orig_start.call do |opened_http|
+              PeerIpValidator.validate!(opened_http, policy:)
+              block.call(opened_http)
+            end
+          end
+        end
+
+        # @param opened_http [Net::HTTP] active connection
+        # @param policy [Policy] request policy
+        # @return [void]
+        def validate!(opened_http, policy:)
+          scheme = opened_http.use_ssl? ? 'https' : 'http'
+          url = Html2rss::Url.from_absolute("#{scheme}://#{opened_http.address}:#{opened_http.port}")
+          policy.validate_remote_ip!(ip: peer_ip_for(opened_http), url:)
+        end
+
+        # @param opened_http [Net::HTTP]
+        # @return [String, nil]
+        def peer_ip_for(opened_http)
+          sock = opened_http.instance_variable_get(:@socket)
+          io = sock.respond_to?(:io) ? sock.io : sock
+          peeraddr = io.respond_to?(:peeraddr) ? io.peeraddr : nil
+          peeraddr&.[](3) || peeraddr&.[](2)
+        end
+      end
+
+      # rubocop:disable Metrics/AbcSize
       def client
         @client ||= Faraday.new(url: ctx.url.to_s, headers: ctx.headers) do |faraday|
           faraday.use Faraday::FollowRedirects::Middleware, limit: ctx.policy.max_redirects, callback: redirect_callback
           faraday.request :gzip
           faraday.use StreamingBodyMiddleware
-          faraday.adapter Faraday.default_adapter
+          faraday.adapter Faraday.default_adapter do |http|
+            PeerIpValidator.install!(http, policy: ctx.policy)
+          end
         end
       end
+      # rubocop:enable Metrics/AbcSize
 
       def apply_timeouts(request, deadline:)
         remaining_timeout = remaining_timeout_seconds(deadline)

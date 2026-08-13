@@ -48,7 +48,10 @@ module Html2rss
       def enforce_public_network!(url)
         host = url.host
         return if allow_private_networks?
-        return unless blocked_host?(host) || resolved_ip_addresses(host).any? { |address| blocked_ip?(address) }
+        raise PrivateNetworkDenied, "Private network target denied for #{url}" if blocked_host?(host)
+
+        addresses = resolved_ip_addresses(host)
+        return unless addresses.empty? || addresses.any? { |address| blocked_ip?(address) }
 
         raise PrivateNetworkDenied, "Private network target denied for #{url}"
       end
@@ -62,9 +65,8 @@ module Html2rss
       # @raise [PrivateNetworkDenied] if the response came from a blocked address
       def validate_remote_ip!(ip:, url:)
         return if allow_private_networks?
-        return if ip.nil? || ip.empty?
 
-        parsed_ip = parse_ip(ip)
+        parsed_ip = ip && !ip.to_s.empty? ? parse_ip(ip) : nil
         raise PrivateNetworkDenied, "Remote IP could not be validated for #{url}" unless parsed_ip
         return unless blocked_ip?(parsed_ip)
 
