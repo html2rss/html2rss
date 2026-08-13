@@ -9,7 +9,7 @@ SHELL_SCRIPTS = \
 	bin/ready \
 	bin/setup
 
-.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean
+.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline
 
 help: ## Show available commands
 	@echo "Available commands:"
@@ -21,6 +21,7 @@ help: ## Show available commands
 	@echo "  make schema  - Regenerate and verify the config schema"
 	@echo "  make validate-fixtures - Validate fixture configs"
 	@echo "  make docs    - Generate documentation"
+	@echo "  make perf-baseline - Record auto-source wall/alloc baseline"
 	@echo "  make ready   - Run the local PR readiness checks"
 	@echo "  make clean   - Clean build artifacts"
 
@@ -59,6 +60,9 @@ validate-fixtures: ## Validate fixture configs
 
 docs: ## Generate documentation
 	$(RUBY_RUNNER)bundle exec yard doc
+
+perf-baseline: ## Record auto-source wall/alloc baseline markdown
+	$(RUBY_RUNNER)bin/heuristic-perf-baseline --write spec/perf/baseline-auto-source.md
 
 ready: ## Run the local PR readiness checks
 	bin/ready
