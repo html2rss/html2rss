@@ -190,20 +190,11 @@ module Html2rss
     end
 
     def request_controls
-      Html2rss::Config::RequestControls.new(
-        strategy: options[:strategy]&.to_sym,
+      Html2rss::Config::RequestControls.from_cli_options(
+        strategy: options[:strategy],
         max_redirects: options[:max_redirects],
-        max_requests: options[:max_requests],
-        explicit_keys: explicit_request_control_keys
+        max_requests: options[:max_requests]
       )
-    end
-
-    def explicit_request_control_keys
-      keys = []
-      keys << :strategy if options[:strategy]
-      keys << :max_redirects unless options[:max_redirects].nil?
-      keys << :max_requests unless options[:max_requests].nil?
-      keys
     end
 
     def current_strategy

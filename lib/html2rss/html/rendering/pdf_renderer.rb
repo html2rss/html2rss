@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'cgi'
-
 module Html2rss
   module Html
     module Rendering
       # Renders an HTML <iframe> for PDF documents.
       class PdfRenderer
+        include EscapedAttributes
+
         # @param url [String, Html2rss::Url] PDF URL rendered in the iframe
         def initialize(url:)
           @url = url
@@ -23,12 +23,6 @@ module Html2rss
             'loading="lazy"'
           ]
           "<iframe #{attributes.join(' ')}></iframe>"
-        end
-
-        private
-
-        def escaped_url
-          CGI.escapeHTML(@url.to_s)
         end
       end
     end

@@ -173,7 +173,7 @@ module Html2rss
       config = Config.auto_source_config(
         url:,
         items_selector:,
-        request_controls: shortcut_request_controls(strategy:, max_redirects:, max_requests:),
+        request_controls: Config::RequestControls.from_shortcut(strategy:, max_redirects:, max_requests:),
         limit:
       )
       if local_file_path
@@ -183,23 +183,6 @@ module Html2rss
       config
     end
     # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
-
-    def shortcut_request_controls(strategy:, max_redirects:, max_requests:)
-      Config::RequestControls.new(
-        strategy:,
-        max_redirects:,
-        max_requests:,
-        explicit_keys: explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
-      )
-    end
-
-    def explicit_request_control_keys(strategy:, max_redirects:, max_requests:)
-      keys = []
-      keys << :strategy unless strategy.nil? || strategy == Config.default_strategy_name
-      keys << :max_redirects unless max_redirects.nil?
-      keys << :max_requests unless max_requests.nil?
-      keys
-    end
   end
 
   logger.level = defaults.log_level if logger.respond_to?(:level=)

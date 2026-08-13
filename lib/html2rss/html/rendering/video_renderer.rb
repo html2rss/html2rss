@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'cgi'
-
 module Html2rss
   module Html
     module Rendering
       # Renders an HTML <video> tag from a URL and type.
       class VideoRenderer
+        include EscapedAttributes
+
         # @param url [String, Html2rss::Url] media URL for the video source
         # @param type [String] MIME type for the video source
         def initialize(url:, type:)
@@ -21,16 +21,6 @@ module Html2rss
             %(<source src="#{escaped_url}" type="#{escaped_type}">),
             '</video>'
           ].join
-        end
-
-        private
-
-        def escaped_url
-          CGI.escapeHTML(@url.to_s)
-        end
-
-        def escaped_type
-          CGI.escapeHTML(@type.to_s)
         end
       end
     end
