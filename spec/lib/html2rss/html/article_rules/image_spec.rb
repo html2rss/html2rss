@@ -13,6 +13,16 @@ RSpec.describe Html2rss::Html::ArticleRules::Image do
       oversized = "#{'a' * (described_class::MAX_ATTR_CHARS + 1)} 800w"
       expect(described_class.largest_from_srcsets([oversized])).to be_nil
     end
+
+    it 'keeps commas inside URL tokens' do
+      srcsets = ['image,with,commas.jpg 256w, another,image,with,commas.jpg 1w']
+      expect(described_class.largest_from_srcsets(srcsets)).to eq('image,with,commas.jpg')
+    end
+
+    it 'handles candidates joined by comma without spaces' do
+      srcsets = ['https://example.com/a.jpg 88w,https://example.com/b.jpg 175w']
+      expect(described_class.largest_from_srcsets(srcsets)).to eq('https://example.com/b.jpg')
+    end
   end
 
   describe '.best_from_styles' do
