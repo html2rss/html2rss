@@ -1,0 +1,7 @@
+---
+channel:
+  url: "https://example.com"
+  title: "Auto Source Listing Demo"
+  description: "Pure auto-source feed without manual selectors"
+
+auto_source: {}
