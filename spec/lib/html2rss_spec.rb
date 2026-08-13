@@ -441,143 +441,11 @@ RSpec.describe Html2rss do
       end
     end
 
-    context 'with strategy auto and zero-item fallback' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      subject(:feed) { described_class.feed(config) }
-
-      let(:config) do
-        {
-          strategy: :auto,
-          request: { max_requests: 3 },
-          channel: { url: 'https://example.com/news', title: 'Example News' },
-          selectors: {
-            items: { selector: 'article' },
-            title: { selector: 'h1' }
-          }
-        }
-      end
-
-      let(:faraday_empty_response) do
-        Html2rss::RequestService::Response.new(
-          body: '<html><body><div>empty</div></body></html>',
-          url: Html2rss::Url.from_absolute('https://example.com/news'),
-          headers: { 'content-type' => 'text/html' }
-        )
-      end
-      let(:botasaurus_item_response) do
-        Html2rss::RequestService::Response.new(
-          body: '<html><body><article><h1>bota</h1></article></body></html>',
-          url: Html2rss::Url.from_absolute('https://example.com/news'),
-          headers: { 'content-type' => 'text/html' }
-        )
-      end
-      let(:strategy_results) do
-        {
-          faraday: faraday_empty_response,
-          botasaurus: botasaurus_item_response
-        }
-      end
-
-      before do
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-          result = strategy_results.fetch(strategy)
-          raise result if result.is_a?(Exception)
-
-          result
-        end
-      end
-
-      it 'falls back from faraday zero items to botasaurus non-zero items', :aggregate_failures do
-        expect(feed.items.map(&:title)).to eq(['bota'])
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
-      end
-
-      it 'falls back with default auto budget when max_requests is not explicitly set', :aggregate_failures do
-        config.delete(:request)
-
-        expect(feed.items.map(&:title)).to eq(['bota'])
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
-      end
-
-      it 'does not call browserless under auto when botasaurus also yields zero items', :aggregate_failures do
-        strategy_results[:botasaurus] = faraday_empty_response
-
-        expect { feed }
-          .to raise_error(Html2rss::NoFeedItemsExtracted, /No feed items extracted after auto fallback/)
-        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
-      end
-
-      it 'raises a specific zero-items error when all concrete strategies return zero items' do
-        strategy_results[:botasaurus] = faraday_empty_response
-
-        expect { feed }
-          .to raise_error(Html2rss::NoFeedItemsExtracted, /No feed items extracted after auto fallback/)
-      end
-
-      context 'when fallback has mixed zero-items and errors' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-        before do
-          strategy_results[:faraday] = Html2rss::RequestService::RequestTimedOut.new('timed out')
-          strategy_results[:botasaurus] = faraday_empty_response
-        end
-
-        it 'raises NoFeedItemsExtracted' do
-          expect do
-            feed
-          end.to raise_error(Html2rss::NoFeedItemsExtracted, /No feed items extracted after auto fallback/)
-        end
-
-        it 'includes attempt diagnostics on the raised error', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-          expected_attempts = [
-            {
-              strategy: :faraday,
-              items_count: nil,
-              error_class: 'Html2rss::RequestService::RequestTimedOut'
-            },
-            { strategy: :botasaurus, items_count: 0, error_class: nil }
-          ]
-
-          expect { feed }.to raise_error(Html2rss::NoFeedItemsExtracted) { |error| expect(error.attempts).to eq(expected_attempts) }
-        end
-
-        it 'stops at botasaurus without calling browserless', :aggregate_failures do
-          feed
-        rescue Html2rss::NoFeedItemsExtracted
-          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
-          expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
-        end
-      end
-
-      it 'shares one request budget across retries and stops on RequestBudgetExceeded', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        config[:request][:max_requests] = 1
-
-        strategy_results[:botasaurus] = faraday_empty_response
-
-        expect { feed }.to raise_error(Html2rss::RequestService::RequestBudgetExceeded, /Request budget exhausted/)
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
-        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
-      end
-
-      it 'does not swallow extraction defects behind strategy fallback', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        config[:selectors][:url] = { selector: 'a.url' }
-        config[:selectors][:link] = { selector: 'a.link' }
-
-        expect { feed }.to raise_error(
-          Html2rss::Selectors::InvalidSelectorName,
-          /either use "url" or "link"/
-        )
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
-      end
-    end
-
+    # Auto-fallback chain authority lives in feed_pipeline_spec.
+    # Keep one public-API smoke: omitted strategy still surfaces fallback items.
     context 'when strategy is omitted' do
       subject(:feed) { described_class.feed(config) }
 
-      let(:feed_titles) { feed.items.map(&:title) }
-
       let(:config) do
         {
           channel: { url: 'https://example.com/news', title: 'Example News' },
@@ -587,36 +455,25 @@ RSpec.describe Html2rss do
           }
         }
       end
-      let(:responses_by_strategy) do
-        {
-          faraday: Html2rss::RequestService::Response.new(
-            body: '<html><body><div>empty</div></body></html>',
-            url: Html2rss::Url.from_absolute('https://example.com/news'),
-            headers: { 'content-type' => 'text/html' }
-          ),
-          botasaurus: Html2rss::RequestService::Response.new(
-            body: '<html><body><article><h1>bota</h1></article></body></html>',
-            url: Html2rss::Url.from_absolute('https://example.com/news'),
-            headers: { 'content-type' => 'text/html' }
-          )
-        }
-      end
 
       before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          strategy == :faraday ? responses_by_strategy.fetch(:faraday) : responses_by_strategy.fetch(:botasaurus)
+          body = if strategy == :faraday
+                   '<html><body><div>empty</div></body></html>'
+                 else
+                   '<html><body><article><h1>bota</h1></article></body></html>'
+                 end
+          Html2rss::RequestService::Response.new(
+            body:,
+            url: Html2rss::Url.from_absolute('https://example.com/news'),
+            headers: { 'content-type' => 'text/html' }
+          )
         end
       end
 
-      it 'returns items from fallback strategy' do
-        expect(feed_titles).to eq(['bota'])
-      end
-
-      it 'tries faraday before botasaurus in auto fallback', :aggregate_failures do
-        feed
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+      it 'returns items from the auto fallback chain' do
+        expect(feed.items.map(&:title)).to eq(['bota'])
       end
     end
 
@@ -691,58 +548,10 @@ RSpec.describe Html2rss do
         )
       end
     end
-
-    context 'when strategy is omitted' do
-      subject(:json_feed) { described_class.json_feed(config) }
-
-      let(:item_titles) { json_feed[:items].map { _1[:title] } }
-
-      let(:config) do
-        {
-          channel: { url: 'https://example.com/news', title: 'Example News' },
-          selectors: {
-            items: { selector: 'article' },
-            title: { selector: 'h1' }
-          }
-        }
-      end
-      let(:responses_by_strategy) do
-        {
-          faraday: Html2rss::RequestService::Response.new(
-            body: '<html><body><div>empty</div></body></html>',
-            url: Html2rss::Url.from_absolute('https://example.com/news'),
-            headers: { 'content-type' => 'text/html' }
-          ),
-          botasaurus: Html2rss::RequestService::Response.new(
-            body: '<html><body><article><h1>bota</h1></article></body></html>',
-            url: Html2rss::Url.from_absolute('https://example.com/news'),
-            headers: { 'content-type' => 'text/html' }
-          )
-        }
-      end
-
-      before do
-        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
-          ctx.budget.consume!
-          strategy == :faraday ? responses_by_strategy.fetch(:faraday) : responses_by_strategy.fetch(:botasaurus)
-        end
-      end
-
-      it 'returns items from fallback strategy' do
-        expect(item_titles).to eq(['bota'])
-      end
-
-      it 'tries faraday before botasaurus in auto fallback', :aggregate_failures do
-        json_feed
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
-      end
-    end
   end
 
   describe '.auto_source' do
-    let(:url) { 'https://www.welt.de/' }
-    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source(url, limit: 10_000) } }
+    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source('https://www.welt.de/', limit: 10_000) } }
 
     it 'returns a RSS::Rss instance with channel and items', :aggregate_failures, :slow do
       expect(feed_return).to be_a(RSS::Rss)
@@ -751,69 +560,11 @@ RSpec.describe Html2rss do
       expect(feed_return.items.size).to eq(143)
     end
 
-    context 'with items_selector' do
-      before do
-        allow(described_class).to receive(:feed).and_return(nil)
-      end
-
-      let(:items_selector) { '.css.selector' }
-
-      it 'adds selectors.items selector and enhance to config' do
-        described_class.auto_source(url, items_selector:)
-        expect(described_class).to have_received(:feed).with(
-          hash_including(selectors: { items: { selector: items_selector, enhance: true } })
-        )
-      end
-    end
-
-    context 'with default strategy' do
-      before do
-        allow(described_class).to receive(:feed).and_return(nil)
-      end
-
-      it 'omits strategy so config defaults apply for shortcut config' do
-        described_class.auto_source(url)
-
-        expect(described_class).to have_received(:feed).with(hash_excluding(:strategy))
-      end
-    end
-
-    context 'with max_redirects' do
-      before do
-        allow(described_class).to receive(:feed).and_return(nil)
-      end
-
-      it 'adds max_redirects to the generated config' do
-        described_class.auto_source(url, max_redirects: 8)
-
-        expect(described_class).to have_received(:feed).with(hash_including(request: hash_including(max_redirects: 8)))
-      end
-    end
-
-    context 'with max_requests' do
-      before do
-        allow(described_class).to receive(:feed).and_return(nil)
-      end
-
-      it 'adds max_requests to the generated config' do
-        described_class.auto_source(url, max_requests: 8)
-
-        expect(described_class).to have_received(:feed).with(hash_including(request: hash_including(max_requests: 8)))
-      end
-    end
-
-    it 'defaults max_requests to 4 in the generated config for auto_source sitemap sub-fetches' do
-      allow(described_class).to receive(:feed).and_return(nil)
-
-      described_class.auto_source(url)
-
-      expect(described_class).to have_received(:feed).with(hash_including(request: hash_including(max_requests: 4)))
-    end
+    it_behaves_like 'auto source option forwarding', method: :auto_source, downstream: :feed
   end
 
   describe '.auto_json_feed' do
-    let(:url) { 'https://www.welt.de/' }
-    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_json_feed(url, limit: 10_000) } }
+    let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_json_feed('https://www.welt.de/', limit: 10_000) } }
 
     it 'returns the channel metadata', :aggregate_failures, :slow do
       expect(feed_return).to include(
@@ -827,69 +578,6 @@ RSpec.describe Html2rss do
       expect(feed_return[:items].size).to eq(143)
     end
 
-    context 'with items_selector' do
-      before do
-        allow(described_class).to receive(:json_feed).and_return(nil)
-      end
-
-      let(:items_selector) { '.css.selector' }
-
-      it 'adds selectors.items selector and enhance to config' do
-        described_class.auto_json_feed(url, items_selector:)
-        expect(described_class).to have_received(:json_feed).with(
-          hash_including(selectors: { items: { selector: items_selector, enhance: true } })
-        )
-      end
-    end
-
-    context 'with default strategy' do
-      before do
-        allow(described_class).to receive(:json_feed).and_return(nil)
-      end
-
-      it 'omits strategy so config defaults apply for shortcut config' do
-        described_class.auto_json_feed(url)
-
-        expect(described_class).to have_received(:json_feed).with(hash_excluding(:strategy))
-      end
-    end
-
-    context 'with max_redirects' do
-      before do
-        allow(described_class).to receive(:json_feed).and_return(nil)
-      end
-
-      it 'adds max_redirects to the generated config' do
-        described_class.auto_json_feed(url, max_redirects: 8)
-
-        expect(described_class).to have_received(:json_feed).with(
-          hash_including(request: hash_including(max_redirects: 8))
-        )
-      end
-    end
-
-    context 'with max_requests' do
-      before do
-        allow(described_class).to receive(:json_feed).and_return(nil)
-      end
-
-      it 'adds max_requests to the generated config' do
-        described_class.auto_json_feed(url, max_requests: 8)
-
-        expect(described_class).to have_received(:json_feed).with(
-          hash_including(request: hash_including(max_requests: 8))
-        )
-      end
-    end
-
-    it 'defaults max_requests to 4 in the generated config for auto_source sitemap sub-fetches' do
-      allow(described_class).to receive(:json_feed).and_return(nil)
-
-      described_class.auto_json_feed(url)
-
-      expect(described_class).to have_received(:json_feed).with(
-        hash_including(request: hash_including(max_requests: 4))
-      )
-    end
+    it_behaves_like 'auto source option forwarding', method: :auto_json_feed, downstream: :json_feed
   end
 end

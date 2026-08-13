@@ -27,44 +27,24 @@ RSpec.describe Html2rss::CLI do
       expect { cli.feed('example.yml', 'feed_name') }.to output("#{rss_xml}\n").to_stdout
     end
 
-    it 'passes the strategy option to the config' do
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
+    {
+      'strategy' => [{ strategy: 'browserless' }, { strategy: :browserless }],
+      'max_redirects' => [{ max_redirects: 8 }, { request: { max_redirects: 8 } }],
+      'max_requests' => [{ max_requests: 8 }, { request: { max_requests: 8 } }],
+      'params' => [{ params: { 'foo' => 'bar' } }, { params: { 'foo' => 'bar' } }]
+    }.each do |label, (options, expected_attrs)|
+      it "forwards #{label} to Html2rss.feed" do
+        allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
 
-      cli.invoke(:feed, ['example.yml'], { strategy: 'browserless' })
+        cli.invoke(:feed, ['example.yml'], options)
 
-      expect(Html2rss).to have_received(:feed).with(hash_including(strategy: :browserless))
-    end
-
-    it 'passes botasaurus strategy option to the config' do
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
-
-      cli.invoke(:feed, ['example.yml'], { strategy: 'botasaurus' })
-
-      expect(Html2rss).to have_received(:feed).with(hash_including(strategy: :botasaurus))
-    end
-
-    it 'passes the max_redirects option to the config' do
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
-
-      cli.invoke(:feed, ['example.yml'], { max_redirects: 8 })
-
-      expect(Html2rss).to have_received(:feed).with(hash_including(request: hash_including(max_redirects: 8)))
-    end
-
-    it 'passes the max_requests option to the config' do
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
-
-      cli.invoke(:feed, ['example.yml'], { max_requests: 8 })
-
-      expect(Html2rss).to have_received(:feed).with(hash_including(request: hash_including(max_requests: 8)))
-    end
-
-    it 'passes the params option to the config' do
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
-
-      cli.invoke(:feed, ['example.yml'], { params: { 'foo' => 'bar' } })
-
-      expect(Html2rss).to have_received(:feed).with(hash_including(params: { 'foo' => 'bar' }))
+        expected = if expected_attrs.key?(:request)
+                     hash_including(request: hash_including(expected_attrs[:request]))
+                   else
+                     hash_including(expected_attrs)
+                   end
+        expect(Html2rss).to have_received(:feed).with(expected)
+      end
     end
 
     it 'applies CLI defaults when the YAML config uses nil request overrides' do # rubocop:disable RSpec/ExampleLength
@@ -92,7 +72,8 @@ RSpec.describe Html2rss::CLI do
     end
 
     context 'with input option' do
-      it 'uses local_file strategy and sets local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      # Process-level local-file happy path lives in spec/exe/html2rss_spec.rb.
+      it 'wires --input to local_file strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss).to receive(:config_from_yaml_file).and_return({ channel: { url: 'https://example.com' } })
 
         cli.invoke(:feed, ['example.yml'], { input: 'spec/fixtures/local_feed_test.html' })
@@ -105,15 +86,13 @@ RSpec.describe Html2rss::CLI do
         )
       end
 
-      it 'auto-detects base URL from HTML input if config url is missing' do # rubocop:disable RSpec/ExampleLength
+      it 'auto-detects channel.url from HTML when config url is missing' do
         allow(Html2rss).to receive(:config_from_yaml_file).and_return({ channel: {} })
 
         cli.invoke(:feed, ['example.yml'], { input: 'spec/fixtures/local_feed_test.html' })
 
         expect(Html2rss).to have_received(:feed).with(
-          hash_including(
-            channel: hash_including(url: 'https://example.com/blog')
-          )
+          hash_including(channel: hash_including(url: 'https://example.com/blog'))
         )
       end
 
@@ -129,6 +108,16 @@ RSpec.describe Html2rss::CLI do
   describe '#auto' do
     let(:auto_rss_xml) { '<rss><channel><title>Auto Source</title></channel></rss>' }
     let(:auto_json_feed) { { version: 'https://jsonfeed.org/version/1.1', title: 'Auto Source', items: [] } }
+    let(:auto_defaults) do
+      {
+        strategy: :auto,
+        items_selector: nil,
+        max_redirects: nil,
+        max_requests: nil,
+        local_file_path: nil,
+        limit: nil
+      }
+    end
 
     before do
       allow(Html2rss).to receive_messages(auto_source: auto_rss_xml, auto_json_feed:)
@@ -138,83 +127,28 @@ RSpec.describe Html2rss::CLI do
       expect { cli.auto('https://example.com') }.to output("#{auto_rss_xml}\n").to_stdout
     end
 
-    it 'passes the strategy option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { strategy: 'browserless' })
+    {
+      'strategy' => [{ strategy: 'browserless' }, { strategy: :browserless }],
+      'items_selector' => [{ items_selector: '.item' }, { items_selector: '.item' }],
+      'max_redirects' => [{ max_redirects: 8 }, { max_redirects: 8 }],
+      'max_requests' => [{ max_requests: 8 }, { max_requests: 8 }],
+      'limit' => [{ limit: 10 }, { limit: 10 }]
+    }.each do |label, (options, expected_kwargs)|
+      it "forwards #{label} to Html2rss.auto_source" do
+        cli.invoke(:auto, ['https://example.com'], options)
 
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil, limit: nil)
+        expect(Html2rss).to have_received(:auto_source)
+          .with('https://example.com', **auto_defaults.merge(expected_kwargs))
+      end
     end
 
-    it 'passes botasaurus strategy option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { strategy: 'botasaurus' })
-
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :botasaurus, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil, limit: nil)
-    end
-
-    it 'passes the rss format option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { format: 'rss' })
-
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil, limit: nil)
-    end
-
-    it 'passes the jsonfeed format option to Html2rss.auto_json_feed' do
-      cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' })
-
-      expect(Html2rss).to have_received(:auto_json_feed)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil, limit: nil)
-    end
-
-    it 'prints the jsonfeed output when requested' do
+    it 'routes jsonfeed format to Html2rss.auto_json_feed and pretty-prints', :aggregate_failures do
       expected_output = "#{JSON.pretty_generate(auto_json_feed)}\n"
 
       expect { cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' }) }
         .to output(expected_output).to_stdout
-    end
-
-    it 'passes the items_selector option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { items_selector: '.item' })
-
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: '.item', max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil, limit: nil)
-    end
-
-    it 'passes the max_redirects option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 })
-
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: 8, max_requests: nil,
-                                     local_file_path: nil, limit: nil)
-    end
-
-    it 'passes the max_requests option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { max_requests: 8 })
-
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: 8,
-                                     local_file_path: nil, limit: nil)
-    end
-
-    it 'passes the limit option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { limit: 10 })
-
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil,
-                                     local_file_path: nil, limit: 10)
-    end
-
-    it 'passes auto strategy option to Html2rss.auto_source' do
-      cli.invoke(:auto, ['https://example.com'], { strategy: 'auto' })
-
-      expect(Html2rss).to have_received(:auto_source)
-        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil, limit: nil)
+      expect(Html2rss).to have_received(:auto_json_feed)
+        .with('https://example.com', **auto_defaults)
     end
 
     context 'when the redirect limit is hit' do
@@ -303,34 +237,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     context 'with input option' do
-      it 'uses local_file strategy and extracts base URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        cli.invoke(:auto, [], { input: 'spec/fixtures/local_feed_test.html' })
-
-        expect(Html2rss).to have_received(:auto_source).with(
-          'https://example.com/blog',
-          strategy: :local_file,
-          items_selector: nil,
-          max_redirects: nil,
-          max_requests: nil,
-          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html'),
-          limit: nil
-        )
-      end
-
-      it 'uses provided URL argument over auto-detection' do # rubocop:disable RSpec/ExampleLength
-        cli.invoke(:auto, ['https://custom-url.com'], { input: 'spec/fixtures/local_feed_test.html' })
-
-        expect(Html2rss).to have_received(:auto_source).with(
-          'https://custom-url.com',
-          strategy: :local_file,
-          items_selector: nil,
-          max_redirects: nil,
-          max_requests: nil,
-          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html'),
-          limit: nil
-        )
-      end
-
+      # Process-level local-file happy path lives in spec/exe/html2rss_spec.rb.
       it 'raises Thor::Error when input file does not exist' do
         expect { cli.invoke(:auto, [], { input: 'nonexistent.html' }) }
           .to raise_error(Thor::Error, /Input file does not exist/)
