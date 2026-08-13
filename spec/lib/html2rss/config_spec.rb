@@ -471,8 +471,8 @@ RSpec.describe Html2rss::Config do
         expect(instance.url).to eq('http://example.com')
       end
 
-      it 'freezes @config ivar' do
-        expect(instance.instance_variable_get(:@config)).to be_frozen
+      it 'freezes string defaults exposed by public readers' do
+        expect(instance.time_zone).to be_frozen
       end
     end
 

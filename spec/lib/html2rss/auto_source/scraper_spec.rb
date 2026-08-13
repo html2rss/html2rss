@@ -139,20 +139,30 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     let(:document) { described_class.normalize_sst(parsed_body) }
     let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(url) }
 
-    it 'shares one SST::Document across heuristic scrapers' do
-      docs = described_class::HEURISTIC_SCRAPERS.map do |klass|
-        described_class.build_instance(klass, parsed_body, opts:, url:, document:)
-                       .instance_variable_get(:@provided_document)
+    it 'reuses the provided SST::Document without re-normalizing' do
+      shared_document = document
+      allow(Html2rss::SST::Normalizer).to receive(:call)
+
+      described_class::HEURISTIC_SCRAPERS.each do |klass|
+        instance = described_class.build_instance(klass, parsed_body, opts:, url:, document: shared_document)
+        instance.extractable?
       end
-      expect(docs).to all(equal(document))
+
+      expect(Html2rss::SST::Normalizer).not_to have_received(:call)
     end
 
-    it 'shares one LinkResolver across heuristic scrapers' do
-      resolvers = described_class::HEURISTIC_SCRAPERS.map do |klass|
-        described_class.build_instance(klass, parsed_body, opts:, url:, document:, link_resolver:)
-                       .instance_variable_get(:@provided_link_resolver)
+    it 'reuses the provided LinkResolver without constructing another' do
+      shared_resolver = link_resolver
+      allow(Html2rss::Scoring::LinkResolver).to receive(:new)
+
+      described_class::HEURISTIC_SCRAPERS.each do |klass|
+        instance = described_class.build_instance(
+          klass, parsed_body, opts:, url:, document:, link_resolver: shared_resolver
+        )
+        instance.extractable?
       end
-      expect(resolvers).to all(equal(link_resolver))
+
+      expect(Html2rss::Scoring::LinkResolver).not_to have_received(:new)
     end
   end
 

@@ -6,8 +6,10 @@ RSpec.describe Html2rss::Article do
   let(:options) { { title: 'Sample instance', url: 'http://example.com', description: 'By John Doe' } }
 
   describe '#initialize' do
-    it 'stores the options as a hash' do
-      expect(instance.instance_variable_get(:@to_h)).to eq(options)
+    it 'exposes the provided options via public readers', :aggregate_failures do
+      expect(instance.title).to eq(options[:title])
+      expect(instance.url.to_s).to eq("#{options[:url]}/")
+      expect(instance.description).to eq(options[:description])
     end
 
     context 'when unknown options are present' do
