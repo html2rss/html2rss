@@ -5,7 +5,7 @@ module Html2rss
     class Segmenter
       ##
       # Class / structure clustering for anchorless pages
-      # (port of Discovery::DomClustering + OverlapResolver; thin group scoring kept private).
+      # (port of Discovery::DomClustering + OverlapResolver; group scoring owned by Scoring::ClusterScorer).
       module Cluster
         module_function
 
@@ -25,7 +25,7 @@ module Html2rss
           return [] if groups.empty?
 
           resolver = OverlapResolver.new(index: segmenter.index)
-          scorer = ThinGroupScorer.new
+          scorer = Scoring::ClusterScorer.new
           non_containers = resolver.filter_containers(groups)
           final_groups = resolver.filter_1_to_1_overlap(non_containers)
           scorer.select_best_group(final_groups)
@@ -142,80 +142,9 @@ module Html2rss
           end
 
           def keep_descendant?(nodes_a, nodes_b)
-            scorer = ThinGroupScorer.new
+            scorer = Scoring::ClusterScorer.new
             scorer.avg_words(nodes_b) >= 0.8 * scorer.avg_words(nodes_a) &&
               @layout_tags.include?(nodes_b.first.name)
-          end
-        end
-
-        ##
-        # Temporary cluster group scorer; Phase 3 moves weights into Scoring features.
-        class ThinGroupScorer
-          def initialize
-            @text_words = {}.compare_by_identity
-            @has_date = {}.compare_by_identity
-          end
-
-          # @param groups [Hash{String => Array<SST::Node>}]
-          # @return [Array<SST::Node>]
-          def select_best_group(groups)
-            best_nodes = []
-            best_score = -1
-
-            groups.each_value do |nodes|
-              score = score_group(nodes)
-              next if score.negative?
-
-              (best_nodes = nodes) && (best_score = score) if score > best_score
-            end
-            best_nodes
-          end
-
-          ##
-          # @param nodes [Array<SST::Node>]
-          # @return [Float]
-          def avg_words(nodes)
-            nodes.sum { |n| text_words(n) } / nodes.size.to_f
-          end
-
-          private
-
-          def score_group(nodes)
-            avg_w = avg_words(nodes)
-            return -1 if avg_w < 5
-
-            score = nodes.size + (avg_w / 5.0)
-            score += 20 if nodes_heading?(nodes)
-            score += 20 if nodes_time?(nodes)
-            score += 40 if nodes_date?(nodes)
-            score
-          end
-
-          def nodes_heading?(nodes)
-            nodes.any? do |n|
-              n.find(&:heading?) ||
-                n.attrs.class_names.any? { |c| c.match?(/font-bold|font-semibold/) }
-            end
-          end
-
-          def nodes_time?(nodes)
-            nodes.any? { |n| n.find { |d| d.name == :time || d.attrs.datetime } }
-          end
-
-          def nodes_date?(nodes)
-            nodes.any? { |n| date?(n) }
-          end
-
-          def text_words(node)
-            @text_words[node] ||= node.word_count
-          end
-
-          def date?(node)
-            @has_date[node] ||= begin
-              text = node.visible_text.to_s
-              text.match?(%r{\b\d{4}[-/]\d{2}[-/]\d{2}\b}) ||
-                text.match?(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i)
-            end
           end
         end
       end

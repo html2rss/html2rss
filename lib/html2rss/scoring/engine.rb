@@ -46,6 +46,18 @@ module Html2rss
       end
 
       ##
+      # Filters hard-junk but preserves discovery order (used by list/cluster fallback scrapers).
+      #
+      # @param segments [Array<Html2rss::AutoSource::Segment>]
+      # @param limit [Integer]
+      # @return [Array<RankedSegment>]
+      def select_eligible(segments, limit: TOP_K)
+        segments.filter_map { |segment| rank_one(segment) }
+                .sort_by(&:position)
+                .first(limit)
+      end
+
+      ##
       # @param segments [Array<Html2rss::AutoSource::Segment>]
       # @param limit [Integer]
       # @return [Array<RankedSegment>]

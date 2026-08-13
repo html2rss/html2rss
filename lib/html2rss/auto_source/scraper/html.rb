@@ -4,7 +4,9 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Fallback HTML list/cluster scraper via SST pipeline.
+      # Fallback HTML list/cluster scraper via SST pipeline
+      # (Normalizer → Segmenter → NoisePolicy eligibility → Extractor).
+      # List order is discovery order; container quality ranking is SemanticHtml's job.
       class Html
         include Enumerable
 
@@ -14,7 +16,7 @@ module Html2rss
         DEFAULT_MINIMUM_SELECTOR_FREQUENCY = 2
         # Number of most frequent selectors kept for container extraction.
         DEFAULT_USE_TOP_SELECTORS = 5
-        # Maximum articles materialized after ranking.
+        # Maximum articles materialized after eligibility filtering.
         TOP_K = Scoring::Engine::TOP_K
 
         ##
@@ -83,7 +85,7 @@ module Html2rss
             minimum_selector_frequency:,
             use_top_selectors:
           )
-          materialize(segments)
+          materialize_list(segments)
         end
 
         def cluster_articles
@@ -99,20 +101,25 @@ module Html2rss
           end
         end
 
-        def materialize(segments)
-          link_resolver = Scoring::LinkResolver.new(@url)
-          noise = Scoring::NoisePolicy.new(link_resolver:, index: sst_document.index)
-
+        def materialize_list(segments)
           segments.first(TOP_K).filter_map do |segment|
             anchor = segment.primary_link
             next unless anchor
 
             facts = link_resolver.destination_facts(anchor)
             text = anchor.visible_text.to_s.strip
-            next if noise.noise_anchor?(text:, destination_facts: facts, anchor:, container: segment.root_node)
+            next if noise_policy.noise_anchor?(text:, destination_facts: facts, anchor:, container: segment.root_node)
 
             Extractor.call(segment, base_url: @url, scraper: self.class)
           end
+        end
+
+        def link_resolver
+          @link_resolver ||= Scoring::LinkResolver.new(@url)
+        end
+
+        def noise_policy
+          @noise_policy ||= Scoring::NoisePolicy.new(link_resolver:, index: sst_document.index)
         end
 
         def sst_document

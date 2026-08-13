@@ -7,14 +7,6 @@ module Html2rss
       # Selects the strongest content-like primary link inside a container
       # (port of Discovery::SemanticAnchorCandidates).
       class PrimaryLink
-        # Anchor ranking weights keyed by signal name.
-        ANCHOR_SCORE_RULES = {
-          heading_anchor: 100,
-          heading_text_match: 20,
-          meaningful_text: 10,
-          content_like_destination: 10
-        }.freeze
-
         # @param segmenter [Segmenter]
         def initialize(segmenter)
           @segmenter = segmenter
@@ -63,11 +55,12 @@ module Html2rss
           )
           return unless meaningful || content_like || heading_anchor
 
-          score = 0
-          score += ANCHOR_SCORE_RULES[:heading_anchor] if heading_anchor
-          score += ANCHOR_SCORE_RULES[:heading_text_match] if heading_match
-          score += ANCHOR_SCORE_RULES[:meaningful_text] if meaningful
-          score += ANCHOR_SCORE_RULES[:content_like_destination] if content_like
+          score = Scoring::AnchorScore.score(
+            heading_anchor:,
+            heading_text_match: heading_match,
+            meaningful_text: meaningful,
+            content_like_destination: content_like
+          )
 
           { anchor:, destination: destination.destination, score: }
         end

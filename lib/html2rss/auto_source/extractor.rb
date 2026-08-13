@@ -15,6 +15,11 @@ module Html2rss
       ARCHIVE_HREF_SUFFIXES = %w[.pdf .zip .tar.gz .tgz].freeze
       # Inline emphasis tags used as title fallbacks when no heading exists.
       FALLBACK_HEADING_NAMES = %i[strong b].freeze
+      # Class / data attribute tokens that mark category metadata.
+      CATEGORY_TERMS = %w[
+        category categories tag tags topic topics section sections
+        label labels theme themes subject subjects
+      ].freeze
 
       class << self
         ##
@@ -270,9 +275,8 @@ module Html2rss
         'application/zip'
       end
 
-      def extract_categories # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-        terms = Html::ArticleExtractor::CategoryExtractor::CATEGORY_TERMS
-        pattern = /#{terms.join('|')}/i
+      def extract_categories # rubocop:disable Metrics/AbcSize
+        pattern = /#{CATEGORY_TERMS.join('|')}/i
         Set.new.tap do |categories|
           @root.find_all { |n| category_candidate?(n, pattern) }.each do |element|
             add_category_text!(categories, element) if element.attrs.class_attr.match?(pattern)

@@ -8,19 +8,21 @@ Shared wall-clock and HTTP/interaction meters for one feed build. Constructed vi
 
 ## DOM chrome
 
-Layout noise and primary-link recognition for HTML trees: ignored container tags/paths (`IGNORED_CONTAINER_TAGS`), class-clustering exclusions (`CLUSTER_EXCLUDED_TAGS`), utility landmark tags (`UTILITY_LANDMARK_TAGS`), heading tags, main-anchor CSS, and visible-text extraction (`Html2rss::Html::Navigator::TextExtractor`). Owned solely by `Html2rss::Html::Navigator`. Article field extraction (`Html2rss::Html::ArticleExtractor`) and AutoSource discovery/scrapers import those constants — they do not redefine chrome tag sets.
+Layout noise and primary-link recognition for the **manual selector** path: ignored container tags/paths, class-clustering exclusions, utility landmarks, heading tags, main-anchor CSS, and visible-text extraction. Owned by `Html2rss::Html::Navigator` (+ `TextExtractor`). `Html::ArticleExtractor` serves selectors only.
+
+Heuristic auto-source chrome lives on `SST::Tags` / `SST::Text` after `SST::Normalizer` (sole Nokogiri on that path).
 
 ## Container assessment
 
-Observing a semantic container plus its selected anchor and destination facts into ranking/`hard_junk?` signals. Owned by `AutoSource::LinkHeuristics#assess_container`, which builds `ContainerSignals` (including `#final_score`). `SemanticHtml` orchestrates candidates and extraction only — it does not rebuild observation kwargs husks or recompute `quality - junk`.
+Observing a semantic container plus its selected anchor and destination facts into ranking/`hard_junk?` signals. Owned by `Html2rss::Scoring::Engine` (+ `ContainerAssessor`). `SemanticHtml` / `Html` orchestrate Normalizer → Segmenter → Scoring → Extractor only.
 
 ## Content-anchor eligibility
 
-Whether an anchor is junk chrome vs a content permalink. Owned solely by `AutoSource::LinkHeuristics#noise_anchor?` (text/destination rules plus optional icon-only and utility-landmark DOM checks). `Html` and `Discovery::SemanticAnchorCandidates` consume that method; they must not keep parallel `ineligible_anchor?` / `utility_text_suppressed?` policy. Heading-linked “Recommended …” titles are not rejected at this gate so container `hard_junk?` can keep real posts with publish markers.
+Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::Scoring::NoisePolicy`. Primary-link ranking weights live in `Scoring::AnchorScore`. Segmenter discovers candidates; it does not own eligibility weights.
 
 ## DOM candidate clustering
 
-Candidate list discovery for anchorless or classless pages is owned by `AutoSource::Discovery::DomClustering`. It encapsulates class clustering with lazy fallback to 1-level tag structure clustering behind a single `#call` interface with shared scoring and overlap resolution. `SemanticHtml` uses its own `:fallback_anchorless` boolean directly. `Html::ArticleExtractor`'s `fallback_anchorless:` flag is field-extraction only and is not owned by Discovery.
+Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Discovery::Sitemap` (XML, not heuristic HTML).
 
 ## Channel
 
