@@ -143,7 +143,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :browserless, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil)
+                                     max_requests: nil, local_file_path: nil, limit: nil)
     end
 
     it 'passes botasaurus strategy option to Html2rss.auto_source' do
@@ -151,7 +151,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :botasaurus, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil)
+                                     max_requests: nil, local_file_path: nil, limit: nil)
     end
 
     it 'passes the rss format option to Html2rss.auto_source' do
@@ -159,7 +159,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil)
+                                     max_requests: nil, local_file_path: nil, limit: nil)
     end
 
     it 'passes the jsonfeed format option to Html2rss.auto_json_feed' do
@@ -167,7 +167,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_json_feed)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil)
+                                     max_requests: nil, local_file_path: nil, limit: nil)
     end
 
     it 'prints the jsonfeed output when requested' do
@@ -182,7 +182,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: '.item', max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil)
+                                     max_requests: nil, local_file_path: nil, limit: nil)
     end
 
     it 'passes the max_redirects option to Html2rss.auto_source' do
@@ -190,7 +190,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: 8, max_requests: nil,
-                                     local_file_path: nil)
+                                     local_file_path: nil, limit: nil)
     end
 
     it 'passes the max_requests option to Html2rss.auto_source' do
@@ -198,7 +198,15 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: 8,
-                                     local_file_path: nil)
+                                     local_file_path: nil, limit: nil)
+    end
+
+    it 'passes the limit option to Html2rss.auto_source' do
+      cli.invoke(:auto, ['https://example.com'], { limit: 10 })
+
+      expect(Html2rss).to have_received(:auto_source)
+        .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil,
+                                     local_file_path: nil, limit: 10)
     end
 
     it 'passes auto strategy option to Html2rss.auto_source' do
@@ -206,7 +214,7 @@ RSpec.describe Html2rss::CLI do
 
       expect(Html2rss).to have_received(:auto_source)
         .with('https://example.com', strategy: :auto, items_selector: nil, max_redirects: nil,
-                                     max_requests: nil, local_file_path: nil)
+                                     max_requests: nil, local_file_path: nil, limit: nil)
     end
 
     context 'when the redirect limit is hit' do
@@ -304,7 +312,8 @@ RSpec.describe Html2rss::CLI do
           items_selector: nil,
           max_redirects: nil,
           max_requests: nil,
-          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html')
+          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html'),
+          limit: nil
         )
       end
 
@@ -317,7 +326,8 @@ RSpec.describe Html2rss::CLI do
           items_selector: nil,
           max_redirects: nil,
           max_requests: nil,
-          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html')
+          local_file_path: File.expand_path('spec/fixtures/local_feed_test.html'),
+          limit: nil
         )
       end
 

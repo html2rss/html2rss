@@ -6,7 +6,7 @@ module Html2rss
   class Config
     # Runtime source of truth for validating auto-source config values.
     AutoSourceContract = Dry::Schema.Params do # rubocop:disable Metrics/BlockLength
-      optional(:sufficient_article_count).filled(:integer, gt?: 0)
+      optional(:limit).filled(:integer, gt?: 0)
 
       optional(:scraper).hash do # rubocop:disable Metrics/BlockLength
         optional(:wordpress_api).hash do

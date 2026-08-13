@@ -31,9 +31,9 @@ RSpec.describe Html2rss::AutoSource do
     end
   end
 
-  describe '::SUFFICIENT_ARTICLE_COUNT' do
-    it 'defaults to twenty-five cleaned articles before skipping later tiers' do
-      expect(described_class::SUFFICIENT_ARTICLE_COUNT).to eq(25)
+  describe '::DEFAULT_LIMIT' do
+    it 'defaults to twenty-five articles' do
+      expect(described_class::DEFAULT_LIMIT).to eq(25)
     end
   end
 
@@ -44,8 +44,8 @@ RSpec.describe Html2rss::AutoSource do
       expect(schema.call(Html2rss::AutoSource::DEFAULT_CONFIG)).to be_success
     end
 
-    it 'allows overriding sufficient_article_count' do
-      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(sufficient_article_count: 10)
+    it 'allows overriding limit' do
+      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(limit: 10)
 
       expect(schema.call(toggled_config)).to be_success
     end
@@ -151,7 +151,7 @@ RSpec.describe Html2rss::AutoSource do
     context 'when structured scrapers already yield enough articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
-          sufficient_article_count: 5,
+          limit: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(schema: { enabled: true })
         )
@@ -194,7 +194,7 @@ RSpec.describe Html2rss::AutoSource do
     context 'when structured articles fail Cleanup title floor' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
-          sufficient_article_count: 5,
+          limit: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
                                                               schema: { enabled: true },
@@ -252,7 +252,7 @@ RSpec.describe Html2rss::AutoSource do
     context 'when SemanticHtml is sufficient before Html' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
-          sufficient_article_count: 5,
+          limit: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
                                                               semantic_html: { enabled: true,

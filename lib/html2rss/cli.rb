@@ -79,6 +79,9 @@ module Html2rss
     method_option :max_requests,
                   type: :numeric,
                   desc: 'Maximum requests to allow for this feed build'
+    method_option :limit,
+                  type: :numeric,
+                  desc: 'Maximum number of articles to keep (default: 25)'
     method_option :input,
                   type: :string,
                   desc: 'Local HTML file path to read input from'
@@ -249,7 +252,8 @@ module Html2rss
         items_selector: options[:items_selector],
         max_redirects: options[:max_redirects],
         max_requests: options[:max_requests],
-        local_file_path:
+        local_file_path:,
+        limit: options[:limit]&.to_i
       )
     end
 
