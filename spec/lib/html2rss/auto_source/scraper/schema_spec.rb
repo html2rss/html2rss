@@ -4,7 +4,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
   let(:script_tag) { ->(json_content) { Nokogiri::HTML("<script type=\"application/ld+json\">#{json_content}</script>") } }
   let(:simple_article) { ->(type: 'Article', title: 'Sample Title') { { '@type': type, title:, url: 'https://example.com' } } }
   let(:news_article_schema_object) do
-    # src: https://schema.org/NewsArticle
+    # src: https://schema.org/NewsArticle (headline is the official property)
     {
       '@context': 'https://schema.org',
       '@type': 'NewsArticle',
@@ -14,26 +14,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
         name: 'BBC News',
         logo: 'http://www.bbc.co.uk/news/special/2015/newsspec_10857/bbc_news_logo.png?cb=1'
       },
-      title: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'",
+      headline: "Trump Russia claims: FBI's Comey confirms investigation of election 'interference'",
       mainEntityOfPage: 'http://www.bbc.com/news/world-us-canada-39324587',
       articleBody: "Director Comey says the probe into last year's US election would assess if crimes were committed.",
       image: [
         'http://ichef-1.bbci.co.uk/news/560/media/images/75306000/jpg/_75306515_line976.jpg',
         'http://ichef.bbci.co.uk/news/560/cpsprodpb/8AB9/production/_95231553_comey2.jpg',
-        'http://ichef.bbci.co.uk/news/560/cpsprodpb/17519/production/_95231559_committee.jpg',
-        'http://ichef.bbci.co.uk/news/560/cpsprodpb/CC81/production/_95235325_f704a6dc-c017-4971-aac3-04c03eb097fb.jpg',
-        'http://ichef-1.bbci.co.uk/news/560/cpsprodpb/11AA1/production/_95235327_c0b59f9e-316e-4641-aa7e-3fec6daea62b.jpg',
-        'http://ichef.bbci.co.uk/news/560/cpsprodpb/0F99/production/_95239930_trumptweet.png',
-        'http://ichef-1.bbci.co.uk/news/560/cpsprodpb/10DFA/production/_95241196_mediaitem95241195.jpg',
-        'http://ichef.bbci.co.uk/news/560/cpsprodpb/2CA0/production/_95242411_comey.jpg',
-        'http://ichef.bbci.co.uk/news/560/cpsprodpb/11318/production/_95242407_mediaitem95242406.jpg',
-        'http://ichef-1.bbci.co.uk/news/560/cpsprodpb/BCED/production/_92856384_line976.jpg',
-        'http://ichef-1.bbci.co.uk/news/560/cpsprodpb/12B64/production/_95244667_mediaitem95244666.jpg'
+        'http://ichef.bbci.co.uk/news/560/cpsprodpb/17519/production/_95231559_committee.jpg'
       ],
       datePublished: '2017-03-20T20:30:54+00:00'
     }
   end
   let(:article_schema_object) do
+    # Legacy `title` (non-schema.org) kept so older pages still extract
     {
       '@context': 'https://schema.org',
       '@id': '4582066',
@@ -84,6 +77,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     context 'with excessive spacing in JSON and supported @type' do
       let(:parsed_body) do
         Nokogiri::HTML('<script type="application/ld+json">{"@type"  :  "NewsArticle"  }</script>')
+      end
+
+      it { is_expected.to be_truthy }
+    end
+
+    context 'with schema.org URL @type' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":"https://schema.org/NewsArticle"}</script>')
+      end
+
+      it { is_expected.to be_truthy }
+    end
+
+    context 'with multi-type @type array' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":["Article","NewsArticle"]}</script>')
       end
 
       it { is_expected.to be_truthy }
@@ -287,6 +296,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       end
     end
 
+    context 'with a schema.org URL @type' do
+      let(:object) { { '@type': 'https://schema.org/Article', url: 'https://example.com' } }
+
+      it 'returns Thing class' do
+        expect(described_class.scraper_for_schema_object(object)).to eq(Html2rss::AutoSource::Scraper::Schema::Thing)
+      end
+    end
+
+    context 'with a multi-type @type array' do
+      let(:object) { { '@type': %w[Article NewsArticle], url: 'https://example.com' } }
+
+      it 'returns Thing class' do
+        expect(described_class.scraper_for_schema_object(object)).to eq(Html2rss::AutoSource::Scraper::Schema::Thing)
+      end
+    end
+
     context 'with an unsupported type' do
       let(:object) { simple_article.call(type: 'UnsupportedType') }
 
@@ -295,6 +320,18 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
         expect(Html2rss::Log).to have_received(:debug)
           .with("#{described_class}: unsupported schema object @type=\"UnsupportedType\"")
       end
+    end
+  end
+
+  describe '.normalize_types' do
+    it 'strips schema.org URL prefixes', :aggregate_failures do
+      expect(described_class.normalize_types('https://schema.org/NewsArticle')).to eq(Set['NewsArticle'])
+      expect(described_class.normalize_types('http://schema.org/Article')).to eq(Set['Article'])
+    end
+
+    it 'flattens array @type values' do
+      expect(described_class.normalize_types(['https://schema.org/Article', 'NewsArticle']))
+        .to eq(Set['Article', 'NewsArticle'])
     end
   end
 

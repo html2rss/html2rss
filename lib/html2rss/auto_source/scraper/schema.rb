@@ -18,12 +18,14 @@ module Html2rss
         # Selector for JSON-LD script tags containing Schema.org objects.
         TAG_SELECTOR = 'script[type="application/ld+json"]'
 
-        # Pre-compiled regex union for supported schema types.
-        # Performs a single pass over script tag text instead of multiple regex matches.
+        # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
         SUPPORTED_TYPES_RE = begin
           types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
-          /"@type"\s*:\s*"(?:#{Regexp.union(types.to_a).source})"/
+          type_re = Regexp.union(types.to_a)
+          %r{"@type"\s*:\s*(?:\[\s*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
         end.freeze
+
+        SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
 
         # @return [Symbol] scraper config key
         def self.options_key = :schema
@@ -72,15 +74,34 @@ module Html2rss
           # @param schema_object [Hash{Symbol => Object}] schema object with an @type key
           # @return [Scraper::Schema::Thing, Scraper::Schema::ItemList, nil] a class responding to `#call`
           def scraper_for_schema_object(schema_object)
-            type = schema_object[:@type]
+            types = normalize_types(schema_object[:@type])
 
-            if Thing::SUPPORTED_TYPES.member?(type)
+            if types.intersect?(Thing::SUPPORTED_TYPES)
               Thing
-            elsif ItemList::SUPPORTED_TYPES.member?(type)
+            elsif types.intersect?(ItemList::SUPPORTED_TYPES)
               ItemList
             else
-              Log.debug("#{name}: unsupported schema object @type=#{type.inspect}")
+              Log.debug("#{name}: unsupported schema object @type=#{schema_object[:@type].inspect}")
               nil
+            end
+          end
+
+          # Normalizes Schema.org `@type` wire forms to short type names.
+          #
+          # Handles String, Symbol, Array, and strips `https://schema.org/` / `http://schema.org/` prefixes.
+          #
+          # @param object [String, Symbol, Array, nil] raw `@type` value
+          # @return [Set<String>] short type names (e.g. "NewsArticle")
+          # @api private
+          def normalize_types(object)
+            case object
+            when Array
+              object.each_with_object(Set.new) { |item, set| set.merge(normalize_types(item)) }
+            when String, Symbol
+              short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
+              short.empty? ? Set.new : Set[short]
+            else
+              Set.new
             end
           end
 
