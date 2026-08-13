@@ -66,6 +66,16 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       expect(subject).to eq(sanitized_html)
     end
 
+    it 'strips style tags and their CSS contents completely' do
+      dirty = "<p>Before</p>\n<style>body { display: none; } p { color: red; }</style>\n<p>After</p>"
+      expect(described_class.get(dirty, 'http://example.com')).to eq("<p>Before</p>\n\n<p>After</p>")
+    end
+
+    it 'strips inline style attributes' do
+      dirty = '<p style="color: red; font-size: 20px;">Styled text</p>'
+      expect(described_class.get(dirty, 'http://example.com')).to eq('<p>Styled text</p>')
+    end
+
     context 'with html being nil' do
       let(:html) { nil }
 

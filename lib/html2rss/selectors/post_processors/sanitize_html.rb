@@ -124,6 +124,8 @@ module Html2rss
                 ->(env) { HtmlTransformers::WrapImgInA.new.call(**env) }
               ]
             )
+            config[:elements].delete('style')
+            config.delete(:css)
             config[:elements].push('audio', 'video', 'source')
             config.freeze
           end

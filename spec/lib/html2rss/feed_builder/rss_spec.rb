@@ -141,5 +141,24 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
         expect(enclosure[:url]).not_to include('image1.jpg')
       end
     end
+
+    context 'when article description contains a style tag' do
+      let(:articles) do
+        [
+          Html2rss::Article.new(
+            url: 'http://example.com/1',
+            id: 1,
+            title: 'Title 1',
+            description: '<p>Paragraph</p><style>body { background: black; }</style>',
+            scraper: RSpec
+          )
+        ]
+      end
+      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
+
+      it 'strips style tags from item description' do
+        expect(item.css('description').text).to eq('<p>Paragraph</p>')
+      end
+    end
   end
 end

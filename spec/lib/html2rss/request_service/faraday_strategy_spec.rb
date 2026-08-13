@@ -17,7 +17,8 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       max_response_bytes: 1_048_576,
       max_decompressed_bytes: 5_242_880,
       validate_request!: nil,
-      validate_redirect!: nil
+      validate_redirect!: nil,
+      validate_remote_ip!: nil
     )
   end
   let(:budget) do
@@ -173,6 +174,52 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
 
     expect { execute }
       .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+  end
+
+  describe described_class::PeerIpValidator do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:mock_socket) { instance_double(IPSocket, peeraddr: ['AF_INET', 443, '93.184.216.34', '93.184.216.34']) }
+    let(:mock_net_http) do
+      Class.new do
+        attr_accessor :address, :port
+
+        def initialize
+          @address = 'example.com'
+          @port = 443
+        end
+
+        def use_ssl? = true
+
+        def start
+          yield self
+        end
+      end.new
+    end
+
+    before do
+      mock_net_http.instance_variable_set(:@socket, mock_socket)
+      described_class.install!(mock_net_http, policy:)
+    end
+
+    it 'validates the peer IP when HTTP connection starts', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      block_called = false
+      mock_net_http.start { block_called = true }
+
+      expect(policy).to have_received(:validate_remote_ip!).with(
+        ip: '93.184.216.34',
+        url: Html2rss::Url.from_absolute('https://example.com')
+      )
+      expect(block_called).to be true
+    end
+
+    it 'aborts execution if peer IP validation fails' do # rubocop:disable RSpec/ExampleLength
+      allow(policy).to receive(:validate_remote_ip!).and_raise(
+        Html2rss::RequestService::PrivateNetworkDenied, 'Private network target denied'
+      )
+
+      expect do
+        mock_net_http.start { raise 'should not be reached' }
+      end.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, 'Private network target denied')
+    end
   end
 
   describe described_class::StreamingBodyMiddleware do # rubocop:disable RSpec/MultipleMemoizedHelpers
