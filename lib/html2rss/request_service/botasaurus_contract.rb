@@ -64,7 +64,7 @@ module Html2rss
 
         # @return [Boolean] true when upstream returned non-200 or an error payload
         def upstream_failure?
-          status != 200 || error_message?
+          transport_status != 200 || status != 200 || error_message?
         end
 
         # @return [String] normalized challenge error message
