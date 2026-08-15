@@ -58,6 +58,15 @@ RSpec.describe Html2rss::Config::Schema do
       expect(strategies).to contain_exactly('rel_next', 'custom_selector', 'url_template', 'offset', 'json_cursor')
     end
 
+    it 'derives extractor and post-processor enums from NAME_TO_CLASS', :aggregate_failures do
+      pattern = json_schema.dig('properties', 'selectors', 'patternProperties').values.first
+      extractors = pattern.dig('properties', 'extractor', 'enum')
+      post_processors = pattern.dig('properties', 'post_process', 'items', 'properties', 'name', 'enum')
+
+      expect(extractors).to match_array(Html2rss::Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s))
+      expect(post_processors).to match_array(Html2rss::Selectors::PostProcessors::NAME_TO_CLASS.keys.map(&:to_s))
+    end
+
     it 'aligns pagination schema keys with runtime pager config keys', :aggregate_failures do
       # Schema keys must match runtime pager keys (start_page/step/start_offset), not a generic `start`.
       pagination_properties = json_schema.dig(

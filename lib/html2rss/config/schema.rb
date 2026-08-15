@@ -48,6 +48,7 @@ module Html2rss
       ##
       # Orchestrates schema assembly from runtime validator contracts plus
       # client-facing overlays.
+      # rubocop:disable Metrics/ClassLength -- overlay assembly stays in one builder
       class Builder
         class << self
           # @return [Hash{String => Object}] fully assembled JSON schema hash
@@ -105,6 +106,13 @@ module Html2rss
             ]
           }
 
+          selector_schema = Schema.apply_selector_registry_enums!(
+            Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true)
+          )
+          enclosure_schema = Schema.apply_selector_registry_enums!(
+            Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true)
+          )
+
           {
             strategy: {
               type: 'string',
@@ -130,14 +138,14 @@ module Html2rss
                 items: items_schema.merge(
                   description: 'Defines the items selector and optional enhancement settings.'
                 ),
-                enclosure: Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true).merge(
+                enclosure: enclosure_schema.merge(
                   description: 'Describes enclosure extraction settings.'
                 ),
                 guid: reference_array('List of selector keys used to build the GUID. Each entry must reference a sibling selector key; runtime validation enforces those references.'),
                 categories: reference_array('List of selector keys whose values will be used as categories. Each entry must reference a sibling selector key; runtime validation enforces those references.')
               },
               patternProperties: {
-                '^(?!items$|enclosure$|guid$|categories$).+$' => Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true).merge(
+                '^(?!items$|enclosure$|guid$|categories$).+$' => selector_schema.merge(
                   description: 'Dynamic selector definition keyed by attribute name.'
                 )
               },
@@ -158,6 +166,31 @@ module Html2rss
             }
           }
         end
+      end
+      # rubocop:enable Metrics/ClassLength
+
+      ##
+      # Overlays extractor / post-processor name enums from runtime registries.
+      #
+      # @param schema [Hash] dry-schema JSON schema fragment for a selector
+      # @return [Hash] same schema with registry enums applied
+      def apply_selector_registry_enums!(schema) # rubocop:disable Metrics/MethodLength
+        properties = schema.fetch(:properties)
+        properties[:extractor] = {
+          type: 'string', minLength: 1,
+          enum: Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s).sort
+        }
+        properties[:post_process] = {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', enum: Selectors::PostProcessors::NAME_TO_CLASS.keys.map(&:to_s).sort }
+            },
+            additionalProperties: true
+          }
+        }
+        schema
       end
 
       ##

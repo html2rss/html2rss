@@ -35,3 +35,7 @@ Per-item extraction scope carries `channel` (url/time_zone). Post-processor `Con
 ## Pagination strategy registry
 
 Supported pagination strategy names and factory classes live in `RequestSession::Pager::STRATEGIES` / `Pager.strategy_names`. Selectors validation (`Selectors::Config::Items`) and the exported JSON schema enum consume that list. Runtime pagination uses `Pager.for` (e.g. `rel_next` → `Pager::RelNext`).
+
+## Extractor / post-processor registry
+
+Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. `Config::SelectorsValidator::Selector` derives required option fields from each class's `Options` (when defined); schema enums for `extractor` and `post_process[].name` are overlaid from the same registries. Do not hardcode name lists in the validator or schema.

@@ -75,6 +75,9 @@ module Html2rss
       ##
       # Validates the configuration of a single selector.
       class Selector < Dry::Validation::Contract
+        # Extractor Options members supplied at runtime, not from feed YAML.
+        RUNTIME_EXTRACTOR_FIELDS = %i[selector channel].to_set.freeze
+
         params do
           optional(:selector)
           optional(:extractor).filled(:string)
@@ -88,31 +91,35 @@ module Html2rss
         end
 
         rule(:extractor) do
-          # dependent on the extractor, validate required fields, (i.e. static, attribute)
-          case value
-          when 'attribute'
-            key(:attribute).failure('`attribute` must be a string') unless values[:attribute].is_a?(String)
-          when 'static'
-            key(:static).failure('`static` must be a string') unless values[:static].is_a?(String)
+          next unless value
+
+          klass = Selectors::Extractors::NAME_TO_CLASS[value.to_sym]
+          next key(:extractor).failure("unknown extractor: #{value}") unless klass
+
+          klass::Options.members.each do |field|
+            next if RUNTIME_EXTRACTOR_FIELDS.include?(field)
+            next if values[field]
+
+            key(field).failure("`#{field}` is required for extractor `#{value}`")
           end
         end
 
         rule(:post_process).each do
-          case (name = value[:name])
-          when 'gsub'
-            key(:pattern).failure('`pattern` must be a string') unless value[:pattern].is_a?(String)
-            key(:replacement).failure('`replacement` must be a string') unless value[:replacement].is_a?(String)
-          when 'substring'
-            key(:start).failure('`start` must be an integer') unless value[:start].is_a?(Integer)
-            key(:end).failure('`end` must be an integer or omitted') if !value[:end].nil? && !value[:end].is_a?(Integer)
-          when 'template'
-            key(:string).failure('`string` must be a string') unless value[:string].is_a?(String)
-          when 'html_to_markdown', 'markdown_to_html', 'parse_time', 'parse_uri', 'sanitize_html'
-            # nothing to validate
-          when nil
-            key(:post_process).failure('Missing post_processor `name`')
-          else
-            key(:post_process).failure("Unknown post_processor `name`: #{name}")
+          name = value[:name]
+          next key(:post_process).failure('Missing post_processor `name`') if name.nil?
+
+          klass = Selectors::PostProcessors::NAME_TO_CLASS[name.to_sym]
+          next key(:post_process).failure("Unknown post_processor `name`: #{name}") unless klass
+          next unless klass.const_defined?(:Options)
+
+          klass::Options.members.each do |field|
+            next if value.key?(field)
+
+            key(field).failure("`#{field}` is required for post_processor `#{name}`")
+          end
+
+          if name.to_s == 'substring' && !value[:end].nil? && !value[:end].is_a?(Integer)
+            key(:end).failure('`end` must be an integer or omitted')
           end
         end
       end

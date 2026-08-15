@@ -29,6 +29,9 @@ module Html2rss
       #
       # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
       class Gsub < Base
+        # Config fields required by this post-processor (validator / schema introspection).
+        Options = Struct.new(:pattern, :replacement, keyword_init: true)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]

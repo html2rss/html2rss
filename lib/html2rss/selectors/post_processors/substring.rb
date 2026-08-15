@@ -30,6 +30,9 @@ module Html2rss
       # Would return:
       #    'bar'
       class Substring < Base
+        # Required config fields (optional +:end+ is type-checked when present).
+        Options = Struct.new(:start, keyword_init: true)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]

@@ -323,6 +323,22 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it { expect(result).to be_failure }
     end
+
+    context 'with unknown extractor' do
+      let(:config) do
+        { title: { selector: 'h1', extractor: 'nope' } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    it 'requires Options members from the extractor registry', :aggregate_failures do
+      attribute = described_class.call(title: { selector: 'a', extractor: 'attribute' })
+      static = described_class.call(title: { extractor: 'static' })
+
+      expect(attribute).to be_failure
+      expect(static).to be_failure
+    end
   end
 
   describe 'Enclosure' do

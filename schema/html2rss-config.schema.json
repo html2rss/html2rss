@@ -423,7 +423,14 @@
           "properties": {
             "extractor": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "enum": [
+                "attribute",
+                "href",
+                "html",
+                "static",
+                "text"
+              ]
             },
             "attribute": {
               "type": "string",
@@ -436,7 +443,23 @@
             "post_process": {
               "type": "array",
               "items": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "enum": [
+                      "gsub",
+                      "html_to_markdown",
+                      "markdown_to_html",
+                      "parse_time",
+                      "parse_uri",
+                      "sanitize_html",
+                      "substring",
+                      "template"
+                    ]
+                  }
+                },
+                "additionalProperties": true
               }
             },
             "content_type": {
@@ -473,7 +496,14 @@
           "properties": {
             "extractor": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "enum": [
+                "attribute",
+                "href",
+                "html",
+                "static",
+                "text"
+              ]
             },
             "attribute": {
               "type": "string",
@@ -486,7 +516,23 @@
             "post_process": {
               "type": "array",
               "items": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "enum": [
+                      "gsub",
+                      "html_to_markdown",
+                      "markdown_to_html",
+                      "parse_time",
+                      "parse_uri",
+                      "sanitize_html",
+                      "substring",
+                      "template"
+                    ]
+                  }
+                },
+                "additionalProperties": true
               }
             }
           },

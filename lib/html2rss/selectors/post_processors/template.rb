@@ -34,6 +34,9 @@ module Html2rss
       # Would return:
       #    'Product (23,42€)'
       class Template < Base
+        # Config fields required by this post-processor (validator / schema introspection).
+        Options = Struct.new(:string, keyword_init: true)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]
