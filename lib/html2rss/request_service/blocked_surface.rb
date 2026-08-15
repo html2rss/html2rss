@@ -21,7 +21,7 @@ module Html2rss
             /cloudflare ray id/i
           ],
           message: 'Blocked surface detected: Cloudflare anti-bot interstitial page. ' \
-                   'Retry with --strategy browserless, try a more specific public listing URL, ' \
+                   'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, ' \
                    'or run from an environment that can complete anti-bot checks.'
         }
       ].freeze

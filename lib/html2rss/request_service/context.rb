@@ -32,12 +32,6 @@ module Html2rss
       # @return [Hash] the request specific options
       attr_reader :request
 
-      # @return [Hash] browserless specific options
-      def browserless = request.fetch(:browserless, {})
-
-      # @return [Hash, nil] preload options for browserless requests
-      def browserless_preload = browserless[:preload]
-
       # @return [Symbol] the request relation
       attr_reader :relation
 

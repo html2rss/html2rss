@@ -45,31 +45,25 @@ RSpec.describe Html2rss::RequestService::Context do
       end
     end
 
-    context 'with browserless request configuration' do
+    context 'with botasaurus request configuration' do
       let(:request) do
         {
-          'browserless' => {
-            'preload' => {
-              'click_selectors' => [{ 'selector' => '.load-more', 'max_clicks' => 2 }]
-            }
+          'botasaurus' => {
+            'execution_mode' => 'browser'
           }
         }
       end
       let(:expected_request) do
         {
-          browserless: {
-            preload: {
-              click_selectors: [{ selector: '.load-more', max_clicks: 2 }]
-            }
+          botasaurus: {
+            execution_mode: 'browser'
           }
         }
       end
 
       it 'exposes the request options' do
         expect(instance).to have_attributes(
-          request: expected_request,
-          browserless: expected_request[:browserless],
-          browserless_preload: expected_request.dig(:browserless, :preload)
+          request: expected_request
         )
       end
     end
@@ -109,10 +103,8 @@ RSpec.describe Html2rss::RequestService::Context do
         url: 'https://example.com',
         headers: { 'User-Agent' => 'Custom Agent' },
         request: {
-          browserless: {
-            preload: {
-              scroll_down: { iterations: 2 }
-            }
+          botasaurus: {
+            execution_mode: 'browser'
           }
         },
         policy:,

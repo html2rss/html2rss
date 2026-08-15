@@ -137,8 +137,7 @@ module Html2rss
       # @return [Boolean]
       def timeout_error?(error)
         error.is_a?(Faraday::TimeoutError) ||
-          error.is_a?(Timeout::Error) ||
-          (defined?(Puppeteer::TimeoutError) && error.is_a?(Puppeteer::TimeoutError))
+          error.is_a?(Timeout::Error)
       end
 
       # @param error [StandardError]

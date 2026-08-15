@@ -1,5 +1,5 @@
 ---
-strategy: browserless
+strategy: botasaurus
 
 channel:
   url: "https://example.com/news"

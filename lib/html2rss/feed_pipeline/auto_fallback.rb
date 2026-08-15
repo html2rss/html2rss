@@ -19,8 +19,7 @@ module Html2rss
         RequestService::RequestBudgetExceeded,
         RequestService::PrivateNetworkDenied,
         RequestService::CrossOriginFollowUpDenied,
-        RequestService::ResponseTooLarge,
-        RequestService::BrowserlessConfigurationError
+        RequestService::ResponseTooLarge
       ].freeze
 
       ##

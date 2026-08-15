@@ -16,7 +16,7 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
     end
 
     it 'accepts string names' do
-      expect(described_class.resolve('browserless')).to eq(described_class::Concrete.new(strategy: :browserless))
+      expect(described_class.resolve('botasaurus')).to eq(described_class::Concrete.new(strategy: :botasaurus))
     end
 
     it 'raises ArgumentError for an unknown plan' do

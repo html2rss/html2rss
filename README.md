@@ -13,7 +13,7 @@ Most people looking for a first working feed should start with `html2rss-web`, r
 Detailed usage guides, reference docs, and the feed directory live on the project website:
 
 - [Ruby gem documentation](https://html2rss.github.io/ruby-gem)
-- [Request strategies](https://html2rss.github.io/ruby-gem/reference/strategy) (`auto` = `faraday` → `botasaurus`; pin `browserless` explicitly)
+- [Request strategies](https://html2rss.github.io/ruby-gem/reference/strategy) (`auto` = `faraday` → `botasaurus`; or pin concrete strategies)
 - [Selectors & pagination](https://html2rss.github.io/ruby-gem/reference/selectors#paginated-feeds)
 - [Web application](https://html2rss.github.io/web-application)
 - [Feed directory](https://html2rss.github.io/feed-directory)
@@ -26,7 +26,7 @@ Cloud development: [Open in GitHub Codespaces](https://github.com/codespaces/new
 ## Architecture
 
 1. **Config** — loads and validates configuration (YAML/hash); schema via `html2rss schema` / `schema/html2rss-config.schema.json`
-2. **RequestService** — fetches pages (`faraday`, `botasaurus`, or explicit `browserless`)
+2. **RequestService** — fetches pages (`faraday`, `botasaurus`, or `local_file`)
 3. **Selectors** — extracts content via CSS selectors with extractors/post-processors
 4. **AutoSource** — auto-detects content (Schema.org, JSON state, semantic HTML, structural patterns)
 5. **FeedBuilder** — assembles Article objects and renders feeds (RSS 2.0 / JSON Feed 1.1)

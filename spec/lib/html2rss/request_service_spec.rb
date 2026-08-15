@@ -13,8 +13,6 @@ RSpec.describe Html2rss::RequestService do
       described_class::CrossOriginFollowUpDenied,
       described_class::ResponseTooLarge,
       described_class::RequestTimedOut,
-      described_class::BrowserlessConfigurationError,
-      described_class::BrowserlessConnectionFailed,
       described_class::BotasaurusConfigurationError,
       described_class::BotasaurusConnectionFailed
     ]
@@ -108,8 +106,8 @@ RSpec.describe Html2rss::RequestService do
 
     context 'when the strategy is registered' do
       it 'sets the default strategy' do
-        described_class.default_strategy_name = :browserless
-        expect(described_class.default_strategy_name).to be :browserless
+        described_class.default_strategy_name = :botasaurus
+        expect(described_class.default_strategy_name).to be :botasaurus
       end
     end
 

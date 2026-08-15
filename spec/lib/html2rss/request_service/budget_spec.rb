@@ -8,11 +8,6 @@ RSpec.describe Html2rss::RequestService::Budget do
       expect { described_class.new(max_requests: 0) }
         .to raise_error(ArgumentError, 'max_requests must be positive')
     end
-
-    it 'rejects negative interaction slot limits' do
-      expect { described_class.new(max_requests: 1, max_interactions: -1) }
-        .to raise_error(ArgumentError, 'max_interactions must be a non-negative integer')
-    end
   end
 
   describe '#consume!' do
@@ -29,23 +24,6 @@ RSpec.describe Html2rss::RequestService::Budget do
       expect do
         budget.consume!
       end.to raise_error(Html2rss::RequestService::RequestBudgetExceeded, 'Request budget exhausted')
-    end
-  end
-
-  describe '#consume_interaction!' do
-    let(:budget) { described_class.new(max_requests: 2, max_interactions: 2) }
-
-    it 'decrements interaction budget without stealing request slots', :aggregate_failures do
-      expect { budget.consume_interaction! }.to change(budget, :remaining_interactions).from(2).to(1)
-      expect(budget.remaining_requests).to eq(2)
-    end
-
-    it 'raises once no interaction slots remain' do
-      2.times { budget.consume_interaction! }
-
-      expect do
-        budget.consume_interaction!
-      end.to raise_error(Html2rss::RequestService::InteractionBudgetExceeded, 'Interaction budget exhausted')
     end
   end
 

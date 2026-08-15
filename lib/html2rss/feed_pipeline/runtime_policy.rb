@@ -6,8 +6,7 @@ module Html2rss
     # Planner for the runtime request policy and budgets of a feed run.
     #
     # HTTP request slots (pagination, document GETs, strategy fallback) are planned
-    # separately from Browserless preload interaction budget so preload cannot steal
-    # pagination slots.
+    # from configuration options.
     class RuntimePolicy
       # Policy plus Budget from one config expansion (shared meters for a feed run).
       Resources = Data.define(:policy, :budget)
@@ -34,25 +33,17 @@ module Html2rss
           policy:,
           budget: RequestService::Budget.new(
             max_requests: policy.max_requests,
-            max_interactions: interaction_budget_for(config),
             total_timeout_seconds: policy.total_timeout_seconds
           )
         )
       end
 
       ##
-      # Builds a Budget with separate request and interaction slot pools.
+      # Builds a Budget with request slot pools.
       #
       # @param config [Html2rss::Config] validated feed config
       # @return [Html2rss::RequestService::Budget] shared budget for the feed build
       def self.budget_for(config) = resources_for(config).budget
-
-      ##
-      # @param config [Html2rss::Config] validated feed config
-      # @return [Integer] preload interaction slots derived from browserless preload config
-      def self.interaction_budget_for(config)
-        browserless_preload_budget_for(config)
-      end
 
       class << self
         private
@@ -64,43 +55,12 @@ module Html2rss
         end
 
         # Reserve enough HTTP request slots for the initial request plus predictable
-        # follow-ups. Preload interactions are planned separately.
+        # follow-ups.
         def baseline_request_budget_for(config)
           1 +
             RequestSession::Pager.request_slots_for(config.selectors&.dig(:items, :pagination)) +
             AutoSource.request_slots_for(config.auto_source) +
             StrategyPlan.resolve(config.strategy).request_slots
-        end
-
-        def browserless_preload_budget_for(config)
-          preload = config.request.dig(:browserless, :preload)
-          return 0 unless preload
-
-          top_level_preload_wait_budget(preload) +
-            click_selector_preload_budget(preload) +
-            scroll_preload_budget(preload)
-        end
-
-        def top_level_preload_wait_budget(preload)
-          preload[:wait_after_ms] ? 2 : 0
-        end
-
-        def click_selector_preload_budget(preload)
-          preload.fetch(:click_selectors, []).sum { preload_action_budget(_1, :max_clicks) }
-        end
-
-        def scroll_preload_budget(preload)
-          scroll = preload[:scroll_down]
-          return 0 unless scroll
-
-          preload_action_budget(scroll, :iterations)
-        end
-
-        def preload_action_budget(config, count_key)
-          action_count = config.fetch(count_key, 1)
-          wait_budget = config[:wait_after_ms] ? action_count : 0
-
-          action_count + wait_budget
         end
       end
     end

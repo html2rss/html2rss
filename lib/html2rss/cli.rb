@@ -226,9 +226,7 @@ module Html2rss
       raise Thor::Error,
             "#{error.message}. retry with --max-requests #{suggested_max_requests} " \
             'or increase request.max_requests in the config.'
-    rescue Html2rss::RequestService::BrowserlessConfigurationError,
-           Html2rss::RequestService::BrowserlessConnectionFailed,
-           Html2rss::RequestService::BotasaurusConfigurationError,
+    rescue Html2rss::RequestService::BotasaurusConfigurationError,
            Html2rss::RequestService::BotasaurusConnectionFailed,
            Html2rss::RequestService::BlockedSurfaceDetected,
            Html2rss::NoFeedItemsExtracted => error
