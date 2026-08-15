@@ -96,6 +96,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       expect(headers).to eq('Content-Type' => 'application/json')
       expect(JSON.parse(body)).to eq(
         'url' => 'https://example.com/',
+        'execution_mode' => 'auto',
         'navigation_mode' => 'auto',
         'max_retries' => 1,
         'headless' => false,
@@ -103,44 +104,65 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       )
     end
 
-    context 'when request includes optional botasaurus fields' do
+    context 'when request includes optional botasaurus fields and headers' do
+      let(:ctx) do
+        Html2rss::RequestService::Context.new(
+          url: 'https://example.com',
+          headers: { 'Accept-Language' => 'en-US,en;q=0.9', 'X-Context-Header' => 'BaseVal' },
+          request: request_config,
+          policy:,
+          budget:
+        )
+      end
       let(:request_config) do
         {
           botasaurus: {
+            execution_mode: 'request',
             navigation_mode: 'google_get_bypass',
             max_retries: 3,
             wait_for_selector: 'h1',
             wait_timeout_seconds: 15,
             block_images: true,
             block_images_and_css: false,
+            block_trackers: true,
             wait_for_complete_page_load: true,
             headless: true,
             proxy: 'http://proxy.local:8080',
             user_agent: 'Agent/1.0',
             window_size: [1920, 1080],
             lang: 'en-US',
+            cookies: { 'session' => 'test-session-token' },
+            headers: { 'X-Override' => 'Overridden' },
             ignored_key: 'drop-me'
           }
         }
       end
 
-      it 'forwards allowlisted fields and drops unknown keys', :aggregate_failures do
+      it 'forwards allowlisted fields, merged headers, cookies, and drops unknown keys', :aggregate_failures do
         execute
 
         payload = JSON.parse(captured_post_args.first.fetch(1))
         expect(payload).to include(
+          'execution_mode' => 'request',
           'navigation_mode' => 'google_get_bypass',
           'max_retries' => 3,
           'wait_for_selector' => 'h1',
           'wait_timeout_seconds' => 15,
           'block_images' => true,
           'block_images_and_css' => false,
+          'block_trackers' => true,
           'wait_for_complete_page_load' => true,
           'headless' => true,
           'proxy' => 'http://proxy.local:8080',
           'user_agent' => 'Agent/1.0',
           'window_size' => [1920, 1080],
-          'lang' => 'en-US'
+          'lang' => 'en-US',
+          'cookies' => { 'session' => 'test-session-token' },
+          'headers' => {
+            'Accept-Language' => 'en-US,en;q=0.9',
+            'X-Context-Header' => 'BaseVal',
+            'X-Override' => 'Overridden'
+          }
         )
         expect(payload).not_to have_key('ignored_key')
       end

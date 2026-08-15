@@ -55,6 +55,7 @@ module Html2rss
       def contract
         @contract ||= BotasaurusContract.new(
           url: ctx.url,
+          headers: ctx.headers,
           options: ctx.request.fetch(:botasaurus, {}),
           remaining_timeout_seconds: attempt_timeout_seconds
         )
