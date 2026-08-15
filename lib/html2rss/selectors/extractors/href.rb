@@ -27,6 +27,18 @@ module Html2rss
         # The available options for the href (attribute) extractor.
         Options = Struct.new('HrefOptions', :selector, :channel, keyword_init: true)
 
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Return the absolute URL from the selected element\'s `href` attribute ' \
+                      '(relative hrefs are resolved against the channel URL).'
+
+        # Example extractor name values for JSON Schema +examples+.
+        EXAMPLES = [
+          'href'
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
+        def self.schema_doc = SchemaDoc.for_extractor(name: :href, klass: self)
+
         ##
         # Initializes the Href extractor.
         #

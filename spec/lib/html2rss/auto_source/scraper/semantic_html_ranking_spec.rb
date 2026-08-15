@@ -572,9 +572,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
           strategy: :semantic,
           position:
         )
-        ranked = Html2rss::Scoring::RankedSegment.build(
+        ranked = Html2rss::Scoring::RankedSegment.new(
           segment:,
-          score: Html2rss::Scoring::Score.build(composite: final_score, quality: quality_score, junk: junk_score)
+          score: Html2rss::Scoring::Score.new(
+            composite: final_score.to_f,
+            quality: quality_score.to_f,
+            junk: junk_score.to_f,
+            breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+          )
         )
         allow(deduplicator).to receive(:article_for).with(ranked).and_return(article)
         ranked
@@ -733,9 +738,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
           strategy: :semantic,
           position: index
         )
-        Html2rss::Scoring::RankedSegment.build(
+        Html2rss::Scoring::RankedSegment.new(
           segment:,
-          score: Html2rss::Scoring::Score.build(composite: 60, quality: 70, junk: 10)
+          score: Html2rss::Scoring::Score.new(
+            composite: 60.0,
+            quality: 70.0,
+            junk: 10.0,
+            breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+          )
         )
       end
     end

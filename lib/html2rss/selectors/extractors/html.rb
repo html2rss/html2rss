@@ -26,6 +26,18 @@ module Html2rss
         # The available options for the html extractor.
         Options = Struct.new('HtmlOptions', :selector, keyword_init: true)
 
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Return the outer HTML of the selected element. ' \
+                      'Sanitize during post-processing (e.g. `sanitize_html`).'
+
+        # Example extractor name values for JSON Schema +examples+.
+        EXAMPLES = [
+          'html'
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
+        def self.schema_doc = SchemaDoc.for_extractor(name: :html, klass: self)
+
         ##
         # Initializes the Html extractor.
         #

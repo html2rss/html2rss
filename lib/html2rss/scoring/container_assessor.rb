@@ -8,21 +8,15 @@ module Html2rss
       # Microdata itemprop values treated as publish/update markers.
       PUBLISH_ITEMPROPS = %w[datePublished dateModified].freeze
 
-      # Matches content-like tokens in class/id strings.
-      CONTENT_TOKEN_REGEXP = begin
-        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:content)
-        /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
-      end.freeze
-
-      # Matches utility/junk tokens in class/id strings.
-      JUNK_TOKEN_REGEXP = begin
-        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:utility)
-        /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
-      end.freeze
-
       # @param text_classifier [LinkDestination::TextClassifier]
-      def initialize(text_classifier: LinkDestination::TextClassifier.new)
+      # @param content_token_regexp [Regexp]
+      # @param junk_token_regexp [Regexp]
+      def initialize(text_classifier: LinkDestination::TextClassifier.new,
+                     content_token_regexp: LinkResolver::CONTENT_TOKEN_REGEXP,
+                     junk_token_regexp: LinkResolver::JUNK_TOKEN_REGEXP)
         @text_classifier = text_classifier
+        @content_token_regexp = content_token_regexp
+        @junk_token_regexp = junk_token_regexp
       end
 
       ##
@@ -41,8 +35,8 @@ module Html2rss
           publish_marker: publish_marker?(container),
           descriptive_context: descriptive_context?(container.visible_text, title),
           article_container: container.name == :article,
-          content_tokens: tokens.match?(CONTENT_TOKEN_REGEXP),
-          junk_tokens: tokens.match?(JUNK_TOKEN_REGEXP),
+          content_tokens: tokens.match?(@content_token_regexp),
+          junk_tokens: tokens.match?(@junk_token_regexp),
           utility_prefix_title: @text_classifier.utility_prefix?(title),
           recommended_title: @text_classifier.recommended?(title),
           utility_path: destination_facts&.utility_path,

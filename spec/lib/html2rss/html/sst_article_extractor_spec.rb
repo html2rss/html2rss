@@ -38,9 +38,14 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     doc = Html2rss::SST::Normalizer.call(html)
     root = doc.root.find { |n| n.name == :div && n.find { |c| c.name == :strong } }
     segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :cluster, position: 0)
-    ranked = Html2rss::Scoring::RankedSegment.build(
+    ranked = Html2rss::Scoring::RankedSegment.new(
       segment:,
-      score: Html2rss::Scoring::Score.build(composite: 1)
+      score: Html2rss::Scoring::Score.new(
+        composite: 1.0,
+        quality: 1.0,
+        junk: 0.0,
+        breakdown: Html2rss::Scoring::Score::EMPTY_BREAKDOWN
+      )
     )
 
     article = described_class.call(ranked, base_url: 'https://example.com', fallback_anchorless: true)

@@ -16,8 +16,22 @@ module Html2rss
       # Would return:
       #    'Foobar'
       class Static
+        # Config-facing option types (excluding shared selector fields supplied at runtime).
+        OPTION_TYPES = { static: String }.freeze
+
         # The available option for the static extractor.
         Options = Struct.new('StaticOptions', :static, keyword_init: true)
+
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Return a fixed value from sibling selector option `static` (no DOM read).'
+
+        # Example extractor name values for JSON Schema +examples+.
+        EXAMPLES = [
+          'static'
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
+        def self.schema_doc = SchemaDoc.for_extractor(name: :static, klass: self)
 
         ##
         # Initializes the Static extractor.

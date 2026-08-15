@@ -27,6 +27,17 @@ module Html2rss
       #
       # It uses `Time.parse`.
       class ParseTime < Base
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Parse a time string with Time.parse and return RFC822, using the channel `time_zone`.'
+
+        # Example post-process objects for JSON Schema +examples+.
+        EXAMPLES = [
+          { 'name' => 'parse_time' }
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
+        def self.schema_doc = SchemaDoc.for_post_processor(name: :parse_time, klass: self)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]

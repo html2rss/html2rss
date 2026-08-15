@@ -30,6 +30,27 @@ module Html2rss
       # Would return:
       #    'bar'
       class Substring < Base
+        # Required config field types (validator introspection via +Options+).
+        OPTION_TYPES = { start: Integer }.freeze
+
+        # Optional config field types (validated when the key is present and non-nil).
+        OPTIONAL_OPTION_TYPES = { end: Integer }.freeze
+
+        # Config fields required by this post-processor (validator / schema introspection).
+        Options = Struct.new(*OPTION_TYPES.keys, keyword_init: true)
+
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Return a slice of the extracted string using Integer `start` and optional `end` ' \
+                      '(Ruby String#[] range semantics; end may be omitted).'
+
+        # Example post-process objects for JSON Schema +examples+.
+        EXAMPLES = [
+          { 'name' => 'substring', 'start' => 4, 'end' => 6 }
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
+        def self.schema_doc = SchemaDoc.for_post_processor(name: :substring, klass: self)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]

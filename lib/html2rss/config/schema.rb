@@ -48,6 +48,7 @@ module Html2rss
       ##
       # Orchestrates schema assembly from runtime validator contracts plus
       # client-facing overlays.
+      # rubocop:disable Metrics/ClassLength -- overlay assembly stays in one builder
       class Builder
         class << self
           # @return [Hash{String => Object}] fully assembled JSON schema hash
@@ -60,6 +61,7 @@ module Html2rss
         def call
           schema = validator_schema
           apply_top_level(schema)
+          schema[:$defs] = registry_catalog_defs
           schema.fetch(:properties).merge!(overlay)
           schema.fetch(:properties).delete(:dynamic_params_error)
           DeepStringifier.call(schema)
@@ -77,6 +79,20 @@ module Html2rss
             { 'required' => ['selectors'] },
             { 'required' => ['auto_source'] }
           ]
+        end
+
+        # @return [Hash{Symbol => Hash}] catalog under $defs.post_processors / $defs.extractors
+        def registry_catalog_defs
+          {
+            post_processors: catalog_from_registry(Selectors::PostProcessors::NAME_TO_CLASS),
+            extractors: catalog_from_registry(Selectors::Extractors::NAME_TO_CLASS)
+          }
+        end
+
+        # @param registry [Hash{Symbol => Class}]
+        # @return [Hash{String => Hash}]
+        def catalog_from_registry(registry)
+          registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_doc] }
         end
 
         # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
@@ -105,6 +121,13 @@ module Html2rss
             ]
           }
 
+          selector_schema = Schema.apply_selector_registry_refs!(
+            Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true)
+          )
+          enclosure_schema = Schema.apply_selector_registry_refs!(
+            Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true)
+          )
+
           {
             strategy: {
               type: 'string',
@@ -130,14 +153,14 @@ module Html2rss
                 items: items_schema.merge(
                   description: 'Defines the items selector and optional enhancement settings.'
                 ),
-                enclosure: Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true).merge(
+                enclosure: enclosure_schema.merge(
                   description: 'Describes enclosure extraction settings.'
                 ),
                 guid: reference_array('List of selector keys used to build the GUID. Each entry must reference a sibling selector key; runtime validation enforces those references.'),
                 categories: reference_array('List of selector keys whose values will be used as categories. Each entry must reference a sibling selector key; runtime validation enforces those references.')
               },
               patternProperties: {
-                '^(?!items$|enclosure$|guid$|categories$).+$' => Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true).merge(
+                '^(?!items$|enclosure$|guid$|categories$).+$' => selector_schema.merge(
                   description: 'Dynamic selector definition keyed by attribute name.'
                 )
               },
@@ -157,6 +180,48 @@ module Html2rss
               description: 'Selector key defined elsewhere in this object.'
             }
           }
+        end
+      end
+      # rubocop:enable Metrics/ClassLength
+
+      ##
+      # Wires extractor / post_process to thin oneOf $refs into the registry catalog.
+      #
+      # @param schema [Hash] dry-schema JSON schema fragment for a selector
+      # @return [Hash] same schema with registry $ref wiring applied
+      def apply_selector_registry_refs!(schema)
+        properties = schema.fetch(:properties)
+        properties[:extractor] = extractor_wire_schema
+        properties[:post_process] = post_process_wire_schema
+        schema
+      end
+
+      # @return [Hash{Symbol => Object}]
+      def extractor_wire_schema
+        {
+          description: 'Extractor used to pull a value from the selected element.',
+          oneOf: registry_ref_list('extractors', Selectors::Extractors::NAME_TO_CLASS)
+        }
+      end
+
+      # @return [Hash{Symbol => Object}]
+      def post_process_wire_schema
+        {
+          type: 'array',
+          description: 'Ordered transforms applied to the extracted value.',
+          items: {
+            oneOf: registry_ref_list('post_processors', Selectors::PostProcessors::NAME_TO_CLASS)
+          }
+        }
+      end
+
+      ##
+      # @param catalog [String] $defs catalog name (`extractors` or `post_processors`)
+      # @param registry [Hash{Symbol => Class}]
+      # @return [Array<Hash>] oneOf entries of `{ '$ref' => ... }`
+      def registry_ref_list(catalog, registry)
+        registry.keys.sort.map do |name|
+          { '$ref' => "#/$defs/#{catalog}/#{name}" }
         end
       end
 

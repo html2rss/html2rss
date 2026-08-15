@@ -51,16 +51,15 @@ module Html2rss
           heading_match = meaningful && heading_text.match?(/\p{Alnum}/) && heading_text == text
 
           return if @noise_policy.noise_anchor?(
-            text:, destination_facts: destination, anchor:, container:, heading_anchor:
+            text:, destination_facts: destination, anchor:, container:, heading_anchor:,
+            utility_landmark_ancestor: @segmenter.landmark_ancestor?(anchor, container)
           )
           return unless meaningful || content_like || heading_anchor
 
-          score = Scoring::AnchorScore.score(
-            heading_anchor:,
-            heading_text_match: heading_match,
-            meaningful_text: meaningful,
-            content_like_destination: content_like
-          )
+          score = (heading_anchor ? 100 : 0) +
+                  (heading_match ? 20 : 0) +
+                  (meaningful ? 10 : 0) +
+                  (content_like ? 10 : 0)
 
           { anchor:, destination: destination.destination, score: }
         end

@@ -29,6 +29,24 @@ module Html2rss
       #
       # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
       class Gsub < Base
+        # Required config field types (validator introspection via +Options+).
+        OPTION_TYPES = { pattern: String, replacement: String }.freeze
+
+        # Config fields required by this post-processor (validator / schema introspection).
+        Options = Struct.new(*OPTION_TYPES.keys, keyword_init: true)
+
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Replace matches of `pattern` in the extracted string with `replacement` ' \
+                      '(Ruby String#gsub; pattern may be a regexp-like string).'
+
+        # Example post-process objects for JSON Schema +examples+.
+        EXAMPLES = [
+          { 'name' => 'gsub', 'pattern' => 'boo', 'replacement' => 'baz' }
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
+        def self.schema_doc = SchemaDoc.for_post_processor(name: :gsub, klass: self)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]

@@ -33,6 +33,18 @@ module Html2rss
       #
       #    <p>Price: 12.34</p>
       class MarkdownToHtml < Base
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Convert Markdown to HTML (Kramdown) and sanitize the result. ' \
+                      'Often chained after `template`.'
+
+        # Example post-process objects for JSON Schema +examples+.
+        EXAMPLES = [
+          { 'name' => 'markdown_to_html' }
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
+        def self.schema_doc = SchemaDoc.for_post_processor(name: :markdown_to_html, klass: self)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]

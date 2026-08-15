@@ -14,11 +14,11 @@ Heuristic auto-source chrome lives on `SST::Tags` / `SST::Text` after `SST::Norm
 
 ## Container assessment
 
-Observing a semantic container plus its selected anchor and destination facts into ranking signals. Owned by `Html2rss::Scoring::Engine` (+ `ContainerAssessor`). Rank-time hard drops live on `Scoring::Observation#hard_junk?` (container assessment — not content-anchor eligibility). `SemanticHtml` / `Html` orchestrate Normalizer → Segmenter → Scoring → `Html::SstArticleExtractor` only. Scrapers supply one page-scoped `Scoring::LinkResolver` into Segmenter, Engine, and SemanticHtml dedup.
+Observing a semantic container plus its selected anchor and destination facts into ranking signals. Owned by `Html2rss::Scoring::Engine` (+ `ContainerAssessor`). `LinkResolver` owns token regexp derivation from `PathClassifier::SEGMENT_SETS` (`CONTENT_TOKEN_REGEXP` / `JUNK_TOKEN_REGEXP`); ContainerAssessor consumes those defaults (or injected regexps). Rank-time hard drops live on `Scoring::Observation#hard_junk?` (container assessment — not content-anchor eligibility). `SemanticHtml` / `Html` orchestrate Normalizer → Segmenter → Scoring → `Html::SstArticleExtractor` only. Scrapers supply one page-scoped `Scoring::LinkResolver` into Segmenter, Engine, and SemanticHtml dedup.
 
 ## Content-anchor eligibility
 
-Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Primary-link ranking weights live in `Scoring::AnchorScore`. Segmenter discovers candidates and may *call* NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
+Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Utility-landmark ancestry is computed by `AutoSource::Segmenter#landmark_ancestor?` and injected as `utility_landmark_ancestor:` — NoisePolicy does not walk `SST::Index`. Primary-link ranking weights are inlined in `Segmenter::PrimaryLink#candidate_facts`. Feature ids and `Score`/`RankedSegment` factories live on `Scoring::Engine`. Segmenter discovers candidates and may *call* NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
 
 ## DOM candidate clustering
 
@@ -35,3 +35,7 @@ Per-item extraction scope carries `channel` (url/time_zone). Post-processor `Con
 ## Pagination strategy registry
 
 Supported pagination strategy names and factory classes live in `RequestSession::Pager::STRATEGIES` / `Pager.strategy_names`. Selectors validation (`Selectors::Config::Items`) and the exported JSON schema enum consume that list. Runtime pagination uses `Pager.for` (e.g. `rel_next` → `Pager::RelNext`).
+
+## Extractor / post-processor registry
+
+Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. `Config::SelectorsValidator::Selector` derives required option fields from each class's `Options` and types from `OPTION_TYPES` / `OPTIONAL_OPTION_TYPES` (when defined); schema enums for `extractor` and `post_process[].name` are overlaid from the same registries. Do not hardcode name lists or per-name `case` type soups in the validator or schema.

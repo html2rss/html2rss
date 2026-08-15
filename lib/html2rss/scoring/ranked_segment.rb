@@ -6,18 +6,6 @@ module Html2rss
     # A segment paired with its composite score.
     RankedSegment = Data.define(:segment, :score) do
       ##
-      # @param segment [Html2rss::AutoSource::Segment]
-      # @param score [Score]
-      # @return [RankedSegment]
-      # @raise [ArgumentError] on invalid types
-      def self.build(segment:, score:)
-        raise ArgumentError, 'segment must be AutoSource::Segment' unless segment.is_a?(Html2rss::AutoSource::Segment)
-        raise ArgumentError, 'score must be Scoring::Score' unless score.is_a?(Score)
-
-        new(segment:, score:)
-      end
-
-      ##
       # @return [SST::Node]
       def root_node = segment.root_node
 

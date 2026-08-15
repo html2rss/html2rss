@@ -63,6 +63,27 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
     end
   end
 
+  describe '#landmark_ancestor?' do
+    it 'is true for anchors under utility landmarks outside the content container', # rubocop:disable RSpec/ExampleLength
+       :aggregate_failures do
+      document = document_for(<<~HTML)
+        <html><body>
+          <article>
+            <nav><a href="/news/2024/platform-launch-notes">Related</a></nav>
+            <h2><a href="/news/2024/other-story">Other story</a></h2>
+          </article>
+        </body></html>
+      HTML
+      container = document.root.find { |n| n.name == :article }
+      landmark_anchor = container.find { |n| n.link? && n.visible_text.to_s == 'Related' }
+      content_anchor = container.find { |n| n.link? && n.visible_text.to_s == 'Other story' }
+      segmenter = described_class.new(document, base_url: 'https://example.com', strategy: :semantic)
+
+      expect(segmenter.landmark_ancestor?(landmark_anchor, container)).to be(true)
+      expect(segmenter.landmark_ancestor?(content_anchor, container)).to be(false)
+    end
+  end
+
   describe '.call with :cluster' do
     let(:html) do
       <<~HTML

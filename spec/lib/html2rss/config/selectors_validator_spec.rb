@@ -289,6 +289,38 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it { expect(result).to be_failure }
     end
+
+    context 'with nil gsub.pattern' do
+      let(:config) do
+        { title: { post_process: [{ name: 'gsub', pattern: nil, replacement: 'bar' }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    context 'with non-string gsub.pattern' do
+      let(:config) do
+        { title: { post_process: [{ name: 'gsub', pattern: 1, replacement: 'bar' }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    context 'with non-integer substring.start' do
+      let(:config) do
+        { title: { post_process: [{ name: 'substring', start: '0' }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    context 'with nil template.string' do
+      let(:config) do
+        { title: { post_process: [{ name: 'template', string: nil }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
   end
 
   describe 'Selectors :extractor' do
@@ -322,6 +354,22 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       end
 
       it { expect(result).to be_failure }
+    end
+
+    context 'with unknown extractor' do
+      let(:config) do
+        { title: { selector: 'h1', extractor: 'nope' } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    it 'requires Options members from the extractor registry', :aggregate_failures do
+      attribute = described_class.call(title: { selector: 'a', extractor: 'attribute' })
+      static = described_class.call(title: { extractor: 'static' })
+
+      expect(attribute).to be_failure
+      expect(static).to be_failure
     end
   end
 

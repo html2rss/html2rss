@@ -44,7 +44,7 @@ module Html2rss
         @minimum_selector_frequency = opts.fetch(:minimum_selector_frequency, 2)
         @use_top_selectors = opts.fetch(:use_top_selectors, 5)
         @link_resolver = opts[:link_resolver] || Scoring::LinkResolver.new(base_url)
-        @noise_policy = LinkDestination::NoisePolicy.new(link_resolver: @link_resolver, index: document.index)
+        @noise_policy = LinkDestination::NoisePolicy.new(link_resolver: @link_resolver)
       end
 
       # @return [Array<Segment>]
@@ -61,6 +61,35 @@ module Html2rss
 
       # @return [SST::Index]
       def index = document.index
+
+      ##
+      # Whether +anchor+ has a utility-landmark ancestor outside +container+.
+      #
+      # @param anchor [SST::Node]
+      # @param container [SST::Node]
+      # @return [Boolean]
+      def landmark_ancestor?(anchor, container)
+        cache = (@landmark_cache ||= {})
+        key = [anchor.object_id, container.object_id]
+        return cache[key] if cache.key?(key)
+
+        cache[key] = compute_landmark_ancestor?(anchor:, container:)
+      end
+
+      private
+
+      def compute_landmark_ancestor?(anchor:, container:) # rubocop:disable Metrics/CyclomaticComplexity
+        return false unless anchor && container
+
+        curr = index.parent_of(anchor)
+        while curr && curr.name != :html
+          return true if curr != container && curr.utility_landmark?
+          return false if curr.equal?(container)
+
+          curr = index.parent_of(curr)
+        end
+        false
+      end
     end
   end
 end
