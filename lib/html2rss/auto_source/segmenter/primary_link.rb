@@ -55,12 +55,10 @@ module Html2rss
           )
           return unless meaningful || content_like || heading_anchor
 
-          score = Scoring::AnchorScore.score(
-            heading_anchor:,
-            heading_text_match: heading_match,
-            meaningful_text: meaningful,
-            content_like_destination: content_like
-          )
+          score = (heading_anchor ? 100 : 0) +
+                  (heading_match ? 20 : 0) +
+                  (meaningful ? 10 : 0) +
+                  (content_like ? 10 : 0)
 
           { anchor:, destination: destination.destination, score: }
         end

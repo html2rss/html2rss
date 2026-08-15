@@ -10,7 +10,17 @@ module Html2rss
       # Minimum composite score retained by {#rank_top} (precision floor).
       SCORE_FLOOR = 0.0
 
-      # Quality feature triples: [FeatureId, predicate, weight].
+      FEATURE_IDS = %i[
+        title_word_count_ge3 title_word_count_ge7 path_length_gt6 content_path
+        publish_marker descriptive_context article_container content_tokens
+        non_content_utility_path utility_prefix_title_short shallow weak_container
+        recommended_title_non_content high_confidence_junk_path junk_tokens
+        heading_anchor heading_text_match meaningful_text content_like_destination
+        cluster_size cluster_avg_words cluster_heading cluster_time cluster_date
+      ].to_set.freeze
+      private_constant :FEATURE_IDS
+
+      # Quality feature triples: [feature_id, predicate, weight].
       QUALITY_RULES = [
         [:title_word_count_ge3, ->(o) { o.title_word_count >= 3 }, 40],
         [:title_word_count_ge7, ->(o) { o.title_word_count >= 7 }, 15],
@@ -22,7 +32,7 @@ module Html2rss
         [:content_tokens, lambda(&:content_tokens), 10]
       ].freeze
 
-      # Junk feature triples: [FeatureId, predicate, weight].
+      # Junk feature triples: [feature_id, predicate, weight].
       JUNK_RULES = [
         [:non_content_utility_path, ->(o) { o.utility_path && !o.content_path && !o.strong_post_suffix }, 25],
         [:utility_prefix_title_short, ->(o) { o.utility_prefix_title && o.title_word_count <= 6 }, 15],
@@ -33,7 +43,17 @@ module Html2rss
         [:junk_tokens, lambda(&:junk_tokens), 15]
       ].freeze
 
-      (QUALITY_RULES + JUNK_RULES).each { |feature_id, _, _| FeatureId.assert!(feature_id) }
+      ##
+      # @param id [Symbol]
+      # @return [Symbol]
+      # @raise [ArgumentError] when id is not in the closed set
+      def self.assert_feature_id!(id)
+        raise ArgumentError, "unknown feature: #{id.inspect}" unless FEATURE_IDS.include?(id)
+
+        id
+      end
+
+      (QUALITY_RULES + JUNK_RULES).each { |feature_id, _, _| assert_feature_id!(feature_id) }
 
       # @param link_resolver [LinkResolver]
       def initialize(link_resolver:)
@@ -78,9 +98,9 @@ module Html2rss
 
         quality, quality_parts = apply_rules(QUALITY_RULES, obs)
         junk, junk_parts = apply_rules(JUNK_RULES, obs)
-        RankedSegment.build(
+        ranked(
           segment:,
-          score: Score.build(
+          score: build_score(
             composite: quality - junk,
             quality:,
             junk:,
@@ -95,6 +115,30 @@ module Html2rss
           parts[feature_id] = weight if predicate.call(obs)
         end
         [parts.values.sum, parts]
+      end
+
+      def build_score(composite:, quality: nil, junk: nil, breakdown: nil)
+        raise ArgumentError, 'composite must be Numeric' unless composite.is_a?(Numeric)
+
+        Score.new(
+          composite: composite.to_f,
+          quality: (quality.nil? ? composite : quality).to_f,
+          junk: (junk || 0).to_f,
+          breakdown: normalize_breakdown(breakdown)
+        )
+      end
+
+      def normalize_breakdown(breakdown)
+        return Score::EMPTY_BREAKDOWN if breakdown.nil?
+
+        breakdown.transform_keys { |id| self.class.assert_feature_id!(id) }.freeze
+      end
+
+      def ranked(segment:, score:)
+        raise ArgumentError, 'segment must be AutoSource::Segment' unless segment.is_a?(Html2rss::AutoSource::Segment)
+        raise ArgumentError, 'score must be Scoring::Score' unless score.is_a?(Score)
+
+        RankedSegment.new(segment:, score:)
       end
     end
   end
