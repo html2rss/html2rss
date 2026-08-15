@@ -100,11 +100,16 @@ RSpec.describe Html2rss::Config::Schema do
       min_window_size = window_size['minItems'] || window_size.dig('items', 'minLength')
       max_window_size = window_size['maxItems'] || window_size.dig('items', 'maxLength')
 
+      expect(botasaurus.fetch('execution_mode').fetch('enum'))
+        .to contain_exactly('auto', 'request', 'browser')
       expect(botasaurus.fetch('navigation_mode').fetch('enum'))
         .to contain_exactly('auto', 'get', 'google_get', 'google_get_bypass')
       expect(botasaurus.dig('max_retries', 'minimum')).to eq(0)
       expect(botasaurus.dig('max_retries', 'maximum')).to eq(3)
       expect(botasaurus.dig('wait_timeout_seconds', 'exclusiveMinimum')).to eq(0)
+      expect(botasaurus).to have_key('block_trackers')
+      expect(botasaurus).to have_key('cookies')
+      expect(botasaurus).to have_key('headers')
       expect(min_window_size).to eq(2)
       expect(max_window_size).to eq(2)
     end

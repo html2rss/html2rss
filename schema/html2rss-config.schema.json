@@ -591,6 +591,15 @@
         "botasaurus": {
           "type": "object",
           "properties": {
+            "execution_mode": {
+              "type": "string",
+              "minLength": 1,
+              "enum": [
+                "auto",
+                "request",
+                "browser"
+              ]
+            },
             "navigation_mode": {
               "type": "string",
               "minLength": 1,
@@ -634,6 +643,12 @@
                 "type": "null"
               }
             },
+            "block_trackers": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
             "wait_for_complete_page_load": {
               "type": "boolean",
               "not": {
@@ -666,6 +681,12 @@
             "lang": {
               "type": "string",
               "minLength": 1
+            },
+            "cookies": {
+              "type": "object"
+            },
+            "headers": {
+              "type": "object"
             }
           },
           "required": []
