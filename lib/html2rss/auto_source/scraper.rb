@@ -42,10 +42,10 @@ module Html2rss
         # User-facing messages grouped by no-scraper surface category.
         CATEGORY_MESSAGES = {
           blocked_surface: 'No scrapers found: blocked surface likely (anti-bot or interstitial). ' \
-                           'Retry with --strategy browserless, try a more specific public listing URL, ' \
+                           'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, ' \
                            'or run from an environment that can complete anti-bot checks.',
           app_shell: 'No scrapers found: app-shell surface detected (client-rendered page with little or no ' \
-                     'server-rendered article HTML). Retry with --strategy browserless, or target a direct ' \
+                     'server-rendered article HTML). Configure BOTASAURUS_SCRAPER_URL or target a direct ' \
                      'listing/update URL instead of a homepage or shell entrypoint.',
           unsupported_surface: 'No scrapers found: unsupported extraction surface for auto mode. ' \
                                'Try a direct listing/changelog/category URL, ' \

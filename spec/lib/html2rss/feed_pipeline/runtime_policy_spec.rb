@@ -7,8 +7,8 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
 
   let(:raw_config) do
     {
-      strategy: :browserless,
-      request: { max_redirects: 8, browserless: { preload: { wait_after_ms: 500 } } },
+      strategy: :botasaurus,
+      request: { max_redirects: 8 },
       channel: { url: 'https://example.com/blog' },
       selectors: {
         items: { selector: 'article', pagination: { max_pages: 3 } },
@@ -35,10 +35,9 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     context 'when max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
-      it 'sizes HTTP request slots without stuffing preload into max_requests', :aggregate_failures do
+      it 'sizes HTTP request slots', :aggregate_failures do
         expect(runtime_policy.max_requests).to eq(8)
         expect(runtime_policy.max_redirects).to eq(8)
-        expect(described_class.interaction_budget_for(config)).to eq(2)
       end
     end
 
@@ -90,38 +89,6 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       end
     end
 
-    context 'when browserless preload is omitted' do
-      let(:config) do
-        Html2rss::Config.from_hash(
-          raw_config.merge(request: { max_redirects: 8 })
-        )
-      end
-
-      it 'does not reserve preload interaction budget', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(8)
-        expect(described_class.interaction_budget_for(config)).to eq(0)
-        expect(runtime_policy.max_redirects).to eq(8)
-      end
-    end
-
-    context 'when preload only clicks without waits' do
-      let(:config) do
-        Html2rss::Config.from_hash(
-          raw_config.merge(
-            request: {
-              max_redirects: 8,
-              browserless: { preload: { click_selectors: [{ selector: '.load-more', max_clicks: 2 }] } }
-            }
-          )
-        )
-      end
-
-      it 'counts click actions on the interaction budget, not request slots', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(8)
-        expect(described_class.interaction_budget_for(config)).to eq(2)
-      end
-    end
-
     context 'when total_timeout_seconds is configured' do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(request: raw_config[:request].merge(total_timeout_seconds: 42))) }
 
@@ -129,35 +96,15 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
         expect(runtime_policy.total_timeout_seconds).to eq(42)
       end
     end
-
-    context 'when preload only scrolls without waits' do
-      let(:config) do
-        Html2rss::Config.from_hash(
-          raw_config.merge(
-            request: {
-              max_redirects: 8,
-              browserless: { preload: { scroll_down: { iterations: 3 } } }
-            }
-          )
-        )
-      end
-
-      it 'counts scroll actions on the interaction budget so pagination keeps its HTTP slots',
-         :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(8)
-        expect(described_class.interaction_budget_for(config)).to eq(3)
-      end
-    end
   end
 
   describe '.budget_for' do
     let(:config) { Html2rss::Config.from_hash(raw_config) }
 
-    it 'builds a Budget with separate request and interaction pools', :aggregate_failures do
+    it 'builds a Budget with request pools', :aggregate_failures do
       budget = described_class.budget_for(config)
 
       expect(budget.remaining_requests).to eq(8)
-      expect(budget.remaining_interactions).to eq(2)
     end
   end
 end

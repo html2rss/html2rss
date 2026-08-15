@@ -6,7 +6,7 @@ require 'forwardable'
 module Html2rss
   ##
   # Requests website URLs to retrieve their HTML for further processing.
-  # Provides concrete transport strategies (e.g. Faraday, Browserless).
+  # Provides concrete transport strategies (e.g. Faraday, Botasaurus).
   #
   # Feed-level +:auto+ is not registered here — {FeedPipeline::StrategyPlan} resolves
   # it to a concrete strategy (or {FeedPipeline::AutoFallback} chain) before execute.
@@ -23,8 +23,6 @@ module Html2rss
     class UnsupportedResponseContentType < Html2rss::Error; end
     # Raised when HTTP request slot limits are exceeded.
     class RequestBudgetExceeded < Html2rss::Error; end
-    # Raised when Browserless preload interaction limits are exceeded.
-    class InteractionBudgetExceeded < Html2rss::Error; end
     # Raised when policy denies private-network access.
     class PrivateNetworkDenied < Html2rss::Error; end
     # Raised when cross-origin follow-up requests are denied.
@@ -35,10 +33,6 @@ module Html2rss
     class BlockedSurfaceDetected < Html2rss::Error; end
     # Raised when a request times out.
     class RequestTimedOut < Html2rss::Error; end
-    # Raised when Browserless configuration is missing or invalid.
-    class BrowserlessConfigurationError < Html2rss::Error; end
-    # Raised when Browserless cannot be reached.
-    class BrowserlessConnectionFailed < Html2rss::Error; end
     # Raised when Botasaurus configuration is missing or invalid.
     class BotasaurusConfigurationError < Html2rss::Error; end
     # Raised when Botasaurus cannot be reached or returns invalid payloads.
@@ -62,7 +56,6 @@ module Html2rss
       @strategies = {
         faraday: FaradayStrategy,
         botasaurus: BotasaurusStrategy,
-        browserless: BrowserlessStrategy,
         local_file: LocalFileStrategy
       }
       @default_strategy_name = :faraday

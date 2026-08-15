@@ -6,7 +6,7 @@ module Html2rss
   class Config
     # Validates the configuration hash using Dry::Validation.
     # The configuration options adhere to the documented schema in README.md.
-    class Validator < Dry::Validation::Contract # rubocop:disable Metrics/ClassLength
+    class Validator < Dry::Validation::Contract
       # URI format used for channel URL validation.
       URI_REGEXP = Url::URI_REGEXP
       # Allowed stylesheet MIME types.
@@ -33,31 +33,6 @@ module Html2rss
         required(:href).filled(:string)
         required(:type).filled(:string, included_in?: STYLESHEET_TYPES)
         optional(:media).maybe(:string)
-      end
-
-      # Contract for Browserless click-preload options.
-      BrowserlessPreloadClickSelectorConfig = Dry::Schema.Params do
-        required(:selector).filled(:string)
-        optional(:max_clicks).filled(:integer, gt?: 0)
-        optional(:wait_after_ms).filled(:integer, gteq?: 0)
-      end
-
-      # Contract for Browserless scroll-preload options.
-      BrowserlessPreloadScrollConfig = Dry::Schema.Params do
-        optional(:iterations).filled(:integer, gt?: 0)
-        optional(:wait_after_ms).filled(:integer, gteq?: 0)
-      end
-
-      # Contract for Browserless preload orchestration options.
-      BrowserlessPreloadConfig = Dry::Schema.Params do
-        optional(:wait_after_ms).filled(:integer, gteq?: 0)
-        optional(:click_selectors).array(BrowserlessPreloadClickSelectorConfig)
-        optional(:scroll_down).hash(BrowserlessPreloadScrollConfig)
-      end
-
-      # Contract for Browserless-specific request options.
-      BrowserlessRequestConfig = Dry::Schema.Params do
-        optional(:preload).hash(BrowserlessPreloadConfig)
       end
 
       # Contract for Botasaurus-specific request options.
@@ -89,7 +64,6 @@ module Html2rss
         optional(:max_redirects).filled(:integer, gteq?: 0)
         optional(:max_requests).filled(:integer, gt?: 0)
         optional(:total_timeout_seconds).filled(:integer, gt?: 0)
-        optional(:browserless).hash(BrowserlessRequestConfig)
         optional(:botasaurus).hash(BotasaurusRequestConfig)
         optional(:local_file_path).filled(:string)
       end

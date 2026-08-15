@@ -4,12 +4,12 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::Config::RequestControls do
   describe '.from_config' do
-    let(:symbol_config) { { strategy: :browserless, request: { max_redirects: 3, max_requests: 9 } } }
+    let(:symbol_config) { { strategy: :botasaurus, request: { max_redirects: 3, max_requests: 9 } } }
 
     it 'extracts explicit controls from symbol-keyed config', :aggregate_failures do
       controls = described_class.from_config(symbol_config)
 
-      expect(controls).to have_attributes(strategy: :browserless, max_redirects: 3, max_requests: 9)
+      expect(controls).to have_attributes(strategy: :botasaurus, max_redirects: 3, max_requests: 9)
       explicit_keys = %i[strategy max_redirects max_requests].select { controls.explicit?(_1) }
       expect(explicit_keys).to eq(%i[strategy max_redirects max_requests])
     end
@@ -31,7 +31,7 @@ RSpec.describe Html2rss::Config::RequestControls do
     it 'marks strategy explicit only when non-default', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       default_name = Html2rss::Config.default_strategy_name
       omitted = described_class.from_shortcut(strategy: default_name, max_requests: 4)
-      explicit = described_class.from_shortcut(strategy: :browserless, max_redirects: 2)
+      explicit = described_class.from_shortcut(strategy: :botasaurus, max_redirects: 2)
 
       expect(omitted.explicit?(:strategy)).to be(false)
       expect(omitted.explicit?(:max_requests)).to be(true)

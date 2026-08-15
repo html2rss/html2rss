@@ -28,8 +28,8 @@ RSpec.describe Html2rss::HashUtil do
 
   describe '.deep_symbolize_keys' do
     it 'converts nested string keys to symbols' do
-      input = { 'request' => { 'browserless' => { 'preload' => { 'wait_after_ms' => 10 } } } }
-      expected_output = { request: { browserless: { preload: { wait_after_ms: 10 } } } }
+      input = { 'request' => { 'botasaurus' => { 'execution_mode' => 'browser' } } }
+      expected_output = { request: { botasaurus: { execution_mode: 'browser' } } }
       expect(described_class.deep_symbolize_keys(input)).to eq(expected_output)
     end
 

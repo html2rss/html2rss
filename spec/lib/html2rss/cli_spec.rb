@@ -28,7 +28,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     {
-      'strategy' => [{ strategy: 'browserless' }, { strategy: :browserless }],
+      'strategy' => [{ strategy: 'botasaurus' }, { strategy: :botasaurus }],
       'max_redirects' => [{ max_redirects: 8 }, { request: { max_redirects: 8 } }],
       'max_requests' => [{ max_requests: 8 }, { request: { max_requests: 8 } }],
       'params' => [{ params: { 'foo' => 'bar' } }, { params: { 'foo' => 'bar' } }]
@@ -128,7 +128,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     {
-      'strategy' => [{ strategy: 'browserless' }, { strategy: :browserless }],
+      'strategy' => [{ strategy: 'botasaurus' }, { strategy: :botasaurus }],
       'items_selector' => [{ items_selector: '.item' }, { items_selector: '.item' }],
       'max_redirects' => [{ max_redirects: 8 }, { max_redirects: 8 }],
       'max_requests' => [{ max_requests: 8 }, { max_requests: 8 }],
@@ -173,20 +173,6 @@ RSpec.describe Html2rss::CLI do
             Thor::Error,
             /retry with --max-redirects 9 or use the final URL directly/
           )
-      end
-    end
-
-    context 'when browserless connectivity fails' do
-      before do
-        allow(Html2rss).to receive(:auto_source).and_raise(
-          Html2rss::RequestService::BrowserlessConnectionFailed,
-          'Browserless connection failed (SocketError: getaddrinfo: Name or service not known).'
-        )
-      end
-
-      it 'raises a CLI error with browserless diagnostics' do
-        expect { cli.invoke(:auto, ['https://example.com'], { strategy: 'browserless' }) }
-          .to raise_error(Thor::Error, /Browserless connection failed/)
       end
     end
 

@@ -33,8 +33,8 @@ Each example consists of three files:
 ### Dynamic Content Site
 
 - **Files**: `dynamic_content_site_spec.rb`, `dynamic_content_site.yml`, `dynamic_content_site.html`
-- **Purpose**: Handles JavaScript-heavy sites using browserless strategy
-- **Features**: Browserless strategy, HTML sanitization, time zone aware parsing
+- **Purpose**: Handles JavaScript-heavy sites using botasaurus strategy
+- **Features**: Botasaurus strategy, HTML sanitization, time zone aware parsing
 
 ### JSON API Site
 

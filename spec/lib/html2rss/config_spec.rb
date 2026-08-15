@@ -22,7 +22,7 @@ RSpec.describe Html2rss::Config do
               channel: { metadata: { section: 'local' } },
               headers: { 'X-Feed': 'sample' },
               stylesheets: [{ href: '/local.css', type: 'text/css' }],
-              strategy: :browserless
+              strategy: :botasaurus
             }
           }
         }
@@ -33,7 +33,7 @@ RSpec.describe Html2rss::Config do
           channel: { language: 'en', metadata: { site: 'global', section: 'local' } },
           headers: { 'User-Agent': 'Global Agent', 'X-Feed': 'sample' },
           stylesheets: [{ href: '/global.css', type: 'text/css' }, { href: '/local.css', type: 'text/css' }],
-          strategy: :browserless
+          strategy: :botasaurus
         }
       end
 
@@ -216,7 +216,7 @@ RSpec.describe Html2rss::Config do
         url: 'https://example.com/blog',
         items_selector: '.post',
         request_controls: Html2rss::Config::RequestControls.new(
-          strategy: :browserless,
+          strategy: :botasaurus,
           max_redirects: 8,
           max_requests: 5,
           explicit_keys: %i[strategy max_redirects max_requests]
@@ -225,7 +225,7 @@ RSpec.describe Html2rss::Config do
     end
 
     it 'builds a top-level auto-source feed config', :aggregate_failures do
-      expect(config[:strategy]).to eq(:browserless)
+      expect(config[:strategy]).to eq(:botasaurus)
       expect(config[:request]).to eq(max_redirects: 8, max_requests: 5)
       expect(config.dig(:channel, :url)).to eq('https://example.com/blog')
       expect(config[:auto_source]).to eq(Html2rss::AutoSource::DEFAULT_CONFIG)
@@ -551,56 +551,6 @@ RSpec.describe Html2rss::Config do
 
       it 'raises an ArgumentError' do
         expect { instance }.to raise_error(described_class::InvalidConfig, /Invalid configuration:/)
-      end
-    end
-
-    context 'when configuration includes browserless preload options' do
-      let(:config) do
-        {
-          channel: { url: 'http://example.com' },
-          selectors: { items: { selector: 'article' } },
-          request: {
-            browserless: {
-              preload: {
-                wait_after_ms: 2_000,
-                click_selectors: [
-                  { selector: '.load-more', max_clicks: 2, wait_after_ms: 100 }
-                ],
-                scroll_down: {
-                  iterations: 4,
-                  wait_after_ms: 1_000
-                }
-              }
-            }
-          }
-        }
-      end
-
-      it 'exposes the request options', :aggregate_failures do
-        expect(instance.request.dig(:browserless, :preload, :wait_after_ms)).to eq(2_000)
-        expect(instance.request.dig(:browserless, :preload, :click_selectors).first[:max_clicks]).to eq(2)
-      end
-    end
-
-    context 'when browserless preload configuration is invalid' do
-      let(:config) do
-        {
-          channel: { url: 'http://example.com' },
-          selectors: { items: { selector: 'article' } },
-          request: {
-            browserless: {
-              preload: {
-                click_selectors: [
-                  { selector: '.load-more', max_clicks: 0 }
-                ]
-              }
-            }
-          }
-        }
-      end
-
-      it 'raises an InvalidConfig error' do
-        expect { instance }.to raise_error(described_class::InvalidConfig, /max_clicks/)
       end
     end
   end

@@ -40,9 +40,9 @@ RSpec.describe Html2rss::RequestSession do
     let(:config) do
       Html2rss::Config.from_hash(
         {
-          strategy: :browserless,
+          strategy: :botasaurus,
           channel: { url: 'https://example.com/blog' },
-          request: { browserless: { preload: { wait_after_ms: 500 } } },
+          request: {},
           selectors: {
             items: { selector: 'article' },
             title: { selector: 'h2' }
@@ -55,7 +55,7 @@ RSpec.describe Html2rss::RequestSession do
     context 'when building context once from config' do
       let(:session) do
         described_class.build(
-          config:, strategy: :browserless, budget: resources.budget, policy: resources.policy, logger:
+          config:, strategy: :botasaurus, budget: resources.budget, policy: resources.policy, logger:
         )
       end
 
@@ -84,7 +84,7 @@ RSpec.describe Html2rss::RequestSession do
       budget = Html2rss::RequestService::Budget.new(max_requests: 2)
       allow(Html2rss::RequestService::Context).to receive(:new).and_call_original
 
-      described_class.build(config:, strategy: :browserless, budget:, policy: resources.policy, logger:)
+      described_class.build(config:, strategy: :botasaurus, budget:, policy: resources.policy, logger:)
 
       expect(Html2rss::RequestService::Context).to have_received(:new).with(hash_including(budget:))
     end
