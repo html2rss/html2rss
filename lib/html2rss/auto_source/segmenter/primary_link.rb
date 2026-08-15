@@ -51,7 +51,8 @@ module Html2rss
           heading_match = meaningful && heading_text.match?(/\p{Alnum}/) && heading_text == text
 
           return if @noise_policy.noise_anchor?(
-            text:, destination_facts: destination, anchor:, container:, heading_anchor:
+            text:, destination_facts: destination, anchor:, container:, heading_anchor:,
+            utility_landmark_ancestor: @segmenter.landmark_ancestor?(anchor, container)
           )
           return unless meaningful || content_like || heading_anchor
 

@@ -1,14 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::LinkDestination::NoisePolicy do
-  subject(:policy) { described_class.new(link_resolver:, index: document.index) }
+  subject(:policy) { described_class.new(link_resolver:) }
 
   let(:base_url) { 'https://example.com/articles/' }
   let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(base_url) }
-  let(:html) do
-    '<html><body><article><a href="/news/2024/platform-launch-notes">Platform launch notes</a></article></body></html>'
-  end
-  let(:document) { Html2rss::SST::Normalizer.call(html) }
 
   describe '#noise_anchor?' do
     it 'rejects taxonomy destinations', :aggregate_failures do
@@ -32,31 +28,18 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
       HTML
       anchor = doc.root.find(&:link?)
       facts = link_resolver.destination_facts(anchor)
-      policy = described_class.new(link_resolver:, index: doc.index)
 
       expect(policy.noise_anchor?(text: '', destination_facts: facts, anchor:)).to be(true)
     end
 
-    it 'rejects anchors nested under utility landmarks outside the content container' do # rubocop:disable RSpec/ExampleLength
-      doc = Html2rss::SST::Normalizer.call(<<~HTML)
-        <html><body>
-          <article>
-            <nav><a href="/news/2024/platform-launch-notes">Related</a></nav>
-            <h2><a href="/news/2024/other-story">Other story</a></h2>
-          </article>
-        </body></html>
-      HTML
-      container = doc.root.find { |n| n.name == :article }
-      landmark_anchor = container.find { |n| n.link? && n.visible_text.to_s == 'Related' }
-      facts = link_resolver.destination_facts(landmark_anchor)
-      policy = described_class.new(link_resolver:, index: doc.index)
+    it 'rejects when caller reports a utility landmark ancestor' do # rubocop:disable RSpec/ExampleLength
+      facts = link_resolver.destination_facts('/news/2024/platform-launch-notes')
 
       expect(
         policy.noise_anchor?(
           text: 'Related',
           destination_facts: facts,
-          anchor: landmark_anchor,
-          container:
+          utility_landmark_ancestor: true
         )
       ).to be(true)
     end

@@ -70,7 +70,9 @@ module Html2rss
           return false unless facts
 
           text = node.visible_text.to_s.strip
-          !segmenter.noise_policy.noise_anchor?(text:, destination_facts: facts, anchor: node)
+          !segmenter.noise_policy.noise_anchor?(
+            text:, destination_facts: facts, anchor: node, utility_landmark_ancestor: false
+          )
         end
         module_function :relevant_anchor?
         private_class_method :relevant_anchor?
