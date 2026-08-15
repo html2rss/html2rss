@@ -105,6 +105,17 @@ RSpec.describe Html2rss::Scoring::LinkResolver do
       end
     end
   end
+
+  describe 'token regexp constants' do
+    it 'matches content-like and utility-like class/id tokens', :aggregate_failures do
+      expect(described_class::CONTENT_TOKEN_REGEXP).to match('card news-item')
+      expect(described_class::CONTENT_TOKEN_REGEXP).to match('post_teaser')
+      expect(described_class::JUNK_TOKEN_REGEXP).to match('sidebar nav')
+      expect(described_class::JUNK_TOKEN_REGEXP).to match('widget-promo')
+      expect(described_class::CONTENT_TOKEN_REGEXP).not_to match('sidebar')
+      expect(described_class::JUNK_TOKEN_REGEXP).not_to match('article-body')
+    end
+  end
 end
 
 # rubocop:enable RSpec/ExampleLength

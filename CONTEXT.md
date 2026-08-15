@@ -14,7 +14,7 @@ Heuristic auto-source chrome lives on `SST::Tags` / `SST::Text` after `SST::Norm
 
 ## Container assessment
 
-Observing a semantic container plus its selected anchor and destination facts into ranking signals. Owned by `Html2rss::Scoring::Engine` (+ `ContainerAssessor`). Rank-time hard drops live on `Scoring::Observation#hard_junk?` (container assessment — not content-anchor eligibility). `SemanticHtml` / `Html` orchestrate Normalizer → Segmenter → Scoring → `Html::SstArticleExtractor` only. Scrapers supply one page-scoped `Scoring::LinkResolver` into Segmenter, Engine, and SemanticHtml dedup.
+Observing a semantic container plus its selected anchor and destination facts into ranking signals. Owned by `Html2rss::Scoring::Engine` (+ `ContainerAssessor`). `LinkResolver` owns token regexp derivation from `PathClassifier::SEGMENT_SETS` (`CONTENT_TOKEN_REGEXP` / `JUNK_TOKEN_REGEXP`); ContainerAssessor consumes those defaults (or injected regexps). Rank-time hard drops live on `Scoring::Observation#hard_junk?` (container assessment — not content-anchor eligibility). `SemanticHtml` / `Html` orchestrate Normalizer → Segmenter → Scoring → `Html::SstArticleExtractor` only. Scrapers supply one page-scoped `Scoring::LinkResolver` into Segmenter, Engine, and SemanticHtml dedup.
 
 ## Content-anchor eligibility
 

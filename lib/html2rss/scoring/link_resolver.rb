@@ -8,6 +8,18 @@ module Html2rss
       # Captures the href portion before a fragment for memoization keys.
       HREF_BASE_PATTERN = /\A([^#]*)/
 
+      # Matches content-like tokens in class/id strings (from PathClassifier vocabulary).
+      CONTENT_TOKEN_REGEXP = begin
+        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:content)
+        /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+      end.freeze
+
+      # Matches utility/junk tokens in class/id strings (from PathClassifier vocabulary).
+      JUNK_TOKEN_REGEXP = begin
+        words = LinkDestination::PathClassifier::SEGMENT_SETS.fetch(:utility)
+        /(?:^|\s|[-_])(#{Regexp.union(words.to_a).source})(?:\s|[-_]|$)/i
+      end.freeze
+
       # @param base_url [String, Html2rss::Url]
       def initialize(base_url)
         @base_url = base_url
