@@ -22,6 +22,8 @@ module Html2rss
         max_retries
         wait_for_selector
         wait_timeout_seconds
+        scroll
+        scroll_to_bottom
         block_images
         block_images_and_css
         block_trackers

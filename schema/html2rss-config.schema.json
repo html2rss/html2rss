@@ -607,7 +607,8 @@
                 "auto",
                 "get",
                 "google_get",
-                "google_get_bypass"
+                "google_get_bypass",
+                "organic_get"
               ]
             },
             "max_retries": {
@@ -630,6 +631,18 @@
                 "type": "null"
               },
               "exclusiveMinimum": 0
+            },
+            "scroll": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
+            "scroll_to_bottom": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
             },
             "block_images": {
               "type": "boolean",
