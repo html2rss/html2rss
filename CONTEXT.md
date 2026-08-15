@@ -38,4 +38,4 @@ Supported pagination strategy names and factory classes live in `RequestSession:
 
 ## Extractor / post-processor registry
 
-Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. `Config::SelectorsValidator::Selector` derives required option fields from each class's `Options` (when defined); schema enums for `extractor` and `post_process[].name` are overlaid from the same registries. Do not hardcode name lists in the validator or schema.
+Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. `Config::SelectorsValidator::Selector` derives required option fields from each class's `Options` and types from `OPTION_TYPES` / `OPTIONAL_OPTION_TYPES` (when defined); schema enums for `extractor` and `post_process[].name` are overlaid from the same registries. Do not hardcode name lists or per-name `case` type soups in the validator or schema.

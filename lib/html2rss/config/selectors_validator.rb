@@ -112,15 +112,47 @@ module Html2rss
           next key(:post_process).failure("Unknown post_processor `name`: #{name}") unless klass
           next unless klass.const_defined?(:Options)
 
-          klass::Options.members.each do |field|
-            next if value.key?(field)
-
-            key(field).failure("`#{field}` is required for post_processor `#{name}`")
+          post_process_option_type_errors(klass, value).each do |field, message|
+            key(field).failure(message)
           end
+        end
 
-          if name.to_s == 'substring' && !value[:end].nil? && !value[:end].is_a?(Integer)
-            key(:end).failure('`end` must be an integer or omitted')
+        private
+
+        def post_process_option_type_errors(klass, value)
+          required_option_type_errors(klass, value) + optional_option_type_errors(klass, value)
+        end
+
+        def required_option_type_errors(klass, value)
+          option_types = klass.const_defined?(:OPTION_TYPES) ? klass::OPTION_TYPES : {}
+
+          klass::Options.members.filter_map do |field|
+            expected = option_types.fetch(field, String)
+            next if value[field].is_a?(expected)
+
+            [field, option_type_failure(field, expected)]
           end
+        end
+
+        def optional_option_type_errors(klass, value)
+          return [] unless klass.const_defined?(:OPTIONAL_OPTION_TYPES)
+
+          klass::OPTIONAL_OPTION_TYPES.filter_map do |field, expected|
+            actual = value[field]
+            next if actual.nil? || actual.is_a?(expected)
+
+            [field, option_type_failure(field, expected, optional: true)]
+          end
+        end
+
+        def option_type_failure(field, expected, optional: false)
+          label = {
+            Integer => 'an integer',
+            String => 'a string',
+            Hash => 'a hash'
+          }.fetch(expected) { "a #{expected}" }
+          suffix = optional ? ' or omitted' : ''
+          "`#{field}` must be #{label}#{suffix}"
         end
       end
 

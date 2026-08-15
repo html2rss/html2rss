@@ -30,8 +30,14 @@ module Html2rss
       # Would return:
       #    'bar'
       class Substring < Base
-        # Required config fields (optional +:end+ is type-checked when present).
-        Options = Struct.new(:start, keyword_init: true)
+        # Required config field types (validator introspection via +Options+).
+        OPTION_TYPES = { start: Integer }.freeze
+
+        # Optional config field types (validated when the key is present and non-nil).
+        OPTIONAL_OPTION_TYPES = { end: Integer }.freeze
+
+        # Config fields required by this post-processor (validator / schema introspection).
+        Options = Struct.new(*OPTION_TYPES.keys, keyword_init: true)
 
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context

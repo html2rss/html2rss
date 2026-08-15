@@ -289,6 +289,38 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it { expect(result).to be_failure }
     end
+
+    context 'with nil gsub.pattern' do
+      let(:config) do
+        { title: { post_process: [{ name: 'gsub', pattern: nil, replacement: 'bar' }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    context 'with non-string gsub.pattern' do
+      let(:config) do
+        { title: { post_process: [{ name: 'gsub', pattern: 1, replacement: 'bar' }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    context 'with non-integer substring.start' do
+      let(:config) do
+        { title: { post_process: [{ name: 'substring', start: '0' }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
+
+    context 'with nil template.string' do
+      let(:config) do
+        { title: { post_process: [{ name: 'template', string: nil }] } }
+      end
+
+      it { expect(result).to be_failure }
+    end
   end
 
   describe 'Selectors :extractor' do

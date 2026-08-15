@@ -34,8 +34,11 @@ module Html2rss
       # Would return:
       #    'Product (23,42€)'
       class Template < Base
+        # Required config field types (validator introspection via +Options+).
+        OPTION_TYPES = { string: String }.freeze
+
         # Config fields required by this post-processor (validator / schema introspection).
-        Options = Struct.new(:string, keyword_init: true)
+        Options = Struct.new(*OPTION_TYPES.keys, keyword_init: true)
 
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
