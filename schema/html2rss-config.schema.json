@@ -422,14 +422,23 @@
           "type": "object",
           "properties": {
             "extractor": {
-              "type": "string",
-              "minLength": 1,
-              "enum": [
-                "attribute",
-                "href",
-                "html",
-                "static",
-                "text"
+              "description": "Extractor used to pull a value from the selected element.",
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/extractors/attribute"
+                },
+                {
+                  "$ref": "#/$defs/extractors/href"
+                },
+                {
+                  "$ref": "#/$defs/extractors/html"
+                },
+                {
+                  "$ref": "#/$defs/extractors/static"
+                },
+                {
+                  "$ref": "#/$defs/extractors/text"
+                }
               ]
             },
             "attribute": {
@@ -442,24 +451,34 @@
             },
             "post_process": {
               "type": "array",
+              "description": "Ordered transforms applied to the extracted value.",
               "items": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "enum": [
-                      "gsub",
-                      "html_to_markdown",
-                      "markdown_to_html",
-                      "parse_time",
-                      "parse_uri",
-                      "sanitize_html",
-                      "substring",
-                      "template"
-                    ]
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/post_processors/gsub"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/html_to_markdown"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/markdown_to_html"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/parse_time"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/parse_uri"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/sanitize_html"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/substring"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/template"
                   }
-                },
-                "additionalProperties": true
+                ]
               }
             },
             "content_type": {
@@ -495,14 +514,23 @@
           "type": "object",
           "properties": {
             "extractor": {
-              "type": "string",
-              "minLength": 1,
-              "enum": [
-                "attribute",
-                "href",
-                "html",
-                "static",
-                "text"
+              "description": "Extractor used to pull a value from the selected element.",
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/extractors/attribute"
+                },
+                {
+                  "$ref": "#/$defs/extractors/href"
+                },
+                {
+                  "$ref": "#/$defs/extractors/html"
+                },
+                {
+                  "$ref": "#/$defs/extractors/static"
+                },
+                {
+                  "$ref": "#/$defs/extractors/text"
+                }
               ]
             },
             "attribute": {
@@ -515,24 +543,34 @@
             },
             "post_process": {
               "type": "array",
+              "description": "Ordered transforms applied to the extracted value.",
               "items": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "enum": [
-                      "gsub",
-                      "html_to_markdown",
-                      "markdown_to_html",
-                      "parse_time",
-                      "parse_uri",
-                      "sanitize_html",
-                      "substring",
-                      "template"
-                    ]
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/post_processors/gsub"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/html_to_markdown"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/markdown_to_html"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/parse_time"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/parse_uri"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/sanitize_html"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/substring"
+                  },
+                  {
+                    "$ref": "#/$defs/post_processors/template"
                   }
-                },
-                "additionalProperties": true
+                ]
               }
             }
           },
@@ -704,5 +742,240 @@
         "auto_source"
       ]
     }
-  ]
+  ],
+  "$defs": {
+    "post_processors": {
+      "gsub": {
+        "type": "object",
+        "title": "gsub",
+        "description": "Replace matches of `pattern` in the extracted string with `replacement` (Ruby String#gsub; pattern may be a regexp-like string).",
+        "examples": [
+          {
+            "name": "gsub",
+            "pattern": "boo",
+            "replacement": "baz"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "gsub"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "replacement": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "pattern",
+          "replacement"
+        ],
+        "additionalProperties": true
+      },
+      "html_to_markdown": {
+        "type": "object",
+        "title": "html_to_markdown",
+        "description": "Sanitize HTML then convert it to Markdown (via ReverseMarkdown).",
+        "examples": [
+          {
+            "name": "html_to_markdown"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "html_to_markdown"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true
+      },
+      "markdown_to_html": {
+        "type": "object",
+        "title": "markdown_to_html",
+        "description": "Convert Markdown to HTML (Kramdown) and sanitize the result. Often chained after `template`.",
+        "examples": [
+          {
+            "name": "markdown_to_html"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "markdown_to_html"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true
+      },
+      "parse_time": {
+        "type": "object",
+        "title": "parse_time",
+        "description": "Parse a time string with Time.parse and return RFC822, using the channel `time_zone`.",
+        "examples": [
+          {
+            "name": "parse_time"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "parse_time"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true
+      },
+      "parse_uri": {
+        "type": "object",
+        "title": "parse_uri",
+        "description": "Normalize a URL string; resolve relative URLs against the channel URL.",
+        "examples": [
+          {
+            "name": "parse_uri"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "parse_uri"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true
+      },
+      "sanitize_html": {
+        "type": "object",
+        "title": "sanitize_html",
+        "description": "Sanitize HTML (sanitize gem RELAXED plus html2rss defaults: absolute URLs, safe link/img attributes, wrap lone images in anchors).",
+        "examples": [
+          {
+            "name": "sanitize_html"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "sanitize_html"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true
+      },
+      "substring": {
+        "type": "object",
+        "title": "substring",
+        "description": "Return a slice of the extracted string using Integer `start` and optional `end` (Ruby String#[] range semantics; end may be omitted).",
+        "examples": [
+          {
+            "name": "substring",
+            "start": 4,
+            "end": 6
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "substring"
+          },
+          "start": {
+            "type": "integer"
+          },
+          "end": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "start"
+        ],
+        "additionalProperties": true
+      },
+      "template": {
+        "type": "object",
+        "title": "template",
+        "description": "Format a string with Kernel#format-style placeholders (`%{key}` / `%<key>s`). `%{self}` is the current selector value; other keys resolve sibling selectors.",
+        "examples": [
+          {
+            "name": "template",
+            "string": "`%{self}` (`%{price}`)"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "const": "template"
+          },
+          "string": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "string"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "extractors": {
+      "attribute": {
+        "type": "string",
+        "const": "attribute",
+        "title": "attribute",
+        "description": "Return the value of an HTML attribute on the selected element. Requires sibling selector option `attribute` (attribute name).",
+        "examples": [
+          "attribute"
+        ]
+      },
+      "href": {
+        "type": "string",
+        "const": "href",
+        "title": "href",
+        "description": "Return the absolute URL from the selected element's `href` attribute (relative hrefs are resolved against the channel URL).",
+        "examples": [
+          "href"
+        ]
+      },
+      "html": {
+        "type": "string",
+        "const": "html",
+        "title": "html",
+        "description": "Return the outer HTML of the selected element. Sanitize during post-processing (e.g. `sanitize_html`).",
+        "examples": [
+          "html"
+        ]
+      },
+      "static": {
+        "type": "string",
+        "const": "static",
+        "title": "static",
+        "description": "Return a fixed value from sibling selector option `static` (no DOM read).",
+        "examples": [
+          "static"
+        ]
+      },
+      "text": {
+        "type": "string",
+        "const": "text",
+        "title": "text",
+        "description": "Return collapsed visible text of the selected element (default extractor).",
+        "examples": [
+          "text"
+        ]
+      }
+    }
+  }
 }

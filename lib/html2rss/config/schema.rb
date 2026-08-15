@@ -61,6 +61,7 @@ module Html2rss
         def call
           schema = validator_schema
           apply_top_level(schema)
+          schema[:$defs] = registry_catalog_defs
           schema.fetch(:properties).merge!(overlay)
           schema.fetch(:properties).delete(:dynamic_params_error)
           DeepStringifier.call(schema)
@@ -78,6 +79,20 @@ module Html2rss
             { 'required' => ['selectors'] },
             { 'required' => ['auto_source'] }
           ]
+        end
+
+        # @return [Hash{Symbol => Hash}] catalog under $defs.post_processors / $defs.extractors
+        def registry_catalog_defs
+          {
+            post_processors: catalog_from_registry(Selectors::PostProcessors::NAME_TO_CLASS),
+            extractors: catalog_from_registry(Selectors::Extractors::NAME_TO_CLASS)
+          }
+        end
+
+        # @param registry [Hash{Symbol => Class}]
+        # @return [Hash{String => Hash}]
+        def catalog_from_registry(registry)
+          registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_doc] }
         end
 
         # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
@@ -106,10 +121,10 @@ module Html2rss
             ]
           }
 
-          selector_schema = Schema.apply_selector_registry_enums!(
+          selector_schema = Schema.apply_selector_registry_refs!(
             Html2rss::Config::SelectorsValidator::Selector.new.schema.json_schema(loose: true)
           )
-          enclosure_schema = Schema.apply_selector_registry_enums!(
+          enclosure_schema = Schema.apply_selector_registry_refs!(
             Html2rss::Config::SelectorsValidator::Enclosure.new.schema.json_schema(loose: true)
           )
 
@@ -170,27 +185,44 @@ module Html2rss
       # rubocop:enable Metrics/ClassLength
 
       ##
-      # Overlays extractor / post-processor name enums from runtime registries.
+      # Wires extractor / post_process to thin oneOf $refs into the registry catalog.
       #
       # @param schema [Hash] dry-schema JSON schema fragment for a selector
-      # @return [Hash] same schema with registry enums applied
-      def apply_selector_registry_enums!(schema) # rubocop:disable Metrics/MethodLength
+      # @return [Hash] same schema with registry $ref wiring applied
+      def apply_selector_registry_refs!(schema)
         properties = schema.fetch(:properties)
-        properties[:extractor] = {
-          type: 'string', minLength: 1,
-          enum: Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s).sort
+        properties[:extractor] = extractor_wire_schema
+        properties[:post_process] = post_process_wire_schema
+        schema
+      end
+
+      # @return [Hash{Symbol => Object}]
+      def extractor_wire_schema
+        {
+          description: 'Extractor used to pull a value from the selected element.',
+          oneOf: registry_ref_list('extractors', Selectors::Extractors::NAME_TO_CLASS)
         }
-        properties[:post_process] = {
+      end
+
+      # @return [Hash{Symbol => Object}]
+      def post_process_wire_schema
+        {
           type: 'array',
+          description: 'Ordered transforms applied to the extracted value.',
           items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string', enum: Selectors::PostProcessors::NAME_TO_CLASS.keys.map(&:to_s).sort }
-            },
-            additionalProperties: true
+            oneOf: registry_ref_list('post_processors', Selectors::PostProcessors::NAME_TO_CLASS)
           }
         }
-        schema
+      end
+
+      ##
+      # @param catalog [String] $defs catalog name (`extractors` or `post_processors`)
+      # @param registry [Hash{Symbol => Class}]
+      # @return [Array<Hash>] oneOf entries of `{ '$ref' => ... }`
+      def registry_ref_list(catalog, registry)
+        registry.keys.sort.map do |name|
+          { '$ref' => "#/$defs/#{catalog}/#{name}" }
+        end
       end
 
       ##

@@ -58,13 +58,48 @@ RSpec.describe Html2rss::Config::Schema do
       expect(strategies).to contain_exactly('rel_next', 'custom_selector', 'url_template', 'offset', 'json_cursor')
     end
 
-    it 'derives extractor and post-processor enums from NAME_TO_CLASS', :aggregate_failures do
-      pattern = json_schema.dig('properties', 'selectors', 'patternProperties').values.first
-      extractors = pattern.dig('properties', 'extractor', 'enum')
-      post_processors = pattern.dig('properties', 'post_process', 'items', 'properties', 'name', 'enum')
+    it 'publishes extractor and post-processor catalogs under $defs', :aggregate_failures do
+      extractors = json_schema.dig('$defs', 'extractors')
+      post_processors = json_schema.dig('$defs', 'post_processors')
 
-      expect(extractors).to match_array(Html2rss::Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s))
-      expect(post_processors).to match_array(Html2rss::Selectors::PostProcessors::NAME_TO_CLASS.keys.map(&:to_s))
+      expect(extractors.keys).to match_array(Html2rss::Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s))
+      expect(post_processors.keys).to match_array(Html2rss::Selectors::PostProcessors::NAME_TO_CLASS.keys.map(&:to_s))
+    end
+
+    it 'wires selector extractor and post_process via oneOf $refs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      pattern = json_schema.dig('properties', 'selectors', 'patternProperties').values.first
+      extractor_refs = pattern.dig('properties', 'extractor', 'oneOf').map { |entry| entry.fetch('$ref') }
+      post_process_one_of = pattern.dig('properties', 'post_process', 'items', 'oneOf')
+      post_process_refs = post_process_one_of.map { |entry| entry.fetch('$ref') }
+
+      expect(extractor_refs).to match_array(
+        Html2rss::Selectors::Extractors::NAME_TO_CLASS.keys.map { |name| "#/$defs/extractors/#{name}" }
+      )
+      expect(post_process_refs).to match_array(
+        Html2rss::Selectors::PostProcessors::NAME_TO_CLASS.keys.map { |name| "#/$defs/post_processors/#{name}" }
+      )
+      expect(pattern.dig('properties', 'extractor')).not_to include('enum')
+      expect(pattern.dig('properties', 'post_process', 'items')).not_to include('properties')
+    end
+
+    it 'documents gsub options for AI-consumable authoring', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      gsub = json_schema.dig('$defs', 'post_processors', 'gsub')
+
+      expect(gsub.fetch('description')).not_to be_empty
+      expect(gsub.fetch('examples')).not_to be_empty
+      expect(gsub.dig('properties', 'name', 'const')).to eq('gsub')
+      expect(gsub.fetch('required')).to include('name', 'pattern', 'replacement')
+      expect(gsub.dig('properties', 'pattern', 'type')).to eq('string')
+      expect(gsub.dig('properties', 'replacement', 'type')).to eq('string')
+    end
+
+    it 'documents template string option', :aggregate_failures do
+      template = json_schema.dig('$defs', 'post_processors', 'template')
+
+      expect(template.fetch('description')).not_to be_empty
+      expect(template.fetch('examples')).not_to be_empty
+      expect(template.fetch('required')).to include('name', 'string')
+      expect(template.dig('properties', 'string', 'type')).to eq('string')
     end
 
     it 'aligns pagination schema keys with runtime pager config keys', :aggregate_failures do

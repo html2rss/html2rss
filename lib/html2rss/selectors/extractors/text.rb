@@ -24,6 +24,17 @@ module Html2rss
         # The available options for the text extractor.
         Options = Struct.new('TextOptions', :selector, keyword_init: true)
 
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Return collapsed visible text of the selected element (default extractor).'
+
+        # Example extractor name values for JSON Schema +examples+.
+        EXAMPLES = [
+          'text'
+        ].freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
+        def self.schema_doc = SchemaDoc.for_extractor(name: :text, klass: self)
+
         ##
         # Initializes the Text extractor.
         #

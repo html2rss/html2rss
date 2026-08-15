@@ -38,6 +38,15 @@ module Html2rss
       # Would return:
       #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
       class SanitizeHtml < Base
+        # JSON Schema description exported via +schema_doc+.
+        DESCRIPTION = 'Sanitize HTML (sanitize gem RELAXED plus html2rss defaults: absolute URLs, ' \
+                      'safe link/img attributes, wrap lone images in anchors).'
+
+        # Example post-process objects for JSON Schema +examples+.
+        EXAMPLES = [
+          { 'name' => 'sanitize_html' }
+        ].freeze
+
         # @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
         TAG_ATTRIBUTES = {
           'a' => {
@@ -81,6 +90,10 @@ module Html2rss
             'preload' => 'none'
           }
         }.freeze
+
+        # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
+        def self.schema_doc = SchemaDoc.for_post_processor(name: :sanitize_html, klass: self)
+
         # @param value [String] extracted selector value
         # @param context [Selectors::Context] post-processor context
         # @return [void]
