@@ -14,7 +14,8 @@ RSpec.describe Html2rss::RequestService do
       described_class::ResponseTooLarge,
       described_class::RequestTimedOut,
       described_class::BotasaurusConfigurationError,
-      described_class::BotasaurusConnectionFailed
+      described_class::BotasaurusConnectionFailed,
+      described_class::BotasaurusServiceError
     ]
   end
 

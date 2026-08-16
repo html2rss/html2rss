@@ -266,6 +266,7 @@ module Html2rss
             'or increase request.max_requests in the config.'
     rescue Html2rss::RequestService::BotasaurusConfigurationError,
            Html2rss::RequestService::BotasaurusConnectionFailed,
+           Html2rss::RequestService::BotasaurusServiceError,
            Html2rss::RequestService::BlockedSurfaceDetected,
            Html2rss::NoFeedItemsExtracted => error
       raise Thor::Error, error.message
