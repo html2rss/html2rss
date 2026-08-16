@@ -6,7 +6,7 @@ module Html2rss
   class Config
     # Validates the configuration hash using Dry::Validation.
     # The configuration options adhere to the documented schema in README.md.
-    class Validator < Dry::Validation::Contract
+    class Validator < Dry::Validation::Contract # rubocop:disable Metrics/ClassLength
       # URI format used for channel URL validation.
       URI_REGEXP = Url::URI_REGEXP
       # Allowed stylesheet MIME types.
