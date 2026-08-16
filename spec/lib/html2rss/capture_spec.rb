@@ -28,8 +28,9 @@ RSpec.describe Html2rss::Capture do
         expect(result.config[:selectors]).to include(
           items: { selector: 'div.item' },
           title: { selector: 'h2' },
-          link: { selector: 'h2 > a', extractor: 'href' }
+          url: { selector: 'h2 > a', extractor: 'href' }
         )
+        expect(result.config[:selectors]).not_to have_key(:link)
         expect(result.config[:selectors]).not_to have_key(:description)
         expect(result.config[:channel]).to include(url:, title: a_string_matching(/\S/), time_zone: 'UTC')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
@@ -122,6 +123,9 @@ RSpec.describe Html2rss::Capture do
       feed = Html2rss.feed(config)
       expect(feed.items.size).to eq(3)
       expect(feed.items.map(&:title)).to eq(['First Post Item', 'Second Post Item', 'Third Post Item'])
+      expect(feed.items.map(&:link)).to eq(
+        %w[https://example.com/post-1 https://example.com/post-2 https://example.com/post-3]
+      )
     end
   end
 
