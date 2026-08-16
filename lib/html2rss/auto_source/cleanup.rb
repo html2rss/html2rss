@@ -30,6 +30,18 @@ module Html2rss
       # Dotted / methode CMS tokens mistaken for titles.
       CMS_TOKEN_TITLE = /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i
 
+      # Raw URL slug / token clusters (hyphen or underscore, no natural phrasing).
+      SLUG_TITLE = /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/
+
+      # Date-prefix path tokens, raw or titleized ("2026 08 16 …", "2026-08-16-…").
+      DATE_PREFIX_TITLE = /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/
+
+      # Titleized path ending in a long numeric CMS id.
+      TITLEIZED_PATH_TITLE = /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/
+
+      # Template / placeholder tokens mistaken for titles.
+      TEMPLATE_TITLE = /(\{\{[^}]+\}\}|%\{\w+\})/
+
       class << self
         # @param articles [Array<Article>] extracted article candidates
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
@@ -74,6 +86,8 @@ module Html2rss
           articles.select! { |article| article.url&.host == base_host }
         end
 
+        # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
+        # blanking them would hide bad extraction as "unknown" and inflate empty items.
         def reject_low_quality_titles!(articles)
           articles.select! do |article|
             title = article.title
@@ -86,7 +100,15 @@ module Html2rss
         end
 
         def junk_title?(title)
-          CREDIT_TITLE.match?(title) || CMS_TOKEN_TITLE.match?(title)
+          CREDIT_TITLE.match?(title) || CMS_TOKEN_TITLE.match?(title) || unnatural_title?(title)
+        end
+
+        def unnatural_title?(title)
+          stripped = title.to_s.strip
+          SLUG_TITLE.match?(stripped) ||
+            DATE_PREFIX_TITLE.match?(stripped) ||
+            TITLEIZED_PATH_TITLE.match?(stripped) ||
+            TEMPLATE_TITLE.match?(stripped)
         end
 
         def word_count_at_least?(str, min_words)

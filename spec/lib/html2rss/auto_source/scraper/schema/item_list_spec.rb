@@ -38,6 +38,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
       expect(call).not_to include(hash_including(title: 'Parent list (must not emit)'))
     end
 
+    it 'leaves URL-only ListItem stub titles empty instead of titleizing the path' do
+      expect(call).to all(include(title: nil))
+    end
+
     context 'when the schema_object does not contain itemListElement' do
       let(:schema_object) { { '@type': 'ItemList', name: 'Empty' } }
 
