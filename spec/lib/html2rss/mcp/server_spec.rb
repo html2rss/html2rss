@@ -209,6 +209,46 @@ RSpec.describe Html2rss::MCP::Server do
 
       expect(text).to include('scrape_url').and include('botasaurus')
     end
+
+    it 'embeds capture → validate → apply guidance' do
+      prompt = protocol_server.prompts['capture-feed-config']
+      result = prompt.template({ url: 'https://example.com' }, server_context: nil)
+      text = result.to_h.dig(:messages, 0, :content, :text)
+
+      expect(text).to include('capture_config').and include('validate_config')
+    end
+  end
+
+  describe '.start' do
+    before do
+      allow(MCP::Server::Transports::StdioTransport).to receive(:new).and_return(
+        instance_double(MCP::Server::Transports::StdioTransport, open: nil)
+      )
+    end
+
+    it 'opens stdio transport by default' do
+      described_class.start(transport: :stdio)
+
+      expect(MCP::Server::Transports::StdioTransport).to have_received(:new)
+    end
+
+    # rubocop:disable RSpec/ExampleLength -- Host/Port bind contract
+    it 'binds HTTP to loopback via Rackup WEBrick', :aggregate_failures do
+      require 'rackup/handler/webrick'
+      allow(Rackup::Handler::WEBrick).to receive(:run)
+
+      described_class.start(transport: :http, port: 9090)
+
+      expect(Rackup::Handler::WEBrick).to have_received(:run).with(
+        an_instance_of(MCP::Server::Transports::StreamableHTTPTransport),
+        hash_including(Host: '127.0.0.1', Port: 9090)
+      )
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'rejects unknown transports' do
+      expect { described_class.start(transport: :udp) }.to raise_error(ArgumentError, /Unknown transport/)
+    end
   end
 
   describe 'mcp 1.2 invocation shape' do
