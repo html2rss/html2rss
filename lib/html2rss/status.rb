@@ -8,7 +8,8 @@ module Html2rss
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
   Status = Data.define(
-    :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts
+    :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count,
+    :strategy_attempts, :admission_drops
   ) do
     class << self
       ##
@@ -19,8 +20,11 @@ module Html2rss
       # @param selected_strategy [Symbol, nil] concrete strategy that succeeded under +:auto+ (else +nil+)
       # @param attempt_count [Integer] auto-fallback attempt count (0 when not under +:auto+)
       # @param strategy_attempts [Array<Hash>] auto-fallback attempt hashes (empty outside +:auto+)
+      # @param admission_drops [Hash{String => Integer}] Cleanup reason → count (empty when unused)
       # @return [Html2rss::Status]
-      def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0, strategy_attempts: [])
+      # rubocop:disable Metrics/ParameterLists -- Status kwargs stay co-located
+      def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0,
+                strategy_attempts: [], admission_drops: {})
         tallies = articles.filter_map(&:scraper).tally.transform_keys { |klass| scraper_name(klass) }
         new(
           version: Html2rss::VERSION,
@@ -28,9 +32,11 @@ module Html2rss
           dedup_dropped:,
           selected_strategy:,
           attempt_count:,
-          strategy_attempts:
+          strategy_attempts:,
+          admission_drops:
         )
       end
+      # rubocop:enable Metrics/ParameterLists
 
       ##
       # @param klass [Class, #to_s] scraper class
@@ -47,9 +53,11 @@ module Html2rss
     # @param selected_strategy [Symbol, nil]
     # @param attempt_count [Integer]
     # @param strategy_attempts [Array<Hash>]
+    # @param admission_drops [Hash{String => Integer}]
     # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- Status Data.define members
     def initialize(
-      version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0, strategy_attempts: []
+      version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
+      strategy_attempts: [], admission_drops: {}
     )
       dedup = Integer(dedup_dropped)
       attempts = Integer(attempt_count)
@@ -61,7 +69,8 @@ module Html2rss
         dedup_dropped: dedup,
         selected_strategy:,
         attempt_count: attempts,
-        strategy_attempts: freeze_attempts(strategy_attempts)
+        strategy_attempts: freeze_attempts(strategy_attempts),
+        admission_drops: freeze_tallies(admission_drops)
       )
     end
     # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
@@ -69,11 +78,13 @@ module Html2rss
     ##
     # Observability hash for web (+scraper_status+). Omits empty/absent optional keys:
     # +:scraper_tallies+ when empty, +:selected_strategy+ when +nil+, +:attempt_count+ when zero,
-    # +:strategy_attempts+ when empty.
+    # +:strategy_attempts+ / +:admission_drops+ when empty.
     # Data members remain available via readers even when omitted here.
     #
     # @return [Hash{Symbol => Object}] always +:version+ (String), +:dedup_dropped+ (Integer);
-    #   optionally +:scraper_tallies+, +:selected_strategy+, +:attempt_count+, +:strategy_attempts+
+    #   optionally +:scraper_tallies+, +:selected_strategy+, +:attempt_count+,
+    #   +:strategy_attempts+, +:admission_drops+
+    # rubocop:disable Metrics/AbcSize -- omit-empty optional keys stay explicit
     def to_h
       {
         version:,
@@ -81,9 +92,11 @@ module Html2rss
         **(scraper_tallies.any? ? { scraper_tallies: } : {}),
         **(selected_strategy.nil? ? {} : { selected_strategy: }),
         **(attempt_count.positive? ? { attempt_count: } : {}),
-        **(strategy_attempts.any? ? { strategy_attempts: } : {})
+        **(strategy_attempts.any? ? { strategy_attempts: } : {}),
+        **(admission_drops.any? ? { admission_drops: } : {})
       }
     end
+    # rubocop:enable Metrics/AbcSize
 
     ##
     # Formats the RSS +generator+ string and JSON Feed +user_comment+.
@@ -101,11 +114,14 @@ module Html2rss
     private
 
     def marshal_dump
-      [version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count, strategy_attempts]
+      [version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count, strategy_attempts,
+       admission_drops]
     end
 
-    def marshal_load((version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count, strategy_attempts))
-      initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:, strategy_attempts:)
+    def marshal_load((version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count,
+                      strategy_attempts, admission_drops))
+      initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:,
+                 strategy_attempts:, admission_drops: admission_drops || {})
     end
 
     def freeze_tallies(tallies)

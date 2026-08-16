@@ -115,7 +115,16 @@ module Html2rss
       @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound => error
       Log.warn "#{self.class}: no scraper matched #{url} (#{error.message})"
+      @admission_drops = {}.freeze
       []
+    end
+
+    ##
+    # Reason → count tallies from the final {Cleanup} pass (empty until {#articles} runs).
+    #
+    # @return [Hash{String => Integer}]
+    def admission_drops
+      @admission_drops || {}
     end
 
     private
@@ -163,7 +172,9 @@ module Html2rss
 
       raise Scraper.no_scraper_found_for(parsed_body, body:) unless matched
 
-      Cleanup.call(articles, url:, **cleanup_options).first(article_limit)
+      result = Cleanup.call(articles, url:, **cleanup_options)
+      @admission_drops = result.drop_tallies
+      result.articles.first(article_limit)
     end
     # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
@@ -183,7 +194,7 @@ module Html2rss
     end
 
     def admitted_articles(articles)
-      Cleanup.call(articles.dup, url:, **cleanup_options).select do |article|
+      Cleanup.call(articles.dup, url:, **cleanup_options).articles.select do |article|
         article.url && !article.title.to_s.empty?
       end
     end
