@@ -64,28 +64,28 @@ HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies)
 
 ### Tools
 
-| Name | When to use |
-|------|-------------|
-| `scrape_url` | One-shot articles now (no saved config) |
-| `inspect_url` | Diagnose weak scrape/capture (scrapers/SST/segments) |
-| `capture_config` | Derive a durable feed config (+ quality `_meta`) |
+| Name              | When to use                                               |
+| ----------------- | --------------------------------------------------------- |
+| `scrape_url`      | One-shot articles now (no saved config)                   |
+| `inspect_url`     | Diagnose weak scrape/capture (scrapers/SST/segments)      |
+| `capture_config`  | Derive a durable feed config (+ quality `_meta`)          |
 | `validate_config` | Schema-check a config before apply (`isError` on failure) |
-| `apply_config` | Run a validated config → RSS XML |
+| `apply_config`    | Run a validated config → RSS XML                          |
 
 ### Resources
 
-| URI | Description |
-|-----|-------------|
-| `html2rss://schema` | Full JSON Schema for feed configurations |
+| URI                     | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `html2rss://schema`     | Full JSON Schema for feed configurations                        |
 | `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
-| `html2rss://strategies` | Registered request strategy names |
+| `html2rss://strategies` | Registered request strategy names                               |
 
 ### Prompts
 
-| Name | Description |
-|------|-------------|
-| `scrape-webpage` | Guided scrape → inspect/retry with botasaurus if needed |
-| `capture-feed-config` | Guided capture → validate → optional apply |
+| Name                  | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `scrape-webpage`      | Guided scrape → inspect/retry with botasaurus if needed |
+| `capture-feed-config` | Guided capture → validate → optional apply              |
 
 The MCP module (`Html2rss::MCP`) lazy-loads the `mcp` gem — no cost when the server is not running.
 
@@ -101,11 +101,11 @@ Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and use strategy `botasa
 
 ## Request Strategies
 
-| Strategy | Description |
-|----------|-------------|
-| `auto` | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI FeedPipeline) |
-| `faraday` | Plain HTTP requests via Faraday |
-| `botasaurus` | Puppeteer-backed scraping for JavaScript pages |
+| Strategy     | Description                                                                   |
+| ------------ | ----------------------------------------------------------------------------- |
+| `auto`       | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI FeedPipeline) |
+| `faraday`    | Plain HTTP requests via Faraday                                               |
+| `botasaurus` | Puppeteer-backed scraping for JavaScript pages                                |
 
 MCP tools intentionally collapse `auto` → `faraday` (see MCP section above). Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
 
