@@ -44,6 +44,11 @@ module Html2rss
     # @param url [String] source page URL
     # @param strategy [Symbol] request strategy
     # @param options [Hash] additional options
+    # @option options [String, nil] :items_selector optional selector hint
+    # @option options [Integer, nil] :max_redirects optional redirect limit override
+    # @option options [Integer, nil] :max_requests optional request budget override
+    # @option options [Integer, nil] :limit max articles to keep
+    # @option options [String, nil] :local_file_path optional local HTML file path
     def initialize(url, strategy: :auto, **options)
       @url = url
       @strategy = strategy
