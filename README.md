@@ -51,59 +51,63 @@ The CLI alias `html2rss capture` prints the generated config as YAML to stdout. 
 html2rss ships with an [MCP](https://modelcontextprotocol.io/) server that exposes gem capabilities as AI-consumable tools, resources, and prompts:
 
 ```bash
-# Start with stdio transport (default)
+# Start with stdio transport (default; for Cursor/Claude Desktop)
 html2rss mcp
 
-# Start with HTTP transport
+# Start with HTTP transport (binds 127.0.0.1 only — local use)
 html2rss mcp --transport http --port 8080
 ```
 
+HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies). It listens on `127.0.0.1` only; do not expose it on a public interface without your own auth and Host/Origin controls.
+
+**Strategy note:** MCP tool `strategy: "auto"` collapses to `faraday` (no FeedPipeline botasaurus fallback). If results are empty or JS-gated, retry with `strategy: "botasaurus"` and `BOTASAURUS_SCRAPER_URL` set.
+
 ### Tools
 
-| Name | Description |
+| Name | When to use |
 |------|-------------|
-| `scrape_url` | Scrape a URL and return structured articles |
-| `inspect_url` | Deep page analysis — scrapers, SST stats, segments |
-| `capture_config` | Analyze a URL and produce a reusable feed config |
-| `validate_config` | Validate a feed config against the JSON schema |
-| `apply_config` | Apply a feed config to a URL and return RSS XML |
+| `scrape_url` | One-shot articles now (no saved config) |
+| `inspect_url` | Diagnose weak scrape/capture (scrapers/SST/segments) |
+| `capture_config` | Derive a durable feed config (+ quality `_meta`) |
+| `validate_config` | Schema-check a config before apply (`isError` on failure) |
+| `apply_config` | Run a validated config → RSS XML |
 
 ### Resources
 
 | URI | Description |
 |-----|-------------|
 | `html2rss://schema` | Full JSON Schema for feed configurations |
-| `html2rss://extractors` | List of registered extractors |
-| `html2rss://strategies` | List of registered request strategies |
+| `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
+| `html2rss://strategies` | Registered request strategy names |
 
 ### Prompts
 
 | Name | Description |
 |------|-------------|
-| `scrape-webpage` | Scrape a webpage and extract articles |
-| `capture-feed-config` | Analyze a URL and build a reusable feed config |
+| `scrape-webpage` | Guided scrape → inspect/retry with botasaurus if needed |
+| `capture-feed-config` | Guided capture → validate → optional apply |
 
 The MCP module (`Html2rss::MCP`) lazy-loads the `mcp` gem — no cost when the server is not running.
 
-## Botasaurus Docker Compose
+## Botasaurus scrape API (Docker)
 
-Start the Botasaurus scrape API for JavaScript-rendered pages:
+Start the Botasaurus scrape API for JavaScript-rendered pages (this compose file is **not** the MCP server):
 
 ```bash
-docker compose -f docker-compose.mcp.yml up -d
+docker compose -f docker-compose.botasaurus.yml up -d
 ```
 
-Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and the strategy to `botasaurus` in the capture call or CLI.
+Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and use strategy `botasaurus` in MCP tools, Capture, or the CLI.
 
 ## Request Strategies
 
 | Strategy | Description |
 |----------|-------------|
-| `auto` | Tries `faraday`, falls back to `botasaurus` (default) |
+| `auto` | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI FeedPipeline) |
 | `faraday` | Plain HTTP requests via Faraday |
 | `botasaurus` | Puppeteer-backed scraping for JavaScript pages |
 
-The strategy can be set via CLI option (`--strategy`), gem API keyword argument, or in the feed config under `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
+MCP tools intentionally collapse `auto` → `faraday` (see MCP section above). Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
 
 ## License
 

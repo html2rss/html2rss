@@ -169,7 +169,7 @@ module Html2rss
                   default: 'stdio'
     method_option :port,
                   type: :numeric,
-                  desc: 'Port for HTTP transport',
+                  desc: 'Port for HTTP transport (binds 127.0.0.1)',
                   default: 8080
     ##
     # Starts the MCP server for AI client consumption.

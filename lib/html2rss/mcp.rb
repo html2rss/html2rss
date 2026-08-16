@@ -10,7 +10,7 @@ module Html2rss
       # Starts the MCP server using the given transport.
       #
       # @param transport [Symbol] +:stdio+ or +:http+
-      # @param port [Integer] port for HTTP transport
+      # @param port [Integer] port for HTTP transport (bound to 127.0.0.1)
       def start(transport: :stdio, port: 8080)
         require 'mcp'
         require_relative 'mcp/server'

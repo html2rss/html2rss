@@ -12,12 +12,15 @@ PATH
       mcp (~> 1.0)
       mime-types (> 3.0)
       nokogiri (>= 1.10, < 2.0)
+      rack (~> 3.0)
+      rackup (~> 2.0)
       regexp_parser
       reverse_markdown (~> 3.0)
       rss
       sanitize
       thor
       tzinfo
+      webrick (~> 1.9)
       zeitwerk
 
 GEM
@@ -133,6 +136,9 @@ GEM
       stringio
     public_suffix (7.0.5)
     racc (1.8.1)
+    rack (3.2.7)
+    rackup (2.3.1)
+      rack (>= 3)
     rainbow (3.1.1)
     rake (13.4.2)
     rdoc (7.2.0)
@@ -222,6 +228,7 @@ GEM
     unicode-emoji (4.2.0)
     uri (1.1.1)
     vcr (6.4.0)
+    webrick (1.9.2)
     yard (0.9.45)
     yard-lint (1.10.2)
       yard (~> 0.9)
@@ -312,6 +319,8 @@ CHECKSUMS
   psych (5.4.0) sha256=14f72d69a611af663d7d70e4a7b67d9eb1f3ae9f8d916b478961d5a0075ba5b7
   public_suffix (7.0.5) sha256=1a8bb08f1bbea19228d3bed6e5ed908d1cb4f7c2726d18bd9cadf60bc676f623
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
+  rack (3.2.7) sha256=93e13e1c24f93556671d85d2d79fa228c3485815c50d7e2f265b5330c6528fb7
+  rackup (2.3.1) sha256=6c79c26753778e90983761d677a48937ee3192b3ffef6bc963c0950f94688868
   rainbow (3.1.1) sha256=039491aa3a89f42efa1d6dec2fc4e62ede96eb6acd95e52f1ad581182b79bc6a
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
   rdoc (7.2.0) sha256=8650f76cd4009c3b54955eb5d7e3a075c60a57276766ebf36f9085e8c9f23192
@@ -349,6 +358,7 @@ CHECKSUMS
   unicode-emoji (4.2.0) sha256=519e69150f75652e40bf736106cfbc8f0f73aa3fb6a65afe62fefa7f80b0f80f
   uri (1.1.1) sha256=379fa58d27ffb1387eaada68c749d1426738bd0f654d812fcc07e7568f5c57c6
   vcr (6.4.0) sha256=077ac92cc16efc5904eb90492a18153b5e6ca5398046d8a249a7c96a9ea24ae6
+  webrick (1.9.2) sha256=beb4a15fc474defed24a3bda4ffd88a490d517c9e4e6118c3edce59e45864131
   yard (0.9.45) sha256=52e211493f7cb8a3ebf7e104a25a1e73937a3103092545d34cb88fafebb3dc51
   yard-lint (1.10.2) sha256=3e595709d088a8cc827e706a4146b447eb6a907ee375d06c11077369d00717f6
   zeitwerk (2.8.2) sha256=7212a61311083c604184b1ea2574b9aa05cd14f855a0841c06985cabe9181d12

@@ -159,10 +159,10 @@ module Html2rss
             feed = Html2rss.auto_json_feed(url, strategy: resolved, limit:, items_selector:)
             items = feed[:items] || []
             Server.text_response(JSON.generate(items), meta: {
-              total: items.size,
-              strategy: resolved.to_s,
-              channel_title: feed[:title]
-            })
+                                   total: items.size,
+                                   strategy: resolved.to_s,
+                                   channel_title: feed[:title]
+                                 })
           rescue StandardError => error
             Server.error_response(error)
           end
