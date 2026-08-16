@@ -430,9 +430,53 @@ module Html2rss
 
           blocked = Html2rss::RequestService::BlockedSurface.interstitial_signature_for(response.body)
           result[:blocked_surface] = blocked[:key].to_s if blocked
+          result[:xhr_capture] = xhr_capture_info(response) if resolved == :botasaurus
 
           result
         end
+
+        ##
+        # @param response [Html2rss::RequestService::Response]
+        # @return [Hash] redacted XHR capture diagnostics (no query strings)
+        def xhr_capture_info(response)
+          captured = response.captured_responses
+          {
+            count: captured.size,
+            sample_endpoints: captured.first(5).filter_map { |entry| redacted_endpoint(entry) },
+            candidate_articles: captured.any? { |entry| xhr_candidate_articles?(entry) }
+          }
+        end
+        module_function :xhr_capture_info
+
+        ##
+        # @param entry [Hash] captured response hash
+        # @return [String, nil] scheme+host+path only
+        def redacted_endpoint(entry)
+          raw = entry['url'] || entry[:url]
+          return unless raw
+
+          uri = URI.parse(raw.to_s)
+          return unless uri.scheme && uri.host
+
+          "#{uri.scheme}://#{uri.host}#{uri.path}"
+        rescue URI::InvalidURIError
+          nil
+        end
+        module_function :redacted_endpoint
+
+        ##
+        # @param entry [Hash] captured response hash
+        # @return [Boolean]
+        def xhr_candidate_articles?(entry)
+          body = entry['body'] || entry[:body]
+          return false unless body.is_a?(String)
+
+          document = JSON.parse(body, symbolize_names: true)
+          AutoSource::Scraper::JsonState::CandidateDetector.candidate_array?(document)
+        rescue JSON::ParserError
+          false
+        end
+        module_function :xhr_candidate_articles?
 
         ##
         # @param url [String]
