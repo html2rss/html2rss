@@ -39,15 +39,15 @@ module Html2rss
       ##
       # Error raised when no suitable scraper is found.
       class NoScraperFound < Html2rss::Error
-        # User-facing messages grouped by no-scraper surface category.
+        # Surface diagnostics shared with {Html2rss::NoFeedItemsExtracted} (one string home).
         CATEGORY_MESSAGES = {
-          blocked_surface: 'No scrapers found: blocked surface likely (anti-bot or interstitial). ' \
+          blocked_surface: 'blocked surface likely (anti-bot or interstitial). ' \
                            'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, ' \
                            'or run from an environment that can complete anti-bot checks.',
-          app_shell: 'No scrapers found: app-shell surface detected (client-rendered page with little or no ' \
+          app_shell: 'app-shell surface detected (client-rendered page with little or no ' \
                      'server-rendered article HTML). Configure BOTASAURUS_SCRAPER_URL or target a direct ' \
                      'listing/update URL instead of a homepage or shell entrypoint.',
-          unsupported_surface: 'No scrapers found: unsupported extraction surface for auto mode. ' \
+          unsupported_surface: 'unsupported extraction surface for auto mode. ' \
                                'Try a direct listing/changelog/category URL, ' \
                                'or use explicit selectors in a feed config.'
         }.freeze
@@ -57,7 +57,7 @@ module Html2rss
         def initialize(message = nil, category: :unsupported_surface)
           validate_category!(category)
           @category = category
-          super(message || CATEGORY_MESSAGES.fetch(@category))
+          super(message || "No scrapers found: #{CATEGORY_MESSAGES.fetch(@category)}")
         end
 
         attr_reader :category
@@ -174,13 +174,18 @@ module Html2rss
       end
       private_class_method :construction_kwargs
 
+      ##
+      # Classifies why scrapers could not extract from a parsed page.
+      #
+      # @param parsed_body [Nokogiri::HTML::Document]
+      # @param body [String, nil] raw body for blocked-surface detection
+      # @return [Symbol] one of {NoScraperFound::CATEGORY_MESSAGES} keys
       def self.classify_no_scraper_surface(parsed_body, body: nil)
         return :blocked_surface if blocked_surface?(parsed_body, body:)
         return :app_shell if app_shell_surface?(parsed_body)
 
         :unsupported_surface
       end
-      private_class_method :classify_no_scraper_surface
 
       def self.blocked_surface?(parsed_body, body: nil)
         Html2rss::RequestService::BlockedSurface.interstitial?(body || parsed_body.to_html)

@@ -25,11 +25,12 @@ module Html2rss
       ##
       # Mutable run state for one auto-fallback chain: attempts plus selected result.
       class AttemptState
-        attr_reader :attempts, :result
+        attr_reader :attempts, :result, :last_response
 
         def initialize
           @attempts = []
           @result = nil
+          @last_response = nil
         end
 
         # @return [Boolean] true when a strategy already yielded items
@@ -50,6 +51,12 @@ module Html2rss
           attempt = { strategy:, items_count:, error_class: nil }
           attempt[:transport_meta] = transport_meta if transport_meta && !transport_meta.empty?
           @attempts << attempt
+        end
+
+        # @param response [RequestService::Response] last response that reached extraction
+        # @return [void]
+        def remember_response(response)
+          @last_response = response
         end
 
         # @param response [RequestService::Response] successful response
@@ -91,7 +98,7 @@ module Html2rss
         state = run_attempts
         return state.result if state.succeeded?
 
-        finalize_failure(attempts: state.attempts)
+        finalize_failure(attempts: state.attempts, response: state.last_response)
       end
 
       private
@@ -126,6 +133,7 @@ module Html2rss
       end
 
       def process_response(response:, strategy:, next_strategy:, request_session:, state:)
+        state.remember_response(response)
         articles, dedup_dropped = articles_for(response:, request_session:)
         items_count = articles.size
         state.record_items(strategy:, items_count:, transport_meta: response.transport_meta)
@@ -151,8 +159,11 @@ module Html2rss
                  "budget_remaining=#{budget_remaining_label}")
       end
 
-      def finalize_failure(attempts:)
-        raise NoFeedItemsExtracted.new(attempts:)
+      def finalize_failure(attempts:, response:)
+        surface_category = response && AutoSource::Scraper.classify_no_scraper_surface(
+          response.parsed_body, body: response.body
+        )
+        raise NoFeedItemsExtracted.new(attempts:, surface_category:)
       end
 
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
