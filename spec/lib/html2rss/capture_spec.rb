@@ -158,6 +158,22 @@ RSpec.describe Html2rss::Capture do
       expect(described_class.new(url).build.config[:strategy]).to eq(:botasaurus)
     end
 
+    # rubocop:disable RSpec/ExampleLength -- single-article quality gate
+    it 'reports has_selectors false when too few matches' do
+      html = <<~HTML
+        <html><body>
+          <article><h2><a href="/only">Only One Article Title</a></h2></article>
+        </body></html>
+      HTML
+      article = Html2rss::Article.new(
+        url: Html2rss::Url.from_absolute("#{url}/only"), title: 'Only One Article Title', id: '1'
+      )
+      stub_outcome(html_response(html), articles: [article])
+
+      expect(described_class.new(url).build.has_selectors).to be false
+    end
+    # rubocop:enable RSpec/ExampleLength
+
     it 'falls back to cluster when list yields too few matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response('<html><body><div id="root"></div></body></html>')
       articles = [
