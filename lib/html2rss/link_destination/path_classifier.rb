@@ -48,6 +48,9 @@ module Html2rss
             sinscrire inscription compte s-abonner saboner lettre-information confidentialite
             mentions-legales cgu menu sidebar widget social modal popup banner promo ad ads
             related recommendation recommendations pagination pager
+            dating jobs job career careers deals deal shopping shop trading broker
+            versicherung tierversicherung insurance vergleich comparison
+            partnerboerse singleboerse krypto crypto
           ] + SOFT_UTILITY.to_a
         ).to_set.freeze
         {

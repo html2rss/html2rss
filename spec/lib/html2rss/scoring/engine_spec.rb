@@ -17,23 +17,27 @@ RSpec.describe Html2rss::Scoring::Engine do
     )
   end
 
+  def article_segment(href:, title:, position:)
+    link = build_node(name: :a, href:, text: title)
+    root = build_node(
+      name: :article,
+      children: [
+        build_node(name: :h2, text: title),
+        link,
+        build_node(name: :p, text: 'Extra descriptive context that is long enough for signals here.')
+      ]
+    )
+    build_segment(root:, link:, position:)
+  end
+
   let(:engine) { described_class.new(link_resolver: Html2rss::Scoring::LinkResolver.new('https://example.com/')) }
 
   describe '#rank / #rank_top' do
     let(:segments) do
-      article_link = build_node(name: :a, href: '/news/deep-story-slug-here', text: 'Deep Story Title Words')
-      article_root = build_node(
-        name: :article,
-        children: [
-          build_node(name: :h2, text: 'Deep Story Title Words'),
-          article_link,
-          build_node(name: :p, text: 'Extra descriptive context that is long enough for signals here.')
-        ]
-      )
       junk_link = build_node(name: :a, href: '/login', text: 'Login')
       [
         build_segment(root: build_node(name: :div, children: [junk_link]), link: junk_link, position: 0),
-        build_segment(root: article_root, link: article_link, position: 1)
+        article_segment(href: '/news/deep-story-slug-here', title: 'Deep Story Title Words', position: 1)
       ]
     end
 
@@ -47,6 +51,12 @@ RSpec.describe Html2rss::Scoring::Engine do
       top = engine.rank_top(segments, limit: 10)
       expect(top.size).to eq(1)
       expect(top.first.final_score).to be >= described_class::SCORE_FLOOR
+    end
+
+    it 'demotes commerce affiliate paths via utility_path without title word lists' do
+      affiliate = article_segment(href: '/dating/singles-in-berlin', title: 'Singles in Berlin finden', position: 0)
+      news = article_segment(href: '/news/deep-story-slug-here', title: 'Deep Story Title Words', position: 1)
+      expect(engine.rank([affiliate, news]).map { _1.primary_link.attrs.href }).to eq(['/news/deep-story-slug-here'])
     end
   end
 
