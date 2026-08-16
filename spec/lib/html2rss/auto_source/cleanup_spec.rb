@@ -108,6 +108,39 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       expect(cleaned).not_to include(articles[5])
     end
 
+    context 'with excluded destination classes' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/') }
+      let(:articles) do
+        [
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://example.com/news/deep-story-slug-here'),
+                          title: 'Deep Story Slug Here Extra'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://example.com/dating/singles-in-berlin'),
+                          title: 'Singles In Berlin Find Love'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://example.com/deals/weekend-tech-sale'),
+                          title: 'Weekend Tech Sale Offers Now'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://example.com/subscribe'),
+                          title: 'Subscribe To Our Newsletter Today'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://example.com/category/tech'),
+                          title: 'Tech Category Listing Page Words')
+        ]
+      end
+
+      it 'hard-excludes commerce affiliate utility and taxonomy routes', :aggregate_failures do
+        expect(cleaned.map { |article| article.url.to_s })
+          .to eq(['https://example.com/news/deep-story-slug-here'])
+      end
+    end
+
     context 'with junk and acceptable titles' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
 
