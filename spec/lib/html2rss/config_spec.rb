@@ -274,6 +274,51 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(config_with_unknown_strategy)).to be_failure
     end
 
+    context 'when directory includes valid topics' do
+      let(:config) do
+        {
+          directory: { topics: %w[sports news] },
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+        }
+      end
+
+      it 'accepts the directory topics contract', :aggregate_failures do
+        result = described_class.validate(config)
+
+        expect(result).to be_success
+        expect(result.to_h.dig(:directory, :topics)).to eq(%w[sports news])
+      end
+    end
+
+    context 'when directory topics are empty' do
+      let(:config) do
+        {
+          directory: { topics: [] },
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+        }
+      end
+
+      it 'rejects an empty topics array' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
+    context 'when directory topics include an unknown value' do
+      let(:config) do
+        {
+          directory: { topics: %w[sports unknown-topic] },
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+        }
+      end
+
+      it 'rejects topics outside the vocabulary' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
     context 'when channel includes author and image' do
       let(:config) do
         {

@@ -79,6 +79,9 @@ module Html2rss
             { 'required' => ['selectors'] },
             { 'required' => ['auto_source'] }
           ]
+
+          topics = schema.dig(:properties, :directory, :properties, :topics)
+          topics[:minItems] = 1 if topics.is_a?(Hash)
         end
 
         # @return [Hash{Symbol => Hash}] catalog under $defs.post_processors / $defs.extractors
