@@ -44,6 +44,9 @@ module Html2rss
         json_state: {
           enabled: true
         },
+        xhr_articles: {
+          enabled: true
+        },
         meta_oembed: {
           enabled: true
         },
@@ -93,6 +96,7 @@ module Html2rss
       @parsed_body = response.parsed_body
       @body = response.body
       @url = response.url
+      @captured_responses = response.captured_responses
       @opts = opts
       @request_session = request_session
     end
@@ -114,7 +118,7 @@ module Html2rss
 
     private
 
-    attr_reader :url, :parsed_body, :body, :request_session
+    attr_reader :url, :parsed_body, :body, :request_session, :captured_responses
 
     # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
@@ -143,7 +147,8 @@ module Html2rss
             request_session:,
             body:,
             document:,
-            link_resolver:
+            link_resolver:,
+            captured_responses:
           )
           next unless instance
           next unless Scraper.extractable_instance?(instance, parsed_body)
