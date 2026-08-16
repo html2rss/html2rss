@@ -48,4 +48,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'thor'
   spec.add_dependency 'tzinfo'
   spec.add_dependency 'zeitwerk'
+  spec.add_dependency 'mcp', '~> 1.0'
 end

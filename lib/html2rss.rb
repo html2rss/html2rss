@@ -5,7 +5,8 @@ require 'zeitwerk'
 loader = Zeitwerk::Loader.for_gem
 loader.inflector.inflect(
   'cli' => 'CLI',
-  'sst' => 'SST'
+  'sst' => 'SST',
+  'mcp' => 'MCP'
 )
 loader.setup
 

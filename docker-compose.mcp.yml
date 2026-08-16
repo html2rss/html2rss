@@ -1,0 +1,6 @@
+services:
+  botasaurus:
+    image: html2rss/botasaurus-scrape-api:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4010:4010"
