@@ -15,6 +15,11 @@ module Html2rss
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
       # Baseline strategy-plan enum (:auto plus concrete RequestService strategies).
       BASE_STRATEGY_OPTIONS = Html2rss::FeedPipeline::StrategyPlan.accepted_names.freeze
+      # Controlled vocabulary for catalog-only `directory.topics` (not RSS channel fields).
+      DIRECTORY_TOPICS = %w[
+        sports energy tech science news entertainment jobs finance
+        security travel environment consumer civic product research
+      ].freeze
 
       # Contract for the top-level `channel` section.
       ChannelConfig = Dry::Schema.Params do
@@ -26,6 +31,11 @@ module Html2rss
         optional(:time_zone).maybe(:string)
         optional(:author).maybe(:string)
         optional(:image).maybe(:string, format?: URI_REGEXP)
+      end
+
+      # Contract for catalog-only `directory` metadata (topics for feed directories).
+      DirectoryConfig = Dry::Schema.Params do
+        optional(:topics).value(:array, min_size?: 1).each(:string, included_in?: DIRECTORY_TOPICS)
       end
 
       # Contract for a stylesheet entry in `stylesheets`.
@@ -71,6 +81,7 @@ module Html2rss
       params do
         optional(:strategy).filled(:symbol)
         required(:channel).hash(ChannelConfig)
+        optional(:directory).hash(DirectoryConfig)
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)
         optional(:auto_source).hash(Config::AutoSourceContract)

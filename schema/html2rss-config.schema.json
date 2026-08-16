@@ -63,6 +63,36 @@
         "url"
       ]
     },
+    "directory": {
+      "type": "object",
+      "properties": {
+        "topics": {
+          "type": "array",
+          "items": {
+            "minLength": 1,
+            "type": "string",
+            "enum": [
+              "sports",
+              "energy",
+              "tech",
+              "science",
+              "news",
+              "entertainment",
+              "jobs",
+              "finance",
+              "security",
+              "travel",
+              "environment",
+              "consumer",
+              "civic",
+              "product",
+              "research"
+            ]
+          }
+        }
+      },
+      "required": []
+    },
     "headers": {
       "type": "object",
       "description": "HTTP headers applied to every request.",
