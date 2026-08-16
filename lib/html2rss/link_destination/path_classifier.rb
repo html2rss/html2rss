@@ -70,6 +70,7 @@ module Html2rss
       # Multi-label host mistaken for a path segment (affiliate/outlink chrome).
       # Final label must be alphabetic (TLD-like); exclude common file extensions.
       HOST_SHAPED_SEGMENT = /\A(?:www\.)?(?:[\w-]+\.)+[a-z]{2,24}\z/i
+      # Common file-extension suffixes excluded from host-shaped junk matching.
       FILE_EXTENSION_SEGMENT = /\.(?:pdf|jpe?g|png|gif|svg|webp|css|js|mjs|html?|xml|json|mp4|webm|zip|gz)\z/i
 
       # @param segments [Array<String>] normalized URL path segments
