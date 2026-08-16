@@ -10,7 +10,7 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       dating jobs job career careers deals deal shopping shop trading broker
       versicherung tierversicherung insurance vergleich comparison
       partnerboerse singleboerse krypto crypto
-      casinos casino kreditkarten kreditkarte echtgeld
+      casinos casino kreditkarten kreditkarte kredit echtgeld vpn games kaufberater leasing
     ].each do |segment|
       it "marks /#{segment}/ routes as utility and high-confidence junk", :aggregate_failures do
         classifier = classifier_for(segment)
@@ -25,6 +25,21 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       classifier = classifier_for('dating', 'singles-in-berlin-heute')
 
       expect(classifier.utility_path?).to be(true)
+      expect(classifier.junk_path?).to be(true)
+      expect(classifier.content_path?).to be(false)
+    end
+
+    it 'marks commerce prefixes that embed a content token as junk, not content', :aggregate_failures do
+      classifier = classifier_for('kreditkarten', 'news', 'american-express-platinum-aktion')
+
+      expect(classifier.content_path?).to be(false)
+      expect(classifier.junk_path?).to be(true)
+      expect(classifier.strong_post_suffix?).to be(false)
+    end
+
+    it 'marks nested host-shaped affiliate chrome as junk', :aggregate_failures do
+      classifier = classifier_for('www.bild.de', 'energieloesungen', 'photovoltaik')
+
       expect(classifier.junk_path?).to be(true)
       expect(classifier.content_path?).to be(false)
     end

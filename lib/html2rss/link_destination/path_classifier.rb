@@ -46,7 +46,7 @@ module Html2rss
           modal popup banner promo ad ads related recommendation recommendations pagination pager
           dating jobs job career careers deals deal shopping shop trading broker versicherung
           tierversicherung insurance vergleich comparison partnerboerse singleboerse krypto crypto
-          casinos casino kreditkarten kreditkarte echtgeld
+          casinos casino kreditkarten kreditkarte kredit echtgeld vpn games kaufberater leasing
         ].to_set.freeze
         utility = (taxonomy | chrome | SOFT_UTILITY).freeze
         {
@@ -75,8 +75,8 @@ module Html2rss
 
       # @return [Boolean] true when the route has article-like path evidence
       def content_path?
-        @content_path ||= SEGMENT_SETS[:content].intersect?(segments) ||
-                          yearish_content_context?
+        @content_path ||= !leading_high_confidence_junk? &&
+                          (SEGMENT_SETS[:content].intersect?(segments) || yearish_content_context?)
       end
 
       # @return [Boolean] true when the route includes utility/navigation evidence
@@ -131,7 +131,8 @@ module Html2rss
       def junk_path?
         return false if excluded_content_route?
 
-        taxonomy_path? ||
+        any_high_confidence_junk_segment? ||
+          taxonomy_path? ||
           utility_only_route? ||
           deep_utility_context_route? ||
           shallow_high_confidence_route?
@@ -145,6 +146,14 @@ module Html2rss
       end
 
       private
+
+      def leading_high_confidence_junk?
+        segments.any? && high_confidence_junk_segment?(segments.first)
+      end
+
+      def any_high_confidence_junk_segment?
+        segments.any? { |segment| high_confidence_junk_segment?(segment) }
+      end
 
       def yearish_content_context?
         segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
@@ -182,6 +191,7 @@ module Html2rss
 
       def trusted_post_context?(limit)
         return false if limit <= 0
+        return false if leading_high_confidence_junk?
 
         content_segments = SEGMENT_SETS.fetch(:content)
         context_segments = SEGMENT_SETS.fetch(:deep_post_context)
