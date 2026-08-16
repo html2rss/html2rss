@@ -28,7 +28,8 @@ module Html2rss
           headers: parsed_response.headers,
           url: response_url(parsed_response.final_url),
           status: parsed_response.status,
-          transport_meta: parsed_response.transport_meta
+          transport_meta: parsed_response.transport_meta,
+          captured_responses: parsed_response.xhr_responses
         )
       end
 

@@ -9,6 +9,8 @@ module Html2rss
     class Response
       # Default when a strategy does not attach transport telemetry.
       EMPTY_TRANSPORT_META = {}.freeze
+      # Default when a strategy does not capture sub-resource responses.
+      EMPTY_CAPTURED_RESPONSES = [].freeze
 
       ##
       # @param body [String] the body of the response
@@ -16,7 +18,9 @@ module Html2rss
       # @param headers [Hash] the headers of the response
       # @param status [Integer, nil] the HTTP status code when available
       # @param transport_meta [Hash] allowlisted upstream telemetry (frozen when present)
-      def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META)
+      # @param captured_responses [Array<Hash>] JSON XHR/fetch bodies captured during browser scrapes
+      def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META,
+                     captured_responses: EMPTY_CAPTURED_RESPONSES)
         @body = body
 
         headers = headers.dup
@@ -27,6 +31,11 @@ module Html2rss
         @status = status
         @url = url
         @transport_meta = transport_meta.nil? || transport_meta.empty? ? EMPTY_TRANSPORT_META : transport_meta.freeze
+        @captured_responses = if captured_responses.nil? || captured_responses.empty?
+                                EMPTY_CAPTURED_RESPONSES
+                              else
+                                captured_responses.freeze
+                              end
       end
 
       # @return [String] the raw body of the response
@@ -43,6 +52,9 @@ module Html2rss
 
       # @return [Hash] allowlisted upstream transport telemetry
       attr_reader :transport_meta
+
+      # @return [Array<Hash>] captured JSON XHR/fetch responses (empty when unsupported)
+      attr_reader :captured_responses
 
       # @return [String] normalized content type header value
       def content_type = header('content-type').to_s

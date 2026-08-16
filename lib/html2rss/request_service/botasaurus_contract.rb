@@ -53,6 +53,10 @@ module Html2rss
       class ParsedResponse
         # Fallback headers when upstream omits response headers.
         DEFAULT_HEADERS = { 'content-type' => 'text/html' }.freeze
+        # Per-body size cap for captured XHR JSON (defense-in-depth vs upstream).
+        MAX_XHR_BODY_BYTES = 500_000
+        # Aggregate size cap across all captured XHR bodies.
+        MAX_XHR_AGGREGATE_BYTES = 2_000_000
 
         # @param payload [Hash{String => Object}] parsed Botasaurus response payload
         # @param transport_status [Integer] HTTP status returned by Botasaurus
@@ -112,6 +116,25 @@ module Html2rss
         # @return [Hash{String => Object}] allowlisted upstream telemetry (frozen)
         def transport_meta = payload.slice(*META_KEYS).compact.freeze
 
+        # @return [Array<Hash{String => Object}>] size-capped XHR/fetch captures (absent → [])
+        def xhr_responses
+          raw = payload['xhr_responses']
+          return [] unless raw.is_a?(Array)
+
+          aggregate_bytes = 0
+          raw.filter_map do |entry|
+            normalized = normalize_xhr_entry(entry)
+            next unless normalized
+
+            body_bytes = normalized.fetch('body').bytesize
+            next if body_bytes > MAX_XHR_BODY_BYTES
+            next if aggregate_bytes + body_bytes > MAX_XHR_AGGREGATE_BYTES
+
+            aggregate_bytes += body_bytes
+            normalized
+          end
+        end
+
         private
 
         attr_reader :payload, :transport_status
@@ -125,6 +148,30 @@ module Html2rss
         def error_message?
           value = error
           value.is_a?(String) ? !value.empty? : !value.nil?
+        end
+
+        def normalize_xhr_entry(entry)
+          return unless entry.is_a?(Hash)
+
+          body = entry['body'] || entry[:body]
+          return unless body.is_a?(String) && !body.empty?
+
+          {
+            'url' => (entry['url'] || entry[:url]).to_s,
+            'body' => body,
+            'headers' => xhr_headers(entry['headers'] || entry[:headers]),
+            'status_code' => xhr_status_code(entry['status_code'] || entry[:status_code])
+          }
+        end
+
+        def xhr_headers(raw)
+          return {} unless raw.is_a?(Hash)
+
+          raw.to_h { |key, value| [key.to_s, value.to_s] }
+        end
+
+        def xhr_status_code(value)
+          value.is_a?(Integer) ? value : nil
         end
       end
 
