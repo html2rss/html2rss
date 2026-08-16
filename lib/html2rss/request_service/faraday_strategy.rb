@@ -9,6 +9,7 @@ module Html2rss
     ##
     # Strategy to use Faraday for the request.
     # @see https://rubygems.org/gems/faraday
+    # rubocop:disable Metrics/ClassLength -- terminal redirect retry colocated with Faraday transport
     class FaradayStrategy < Strategy
       ##
       # Restores buffered streamed bytes so response middleware can process them.
@@ -36,7 +37,8 @@ module Html2rss
       def perform_execute
         deadline = request_deadline
         @response_guard = ResponseGuard.new(policy: ctx.policy)
-        raw_response = faraday_request(response_guard, deadline:, streaming_buffer: true)
+        reset_redirect_tracking!
+        raw_response = request_with_terminal_redirect_retry(response_guard, deadline:)
         raw_response = retry_without_streaming(response_guard, deadline:) if retry_without_streaming?(raw_response)
         build_response(raw_response)
       end
@@ -45,6 +47,45 @@ module Html2rss
 
       def request_deadline
         monotonic_now + ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+      end
+
+      def reset_redirect_tracking!
+        @last_redirect_to = nil
+        @terminal_redirect_retried = false
+        @request_url_override = nil
+      end
+
+      def request_with_terminal_redirect_retry(response_guard, deadline:)
+        faraday_request(response_guard, deadline:, streaming_buffer: true)
+      rescue Faraday::FollowRedirects::RedirectLimitReached => error
+        raise error unless terminal_redirect_retryable?
+
+        retry_from_terminal_redirect!(response_guard, deadline:)
+      end
+
+      def terminal_redirect_retryable?
+        return false if @terminal_redirect_retried || @last_redirect_to.nil?
+
+        @last_redirect_to.to_s != request_url.to_s
+      end
+
+      def retry_from_terminal_redirect!(response_guard, deadline:)
+        terminal_url = @last_redirect_to
+        @terminal_redirect_retried = true
+        Log.debug("#{self.class}: redirect limit reached; retrying once from #{terminal_url}")
+        begin_terminal_url_request!(terminal_url)
+        faraday_request(response_guard, deadline:, streaming_buffer: true, consume_budget: false)
+      end
+
+      def begin_terminal_url_request!(terminal_url)
+        ctx.policy.validate_request!(url: terminal_url, origin_url: ctx.origin_url, relation: ctx.relation)
+        @request_url_override = terminal_url
+        @client = nil
+        @last_redirect_to = nil
+      end
+
+      def request_url
+        @request_url_override || ctx.url
       end
 
       def build_response(response)
@@ -105,7 +146,7 @@ module Html2rss
 
       # rubocop:disable Metrics/AbcSize
       def client
-        @client ||= Faraday.new(url: ctx.url.to_s, headers: ctx.headers) do |faraday|
+        @client ||= Faraday.new(url: request_url.to_s, headers: ctx.headers) do |faraday|
           faraday.use Faraday::FollowRedirects::Middleware, limit: ctx.policy.max_redirects, callback: redirect_callback
           faraday.request :gzip
           faraday.use StreamingBodyMiddleware
@@ -168,6 +209,7 @@ module Html2rss
         lambda do |old_env, new_env|
           from_url = normalize_url(old_env[:url])
           to_url = normalize_url(new_env[:url])
+          @last_redirect_to = to_url
           ctx.policy.validate_redirect!(from_url:, to_url:, origin_url: ctx.origin_url, relation: ctx.relation)
         end
       end
@@ -180,5 +222,6 @@ module Html2rss
         Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

@@ -176,6 +176,94 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
   end
 
+  describe 'RedirectLimitReached terminal URL retry' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:redirect_callback) { {} }
+    let(:terminal_url) { 'https://cdn.example.com/terminal' }
+    let(:terminal_env) { instance_double(Faraday::Env, url: Addressable::URI.parse("#{terminal_url}/final")) }
+    let(:terminal_response) do
+      instance_double(
+        Faraday::Response,
+        body: '<html>terminal</html>',
+        headers: { 'content-type' => 'text/html' },
+        env: terminal_env,
+        status: 200
+      )
+    end
+    let(:terminal_request) { instance_double(Faraday::Request, options: Faraday::RequestOptions.new) }
+    let(:simulate_redirect_hops) do
+      lambda do |*hop_urls|
+        ([ctx.url.to_s] + hop_urls).each_cons(2) do |from, to|
+          redirect_callback[:proc].call(
+            { url: Addressable::URI.parse(from) },
+            { url: Addressable::URI.parse(to) }
+          )
+        end
+      end
+    end
+
+    before do
+      allow(builder).to receive(:use) do |klass, options = nil|
+        redirect_callback[:proc] = options[:callback] if klass == Faraday::FollowRedirects::Middleware
+      end
+      allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0)
+    end
+
+    it 're-fetches the last redirect hop once and succeeds', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      call_count = 0
+      allow(connection).to receive(:get) do |&block|
+        call_count += 1
+        block&.call(call_count == 1 ? request : terminal_request)
+        if call_count == 1
+          simulate_redirect_hops.call('https://cdn.example.com/hop1', terminal_url)
+          raise Faraday::FollowRedirects::RedirectLimitReached, 'too many redirects'
+        end
+
+        terminal_response
+      end
+
+      result = execute
+
+      expect(connection).to have_received(:get).twice
+      expect(budget).to have_received(:consume!).once
+      expect(policy).to have_received(:validate_redirect!).with(
+        from_url: Html2rss::Url.from_absolute('https://cdn.example.com/hop1'),
+        to_url: Html2rss::Url.from_absolute(terminal_url),
+        origin_url: ctx.origin_url,
+        relation: :initial
+      )
+      expect(policy).to have_received(:validate_request!).with(
+        hash_including(url: Html2rss::Url.from_absolute(terminal_url))
+      )
+      expect(Faraday).to have_received(:new).with(hash_including(url: terminal_url))
+      expect(result.body).to eq('<html>terminal</html>')
+      expect(result.url.to_s).to eq("#{terminal_url}/final")
+    end
+
+    it 'does not retry RedirectLimitReached more than once', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      call_count = 0
+      allow(connection).to receive(:get) do |&block|
+        call_count += 1
+        block&.call(call_count == 1 ? request : terminal_request)
+        simulate_redirect_hops.call(terminal_url)
+        raise Faraday::FollowRedirects::RedirectLimitReached, 'too many redirects'
+      end
+
+      expect { execute }.to raise_error(Faraday::FollowRedirects::RedirectLimitReached, /too many redirects/)
+      expect(connection).to have_received(:get).twice
+      expect(budget).to have_received(:consume!).once
+    end
+
+    it 'raises without retry when no redirect hop was recorded', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(connection).to receive(:get) do |&block|
+        block&.call(request)
+        raise Faraday::FollowRedirects::RedirectLimitReached, 'too many redirects'
+      end
+
+      expect { execute }.to raise_error(Faraday::FollowRedirects::RedirectLimitReached, /too many redirects/)
+      expect(connection).to have_received(:get).once
+    end
+  end
+
   describe described_class::PeerIpValidator do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:mock_socket) { instance_double(IPSocket, peeraddr: ['AF_INET', 443, '93.184.216.34', '93.184.216.34']) }
     let(:mock_net_http) do
