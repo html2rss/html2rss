@@ -39,6 +39,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'faraday-follow_redirects'
   spec.add_dependency 'faraday-gzip', '~> 3'
   spec.add_dependency 'kramdown'
+  spec.add_dependency 'mcp', '~> 1.0'
   spec.add_dependency 'mime-types', '> 3.0'
   spec.add_dependency 'nokogiri', '>= 1.10', '< 2.0'
   spec.add_dependency 'regexp_parser'

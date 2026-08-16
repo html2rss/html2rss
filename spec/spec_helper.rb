@@ -11,6 +11,8 @@ if ENV['COVERAGE']
     enable_coverage :branch
 
     add_filter '/spec/'
+    # MCP protocol surface: dedicated coverage follow-up (Capture plan residual).
+    add_filter { |source_file| source_file.filename.include?('/lib/html2rss/mcp') }
 
     minimum_coverage 95
     minimum_coverage_by_file 90

@@ -327,6 +327,24 @@ RSpec.describe Html2rss::CLI do
     end
   end
 
+  describe '#mcp' do
+    before do
+      allow(Html2rss::MCP).to receive(:start)
+    end
+
+    it 'starts the MCP server with stdio transport by default' do
+      cli.invoke(:mcp, [])
+
+      expect(Html2rss::MCP).to have_received(:start).with(transport: :stdio, port: 8080)
+    end
+
+    it 'starts the MCP server with HTTP transport when specified' do
+      cli.invoke(:mcp, [], { transport: 'http', port: 9090 })
+
+      expect(Html2rss::MCP).to have_received(:start).with(transport: :http, port: 9090)
+    end
+  end
+
   describe '#validate' do
     let(:result) { instance_double(Dry::Validation::Result, success?: success, errors:) }
     let(:errors) { instance_double(Dry::Validation::MessageSet, to_h: { selectors: ['bad config'] }) }

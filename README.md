@@ -46,6 +46,45 @@ File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(confi
 
 The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`docs/capture.md`](docs/capture.md) for detailed documentation.
 
+## MCP Server
+
+html2rss ships with an [MCP](https://modelcontextprotocol.io/) server that exposes gem capabilities as AI-consumable tools, resources, and prompts:
+
+```bash
+# Start with stdio transport (default)
+html2rss mcp
+
+# Start with HTTP transport
+html2rss mcp --transport http --port 8080
+```
+
+### Tools
+
+| Name | Description |
+|------|-------------|
+| `scrape_url` | Scrape a URL and return structured articles |
+| `inspect_url` | Deep page analysis — scrapers, SST stats, segments |
+| `capture_config` | Analyze a URL and produce a reusable feed config |
+| `validate_config` | Validate a feed config against the JSON schema |
+| `apply_config` | Apply a feed config to a URL and return RSS XML |
+
+### Resources
+
+| URI | Description |
+|-----|-------------|
+| `html2rss://schema` | Full JSON Schema for feed configurations |
+| `html2rss://extractors` | List of registered extractors |
+| `html2rss://strategies` | List of registered request strategies |
+
+### Prompts
+
+| Name | Description |
+|------|-------------|
+| `scrape-webpage` | Scrape a webpage and extract articles |
+| `capture-feed-config` | Analyze a URL and build a reusable feed config |
+
+The MCP module (`Html2rss::MCP`) lazy-loads the `mcp` gem — no cost when the server is not running.
+
 ## Botasaurus Docker Compose
 
 Start the Botasaurus scrape API for JavaScript-rendered pages:
