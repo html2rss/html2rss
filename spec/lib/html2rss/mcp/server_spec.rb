@@ -59,6 +59,8 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('auto" = faraday only')
       expect(protocol_server.instructions).to include('capture_config')
+      expect(protocol_server.tools['validate_config'].description).to include('html2rss://schema')
+      expect(protocol_server.tools['capture_config'].description).to include('html2rss://schema')
     end
     # rubocop:enable RSpec/ExampleLength
   end
@@ -127,10 +129,12 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :content, 0, :text)).to eq('Config is valid.')
       end
 
-      it 'marks invalid configs as isError' do
+      it 'marks invalid configs as isError with json error details', :aggregate_failures do
         result = call_tool.call('validate_config', { config: { bad: true } })
 
         expect(result.dig(:result, :isError)).to be(true)
+        error_payload = JSON.parse(result.dig(:result, :content, 0, :text))
+        expect(error_payload).to be_a(Hash)
       end
     end
 

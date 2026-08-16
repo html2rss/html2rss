@@ -198,7 +198,8 @@ module Html2rss
             name: 'capture_config',
             description: 'Derive a reusable html2rss feed config from a URL. ' \
                          'Use when the goal is a durable YAML/config (then validate_config). ' \
-                         'Returns config plus quality meta (articles_count, selectors presence).',
+                         'Returns config plus quality meta (articles_count, selectors presence). ' \
+                         'Full schema options live in resource html2rss://schema.',
             input_schema: {
               type: 'object',
               properties: {
@@ -238,7 +239,8 @@ module Html2rss
           server.define_tool(
             name: 'validate_config',
             description: 'Validate a feed config hash against the html2rss JSON schema. ' \
-                         'Call before apply_config. Failures return isError.',
+                         'Call before apply_config. Failures return isError with structured error details. ' \
+                         'Full schema lives in resource html2rss://schema.',
             input_schema: {
               type: 'object',
               properties: {
@@ -256,7 +258,7 @@ module Html2rss
             if validation.success?
               Server.text_response('Config is valid.')
             else
-              Server.text_response(validation.errors.to_h.to_s, error: true)
+              Server.text_response(JSON.generate(validation.errors.to_h), error: true)
             end
           rescue StandardError => error
             Server.error_response(error)
