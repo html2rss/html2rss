@@ -31,9 +31,8 @@ module Html2rss
             return unless object.is_a?(Hash)
             return unless emit?(object, from_list_item:)
 
-            article = Thing.new(object, url: base_url || '').call
-            titleize_list_item_stub!(article) if from_list_item
-            article
+            # Leave empty titles empty — do not invent from URL path (Cleanup allows nil).
+            Thing.new(object, url: base_url || '').call
           end
 
           # @param element [Object] raw list entry
@@ -55,17 +54,6 @@ module Html2rss
             return true if from_list_item
 
             Schema.normalize_types(object[:@type]).intersect?(Thing::SUPPORTED_TYPES)
-          end
-
-          # URL-only ListItem stubs historically used a titleized path as title.
-          #
-          # @param article [Hash] scraped article hash
-          # @return [void]
-          def titleize_list_item_stub!(article)
-            return unless article[:title].to_s.empty?
-            return unless (article_url = article[:url])
-
-            article[:title] = article_url.titleized
           end
         end
       end
