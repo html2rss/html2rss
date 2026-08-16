@@ -3,12 +3,22 @@
 module Html2rss
   module MCP
     ##
-    # Configures and starts the MCP protocol server.
+    # Thin MCP wire adapter over public html2rss APIs.
+    #
+    # Ownership: scraping/capture/validate/feed stay on gem entrypoints
+    # ({Html2rss.auto_json_feed}, {Capture.build}, {Config.validate}, {Html2rss.feed}).
+    # This module only maps MCP kwargs ↔ those APIs and shapes Tool::Response.
+    #
+    # Strategy note: MCP +auto+ collapses to +:faraday+ (no FeedPipeline botasaurus
+    # fallback). Agents that get empty/blocked results should retry with
+    # +strategy: "botasaurus"+ (requires +BOTASAURUS_SCRAPER_URL+).
     module Server # rubocop:disable Metrics/ModuleLength
       # MCP server display name.
       SERVER_NAME = 'html2rss'
       # MCP server version (mirrors the gem version).
       SERVER_VERSION = Html2rss::VERSION
+      # Loopback bind for HTTP transport (local use only).
+      HTTP_BIND_HOST = '127.0.0.1'
 
       class << self # rubocop:disable Metrics/ClassLength
         ##
@@ -16,25 +26,24 @@ module Html2rss
         #
         # @param transport [Symbol] +:stdio+ or +:http+
         # @param port [Integer] port for HTTP transport
-        def start(transport: :stdio, port: 8080) # rubocop:disable Metrics/MethodLength
-          app = build_server
+        def start(transport: :stdio, port: 8080)
+          app = build
 
           case transport
           when :stdio
-            transport_instance = ::MCP::Server::Transports::StdioTransport.new(app)
-            transport_instance.open
+            ::MCP::Server::Transports::StdioTransport.new(app).open
           when :http
-            require 'rack'
-            handler = ::MCP::Server::Transports::StreamableHTTPTransport.new(app, stateless: true)
-            Rack::Handler::WEBrick.run(handler, Port: port, Logger: Html2rss.logger)
+            start_http(app, port:)
           else
             raise ArgumentError, "Unknown transport: #{transport.inspect}"
           end
         end
 
-        private
-
-        def build_server
+        ##
+        # Builds the configured MCP protocol server (tools/resources/prompts).
+        #
+        # @return [::MCP::Server]
+        def build
           ::MCP::Server.new(
             name: SERVER_NAME,
             version: SERVER_VERSION,
@@ -46,11 +55,67 @@ module Html2rss
           end
         end
 
-        def instructions_text
-          'Automated web scraping via html2rss. ' \
-            'Use scrape_url to extract articles, capture_config to build reusable ' \
-            'feed configs, or inspect_url for deep page analysis. ' \
-            'Botasaurus strategy handles JavaScript-rendered pages (requires BOTASAURUS_SCRAPER_URL).'
+        ##
+        # Maps MCP strategy shortcut to a concrete request strategy.
+        # +:auto+ becomes +:faraday+ (no FeedPipeline fallback).
+        #
+        # @param strategy [String, Symbol, nil]
+        # @return [Symbol]
+        def resolve_mcp_strategy(strategy)
+          sym = (strategy || :auto).to_sym
+          sym == :auto ? :faraday : sym
+        end
+
+        ##
+        # @param text [String]
+        # @param error [Boolean]
+        # @param meta [Hash, nil]
+        # @return [::MCP::Tool::Response]
+        def text_response(text, error: false, meta: nil)
+          ::MCP::Tool::Response.new([{ type: 'text', text: }], error:, meta:)
+        end
+
+        ##
+        # @param error [Exception]
+        # @return [::MCP::Tool::Response]
+        def error_response(error)
+          text_response("Error: #{error.message}", error: true)
+        end
+
+        private
+
+        def start_http(app, port:) # rubocop:disable Metrics/MethodLength -- require + bind + LoadError message
+          require 'rackup'
+          require 'rackup/handler/webrick'
+          require 'webrick'
+
+          handler = ::MCP::Server::Transports::StreamableHTTPTransport.new(app, stateless: true)
+          Rackup::Handler::WEBrick.run(
+            handler,
+            Host: HTTP_BIND_HOST,
+            Port: port,
+            Logger: Html2rss.logger
+          )
+        rescue LoadError => error
+          raise LoadError,
+                'HTTP transport requires the rackup and webrick gems ' \
+                "(#{error.message}). Install them or use --transport stdio."
+        end
+
+        def instructions_text # rubocop:disable Metrics/MethodLength -- agent decision tree is the published contract
+          <<~TEXT.strip
+            html2rss MCP — decide which tool to call:
+
+            1. Need articles now (no saved config)? → scrape_url
+               - strategy "auto" = faraday only (no botasaurus fallback). If empty/JS-blocked, retry with strategy "botasaurus".
+            2. Need a reusable feed YAML/config? → capture_config, then validate_config, then apply_config
+            3. Debugging why scrape/capture is weak? → inspect_url (scrapers/SST/segments), then retry scrape/capture
+            4. Have a config already? → validate_config (must succeed) → apply_config for RSS XML
+            5. Schema / extractor / strategy lists → resources html2rss://schema|extractors|strategies
+
+            Prefer capture_config when the goal is a durable config; prefer scrape_url for one-shot extraction.
+            Botasaurus needs BOTASAURUS_SCRAPER_URL (see docker-compose.botasaurus.yml).
+          TEXT
         end
 
         def register_tools(server)
@@ -61,10 +126,12 @@ module Html2rss
           register_apply_config(server)
         end
 
-        def register_scrape_url(server) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
-          server.define_tool( # rubocop:disable Metrics/BlockLength
+        def register_scrape_url(server) # rubocop:disable Metrics/MethodLength
+          server.define_tool(
             name: 'scrape_url',
-            description: 'Scrape a URL and return structured articles as hashes',
+            description: 'One-shot article extraction as JSON Feed items. ' \
+                         'Use when you need articles now without a saved config. ' \
+                         'strategy "auto" = faraday only; retry with "botasaurus" if empty/JS-blocked.',
             input_schema: {
               type: 'object',
               properties: {
@@ -73,7 +140,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy'
+                  description: 'Request strategy (auto collapses to faraday in MCP)'
                 },
                 limit: {
                   type: 'integer',
@@ -87,45 +154,25 @@ module Html2rss
               },
               required: ['url']
             }
-          ) do |args, _server_context|
-            url = args.fetch('url')
-            strategy = (args['strategy'] || 'auto').to_sym
-            limit = args['limit'] || 25
-            items_selector = args['items_selector']
-
-            response = fetch_response(url, strategy)
-            auto_source_opts = Config.auto_source_config(
-              url:,
-              items_selector:,
-              request_controls: Config::RequestControls.from_shortcut(strategy:),
-              limit:
-            )[:auto_source] || AutoSource::DEFAULT_CONFIG
-
-            result = AutoSource.new(response, auto_source_opts).articles.map do |article|
-              {
-                id: article.id,
-                title: article.title,
-                description: article.description,
-                url: article.url.to_s,
-                image: article.image&.to_s,
-                author: article.author,
-                published_at: article.published_at&.iso8601,
-                categories: article.categories,
-                guid: article.guid
-              }.compact
-            end
-
-            meta = { total: result.size }
-            { content: [{ type: 'text', text: JSON.generate(result) }], _meta: meta }
+          ) do |server_context:, url:, strategy: 'auto', limit: 25, items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
+            resolved = Server.resolve_mcp_strategy(strategy)
+            feed = Html2rss.auto_json_feed(url, strategy: resolved, limit:, items_selector:)
+            items = feed[:items] || []
+            Server.text_response(JSON.generate(items), meta: {
+              total: items.size,
+              strategy: resolved.to_s,
+              channel_title: feed[:title]
+            })
           rescue StandardError => error
-            { content: [{ type: 'text', text: "Error: #{error.message}" }], isError: true }
+            Server.error_response(error)
           end
         end
 
-        def register_inspect_url(server) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+        def register_inspect_url(server) # rubocop:disable Metrics/MethodLength
           server.define_tool(
             name: 'inspect_url',
-            description: 'Deep page analysis: scrapers, SST stats, segments, and scores',
+            description: 'Diagnostic page analysis (scrapers, SST, segments). ' \
+                         'Use when scrape_url/capture_config returns little and you need to see why.',
             input_schema: {
               type: 'object',
               properties: {
@@ -134,47 +181,24 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy'
+                  description: 'Request strategy (auto collapses to faraday in MCP)'
                 }
               },
               required: ['url']
             }
-          ) do |args, _server_context|
-            url = args.fetch('url')
-            strategy = (args['strategy'] || 'auto').to_sym
-
-            response = fetch_response(url, strategy)
-            parsed = response.parsed_body
-
-            result = {
-              url:,
-              content_type: response.content_type,
-              html_response: response.html_response?,
-              scraper_eligibility: scraper_info(parsed),
-              sst_stats: sst_stats_from(response)
-            }
-
-            if response.html_response?
-              sst = sst_document(response)
-              if sst
-                result[:sst] = {
-                  node_count: sst.node_count,
-                  degraded: sst.degraded,
-                  segment_stats: segment_stats(sst, url)
-                }
-              end
-            end
-
-            { content: [{ type: 'text', text: JSON.pretty_generate(result) }] }
+          ) do |server_context:, url:, strategy: 'auto'| # rubocop:disable Lint/UnusedBlockArgument
+            Server.text_response(JSON.pretty_generate(Inspect.call(url:, strategy:)))
           rescue StandardError => error
-            { content: [{ type: 'text', text: "Error: #{error.message}" }], isError: true }
+            Server.error_response(error)
           end
         end
 
-        def register_capture_config(server) # rubocop:disable Metrics/MethodLength
+        def register_capture_config(server) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
           server.define_tool(
             name: 'capture_config',
-            description: 'Analyze a URL and produce a reusable html2rss feed config hash',
+            description: 'Derive a reusable html2rss feed config from a URL. ' \
+                         'Use when the goal is a durable YAML/config (then validate_config). ' \
+                         'Returns config plus quality meta (articles_count, selectors presence).',
             input_schema: {
               type: 'object',
               properties: {
@@ -183,7 +207,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy'
+                  description: 'Request strategy (auto collapses to faraday in MCP)'
                 },
                 items_selector: {
                   type: 'string',
@@ -192,23 +216,29 @@ module Html2rss
               },
               required: ['url']
             }
-          ) do |args, _server_context|
-            url = args.fetch('url')
-            strategy = (args['strategy'] || 'auto').to_sym
-            items_selector = args['items_selector']
-
-            result = Html2rss::Capture.build(url, strategy:, items_selector:)
-
-            { content: [{ type: 'text', text: JSON.pretty_generate(result.config) }] }
+          ) do |server_context:, url:, strategy: 'auto', items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
+            resolved = Server.resolve_mcp_strategy(strategy)
+            result = Html2rss::Capture.build(url, strategy: resolved, items_selector:)
+            selectors = result.config[:selectors]
+            Server.text_response(
+              JSON.pretty_generate(result.config),
+              meta: {
+                articles_count: result.articles_count,
+                channel_title: result.channel_title,
+                has_selectors: !selectors.nil? && !selectors.empty?,
+                strategy: resolved.to_s
+              }
+            )
           rescue StandardError => error
-            { content: [{ type: 'text', text: "Error: #{error.message}" }], isError: true }
+            Server.error_response(error)
           end
         end
 
         def register_validate_config(server) # rubocop:disable Metrics/MethodLength
           server.define_tool(
             name: 'validate_config',
-            description: 'Validate a feed config hash against the html2rss JSON schema',
+            description: 'Validate a feed config hash against the html2rss JSON schema. ' \
+                         'Call before apply_config. Failures return isError.',
             input_schema: {
               type: 'object',
               properties: {
@@ -219,29 +249,29 @@ module Html2rss
               },
               required: ['config']
             }
-          ) do |args, _server_context|
-            config = args.fetch('config')
+          ) do |server_context:, config:| # rubocop:disable Lint/UnusedBlockArgument
             config_hash = HashUtil.deep_symbolize_keys(config, context: 'config')
             validation = Html2rss::Config.validate(config_hash)
 
             if validation.success?
-              { content: [{ type: 'text', text: 'Config is valid.' }] }
+              Server.text_response('Config is valid.')
             else
-              { content: [{ type: 'text', text: validation.errors.to_h.to_s }] }
+              Server.text_response(validation.errors.to_h.to_s, error: true)
             end
           rescue StandardError => error
-            { content: [{ type: 'text', text: "Error: #{error.message}" }], isError: true }
+            Server.error_response(error)
           end
         end
 
         def register_apply_config(server) # rubocop:disable Metrics/MethodLength
           server.define_tool(
             name: 'apply_config',
-            description: 'Apply a feed config to a URL and return RSS XML',
+            description: 'Apply a validated feed config and return RSS XML. ' \
+                         'Use after validate_config succeeds.',
             input_schema: {
               type: 'object',
               properties: {
-                url: { type: 'string', description: 'Source page URL' },
+                url: { type: 'string', description: 'Source page URL (fills channel.url if missing)' },
                 config: {
                   type: 'object',
                   description: 'Feed configuration hash with selectors'
@@ -249,18 +279,15 @@ module Html2rss
               },
               required: %w[url config]
             }
-          ) do |args, _server_context|
-            url = args.fetch('url')
-            config = args.fetch('config')
-
+          ) do |server_context:, url:, config:| # rubocop:disable Lint/UnusedBlockArgument
             feed_config = HashUtil.deep_symbolize_keys(config, context: 'config')
             feed_config[:channel] ||= {}
             feed_config[:channel][:url] ||= url
 
             rss = Html2rss.feed(feed_config)
-            { content: [{ type: 'text', text: rss.to_s }] }
+            Server.text_response(rss.to_s)
           rescue StandardError => error
-            { content: [{ type: 'text', text: "Error: #{error.message}" }], isError: true }
+            Server.error_response(error)
           end
         end
 
@@ -270,73 +297,132 @@ module Html2rss
             name: 'Configuration JSON Schema',
             description: 'Full JSON Schema for html2rss feed configurations',
             mime_type: 'application/json'
-          ) do |_args, _server_context|
+          ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
             schema = Html2rss::Config.json_schema_json(pretty: true)
-            { content: [{ type: 'text', text: schema }] }
+            [{ uri: 'html2rss://schema', mimeType: 'application/json', text: schema }]
           end
 
           server.define_resource(
             uri: 'html2rss://extractors',
             name: 'Available Extractors',
-            description: 'List of registered extractors with documentation'
-          ) do |_args, _server_context|
+            description: 'Registered extractor names for selector configs ' \
+                         '(full option docs live in html2rss://schema $defs)'
+          ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
             extractors = Html2rss::Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s).sort
-            { content: [{ type: 'text', text: JSON.pretty_generate(extractors) }] }
+            [{ uri: 'html2rss://extractors', mimeType: 'application/json',
+               text: JSON.pretty_generate(extractors) }]
           end
 
           server.define_resource(
             uri: 'html2rss://strategies',
             name: 'Available Strategies',
-            description: 'List of registered request strategies'
-          ) do |_args, _server_context|
+            description: 'Registered request strategy names'
+          ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
             strategies = Html2rss::RequestService.instance.strategy_names
-            { content: [{ type: 'text', text: JSON.pretty_generate(strategies) }] }
+            [{ uri: 'html2rss://strategies', mimeType: 'application/json',
+               text: JSON.pretty_generate(strategies) }]
           end
         end
 
         def register_prompts(server) # rubocop:disable Metrics/MethodLength
           server.define_prompt(
             name: 'scrape-webpage',
-            description: 'Scrape a webpage and extract articles',
+            description: 'Guided one-shot scrape: scrape_url then inspect/retry with botasaurus if needed',
             arguments: [
               { name: 'url', description: 'URL to scrape', required: true }
             ]
-          ) do |args, _server_context|
-            url = args.fetch('url')
+          ) do |args, server_context:| # rubocop:disable Lint/UnusedBlockArgument
+            url = args.fetch(:url)
             {
               messages: [
-                { role: 'user',
-                  content: { type: 'text',
-                             text: "Please scrape #{url} and return the articles found there as structured data." } }
+                {
+                  role: 'user',
+                  content: {
+                    type: 'text',
+                    text: <<~MSG.strip
+                      Scrape #{url} with the scrape_url tool (strategy auto first).
+                      If articles are empty or look JS-gated, call inspect_url, then scrape_url again with strategy botasaurus.
+                      Return the structured articles JSON.
+                    MSG
+                  }
+                }
               ]
             }
           end
 
           server.define_prompt(
             name: 'capture-feed-config',
-            description: 'Analyze a URL and build a reusable html2rss feed config',
+            description: 'Guided capture → validate → optional apply for a reusable feed config',
             arguments: [
               { name: 'url', description: 'URL to analyze', required: true }
             ]
-          ) do |args, _server_context|
-            url = args.fetch('url')
+          ) do |args, server_context:| # rubocop:disable Lint/UnusedBlockArgument
+            url = args.fetch(:url)
             {
               messages: [
-                { role: 'user',
-                  content: { type: 'text',
-                             text: "Analyze #{url} and build an html2rss feed config that could be saved " \
-                                   'to a YAML file and reused.' } }
+                {
+                  role: 'user',
+                  content: {
+                    type: 'text',
+                    text: <<~MSG.strip
+                      Build a reusable html2rss feed config for #{url}:
+                      1) capture_config — check _meta.articles_count and has_selectors
+                      2) If weak, inspect_url and/or retry capture_config with strategy botasaurus
+                      3) validate_config on the config (must not be isError)
+                      4) Optionally apply_config to confirm RSS XML
+                      Return the validated config hash suitable for YAML.
+                    MSG
+                  }
+                }
               ]
             }
           end
         end
+      end
 
-        def fetch_response(url, strategy) # rubocop:disable Metrics/MethodLength
+      ##
+      # Diagnostic inspect path (not Capture ownership). Fetches once for SST/scraper stats.
+      module Inspect
+        module_function
+
+        ##
+        # @param url [String]
+        # @param strategy [String, Symbol]
+        # @return [Hash]
+        def call(url:, strategy: :auto) # rubocop:disable Metrics/MethodLength
+          resolved = Server.resolve_mcp_strategy(strategy)
+          response = fetch_response(url, resolved)
+          parsed = response.parsed_body
+
+          result = {
+            url:,
+            strategy: resolved,
+            content_type: response.content_type,
+            html_response: response.html_response?,
+            scraper_eligibility: scraper_info(parsed),
+            sst_stats: sst_stats_from(response)
+          }
+
+          if response.html_response?
+            sst = sst_document(response)
+            if sst
+              result[:sst] = {
+                node_count: sst.node_count,
+                degraded: sst.degraded,
+                segment_stats: segment_stats(sst, url)
+              }
+            end
+          end
+
+          result
+        end
+
+        def fetch_response(url, strategy) # rubocop:disable Metrics/MethodLength -- session construction
           raw_config = Config.auto_source_config(
             url:,
             request_controls: Config::RequestControls.from_shortcut(strategy:)
           )
-          raw_config[:strategy] = resolve_concrete_strategy(raw_config[:strategy] || strategy)
+          raw_config[:strategy] = strategy
           config = Config.from_hash(raw_config)
           resources = FeedPipeline::RuntimePolicy.resources_for(config)
           session = RequestSession.build(
@@ -347,11 +433,7 @@ module Html2rss
           )
           session.fetch_initial_response
         end
-
-        def resolve_concrete_strategy(strategy)
-          plan = FeedPipeline::StrategyPlan.resolve(strategy)
-          plan.is_a?(FeedPipeline::StrategyPlan::Auto) ? :faraday : plan.strategy
-        end
+        module_function :fetch_response
 
         def scraper_info(parsed)
           return { error: 'Response is not HTML' } unless parsed.is_a?(Nokogiri::HTML::Document)
@@ -362,6 +444,7 @@ module Html2rss
             { none_found: error.category.to_s }
           end
         end
+        module_function :scraper_info
 
         def sst_stats_from(response)
           return nil unless response.html_response?
@@ -373,12 +456,14 @@ module Html2rss
         rescue StandardError
           nil
         end
+        module_function :sst_stats_from
 
         def sst_document(response)
           Html2rss::SST::Normalizer.call(response.body)
         rescue ArgumentError
           nil
         end
+        module_function :sst_document
 
         def segment_stats(sst, url)
           segments = discover_segments(sst, url)
@@ -390,6 +475,7 @@ module Html2rss
             sample_paths: segments.first(5).map { |s| s.root_node.tag_path }
           }
         end
+        module_function :segment_stats
 
         def discover_segments(sst, url)
           link_resolver = Scoring::LinkResolver.new(url)
@@ -402,6 +488,7 @@ module Html2rss
         rescue StandardError
           []
         end
+        module_function :discover_segments
       end
     end
   end
