@@ -13,6 +13,7 @@ module Html2rss
       ].to_set.freeze
 
       # Segment groups used to classify article, taxonomy, utility, and vanity routes.
+      # Utility = taxonomy ∪ chrome ∪ soft utility (do not re-list taxonomy tokens).
       SEGMENT_SETS = begin
         content = %w[
           article articles blog blogs changelog changelogs insight insights
@@ -31,29 +32,23 @@ module Html2rss
           join membership plus premium pricing plans subscribe signup
           abonnieren abo suscribirse boletin s-abonner saboner
         ].to_set.freeze
-        utility = (
-          taxonomy.to_a + %w[
-            about account archive archives author authors comment comments
-            contact feedback help login logout notification notifications
-            preference preferences profile register search settings share signup subscribe
-            feed feeds comment-feed comments-feed privacy terms cookie cookies user users
-            kategorie kategorien schlagwort schlagworte thema themen autor autoren archiv
-            ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
-            konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
-            categoria categorias etiqueta etiquetas tema temas autores archivos
-            sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar
-            registrarse registro cuenta suscribirse boletin privacidad condiciones
-            categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
-            a-propos apropos recherche rechercher aide connexion s-inscrire
-            sinscrire inscription compte s-abonner saboner lettre-information confidentialite
-            mentions-legales cgu menu sidebar widget social modal popup banner promo ad ads
-            related recommendation recommendations pagination pager
-            dating jobs job career careers deals deal shopping shop trading broker
-            versicherung tierversicherung insurance vergleich comparison
-            partnerboerse singleboerse krypto crypto
-            casinos casino kreditkarten kreditkarte echtgeld
-          ] + SOFT_UTILITY.to_a
-        ).to_set.freeze
+        chrome = %w[
+          about account archive archives author authors comment comments contact feedback
+          help login logout notification notifications preference preferences profile register
+          search settings share signup subscribe feed feeds comment-feed comments-feed privacy
+          terms cookie cookies user users autor autoren archiv ueber-uns ueber ueberuns profil
+          kontakt impressum suche hilfe anmelden registrieren konto registrierung anmeldung
+          abonnieren abo datenschutz nutzungsbedingungen agb autores archivos sobre-nosotros
+          sobre quienes-somos buscar busqueda ayuda entrar ingresar registrarse registro cuenta
+          suscribirse boletin privacidad condiciones auteur auteurs a-propos apropos recherche
+          rechercher aide connexion s-inscrire sinscrire inscription compte s-abonner saboner
+          lettre-information confidentialite mentions-legales cgu menu sidebar widget social
+          modal popup banner promo ad ads related recommendation recommendations pagination pager
+          dating jobs job career careers deals deal shopping shop trading broker versicherung
+          tierversicherung insurance vergleich comparison partnerboerse singleboerse krypto crypto
+          casinos casino kreditkarten kreditkarte echtgeld
+        ].to_set.freeze
+        utility = (taxonomy | chrome | SOFT_UTILITY).freeze
         {
           content:,
           utility:,
