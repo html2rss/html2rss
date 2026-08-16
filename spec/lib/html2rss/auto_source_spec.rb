@@ -314,9 +314,10 @@ RSpec.describe Html2rss::AutoSource do
         )
       end
 
-      it 'keeps fewer clean SemanticHtml items and does not build Html', :aggregate_failures do
+      it 'keeps fewer clean SemanticHtml items and does not build Html', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         html_builds = 0
-        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance).and_wrap_original do |method, scraper_class, *args, **kwargs|
+        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance)
+          .and_wrap_original do |method, scraper_class, *args, **kwargs|
           html_builds += 1 if scraper_class == Html2rss::AutoSource::Scraper::Html
           method.call(scraper_class, *args, **kwargs)
         end
@@ -356,9 +357,10 @@ RSpec.describe Html2rss::AutoSource do
         )
       end
 
-      it 'still builds Html when prior tiers admit nothing', :aggregate_failures do
+      it 'still builds Html when prior tiers admit nothing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         html_builds = 0
-        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance).and_wrap_original do |method, scraper_class, *args, **kwargs|
+        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance)
+          .and_wrap_original do |method, scraper_class, *args, **kwargs|
           html_builds += 1 if scraper_class == Html2rss::AutoSource::Scraper::Html
           method.call(scraper_class, *args, **kwargs)
         end
