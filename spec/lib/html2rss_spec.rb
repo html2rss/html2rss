@@ -454,7 +454,7 @@ RSpec.describe Html2rss do
       expect(feed_return.items.size).to eq(75)
     end
 
-    it_behaves_like 'auto source option forwarding', method: :auto_source, downstream: :feed
+    it_behaves_like 'auto source option forwarding', method: :auto_source
   end
 
   describe '.auto_json_feed' do
@@ -472,6 +472,6 @@ RSpec.describe Html2rss do
       expect(feed_return[:items].size).to eq(75)
     end
 
-    it_behaves_like 'auto source option forwarding', method: :auto_json_feed, downstream: :json_feed
+    it_behaves_like 'auto source option forwarding', method: :auto_json_feed
   end
 end
