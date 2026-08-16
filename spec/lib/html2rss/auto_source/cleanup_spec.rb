@@ -111,39 +111,43 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     context 'with junk and acceptable titles' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
 
-      # Table-driven keep/reject through public Cleanup.call (not private send).
+      # Table-driven keep/reject via public junk_reason + Cleanup.call (not private send).
       [
-        { title: 'A valid title', keep: true },
-        { title: 'Getty Images', keep: false },
-        { title: 'Photo: Reuters', keep: false },
-        { title: 'lucy.smith.token', keep: false },
-        { title: 'methode-article-slug', keep: false },
-        { title: nil, keep: true },
-        { title: 'Reuters reports major breakthrough today', keep: true },
-        { title: 'Courtesy Casie Ellison via pool camera', keep: false },
-        { title: 'Courtesy Call Yields Breakthrough Deal', keep: true },
-        { title: 'US Navy/Handout/Reuters', keep: false },
-        { title: "Analysis•\nJim Lo Scalzo/Reuters", keep: false },
-        { title: 'Live Updates• AFP desk report line', keep: false },
-        { title: 'v_m_hw_pass', keep: false },
-        { title: 'story-has-edit-branch', keep: false },
-        { title: 'Created from Template ID TMG-44192 extra', keep: false },
-        { title: 'Clipped From Video', keep: false },
-        { title: 'Video• 2:23 Watch the full clip now', keep: false },
-        { title: 'Video: How the Fed raised rates today', keep: true },
-        { title: 'breakdancerin-raygun-geht-weiter-110168077', keep: false },
-        { title: 'Breakdancerin Raygun Geht Weiter 110168077', keep: false },
-        { title: '2026 08 16 World Europe Some Article Slug', keep: false },
-        { title: 'Hello {{article_title}} world token', keep: false },
-        { title: 'Jobs in Berlin', keep: true },
-        { title: '5 Wahrheiten über die deutsche Leichtathletik', keep: true }
+        { title: 'A valid title', reason: nil },
+        { title: 'Getty Images', reason: :credit },
+        { title: 'Photo: Reuters', reason: :credit },
+        { title: 'lucy.smith.token', reason: :cms_token },
+        { title: 'methode-article-slug', reason: :cms_token },
+        { title: nil, reason: nil },
+        { title: 'Reuters reports major breakthrough today', reason: nil },
+        { title: 'Courtesy Casie Ellison via pool camera', reason: :credit },
+        { title: 'Courtesy Call Yields Breakthrough Deal', reason: nil },
+        { title: 'US Navy/Handout/Reuters', reason: :credit },
+        { title: "Analysis•\nJim Lo Scalzo/Reuters", reason: :credit },
+        { title: 'Live Updates• AFP desk report line', reason: :credit },
+        { title: 'v_m_hw_pass', reason: :slug },
+        { title: 'story-has-edit-branch', reason: :slug },
+        { title: 'Created from Template ID TMG-44192 extra', reason: :template },
+        { title: 'Clipped From Video', reason: :video_chrome },
+        { title: 'Video• 2:23 Watch the full clip now', reason: :video_chrome },
+        { title: 'Video: How the Fed raised rates today', reason: nil },
+        { title: 'breakdancerin-raygun-geht-weiter-110168077', reason: :slug },
+        { title: 'Breakdancerin Raygun Geht Weiter 110168077', reason: :titleized_path },
+        { title: '2026 08 16 World Europe Some Article Slug', reason: :date_prefix },
+        { title: 'Hello {{article_title}} world token', reason: :template },
+        { title: 'Jobs in Berlin', reason: nil },
+        { title: '5 Wahrheiten über die deutsche Leichtathletik', reason: nil },
+        # First-match pin: agency-only credit beats slug shape for hyphenated CMS ids.
+        { title: 'AFP', reason: :credit }
       ].each_with_index do |example, index|
-        it "handles #{example[:title].inspect}" do
+        it "labels #{example[:title].inspect} as #{example[:reason].inspect}", :aggregate_failures do
+          expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+
           article = instance_double(Html2rss::Article, valid?: true,
                                                        url: Html2rss::Url.from_absolute("http://example.com/t#{index}"),
                                                        title: example[:title])
-          expect(described_class.call([article], url:).map(&:title).include?(example[:title]))
-            .to eq(example[:keep])
+          kept = described_class.call([article], url:).map(&:title).include?(example[:title])
+          expect(kept).to eq(example[:reason].nil?)
         end
       end
     end

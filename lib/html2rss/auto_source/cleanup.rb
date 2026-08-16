@@ -31,23 +31,37 @@ module Html2rss
       AGENCY_ALT = CREDIT_AGENCIES.join('|').freeze
       private_constant :AGENCY_ALT
 
-      # Sole denylist for extracted titles (normalize once, then any?).
-      JUNK_TITLE_PATTERNS = [
-        %r{\A(?:#{AGENCY_ALT})(?:\s*/\s*(?:#{AGENCY_ALT}))*\z}ix,
-        /\A(?:Image|Photo|Credit)\s*[:|]?\s*(?:#{AGENCY_ALT})\b/ix,
-        /\ACourtesy\b.+\b(?:via|pool|Handout|#{AGENCY_ALT})\b/ix,
-        /\bHandout\b.+\b(?:#{AGENCY_ALT})\b|\b(?:#{AGENCY_ALT})\b.+\bHandout\b/ix,
-        /\A(?:Live\s+Updates|Analysis)\s*[•·.:-]?\s*.*\b(?:#{AGENCY_ALT})\b/ix,
-        /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i,
-        /\ACreated\s+from\s+Template\s+ID\b/i,
-        /\AClipped\s+From\s+Video\b/i,
-        /\AVideo\s*[•·]/i,
-        /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/,
-        /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/,
-        /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/,
-        /(\{\{[^}]+\}\}|%\{\w+\})/
+      # Sole denylist for extracted titles. Order: higher-frequency reasons first.
+      # @return [Array<Hash>] frozen `{ reason:, pattern: }` rules
+      JUNK_TITLE_RULES = [
+        { reason: :credit,
+          pattern: %r{\A(?:#{AGENCY_ALT})(?:\s*/\s*(?:#{AGENCY_ALT}))*\z}ix },
+        { reason: :credit,
+          pattern: /\A(?:Image|Photo|Credit)\s*[:|]?\s*(?:#{AGENCY_ALT})\b/ix },
+        { reason: :credit,
+          pattern: /\ACourtesy\b.+\b(?:via|pool|Handout|#{AGENCY_ALT})\b/ix },
+        { reason: :credit,
+          pattern: /\bHandout\b.+\b(?:#{AGENCY_ALT})\b|\b(?:#{AGENCY_ALT})\b.+\bHandout\b/ix },
+        { reason: :credit,
+          pattern: /\A(?:Live\s+Updates|Analysis)\s*[•·.:-]?\s*.*\b(?:#{AGENCY_ALT})\b/ix },
+        { reason: :cms_token,
+          pattern: /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i },
+        { reason: :slug,
+          pattern: /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/ },
+        { reason: :date_prefix,
+          pattern: /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/ },
+        { reason: :titleized_path,
+          pattern: /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/ },
+        { reason: :video_chrome,
+          pattern: /\AClipped\s+From\s+Video\b/i },
+        { reason: :video_chrome,
+          pattern: /\AVideo\s*[•·]/i },
+        { reason: :template,
+          pattern: /\ACreated\s+from\s+Template\s+ID\b/i },
+        { reason: :template,
+          pattern: /(\{\{[^}]+\}\}|%\{\w+\})/ }
       ].freeze
-      private_constant :JUNK_TITLE_PATTERNS
+      private_constant :JUNK_TITLE_RULES
 
       class << self
         # @param articles [Array<Article>] extracted article candidates
@@ -69,15 +83,17 @@ module Html2rss
           articles
         end
 
+        # First matching junk reason for a title, or nil when the title is acceptable.
+        #
         # @param title [String, nil] candidate title text
-        # @return [Boolean] true when the title matches a known junk shape
-        def junk_title?(title)
-          return false if title.nil?
+        # @return [Symbol, nil]
+        def junk_reason(title)
+          return if title.nil?
 
           normalized = normalize_title(title)
-          return false if normalized.empty?
+          return if normalized.empty?
 
-          JUNK_TITLE_PATTERNS.any? { |rx| rx.match?(normalized) }
+          JUNK_TITLE_RULES.find { |rule| rule.fetch(:pattern).match?(normalized) }&.fetch(:reason)
         end
 
         private
@@ -109,7 +125,7 @@ module Html2rss
         def reject_low_quality_titles!(articles)
           articles.select! do |article|
             title = article.title
-            title.nil? || (word_count_at_least?(title, MIN_WORDS) && !junk_title?(title))
+            title.nil? || (word_count_at_least?(title, MIN_WORDS) && junk_reason(title).nil?)
           end
         end
 
