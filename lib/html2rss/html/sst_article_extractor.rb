@@ -92,7 +92,7 @@ module Html2rss
       #
       # @return [String, nil]
       def title_from_in_card_sources
-        title_candidates.find { |text| !credit_shaped_title?(text) }
+        title_candidates.find { |text| !AutoSource::Cleanup.junk_title?(text) }
       end
 
       # @return [Array<String>] ordered in-card title candidates (heading → anchor → fallback)
@@ -114,12 +114,6 @@ module Html2rss
         return if stripped.empty? || candidates.include?(stripped)
 
         candidates << stripped
-      end
-
-      # @param text [String]
-      # @return [Boolean]
-      def credit_shaped_title?(text)
-        AutoSource::Cleanup::CREDIT_TITLE.match?(text)
       end
 
       def heading

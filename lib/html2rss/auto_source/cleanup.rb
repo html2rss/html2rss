@@ -18,29 +18,36 @@ module Html2rss
       # Allowed URL schemes for article filtering.
       VALID_SCHEMES = %w[http https].to_set.freeze
 
-      # Credit-agency-only or photo-credit titles (not headlines).
-      CREDIT_TITLE = %r{
-        \A(?:AFP|Getty(?:\s+Images)?|Reuters|dpa|Imagn)
-          (?:\s*/\s*(?:AFP|Getty(?:\s+Images)?|Reuters|dpa|Imagn))*\z
-        |
-        \A(?:Image|Photo|Credit)\s*[:|]?\s*
-          (?:AFP|Getty(?:\s+Images)?|Reuters|dpa|Imagn)\b
-      }ix
+      # Photo-credit agencies (single list → junk title regexes).
+      CREDIT_AGENCIES = [
+        'AFP',
+        'Getty(?:\s+Images)?',
+        'Reuters',
+        'dpa',
+        'Imagn'
+      ].freeze
+      private_constant :CREDIT_AGENCIES
 
-      # Dotted / methode CMS tokens mistaken for titles.
-      CMS_TOKEN_TITLE = /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i
+      AGENCY_ALT = CREDIT_AGENCIES.join('|').freeze
+      private_constant :AGENCY_ALT
 
-      # Raw URL slug / token clusters (hyphen or underscore, no natural phrasing).
-      SLUG_TITLE = /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/
-
-      # Date-prefix path tokens, raw or titleized ("2026 08 16 …", "2026-08-16-…").
-      DATE_PREFIX_TITLE = /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/
-
-      # Titleized path ending in a long numeric CMS id.
-      TITLEIZED_PATH_TITLE = /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/
-
-      # Template / placeholder tokens mistaken for titles.
-      TEMPLATE_TITLE = /(\{\{[^}]+\}\}|%\{\w+\})/
+      # Sole denylist for extracted titles (normalize once, then any?).
+      JUNK_TITLE_PATTERNS = [
+        %r{\A(?:#{AGENCY_ALT})(?:\s*/\s*(?:#{AGENCY_ALT}))*\z}ix,
+        /\A(?:Image|Photo|Credit)\s*[:|]?\s*(?:#{AGENCY_ALT})\b/ix,
+        /\ACourtesy\b/i,
+        /\bHandout\b.+\b(?:#{AGENCY_ALT})\b|\b(?:#{AGENCY_ALT})\b.+\bHandout\b/ix,
+        /\A(?:Live\s+Updates|Analysis)\s*[•·.:-]?\s*.*\b(?:#{AGENCY_ALT})\b/ix,
+        /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i,
+        /\ACreated\s+from\s+Template\s+ID\b/i,
+        /\AClipped\s+From\s+Video\b/i,
+        /\AVideo\s*[•·.:]/i,
+        /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/,
+        /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/,
+        /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/,
+        /(\{\{[^}]+\}\}|%\{\w+\})/
+      ].freeze
+      private_constant :JUNK_TITLE_PATTERNS
 
       class << self
         # @param articles [Array<Article>] extracted article candidates
@@ -60,6 +67,17 @@ module Html2rss
 
           Log.debug "Cleanup: end with #{articles.size} articles"
           articles
+        end
+
+        # @param title [String, nil] candidate title text
+        # @return [Boolean] true when the title matches a known junk shape
+        def junk_title?(title)
+          return false if title.nil?
+
+          normalized = normalize_title(title)
+          return false if normalized.empty?
+
+          JUNK_TITLE_PATTERNS.any? { |rx| rx.match?(normalized) }
         end
 
         private
@@ -99,16 +117,8 @@ module Html2rss
           url&.without_fragment&.to_s
         end
 
-        def junk_title?(title)
-          CREDIT_TITLE.match?(title) || CMS_TOKEN_TITLE.match?(title) || unnatural_title?(title)
-        end
-
-        def unnatural_title?(title)
-          stripped = title.to_s.strip
-          SLUG_TITLE.match?(stripped) ||
-            DATE_PREFIX_TITLE.match?(stripped) ||
-            TITLEIZED_PATH_TITLE.match?(stripped) ||
-            TEMPLATE_TITLE.match?(stripped)
+        def normalize_title(title)
+          title.to_s.strip.gsub(/\s+/, ' ')
         end
 
         def word_count_at_least?(str, min_words)

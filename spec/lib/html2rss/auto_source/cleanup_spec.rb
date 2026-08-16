@@ -110,88 +110,39 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     context 'with junk and acceptable titles' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
-      let(:articles) do
-        [
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/a'),
-                          title: 'A valid title'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/b'),
-                          title: 'Getty Images'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/c'),
-                          title: 'Photo: Reuters'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/d'),
-                          title: 'lucy.smith.token'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/e'),
-                          title: 'methode-article-slug'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/f'),
-                          title: nil),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/g'),
-                          title: 'Reuters reports major breakthrough today')
-        ]
-      end
 
-      it 'rejects credit/CMS junk while keeping real headlines and nil titles', :aggregate_failures do
-        titles = cleaned.map(&:title)
-        expect(titles).to include('A valid title', nil, 'Reuters reports major breakthrough today')
-        expect(titles).not_to include('Getty Images', 'Photo: Reuters', 'lucy.smith.token', 'methode-article-slug')
-      end
-    end
-
-    context 'with slug, date-path, and natural titles' do
-      let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
-      let(:articles) do
-        [
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/slug'),
-                          title: 'breakdancerin-raygun-geht-weiter-110168077'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/titleized'),
-                          title: 'Breakdancerin Raygun Geht Weiter 110168077'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/date'),
-                          title: '2026 08 16 World Europe Some Article Slug'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/template'),
-                          title: 'Hello {{article_title}} world token'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/jobs'),
-                          title: 'Jobs in Berlin'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/leicht'),
-                          title: '5 Wahrheiten über die deutsche Leichtathletik')
-        ]
-      end
-
-      # Unnatural present titles are dropped (not blanked): inventing was wrong; missing
-      # provenance stays as nil and is kept. Template tokens prove TEMPLATE_TITLE is live.
-      it 'rejects slug/token-shaped titles while keeping natural headlines', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        titles = cleaned.map(&:title)
-        expect(titles).to include('Jobs in Berlin', '5 Wahrheiten über die deutsche Leichtathletik')
-        expect(titles).not_to include(
-          'breakdancerin-raygun-geht-weiter-110168077',
-          'Breakdancerin Raygun Geht Weiter 110168077',
-          '2026 08 16 World Europe Some Article Slug',
-          'Hello {{article_title}} world token'
-        )
+      # Table-driven keep/reject through public Cleanup.call (not private send).
+      [
+        { title: 'A valid title', keep: true },
+        { title: 'Getty Images', keep: false },
+        { title: 'Photo: Reuters', keep: false },
+        { title: 'lucy.smith.token', keep: false },
+        { title: 'methode-article-slug', keep: false },
+        { title: nil, keep: true },
+        { title: 'Reuters reports major breakthrough today', keep: true },
+        { title: 'Courtesy Casie Ellison via pool camera', keep: false },
+        { title: 'US Navy/Handout/Reuters', keep: false },
+        { title: "Analysis•\nJim Lo Scalzo/Reuters", keep: false },
+        { title: 'Live Updates• AFP desk report line', keep: false },
+        { title: 'v_m_hw_pass', keep: false },
+        { title: 'story-has-edit-branch', keep: false },
+        { title: 'Created from Template ID TMG-44192 extra', keep: false },
+        { title: 'Clipped From Video', keep: false },
+        { title: 'Video• 2:23 Watch the full clip now', keep: false },
+        { title: 'breakdancerin-raygun-geht-weiter-110168077', keep: false },
+        { title: 'Breakdancerin Raygun Geht Weiter 110168077', keep: false },
+        { title: '2026 08 16 World Europe Some Article Slug', keep: false },
+        { title: 'Hello {{article_title}} world token', keep: false },
+        { title: 'Jobs in Berlin', keep: true },
+        { title: '5 Wahrheiten über die deutsche Leichtathletik', keep: true }
+      ].each_with_index do |example, index|
+        it "handles #{example[:title].inspect}" do
+          article = instance_double(Html2rss::Article, valid?: true,
+                                                       url: Html2rss::Url.from_absolute("http://example.com/t#{index}"),
+                                                       title: example[:title])
+          expect(described_class.call([article], url:).map(&:title).include?(example[:title]))
+            .to eq(example[:keep])
+        end
       end
     end
 
