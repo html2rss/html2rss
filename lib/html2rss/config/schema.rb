@@ -64,7 +64,7 @@ module Html2rss
           schema[:$defs] = registry_catalog_defs
           schema.fetch(:properties).merge!(overlay)
           schema.fetch(:properties).delete(:dynamic_params_error)
-          DeepStringifier.call(schema)
+          HashUtil.deep_stringify_keys(schema)
         end
 
         private
@@ -144,7 +144,7 @@ module Html2rss
               items: Html2rss::Config::Validator::StylesheetConfig.json_schema(loose: true)
             },
             auto_source: Html2rss::Config::AutoSourceContract.json_schema(loose: true).merge(
-              default: DeepStringifier.call(Html2rss::AutoSource::DEFAULT_CONFIG)
+              default: HashUtil.deep_stringify_keys(Html2rss::AutoSource::DEFAULT_CONFIG)
             ),
             selectors: {
               type: 'object',
@@ -222,33 +222,6 @@ module Html2rss
       def registry_ref_list(catalog, registry)
         registry.keys.sort.map do |name|
           { '$ref' => "#/$defs/#{catalog}/#{name}" }
-        end
-      end
-
-      ##
-      # Converts nested hash keys to strings so the resulting schema serializes cleanly.
-      module DeepStringifier
-        module_function
-
-        # @param object [Hash, Array, Object] nested data to normalize
-        # @return [Hash, Array, Object] deep copy with stringified hash keys
-        def call(object)
-          case object
-          when Hash
-            stringify_hash(object)
-          when Array
-            object.map { |value| call(value) }
-          when Symbol
-            object.to_s
-          else
-            object
-          end
-        end
-
-        # @param object [Hash{Object => Object}] hash whose keys should become strings
-        # @return [Hash{String => Object}] hash with recursively normalized values
-        def stringify_hash(object)
-          object.to_h { |key, value| [key.to_s, call(value)] }
         end
       end
     end

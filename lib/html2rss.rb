@@ -118,6 +118,36 @@ module Html2rss
                                        local_file_path:, limit:))
   end
 
+  ##
+  # Analyzes a URL and produces a reusable YAML-ready feed config hash.
+  #
+  # Uses auto-source discovery to extract articles, then derives CSS selectors
+  # from the structural analysis.
+  #
+  # @param url [String] source page URL
+  # @param strategy [Symbol] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+  # @param items_selector [String, nil] optional CSS selector hint for items
+  # @param max_redirects [Integer, nil] optional redirect limit override
+  # @param max_requests [Integer, nil] optional request budget override
+  # @param limit [Integer, nil] max articles to keep
+  # @param local_file_path [String, nil] optional local HTML file path
+  # @return [Hash] feed config hash with +:channel+ and +:selectors+
+  def self.capture(url,
+                   strategy: :auto,
+                   items_selector: nil,
+                   max_redirects: nil,
+                   max_requests: nil,
+                   limit: nil,
+                   local_file_path: nil)
+    Capture.build(url,
+                  strategy:,
+                  items_selector:,
+                  max_redirects:,
+                  max_requests:,
+                  limit:,
+                  local_file_path:).config
+  end
+
   # rubocop:enable Metrics/ParameterLists
 
   # rubocop:disable ThreadSafety/ClassInstanceVariable

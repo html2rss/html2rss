@@ -268,6 +268,65 @@ RSpec.describe Html2rss::CLI do
     end
   end
 
+  describe '#capture' do
+    let(:captured_config) { { channel: { url: 'https://example.com', title: 'Example' } } }
+    let(:capture_defaults) do
+      {
+        strategy: :auto,
+        items_selector: nil,
+        max_redirects: nil,
+        max_requests: nil,
+        limit: nil,
+        local_file_path: nil
+      }
+    end
+
+    before do
+      allow(Html2rss).to receive(:capture).and_return(captured_config)
+    end
+
+    it 'prints string-key YAML without symbol-key prefixes' do
+      expect { cli.capture('https://example.com') }
+        .to output(YAML.dump(Html2rss::HashUtil.deep_stringify_keys(captured_config))).to_stdout
+    end
+
+    {
+      'strategy' => [{ strategy: 'botasaurus' }, { strategy: :botasaurus }],
+      'items_selector' => [{ items_selector: '.item' }, { items_selector: '.item' }],
+      'max_redirects' => [{ max_redirects: 8 }, { max_redirects: 8 }],
+      'max_requests' => [{ max_requests: 8 }, { max_requests: 8 }],
+      'limit' => [{ limit: 10 }, { limit: 10 }]
+    }.each do |label, (options, expected_kwargs)|
+      it "forwards #{label} to Html2rss.capture" do
+        cli.invoke(:capture, ['https://example.com'], options)
+
+        expect(Html2rss).to have_received(:capture)
+          .with('https://example.com', **capture_defaults, **expected_kwargs)
+      end
+    end
+
+    context 'when no URL is given and no input file is provided' do
+      it 'raises a Thor::Error' do
+        expect { cli.capture(nil) }
+          .to raise_error(Thor::Error, /A URL is required unless --input is specified/)
+      end
+    end
+
+    context 'with input option' do
+      it 'forwards local_file_path into Capture', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        path = File.expand_path('spec/fixtures/local_feed_test.html')
+        cli.invoke(:capture, [], { input: 'spec/fixtures/local_feed_test.html' })
+
+        expect(Html2rss).to have_received(:capture).with(
+          'https://example.com/blog',
+          **capture_defaults,
+          strategy: :local_file,
+          local_file_path: path
+        )
+      end
+    end
+  end
+
   describe '#validate' do
     let(:result) { instance_double(Dry::Validation::Result, success?: success, errors:) }
     let(:errors) { instance_double(Dry::Validation::MessageSet, to_h: { selectors: ['bad config'] }) }

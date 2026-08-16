@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'json'
+require 'yaml'
 require 'thor'
 
 module Html2rss
@@ -98,6 +99,43 @@ module Html2rss
       puts(format == 'jsonfeed' ? JSON.pretty_generate(result) : result)
     end
 
+    desc 'capture URL', 'Analyze a URL and print a reusable YAML feed config'
+    method_option :strategy,
+                  type: :string,
+                  desc: STRATEGY_OPTION_DESC,
+                  enum: STRATEGY_OPTION_ENUM
+    method_option :items_selector, type: :string, desc: 'CSS selector hint for items (optional)'
+    method_option :max_redirects,
+                  type: :numeric,
+                  desc: 'Maximum redirects to follow per request'
+    method_option :max_requests,
+                  type: :numeric,
+                  desc: 'Maximum requests to allow for this feed build'
+    method_option :limit,
+                  type: :numeric,
+                  desc: 'Maximum number of articles to keep (default: 25)'
+    method_option :input,
+                  type: :string,
+                  desc: 'Local HTML file path to read input from'
+    ##
+    # Captures a URL and prints a reusable YAML config.
+    #
+    # @param url [String, nil] source page URL for capture
+    # @return [void]
+    def capture(url = nil) # rubocop:disable Metrics/MethodLength
+      strategy, local_file_path, url = prepare_auto_inputs(url, options[:input])
+      config = Html2rss.capture(
+        url,
+        strategy:,
+        items_selector: options[:items_selector],
+        limit: options[:limit]&.to_i,
+        max_redirects: options[:max_redirects],
+        max_requests: options[:max_requests],
+        local_file_path:
+      )
+      puts YAML.dump(HashUtil.deep_stringify_keys(config))
+    end
+
     desc 'schema', 'Print the exported config JSON Schema'
     method_option :pretty,
                   type: :boolean,
@@ -183,7 +221,7 @@ module Html2rss
 
       file_path = check_file_exists!(input_option)
       detected_url = url || detect_base_url!(
-        file_path, 'Please specify a URL: html2rss auto [URL] --input <file>'
+        file_path, 'Please specify a URL: html2rss <command> [URL] --input <file>'
       )
 
       [:local_file, file_path, detected_url]
