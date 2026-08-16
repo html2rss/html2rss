@@ -112,8 +112,8 @@ module Html2rss
     end
 
     def resolve_strategy(strategy)
-      plan = FeedPipeline::StrategyPlan.resolve(strategy)
-      plan.is_a?(FeedPipeline::StrategyPlan::Auto) ? :faraday : plan.strategy
+      # Phase 1: diagnostic collapse. Phase 4 wires Capture through AutoFallback.
+      FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
     end
 
     def fetch_response

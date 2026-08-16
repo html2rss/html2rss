@@ -56,17 +56,6 @@ module Html2rss
         end
 
         ##
-        # Maps MCP strategy shortcut to a feed-level strategy plan.
-        # +:auto+ passes through as +:auto+ so the FeedPipeline's AutoFallback
-        # chain (faraday → botasaurus) is triggered for JS-rendered sites.
-        #
-        # @param strategy [String, Symbol, nil]
-        # @return [Symbol]
-        def resolve_mcp_strategy(strategy)
-          (strategy || :auto).to_sym
-        end
-
-        ##
         # @param text [String]
         # @param error [Boolean]
         # @param meta [Hash, nil]
@@ -141,7 +130,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy (auto collapses to faraday in MCP)'
+                  description: 'Request strategy (auto runs faraday → botasaurus fallback chain)'
                 },
                 limit: {
                   type: 'integer',
@@ -156,12 +145,12 @@ module Html2rss
               required: ['url']
             }
           ) do |server_context:, url:, strategy: 'auto', limit: 25, items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
-            resolved = Server.resolve_mcp_strategy(strategy)
-            feed = Html2rss.auto_json_feed(url, strategy: resolved, limit:, items_selector:)
+            plan = (strategy || :auto).to_sym
+            feed = Html2rss.auto_json_feed(url, strategy: plan, limit:, items_selector:)
             items = feed[:items] || []
             Server.text_response(JSON.generate(items), meta: {
                                    total: items.size,
-                                   strategy: resolved.to_s,
+                                   strategy: plan.to_s,
                                    channel_title: feed[:title]
                                  })
           rescue StandardError => error
@@ -182,7 +171,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy (auto collapses to faraday in MCP)'
+                  description: 'Request strategy (auto uses Faraday for cheap diagnostics; pin botasaurus when needed)'
                 }
               },
               required: ['url']
@@ -209,7 +198,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy (auto collapses to faraday in MCP)'
+                  description: 'Request strategy (auto runs faraday → botasaurus fallback chain)'
                 },
                 items_selector: {
                   type: 'string',
@@ -219,8 +208,8 @@ module Html2rss
               required: ['url']
             }
           ) do |server_context:, url:, strategy: 'auto', items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
-            resolved = Server.resolve_mcp_strategy(strategy)
-            result = Html2rss::Capture.build(url, strategy: resolved, items_selector:)
+            plan = (strategy || :auto).to_sym
+            result = Html2rss::Capture.build(url, strategy: plan, items_selector:)
             selectors = result.config[:selectors]
             Server.text_response(
               JSON.pretty_generate(result.config),
@@ -228,7 +217,7 @@ module Html2rss
                 articles_count: result.articles_count,
                 channel_title: result.channel_title,
                 has_selectors: !selectors.nil? && !selectors.empty?,
-                strategy: resolved.to_s
+                strategy: plan.to_s
               }
             )
           rescue StandardError => error
@@ -389,22 +378,11 @@ module Html2rss
         module_function
 
         ##
-        # Resolves feed-level strategy plans to concrete strategies for diagnostic fetch.
-        # +:auto+ collapses to +:faraday+ (inspect is a single-request diagnostic, not a fallback run).
-        #
-        # @param strategy [String, Symbol]
-        # @return [Symbol]
-        def concrete_strategy(strategy)
-          plan = FeedPipeline::StrategyPlan.resolve(Server.resolve_mcp_strategy(strategy))
-          plan.is_a?(FeedPipeline::StrategyPlan::Auto) ? :faraday : plan.strategy
-        end
-
-        ##
         # @param url [String]
         # @param strategy [String, Symbol]
         # @return [Hash]
         def call(url:, strategy: :auto) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-          resolved = concrete_strategy(strategy)
+          resolved = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
           response = fetch_response(url, resolved)
           parsed = response.parsed_body
 

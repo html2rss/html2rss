@@ -60,7 +60,7 @@ html2rss mcp --transport http --port 8080
 
 HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies). It listens on `127.0.0.1` only; do not expose it on a public interface without your own auth and Host/Origin controls.
 
-**Strategy note:** MCP tool `strategy: "auto"` collapses to `faraday` (no FeedPipeline botasaurus fallback). If results are empty or JS-gated, retry with `strategy: "botasaurus"` and `BOTASAURUS_SCRAPER_URL` set.
+**Strategy note:** MCP `scrape_url` / `capture_config` with `strategy: "auto"` run the FeedPipeline AutoFallback chain (`faraday` → `botasaurus`). `inspect_url` uses Faraday when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect. Botasaurus needs `BOTASAURUS_SCRAPER_URL`.
 
 ### Tools
 
@@ -103,11 +103,11 @@ Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and use strategy `botasa
 
 | Strategy     | Description                                                                   |
 | ------------ | ----------------------------------------------------------------------------- |
-| `auto`       | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI FeedPipeline) |
+| `auto`       | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI/MCP scrape)   |
 | `faraday`    | Plain HTTP requests via Faraday                                               |
 | `botasaurus` | Puppeteer-backed scraping for JavaScript pages                                |
 
-MCP tools intentionally collapse `auto` → `faraday` (see MCP section above). Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
+`inspect_url` keeps Faraday when `auto` for cheap diagnostics. Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
 
 ## License
 

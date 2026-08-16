@@ -42,14 +42,6 @@ RSpec.describe Html2rss::MCP::Server do
     end
   end
 
-  describe '.resolve_mcp_strategy' do
-    it 'passes auto through and resolves concrete strategies', :aggregate_failures do
-      expect(described_class.resolve_mcp_strategy(:auto)).to eq(:auto)
-      expect(described_class.resolve_mcp_strategy('botasaurus')).to eq(:botasaurus)
-      expect(described_class.resolve_mcp_strategy(nil)).to eq(:auto)
-    end
-  end
-
   describe '.build' do
     # rubocop:disable RSpec/ExampleLength -- registration contract is one assertion story
     it 'registers tools, resources, prompts, and decision-tree instructions', :aggregate_failures do
@@ -61,6 +53,10 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.instructions).to include('capture_config')
       expect(protocol_server.tools['validate_config'].description).to include('html2rss://schema')
       expect(protocol_server.tools['capture_config'].description).to include('html2rss://schema')
+      scrape_schema = protocol_server.tools['scrape_url'].input_schema.to_h
+      inspect_schema = protocol_server.tools['inspect_url'].input_schema.to_h
+      expect(scrape_schema.dig(:properties, :strategy, :description)).to include('fallback chain')
+      expect(inspect_schema.dig(:properties, :strategy, :description)).to include('Faraday')
     end
     # rubocop:enable RSpec/ExampleLength
   end

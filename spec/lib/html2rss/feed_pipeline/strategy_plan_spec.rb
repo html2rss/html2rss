@@ -24,6 +24,17 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
     end
   end
 
+  describe '.concrete_for_diagnostic' do
+    it 'collapses :auto to the default Faraday strategy' do
+      expect(described_class.concrete_for_diagnostic(:auto)).to eq(:faraday)
+    end
+
+    it 'passes through concrete strategies and nil → auto', :aggregate_failures do
+      expect(described_class.concrete_for_diagnostic(:botasaurus)).to eq(:botasaurus)
+      expect(described_class.concrete_for_diagnostic(nil)).to eq(:faraday)
+    end
+  end
+
   describe '.valid?' do
     it 'accepts :auto and registered strategies', :aggregate_failures do
       expect(described_class.valid?(:auto)).to be true

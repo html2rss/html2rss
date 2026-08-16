@@ -10,10 +10,6 @@ module Html2rss
   # The Html2rss command line interface.
   class CLI < Thor # rubocop:disable Metrics/ClassLength
     check_unknown_options!
-    # Ordered fallback chain attempted by the feed-level :auto plan.
-    #
-    # @return [Array<Symbol>]
-    AUTO_FALLBACK_CHAIN = Html2rss::FeedPipeline::AutoFallback::CHAIN.freeze
     # Supported CLI strategy plan option values (:auto plus concrete strategies).
     #
     # @return [Array<String>]
@@ -24,7 +20,7 @@ module Html2rss
     # @return [String]
     STRATEGY_OPTION_DESC = [
       'Optional request strategy (defaults to auto; auto tries',
-      "#{AUTO_FALLBACK_CHAIN.join(' -> ')})"
+      "#{Html2rss::FeedPipeline::AutoFallback::CHAIN.join(' -> ')})"
     ].join(' ').freeze
 
     # @return [Boolean] whether Thor should terminate process on command failures

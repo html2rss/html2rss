@@ -194,7 +194,7 @@ RSpec.describe Html2rss::CLI do
       before do
         allow(Html2rss).to receive(:auto_source).and_raise(
           Html2rss::RequestService::BlockedSurfaceDetected,
-          'Blocked surface detected: Cloudflare anti-bot interstitial page. Retry with --strategy browserless.'
+          'Blocked surface detected: Cloudflare anti-bot interstitial page. Retry with --strategy botasaurus.'
         )
       end
 
