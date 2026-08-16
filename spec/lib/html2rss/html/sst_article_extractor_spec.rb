@@ -85,6 +85,22 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article.title).to be_nil
   end
 
+  it 'keeps slug-shaped titles present so Cleanup can reject them', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body>
+        <article>
+          <a href="/news/story">story-has-edit-branch</a>
+          <p>Useful context paragraph with enough words for description extraction.</p>
+        </article>
+      </body></html>
+    HTML
+
+    article = described_class.call(segment_for(html), base_url: 'https://example.com')
+
+    expect(article.title).to eq('story-has-edit-branch')
+    expect(Html2rss::AutoSource::Cleanup.junk_reason(article.title)).to eq(:slug)
+  end
+
   it 'prefers real anchor text when the heading is credit-shaped', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>
