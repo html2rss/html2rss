@@ -18,7 +18,7 @@ module Html2rss
         connect_timeout_seconds: Integer(ENV.fetch('HTML2RSS_CONNECT_TIMEOUT_SECONDS', 5)),
         read_timeout_seconds: Integer(ENV.fetch('HTML2RSS_READ_TIMEOUT_SECONDS', 10)),
         total_timeout_seconds: Integer(ENV.fetch('HTML2RSS_TOTAL_TIMEOUT_SECONDS', 30)),
-        max_redirects: 3,
+        max_redirects: 5,
         max_response_bytes: 5_242_880,
         max_decompressed_bytes: 10_485_760,
         max_requests: 1,
