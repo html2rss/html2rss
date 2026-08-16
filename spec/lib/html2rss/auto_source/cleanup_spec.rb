@@ -150,6 +150,51 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with slug, date-path, and natural titles' do
+      let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
+      let(:articles) do
+        [
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/slug'),
+                          title: 'breakdancerin-raygun-geht-weiter-110168077'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/titleized'),
+                          title: 'Breakdancerin Raygun Geht Weiter 110168077'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/date'),
+                          title: '2026 08 16 World Europe Some Article Slug'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/template'),
+                          title: 'Hello {{article_title}} world token'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/jobs'),
+                          title: 'Jobs in Berlin'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/leicht'),
+                          title: '5 Wahrheiten über die deutsche Leichtathletik')
+        ]
+      end
+
+      # Unnatural present titles are dropped (not blanked): inventing was wrong; missing
+      # provenance stays as nil and is kept. Template tokens prove TEMPLATE_TITLE is live.
+      it 'rejects slug/token-shaped titles while keeping natural headlines', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        titles = cleaned.map(&:title)
+        expect(titles).to include('Jobs in Berlin', '5 Wahrheiten über die deutsche Leichtathletik')
+        expect(titles).not_to include(
+          'breakdancerin-raygun-geht-weiter-110168077',
+          'Breakdancerin Raygun Geht Weiter 110168077',
+          '2026 08 16 World Europe Some Article Slug',
+          'Hello {{article_title}} world token'
+        )
+      end
+    end
+
     context 'with non-Latin titles' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
       let(:articles) do

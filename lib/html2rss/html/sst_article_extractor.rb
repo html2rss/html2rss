@@ -80,17 +80,46 @@ module Html2rss
         Url.from_relative("##{id}", @base_url) if id
       end
 
-      def extract_title # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        source = heading || @selected_anchor
-        title_text = if source
-                       source.visible_text
-                     elsif @fallback_anchorless && @selected_anchor.nil?
-                       first_nonempty_own_text
-                     end
+      def extract_title
+        title_text = title_from_in_card_sources
         return unless title_text
 
         kicker = kicker_node&.visible_text.to_s.strip
         kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
+      end
+
+      # Prefer heading over credit-shaped visible text; never emit agency-only titles.
+      #
+      # @return [String, nil]
+      def title_from_in_card_sources
+        title_candidates.find { |text| !credit_shaped_title?(text) }
+      end
+
+      # @return [Array<String>] ordered in-card title candidates (heading → anchor → fallback)
+      def title_candidates
+        [].tap do |candidates|
+          add_title_candidate!(candidates, heading&.visible_text)
+          add_title_candidate!(candidates, @selected_anchor&.visible_text)
+          next unless candidates.empty? && @fallback_anchorless && @selected_anchor.nil?
+
+          add_title_candidate!(candidates, first_nonempty_own_text)
+        end
+      end
+
+      # @param candidates [Array<String>]
+      # @param text [String, nil]
+      # @return [void]
+      def add_title_candidate!(candidates, text)
+        stripped = text.to_s.strip
+        return if stripped.empty? || candidates.include?(stripped)
+
+        candidates << stripped
+      end
+
+      # @param text [String]
+      # @return [Boolean]
+      def credit_shaped_title?(text)
+        AutoSource::Cleanup::CREDIT_TITLE.match?(text)
       end
 
       def heading
