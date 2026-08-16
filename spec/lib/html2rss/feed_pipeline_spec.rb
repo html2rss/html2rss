@@ -80,6 +80,23 @@ RSpec.describe Html2rss::FeedPipeline do
       it 'raises NoFeedItemsExtracted at the pipeline boundary', :aggregate_failures do
         expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
           expect(error.attempts).to eq([{ strategy: :faraday, items_count: 0, error_class: nil }])
+          expect(error.surface_category).to eq(:unsupported_surface)
+        end
+      end
+
+      context 'when the empty page looks like an app shell' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:empty_response) do
+          build_response.call(
+            body: '<html><body><div id="root"></div><script src="/assets/app.js"></script></body></html>'
+          )
+        end
+
+        it 'appends the shared app-shell guidance', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+            expect(error.surface_category).to eq(:app_shell)
+            expect(error.message).to include('app-shell surface detected')
+            expect(error.message).to include('BOTASAURUS_SCRAPER_URL')
+          end
         end
       end
     end
@@ -179,6 +196,35 @@ RSpec.describe Html2rss::FeedPipeline do
         end
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
+      end
+
+      context 'when every strategy yields an app-shell page' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:app_shell_response) do
+          build_response.call(
+            body: '<html><body><div id="root"></div><script src="/assets/app.js"></script></body></html>'
+          )
+        end
+        let(:strategy_results) do
+          {
+            faraday: app_shell_response,
+            botasaurus: app_shell_response
+          }
+        end
+        let(:config) do
+          {
+            strategy: :auto,
+            request: { max_requests: 3 },
+            channel: { url: 'https://example.com/news', title: 'Example News' },
+            auto_source: {}
+          }
+        end
+
+        it 'raises NoFeedItemsExtracted with app-shell guidance', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+            expect(error.surface_category).to eq(:app_shell)
+            expect(error.message).to include('app-shell surface detected')
+          end
+        end
       end
 
       context 'when first strategy fails but fallback strategy succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups
