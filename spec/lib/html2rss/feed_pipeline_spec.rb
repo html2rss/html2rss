@@ -99,6 +99,23 @@ RSpec.describe Html2rss::FeedPipeline do
           end
         end
       end
+
+      context 'when the empty page is a dense high-entropy hub' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:empty_response) do
+          links = Array.new(Html2rss::AutoSource::Scraper::HIGH_ENTROPY_MIN_ANCHORS) do |index|
+            %(<a href="/dating/pad-#{index}">Pad #{index} Extra Words</a>)
+          end.join
+          build_response.call(body: "<html><body>#{links}</body></html>")
+        end
+
+        it 'appends high-entropy listing-URL guidance', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+            expect(error.surface_category).to eq(:high_entropy_surface)
+            expect(error.message).to include('high-entropy surface')
+            expect(error.message).to include('listing/update URL')
+          end
+        end
+      end
     end
 
     context 'when strategy is non-auto with selector-only yielding zero articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers

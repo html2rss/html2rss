@@ -103,6 +103,23 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       end
     end
 
+    context 'when the document is a dense high-entropy hub with no extractable articles' do
+      let(:parsed_body) do
+        links = Array.new(Html2rss::AutoSource::Scraper::HIGH_ENTROPY_MIN_ANCHORS) do |index|
+          %(<a href="/dating/pad-#{index}">Pad #{index}</a>)
+        end.join
+        Nokogiri::HTML("<html><body>#{links}</body></html>")
+      end
+
+      it 'classifies the surface as high_entropy_surface', :aggregate_failures do
+        category = described_class.classify_no_scraper_surface(parsed_body)
+
+        expect(category).to eq(:high_entropy_surface)
+        expect(Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(category))
+          .to include('listing/update URL')
+      end
+    end
+
     context 'when the app shell has long script/style content' do
       let(:parsed_body) do
         html = '<html><body><div id="root"></div>' \
