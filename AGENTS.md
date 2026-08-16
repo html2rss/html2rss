@@ -128,6 +128,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - **Auto-source heuristic lists**: Anchorless/classless card discovery runs on `SST::Document` via `AutoSource::Segmenter` (`:cluster` / `:list` / `:semantic`), then `Scoring::Engine`. See `docs/auto_source.md`. Do not reintroduce Nokogiri class-clustering on the heuristic path.
 - Title junk decisions use named `junk_reason` values owned only by `AutoSource::Cleanup`—do not copy title denylist regexes into `Scoring`.
 - Path lexicon (Sets) vs shape (predicates) live in `PathClassifier`; extend by composing Sets—do not re-list the same tokens in multiple arrays.
+- Feed-item admission (including hard-exclude of commerce/affiliate/utility destinations) lives in `AutoSource::Cleanup`; Scoring demotes/ranks only. Do not refill `limit` via the Html tier when earlier tiers already admitted clean items.
 - New junk title patterns require a fixture with expected **reason**; prefer fixing extractor title provenance when a reason keeps firing.
 
 ## Operating Checklist

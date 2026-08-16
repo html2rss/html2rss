@@ -20,6 +20,10 @@ Observing a semantic container plus its selected anchor and destination facts in
 
 Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Utility-landmark ancestry is computed by `AutoSource::Segmenter#landmark_ancestor?` and injected as `utility_landmark_ancestor:` — NoisePolicy does not walk `SST::Index`. Primary-link ranking weights are inlined in `Segmenter::PrimaryLink#candidate_facts`. Feature ids and `Score`/`RankedSegment` factories live on `Scoring::Engine`. Segmenter discovers candidates and may *call* NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
 
+## Feed-item admission
+
+Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoSource::Cleanup` (scheme/domain/self-link/title floor **and** destination-class hard exclude). Destination facts come from `LinkDestination::DestinationFacts` / `PathClassifier` — Cleanup does not own path lexicon Sets. Title string backstop stays `Cleanup.junk_reason` only. Scoring may demote or rank-time drop for heuristic discovery; it does not admit feed items. `AutoSource` short-circuits Html when earlier tiers already admitted ≥1 clean article below `limit` (quality over padding).
+
 ## DOM candidate clustering
 
 Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Scraper::Sitemap` (XML, not heuristic HTML).
