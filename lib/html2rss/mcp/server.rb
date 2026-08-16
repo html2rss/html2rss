@@ -9,9 +9,9 @@ module Html2rss
     # ({Html2rss.auto_json_feed}, {Capture.build}, {Config.validate}, {Html2rss.feed}).
     # This module only maps MCP kwargs ↔ those APIs and shapes Tool::Response.
     #
-    # Strategy note: MCP +auto+ collapses to +:faraday+ (no FeedPipeline botasaurus
-    # fallback). Agents that get empty/blocked results should retry with
-    # +strategy: "botasaurus"+ (requires +BOTASAURUS_SCRAPER_URL+).
+    # Strategy note: MCP +auto+ passes through to FeedPipeline AutoFallback
+    # (faraday → botasaurus). Concrete strategies are used as-is.
+    # Botasaurus requires +BOTASAURUS_SCRAPER_URL+.
     module Server # rubocop:disable Metrics/ModuleLength
       # MCP server display name.
       SERVER_NAME = 'html2rss'
@@ -56,14 +56,14 @@ module Html2rss
         end
 
         ##
-        # Maps MCP strategy shortcut to a concrete request strategy.
-        # +:auto+ becomes +:faraday+ (no FeedPipeline fallback).
+        # Maps MCP strategy shortcut to a feed-level strategy plan.
+        # +:auto+ passes through as +:auto+ so the FeedPipeline's AutoFallback
+        # chain (faraday → botasaurus) is triggered for JS-rendered sites.
         #
         # @param strategy [String, Symbol, nil]
         # @return [Symbol]
         def resolve_mcp_strategy(strategy)
-          sym = (strategy || :auto).to_sym
-          sym == :auto ? :faraday : sym
+          (strategy || :auto).to_sym
         end
 
         ##
@@ -107,9 +107,10 @@ module Html2rss
             html2rss MCP — decide which tool to call:
 
             1. Need articles now (no saved config)? → scrape_url
-               - strategy "auto" = faraday only (no botasaurus fallback). If empty/JS-blocked, retry with strategy "botasaurus".
+               - strategy "auto" triggers faraday → botasaurus fallback chain for JS-rendered sites.
+               - If botasaurus is unconfigured and auto fails, try explicit "faraday" or set up Botasaurus.
             2. Need a reusable feed YAML/config? → capture_config, then validate_config, then apply_config
-            3. Debugging why scrape/capture is weak? → inspect_url (scrapers/SST/segments), then retry scrape/capture
+            3. Debugging why scrape/capture is weak? → inspect_url (scrapers/SST/segments/blocked_surface), then retry scrape/capture
             4. Have a config already? → validate_config (must succeed) → apply_config for RSS XML
             5. Schema / extractor / strategy lists → resources html2rss://schema|extractors|strategies
 
@@ -131,7 +132,7 @@ module Html2rss
             name: 'scrape_url',
             description: 'One-shot article extraction as JSON Feed items. ' \
                          'Use when you need articles now without a saved config. ' \
-                         'strategy "auto" = faraday only; retry with "botasaurus" if empty/JS-blocked.',
+                         'strategy "auto" triggers fallback chain (faraday → botasaurus) for JS-rendered sites.',
             input_schema: {
               type: 'object',
               properties: {
@@ -388,11 +389,22 @@ module Html2rss
         module_function
 
         ##
+        # Resolves feed-level strategy plans to concrete strategies for diagnostic fetch.
+        # +:auto+ collapses to +:faraday+ (inspect is a single-request diagnostic, not a fallback run).
+        #
+        # @param strategy [String, Symbol]
+        # @return [Symbol]
+        def concrete_strategy(strategy)
+          plan = FeedPipeline::StrategyPlan.resolve(Server.resolve_mcp_strategy(strategy))
+          plan.is_a?(FeedPipeline::StrategyPlan::Auto) ? :faraday : plan.strategy
+        end
+
+        ##
         # @param url [String]
         # @param strategy [String, Symbol]
         # @return [Hash]
-        def call(url:, strategy: :auto) # rubocop:disable Metrics/MethodLength
-          resolved = Server.resolve_mcp_strategy(strategy)
+        def call(url:, strategy: :auto) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+          resolved = concrete_strategy(strategy)
           response = fetch_response(url, resolved)
           parsed = response.parsed_body
 
@@ -415,6 +427,9 @@ module Html2rss
               }
             end
           end
+
+          blocked = Html2rss::RequestService::BlockedSurface.interstitial_signature_for(response.body)
+          result[:blocked_surface] = blocked[:key].to_s if blocked
 
           result
         end

@@ -43,10 +43,10 @@ RSpec.describe Html2rss::MCP::Server do
   end
 
   describe '.resolve_mcp_strategy' do
-    it 'collapses auto to faraday and passes through concrete strategies', :aggregate_failures do
-      expect(described_class.resolve_mcp_strategy(:auto)).to eq(:faraday)
+    it 'passes auto through and resolves concrete strategies', :aggregate_failures do
+      expect(described_class.resolve_mcp_strategy(:auto)).to eq(:auto)
       expect(described_class.resolve_mcp_strategy('botasaurus')).to eq(:botasaurus)
-      expect(described_class.resolve_mcp_strategy(nil)).to eq(:faraday)
+      expect(described_class.resolve_mcp_strategy(nil)).to eq(:auto)
     end
   end
 
@@ -57,7 +57,7 @@ RSpec.describe Html2rss::MCP::Server do
         'scrape_url', 'inspect_url', 'capture_config', 'validate_config', 'apply_config'
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
-      expect(protocol_server.instructions).to include('auto" = faraday only')
+      expect(protocol_server.instructions).to include('"auto" triggers faraday')
       expect(protocol_server.instructions).to include('capture_config')
       expect(protocol_server.tools['validate_config'].description).to include('html2rss://schema')
       expect(protocol_server.tools['capture_config'].description).to include('html2rss://schema')
@@ -79,13 +79,13 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss).to have_received(:auto_json_feed).with(
           'https://example.com',
-          hash_including(strategy: :faraday)
+          hash_including(strategy: :auto)
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(JSON.parse(result.dig(:result, :content, 0, :text))).to eq(
           [{ 'title' => 'A', 'url' => 'https://example.com/a' }]
         )
-        expect(result.dig(:result, :_meta)).to include(total: 1, strategy: 'faraday', channel_title: 'Channel')
+        expect(result.dig(:result, :_meta)).to include(total: 1, strategy: 'auto', channel_title: 'Channel')
       end
       # rubocop:enable RSpec/ExampleLength
     end
@@ -109,7 +109,7 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss::Capture).to have_received(:build).with(
           'https://example.com',
-          hash_including(strategy: :faraday)
+          hash_including(strategy: :auto)
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(result.dig(:result, :_meta)).to include(

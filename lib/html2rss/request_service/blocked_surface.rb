@@ -34,6 +34,18 @@ module Html2rss
           ],
           message: 'Blocked surface detected: DataDome anti-bot challenge page. ' \
                    'Target a direct listing URL, or scrape via a session with resolved DataDome cookies.'
+        },
+        {
+          key: :vercel_security_checkpoint,
+          min_matches: 1,
+          patterns: [
+            /Vercel Security Checkpoint/i,
+            %r{vercel\.com/security}i,
+            /checking the security/i
+          ],
+          message: 'Blocked surface detected: Vercel Security Checkpoint. ' \
+                   'This site is a JS-rendered SPA behind Vercel edge protection. ' \
+                   'Configure BOTASAURUS_SCRAPER_URL or target a direct listing URL.'
         }
       ].freeze
 
