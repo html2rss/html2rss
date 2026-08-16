@@ -210,7 +210,7 @@ module Html2rss
 
       attrs = {}.tap do |a|
         a[:title] = title_selector(root)
-        a[:link] = link_selector(first[:segment])
+        a[:url] = url_selector(first[:segment])
         a[:description] = description_selector(root, first[:segment])
       end.compact
 
@@ -277,7 +277,7 @@ module Html2rss
       { selector: relative }
     end
 
-    def link_selector(segment)
+    def url_selector(segment)
       return nil unless segment.primary_link
 
       relative = css_for_path(segment.primary_link.tag_path, segment.root_node.tag_path)
