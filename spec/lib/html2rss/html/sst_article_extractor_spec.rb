@@ -85,6 +85,22 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article.title).to be_nil
   end
 
+  it 'prefers real anchor text when the heading is credit-shaped', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body>
+        <article>
+          <h2>AFP / Getty Images</h2>
+          <a href="/news/story">Real Headline About The Story</a>
+          <p>Useful context paragraph with enough words for description extraction.</p>
+        </article>
+      </body></html>
+    HTML
+
+    article = described_class.call(segment_for(html), base_url: 'https://example.com')
+
+    expect(article.title).to eq('Real Headline About The Story')
+  end
+
   it 'extracts a background-image style URL as the article image', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>

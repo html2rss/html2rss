@@ -86,6 +86,8 @@ module Html2rss
           articles.select! { |article| article.url&.host == base_host }
         end
 
+        # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
+        # blanking them would hide bad extraction as "unknown" and inflate empty items.
         def reject_low_quality_titles!(articles)
           articles.select! do |article|
             title = article.title
