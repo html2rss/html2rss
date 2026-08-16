@@ -33,8 +33,13 @@ module Html2rss
     class BlockedSurfaceDetected < Html2rss::Error; end
     # Raised when a request times out.
     class RequestTimedOut < Html2rss::Error; end
+
     # Raised when Botasaurus configuration is missing or invalid.
-    class BotasaurusConfigurationError < Html2rss::Error; end
+    class BotasaurusConfigurationError < Html2rss::Error
+      # Short empty-feed guidance owned once (composed by {Html2rss::NoFeedItemsExtracted}).
+      EMPTY_FEED_HINT = 'Configure BOTASAURUS_SCRAPER_URL to enable the Botasaurus request strategy.'
+    end
+
     # Raised when the Botasaurus service cannot be reached (network / DNS / SSL).
     class BotasaurusConnectionFailed < Html2rss::Error; end
     # Raised when Botasaurus responds but the scrape fails (upstream error, bad payload).

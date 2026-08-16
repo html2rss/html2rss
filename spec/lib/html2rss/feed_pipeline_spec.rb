@@ -188,11 +188,13 @@ RSpec.describe Html2rss::FeedPipeline do
 
       it 'raises when botasaurus is not configured (no browserless hop)', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         strategy_results[:botasaurus] = Html2rss::RequestService::BotasaurusConfigurationError.new('missing url')
+        hint = Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT
 
         expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
           expect(error.attempts).to include(
             hash_including(strategy: :botasaurus, error_class: 'Html2rss::RequestService::BotasaurusConfigurationError')
           )
+          expect(error.message).to include(hint)
         end
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :browserless)
