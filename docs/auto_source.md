@@ -17,9 +17,9 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.instances_for` → 
 
    `SST::Normalizer` → `AutoSource::Segmenter` → `Scoring::Engine` → extractor / article materialization.
 
-5. **Cleanup** — Merge, dedupe, and trim the combined article list.
+5. **Cleanup** — Merge, dedupe, hard-exclude non-article destinations (via `PathClassifier` facts), drop junk titles, and trim to `limit`. Html is skipped when earlier tiers already admitted clean items below `limit`.
 
-Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (repeated tag paths), `:cluster` (class/structure grids for anchorless cards). Scoring owns eligibility, noise, and ranking weights—not Segmenter.
+Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (repeated tag paths), `:cluster` (class/structure grids for anchorless cards). Scoring owns eligibility, noise, and ranking weights—not Segmenter. Cleanup owns feed-item admission.
 
 ## Nokogiri vs SST boundaries
 

@@ -18,29 +18,36 @@ module Html2rss
       # Allowed URL schemes for article filtering.
       VALID_SCHEMES = %w[http https].to_set.freeze
 
-      # Credit-agency-only or photo-credit titles (not headlines).
-      CREDIT_TITLE = %r{
-        \A(?:AFP|Getty(?:\s+Images)?|Reuters|dpa|Imagn)
-          (?:\s*/\s*(?:AFP|Getty(?:\s+Images)?|Reuters|dpa|Imagn))*\z
-        |
-        \A(?:Image|Photo|Credit)\s*[:|]?\s*
-          (?:AFP|Getty(?:\s+Images)?|Reuters|dpa|Imagn)\b
-      }ix
+      # Photo-credit agencies (single list → junk title regexes).
+      CREDIT_AGENCIES = [
+        'AFP',
+        'Getty(?:\s+Images)?',
+        'Reuters',
+        'dpa',
+        'Imagn'
+      ].freeze
+      private_constant :CREDIT_AGENCIES
 
-      # Dotted / methode CMS tokens mistaken for titles.
-      CMS_TOKEN_TITLE = /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i
+      AGENCY_ALT = CREDIT_AGENCIES.join('|').freeze
+      private_constant :AGENCY_ALT
 
-      # Raw URL slug / token clusters (hyphen or underscore, no natural phrasing).
-      SLUG_TITLE = /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/
-
-      # Date-prefix path tokens, raw or titleized ("2026 08 16 …", "2026-08-16-…").
-      DATE_PREFIX_TITLE = /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/
-
-      # Titleized path ending in a long numeric CMS id.
-      TITLEIZED_PATH_TITLE = /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/
-
-      # Template / placeholder tokens mistaken for titles.
-      TEMPLATE_TITLE = /(\{\{[^}]+\}\}|%\{\w+\})/
+      # Sole denylist for extracted titles. Order: higher-frequency reasons first.
+      JUNK_TITLE_RULES = [
+        [:credit, %r{\A(?:#{AGENCY_ALT})(?:\s*/\s*(?:#{AGENCY_ALT}))*\z}ix],
+        [:credit, /\A(?:Image|Photo|Credit)\s*[:|]?\s*(?:#{AGENCY_ALT})\b/ix],
+        [:credit, /\ACourtesy\b.+\b(?:via|pool|Handout|#{AGENCY_ALT})\b/ix],
+        [:credit, /\bHandout\b.+\b(?:#{AGENCY_ALT})\b|\b(?:#{AGENCY_ALT})\b.+\bHandout\b/ix],
+        [:credit, /\A(?:Live\s+Updates|Analysis)\s*[•·.:-]?\s*.*\b(?:#{AGENCY_ALT})\b/ix],
+        [:cms_token, /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i],
+        [:slug, /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/],
+        [:date_prefix, /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/],
+        [:titleized_path, /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/],
+        [:video_chrome, /\AClipped\s+From\s+Video\b/i],
+        [:video_chrome, /\AVideo\s*[•·]/i],
+        [:template, /\ACreated\s+from\s+Template\s+ID\b/i],
+        [:template, /(\{\{[^}]+\}\}|%\{\w+\})/]
+      ].freeze
+      private_constant :JUNK_TITLE_RULES
 
       class << self
         # @param articles [Array<Article>] extracted article candidates
@@ -56,10 +63,24 @@ module Html2rss
           keep_only_http_urls!(articles)
           reject_self_links!(articles, url)
           reject_different_domain!(articles, url) unless keep_different_domain
+          reject_excluded_destinations!(articles)
           reject_low_quality_titles!(articles)
 
           Log.debug "Cleanup: end with #{articles.size} articles"
           articles
+        end
+
+        # First matching junk reason for a title, or nil when the title is acceptable.
+        #
+        # @param title [String, nil] candidate title text
+        # @return [Symbol, nil]
+        def junk_reason(title)
+          return if title.nil?
+
+          normalized = normalize_title(title)
+          return if normalized.empty?
+
+          JUNK_TITLE_RULES.find { |_, pattern| pattern.match?(normalized) }&.first
         end
 
         private
@@ -86,12 +107,29 @@ module Html2rss
           articles.select! { |article| article.url&.host == base_host }
         end
 
+        # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).
+        # PathClassifier owns route facts; Cleanup owns feed-item admission.
+        # Align with Scoring's non_content_utility_path demotion, but as a hard gate so
+        # nested commerce routes (e.g. /jobs/stellenangebote/berlin) cannot fill limit.
+        def reject_excluded_destinations!(articles)
+          articles.reject! { |article| excluded_destination?(article.url) }
+        end
+
+        def excluded_destination?(url)
+          return false unless url
+
+          facts = LinkDestination::DestinationFacts.build(url)
+          return true if facts.high_confidence_junk_path || facts.high_confidence_utility_destination
+
+          facts.utility_path && !facts.content_path && !facts.strong_post_suffix
+        end
+
         # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
         # blanking them would hide bad extraction as "unknown" and inflate empty items.
         def reject_low_quality_titles!(articles)
           articles.select! do |article|
             title = article.title
-            title.nil? || (word_count_at_least?(title, MIN_WORDS) && !junk_title?(title))
+            title.nil? || (word_count_at_least?(title, MIN_WORDS) && junk_reason(title).nil?)
           end
         end
 
@@ -99,16 +137,8 @@ module Html2rss
           url&.without_fragment&.to_s
         end
 
-        def junk_title?(title)
-          CREDIT_TITLE.match?(title) || CMS_TOKEN_TITLE.match?(title) || unnatural_title?(title)
-        end
-
-        def unnatural_title?(title)
-          stripped = title.to_s.strip
-          SLUG_TITLE.match?(stripped) ||
-            DATE_PREFIX_TITLE.match?(stripped) ||
-            TITLEIZED_PATH_TITLE.match?(stripped) ||
-            TEMPLATE_TITLE.match?(stripped)
+        def normalize_title(title)
+          title.to_s.strip.gsub(/\s+/, ' ')
         end
 
         def word_count_at_least?(str, min_words)

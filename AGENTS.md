@@ -126,6 +126,10 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - **Excluding Redundant Titles & Anchors**: To keep descriptions clean and avoid duplicate data, always exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor elements (`a`) when extracting visible text for an article's description.
 - **Collapse Internal Text Wrapping**: Collapse consecutive wrapping whitespaces (including line breaks) inside raw HTML text nodes to a single space to prevent source code wrapping from turning into structural description newlines.
 - **Auto-source heuristic lists**: Anchorless/classless card discovery runs on `SST::Document` via `AutoSource::Segmenter` (`:cluster` / `:list` / `:semantic`), then `Scoring::Engine`. See `docs/auto_source.md`. Do not reintroduce Nokogiri class-clustering on the heuristic path.
+- Title junk decisions use named `junk_reason` values owned only by `AutoSource::Cleanup`—do not copy title denylist regexes into `Scoring`.
+- Path lexicon (Sets) vs shape (predicates) live in `PathClassifier`; extend by composing Sets—do not re-list the same tokens in multiple arrays.
+- Feed-item admission (including hard-exclude of commerce/affiliate/utility destinations) lives in `AutoSource::Cleanup`; Scoring demotes/ranks only. Do not refill `limit` via the Html tier when earlier tiers already admitted clean items.
+- New junk title patterns require a fixture with expected **reason**; prefer fixing extractor title provenance when a reason keeps firing.
 
 ## Operating Checklist
 

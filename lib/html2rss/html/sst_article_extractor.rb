@@ -88,11 +88,17 @@ module Html2rss
         kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
       end
 
-      # Prefer heading over credit-shaped visible text; never emit agency-only titles.
+      # Prefer a non-junk title. Credit-only cards may blank to nil (description can carry
+      # the item). Other junk shapes must stay present so Cleanup can hard-reject them —
+      # blanking slug/CMS/template text would admit titleless cards.
       #
       # @return [String, nil]
       def title_from_in_card_sources
-        title_candidates.find { |text| !credit_shaped_title?(text) }
+        candidates = title_candidates
+        clean = candidates.find { |text| AutoSource::Cleanup.junk_reason(text).nil? }
+        return clean if clean
+
+        candidates.find { |text| AutoSource::Cleanup.junk_reason(text) != :credit }
       end
 
       # @return [Array<String>] ordered in-card title candidates (heading → anchor → fallback)
@@ -114,12 +120,6 @@ module Html2rss
         return if stripped.empty? || candidates.include?(stripped)
 
         candidates << stripped
-      end
-
-      # @param text [String]
-      # @return [Boolean]
-      def credit_shaped_title?(text)
-        AutoSource::Cleanup::CREDIT_TITLE.match?(text)
       end
 
       def heading

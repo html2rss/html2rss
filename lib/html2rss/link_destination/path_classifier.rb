@@ -13,6 +13,7 @@ module Html2rss
       ].to_set.freeze
 
       # Segment groups used to classify article, taxonomy, utility, and vanity routes.
+      # Utility = taxonomy ∪ chrome ∪ soft utility (do not re-list taxonomy tokens).
       SEGMENT_SETS = begin
         content = %w[
           article articles blog blogs changelog changelogs insight insights
@@ -31,28 +32,23 @@ module Html2rss
           join membership plus premium pricing plans subscribe signup
           abonnieren abo suscribirse boletin s-abonner saboner
         ].to_set.freeze
-        utility = (
-          taxonomy.to_a + %w[
-            about account archive archives author authors comment comments
-            contact feedback help login logout notification notifications
-            preference preferences profile register search settings share signup subscribe
-            feed feeds comment-feed comments-feed privacy terms cookie cookies user users
-            kategorie kategorien schlagwort schlagworte thema themen autor autoren archiv
-            ueber-uns ueber ueberuns profil kontakt impressum suche hilfe anmelden registrieren
-            konto registrierung anmeldung abonnieren abo datenschutz nutzungsbedingungen agb
-            categoria categorias etiqueta etiquetas tema temas autores archivos
-            sobre-nosotros sobre quienes-somos buscar busqueda ayuda entrar ingresar
-            registrarse registro cuenta suscribirse boletin privacidad condiciones
-            categorie etiquette etiquettes sujet sujets theme themes auteur auteurs
-            a-propos apropos recherche rechercher aide connexion s-inscrire
-            sinscrire inscription compte s-abonner saboner lettre-information confidentialite
-            mentions-legales cgu menu sidebar widget social modal popup banner promo ad ads
-            related recommendation recommendations pagination pager
-            dating jobs job career careers deals deal shopping shop trading broker
-            versicherung tierversicherung insurance vergleich comparison
-            partnerboerse singleboerse krypto crypto
-          ] + SOFT_UTILITY.to_a
-        ).to_set.freeze
+        chrome = %w[
+          about account archive archives author authors comment comments contact feedback
+          help login logout notification notifications preference preferences profile register
+          search settings share signup subscribe feed feeds comment-feed comments-feed privacy
+          terms cookie cookies user users autor autoren archiv ueber-uns ueber ueberuns profil
+          kontakt impressum suche hilfe anmelden registrieren konto registrierung anmeldung
+          abonnieren abo datenschutz nutzungsbedingungen agb autores archivos sobre-nosotros
+          sobre quienes-somos buscar busqueda ayuda entrar ingresar registrarse registro cuenta
+          suscribirse boletin privacidad condiciones auteur auteurs a-propos apropos recherche
+          rechercher aide connexion s-inscrire sinscrire inscription compte s-abonner saboner
+          lettre-information confidentialite mentions-legales cgu menu sidebar widget social
+          modal popup banner promo ad ads related recommendation recommendations pagination pager
+          dating jobs job career careers deals deal shopping shop trading broker versicherung
+          tierversicherung insurance vergleich comparison partnerboerse singleboerse krypto crypto
+          casinos casino kreditkarten kreditkarte kredit echtgeld vpn games kaufberater leasing
+        ].to_set.freeze
+        utility = (taxonomy | chrome | SOFT_UTILITY).freeze
         {
           content:,
           utility:,
@@ -66,6 +62,11 @@ module Html2rss
       YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/
       # Hyphenated slug shape common to article permalinks.
       POST_SLUG_SEGMENT = /\A[a-z0-9]+(?:-[a-z0-9]+){2,}\z/i
+      # Multi-label host mistaken for a path segment (affiliate/outlink chrome).
+      # Final label must be alphabetic (TLD-like); exclude common file extensions.
+      HOST_SHAPED_SEGMENT = /\A(?:www\.)?(?:[\w-]+\.)+[a-z]{2,24}\z/i
+      # Common file-extension suffixes excluded from host-shaped junk matching.
+      FILE_EXTENSION_SEGMENT = /\.(?:pdf|jpe?g|png|gif|svg|webp|css|js|mjs|html?|xml|json|mp4|webm|zip|gz)\z/i
 
       # @param segments [Array<String>] normalized URL path segments
       def initialize(segments)
@@ -74,8 +75,8 @@ module Html2rss
 
       # @return [Boolean] true when the route has article-like path evidence
       def content_path?
-        @content_path ||= SEGMENT_SETS[:content].intersect?(segments) ||
-                          yearish_content_context?
+        @content_path ||= !leading_high_confidence_junk? &&
+                          (SEGMENT_SETS[:content].intersect?(segments) || yearish_content_context?)
       end
 
       # @return [Boolean] true when the route includes utility/navigation evidence
@@ -96,9 +97,8 @@ module Html2rss
       # @return [Boolean] true when the route is too shallow to strongly indicate an article
       def shallow?
         segment_count = segments.size
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
 
-        segment_count <= 1 || (segment_count == 2 && junk_segments.include?(segments.last))
+        segment_count <= 1 || (segment_count == 2 && high_confidence_junk_segment?(segments.last))
       end
 
       # @return [Boolean] true when the final path segment looks like a post slug
@@ -110,18 +110,15 @@ module Html2rss
 
       # @return [Boolean] true when every path segment is utility chrome
       def utility_only_route?
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
-
-        segments.all? { |segment| junk_segments.include?(segment) }
+        segments.all? { |segment| high_confidence_junk_segment?(segment) }
       end
 
       # @return [Boolean] true when the route is shallow and contains high-confidence noise
       def shallow_high_confidence_route?
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
         vanity_segments = SEGMENT_SETS.fetch(:vanity)
 
         shallow? && segments.any? do |segment|
-          junk_segments.include?(segment) || vanity_segments.include?(segment)
+          high_confidence_junk_segment?(segment) || vanity_segments.include?(segment)
         end
       end
 
@@ -134,7 +131,8 @@ module Html2rss
       def junk_path?
         return false if excluded_content_route?
 
-        taxonomy_path? ||
+        any_high_confidence_junk_segment? ||
+          taxonomy_path? ||
           utility_only_route? ||
           deep_utility_context_route? ||
           shallow_high_confidence_route?
@@ -148,6 +146,14 @@ module Html2rss
       end
 
       private
+
+      def leading_high_confidence_junk?
+        segments.any? && high_confidence_junk_segment?(segments.first)
+      end
+
+      def any_high_confidence_junk_segment?
+        segments.any? { |segment| high_confidence_junk_segment?(segment) }
+      end
 
       def yearish_content_context?
         segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
@@ -172,12 +178,20 @@ module Html2rss
       def all_junk?(limit)
         return false if limit <= 0
 
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
-        (0...limit).all? { |i| junk_segments.include?(segments[i]) }
+        (0...limit).all? { |i| high_confidence_junk_segment?(segments[i]) }
+      end
+
+      def high_confidence_junk_segment?(segment)
+        SEGMENT_SETS.fetch(:high_confidence_junk).include?(segment) || host_shaped_segment?(segment)
+      end
+
+      def host_shaped_segment?(segment)
+        segment.match?(HOST_SHAPED_SEGMENT) && !segment.match?(FILE_EXTENSION_SEGMENT)
       end
 
       def trusted_post_context?(limit)
         return false if limit <= 0
+        return false if leading_high_confidence_junk?
 
         content_segments = SEGMENT_SETS.fetch(:content)
         context_segments = SEGMENT_SETS.fetch(:deep_post_context)
@@ -196,7 +210,7 @@ module Html2rss
 
       def excluded_last_segment?
         last = segments.last
-        [SEGMENT_SETS[:high_confidence_junk], SEGMENT_SETS[:vanity]].any? { |set| set.include?(last) }
+        high_confidence_junk_segment?(last) || SEGMENT_SETS[:vanity].include?(last)
       end
 
       def slug_last_segment?

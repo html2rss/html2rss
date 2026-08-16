@@ -107,6 +107,8 @@ module Html2rss
     # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
     # SST is built only when a heuristic tier runs. Later tiers are skipped once
     # +limit+ articles with url+title remain after Cleanup; the result is capped to +limit+.
+    # Html is skipped when earlier tiers already admitted at least one clean article
+    # below +limit+ — quality over padding with weaker heuristic junk.
     #
     # @return [Array<Html2rss::Article>] extracted articles
     def articles
@@ -130,6 +132,7 @@ module Html2rss
 
       Scraper::SCRAPER_TIERS.each do |tier|
         break if enough_articles?(articles)
+        break if skip_html_padding?(tier, articles)
 
         if Scraper.heuristic_tier?(tier)
           document ||= Scraper.normalize_sst(parsed_body)
@@ -165,11 +168,24 @@ module Html2rss
     # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     def enough_articles?(articles)
-      threshold = article_limit
-      return false if articles.size < threshold
+      return false if articles.size < article_limit
 
-      cleaned = Cleanup.call(articles.dup, url:, **cleanup_options)
-      cleaned.count { |article| article.url && !article.title.to_s.empty? } >= threshold
+      admitted_articles(articles).size >= article_limit
+    end
+
+    # Prefer fewer clean items over refilling +limit+ from the Html heuristic tier.
+    def skip_html_padding?(tier, articles)
+      html_only_tier?(tier) && admitted_articles(articles).any?
+    end
+
+    def html_only_tier?(tier)
+      tier == [Scraper::Html]
+    end
+
+    def admitted_articles(articles)
+      Cleanup.call(articles.dup, url:, **cleanup_options).select do |article|
+        article.url && !article.title.to_s.empty?
+      end
     end
 
     def article_limit

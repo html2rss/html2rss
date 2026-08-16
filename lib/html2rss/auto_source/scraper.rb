@@ -16,6 +16,8 @@ module Html2rss
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       # Maximum anchors tolerated before app-shell detection is considered unlikely.
       APP_SHELL_MAX_ANCHORS = 2
+      # Minimum same-page anchors suggesting a high-entropy homepage/hub surface.
+      HIGH_ENTROPY_MIN_ANCHORS = 20
       # Maximum visible text length tolerated for app-shell classification.
       APP_SHELL_MAX_VISIBLE_TEXT_LENGTH = 220
 
@@ -49,6 +51,9 @@ module Html2rss
           app_shell: 'app-shell surface detected (client-rendered page with little or no ' \
                      'server-rendered article HTML). Configure BOTASAURUS_SCRAPER_URL or target a direct ' \
                      'listing/update URL instead of a homepage or shell entrypoint.',
+          high_entropy_surface: 'high-entropy surface (e.g. news homepage) with few or no durable ' \
+                                'article destinations after admission. Target a section, topic, or ' \
+                                'listing/update URL instead of the site homepage.',
           unsupported_surface: 'unsupported extraction surface for auto mode. ' \
                                'Try a direct listing/changelog/category URL, ' \
                                'or use explicit selectors in a feed config.'
@@ -197,6 +202,7 @@ module Html2rss
       def self.classify_no_scraper_surface(parsed_body, body: nil)
         return :blocked_surface if blocked_surface?(parsed_body, body:)
         return :app_shell if app_shell_surface?(parsed_body)
+        return :high_entropy_surface if high_entropy_surface?(parsed_body)
 
         :unsupported_surface
       end
@@ -215,6 +221,13 @@ module Html2rss
           short_visible_text?(parsed_body)
       end
       private_class_method :app_shell_surface?
+
+      def self.high_entropy_surface?(parsed_body)
+        return false if parsed_body.nil?
+
+        parsed_body.css('body a[href]').size >= HIGH_ENTROPY_MIN_ANCHORS
+      end
+      private_class_method :high_entropy_surface?
 
       def self.sparse_anchor_surface?(parsed_body)
         parsed_body.css('body a[href]').size <= APP_SHELL_MAX_ANCHORS

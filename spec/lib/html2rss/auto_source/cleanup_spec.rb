@@ -108,90 +108,97 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       expect(cleaned).not_to include(articles[5])
     end
 
-    context 'with junk and acceptable titles' do
-      let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
+    context 'with excluded destination classes' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/') }
       let(:articles) do
         [
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/a'),
-                          title: 'A valid title'),
+                          url: Html2rss::Url.from_absolute('https://example.com/news/deep-story-slug-here'),
+                          title: 'Deep Story Slug Here Extra'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/b'),
-                          title: 'Getty Images'),
+                          url: Html2rss::Url.from_absolute('https://example.com/dating/singles-in-berlin'),
+                          title: 'Singles In Berlin Find Love'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/c'),
-                          title: 'Photo: Reuters'),
+                          url: Html2rss::Url.from_absolute('https://example.com/dating/singleboerse-vergleich/partnersuche-ab-50'),
+                          title: 'Partnersuche Ab Fifty Years Old'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/d'),
-                          title: 'lucy.smith.token'),
+                          url: Html2rss::Url.from_absolute('https://example.com/jobs/stellenangebote/berlin'),
+                          title: 'Jobs Stellenangebote Berlin Extra'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/e'),
-                          title: 'methode-article-slug'),
+                          url: Html2rss::Url.from_absolute('https://example.com/deals/weekend-tech-sale'),
+                          title: 'Weekend Tech Sale Offers Now'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/f'),
-                          title: nil),
+                          url: Html2rss::Url.from_absolute('https://example.com/kreditkarten/news/amex-offer-slug'),
+                          title: 'Amex Offer Slug Extra Words'),
           instance_double(Html2rss::Article,
                           valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/g'),
-                          title: 'Reuters reports major breakthrough today')
+                          url: Html2rss::Url.from_absolute('https://example.com/www.partner.de/energieloesungen/pv'),
+                          title: 'Partner Energy Solutions Extra Words'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://example.com/subscribe'),
+                          title: 'Subscribe To Our Newsletter Today'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://example.com/category/tech'),
+                          title: 'Tech Category Listing Page Words')
         ]
       end
 
-      it 'rejects credit/CMS junk while keeping real headlines and nil titles', :aggregate_failures do
-        titles = cleaned.map(&:title)
-        expect(titles).to include('A valid title', nil, 'Reuters reports major breakthrough today')
-        expect(titles).not_to include('Getty Images', 'Photo: Reuters', 'lucy.smith.token', 'methode-article-slug')
+      it 'hard-excludes commerce affiliate utility and taxonomy routes', :aggregate_failures do
+        expect(cleaned.map { |article| article.url.to_s })
+          .to eq(['https://example.com/news/deep-story-slug-here'])
       end
     end
 
-    context 'with slug, date-path, and natural titles' do
+    context 'with junk and acceptable titles' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
-      let(:articles) do
-        [
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/slug'),
-                          title: 'breakdancerin-raygun-geht-weiter-110168077'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/titleized'),
-                          title: 'Breakdancerin Raygun Geht Weiter 110168077'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/date'),
-                          title: '2026 08 16 World Europe Some Article Slug'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/template'),
-                          title: 'Hello {{article_title}} world token'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/jobs'),
-                          title: 'Jobs in Berlin'),
-          instance_double(Html2rss::Article,
-                          valid?: true,
-                          url: Html2rss::Url.from_absolute('http://example.com/leicht'),
-                          title: '5 Wahrheiten über die deutsche Leichtathletik')
-        ]
-      end
 
-      # Unnatural present titles are dropped (not blanked): inventing was wrong; missing
-      # provenance stays as nil and is kept. Template tokens prove TEMPLATE_TITLE is live.
-      it 'rejects slug/token-shaped titles while keeping natural headlines', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        titles = cleaned.map(&:title)
-        expect(titles).to include('Jobs in Berlin', '5 Wahrheiten über die deutsche Leichtathletik')
-        expect(titles).not_to include(
-          'breakdancerin-raygun-geht-weiter-110168077',
-          'Breakdancerin Raygun Geht Weiter 110168077',
-          '2026 08 16 World Europe Some Article Slug',
-          'Hello {{article_title}} world token'
-        )
+      # Table-driven keep/reject via public junk_reason + Cleanup.call (not private send).
+      [
+        { title: 'A valid title', reason: nil },
+        { title: 'Getty Images', reason: :credit },
+        { title: 'Photo: Reuters', reason: :credit },
+        { title: 'lucy.smith.token', reason: :cms_token },
+        { title: 'methode-article-slug', reason: :cms_token },
+        { title: nil, reason: nil },
+        { title: 'Reuters reports major breakthrough today', reason: nil },
+        { title: 'Courtesy Casie Ellison via pool camera', reason: :credit },
+        { title: 'Courtesy Call Yields Breakthrough Deal', reason: nil },
+        { title: 'US Navy/Handout/Reuters', reason: :credit },
+        { title: "Analysis•\nJim Lo Scalzo/Reuters", reason: :credit },
+        { title: 'Live Updates• AFP desk report line', reason: :credit },
+        { title: 'v_m_hw_pass', reason: :slug },
+        { title: 'story-has-edit-branch', reason: :slug },
+        { title: 'Created from Template ID TMG-44192 extra', reason: :template },
+        { title: 'Clipped From Video', reason: :video_chrome },
+        { title: 'Video• 2:23 Watch the full clip now', reason: :video_chrome },
+        { title: 'Video: How the Fed raised rates today', reason: nil },
+        { title: 'breakdancerin-raygun-geht-weiter-110168077', reason: :slug },
+        { title: 'Breakdancerin Raygun Geht Weiter 110168077', reason: :titleized_path },
+        { title: '2026 08 16 World Europe Some Article Slug', reason: :date_prefix },
+        { title: 'Hello {{article_title}} world token', reason: :template },
+        { title: 'Jobs in Berlin', reason: nil },
+        { title: '5 Wahrheiten über die deutsche Leichtathletik', reason: nil },
+        # First-match pin: agency-only credit beats slug shape for hyphenated CMS ids.
+        { title: 'AFP', reason: :credit }
+      ].each_with_index do |example, index|
+        it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
+          expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+        end
+
+        it "keeps=#{example[:reason].nil?} for #{example[:title].inspect}" do
+          article = instance_double(Html2rss::Article, valid?: true, title: example[:title],
+                                                       url: Html2rss::Url.from_absolute("http://example.com/t#{index}"))
+          expect(described_class.call([article], url:).map(&:title).include?(example[:title]))
+            .to eq(example[:reason].nil?)
+        end
       end
     end
 

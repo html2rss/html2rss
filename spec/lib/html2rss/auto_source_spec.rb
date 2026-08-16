@@ -278,6 +278,98 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when SemanticHtml admits below limit and Html would pad with weaker links' do
+      let(:body) do
+        semantic = Array.new(2) do |index|
+          <<~HTML
+            <article id="a#{index}">
+              <h2><a href="/news/semantic-story-#{index}-extra-words">Semantic Story #{index} Extra Words</a></h2>
+              <p>This is teaser content about the story number #{index}.</p>
+            </article>
+          HTML
+        end.join
+        padding = Array.new(8) do |index|
+          <<~HTML
+            <div class="card card-#{index}">
+              <a href="/dating/singles-pad-#{index}">Singles Pad #{index} Find Love Now</a>
+            </div>
+          HTML
+        end.join
+        "<html><body>#{semantic}#{padding}</body></html>"
+      end
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          limit: 10,
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(
+                                                              semantic_html: { enabled: true,
+                                                                               fallback_anchorless: true },
+                                                              html: {
+                                                                enabled: true,
+                                                                minimum_selector_frequency: 2,
+                                                                use_top_selectors: 10,
+                                                                fallback_anchorless: true
+                                                              }
+                                                            )
+        )
+      end
+
+      it 'keeps fewer clean SemanticHtml items and does not build Html', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        html_builds = 0
+        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance)
+          .and_wrap_original do |method, scraper_class, *args, **kwargs|
+          html_builds += 1 if scraper_class == Html2rss::AutoSource::Scraper::Html
+          method.call(scraper_class, *args, **kwargs)
+        end
+
+        expect(articles.size).to eq(2)
+        expect(articles.map(&:scraper)).to all(eq(Html2rss::AutoSource::Scraper::SemanticHtml))
+        expect(articles.map { |article| article.url.to_s }).to all(include('/news/'))
+        expect(html_builds).to eq(0)
+      end
+    end
+
+    context 'when SemanticHtml yields only excluded destinations' do
+      let(:body) do
+        <<~HTML
+          <html><body>
+            <article>
+              <h2><a href="/dating/singles-only-pad">Singles Only Pad Extra Words</a></h2>
+              <p>Affiliate teaser that must not admit into the feed.</p>
+            </article>
+          </body></html>
+        HTML
+      end
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          limit: 5,
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(
+                                                              semantic_html: { enabled: true,
+                                                                               fallback_anchorless: true },
+                                                              html: {
+                                                                enabled: true,
+                                                                minimum_selector_frequency: 1,
+                                                                use_top_selectors: 5,
+                                                                fallback_anchorless: true
+                                                              }
+                                                            )
+        )
+      end
+
+      it 'still builds Html when prior tiers admit nothing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        html_builds = 0
+        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance)
+          .and_wrap_original do |method, scraper_class, *args, **kwargs|
+          html_builds += 1 if scraper_class == Html2rss::AutoSource::Scraper::Html
+          method.call(scraper_class, *args, **kwargs)
+        end
+
+        expect(articles).to eq([])
+        expect(html_builds).to eq(1)
+      end
+    end
+
     context 'with microdata-only content' do
       subject(:article) { articles.first }
 
