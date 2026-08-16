@@ -216,7 +216,7 @@ module Html2rss
               articles_count: result.articles_count,
               channel_title: result.channel_title,
               has_selectors: result.has_selectors,
-              strategy: plan.to_s
+              requested_strategy: plan.to_s
             }
             meta[:segment_strategy] = result.segment_strategy.to_s if result.segment_strategy
             meta[:selected_strategy] = result.selected_strategy.to_s if result.selected_strategy
@@ -417,7 +417,8 @@ module Html2rss
         end
 
         ##
-        # Runs Cleanup via AutoSource so inspect can surface admission_drops.
+        # Surfaces Cleanup admission_drops without re-running full AutoSource discovery.
+        # Uses articles already extractable from a cheap AutoSource pass only when HTML.
         #
         # @param result [Hash]
         # @param response [Html2rss::RequestService::Response]
@@ -425,13 +426,11 @@ module Html2rss
         def merge_admission_diagnostics!(result, response)
           return unless response.html_response?
 
-          source = AutoSource.new(response, AutoSource::DEFAULT_CONFIG)
+          source = AutoSource.new(response, AutoSource::DEFAULT_CONFIG.merge(limit: 10))
           articles = source.articles
           result[:articles_count] = articles.size
           drops = source.admission_drops
           result[:admission_drops] = drops if drops.any?
-        rescue AutoSource::Scraper::NoScraperFound
-          result[:articles_count] = 0
         end
         module_function :merge_admission_diagnostics!
 

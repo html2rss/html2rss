@@ -124,7 +124,8 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :_meta)).to include(
           articles_count: 3,
           channel_title: 'Example',
-          has_selectors: true
+          has_selectors: true,
+          requested_strategy: 'auto'
         )
       end
       # rubocop:enable RSpec/ExampleLength

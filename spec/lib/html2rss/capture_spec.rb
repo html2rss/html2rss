@@ -150,20 +150,43 @@ RSpec.describe Html2rss::Capture do
       expect(result.has_selectors).to be true
     end
 
-    # rubocop:disable RSpec/ExampleLength -- single-article quality gate
-    it 'reports has_selectors false when too few matches' do
-      html = <<~HTML
-        <html><body>
-          <article><h2><a href="/only">Only One Article Title</a></h2></article>
-        </body></html>
-      HTML
-      article = Html2rss::Article.new(
-        url: Html2rss::Url.from_absolute("#{url}/only"), title: 'Only One Article Title', id: '1'
-      )
-      stub_outcome(html_response(html), articles: [article])
+    it 'stamps selected_strategy into config when AutoFallback chose a concrete strategy' do
+      response = html_response(File.read('spec/fixtures/local_feed_test.html'))
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:, selected_strategy: :botasaurus)
 
-      expect(described_class.new(url).build.has_selectors).to be false
+      expect(described_class.new(url).build.config[:strategy]).to eq(:botasaurus)
     end
-    # rubocop:enable RSpec/ExampleLength
+
+    it 'falls back to cluster when list yields too few matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      response = html_response('<html><body><div id="root"></div></body></html>')
+      articles = [
+        Html2rss::Article.new(url: Html2rss::Url.from_absolute("#{url}/a"), title: 'Alpha Beta Gamma', id: '1'),
+        Html2rss::Article.new(url: Html2rss::Url.from_absolute("#{url}/b"), title: 'Delta Epsilon Zeta', id: '2')
+      ]
+      stub_outcome(response, articles:)
+
+      attrs = instance_double(Html2rss::SST::Attrs, class_names: ['card'], href: nil)
+      cluster_root = instance_double(Html2rss::SST::Node, name: 'div', tag_path: '/html/body/div.card', attrs:)
+      link_a = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/a'))
+      link_b = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/b'))
+      # rubocop:disable RSpec/VerifiedDoubles -- Segment is a Struct-like collaborator without a stable class API here
+      seg_a = double('segment', primary_link: link_a, root_node: cluster_root)
+      seg_b = double('segment', primary_link: link_b, root_node: cluster_root)
+      # rubocop:enable RSpec/VerifiedDoubles
+
+      allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |_sst, strategy:, **|
+        strategy == :list ? [] : [seg_a, seg_b]
+      end
+      allow(Html2rss::Url).to receive(:from_relative).with('/a', url)
+                                                     .and_return(Html2rss::Url.from_absolute("#{url}/a"))
+      allow(Html2rss::Url).to receive(:from_relative).with('/b', url)
+                                                     .and_return(Html2rss::Url.from_absolute("#{url}/b"))
+
+      result = described_class.new(url).build
+      expect(result.segment_strategy).to eq(:cluster)
+      expect(result.has_selectors).to be true
+      expect(result.config.dig(:selectors, :items, :enhance)).to be true
+    end
   end
 end

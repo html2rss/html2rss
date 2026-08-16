@@ -65,6 +65,7 @@ module Html2rss
       config = {
         channel: build_channel(outcome.response),
         selectors: selectors.empty? ? nil : selectors,
+        **strategy_stamp(outcome),
         **local_file_request_overlay
       }.compact
 
@@ -80,6 +81,18 @@ module Html2rss
     end
 
     private
+
+    def strategy_stamp(outcome)
+      concrete = outcome.selected_strategy || concrete_request_strategy
+      return {} if concrete.nil? || concrete == :auto
+
+      { strategy: concrete }
+    end
+
+    def concrete_request_strategy
+      plan = FeedPipeline::StrategyPlan.resolve(@strategy)
+      plan.is_a?(FeedPipeline::StrategyPlan::Concrete) ? plan.strategy : nil
+    end
 
     def raw_config
       @raw_config ||= build_raw_config
