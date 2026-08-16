@@ -35,6 +35,37 @@ Cloud development: [Open in GitHub Codespaces](https://github.com/codespaces/new
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
 
+## Capture API
+
+The `Html2rss.capture` method analyzes any URL and produces a reusable feed config hash with derived CSS selectors. Use it to speed up writing feed configuration files.
+
+```ruby
+config = Html2rss.capture('https://example.com/articles')
+File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(config)))
+```
+
+The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`docs/capture.md`](docs/capture.md) for detailed documentation.
+
+## Botasaurus Docker Compose
+
+Start the Botasaurus scrape API for JavaScript-rendered pages:
+
+```bash
+docker compose -f docker-compose.mcp.yml up -d
+```
+
+Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and the strategy to `botasaurus` in the capture call or CLI.
+
+## Request Strategies
+
+| Strategy | Description |
+|----------|-------------|
+| `auto` | Tries `faraday`, falls back to `botasaurus` (default) |
+| `faraday` | Plain HTTP requests via Faraday |
+| `botasaurus` | Puppeteer-backed scraping for JavaScript pages |
+
+The strategy can be set via CLI option (`--strategy`), gem API keyword argument, or in the feed config under `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

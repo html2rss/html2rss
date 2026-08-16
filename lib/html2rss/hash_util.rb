@@ -54,6 +54,23 @@ module Html2rss
       end
     end
 
+    # Converts hash keys (and Symbol values) to strings recursively.
+    #
+    # @param object [Object] value to normalize
+    # @return [Object] normalized value with string keys
+    def deep_stringify_keys(object)
+      case object
+      when Hash
+        object.to_h { |key, value| [key.to_s, deep_stringify_keys(value)] }
+      when Array
+        object.map { deep_stringify_keys(_1) }
+      when Symbol
+        object.to_s
+      else
+        object
+      end
+    end
+
     # Validates that hash keys are symbols.
     #
     # @param value [Object] candidate hash container whose keys must be symbols
