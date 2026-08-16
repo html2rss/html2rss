@@ -26,6 +26,15 @@ RSpec.describe Html2rss::Error do
       expect(error.message).not_to include('No scrapers found:')
     end
 
+    it 'appends shared Scraper guidance for high_entropy_surface', :aggregate_failures do
+      error = described_class.new(attempts:, surface_category: :high_entropy_surface)
+      guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:high_entropy_surface)
+
+      expect(error.surface_category).to eq(:high_entropy_surface)
+      expect(error.message).to include(guidance)
+      expect(error.message).to include('listing/update URL')
+    end
+
     context 'when a BotasaurusConfigurationError attempt is present' do
       let(:attempts) do
         [

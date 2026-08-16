@@ -7,7 +7,7 @@ module Html2rss
   # Raised when auto fallback exhausts all concrete tiers and extractors find no feed items.
   class NoFeedItemsExtracted < Error
     # Categories that append shared surface guidance to the empty-feed message.
-    SURFACE_HINT_CATEGORIES = %i[app_shell blocked_surface].freeze
+    SURFACE_HINT_CATEGORIES = %i[app_shell blocked_surface high_entropy_surface].freeze
 
     ##
     # @param attempts [Array<Hash{Symbol => Object}>] tier attempt diagnostics
