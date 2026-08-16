@@ -450,7 +450,8 @@ RSpec.describe Html2rss do
       expect(feed_return).to be_a(RSS::Rss)
       expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
       expect(feed_return.channel.link).to eq 'https://www.welt.de/'
-      expect(feed_return.items.size).to eq(143)
+      # Admission hard-exclude + no Html padding: fewer clean items beats a padded homepage.
+      expect(feed_return.items.size).to eq(75)
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_source, downstream: :feed
@@ -468,7 +469,7 @@ RSpec.describe Html2rss do
     end
 
     it 'returns items', :slow do
-      expect(feed_return[:items].size).to eq(143)
+      expect(feed_return[:items].size).to eq(75)
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_json_feed, downstream: :json_feed
