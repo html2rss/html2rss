@@ -51,6 +51,7 @@ module Html2rss
             dating jobs job career careers deals deal shopping shop trading broker
             versicherung tierversicherung insurance vergleich comparison
             partnerboerse singleboerse krypto crypto
+            casinos casino kreditkarten kreditkarte echtgeld
           ] + SOFT_UTILITY.to_a
         ).to_set.freeze
         {
@@ -66,6 +67,8 @@ module Html2rss
       YEARISH_SEGMENT = /\A\d{4,}[\w-]*\z/
       # Hyphenated slug shape common to article permalinks.
       POST_SLUG_SEGMENT = /\A[a-z0-9]+(?:-[a-z0-9]+){2,}\z/i
+      # Multi-label host mistaken for a path segment (affiliate/outlink chrome).
+      HOST_SHAPED_SEGMENT = /\A(?:www\.)?[\w-]+(?:\.[\w-]+)+\z/i
 
       # @param segments [Array<String>] normalized URL path segments
       def initialize(segments)
@@ -96,9 +99,8 @@ module Html2rss
       # @return [Boolean] true when the route is too shallow to strongly indicate an article
       def shallow?
         segment_count = segments.size
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
 
-        segment_count <= 1 || (segment_count == 2 && junk_segments.include?(segments.last))
+        segment_count <= 1 || (segment_count == 2 && high_confidence_junk_segment?(segments.last))
       end
 
       # @return [Boolean] true when the final path segment looks like a post slug
@@ -110,18 +112,15 @@ module Html2rss
 
       # @return [Boolean] true when every path segment is utility chrome
       def utility_only_route?
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
-
-        segments.all? { |segment| junk_segments.include?(segment) }
+        segments.all? { |segment| high_confidence_junk_segment?(segment) }
       end
 
       # @return [Boolean] true when the route is shallow and contains high-confidence noise
       def shallow_high_confidence_route?
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
         vanity_segments = SEGMENT_SETS.fetch(:vanity)
 
         shallow? && segments.any? do |segment|
-          junk_segments.include?(segment) || vanity_segments.include?(segment)
+          high_confidence_junk_segment?(segment) || vanity_segments.include?(segment)
         end
       end
 
@@ -172,8 +171,15 @@ module Html2rss
       def all_junk?(limit)
         return false if limit <= 0
 
-        junk_segments = SEGMENT_SETS.fetch(:high_confidence_junk)
-        (0...limit).all? { |i| junk_segments.include?(segments[i]) }
+        (0...limit).all? { |i| high_confidence_junk_segment?(segments[i]) }
+      end
+
+      def high_confidence_junk_segment?(segment)
+        SEGMENT_SETS.fetch(:high_confidence_junk).include?(segment) || host_shaped_segment?(segment)
+      end
+
+      def host_shaped_segment?(segment)
+        segment.match?(HOST_SHAPED_SEGMENT)
       end
 
       def trusted_post_context?(limit)
@@ -196,7 +202,7 @@ module Html2rss
 
       def excluded_last_segment?
         last = segments.last
-        [SEGMENT_SETS[:high_confidence_junk], SEGMENT_SETS[:vanity]].any? { |set| set.include?(last) }
+        high_confidence_junk_segment?(last) || SEGMENT_SETS[:vanity].include?(last)
       end
 
       def slug_last_segment?
