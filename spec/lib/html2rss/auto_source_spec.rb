@@ -137,7 +137,7 @@ RSpec.describe Html2rss::AutoSource do
       let(:config) do
         described_class::DEFAULT_CONFIG.merge(
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) },
-          cleanup: { keep_different_domain: true, min_words_title: 5 }
+          cleanup: { keep_different_domain: true }
         )
       end
 

@@ -274,13 +274,6 @@
               "not": {
                 "type": "null"
               }
-            },
-            "min_words_title": {
-              "type": "integer",
-              "not": {
-                "type": "null"
-              },
-              "exclusiveMinimum": 0
             }
           },
           "required": []
@@ -325,8 +318,7 @@
           }
         },
         "cleanup": {
-          "keep_different_domain": false,
-          "min_words_title": 3
+          "keep_different_domain": false
         }
       }
     },

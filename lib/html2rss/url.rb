@@ -21,6 +21,7 @@ module Html2rss
   #   url = Url.from_relative('/foo-bar/baz.txt', 'https://example.com')
   #   url.titleized # => "Foo Bar Baz"
   #   url.channel_titleized # => "example.com: Foo Bar Baz"
+  # rubocop:disable Metrics/ClassLength -- value object owns resolve/sanitize/titleize/identity
   class Url
     include Comparable
 
@@ -190,6 +191,14 @@ module Html2rss
     end
 
     ##
+    # Returns a copy of the URL with the fragment removed (dedup / self-link identity).
+    #
+    # @return [Url] this URL when already fragment-free; otherwise a new URL
+    def without_fragment
+      @uri.fragment ? self.class.from_absolute(@uri.omit(:fragment).normalize.to_s) : self
+    end
+
+    ##
     # Returns a copy of the URL with the provided query values.
     #
     # @param values [Hash{String, Symbol => #to_s}] query parameters to assign
@@ -259,13 +268,7 @@ module Html2rss
     # @param other [Object] the other object to compare with
     # @return [Boolean] true if the URLs are equal
     def ==(other) = other.is_a?(Url) && to_s == other.to_s
-
-    ##
-    # Supports hash-based comparisons by ensuring equality semantics match `hash`.
-    #
-    # @param other [Object] the other object to compare with
-    # @return [Boolean] true if the URLs are considered equal
-    def eql?(other) = other.is_a?(Url) && to_s == other.to_s
+    alias eql? ==
 
     ##
     # Returns the hash code for this URL.
@@ -279,4 +282,5 @@ module Html2rss
     # @return [String] the debug representation
     def inspect = "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
   end
+  # rubocop:enable Metrics/ClassLength
 end
