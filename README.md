@@ -46,25 +46,68 @@ File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(confi
 
 The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`docs/capture.md`](docs/capture.md) for detailed documentation.
 
-## Botasaurus Docker Compose
+## MCP Server
 
-Start the Botasaurus scrape API for JavaScript-rendered pages:
+html2rss ships with an [MCP](https://modelcontextprotocol.io/) server that exposes gem capabilities as AI-consumable tools, resources, and prompts:
 
 ```bash
-docker compose -f docker-compose.mcp.yml up -d
+# Start with stdio transport (default; for Cursor/Claude Desktop)
+html2rss mcp
+
+# Start with HTTP transport (binds 127.0.0.1 only — local use)
+html2rss mcp --transport http --port 8080
 ```
 
-Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and the strategy to `botasaurus` in the capture call or CLI.
+HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies). It listens on `127.0.0.1` only; do not expose it on a public interface without your own auth and Host/Origin controls.
+
+**Strategy note:** MCP tool `strategy: "auto"` collapses to `faraday` (no FeedPipeline botasaurus fallback). If results are empty or JS-gated, retry with `strategy: "botasaurus"` and `BOTASAURUS_SCRAPER_URL` set.
+
+### Tools
+
+| Name              | When to use                                               |
+| ----------------- | --------------------------------------------------------- |
+| `scrape_url`      | One-shot articles now (no saved config)                   |
+| `inspect_url`     | Diagnose weak scrape/capture (scrapers/SST/segments)      |
+| `capture_config`  | Derive a durable feed config (+ quality `_meta`)          |
+| `validate_config` | Schema-check a config before apply (`isError` on failure) |
+| `apply_config`    | Run a validated config → RSS XML                          |
+
+### Resources
+
+| URI                     | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `html2rss://schema`     | Full JSON Schema for feed configurations                        |
+| `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
+| `html2rss://strategies` | Registered request strategy names                               |
+
+### Prompts
+
+| Name                  | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `scrape-webpage`      | Guided scrape → inspect/retry with botasaurus if needed |
+| `capture-feed-config` | Guided capture → validate → optional apply              |
+
+The MCP module (`Html2rss::MCP`) lazy-loads the `mcp` gem — no cost when the server is not running.
+
+## Botasaurus scrape API (Docker)
+
+Start the Botasaurus scrape API for JavaScript-rendered pages (this compose file is **not** the MCP server):
+
+```bash
+docker compose -f docker-compose.botasaurus.yml up -d
+```
+
+Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and use strategy `botasaurus` in MCP tools, Capture, or the CLI.
 
 ## Request Strategies
 
-| Strategy | Description |
-|----------|-------------|
-| `auto` | Tries `faraday`, falls back to `botasaurus` (default) |
-| `faraday` | Plain HTTP requests via Faraday |
-| `botasaurus` | Puppeteer-backed scraping for JavaScript pages |
+| Strategy     | Description                                                                   |
+| ------------ | ----------------------------------------------------------------------------- |
+| `auto`       | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI FeedPipeline) |
+| `faraday`    | Plain HTTP requests via Faraday                                               |
+| `botasaurus` | Puppeteer-backed scraping for JavaScript pages                                |
 
-The strategy can be set via CLI option (`--strategy`), gem API keyword argument, or in the feed config under `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
+MCP tools intentionally collapse `auto` → `faraday` (see MCP section above). Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
 
 ## License
 

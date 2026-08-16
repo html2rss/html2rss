@@ -21,6 +21,7 @@ if ENV['COVERAGE']
     add_group 'Selectors', 'lib/html2rss/selectors'
     add_group 'Feed Builder', 'lib/html2rss/feed_builder'
     add_group 'Html', 'lib/html2rss/html'
+    add_group 'MCP', 'lib/html2rss/mcp'
 
     # Add multiple output formats
     formatter SimpleCov::Formatter::MultiFormatter.new([

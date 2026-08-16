@@ -161,6 +161,27 @@ module Html2rss
       puts schema_json
     end
 
+    desc 'mcp', 'Start the MCP server for AI client consumption'
+    method_option :transport,
+                  type: :string,
+                  desc: 'MCP transport protocol',
+                  enum: %w[stdio http],
+                  default: 'stdio'
+    method_option :port,
+                  type: :numeric,
+                  desc: 'Port for HTTP transport (binds 127.0.0.1)',
+                  default: 8080
+    ##
+    # Starts the MCP server for AI client consumption.
+    #
+    # @return [void]
+    def mcp
+      Html2rss::MCP.start(
+        transport: options[:transport].to_sym,
+        port: options[:port]
+      )
+    end
+
     desc 'validate YAML_FILE [feed_name]', 'Validate a YAML config with the runtime validator'
     method_option :params,
                   type: :hash,
