@@ -71,6 +71,30 @@ module Html2rss
   # rubocop:disable Metrics/ParameterLists
 
   ##
+  # Scrapes the provided URL without hand-written selectors and returns {FeedResult}.
+  #
+  # Prefer this when callers need {FeedResult#status} (MCP +_meta+, CLI +--explain+).
+  #
+  # @param url [String] source page URL
+  # @param strategy [Symbol] request strategy to use
+  # @param items_selector [String, nil] optional selector hint for item extraction
+  # @param max_redirects [Integer, nil] optional redirect limit override
+  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
+  # @param local_file_path [String, nil] optional local HTML file path
+  # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
+  # @return [Html2rss::FeedResult]
+  def self.auto_feed_result(url,
+                            strategy: :auto,
+                            items_selector: nil,
+                            max_redirects: nil,
+                            max_requests: 4,
+                            local_file_path: nil,
+                            limit: nil)
+    feed_result(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
+                                         local_file_path:, limit:))
+  end
+
+  ##
   # Scrapes the provided URL without hand-written selectors and returns an RSS object.
   #
   # Builds an auto_source config, then FeedPipeline runs structured scrapers and
@@ -91,8 +115,8 @@ module Html2rss
                        max_requests: 4,
                        local_file_path: nil,
                        limit: nil)
-    feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
-                                  local_file_path:, limit:))
+    auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
+                          local_file_path:, limit:).to_rss
   end
 
   ##
@@ -115,8 +139,8 @@ module Html2rss
                           max_requests: 4,
                           local_file_path: nil,
                           limit: nil)
-    json_feed(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
-                                       local_file_path:, limit:))
+    auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
+                          local_file_path:, limit:).to_json_feed
   end
 
   ##

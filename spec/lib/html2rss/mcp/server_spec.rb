@@ -64,16 +64,20 @@ RSpec.describe Html2rss::MCP::Server do
   describe 'tools/call contracts' do
     describe 'scrape_url' do
       before do
-        allow(Html2rss).to receive(:auto_json_feed).and_return(
-          { title: 'Channel', items: [{ title: 'A', url: 'https://example.com/a' }] }
+        status = Html2rss::Status.build(articles: [], dedup_dropped: 0, admission_drops: { 'credit' => 1 })
+        feed_result = instance_double(
+          Html2rss::FeedResult,
+          to_json_feed: { title: 'Channel', items: [{ title: 'A', url: 'https://example.com/a' }] },
+          status:
         )
+        allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
       end
 
       # rubocop:disable RSpec/ExampleLength -- tools/call + meta contract
-      it 'returns JSON items with quality meta via symbol-key kwargs', :aggregate_failures do
+      it 'returns JSON items with Status meta via symbol-key kwargs', :aggregate_failures do
         result = call_tool.call('scrape_url', { url: 'https://example.com', strategy: 'auto' })
 
-        expect(Html2rss).to have_received(:auto_json_feed).with(
+        expect(Html2rss).to have_received(:auto_feed_result).with(
           'https://example.com',
           hash_including(strategy: :auto)
         )
@@ -81,7 +85,12 @@ RSpec.describe Html2rss::MCP::Server do
         expect(JSON.parse(result.dig(:result, :content, 0, :text))).to eq(
           [{ 'title' => 'A', 'url' => 'https://example.com/a' }]
         )
-        expect(result.dig(:result, :_meta)).to include(total: 1, strategy: 'auto', channel_title: 'Channel')
+        expect(result.dig(:result, :_meta)).to include(
+          total: 1,
+          requested_strategy: 'auto',
+          channel_title: 'Channel',
+          admission_drops: { credit: 1 }
+        )
       end
       # rubocop:enable RSpec/ExampleLength
     end
@@ -179,7 +188,7 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'error paths' do
       it 'marks scrape_url failures as isError', :aggregate_failures do
-        allow(Html2rss).to receive(:auto_json_feed).and_raise(StandardError, 'scrape boom')
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
         result = call_tool.call('scrape_url', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)

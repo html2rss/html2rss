@@ -119,11 +119,20 @@ RSpec.describe Html2rss::CLI do
       }
     end
 
-    before do
-      allow(Html2rss).to receive_messages(auto_source: auto_rss_xml, auto_json_feed:)
+    let(:feed_result) do
+      instance_double(
+        Html2rss::FeedResult,
+        to_rss: auto_rss_xml,
+        to_json_feed: auto_json_feed,
+        status: Html2rss::Status.build(articles: [], dedup_dropped: 0)
+      )
     end
 
-    it 'calls Html2rss.auto_source and prints the result to stdout' do
+    before do
+      allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
+    end
+
+    it 'calls Html2rss.auto_feed_result and prints the RSS to stdout' do
       expect { cli.auto('https://example.com') }.to output("#{auto_rss_xml}\n").to_stdout
     end
 
@@ -134,26 +143,32 @@ RSpec.describe Html2rss::CLI do
       'max_requests' => [{ max_requests: 8 }, { max_requests: 8 }],
       'limit' => [{ limit: 10 }, { limit: 10 }]
     }.each do |label, (options, expected_kwargs)|
-      it "forwards #{label} to Html2rss.auto_source" do
+      it "forwards #{label} to Html2rss.auto_feed_result" do
         cli.invoke(:auto, ['https://example.com'], options)
 
-        expect(Html2rss).to have_received(:auto_source)
+        expect(Html2rss).to have_received(:auto_feed_result)
           .with('https://example.com', **auto_defaults, **expected_kwargs)
       end
     end
 
-    it 'routes jsonfeed format to Html2rss.auto_json_feed and pretty-prints', :aggregate_failures do
+    it 'routes jsonfeed format to to_json_feed and pretty-prints', :aggregate_failures do
       expected_output = "#{JSON.pretty_generate(auto_json_feed)}\n"
 
       expect { cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' }) }
         .to output(expected_output).to_stdout
-      expect(Html2rss).to have_received(:auto_json_feed)
+      expect(Html2rss).to have_received(:auto_feed_result)
         .with('https://example.com', **auto_defaults)
+    end
+
+    it 'prints Status JSON to stderr when --explain is set', :aggregate_failures do
+      expect { cli.invoke(:auto, ['https://example.com'], { explain: true }) }
+        .to output("#{auto_rss_xml}\n").to_stdout
+        .and output(/"dedup_dropped"/).to_stderr
     end
 
     context 'when the redirect limit is hit' do
       before do
-        allow(Html2rss).to receive(:auto_source).and_raise(
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(
           Faraday::FollowRedirects::RedirectLimitReached,
           'too many redirects; last one to: https://www.example.com/'
         )
@@ -178,7 +193,7 @@ RSpec.describe Html2rss::CLI do
 
     context 'when botasaurus connectivity fails' do
       before do
-        allow(Html2rss).to receive(:auto_source).and_raise(
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(
           Html2rss::RequestService::BotasaurusConnectionFailed,
           'Botasaurus connection failed: Connection refused'
         )
@@ -192,7 +207,7 @@ RSpec.describe Html2rss::CLI do
 
     context 'when an anti-bot interstitial is detected' do
       before do
-        allow(Html2rss).to receive(:auto_source).and_raise(
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(
           Html2rss::RequestService::BlockedSurfaceDetected,
           'Blocked surface detected: Cloudflare anti-bot interstitial page. Retry with --strategy botasaurus.'
         )
@@ -206,7 +221,7 @@ RSpec.describe Html2rss::CLI do
 
     context 'when all auto fallback tiers return zero items' do
       before do
-        allow(Html2rss).to receive(:auto_source).and_raise(
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(
           Html2rss::NoFeedItemsExtracted.new(
             attempts: [
               { strategy: :faraday, items_count: 0, error_class: nil },
@@ -270,6 +285,13 @@ RSpec.describe Html2rss::CLI do
 
   describe '#capture' do
     let(:captured_config) { { channel: { url: 'https://example.com', title: 'Example' } } }
+    let(:capture_result) do
+      Html2rss::Capture::CaptureResult.new(
+        config: captured_config,
+        articles_count: 2,
+        channel_title: 'Example'
+      )
+    end
     let(:capture_defaults) do
       {
         strategy: :auto,
@@ -282,7 +304,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     before do
-      allow(Html2rss).to receive(:capture).and_return(captured_config)
+      allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
     end
 
     it 'prints string-key YAML without symbol-key prefixes' do
@@ -297,10 +319,10 @@ RSpec.describe Html2rss::CLI do
       'max_requests' => [{ max_requests: 8 }, { max_requests: 8 }],
       'limit' => [{ limit: 10 }, { limit: 10 }]
     }.each do |label, (options, expected_kwargs)|
-      it "forwards #{label} to Html2rss.capture" do
+      it "forwards #{label} to Capture.build" do
         cli.invoke(:capture, ['https://example.com'], options)
 
-        expect(Html2rss).to have_received(:capture)
+        expect(Html2rss::Capture).to have_received(:build)
           .with('https://example.com', **capture_defaults, **expected_kwargs)
       end
     end
@@ -317,7 +339,7 @@ RSpec.describe Html2rss::CLI do
         path = File.expand_path('spec/fixtures/local_feed_test.html')
         cli.invoke(:capture, [], { input: 'spec/fixtures/local_feed_test.html' })
 
-        expect(Html2rss).to have_received(:capture).with(
+        expect(Html2rss::Capture).to have_received(:build).with(
           'https://example.com/blog',
           **capture_defaults,
           strategy: :local_file,

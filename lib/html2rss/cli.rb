@@ -82,17 +82,19 @@ module Html2rss
     method_option :input,
                   type: :string,
                   desc: 'Local HTML file path to read input from'
+    method_option :explain,
+                  type: :boolean,
+                  desc: 'Print Status JSON to stderr (stdout stays the feed)',
+                  default: false
     # @param url [String, nil] source page URL for auto discovery
     # @return [void]
-    def auto(url = nil)
+    def auto(url = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- CLI option wiring
       format = options.fetch(:format, 'rss')
       strategy, local_file_path, url = prepare_auto_inputs(url, options[:input])
+      feed_result = execute_feed { auto_feed_result_for(url, strategy, local_file_path) }
 
-      result = execute_feed do
-        source_call(url, strategy, local_file_path, format == 'jsonfeed')
-      end
-
-      puts(format == 'jsonfeed' ? JSON.pretty_generate(result) : result)
+      explain_status!(feed_result.status) if options[:explain]
+      puts(format == 'jsonfeed' ? JSON.pretty_generate(feed_result.to_json_feed) : feed_result.to_rss)
     end
 
     desc 'capture URL', 'Analyze a URL and print a reusable YAML feed config'
@@ -113,14 +115,18 @@ module Html2rss
     method_option :input,
                   type: :string,
                   desc: 'Local HTML file path to read input from'
+    method_option :explain,
+                  type: :boolean,
+                  desc: 'Print capture quality JSON to stderr (stdout stays YAML)',
+                  default: false
     ##
     # Captures a URL and prints a reusable YAML config.
     #
     # @param url [String, nil] source page URL for capture
     # @return [void]
-    def capture(url = nil) # rubocop:disable Metrics/MethodLength
+    def capture(url = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- CLI option wiring
       strategy, local_file_path, url = prepare_auto_inputs(url, options[:input])
-      config = Html2rss.capture(
+      result = Html2rss::Capture.build(
         url,
         strategy:,
         items_selector: options[:items_selector],
@@ -129,7 +135,8 @@ module Html2rss
         max_requests: options[:max_requests],
         local_file_path:
       )
-      puts YAML.dump(HashUtil.deep_stringify_keys(config))
+      explain_capture!(result) if options[:explain]
+      puts YAML.dump(HashUtil.deep_stringify_keys(result.config))
     end
 
     desc 'schema', 'Print the exported config JSON Schema'
@@ -290,9 +297,8 @@ module Html2rss
       raise Thor::Error, error.message
     end
 
-    def source_call(url, strategy, local_file_path, is_json)
-      method = is_json ? Html2rss.method(:auto_json_feed) : Html2rss.method(:auto_source)
-      method.call(
+    def auto_feed_result_for(url, strategy, local_file_path)
+      Html2rss.auto_feed_result(
         url,
         strategy:,
         items_selector: options[:items_selector],
@@ -300,6 +306,18 @@ module Html2rss
         max_requests: options[:max_requests],
         local_file_path:,
         limit: options[:limit]&.to_i
+      )
+    end
+
+    def explain_status!(status)
+      $stderr.puts JSON.pretty_generate(status.to_h) # rubocop:disable Style/StderrPuts -- CLI explain contract
+    end
+
+    def explain_capture!(result)
+      $stderr.puts JSON.pretty_generate( # rubocop:disable Style/StderrPuts -- CLI explain contract
+        articles_count: result.articles_count,
+        channel_title: result.channel_title,
+        has_selectors: !result.config[:selectors].nil? && !result.config[:selectors].empty?
       )
     end
 

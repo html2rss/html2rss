@@ -146,12 +146,14 @@ module Html2rss
             }
           ) do |server_context:, url:, strategy: 'auto', limit: 25, items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
             plan = (strategy || :auto).to_sym
-            feed = Html2rss.auto_json_feed(url, strategy: plan, limit:, items_selector:)
+            feed_result = Html2rss.auto_feed_result(url, strategy: plan, limit:, items_selector:)
+            feed = feed_result.to_json_feed
             items = feed[:items] || []
             Server.text_response(JSON.generate(items), meta: {
                                    total: items.size,
-                                   strategy: plan.to_s,
-                                   channel_title: feed[:title]
+                                   requested_strategy: plan.to_s,
+                                   channel_title: feed[:title],
+                                   **feed_result.status.to_h
                                  })
           rescue StandardError => error
             Server.error_response(error)
@@ -409,9 +411,29 @@ module Html2rss
           blocked = Html2rss::RequestService::BlockedSurface.interstitial_signature_for(response.body)
           result[:blocked_surface] = blocked[:key].to_s if blocked
           result[:xhr_capture] = xhr_capture_info(response) if resolved == :botasaurus
+          merge_admission_diagnostics!(result, response)
 
           result
         end
+
+        ##
+        # Runs Cleanup via AutoSource so inspect can surface admission_drops.
+        #
+        # @param result [Hash]
+        # @param response [Html2rss::RequestService::Response]
+        # @return [void]
+        def merge_admission_diagnostics!(result, response)
+          return unless response.html_response?
+
+          source = AutoSource.new(response, AutoSource::DEFAULT_CONFIG)
+          articles = source.articles
+          result[:articles_count] = articles.size
+          drops = source.admission_drops
+          result[:admission_drops] = drops if drops.any?
+        rescue AutoSource::Scraper::NoScraperFound
+          result[:articles_count] = 0
+        end
+        module_function :merge_admission_diagnostics!
 
         ##
         # @param response [Html2rss::RequestService::Response]
