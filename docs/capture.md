@@ -39,6 +39,8 @@ Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: 
 ```
 
 `strategy: :auto` uses the same AutoFallback chain as scrape (`faraday` → `botasaurus`).
+When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps**
+`strategy:` into the emitted YAML so later `Html2rss.feed(config)` replays the same transport.
 
 ## CLI
 
