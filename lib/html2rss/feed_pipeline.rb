@@ -3,7 +3,7 @@
 module Html2rss
   ##
   # Builds feeds from validated config through request, extraction, and rendering stages.
-  class FeedPipeline
+  class FeedPipeline # rubocop:disable Metrics/ClassLength -- outcome + collect seams stay co-located
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.
     # attempt_count: auto attempts attempted; 0 outside :auto.
@@ -17,6 +17,16 @@ module Html2rss
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
       @raw_config = raw_config
+    end
+
+    ##
+    # Runs the pipeline once and returns scrape-finished outcome (before Channel/Status).
+    # Used by {Capture} which needs the response body for SST selector derivation.
+    #
+    # @return [PipelineOutcome]
+    def to_outcome
+      config = Config.from_hash(raw_config, params: raw_config[:params])
+      pipeline_outcome_for(config)
     end
 
     ##

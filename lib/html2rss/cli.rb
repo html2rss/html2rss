@@ -315,9 +315,14 @@ module Html2rss
 
     def explain_capture!(result)
       $stderr.puts JSON.pretty_generate( # rubocop:disable Style/StderrPuts -- CLI explain contract
-        articles_count: result.articles_count,
-        channel_title: result.channel_title,
-        has_selectors: !result.config[:selectors].nil? && !result.config[:selectors].empty?
+        {
+          articles_count: result.articles_count,
+          channel_title: result.channel_title,
+          has_selectors: result.has_selectors,
+          segment_strategy: result.segment_strategy,
+          selected_strategy: result.selected_strategy,
+          admission_drops: result.admission_drops
+        }.compact
       )
     end
 

@@ -100,7 +100,11 @@ RSpec.describe Html2rss::MCP::Server do
         Html2rss::Capture::CaptureResult.new(
           config: valid_config,
           articles_count: 3,
-          channel_title: 'Example'
+          channel_title: 'Example',
+          has_selectors: true,
+          segment_strategy: :list,
+          admission_drops: {},
+          selected_strategy: nil
         )
       end
 

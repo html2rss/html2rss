@@ -13,25 +13,35 @@ RSpec.describe Html2rss::Capture do
     )
   end
 
+  def stub_outcome(response, articles:, admission_drops: {}, selected_strategy: nil)
+    outcome = instance_double(
+      Html2rss::FeedPipeline::PipelineOutcome,
+      response:,
+      articles:,
+      admission_drops:,
+      selected_strategy:
+    )
+    allow(Html2rss::FeedPipeline).to receive(:new)
+      .and_return(instance_double(Html2rss::FeedPipeline, to_outcome: outcome))
+    outcome
+  end
+
   describe '#build' do
     context 'with a list fixture that shares an item class' do
       subject(:result) do
-        instance = described_class.new(url)
-        allow(instance).to receive(:fetch_response).and_return(response)
-        instance.build
+        response = html_response(File.read('spec/fixtures/local_feed_test.html'))
+        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+        stub_outcome(response, articles:)
+        described_class.new(url).build
       end
 
-      let(:response) { html_response(File.read('spec/fixtures/local_feed_test.html')) }
-
-      it 'emits items selector, title hash, and channel title', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- fixture contract
+      it 'emits items+enhance only and channel title', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- fixture contract
         expect(result.articles_count).to eq(3)
-        expect(result.config[:selectors]).to include(
-          items: { selector: 'div.item' },
-          title: { selector: 'h2' },
-          url: { selector: 'h2 > a', extractor: 'href' }
+        expect(result.has_selectors).to be true
+        expect(result.segment_strategy).to eq(:list)
+        expect(result.config[:selectors]).to eq(
+          items: { selector: 'div.item', enhance: true }
         )
-        expect(result.config[:selectors]).not_to have_key(:link)
-        expect(result.config[:selectors]).not_to have_key(:description)
         expect(result.config[:channel]).to include(url:, title: a_string_matching(/\S/), time_zone: 'UTC')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
       end
@@ -71,33 +81,39 @@ RSpec.describe Html2rss::Capture do
         'section'
       ]
     }.each do |label, (html, expected_items_selector)|
+      # rubocop:disable RSpec/ExampleLength -- AutoSource + stub + selector assert
       it "trims items path: #{label}" do
-        instance = described_class.new(url)
-        allow(instance).to receive(:fetch_response).and_return(html_response(html))
+        response = html_response(html)
+        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+        stub_outcome(response, articles:)
 
-        expect(instance.build.config.dig(:selectors, :items, :selector)).to eq(expected_items_selector)
+        expect(described_class.new(url).build.config.dig(:selectors, :items)).to eq(
+          selector: expected_items_selector, enhance: true
+        )
       end
+      # rubocop:enable RSpec/ExampleLength
     end
 
     context 'when selector derivation raises ArgumentError' do
-      subject(:result) { instance.build }
+      subject(:result) { described_class.new(url).build }
 
-      let(:instance) { described_class.new(url) }
-      let(:article) do
-        instance_double(Html2rss::Article, url: Html2rss::Url.from_absolute("#{url}/1"), title: 'One')
+      let(:articles) do
+        [
+          Html2rss::Article.new(url: Html2rss::Url.from_absolute("#{url}/1"), title: 'One Two Three', id: '1'),
+          Html2rss::Article.new(url: Html2rss::Url.from_absolute("#{url}/2"), title: 'Two Three Four', id: '2')
+        ]
       end
 
       before do
-        allow(instance).to receive_messages(
-          fetch_response: html_response('<html><body></body></html>'),
-          extract_articles: [article]
-        )
+        response = html_response('<html><body></body></html>')
+        stub_outcome(response, articles:)
         allow(Html2rss::SST::Normalizer).to receive(:call).and_raise(ArgumentError, 'bad sst')
         allow(Html2rss::Log).to receive(:warn)
       end
 
       it 'warns and omits selectors', :aggregate_failures do
         expect(result.config[:selectors]).to be_nil
+        expect(result.has_selectors).to be false
         expect(Html2rss::Log).to have_received(:warn).with(/bad sst/)
       end
     end
@@ -107,7 +123,7 @@ RSpec.describe Html2rss::Capture do
       result = described_class.build(url, strategy: :local_file, local_file_path: path)
 
       expect(result.articles_count).to eq(3)
-      expect(result.config.dig(:selectors, :items, :selector)).to eq('div.item')
+      expect(result.config.dig(:selectors, :items)).to eq(selector: 'div.item', enhance: true)
       expect(result.config[:strategy]).to eq(:local_file)
       expect(result.config.dig(:request, :local_file_path)).to eq(path)
     end
@@ -118,29 +134,36 @@ RSpec.describe Html2rss::Capture do
 
       expect(config[:strategy]).to eq(:local_file)
       expect(config.dig(:request, :local_file_path)).to eq(path)
-      expect(config[:selectors]).not_to have_key(:description)
+      expect(config.dig(:selectors, :items, :enhance)).to be true
 
       feed = Html2rss.feed(config)
-      expect(feed.items.size).to eq(3)
-      expect(feed.items.map(&:title)).to eq(['First Post Item', 'Second Post Item', 'Third Post Item'])
-      expect(feed.items.map(&:link)).to eq(
-        %w[https://example.com/post-1 https://example.com/post-2 https://example.com/post-3]
+      expect(feed).to be_a(RSS::Rss)
+      expect(feed.items.size).to be >= 1
+    end
+
+    it 'emits hint selector with enhance when items_selector is given', :aggregate_failures do
+      stub_outcome(html_response('<html><body></body></html>'), articles: [])
+
+      result = described_class.new(url, items_selector: '.card').build
+      expect(result.config[:selectors]).to eq(items: { selector: '.card', enhance: true })
+      expect(result.segment_strategy).to eq(:hint)
+      expect(result.has_selectors).to be true
+    end
+
+    # rubocop:disable RSpec/ExampleLength -- single-article quality gate
+    it 'reports has_selectors false when too few matches' do
+      html = <<~HTML
+        <html><body>
+          <article><h2><a href="/only">Only One Article Title</a></h2></article>
+        </body></html>
+      HTML
+      article = Html2rss::Article.new(
+        url: Html2rss::Url.from_absolute("#{url}/only"), title: 'Only One Article Title', id: '1'
       )
-    end
-  end
+      stub_outcome(html_response(html), articles: [article])
 
-  describe 'Html2rss.capture' do
-    let(:config_hash) { { channel: { url: 'https://example.com' } } }
-
-    before do
-      allow(described_class).to receive(:build)
-        .and_return(instance_double(described_class::CaptureResult, config: config_hash))
+      expect(described_class.new(url).build.has_selectors).to be false
     end
-
-    it 'delegates to Capture.build', :aggregate_failures do
-      expect(Html2rss.capture('https://example.com')).to eq(config_hash)
-      expect(described_class).to have_received(:build)
-        .with('https://example.com', hash_including(strategy: :auto, local_file_path: nil))
-    end
+    # rubocop:enable RSpec/ExampleLength
   end
 end

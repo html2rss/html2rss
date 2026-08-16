@@ -289,7 +289,11 @@ RSpec.describe Html2rss::CLI do
       Html2rss::Capture::CaptureResult.new(
         config: captured_config,
         articles_count: 2,
-        channel_title: 'Example'
+        channel_title: 'Example',
+        has_selectors: true,
+        segment_strategy: :list,
+        admission_drops: {},
+        selected_strategy: nil
       )
     end
     let(:capture_defaults) do

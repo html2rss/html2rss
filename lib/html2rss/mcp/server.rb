@@ -212,16 +212,16 @@ module Html2rss
           ) do |server_context:, url:, strategy: 'auto', items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
             plan = (strategy || :auto).to_sym
             result = Html2rss::Capture.build(url, strategy: plan, items_selector:)
-            selectors = result.config[:selectors]
-            Server.text_response(
-              JSON.pretty_generate(result.config),
-              meta: {
-                articles_count: result.articles_count,
-                channel_title: result.channel_title,
-                has_selectors: !selectors.nil? && !selectors.empty?,
-                strategy: plan.to_s
-              }
-            )
+            meta = {
+              articles_count: result.articles_count,
+              channel_title: result.channel_title,
+              has_selectors: result.has_selectors,
+              strategy: plan.to_s
+            }
+            meta[:segment_strategy] = result.segment_strategy.to_s if result.segment_strategy
+            meta[:selected_strategy] = result.selected_strategy.to_s if result.selected_strategy
+            meta[:admission_drops] = result.admission_drops if result.admission_drops.any?
+            Server.text_response(JSON.pretty_generate(result.config), meta:)
           rescue StandardError => error
             Server.error_response(error)
           end
