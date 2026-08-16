@@ -163,7 +163,7 @@ RSpec.describe Html2rss::CLI do
         expect { cli.auto('https://example.com') }
           .to raise_error(
             Thor::Error,
-            /retry with --max-redirects 6 or use the final URL directly/
+            /already retried the last redirect hop once; retry with --max-redirects 6 or use the final URL directly/
           )
       end
 
@@ -171,7 +171,7 @@ RSpec.describe Html2rss::CLI do
         expect { cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 }) }
           .to raise_error(
             Thor::Error,
-            /retry with --max-redirects 9 or use the final URL directly/
+            /already retried the last redirect hop once; retry with --max-redirects 9 or use the final URL directly/
           )
       end
     end
@@ -408,7 +408,7 @@ RSpec.describe Html2rss::CLI do
       expect { cli.feed('example.yml') }
         .to raise_error(
           Thor::Error,
-          /retry with --max-redirects 6 or use the final URL directly/
+          /already retried the last redirect hop once; retry with --max-redirects 6 or use the final URL directly/
         )
     end
 
@@ -416,7 +416,7 @@ RSpec.describe Html2rss::CLI do
       expect { cli.invoke(:feed, ['example.yml'], { max_redirects: 8 }) }
         .to raise_error(
           Thor::Error,
-          /retry with --max-redirects 9 or use the final URL directly/
+          /already retried the last redirect hop once; retry with --max-redirects 9 or use the final URL directly/
         )
     end
   end

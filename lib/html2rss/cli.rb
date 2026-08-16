@@ -280,7 +280,8 @@ module Html2rss
       yield
     rescue Faraday::FollowRedirects::RedirectLimitReached => error
       raise Thor::Error,
-            "#{error.message}. retry with --max-redirects #{suggested_max_redirects} or use the final URL directly."
+            "#{error.message}. already retried the last redirect hop once; " \
+            "retry with --max-redirects #{suggested_max_redirects} or use the final URL directly."
     rescue Html2rss::RequestService::RequestBudgetExceeded => error
       raise Thor::Error,
             "#{error.message}. retry with --max-requests #{suggested_max_requests} " \
