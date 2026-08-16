@@ -109,6 +109,8 @@ module Html2rss
 
         # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).
         # PathClassifier owns route facts; Cleanup owns feed-item admission.
+        # Align with Scoring's non_content_utility_path demotion, but as a hard gate so
+        # nested commerce routes (e.g. /jobs/stellenangebote/berlin) cannot fill limit.
         def reject_excluded_destinations!(articles)
           articles.reject! { |article| excluded_destination?(article.url) }
         end
@@ -117,7 +119,9 @@ module Html2rss
           return false unless url
 
           facts = LinkDestination::DestinationFacts.build(url)
-          facts.high_confidence_junk_path || facts.high_confidence_utility_destination
+          return true if facts.high_confidence_junk_path || facts.high_confidence_utility_destination
+
+          facts.utility_path && !facts.content_path && !facts.strong_post_suffix
         end
 
         # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
