@@ -528,6 +528,7 @@ RSpec.describe Html2rss::Config do
               fallback_anchorless: true
             },
             json_state: { enabled: true },    # wasn't explicitly set -> default
+            xhr_articles: { enabled: true },  # wasn't explicitly set -> default
             meta_oembed: { enabled: true },   # wasn't explicitly set -> default
             microdata: { enabled: true },     # wasn't explicitly set -> default
             microformats2: { enabled: true }, # wasn't explicitly set -> default

@@ -154,4 +154,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
       end
     end
   end
+
+  describe '.discover_articles' do
+    it 'walks nested hashes for shared XHR reuse', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      document = {
+        payload: {
+          items: [
+            { title: 'Shared walk', url: '/shared' }
+          ]
+        }
+      }
+
+      found = []
+      described_class.discover_articles(document, base_url:) { |article| found << article }
+
+      expect(found).to contain_exactly(
+        a_hash_including(
+          title: 'Shared walk',
+          url: Html2rss::Url.from_relative('/shared', base_url)
+        )
+      )
+    end
+  end
 end

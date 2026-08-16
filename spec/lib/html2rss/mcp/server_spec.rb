@@ -371,6 +371,36 @@ RSpec.describe Html2rss::MCP::Server do
         .to eq(none_found: 'unsupported_surface')
     end
 
+    it 'reports xhr_capture with query-stripped endpoints for botasaurus', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      captured_response = Html2rss::RequestService::Response.new(
+        body: html,
+        url: Html2rss::Url.from_absolute('https://example.com/blog'),
+        headers: { 'content-type' => 'text/html' },
+        captured_responses: [
+          {
+            'url' => 'https://api.example.com/v1/articles?token=secret',
+            'body' => '[{"title":"Captured","url":"/a"}]'
+          }
+        ]
+      )
+      allow(described_class).to receive(:fetch_response).and_return(captured_response)
+
+      result = described_class.call(url: 'https://example.com/blog', strategy: :botasaurus)
+
+      expect(result[:xhr_capture]).to include(
+        count: 1,
+        candidate_articles: true,
+        sample_endpoints: ['https://api.example.com/v1/articles']
+      )
+      expect(result[:xhr_capture][:sample_endpoints].first).not_to include('token=')
+    end
+
+    it 'omits xhr_capture when strategy is not botasaurus' do
+      result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+
+      expect(result).not_to have_key(:xhr_capture)
+    end
+
     it 'returns error for non-HTML parsed bodies' do
       expect(described_class.scraper_info({})).to eq(error: 'Response is not HTML')
     end

@@ -85,4 +85,27 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(instance.url.to_s).to eq('https://example.com/')
     end
   end
+
+  describe '#captured_responses' do
+    let(:body) { '' }
+    let(:headers) { {} }
+
+    it 'defaults to an empty frozen array', :aggregate_failures do
+      expect(instance.captured_responses).to eq([])
+      expect(instance.captured_responses).to be_frozen
+    end
+
+    it 'stores captured responses when provided', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      captured = [{ 'url' => 'https://api.example/items', 'body' => '[]' }]
+      response = described_class.new(
+        body: '',
+        headers: {},
+        url: Html2rss::Url.from_absolute('https://example.com'),
+        captured_responses: captured
+      )
+
+      expect(response.captured_responses).to eq(captured)
+      expect(response.captured_responses).to be_frozen
+    end
+  end
 end

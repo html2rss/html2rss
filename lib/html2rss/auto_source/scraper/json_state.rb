@@ -27,6 +27,36 @@ module Html2rss
           def json_documents(parsed_body)
             DocumentScanner.json_documents(parsed_body)
           end
+
+          # Walks a JSON document tree and yields normalized article hashes.
+          # Shared with {XhrArticles} so XHR-captured JSON reuses one discovery algorithm.
+          #
+          # @param document [Hash, Array, Object] parsed JSON document node
+          # @param base_url [String, Html2rss::Url] base URL for relative link resolution
+          # @yield [Hash{Symbol => Object}, nil] normalized article hash
+          # @return [void]
+          def discover_articles(document, base_url:, &block)
+            case document
+            when Array then handle_array(document, base_url:, &block)
+            when Hash then document.each_value { discover_articles(_1, base_url:, &block) if traversable?(_1) }
+            end
+          end
+
+          private
+
+          def handle_array(array, base_url:, &block)
+            if CandidateDetector.array_of_articles?(array)
+              array.each do |entry|
+                yield(ArticleNormalizer.normalise(entry, base_url:))
+              end
+            else
+              array.each { discover_articles(_1, base_url:, &block) if traversable?(_1) }
+            end
+          end
+
+          def traversable?(value)
+            value.is_a?(Array) || value.is_a?(Hash)
+          end
         end
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
@@ -51,7 +81,7 @@ module Html2rss
           return enum_for(:each) unless block_given?
 
           json_documents.each do |document|
-            discover_articles(document) do |article|
+            self.class.discover_articles(document, base_url: url) do |article|
               yield article if article
             end
           end
@@ -63,27 +93,6 @@ module Html2rss
 
         def json_documents
           self.class.json_documents(parsed_body)
-        end
-
-        def discover_articles(document, &block)
-          case document
-          when Array then handle_array(document, &block)
-          when Hash then document.each_value { discover_articles(_1, &block) if traversable?(_1) }
-          end
-        end
-
-        def handle_array(array, &block)
-          if CandidateDetector.array_of_articles?(array)
-            array.each do |entry|
-              yield(ArticleNormalizer.normalise(entry, base_url: url))
-            end
-          else
-            array.each { discover_articles(_1, &block) if traversable?(_1) }
-          end
-        end
-
-        def traversable?(value)
-          value.is_a?(Array) || value.is_a?(Hash)
         end
       end
     end

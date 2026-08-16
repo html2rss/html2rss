@@ -218,6 +218,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       expect(result.status).to eq(200)
       expect(result.headers.fetch('content-type')).to include('text/html')
       expect(result.body).to include('ok')
+      expect(result.captured_responses).to eq([])
       expect(result.transport_meta).to eq(
         'request_id' => 'request-id',
         'strategy_used' => 'google_get_bypass',
@@ -227,6 +228,72 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         'attempts' => 2
       )
       expect(result.transport_meta).to be_frozen
+    end
+
+    context 'when upstream includes xhr_responses' do
+      let(:response_payload) do
+        base_payload.merge(
+          'xhr_responses' => [
+            {
+              'url' => 'https://api.example/articles?token=secret',
+              'body' => '[{"title":"One","url":"/one"}]',
+              'headers' => { 'content-type' => 'application/json' },
+              'status_code' => 200
+            }
+          ]
+        )
+      end
+
+      it 'maps xhr_responses onto Response#captured_responses', :aggregate_failures do
+        result = execute
+
+        expect(result.captured_responses).to contain_exactly(
+          a_hash_including(
+            'url' => 'https://api.example/articles?token=secret',
+            'body' => '[{"title":"One","url":"/one"}]',
+            'status_code' => 200
+          )
+        )
+      end
+    end
+
+    context 'when xhr_responses exceed the aggregate size cap' do
+      let(:chunk) { 'y' * Html2rss::RequestService::BotasaurusContract::ParsedResponse::MAX_XHR_BODY_BYTES }
+      let(:response_payload) do
+        base_payload.merge(
+          'xhr_responses' => Array.new(5) do |index|
+            { 'url' => "https://api.example/#{index}", 'body' => chunk, 'status_code' => 200 }
+          end
+        )
+      end
+
+      it 'drops overflow after the aggregate byte budget is exhausted', :aggregate_failures do
+        result = execute
+
+        expect(result.captured_responses.size).to eq(4)
+        expect(result.captured_responses.map { _1.fetch('url') }).to eq(
+          %w[https://api.example/0 https://api.example/1 https://api.example/2 https://api.example/3]
+        )
+      end
+    end
+
+    context 'when an individual xhr body exceeds the per-body size cap' do
+      let(:oversized_body) { 'x' * (Html2rss::RequestService::BotasaurusContract::ParsedResponse::MAX_XHR_BODY_BYTES + 1) }
+      let(:response_payload) do
+        base_payload.merge(
+          'xhr_responses' => [
+            { 'url' => 'https://api.example/a', 'body' => '{"ok":true}', 'status_code' => 200 },
+            { 'url' => 'https://api.example/b', 'body' => oversized_body, 'status_code' => 200 }
+          ]
+        )
+      end
+
+      it 'drops oversize bodies and keeps in-budget captures', :aggregate_failures do
+        result = execute
+
+        expect(result.captured_responses.size).to eq(1)
+        expect(result.captured_responses.first.fetch('url')).to eq('https://api.example/a')
+      end
     end
 
     context 'when response omits headers and url metadata' do
@@ -247,6 +314,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         expect(result.status).to eq(200)
         expect(result.url.to_s).to eq('https://example.com/')
         expect(result.headers).to eq('content-type' => 'text/html')
+        expect(result.captured_responses).to eq([])
       end
     end
 
