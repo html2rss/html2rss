@@ -27,6 +27,7 @@ module Html2rss
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
         # @param captured_responses [Array<Hash>] JSON bodies from Response#captured_responses
         # @param _opts [Hash] scraper-specific options
+        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         def initialize(_parsed_body, url:, captured_responses: [], **_opts)
           @url = url
           @captured_responses = captured_responses

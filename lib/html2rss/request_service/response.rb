@@ -19,6 +19,7 @@ module Html2rss
       # @param status [Integer, nil] the HTTP status code when available
       # @param transport_meta [Hash] allowlisted upstream telemetry (frozen when present)
       # @param captured_responses [Array<Hash>] JSON XHR/fetch bodies captured during browser scrapes
+      # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists -- transport + capture fields stay co-located
       def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META,
                      captured_responses: EMPTY_CAPTURED_RESPONSES)
         @body = body
@@ -37,6 +38,7 @@ module Html2rss
                                 captured_responses.freeze
                               end
       end
+      # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
       # @return [String] the raw body of the response
       attr_reader :body

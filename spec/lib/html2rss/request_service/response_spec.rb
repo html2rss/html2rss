@@ -95,7 +95,7 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(instance.captured_responses).to be_frozen
     end
 
-    it 'stores captured responses when provided', :aggregate_failures do
+    it 'stores captured responses when provided', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       captured = [{ 'url' => 'https://api.example/items', 'body' => '[]' }]
       response = described_class.new(
         body: '',

@@ -156,7 +156,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
   end
 
   describe '.discover_articles' do
-    it 'walks nested hashes for shared XHR reuse', :aggregate_failures do
+    it 'walks nested hashes for shared XHR reuse', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       document = {
         payload: {
           items: [

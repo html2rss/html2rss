@@ -11,7 +11,7 @@ module Html2rss
     # Detection is intentionally shallow for most scrapers, but instance-based
     # matching is available for scrapers that need to carry expensive selection
     # state forward into extraction.
-    module Scraper
+    module Scraper # rubocop:disable Metrics/ModuleLength -- tier registry + construction helpers
       # Root markers indicating likely app-shell/client-rendered surfaces.
       APP_SHELL_ROOT_SELECTORS = '#app, #root, #__next, [data-reactroot], [ng-app], [id*="app-shell"]'
       # Maximum anchors tolerated before app-shell detection is considered unlikely.
@@ -137,18 +137,24 @@ module Html2rss
       # @option opts [Hash] :html scraper toggle and configuration
       # @option opts [Hash] :sitemap scraper toggle and configuration
       # @return [Object, nil]
-      # rubocop:disable Metrics/ParameterLists -- construction context for structured and heuristic scrapers
+      # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- construction context for structured and heuristic scrapers
       def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
                               link_resolver: nil, captured_responses: [])
         return unless opts.dig(scraper.options_key, :enabled)
         return if HEURISTIC_SCRAPERS.include?(scraper) && document.nil?
 
         scraper_opts = opts.fetch(scraper.options_key, {}).except(:enabled)
-        kwargs = construction_kwargs(scraper, request_session:, body:, document:, link_resolver:,
-                                     captured_responses:)
+        kwargs = construction_kwargs(
+          scraper,
+          request_session:,
+          body:,
+          document:,
+          link_resolver:,
+          captured_responses:
+        )
         scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
       end
-      # rubocop:enable Metrics/ParameterLists
+      # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
       ##
       # @param instance [Object]
@@ -168,7 +174,7 @@ module Html2rss
         NoScraperFound.new(category: classify_no_scraper_surface(parsed_body, body:))
       end
 
-      def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:,
+      def self.construction_kwargs(scraper, request_session:, body:, document:, link_resolver:, # rubocop:disable Metrics/ParameterLists -- scraper construction bag
                                    captured_responses:)
         if HEURISTIC_SCRAPERS.include?(scraper)
           { document:, link_resolver: }.compact

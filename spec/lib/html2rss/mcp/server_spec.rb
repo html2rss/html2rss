@@ -371,7 +371,7 @@ RSpec.describe Html2rss::MCP::Server do
         .to eq(none_found: 'unsupported_surface')
     end
 
-    it 'reports xhr_capture with query-stripped endpoints for botasaurus', :aggregate_failures do
+    it 'reports xhr_capture with query-stripped endpoints for botasaurus', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       captured_response = Html2rss::RequestService::Response.new(
         body: html,
         url: Html2rss::Url.from_absolute('https://example.com/blog'),

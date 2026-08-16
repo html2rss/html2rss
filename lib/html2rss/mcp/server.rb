@@ -385,7 +385,7 @@ module Html2rss
 
       ##
       # Diagnostic inspect path (not Capture ownership). Fetches once for SST/scraper stats.
-      module Inspect
+      module Inspect # rubocop:disable Metrics/ModuleLength -- diagnostic helpers stay co-located
         module_function
 
         ##

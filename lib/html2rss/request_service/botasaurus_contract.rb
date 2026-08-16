@@ -125,12 +125,8 @@ module Html2rss
           raw.filter_map do |entry|
             normalized = normalize_xhr_entry(entry)
             next unless normalized
+            next unless (aggregate_bytes = advance_xhr_budget(normalized, aggregate_bytes))
 
-            body_bytes = normalized.fetch('body').bytesize
-            next if body_bytes > MAX_XHR_BODY_BYTES
-            next if aggregate_bytes + body_bytes > MAX_XHR_AGGREGATE_BYTES
-
-            aggregate_bytes += body_bytes
             normalized
           end
         end
@@ -153,15 +149,28 @@ module Html2rss
         def normalize_xhr_entry(entry)
           return unless entry.is_a?(Hash)
 
-          body = entry['body'] || entry[:body]
+          body = xhr_field(entry, :body)
           return unless body.is_a?(String) && !body.empty?
 
           {
-            'url' => (entry['url'] || entry[:url]).to_s,
+            'url' => xhr_field(entry, :url).to_s,
             'body' => body,
-            'headers' => xhr_headers(entry['headers'] || entry[:headers]),
-            'status_code' => xhr_status_code(entry['status_code'] || entry[:status_code])
+            'headers' => xhr_headers(xhr_field(entry, :headers)),
+            'status_code' => xhr_status_code(xhr_field(entry, :status_code))
           }
+        end
+
+        # @return [Integer, nil] next aggregate byte total when accepted
+        def advance_xhr_budget(normalized, aggregate_bytes)
+          body_bytes = normalized.fetch('body').bytesize
+          return if body_bytes > MAX_XHR_BODY_BYTES
+          return if aggregate_bytes + body_bytes > MAX_XHR_AGGREGATE_BYTES
+
+          aggregate_bytes + body_bytes
+        end
+
+        def xhr_field(entry, key)
+          entry[key.to_s] || entry[key]
         end
 
         def xhr_headers(raw)

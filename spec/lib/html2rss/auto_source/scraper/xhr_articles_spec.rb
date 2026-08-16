@@ -14,7 +14,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::XhrArticles do
   end
 
   describe '#extractable?' do
-    it 'is true when a captured body contains article-like arrays' do
+    it 'is true when a captured body contains article-like arrays' do # rubocop:disable RSpec/ExampleLength
       scraper = described_class.new(
         parsed_body,
         url: base_url,
@@ -30,7 +30,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::XhrArticles do
       expect(scraper).not_to be_extractable
     end
 
-    it 'is false when JSON has no article-like arrays' do
+    it 'is false when JSON has no article-like arrays' do # rubocop:disable RSpec/ExampleLength
       scraper = described_class.new(
         parsed_body,
         url: base_url,
