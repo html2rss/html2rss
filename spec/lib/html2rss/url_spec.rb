@@ -130,6 +130,28 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#without_fragment' do
+    it 'returns a copy without the fragment' do
+      url = described_class.from_absolute('https://example.com/news?q=1#section')
+
+      expect(url.without_fragment.to_s).to eq('https://example.com/news?q=1')
+    end
+
+    it 'returns self when there is no fragment' do
+      url = described_class.from_absolute('https://example.com/news')
+
+      expect(url.without_fragment).to equal(url)
+    end
+
+    it 'does not mutate the original url' do
+      url = described_class.from_absolute('https://example.com/news#top')
+
+      url.without_fragment
+
+      expect(url.to_s).to eq('https://example.com/news#top')
+    end
+  end
+
   describe '#with_query_values' do
     it 'returns a new url with the provided query values' do
       url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F')

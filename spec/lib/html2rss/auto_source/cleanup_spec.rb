@@ -32,13 +32,12 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
   end
 
   describe '.call' do
-    subject { described_class.call(articles, url:, keep_different_domain:, min_words_title:) }
+    subject(:cleaned) { described_class.call(articles, url:, keep_different_domain:) }
 
     let(:keep_different_domain) { false }
-    let(:min_words_title) { 2 }
 
     it 'removes invalid articles' do
-      expect(subject).not_to include(articles[2])
+      expect(cleaned).not_to include(articles[2])
     end
 
     context 'with duplicated articles' do
@@ -46,26 +45,53 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         instance_double(Html2rss::Article,
                         valid?: true,
                         url: articles.first.url,
-                        title: 'Duplicated Article')
+                        title: 'Duplicated Article Title')
       end
 
-      before do
-        articles << duplicated_url_article
-      end
+      before { articles << duplicated_url_article }
 
       it 'removes duplicate articles by URL', :aggregate_failures do
-        expect(subject).not_to include(duplicated_url_article)
-        expect(subject.first.url).to eq(duplicated_url_article.url)
+        expect(cleaned).not_to include(duplicated_url_article)
+        expect(cleaned.first.url).to eq(duplicated_url_article.url)
+      end
+    end
+
+    context 'when URLs differ only by fragment' do
+      let(:url) { Html2rss::Url.from_absolute('http://example.com/news') }
+      let(:articles) do
+        [
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/story-one'),
+                          title: 'First Story Title Here'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/story-one#comments'),
+                          title: 'Same Story Different Fragment'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/news#section'),
+                          title: 'Self Link With Fragment Text'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/news'),
+                          title: 'Exact Self Link Title Words')
+        ]
+      end
+
+      it 'dedupes fragment variants and rejects page self-links', :aggregate_failures do
+        expect(cleaned.map { |article| article.url.to_s }).to eq(['http://example.com/story-one'])
+        expect(cleaned.size).to eq(1)
       end
     end
 
     it 'keeps only HTTP and HTTPS articles' do
-      expect(subject).not_to include(articles[4])
+      expect(cleaned).not_to include(articles[4])
     end
 
     context 'when keep_different_domain is false' do
       it 'removes articles from different domains' do
-        expect(subject).not_to include(articles[3])
+        expect(cleaned).not_to include(articles[3])
       end
     end
 
@@ -74,81 +100,79 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       it 'keeps articles from different domains' do
         different_domain_article = articles[3]
-        expect(subject).to include(different_domain_article)
+        expect(cleaned).to include(different_domain_article)
       end
     end
 
-    it 'keeps only articles with a title having at least min_words_title words' do
-      expect(subject).not_to include(articles[5])
-    end
-  end
-
-  describe '.keep_only_with_min_words_title!' do
-    subject(:keep_only_with_min_words_title!) do
-      described_class.keep_only_with_min_words_title!(articles, min_words_title:)
+    it 'rejects titles with fewer than three words' do
+      expect(cleaned).not_to include(articles[5])
     end
 
-    let(:articles) do
-      [
-        instance_double(Html2rss::Article, title: 'A valid title'),
-        instance_double(Html2rss::Article, title: 'Short'),
-        instance_double(Html2rss::Article, title: 'Another valid article title'),
-        instance_double(Html2rss::Article, title: nil),
-        instance_double(Html2rss::Article, title: ''),
-        instance_double(Html2rss::Article, title: 'Two words')
-      ]
-    end
-
-    context 'when min_words_title is 3' do
-      let(:min_words_title) { 3 }
-
-      it 'keeps only articles with at least 3 words in the title or nil title', :aggregate_failures do
-        keep_only_with_min_words_title!
-        expect(articles.map(&:title)).to contain_exactly('A valid title', 'Another valid article title', nil)
-      end
-    end
-
-    context 'when min_words_title is 1' do
-      let(:min_words_title) { 1 }
-
-      it 'keeps all articles except those with empty string title', :aggregate_failures do
-        keep_only_with_min_words_title!
-        expect(articles.map(&:title)).to contain_exactly(
-          'A valid title', 'Short', 'Another valid article title', nil, 'Two words'
-        )
-      end
-    end
-
-    context 'when all titles are nil or empty' do
+    context 'with junk and acceptable titles' do
+      let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
       let(:articles) do
         [
-          instance_double(Html2rss::Article, title: nil),
-          instance_double(Html2rss::Article, title: '')
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/a'),
+                          title: 'A valid title'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/b'),
+                          title: 'Getty Images'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/c'),
+                          title: 'Photo: Reuters'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/d'),
+                          title: 'lucy.smith.token'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/e'),
+                          title: 'methode-article-slug'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/f'),
+                          title: nil),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/g'),
+                          title: 'Reuters reports major breakthrough today')
         ]
       end
-      let(:min_words_title) { 2 }
 
-      it 'keeps only articles with nil title' do
-        keep_only_with_min_words_title!
-        expect(articles.map(&:title)).to contain_exactly(nil)
+      it 'rejects credit/CMS junk while keeping real headlines and nil titles', :aggregate_failures do
+        titles = cleaned.map(&:title)
+        expect(titles).to include('A valid title', nil, 'Reuters reports major breakthrough today')
+        expect(titles).not_to include('Getty Images', 'Photo: Reuters', 'lucy.smith.token', 'methode-article-slug')
       end
     end
 
     context 'with non-Latin titles' do
+      let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
       let(:articles) do
         [
-          instance_double(Html2rss::Article, title: 'Привет мир'),
-          instance_double(Html2rss::Article, title: 'مرحبا بالعالم'),
-          instance_double(Html2rss::Article, title: '你好 世界'),
-          instance_double(Html2rss::Article, title: '你好世界'),
-          instance_double(Html2rss::Article, title: nil)
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/ru'),
+                          title: 'Привет мир сегодня'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/ar'),
+                          title: 'مرحبا بالعالم اليوم'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('http://example.com/zh'),
+                          title: '你好世界')
         ]
       end
-      let(:min_words_title) { 2 }
 
-      it 'counts Unicode words correctly', :aggregate_failures do
-        keep_only_with_min_words_title!
-        expect(articles.map(&:title)).to contain_exactly('Привет мир', 'مرحبا بالعالم', '你好 世界', nil)
+      it 'counts Unicode words with the fixed three-word gate', :aggregate_failures do
+        titles = cleaned.map(&:title)
+        expect(titles).to include('Привет мир сегодня', 'مرحبا بالعالم اليوم')
+        expect(titles).not_to include('你好世界')
       end
     end
   end

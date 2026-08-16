@@ -46,7 +46,6 @@ module Html2rss
 
       optional(:cleanup).hash do
         optional(:keep_different_domain).filled(:bool)
-        optional(:min_words_title).filled(:integer, gt?: 0)
       end
     end
   end
