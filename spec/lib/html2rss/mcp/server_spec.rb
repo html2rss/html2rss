@@ -13,7 +13,7 @@ RSpec.describe Html2rss::MCP::Server do
       selectors: {
         items: { selector: 'div.item' },
         title: { selector: 'h2' },
-        link: { selector: 'a', extractor: 'href' }
+        url: { selector: 'a', extractor: 'href' }
       }
     }
   end
