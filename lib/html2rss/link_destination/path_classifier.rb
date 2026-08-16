@@ -68,7 +68,9 @@ module Html2rss
       # Hyphenated slug shape common to article permalinks.
       POST_SLUG_SEGMENT = /\A[a-z0-9]+(?:-[a-z0-9]+){2,}\z/i
       # Multi-label host mistaken for a path segment (affiliate/outlink chrome).
-      HOST_SHAPED_SEGMENT = /\A(?:www\.)?[\w-]+(?:\.[\w-]+)+\z/i
+      # Final label must be alphabetic (TLD-like); exclude common file extensions.
+      HOST_SHAPED_SEGMENT = /\A(?:www\.)?(?:[\w-]+\.)+[a-z]{2,24}\z/i
+      FILE_EXTENSION_SEGMENT = /\.(?:pdf|jpe?g|png|gif|svg|webp|css|js|mjs|html?|xml|json|mp4|webm|zip|gz)\z/i
 
       # @param segments [Array<String>] normalized URL path segments
       def initialize(segments)
@@ -179,7 +181,7 @@ module Html2rss
       end
 
       def host_shaped_segment?(segment)
-        segment.match?(HOST_SHAPED_SEGMENT)
+        segment.match?(HOST_SHAPED_SEGMENT) && !segment.match?(FILE_EXTENSION_SEGMENT)
       end
 
       def trusted_post_context?(limit)

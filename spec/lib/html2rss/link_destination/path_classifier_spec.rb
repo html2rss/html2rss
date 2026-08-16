@@ -41,7 +41,10 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       { segments: %w[casino-bonus.example.com angebot], junk: true },
       { segments: %w[casinos echtgeld-bonus], junk: true },
       { segments: %w[kreditkarten vergleich-2026], junk: true },
-      { segments: %w[politik koalition-beschliesst-neues-gesetz], junk: false }
+      { segments: %w[politik koalition-beschliesst-neues-gesetz], junk: false },
+      { segments: %w[docs v2.0], junk: false },
+      { segments: %w[download file.pdf], junk: false },
+      { segments: %w[assets image.jpg], junk: false }
     ].each do |example|
       it "host/commerce path #{example[:segments].join('/')} junk=#{example[:junk]}", :aggregate_failures do
         classifier = classifier_for(*example[:segments])
