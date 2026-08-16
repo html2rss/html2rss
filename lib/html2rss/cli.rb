@@ -88,7 +88,7 @@ module Html2rss
                   default: false
     # @param url [String, nil] source page URL for auto discovery
     # @return [void]
-    def auto(url = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- CLI option wiring
+    def auto(url = nil)
       format = options.fetch(:format, 'rss')
       strategy, local_file_path, url = prepare_auto_inputs(url, options[:input])
       feed_result = execute_feed { auto_feed_result_for(url, strategy, local_file_path) }
