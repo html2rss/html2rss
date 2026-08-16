@@ -417,6 +417,10 @@ module Html2rss
           result
         end
 
+        ##
+        # @param url [String]
+        # @param strategy [Symbol]
+        # @return [Html2rss::RequestService::Response]
         def fetch_response(url, strategy) # rubocop:disable Metrics/MethodLength -- session construction
           raw_config = Config.auto_source_config(
             url:,
@@ -435,6 +439,9 @@ module Html2rss
         end
         module_function :fetch_response
 
+        ##
+        # @param parsed [Object] parsed response body
+        # @return [Array<String>, Hash]
         def scraper_info(parsed)
           return { error: 'Response is not HTML' } unless parsed.is_a?(Nokogiri::HTML::Document)
 
@@ -446,6 +453,9 @@ module Html2rss
         end
         module_function :scraper_info
 
+        ##
+        # @param response [Html2rss::RequestService::Response]
+        # @return [Hash, nil]
         def sst_stats_from(response)
           return nil unless response.html_response?
 
@@ -458,6 +468,9 @@ module Html2rss
         end
         module_function :sst_stats_from
 
+        ##
+        # @param response [Html2rss::RequestService::Response]
+        # @return [Html2rss::SST::Document, nil]
         def sst_document(response)
           Html2rss::SST::Normalizer.call(response.body)
         rescue ArgumentError
@@ -465,6 +478,10 @@ module Html2rss
         end
         module_function :sst_document
 
+        ##
+        # @param sst [Html2rss::SST::Document]
+        # @param url [String]
+        # @return [Hash]
         def segment_stats(sst, url)
           segments = discover_segments(sst, url)
           return { found: 0 } if segments.empty?
@@ -477,6 +494,10 @@ module Html2rss
         end
         module_function :segment_stats
 
+        ##
+        # @param sst [Html2rss::SST::Document]
+        # @param url [String]
+        # @return [Array]
         def discover_segments(sst, url)
           link_resolver = Scoring::LinkResolver.new(url)
           AutoSource::Segmenter.call(

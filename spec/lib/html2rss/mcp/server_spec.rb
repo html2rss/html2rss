@@ -176,6 +176,44 @@ RSpec.describe Html2rss::MCP::Server do
       end
       # rubocop:enable RSpec/ExampleLength
     end
+
+    describe 'error paths' do
+      it 'marks scrape_url failures as isError', :aggregate_failures do
+        allow(Html2rss).to receive(:auto_json_feed).and_raise(StandardError, 'scrape boom')
+        result = call_tool.call('scrape_url', { url: 'https://example.com' })
+
+        expect(result.dig(:result, :isError)).to be(true)
+        expect(result.dig(:result, :content, 0, :text)).to include('scrape boom')
+      end
+
+      it 'marks capture_config failures as isError' do
+        allow(Html2rss::Capture).to receive(:build).and_raise(StandardError, 'capture boom')
+        result = call_tool.call('capture_config', { url: 'https://example.com' })
+
+        expect(result.dig(:result, :isError)).to be(true)
+      end
+
+      it 'marks apply_config failures as isError' do
+        allow(Html2rss).to receive(:feed).and_raise(StandardError, 'feed boom')
+        result = call_tool.call('apply_config', { url: 'https://example.com', config: valid_config })
+
+        expect(result.dig(:result, :isError)).to be(true)
+      end
+
+      it 'marks inspect_url failures as isError' do
+        allow(Html2rss::MCP::Server::Inspect).to receive(:call).and_raise(StandardError, 'inspect boom')
+        result = call_tool.call('inspect_url', { url: 'https://example.com' })
+
+        expect(result.dig(:result, :isError)).to be(true)
+      end
+
+      it 'marks validate_config exceptions as isError' do
+        allow(Html2rss::Config).to receive(:validate).and_raise(StandardError, 'validate boom')
+        result = call_tool.call('validate_config', { config: valid_config })
+
+        expect(result.dig(:result, :isError)).to be(true)
+      end
+    end
   end
 
   describe 'resources/read' do
@@ -249,6 +287,19 @@ RSpec.describe Html2rss::MCP::Server do
     it 'rejects unknown transports' do
       expect { described_class.start(transport: :udp) }.to raise_error(ArgumentError, /Unknown transport/)
     end
+
+    # rubocop:disable RSpec/ExampleLength -- LoadError messaging contract
+    it 'raises an actionable LoadError when HTTP deps are missing' do
+      allow(described_class).to receive(:require).and_wrap_original do |original, name|
+        raise LoadError, 'cannot load such file -- rackup' if name == 'rackup'
+
+        original.call(name)
+      end
+
+      expect { described_class.start(transport: :http) }
+        .to raise_error(LoadError, /HTTP transport requires the rackup and webrick gems/)
+    end
+    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'mcp 1.2 invocation shape' do
@@ -296,6 +347,41 @@ RSpec.describe Html2rss::MCP::Server do
       expect(result[:strategy]).to eq(:faraday)
       expect(result[:html_response]).to be(true)
       expect(result[:sst]).to include(:node_count, :segment_stats)
+    end
+
+    it 'builds a request session when fetching', :aggregate_failures do
+      allow(described_class).to receive(:fetch_response).and_call_original
+      session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
+      allow(Html2rss::RequestSession).to receive(:build).and_return(session)
+
+      expect(described_class.fetch_response('https://example.com/blog', :faraday)).to eq(response)
+      expect(Html2rss::RequestSession).to have_received(:build)
+    end
+
+    it 'reports none_found when no scraper matches' do
+      allow(Html2rss::AutoSource::Scraper).to receive(:from).and_raise(
+        Html2rss::AutoSource::Scraper::NoScraperFound.new(category: :unsupported_surface)
+      )
+
+      expect(described_class.scraper_info(Nokogiri::HTML::Document.parse(html)))
+        .to eq(none_found: 'unsupported_surface')
+    end
+
+    it 'returns error for non-HTML parsed bodies' do
+      expect(described_class.scraper_info({})).to eq(error: 'Response is not HTML')
+    end
+
+    it 'returns nil SST stats when normalization fails' do
+      allow(Html2rss::SST::Normalizer).to receive(:call).and_raise(ArgumentError)
+
+      expect(described_class.sst_stats_from(response)).to be_nil
+    end
+
+    it 'returns empty segments when segmenter fails' do
+      allow(Html2rss::AutoSource::Segmenter).to receive(:call).and_raise(StandardError)
+
+      sst = Html2rss::SST::Normalizer.call(html)
+      expect(described_class.discover_segments(sst, 'https://example.com/blog')).to eq([])
     end
   end
 end
