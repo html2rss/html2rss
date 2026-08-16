@@ -63,6 +63,7 @@ module Html2rss
           keep_only_http_urls!(articles)
           reject_self_links!(articles, url)
           reject_different_domain!(articles, url) unless keep_different_domain
+          reject_excluded_destinations!(articles)
           reject_low_quality_titles!(articles)
 
           Log.debug "Cleanup: end with #{articles.size} articles"
@@ -104,6 +105,19 @@ module Html2rss
         def reject_different_domain!(articles, base_url)
           base_host = base_url.host
           articles.select! { |article| article.url&.host == base_host }
+        end
+
+        # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).
+        # PathClassifier owns route facts; Cleanup owns feed-item admission.
+        def reject_excluded_destinations!(articles)
+          articles.reject! { |article| excluded_destination?(article.url) }
+        end
+
+        def excluded_destination?(url)
+          return false unless url
+
+          facts = LinkDestination::DestinationFacts.build(url)
+          facts.high_confidence_junk_path || facts.high_confidence_utility_destination
         end
 
         # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
