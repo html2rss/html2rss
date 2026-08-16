@@ -140,14 +140,15 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         # First-match pin: agency-only credit beats slug shape for hyphenated CMS ids.
         { title: 'AFP', reason: :credit }
       ].each_with_index do |example, index|
-        it "labels #{example[:title].inspect} as #{example[:reason].inspect}", :aggregate_failures do
+        it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
           expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+        end
 
-          article = instance_double(Html2rss::Article, valid?: true,
-                                                       url: Html2rss::Url.from_absolute("http://example.com/t#{index}"),
-                                                       title: example[:title])
-          kept = described_class.call([article], url:).map(&:title).include?(example[:title])
-          expect(kept).to eq(example[:reason].nil?)
+        it "keeps=#{example[:reason].nil?} for #{example[:title].inspect}" do
+          article = instance_double(Html2rss::Article, valid?: true, title: example[:title],
+                                                       url: Html2rss::Url.from_absolute("http://example.com/t#{index}"))
+          expect(described_class.call([article], url:).map(&:title).include?(example[:title]))
+            .to eq(example[:reason].nil?)
         end
       end
     end
