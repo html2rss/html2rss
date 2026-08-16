@@ -35,8 +35,10 @@ module Html2rss
     class RequestTimedOut < Html2rss::Error; end
     # Raised when Botasaurus configuration is missing or invalid.
     class BotasaurusConfigurationError < Html2rss::Error; end
-    # Raised when Botasaurus cannot be reached or returns invalid payloads.
+    # Raised when the Botasaurus service cannot be reached (network / DNS / SSL).
     class BotasaurusConnectionFailed < Html2rss::Error; end
+    # Raised when Botasaurus responds but the scrape fails (upstream error, bad payload).
+    class BotasaurusServiceError < Html2rss::Error; end
 
     class << self
       extend Forwardable

@@ -41,7 +41,7 @@ module Html2rss
       def raise_if_upstream_failed!(parsed_response)
         return unless parsed_response.upstream_failure?
 
-        raise BotasaurusConnectionFailed, parsed_response.upstream_failure_message
+        raise BotasaurusServiceError, parsed_response.upstream_failure_message
       end
 
       def response_url(final_url)

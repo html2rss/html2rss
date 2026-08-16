@@ -84,10 +84,10 @@ module Html2rss
         end
 
         # @return [String] rendered HTML body from Botasaurus
-        # @raise [BotasaurusConnectionFailed] when html is missing
+        # @raise [BotasaurusServiceError] when html is missing
         def html
           value = payload['html']
-          raise BotasaurusConnectionFailed, "Botasaurus response missing required 'html' field" if value.nil?
+          raise BotasaurusServiceError, "Botasaurus response missing required 'html' field" if value.nil?
 
           value.to_s
         end
@@ -166,14 +166,14 @@ module Html2rss
 
       # @param transport_response [Faraday::Response] upstream HTTP response
       # @return [ParsedResponse]
-      # @raise [BotasaurusConnectionFailed] when payload is not valid JSON object
+      # @raise [BotasaurusServiceError] when payload is not valid JSON object
       def parse_response(transport_response)
         payload = JSON.parse(transport_response.body.to_s)
-        raise BotasaurusConnectionFailed, 'Botasaurus response must be a JSON object' unless payload.is_a?(Hash)
+        raise BotasaurusServiceError, 'Botasaurus response must be a JSON object' unless payload.is_a?(Hash)
 
         ParsedResponse.new(payload:, transport_status: transport_response.status)
       rescue JSON::ParserError => error
-        raise BotasaurusConnectionFailed, "Botasaurus response JSON parse failed: #{error.message}"
+        raise BotasaurusServiceError, "Botasaurus response JSON parse failed: #{error.message}"
       end
 
       private

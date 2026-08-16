@@ -23,6 +23,17 @@ module Html2rss
           message: 'Blocked surface detected: Cloudflare anti-bot interstitial page. ' \
                    'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, ' \
                    'or run from an environment that can complete anti-bot checks.'
+        },
+        {
+          key: :datadome_interstitial,
+          min_matches: 2,
+          patterns: [
+            /captcha-delivery\.com/,
+            /DataDome/i,
+            /interstitial/i
+          ],
+          message: 'Blocked surface detected: DataDome anti-bot challenge page. ' \
+                   'Target a direct listing URL, or scrape via a session with resolved DataDome cookies.'
         }
       ].freeze
 

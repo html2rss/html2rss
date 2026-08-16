@@ -288,10 +288,10 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         }
       end
 
-      it 'raises BotasaurusConnectionFailed with diagnostics' do
+      it 'raises BotasaurusServiceError with diagnostics' do
         expect { execute }
           .to raise_error(
-            Html2rss::RequestService::BotasaurusConnectionFailed,
+            Html2rss::RequestService::BotasaurusServiceError,
             /status=502, error_category=navigation_error, error=navigation failed, request_id=trace-123/
           )
       end
@@ -308,10 +308,10 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         }
       end
 
-      it 'raises BotasaurusConnectionFailed' do
+      it 'raises BotasaurusServiceError' do
         expect { execute }
           .to raise_error(
-            Html2rss::RequestService::BotasaurusConnectionFailed,
+            Html2rss::RequestService::BotasaurusServiceError,
             /status=200, error_category=metadata_error, error=metadata collection failed, request_id=trace-456/
           )
       end
@@ -320,9 +320,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     context 'when upstream payload is invalid JSON' do
       let(:api_response) { instance_double(Faraday::Response, status: 200, body: 'not-json') }
 
-      it 'raises BotasaurusConnectionFailed' do
+      it 'raises BotasaurusServiceError' do
         expect { execute }
-          .to raise_error(Html2rss::RequestService::BotasaurusConnectionFailed, /JSON parse failed/)
+          .to raise_error(Html2rss::RequestService::BotasaurusServiceError, /JSON parse failed/)
       end
     end
 
@@ -336,9 +336,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         }
       end
 
-      it 'raises BotasaurusConnectionFailed' do
+      it 'raises BotasaurusServiceError' do
         expect { execute }
-          .to raise_error(Html2rss::RequestService::BotasaurusConnectionFailed, /missing required 'html'/)
+          .to raise_error(Html2rss::RequestService::BotasaurusServiceError, /missing required 'html'/)
       end
     end
 
