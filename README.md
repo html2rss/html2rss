@@ -37,11 +37,11 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 
 ## Capture API
 
-The `Html2rss.capture` method analyzes any URL and produces a reusable feed config hash with derived CSS selectors. Use it to speed up writing feed configuration files.
+The `Html2rss.capture` method analyzes any URL and produces a reusable feed config hash with an items selector and `enhance: true`. Use it to speed up writing feed configuration files.
 
 ```ruby
 config = Html2rss.capture('https://example.com/articles')
-File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(config)))
+File.write('my-feed.yml', Html2rss::Config.to_yaml(config))
 ```
 
 The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`lib/html2rss/capture/README.md`](lib/html2rss/capture/README.md) for detailed documentation.
@@ -62,17 +62,37 @@ stdio uses stdout for JSON-RPC, so the daemon logs to **stderr**. It defaults to
 
 HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies). It listens on `127.0.0.1` only; do not expose it on a public interface without your own auth and Host/Origin controls.
 
-**Strategy note:** MCP `scrape_url` / `capture_config` with `strategy: "auto"` run the FeedPipeline AutoFallback chain (`faraday` → `botasaurus`). `inspect_url` uses Faraday when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect. Botasaurus needs `BOTASAURUS_SCRAPER_URL`.
+**Strategy note:** MCP `scrape_url` / `capture_config` with `strategy: "auto"` run Faraday → Botasaurus AutoFallback. `inspect_url` uses Faraday when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect.
+
+**Tool-call budget:** `scrape_url` is 1 call (auto already hops). Durable config is `capture_config` → `validate_config` → `apply_config`. Call `inspect_url` only when scrape/capture is weak or you need recon (final URL, status, https→http, native RSS/Atom).
+
+Cursor / Claude Desktop `mcp.json` must put Botasaurus on the **MCP process** (not only your shell):
+
+```json
+{
+  "mcpServers": {
+    "html2rss": {
+      "command": "mise",
+      "args": ["exec", "--", "html2rss", "mcp"],
+      "env": {
+        "BOTASAURUS_SCRAPER_URL": "http://127.0.0.1:4010"
+      }
+    }
+  }
+}
+```
+
+Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is never returned).
 
 ### Tools
 
-| Name              | When to use                                               |
-| ----------------- | --------------------------------------------------------- |
-| `scrape_url`      | One-shot articles now (no saved config)                   |
-| `inspect_url`     | Diagnose weak scrape/capture (scrapers/SST/segments)      |
-| `capture_config`  | Derive a durable feed config (+ quality `_meta`)          |
-| `validate_config` | Schema-check a config before apply (`isError` on failure) |
-| `apply_config`    | Run a validated config → RSS XML                          |
+| Name              | When to use                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| `scrape_url`      | One-shot articles now (empty result is still success)                       |
+| `inspect_url`     | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)   |
+| `capture_config`  | YAML draft (+ quality `_meta`); strive `enhance: true`                      |
+| `validate_config` | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)       |
+| `apply_config`    | RSS XML; `isError` when zero items; `_meta.item_count` is the ship gate     |
 
 ### Resources
 
@@ -81,13 +101,14 @@ HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies)
 | `html2rss://schema`     | Full JSON Schema for feed configurations                        |
 | `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
 | `html2rss://strategies` | Registered request strategy names                               |
+| `html2rss://runtime`    | `botasaurus_configured` boolean (never the scraper URL)         |
 
 ### Prompts
 
-| Name                  | Description                                             |
-| --------------------- | ------------------------------------------------------- |
-| `scrape-webpage`      | Guided scrape → inspect/retry with botasaurus if needed |
-| `capture-feed-config` | Guided capture → validate → optional apply              |
+| Name                  | Description                                                          |
+| --------------------- | -------------------------------------------------------------------- |
+| `scrape-webpage`      | One `scrape_url` call; inspect only if weak or recon                 |
+| `capture-feed-config` | Capture YAML → validate → apply; catalog rewrite; strive enhance     |
 
 The MCP module (`Html2rss::MCP`) lazy-loads the `mcp` gem — no cost when the server is not running.
 
