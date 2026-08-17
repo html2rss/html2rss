@@ -113,9 +113,10 @@ module Html2rss
         ##
         # @param rss [String]
         # @param item_count [Integer]
+        # @param empty [Boolean] {FeedResult#empty?} (ship gate); defaults to zero items
         # @return [Outcome]
-        def apply(rss:, item_count:)
-          ok = item_count.positive?
+        def apply(rss:, item_count:, empty: item_count.zero?)
+          ok = !empty
           next_step = ok ? NextStep.done : NextStep.inspect_url
           new(ok:, next_step:, guidance: next_step.guidance, payload: { rss:, item_count: })
         end
