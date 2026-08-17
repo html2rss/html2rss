@@ -39,4 +39,4 @@ Retries share the feed's request/session policy. Pin a concrete strategy when yo
 - `Html2rss::Status` records selected strategy and attempt tallies for MCP `_meta` / CLI `--explain`.
 - Fallback hops log at info/warn (`AutoFallback`).
 
-See also [`../auto_source/README.md`](../auto_source/README.md) for article scraping (a different pipeline) and [`../capture/README.md`](../capture/README.md) for durable configs that stamp the selected strategy.
+See also {Html2rss::AutoSource} for article scraping (a different pipeline) and {Html2rss::Capture} for durable configs that stamp the selected strategy.

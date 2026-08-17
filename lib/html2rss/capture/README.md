@@ -58,4 +58,4 @@ html2rss capture https://example.com --explain   # quality JSON on stderr; YAML 
 - When the quality gate fails, selectors are omitted (`has_selectors: false`) rather than inventing attribute selectors.
 - Botasaurus hops need `BOTASAURUS_SCRAPER_URL`.
 
-See also [`../auto_source/README.md`](../auto_source/README.md) for article discovery and [`../feed_pipeline/README.md`](../feed_pipeline/README.md) for the `:auto` request chain.
+See also {Html2rss::AutoSource} for article discovery and {Html2rss::FeedPipeline} for the `:auto` request chain.

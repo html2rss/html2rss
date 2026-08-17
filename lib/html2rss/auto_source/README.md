@@ -54,4 +54,4 @@ Production heuristic scrapers should reuse one `SST::Document` memoized from `pa
 - App-shell classification on SST.
 - Rewriting Sanitize transformers off Nokogiri.
 
-See also repo-root `CONTEXT.md` for module ownership (chrome, scoring, clustering), [`../feed_pipeline/README.md`](../feed_pipeline/README.md) for the request-strategy fallback chain (unrelated to article scraping), and [`../capture/README.md`](../capture/README.md) to turn a listing URL into a durable items-selector config.
+See also {file:CONTEXT CONTEXT.md} for module ownership (chrome, scoring, clustering), {Html2rss::FeedPipeline} for the request-strategy fallback chain (unrelated to article scraping), and {Html2rss::Capture} to turn a listing URL into a durable items-selector config.
