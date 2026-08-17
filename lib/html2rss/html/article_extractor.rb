@@ -49,7 +49,7 @@ module Html2rss
           id: generate_id,
           published_at: extract_published_at(lines),
           enclosures: extract_enclosures,
-          categories: extract_categories
+          categories: extract_categories(title)
         }
       end
 
@@ -142,7 +142,7 @@ module Html2rss
       def extract_published_at(lines) = DateExtractor.call(article_tag, leftover_lines: lines, time_zone:)
 
       def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
-      def extract_categories = CategoryExtractor.call(article_tag)
+      def extract_categories(title) = CategoryExtractor.call(article_tag, title:)
     end
   end
 end

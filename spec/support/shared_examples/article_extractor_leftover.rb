@@ -9,15 +9,17 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
         <article>
           <h2><a href="/news/story">Novo Nordisk headline about research</a></h2>
           <span>Read more</span>
+          <div data-category="Read more"></div>
         </article>
       HTML
     end
 
-    it 'does not ship the CTA as description', :aggregate_failures do
+    it 'does not ship the CTA as description or category', :aggregate_failures do
       fields = leftover_fields.call(html)
 
       expect(fields[:title]).to eq('Novo Nordisk headline about research')
       expect(fields[:description]).to be_nil
+      expect(fields[:categories]).not_to include('Read more')
     end
   end
 
@@ -26,7 +28,7 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       <<~HTML
         <article>
           <h2><a href="/news/story">TNO publishes new research findings</a></h2>
-          <div>Informatietype:</div>
+          <div class="label-type">Informatietype:</div>
           <div>News</div>
           <div>12 March 2024</div>
           <p>Researchers found a practical way to improve the measurement setup.</p>
@@ -42,6 +44,8 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       )
       expect(fields[:published_at]).to be_a(DateTime)
       expect(fields[:published_at].to_date).to eq(Date.new(2024, 3, 12))
+      expect(fields[:categories]).not_to include('Informatietype:')
+      expect(fields[:categories]).not_to include('News')
     end
   end
 
@@ -65,6 +69,9 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       )
       expect(fields[:description]).not_to include('Press releases')
       expect(fields[:published_at]).to be_a(DateTime)
+      expect(fields[:categories]).not_to include('Press releases')
+      expect(fields[:categories]).not_to include('Maersk expands green methanol fleet')
+      expect(fields[:categories]).not_to include('12 March 2024')
     end
   end
 

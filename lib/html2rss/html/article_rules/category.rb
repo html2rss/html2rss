@@ -6,47 +6,64 @@ module Html2rss
       ##
       # Shared category term vocabulary and text accumulation (DOM walk stays in adapters).
       module Category
-        # Class/data attribute tokens that mark category metadata.
+        # Class/data attribute tokens that mark category metadata (not layout words).
         CATEGORY_TERMS = %w[
-          category categories tag tags topic topics section sections
-          label labels theme themes subject subjects
+          category categories tag tags topic topics
+          theme themes subject subjects
         ].freeze
 
-        # Regex matching category-related attribute or class names.
-        CATEGORY_ATTR_PATTERN = /#{CATEGORY_TERMS.join('|')}/i
+        # Frozen set for token membership checks.
+        TERM_SET = CATEGORY_TERMS.to_set.freeze
+
+        # Hyphen/underscore/BEM separators inside a single CSS class token.
+        CLASS_TOKEN_SPLIT = /[-_]+/
 
         class << self
           ##
           # @param name [String]
           # @return [Boolean]
           def attr_name_match?(name)
-            name.to_s.match?(CATEGORY_ATTR_PATTERN)
+            TERM_SET.include?(normalize_attr_name(name))
           end
 
           ##
           # @param class_attr [String, nil]
           # @return [Boolean]
           def class_match?(class_attr)
-            class_attr.to_s.match?(CATEGORY_ATTR_PATTERN)
+            class_attr.to_s.split(/\s+/).any? { |token| class_token_match?(token) }
           end
 
           ##
           # @param categories [Set<String>]
           # @param text [String, nil]
+          # @param title [String, nil]
           # @return [void]
-          def add_text!(categories, text)
+          def add_text!(categories, text, title: nil)
             value = text.to_s.strip
-            categories.add(value) unless value.empty?
+            return if value.empty? || !Description.keep?(value, title:)
+
+            categories.add(value)
           end
 
           ##
           # @param categories [Set<String>]
           # @param text [String, nil]
+          # @param title [String, nil]
           # @return [void]
-          def add_split_text!(categories, text)
+          def add_split_text!(categories, text, title: nil)
             return unless text
 
-            text.split(/\n+/).each { |line| add_text!(categories, line) }
+            text.split(/\n+/).each { |line| add_text!(categories, line, title:) }
+          end
+
+          private
+
+          def class_token_match?(token)
+            token.downcase.split(CLASS_TOKEN_SPLIT).intersect?(CATEGORY_TERMS)
+          end
+
+          def normalize_attr_name(name)
+            name.to_s.downcase.delete_prefix('data-')
           end
         end
       end

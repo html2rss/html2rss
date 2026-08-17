@@ -13,6 +13,8 @@ module Html2rss
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
       # Inline emphasis tags used as title fallbacks when no heading exists.
       FALLBACK_HEADING_NAMES = %i[strong b].freeze
+      # Nested blocks that mean a category node is actually a content container.
+      CATEGORY_CONTAINER_NAMES = %i[p article section].to_set.freeze
 
       class << self
         ##
@@ -58,7 +60,7 @@ module Html2rss
           id: generate_id,
           published_at: extract_published_at(lines),
           enclosures: extract_enclosures,
-          categories: extract_categories,
+          categories: extract_categories(title),
           scraper: @scraper
         }
         article = Article.new(**attrs)
@@ -281,14 +283,14 @@ module Html2rss
         end
       end
 
-      def extract_categories
+      def extract_categories(title)
         Set.new.tap do |categories|
           @root.find_all { |n| category_candidate?(n) }.each do |element|
-            add_category_text!(categories, element) if ArticleRules::Category.class_match?(element.attrs.class_attr)
+            add_category_text!(categories, element, title:) if category_text_node?(element)
             element.attrs.raw.each do |name, value|
               next unless ArticleRules::Category.attr_name_match?(name)
 
-              ArticleRules::Category.add_text!(categories, value)
+              ArticleRules::Category.add_text!(categories, value, title:)
             end
           end
         end.to_a
@@ -299,17 +301,35 @@ module Html2rss
           node.attrs.raw.keys.any? { |k| ArticleRules::Category.attr_name_match?(k) }
       end
 
-      def add_category_text!(categories, element)
+      def category_text_node?(element)
+        !element.equal?(@root) && ArticleRules::Category.class_match?(element.attrs.class_attr)
+      end
+
+      def add_category_text!(categories, element, title:)
+        return if category_text_container?(element)
+
         if element.link?
-          ArticleRules::Category.add_text!(categories, element.visible_text)
+          ArticleRules::Category.add_text!(categories, element.visible_text, title:)
           return
         end
 
+        add_descendant_or_visible_category!(categories, element, title:)
+      end
+
+      def add_descendant_or_visible_category!(categories, element, title:)
         anchors = element.find_all(&:link?)
         if anchors.any?
-          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text) }
+          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text, title:) }
         else
-          ArticleRules::Category.add_split_text!(categories, element.visible_text)
+          ArticleRules::Category.add_split_text!(categories, element.visible_text, title:)
+        end
+      end
+
+      def category_text_container?(element)
+        element.find do |node|
+          next if node.equal?(element)
+
+          node.heading? || CATEGORY_CONTAINER_NAMES.include?(node.name)
         end
       end
     end
