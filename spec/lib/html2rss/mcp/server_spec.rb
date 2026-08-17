@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'json'
 require 'mcp'
+require 'climate_control'
 
 RSpec.describe Html2rss::MCP::Server do
   subject(:protocol_server) { described_class.build }
@@ -192,12 +193,25 @@ RSpec.describe Html2rss::MCP::Server do
     end
 
     describe 'error paths' do
+      before do
+        allow(Html2rss::Log).to receive(:error)
+        allow(Html2rss::Log).to receive(:info)
+      end
+
       it 'marks scrape_url failures as isError', :aggregate_failures do
         allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
         result = call_tool.call('scrape_url', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)
         expect(result.dig(:result, :content, 0, :text)).to include('scrape boom')
+      end
+
+      it 'logs tool exceptions to the gem logger' do
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
+
+        call_tool.call('scrape_url', { url: 'https://example.com' })
+
+        expect(Html2rss::Log).to have_received(:error).with('mcp error StandardError: scrape boom')
       end
 
       it 'marks capture_config failures as isError' do
@@ -271,17 +285,73 @@ RSpec.describe Html2rss::MCP::Server do
     end
   end
 
+  describe 'foreground request logging' do
+    # rubocop:disable RSpec/ExampleLength -- start/done pair is one access-log story
+    it 'logs tools/call start and done without leaking arguments', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:info)
+
+      call_tool.call('validate_config', { config: valid_config })
+
+      expect(Html2rss::Log).to have_received(:info).with('mcp start tools/call')
+      expect(Html2rss::Log).to have_received(:info).with(
+        a_string_matching(%r{\Amcp done tools/call tool=validate_config \d+\.\d+s\z})
+      )
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
+
   describe '.start' do
+    around do |example|
+      previous_logger = Html2rss.logger
+      previous_level = Html2rss.defaults.log_level
+      example.run
+    ensure
+      Html2rss.configure do |config|
+        config.logger = previous_logger
+        config.log_level = previous_level
+      end
+    end
+
     before do
       allow(MCP::Server::Transports::StdioTransport).to receive(:new).and_return(
         instance_double(MCP::Server::Transports::StdioTransport, open: nil)
       )
+      allow(Html2rss::Log).to receive(:info)
     end
 
     it 'opens stdio transport by default' do
       described_class.start(transport: :stdio)
 
       expect(MCP::Server::Transports::StdioTransport).to have_received(:new)
+    end
+
+    # rubocop:disable RSpec/ExampleLength -- stderr vs stdout split is the protocol contract
+    it 'writes the start banner to stderr so stdio JSON-RPC stays on stdout', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:info).and_call_original
+      banner = "html2rss MCP #{Html2rss::VERSION} starting transport=stdio"
+
+      ClimateControl.modify(LOG_LEVEL: 'info') do
+        expect { described_class.start(transport: :stdio) }
+          .to output(a_string_including(banner)).to_stderr
+          .and output('').to_stdout
+      end
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'defaults the daemon log level to info when LOG_LEVEL is unset' do
+      ClimateControl.modify(LOG_LEVEL: nil) do
+        described_class.start(transport: :stdio)
+
+        expect(Html2rss.defaults.log_level).to eq(Logger::INFO)
+      end
+    end
+
+    it 'honors LOG_LEVEL for the daemon' do
+      ClimateControl.modify(LOG_LEVEL: 'error') do
+        described_class.start(transport: :stdio)
+
+        expect(Html2rss.defaults.log_level).to eq(Logger::ERROR)
+      end
     end
 
     # rubocop:disable RSpec/ExampleLength -- Host/Port bind contract
