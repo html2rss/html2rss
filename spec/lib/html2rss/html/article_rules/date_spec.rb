@@ -26,6 +26,25 @@ RSpec.describe Html2rss::Html::ArticleRules::Date do
 
       expect(result).to be_a(DateTime)
       expect(result.to_date).to eq(Date.new(2024, 3, 12))
+      expect(result.zone).to eq('+00:00')
+    end
+
+    it 'picks standard time when the local clock time is ambiguous', :aggregate_failures do
+      result = described_class.earliest(['2024-10-27T02:30:00'], time_zone: 'Europe/Berlin')
+
+      expect(result).to be_a(DateTime)
+      expect(result.zone).to eq('+01:00')
+      expect(result.hour).to eq(2)
+      expect(result.min).to eq(30)
+    end
+
+    it 'falls back to UTC when the local clock time does not exist', :aggregate_failures do
+      result = described_class.earliest(['2024-03-31T02:30:00'], time_zone: 'Europe/Berlin')
+
+      expect(result).to be_a(DateTime)
+      expect(result.zone).to eq('+00:00')
+      expect(result.hour).to eq(2)
+      expect(result.min).to eq(30)
     end
   end
 end

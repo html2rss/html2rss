@@ -13,6 +13,8 @@ module Html2rss
         MAX_DATE_CHARS = Description::MAX_DATE_CHARS
         # Trailing offset / Zulu marker — present means the string already has a zone.
         OFFSET = /(?:Z|[+-]\d{2}:?\d{2})\z/i
+        # Prefer standard time when a local clock time occurs twice (DST fall-back).
+        AMBIGUOUS_DST = false
 
         class << self
           ##
@@ -55,11 +57,14 @@ module Html2rss
           def localize(datetime, time_zone)
             identifier = time_zone.to_s
             identifier = 'UTC' if identifier.empty?
-            tz = timezone_for(identifier)
-            tz.local_datetime(datetime.year, datetime.month, datetime.day,
-                              datetime.hour, datetime.min, datetime.sec)
-          rescue TZInfo::PeriodNotFound, TZInfo::AmbiguousTime
-            datetime
+            at_local(timezone_for(identifier), datetime)
+          rescue TZInfo::PeriodNotFound
+            at_local(timezone_for('UTC'), datetime)
+          end
+
+          def at_local(timezone, datetime)
+            timezone.local_datetime(datetime.year, datetime.month, datetime.day,
+                                    datetime.hour, datetime.min, datetime.sec, 0, AMBIGUOUS_DST, &:first)
           end
 
           def timezone_for(identifier)
