@@ -98,7 +98,7 @@ module Html2rss
   # Scrapes the provided URL without hand-written selectors and returns an RSS object.
   #
   # Builds an auto_source config, then FeedPipeline runs structured scrapers and
-  # (when needed) the SST heuristic path — see docs/auto_source.md.
+  # (when needed) the SST heuristic path — see lib/html2rss/auto_source/README.md.
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy to use
@@ -122,7 +122,7 @@ module Html2rss
   ##
   # Scrapes the provided URL without hand-written selectors and returns a JSONFeed 1.1 hash.
   #
-  # Same auto_source pipeline as {.auto_source}; see docs/auto_source.md.
+  # Same auto_source pipeline as {.auto_source}; see lib/html2rss/auto_source/README.md.
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy to use

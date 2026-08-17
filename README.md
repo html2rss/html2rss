@@ -44,7 +44,7 @@ config = Html2rss.capture('https://example.com/articles')
 File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(config)))
 ```
 
-The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`docs/capture.md`](docs/capture.md) for detailed documentation.
+The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`lib/html2rss/capture/README.md`](lib/html2rss/capture/README.md) for detailed documentation.
 
 ## MCP Server
 
