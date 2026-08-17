@@ -15,20 +15,15 @@ module Html2rss
         SECTION_NAMES = Set['press releases'].freeze
         # Skip date detection / DateTime.parse above this length.
         MAX_DATE_CHARS = 128
-        # Optional " - News article" suffix on a date-shaped leftover line.
-        CHIP_SUFFIX = /\A(.+?)\s+[-–—]\s+(.+)\z/
-        # Whole-line date shapes (ISO, numeric, day-month-year, month-day-year).
-        DATE_LINE = %r{
-          \A(?:
-            \d{4}-\d{1,2}-\d{1,2}(?:[T\s]\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?
-            |
-            \d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?
-            |
-            \d{1,2}\.?\s+\p{L}{3,9}\.?\s+\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?
-            |
-            \p{L}{3,9}\.?\s+\d{1,2},?\s+\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?
-          )\z
-        }ix
+        # Optional " - News article" suffix separators (ASCII/en/em dash).
+        CHIP_SEPARATORS = [' - ', ' – ', ' — '].freeze
+        # Whole-line date shapes after normalize (ISO, numeric, day-month, month-day).
+        DATE_SHAPES = [
+          /\A\d{4}-\d{1,2}-\d{1,2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?\z/i,
+          %r{\A\d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z},
+          /\A\d{1,2}\.? \p{L}{3,9}\.? \d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i,
+          /\A\p{L}{3,9}\.? \d{1,2},? \d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i
+        ].freeze
 
         class << self
           ##
@@ -66,7 +61,7 @@ module Html2rss
             core = date_core(line)
             return false if core.empty? || core.length > MAX_DATE_CHARS
 
-            core.match?(DATE_LINE)
+            DATE_SHAPES.any? { |shape| core.match?(shape) }
           end
 
           ##
@@ -74,15 +69,19 @@ module Html2rss
           # @return [String]
           def date_core(line)
             normalized = normalize(line)
-            match = CHIP_SUFFIX.match(normalized)
-            return normalized unless match && TYPE_CHIPS.include?(normalize(match[2]).downcase)
+            CHIP_SEPARATORS.each do |sep|
+              idx = normalized.rindex(sep)
+              next unless idx
 
-            match[1]
+              suffix = normalized[(idx + sep.length)..].downcase
+              return normalized[0, idx] if TYPE_CHIPS.include?(suffix)
+            end
+            normalized
           end
 
           private
 
-          def normalize(line) = line.to_s.strip.gsub(/[ \t]+/, ' ')
+          def normalize(line) = line.to_s.gsub(/[[:space:]]+/, ' ').strip
 
           def chrome?(normalized, title:, type_chips:)
             key = normalized.downcase
