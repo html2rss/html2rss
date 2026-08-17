@@ -58,6 +58,8 @@ html2rss mcp
 html2rss mcp --transport http --port 8080
 ```
 
+stdio uses stdout for JSON-RPC, so the daemon logs to **stderr**. It defaults to `LOG_LEVEL=info` (the gem library default stays `warn`) so a foreground watcher sees the start banner, each tool call, and pipeline fallbacks. Use `LOG_LEVEL=debug` for more detail or `LOG_LEVEL=warn` to quiet it.
+
 HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies). It listens on `127.0.0.1` only; do not expose it on a public interface without your own auth and Host/Origin controls.
 
 **Strategy note:** MCP `scrape_url` / `capture_config` with `strategy: "auto"` run the FeedPipeline AutoFallback chain (`faraday` → `botasaurus`). `inspect_url` uses Faraday when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect. Botasaurus needs `BOTASAURUS_SCRAPER_URL`.

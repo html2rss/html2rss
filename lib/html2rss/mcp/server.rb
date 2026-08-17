@@ -24,19 +24,21 @@ module Html2rss
         ##
         # Starts the MCP server with the given transport.
         #
+        # Points {Html2rss.logger} at +$stderr+ so stdio JSON-RPC on stdout stays
+        # intact, and raises the process log level to +info+ unless +LOG_LEVEL+ is set.
+        # A foreground watcher then sees the start banner, tool calls, and pipeline warns.
+        #
         # @param transport [Symbol] +:stdio+ or +:http+
         # @param port [Integer] port for HTTP transport
         def start(transport: :stdio, port: 8080)
-          app = build
+          raise ArgumentError, "Unknown transport: #{transport.inspect}" unless %i[stdio http].include?(transport)
 
-          case transport
-          when :stdio
-            ::MCP::Server::Transports::StdioTransport.new(app).open
-          when :http
-            start_http(app, port:)
-          else
-            raise ArgumentError, "Unknown transport: #{transport.inspect}"
-          end
+          configure_daemon_logging!
+          app = build
+          Log.info(start_banner(transport:, port:))
+          return start_http(app, port:) if transport == :http
+
+          ::MCP::Server::Transports::StdioTransport.new(app).open
         end
 
         ##
@@ -47,7 +49,8 @@ module Html2rss
           ::MCP::Server.new(
             name: SERVER_NAME,
             version: SERVER_VERSION,
-            instructions: instructions_text
+            instructions: instructions_text,
+            configuration: protocol_configuration
           ).tap do |server|
             register_tools(server)
             register_resources(server)
@@ -68,10 +71,71 @@ module Html2rss
         # @param error [Exception]
         # @return [::MCP::Tool::Response]
         def error_response(error)
+          Log.error("mcp error #{error.class}: #{error.message}")
           text_response("Error: #{error.message}", error: true)
         end
 
         private
+
+        def configure_daemon_logging!
+          Html2rss.configure do |config|
+            config.logger = Logger.new($stderr)
+            config.log_level = ENV.fetch('LOG_LEVEL', :info)
+          end
+        end
+
+        def start_banner(transport:, port:)
+          bind = transport == :http ? " bind=#{HTTP_BIND_HOST}:#{port}" : ''
+          "html2rss MCP #{SERVER_VERSION} starting transport=#{transport}#{bind}"
+        end
+
+        def protocol_configuration
+          ::MCP::Configuration.new.tap do |config|
+            config.exception_reporter = method(:report_protocol_exception)
+            config.around_request = method(:around_protocol_request)
+          end
+        end
+
+        def report_protocol_exception(error, server_context)
+          detail = server_context.is_a?(Hash) && server_context[:error]
+          suffix = detail ? " (#{detail})" : ''
+          Log.error("#{error.class}: #{error.message}#{suffix}")
+        end
+
+        def around_protocol_request(data)
+          return yield unless log_protocol_request?(data)
+
+          started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          begin
+            Log.info(protocol_request_line('start', data))
+            yield
+          ensure
+            duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+            Log.info(protocol_request_line('done', data, duration:))
+          end
+        end
+
+        def log_protocol_request?(data)
+          method = data[:method]
+          method.is_a?(String) &&
+            method != ::MCP::Methods::PING &&
+            !::MCP::Methods.notification?(method)
+        end
+
+        def protocol_request_line(phase, data, duration: nil)
+          parts = ['mcp', phase, data[:method], *protocol_request_labels(data)]
+          parts << format('%.2fs', duration) if duration
+          parts << "error=#{data[:error]}" if data[:error]
+          parts.join(' ')
+        end
+
+        def protocol_request_labels(data)
+          [
+            data[:tool_name] && "tool=#{data[:tool_name]}",
+            data[:prompt_name] && "prompt=#{data[:prompt_name]}",
+            data[:resource_uri] && "uri=#{data[:resource_uri]}"
+          ].compact
+        end
 
         def start_http(app, port:) # rubocop:disable Metrics/MethodLength -- require + bind + LoadError message
           require 'rackup'
