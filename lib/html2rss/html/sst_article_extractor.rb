@@ -20,9 +20,10 @@ module Html2rss
         # @param base_url [String, Html2rss::Url]
         # @param scraper [Class, nil]
         # @param fallback_anchorless [Boolean]
+        # @param time_zone [String] channel time zone for naive leftover dates
         # @return [Html2rss::Article, nil]
-        def call(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false)
-          new(ranked_or_segment, base_url:, scraper:, fallback_anchorless:).call
+        def call(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false, time_zone: 'UTC')
+          new(ranked_or_segment, base_url:, scraper:, fallback_anchorless:, time_zone:).call
         end
       end
 
@@ -30,7 +31,8 @@ module Html2rss
       # @param base_url [String, Html2rss::Url]
       # @param scraper [Class, nil]
       # @param fallback_anchorless [Boolean]
-      def initialize(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false)
+      # @param time_zone [String] channel time zone for naive leftover dates
+      def initialize(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false, time_zone: 'UTC')
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise ArgumentError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
@@ -40,18 +42,21 @@ module Html2rss
         @base_url = base_url
         @scraper = scraper
         @fallback_anchorless = fallback_anchorless
+        @time_zone = time_zone
       end
 
       ##
       # @return [Html2rss::Article, nil]
       def call # rubocop:disable Metrics/MethodLength
+        title = extract_title
+        lines = leftover_lines
         attrs = {
-          title: extract_title,
+          title:,
           url: extract_url,
           image: extract_image,
-          description: extract_description,
+          description: ArticleRules::Description.from_lines(lines, title:),
           id: generate_id,
-          published_at: extract_published_at,
+          published_at: extract_published_at(lines),
           enclosures: extract_enclosures,
           categories: extract_categories,
           scraper: @scraper
@@ -172,13 +177,18 @@ module Html2rss
         ancestor.descendants.any? { |d| d.equal?(child) }
       end
 
-      def extract_description
-        exclude = [heading, @selected_anchor, kicker_node].compact
-        description = @root.visible_text(exclude:)
-        return if description.nil?
+      def leftover_lines
+        @leftover_lines ||= ArticleRules::Description.lines_from(
+          @root.visible_text(exclude: leftover_exclude_nodes)
+        )
+      end
 
-        desc = description.strip
-        desc.empty? ? nil : desc
+      def leftover_exclude_nodes
+        [heading, @selected_anchor, kicker_node, *time_nodes].compact
+      end
+
+      def time_nodes
+        @root.find_all { |node| node.name == :time }
       end
 
       def generate_id # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
@@ -240,9 +250,9 @@ module Html2rss
         ArticleRules::Image.best_from_styles(styles)
       end
 
-      def extract_published_at
+      def extract_published_at(lines)
         datetimes = @root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
-        ArticleRules::Date.earliest(datetimes)
+        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
       def extract_enclosures

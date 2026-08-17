@@ -14,9 +14,10 @@ module Html2rss
         # @param base_url [String, Html2rss::Url] base url used to resolve relative links
         # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
         # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
+        # @param time_zone [String] channel time zone for naive leftover dates
         # @return [Hash{Symbol => Object}] extracted article attributes
-        def call(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false)
-          new(article_tag, base_url:, selected_anchor:, fallback_anchorless:).call
+        def call(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false, time_zone: 'UTC')
+          new(article_tag, base_url:, selected_anchor:, fallback_anchorless:, time_zone:).call
         end
       end
 
@@ -25,24 +26,28 @@ module Html2rss
       # @param base_url [String, Html2rss::Url] base url used to resolve relative links
       # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
       # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
-      def initialize(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false)
+      # @param time_zone [String] channel time zone for naive leftover dates
+      def initialize(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false, time_zone: 'UTC')
         raise ArgumentError, 'article_tag is required' unless article_tag
 
         @article_tag = article_tag
         @base_url = base_url
         @selected_anchor = selected_anchor
         @fallback_anchorless = fallback_anchorless
+        @time_zone = time_zone
       end
 
       # @return [Hash{Symbol => Object}] extracted article attributes
-      def call
+      def call # rubocop:disable Metrics/MethodLength
+        title = extract_title
+        lines = leftover_lines
         {
-          title: extract_title,
+          title:,
           url: extract_url,
           image: extract_image,
-          description: extract_description,
+          description: ArticleRules::Description.from_lines(lines, title:),
           id: generate_id,
-          published_at: extract_published_at,
+          published_at: extract_published_at(lines),
           enclosures: extract_enclosures,
           categories: extract_categories
         }
@@ -50,7 +55,7 @@ module Html2rss
 
       private
 
-      attr_reader :article_tag, :base_url, :selected_anchor
+      attr_reader :article_tag, :base_url, :selected_anchor, :time_zone
 
       def extract_url
         @extract_url ||= begin
@@ -106,13 +111,20 @@ module Html2rss
         end
       end
 
-      def extract_description
-        exclude = [heading, selected_anchor, kicker_node].compact
-        description = Navigator.extract_visible_text(article_tag, exclude_nodes: exclude)
-        return if description.nil?
+      def leftover_lines
+        @leftover_lines ||= ArticleRules::Description.lines_from(
+          Navigator.extract_visible_text(article_tag, exclude_nodes: leftover_exclude_nodes)
+        )
+      end
 
-        desc = description.strip
-        desc.empty? ? nil : desc
+      def leftover_exclude_nodes
+        [heading, selected_anchor, kicker_node, *time_nodes].compact
+      end
+
+      def time_nodes
+        return [] unless article_tag.respond_to?(:css)
+
+        article_tag.css('time')
       end
 
       def generate_id
@@ -126,7 +138,9 @@ module Html2rss
       end
 
       def extract_image = ImageExtractor.call(article_tag, base_url:)
-      def extract_published_at = DateExtractor.call(article_tag)
+
+      def extract_published_at(lines) = DateExtractor.call(article_tag, leftover_lines: lines, time_zone:)
+
       def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
       def extract_categories = CategoryExtractor.call(article_tag)
     end
