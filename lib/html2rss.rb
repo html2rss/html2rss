@@ -73,7 +73,7 @@ module Html2rss
   ##
   # Scrapes the provided URL without hand-written selectors and returns {FeedResult}.
   #
-  # Prefer this when callers need {FeedResult#status} (MCP +_meta+, CLI +--explain+).
+  # Prefer this when callers need {FeedResult#status} (MCP envelope payload, CLI +--explain+).
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy to use

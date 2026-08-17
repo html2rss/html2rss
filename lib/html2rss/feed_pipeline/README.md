@@ -36,7 +36,7 @@ Retries share the feed's request/session policy. Pin a concrete strategy when yo
 ## Success signals
 
 - `Html2rss::RequestService::Response` includes transport metadata for the strategy that produced it.
-- `Html2rss::Status` records selected strategy and attempt tallies for MCP `_meta` / CLI `--explain`.
+- `Html2rss::Status` records selected strategy and attempt tallies for MCP envelope payload / CLI `--explain`.
 - Fallback hops log at info/warn (`AutoFallback`).
 
 See also {Html2rss::AutoSource} for article scraping (a different pipeline) and {Html2rss::Capture} for durable configs that stamp the selected strategy.

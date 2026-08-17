@@ -9,7 +9,7 @@ PATH
       faraday-follow_redirects
       faraday-gzip (~> 3)
       kramdown
-      mcp (~> 1.0)
+      mcp (~> 1.2)
       mime-types (> 3.0)
       nokogiri (>= 1.10, < 2.0)
       rack (~> 3.0)

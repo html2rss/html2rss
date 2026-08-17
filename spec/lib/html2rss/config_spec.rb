@@ -117,6 +117,54 @@ RSpec.describe Html2rss::Config do
     end
   end
 
+  describe '.to_yaml' do
+    let(:config_hash) do
+      { channel: { url: 'https://example.com', title: 'Example' }, strategy: :auto }
+    end
+
+    it 'dumps string keys so CLI and MCP share catalog YAML without symbol prefixes', :aggregate_failures do
+      yaml = described_class.to_yaml(config_hash)
+
+      expect(yaml).to include('channel:')
+      expect(yaml).to include('url: https://example.com')
+      expect(yaml).not_to include(':channel:')
+      expect(yaml).not_to include('!ruby/symbol')
+    end
+  end
+
+  describe '.from_yaml' do
+    let(:config_hash) do
+      { channel: { url: 'https://example.com', title: 'Example' }, strategy: :auto }
+    end
+
+    it 'symbolizes keys for Config ingress while keeping YAML string values' do
+      parsed = described_class.from_yaml(described_class.to_yaml(config_hash))
+
+      expect(parsed).to eq(
+        channel: { url: 'https://example.com', title: 'Example' },
+        strategy: 'auto'
+      )
+    end
+
+    it 'parses catalog YAML files the same way load_yaml would for a single feed' do
+      yaml = File.read('spec/fixtures/single.test.yml')
+
+      expect(described_class.from_yaml(yaml)).to eq(described_class.load_yaml('spec/fixtures/single.test.yml'))
+    end
+
+    it 'rejects non-hash documents so callers cannot pass a YAML list as a config' do
+      expect { described_class.from_yaml("- items\n") }.to raise_error(ArgumentError, /must deserialize to a Hash/)
+    end
+
+    it 'rejects non-strings' do
+      expect { described_class.from_yaml({ channel: {} }) }.to raise_error(ArgumentError, /must be a String/)
+    end
+
+    it 'uses safe_load so untrusted YAML cannot instantiate Ruby objects' do
+      expect { described_class.from_yaml("--- !ruby/object:Object {}\n") }.to raise_error(Psych::DisallowedClass)
+    end
+  end
+
   describe '.from_hash' do
     let(:hash) do
       {

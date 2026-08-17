@@ -2,7 +2,6 @@
 
 require 'fileutils'
 require 'json'
-require 'yaml'
 require 'thor'
 
 module Html2rss
@@ -136,7 +135,7 @@ module Html2rss
         local_file_path:
       )
       explain_capture!(result) if options[:explain]
-      puts YAML.dump(HashUtil.deep_stringify_keys(result.config))
+      puts Config.to_yaml(result.config)
     end
 
     desc 'schema', 'Print the exported config JSON Schema'
