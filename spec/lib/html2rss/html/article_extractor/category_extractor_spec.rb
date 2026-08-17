@@ -179,14 +179,15 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
             <div data-category="Read more">CTA</div>
             <div data-tag="12 March 2024">Date</div>
             <div data-topic="Informatietype:">Label</div>
+            <span class="post-tag">News</span>
             <span class="post-tag">Valid Tag</span>
             <div data-category="">Content</div>
           </article>
         HTML
       end
 
-      it 'keeps real tags and drops CTA, date, and field-label values' do
-        expect(described_class.call(article_tag)).to eq(['Valid Tag'])
+      it 'keeps News taxonomy chips and drops CTA, date, and field-label values' do
+        expect(described_class.call(article_tag)).to contain_exactly('News', 'Valid Tag')
       end
     end
 

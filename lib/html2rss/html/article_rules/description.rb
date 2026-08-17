@@ -50,12 +50,13 @@ module Html2rss
           ##
           # @param line [String, nil]
           # @param title [String, nil]
+          # @param type_chips [Boolean] whether whole-line type chips are leftover chrome
           # @return [Boolean]
-          def keep?(line, title: nil)
+          def keep?(line, title: nil, type_chips: true)
             normalized = normalize(line)
             return false if normalized.empty?
 
-            !chrome?(normalized, title:)
+            !chrome?(normalized, title:, type_chips:)
           end
 
           ##
@@ -83,10 +84,11 @@ module Html2rss
 
           def normalize(line) = line.to_s.strip.gsub(/[ \t]+/, ' ')
 
-          def chrome?(normalized, title:)
+          def chrome?(normalized, title:, type_chips:)
             key = normalized.downcase
-            CTA.include?(key) || TYPE_CHIPS.include?(key) || SECTION_NAMES.include?(key) ||
-              normalized.end_with?(':') || date_shaped?(normalized) || title_echo?(key, title)
+            CTA.include?(key) || (type_chips && TYPE_CHIPS.include?(key)) ||
+              SECTION_NAMES.include?(key) || normalized.end_with?(':') ||
+              date_shaped?(normalized) || title_echo?(key, title)
           end
 
           def title_echo?(key, title)

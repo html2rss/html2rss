@@ -232,4 +232,42 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       expect(fields[:published_at]).to be_a(DateTime)
     end
   end
+
+  describe 'News taxonomy chip on a category class' do
+    let(:html) do
+      <<~HTML
+        <article>
+          <h2><a href="/news/story">Story with a news taxonomy tag</a></h2>
+          <span class="post-tag">News</span>
+          <p>A real teaser sentence about the story.</p>
+        </article>
+      HTML
+    end
+
+    it 'keeps News as a category and the teaser as description', :aggregate_failures do
+      fields = leftover_fields.call(html)
+
+      expect(fields[:categories]).to include('News')
+      expect(fields[:description]).to eq('A real teaser sentence about the story.')
+    end
+  end
+
+  describe 'invalid channel time_zone' do
+    let(:extractor_time_zone) { 'Not/AZone' }
+    let(:html) do
+      <<~HTML
+        <article>
+          <h2><a href="/news/story">Invalid timezone leftover date</a></h2>
+          <span>12 March 2024</span>
+        </article>
+      HTML
+    end
+
+    it 'still parses the leftover date', :aggregate_failures do
+      fields = leftover_fields.call(html)
+
+      expect(fields[:published_at]).to be_a(DateTime)
+      expect(fields[:published_at].to_date).to eq(Date.new(2024, 3, 12))
+    end
+  end
 end

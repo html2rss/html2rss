@@ -20,5 +20,12 @@ RSpec.describe Html2rss::Html::ArticleRules::Date do
       teaser = "On 12 March 2024 the company ordered additional dual-fuel vessels for the Asia route #{'word ' * 40}"
       expect(described_class.earliest([], leftover_lines: [teaser])).to be_nil
     end
+
+    it 'falls back to UTC when the channel time zone is invalid', :aggregate_failures do
+      result = described_class.earliest([], leftover_lines: ['12 March 2024'], time_zone: 'Not/AZone')
+
+      expect(result).to be_a(DateTime)
+      expect(result.to_date).to eq(Date.new(2024, 3, 12))
+    end
   end
 end

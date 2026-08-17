@@ -55,11 +55,17 @@ module Html2rss
           def localize(datetime, time_zone)
             identifier = time_zone.to_s
             identifier = 'UTC' if identifier.empty?
-            tz = TZInfo::Timezone.get(identifier)
+            tz = timezone_for(identifier)
             tz.local_datetime(datetime.year, datetime.month, datetime.day,
                               datetime.hour, datetime.min, datetime.sec)
           rescue TZInfo::PeriodNotFound, TZInfo::AmbiguousTime
             datetime
+          end
+
+          def timezone_for(identifier)
+            TZInfo::Timezone.get(identifier)
+          rescue TZInfo::InvalidTimezoneIdentifier
+            TZInfo::Timezone.get('UTC')
           end
         end
       end

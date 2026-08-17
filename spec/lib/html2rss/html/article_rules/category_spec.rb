@@ -26,5 +26,11 @@ RSpec.describe Html2rss::Html::ArticleRules::Category do
       described_class.add_split_text!(categories, "Politics\n\nRead more\nLaunch")
       expect(categories).to contain_exactly('Politics', 'Launch')
     end
+
+    it 'keeps News taxonomy values while dropping CTA and date chrome', :aggregate_failures do
+      categories = Set.new
+      described_class.add_split_text!(categories, "News\nRead more\n12 March 2024\nInformatietype:")
+      expect(categories).to contain_exactly('News')
+    end
   end
 end

@@ -40,7 +40,7 @@ module Html2rss
           # @return [void]
           def add_text!(categories, text, title: nil)
             value = text.to_s.strip
-            return if value.empty? || !Description.keep?(value, title:)
+            return if value.empty? || !Description.keep?(value, title:, type_chips: false)
 
             categories.add(value)
           end
