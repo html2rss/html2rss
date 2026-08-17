@@ -5,6 +5,7 @@ module Html2rss
     ##
     # ArticleExtractor is responsible for extracting details (headline, url, images, etc.)
     # from an article_tag DOM node. DOM chrome helpers live on {Navigator}.
+    # rubocop:disable Metrics/ClassLength -- leftover + parent-card walk colocated with field extractors
     class ArticleExtractor
       class << self
         ##
@@ -41,15 +42,17 @@ module Html2rss
       def call # rubocop:disable Metrics/MethodLength
         title = extract_title
         lines = leftover_lines
+        published_at = extract_published_at(lines)
+        source, lines, published_at = parent_card_fields(title, lines, published_at)
         {
           title:,
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
           id: generate_id,
-          published_at: extract_published_at(lines),
+          published_at:,
           enclosures: extract_enclosures,
-          categories: extract_categories(title)
+          categories: CategoryExtractor.call(source, title:)
         }
       end
 
@@ -112,19 +115,50 @@ module Html2rss
       end
 
       def leftover_lines
-        @leftover_lines ||= ArticleRules::Description.lines_from(
-          Navigator.extract_visible_text(article_tag, exclude_nodes: leftover_exclude_nodes)
+        leftover_lines_from(article_tag)
+      end
+
+      def leftover_lines_from(node)
+        ArticleRules::Description.lines_from(
+          Navigator.extract_visible_text(node, exclude_nodes: leftover_exclude_nodes_for(node))
         )
       end
 
-      def leftover_exclude_nodes
-        [heading, selected_anchor, kicker_node, *time_nodes].compact
+      def leftover_exclude_nodes_for(node)
+        times = node.respond_to?(:css) ? node.css('time') : []
+        [heading, selected_anchor, kicker_node, *times].compact
       end
 
-      def time_nodes
-        return [] unless article_tag.respond_to?(:css)
+      def heading_or_anchor_item?
+        name = article_tag.name.to_s
+        name == 'a' || Navigator::HEADING_TAGS.include?(name)
+      end
 
-        article_tag.css('time')
+      def heading_or_anchor_miss?(title, lines, published_at)
+        heading_or_anchor_item? && published_at.nil? &&
+          ArticleRules::Description.from_lines(lines, title:).nil?
+      end
+
+      def parent_card_fields(title, lines, published_at)
+        return article_tag, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
+
+        parent = immediate_card_parent
+        unless parent
+          Log.debug { "parent-walk abort at #{article_tag.parent&.name}" }
+          return article_tag, lines, published_at
+        end
+
+        new_lines = leftover_lines_from(parent)
+        new_date = extract_published_at_from(parent, new_lines)
+        [parent, new_lines, new_date || published_at]
+      end
+
+      def immediate_card_parent
+        parent = article_tag.respond_to?(:parent) ? article_tag.parent : nil
+        Navigator.parent_until_condition(
+          parent,
+          ->(node) { node.equal?(parent) && Navigator.usable_card_parent?(node) }
+        )
       end
 
       def generate_id
@@ -139,10 +173,14 @@ module Html2rss
 
       def extract_image = ImageExtractor.call(article_tag, base_url:)
 
-      def extract_published_at(lines) = DateExtractor.call(article_tag, leftover_lines: lines, time_zone:)
+      def extract_published_at(lines) = extract_published_at_from(article_tag, lines)
+
+      def extract_published_at_from(node, lines)
+        DateExtractor.call(node, leftover_lines: lines, time_zone:)
+      end
 
       def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
-      def extract_categories(title) = CategoryExtractor.call(article_tag, title:)
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

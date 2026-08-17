@@ -131,4 +131,25 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       expect(fields[:published_at].zone).to eq('+01:00')
     end
   end
+
+  describe 'heading-only item with sibling teaser and date' do
+    let(:html) do
+      <<~HTML
+        <div class="card">
+          <h3><a href="/news/story">Heading only title about the story</a></h3>
+          <p>Sibling teaser that lives beside the heading.</p>
+          <time datetime="2024-03-12T09:00:00Z">12 March 2024</time>
+        </div>
+      HTML
+    end
+
+    it 'fills missing leftover fields from the parent card', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'h3')
+
+      expect(fields[:title]).to eq('Heading only title about the story')
+      expect(fields[:description]).to eq('Sibling teaser that lives beside the heading.')
+      expect(fields[:description]).not_to eq(fields[:title])
+      expect(fields[:published_at]).to be_a(DateTime)
+    end
+  end
 end

@@ -71,6 +71,16 @@ RSpec.describe Html2rss::Html::Navigator do
     end
   end
 
+  describe '.usable_card_parent?' do
+    let(:document) { Nokogiri::HTML('<body><nav></nav><div class="card"></div></body>') }
+
+    it 'accepts ordinary wrappers and rejects landmarks', :aggregate_failures do
+      expect(described_class.usable_card_parent?(document.at_css('div'))).to be(true)
+      expect(described_class.usable_card_parent?(document.at_css('nav'))).to be(false)
+      expect(described_class.usable_card_parent?(document.at_css('body'))).to be(false)
+    end
+  end
+
   describe '.find_closest_selector_upwards' do
     let(:html) do
       <<-HTML

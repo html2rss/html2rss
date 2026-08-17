@@ -52,15 +52,17 @@ module Html2rss
       def call # rubocop:disable Metrics/MethodLength
         title = extract_title
         lines = leftover_lines
+        published_at = extract_published_at(lines)
+        root, lines, published_at = parent_card_fields(title, lines, published_at)
         attrs = {
           title:,
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
           id: generate_id,
-          published_at: extract_published_at(lines),
+          published_at:,
           enclosures: extract_enclosures,
-          categories: extract_categories(title),
+          categories: extract_categories(title, root:),
           scraper: @scraper
         }
         article = Article.new(**attrs)
@@ -180,17 +182,46 @@ module Html2rss
       end
 
       def leftover_lines
-        @leftover_lines ||= ArticleRules::Description.lines_from(
-          @root.visible_text(exclude: leftover_exclude_nodes)
-        )
+        leftover_lines_from(@root)
       end
 
-      def leftover_exclude_nodes
-        [heading, @selected_anchor, kicker_node, *time_nodes].compact
+      def leftover_lines_from(node)
+        times = node.find_all { |n| n.name == :time }
+        exclude = [heading, @selected_anchor, kicker_node, *times].compact
+        ArticleRules::Description.lines_from(node.visible_text(exclude:))
       end
 
-      def time_nodes
-        @root.find_all { |node| node.name == :time }
+      def heading_or_anchor_item?
+        @root.link? || @root.heading?
+      end
+
+      def heading_or_anchor_miss?(title, lines, published_at)
+        heading_or_anchor_item? && published_at.nil? &&
+          ArticleRules::Description.from_lines(lines, title:).nil?
+      end
+
+      def parent_card_fields(title, lines, published_at)
+        return @root, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
+
+        parent = immediate_card_parent
+        unless parent
+          Log.debug { "parent-walk abort at #{sst_parent&.name}" }
+          return @root, lines, published_at
+        end
+
+        new_lines = leftover_lines_from(parent)
+        new_date = extract_published_at(new_lines, root: parent)
+        [parent, new_lines, new_date || published_at]
+      end
+
+      def immediate_card_parent
+        parent = sst_parent
+        index = SST::Index.for_node(@root)
+        index&.parent_until(parent, ->(node) { node.equal?(parent) && Navigator.usable_card_parent?(node) })
+      end
+
+      def sst_parent
+        SST::Index.for_node(@root)&.parent_of(@root)
       end
 
       def generate_id # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
@@ -252,8 +283,8 @@ module Html2rss
         ArticleRules::Image.best_from_styles(styles)
       end
 
-      def extract_published_at(lines)
-        datetimes = @root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
+      def extract_published_at(lines, root: @root)
+        datetimes = root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
         ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
@@ -283,10 +314,10 @@ module Html2rss
         end
       end
 
-      def extract_categories(title)
+      def extract_categories(title, root: @root)
         Set.new.tap do |categories|
-          @root.find_all { |n| category_candidate?(n) }.each do |element|
-            add_category_text!(categories, element, title:) if category_text_node?(element)
+          root.find_all { |n| category_candidate?(n) }.each do |element|
+            add_category_text!(categories, element, title:) if category_text_node?(element, root)
             element.attrs.raw.each do |name, value|
               next unless ArticleRules::Category.attr_name_match?(name)
 
@@ -301,8 +332,8 @@ module Html2rss
           node.attrs.raw.keys.any? { |k| ArticleRules::Category.attr_name_match?(k) }
       end
 
-      def category_text_node?(element)
-        !element.equal?(@root) && ArticleRules::Category.class_match?(element.attrs.class_attr)
+      def category_text_node?(element, root)
+        !element.equal?(root) && ArticleRules::Category.class_match?(element.attrs.class_attr)
       end
 
       def add_category_text!(categories, element, title:)
