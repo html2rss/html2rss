@@ -82,17 +82,17 @@ Cursor / Claude Desktop `mcp.json` must put Botasaurus on the **MCP process** (n
 }
 ```
 
-Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is never returned).
+Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is never returned). Every tool result is a JSON envelope (`ok`, `next_step`, `guidance`, `payload`) in both the text body and `structuredContent`. Follow `next_step` / `guidance`; do not parse scrape text as a raw item array.
 
 ### Tools
 
 | Name              | When to use                                                                 |
 | ----------------- | --------------------------------------------------------------------------- |
-| `scrape_url`      | One-shot articles now (empty result is still success)                       |
+| `scrape_url`      | One-shot articles now (`payload.items`; empty is still success)             |
 | `inspect_url`     | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)   |
-| `capture_config`  | YAML draft (+ quality `_meta`); strive `enhance: true`                      |
+| `capture_config`  | YAML draft in `payload.yaml`; strive `enhance: true`                        |
 | `validate_config` | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)       |
-| `apply_config`    | RSS XML; `isError` when zero items; `_meta.item_count` is the ship gate     |
+| `apply_config`    | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count` |
 
 ### Resources
 
@@ -100,7 +100,7 @@ Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is neve
 | ----------------------- | --------------------------------------------------------------- |
 | `html2rss://schema`     | Full JSON Schema for feed configurations                        |
 | `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
-| `html2rss://strategies` | Registered request strategy names                               |
+| `html2rss://strategies` | Published MCP strategies (`auto`, `faraday`, `botasaurus`) |
 | `html2rss://runtime`    | `botasaurus_configured` boolean (never the scraper URL)         |
 
 ### Prompts

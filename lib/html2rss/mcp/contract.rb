@@ -6,14 +6,17 @@ module Html2rss
     # Published MCP contract: strategy enum, input/output schemas, listing
     # annotations, and the single compact JSON envelope response.
     module Contract # rubocop:disable Metrics/ModuleLength -- published listing constants stay co-located
+      # Published MCP request strategies (excludes +local_file+).
       STRATEGIES = %w[auto faraday botasaurus].freeze
 
+      # JSON Schema property for a source page URL.
       URL_PROPERTY = {
         type: 'string',
         format: 'uri',
         description: 'Source page URL'
       }.freeze
 
+      # JSON Schema property for scrape/capture +strategy+.
       STRATEGY_PROPERTY = {
         type: 'string',
         enum: STRATEGIES,
@@ -21,15 +24,18 @@ module Html2rss
         description: 'Request strategy (auto runs faraday → botasaurus fallback chain)'
       }.freeze
 
+      # JSON Schema property for inspect +strategy+ (auto stays on Faraday).
       INSPECT_STRATEGY_PROPERTY = STRATEGY_PROPERTY.merge(
         description: 'Request strategy (auto uses Faraday for cheap diagnostics; pin botasaurus when needed)'
       ).freeze
 
+      # JSON Schema +oneOf+ requiring exactly one of +config+ or +yaml+.
       XOR_ONE_OF = [
         { required: %w[config], not: { required: %w[yaml] } }.freeze,
         { required: %w[yaml], not: { required: %w[config] } }.freeze
       ].freeze
 
+      # JSON Schema properties for the config/yaml XOR pair.
       CONFIG_XOR_PROPERTIES = {
         config: {
           type: 'object',
@@ -42,12 +48,14 @@ module Html2rss
         }.freeze
       }.freeze
 
+      # Input schema for +validate_config+ (config XOR yaml).
       CONFIG_XOR_SCHEMA = {
         type: 'object',
         properties: CONFIG_XOR_PROPERTIES,
         oneOf: XOR_ONE_OF
       }.freeze
 
+      # Input schema for +apply_config+ (required URL plus config XOR yaml).
       APPLY_INPUT_SCHEMA = {
         type: 'object',
         properties: { url: URL_PROPERTY, **CONFIG_XOR_PROPERTIES }.freeze,
@@ -55,6 +63,7 @@ module Html2rss
         oneOf: XOR_ONE_OF
       }.freeze
 
+      # Input schema for +scrape_url+.
       SCRAPE_INPUT_SCHEMA = {
         type: 'object',
         properties: {
@@ -66,12 +75,14 @@ module Html2rss
         required: %w[url]
       }.freeze
 
+      # Input schema for +inspect_url+.
       INSPECT_INPUT_SCHEMA = {
         type: 'object',
         properties: { url: URL_PROPERTY, strategy: INSPECT_STRATEGY_PROPERTY }.freeze,
         required: %w[url]
       }.freeze
 
+      # Input schema for +capture_config+.
       CAPTURE_INPUT_SCHEMA = {
         type: 'object',
         properties: {
@@ -82,6 +93,7 @@ module Html2rss
         required: %w[url]
       }.freeze
 
+      # Tool annotations for open-world read-only tools.
       ANNOTATIONS_OPEN_WORLD = {
         read_only_hint: true,
         destructive_hint: false,
@@ -89,8 +101,10 @@ module Html2rss
         open_world_hint: true
       }.freeze
 
+      # Tool annotations for +validate_config+ (closed world).
       ANNOTATIONS_VALIDATE = ANNOTATIONS_OPEN_WORLD.merge(open_world_hint: false).freeze
 
+      # Human titles for +tools/list+.
       TITLES = {
         scrape_url: 'Scrape URL',
         inspect_url: 'Inspect URL',

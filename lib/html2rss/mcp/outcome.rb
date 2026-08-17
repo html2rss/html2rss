@@ -8,13 +8,16 @@ module Html2rss
     # Typed MCP tool result. Owns next-step policy and guidance copy so the
     # protocol adapter does not branch on quality heuristics.
     class Outcome
+      # Matches {ConfigArgument} XOR {ArgumentError} messages.
       XOR_ERROR = /exactly one of config or yaml/
       NextStep = Data.define(:name, :guidance)
 
       ##
       # Closed set of agent next actions. Invalid names cannot be constructed.
       class NextStep
+        # Wire names for +next_step+.
         NAMES = %i[done inspect_url validate_config apply_config scrape_url capture_config read_runtime].freeze
+        # Default guidance copy keyed by {NAMES}.
         GUIDANCE = {
           done: 'Done. Read payload for the result.',
           inspect_url: 'Call inspect_url next. Read payload for recon (final_url, status, ' \
