@@ -130,8 +130,16 @@ module Html2rss
       end
 
       def heading_or_anchor_item?
-        name = article_tag.name.to_s
-        name == 'a' || Navigator::HEADING_TAGS.include?(name)
+        heading_item? || wrapping_anchor_item?
+      end
+
+      def heading_item?
+        Navigator::HEADING_TAGS.include?(article_tag.name.to_s)
+      end
+
+      def wrapping_anchor_item?
+        article_tag.name.to_s == 'a' && article_tag.respond_to?(:element_children) &&
+          article_tag.element_children.any?
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)

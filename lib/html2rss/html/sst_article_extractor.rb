@@ -192,7 +192,11 @@ module Html2rss
       end
 
       def heading_or_anchor_item?
-        @root.link? || @root.heading?
+        @root.heading? || wrapping_anchor_item?
+      end
+
+      def wrapping_anchor_item?
+        @root.link? && @root.children.any?
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
