@@ -6,7 +6,7 @@ How html2rss builds feed items when a config has no (or incomplete) CSS selector
 
 `Html2rss.auto_source` / `auto_json_feed` (and any feed config with `auto_source:`) fetch a page once, then run an ordered set of scrapers against that response. Use it when you want “guess articles from this URL” without hand-writing selectors. Prefer explicit `selectors:` when you already know the list markup — that path stays on Nokogiri + `Html::Navigator`.
 
-Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.instances_for` → per-scraper extraction → `Cleanup`.
+Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` → per-scraper extraction → `Cleanup`.
 
 ## Live flow
 
