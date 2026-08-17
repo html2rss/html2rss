@@ -31,5 +31,12 @@ RSpec.describe Html2rss::MCP::ConfigArgument do
       expect { described_class.parse(yaml: "  \n") }
         .to raise_error(ArgumentError, /exactly one of config or yaml/)
     end
+
+    it 'rejects local_file so apply and validate share the Contract gate' do
+      expect do
+        described_class.parse(config: config_hash.merge(strategy: :local_file,
+                                                        request: { local_file_path: '/tmp/page.html' }))
+      end.to raise_error(Html2rss::MCP::Contract::UnpublishedRequestError)
+    end
   end
 end

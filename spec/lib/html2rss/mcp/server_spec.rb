@@ -5,6 +5,7 @@ require 'json'
 require 'mcp'
 require 'climate_control'
 require 'rss'
+require 'tmpdir'
 
 RSpec.describe Html2rss::MCP::Server do
   subject(:protocol_server) { described_class.build }
@@ -128,6 +129,23 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(result.dig(:result, :isError)).to be(false)
       end
+
+      it 'points an empty scrape_url at read_runtime when Botasaurus is unset', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
+        feed_result = instance_double(
+          Html2rss::FeedResult,
+          to_json_feed: { title: 'Channel', items: [] },
+          status: Html2rss::Status.build(articles: [], dedup_dropped: 0, admission_drops: {})
+        )
+        allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
+
+        ClimateControl.modify(BOTASAURUS_SCRAPER_URL: nil) do
+          result = call_tool.call('scrape_url', { url: 'https://example.com' })
+          envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+          expect(result.dig(:result, :isError)).to be(false)
+          expect(envelope[:next_step]).to eq('read_runtime')
+        end
+      end
     end
 
     describe 'capture_config' do
@@ -194,6 +212,18 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :isError)).to be(true)
       end
 
+      it 'rejects local_file in the parsed config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- unpublished-strategy envelope
+        result = call_tool.call(
+          'validate_config',
+          { config: valid_config.merge(strategy: :local_file, request: { local_file_path: '/etc/passwd' }) }
+        )
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(true)
+        expect(envelope).to include(ok: false, next_step: 'validate_config')
+        expect(envelope.dig(:payload, :class)).to eq('Html2rss::MCP::Contract::UnpublishedRequestError')
+      end
+
       it 'marks invalid configs as isError with json error details', :aggregate_failures do
         result = call_tool.call('validate_config', { config: { bad: true } })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
@@ -232,6 +262,34 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :_meta)).to be_nil
         expect(envelope).to include(ok: true, next_step: 'done')
         expect(envelope[:payload]).to include(rss: '<rss/>', item_count: 1)
+      end
+      # rubocop:enable RSpec/ExampleLength
+    end
+
+    describe 'apply_config unpublished local_file' do
+      # rubocop:disable RSpec/ExampleLength -- security: isError without File.read
+      it 'isError and does not read the local file', :aggregate_failures do
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'secret.html')
+          File.write(path, '<html><body><div class="item"><h2>Secret</h2><a href="/a">x</a></div></body></html>')
+          read_paths = []
+          allow(File).to receive(:read).and_wrap_original do |original, name, *rest, **kwargs|
+            read_paths << name.to_s
+            original.call(name, *rest, **kwargs)
+          end
+
+          result = call_tool.call(
+            'apply_config',
+            { url: 'https://example.com',
+              config: valid_config.merge(strategy: :local_file, request: { local_file_path: path }) }
+          )
+          envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+          expect(result.dig(:result, :isError)).to be(true)
+          expect(envelope).to include(ok: false, next_step: 'validate_config')
+          expect(envelope.dig(:payload, :class)).to eq('Html2rss::MCP::Contract::UnpublishedRequestError')
+          expect(read_paths).not_to include(path)
+        end
       end
       # rubocop:enable RSpec/ExampleLength
     end
@@ -295,6 +353,29 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :isError)).to be(true)
         expect(envelope).to include(ok: false, next_step: 'inspect_url')
         expect(envelope[:payload]).to include(class: 'StandardError', message: 'scrape boom')
+      end
+
+      it 'keeps Botasaurus configuration failure envelope and logs free of the env URL value', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- leak contract
+        secret = 'http://127.0.0.1:4010/secret-token'
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(
+          Html2rss::RequestService::BotasaurusConfigurationError,
+          'BOTASAURUS_SCRAPER_URL is required for strategy=botasaurus.'
+        )
+
+        ClimateControl.modify(BOTASAURUS_SCRAPER_URL: secret) do
+          result = call_tool.call('scrape_url', { url: 'https://example.com', strategy: 'botasaurus' })
+          text = result.dig(:result, :content, 0, :text)
+          envelope = JSON.parse(text, symbolize_names: true)
+
+          expect(result.dig(:result, :isError)).to be(true)
+          expect(envelope[:next_step]).to eq('read_runtime')
+          expect(text).not_to include('127.0.0.1')
+          expect(text).not_to include('secret-token')
+          expect(Html2rss::Log).to have_received(:error).with(
+            'mcp error Html2rss::RequestService::BotasaurusConfigurationError: ' \
+            'BOTASAURUS_SCRAPER_URL is required for strategy=botasaurus.'
+          )
+        end
       end
 
       it 'logs tool exceptions to the gem logger' do

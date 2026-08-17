@@ -126,9 +126,8 @@ module Html2rss
 
         ##
         # @param error [Exception]
-        # @param botasaurus_configured [Boolean]
         # @return [Outcome]
-        def from_error(error, botasaurus_configured: false) # rubocop:disable Lint/UnusedMethodArgument -- Server always passes the runtime boolean
+        def from_error(error)
           next_step = next_step_for_error(error)
           new(ok: false, next_step:, guidance: next_step.guidance,
               payload: { class: error.class.name, message: error.message })
@@ -174,6 +173,7 @@ module Html2rss
         def next_step_for_error(error)
           case error
           when RequestService::BotasaurusConfigurationError then NextStep.read_runtime
+          when Contract::UnpublishedRequestError then NextStep.validate_config
           when ArgumentError then argument_error_next_step(error)
           else NextStep.inspect_url
           end

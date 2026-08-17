@@ -13,6 +13,31 @@ RSpec.describe Html2rss::MCP::Contract do
     end
   end
 
+  describe '.assert_published_request!' do
+    let(:base) { { channel: { url: 'https://example.com' } } }
+
+    it 'allows omitting strategy and published names', :aggregate_failures do
+      expect { described_class.assert_published_request!(base) }.not_to raise_error
+      expect { described_class.assert_published_request!(base.merge(strategy: :faraday)) }.not_to raise_error
+      expect { described_class.assert_published_request!(base.merge(strategy: 'botasaurus')) }.not_to raise_error
+    end
+
+    it 'rejects local_file strategy as symbol or string', :aggregate_failures do
+      expect { described_class.assert_published_request!(base.merge(strategy: :local_file)) }
+        .to raise_error(described_class::UnpublishedRequestError, /local_file/)
+      expect { described_class.assert_published_request!(base.merge(strategy: 'local_file')) }
+        .to raise_error(described_class::UnpublishedRequestError, /local_file/)
+    end
+
+    it 'rejects request.local_file_path even with a published strategy' do
+      expect do
+        described_class.assert_published_request!(
+          base.merge(strategy: :faraday, request: { local_file_path: '/tmp/page.html' })
+        )
+      end.to raise_error(described_class::UnpublishedRequestError, /local_file_path/)
+    end
+  end
+
   describe 'URL_PROPERTY' do
     it 'declares format uri so clients can reject non-URLs at the schema layer' do
       expect(described_class::URL_PROPERTY).to include(type: 'string', format: 'uri')
@@ -96,7 +121,7 @@ RSpec.describe Html2rss::MCP::Contract do
 
     it 'sets isError from !ok' do
       response = described_class.response(
-        Html2rss::MCP::Outcome.from_error(StandardError.new('boom'), botasaurus_configured: true)
+        Html2rss::MCP::Outcome.from_error(StandardError.new('boom'))
       )
 
       expect(response.error?).to be(true)

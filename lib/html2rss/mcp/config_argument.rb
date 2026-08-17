@@ -12,15 +12,19 @@ module Html2rss
         # @param yaml [String, nil] feed configuration YAML
         # @return [ConfigArgument]
         # @raise [ArgumentError] unless exactly one of +config+ or +yaml+ is present
+        # @raise [Contract::UnpublishedRequestError] when the parsed config uses
+        #   an unpublished MCP strategy or +request.local_file_path+
         def parse(config: nil, yaml: nil)
-          case [present?(config), present?(yaml)]
-          in [true, false]
-            new(config: HashUtil.deep_symbolize_keys(config, context: 'config'))
-          in [false, true]
-            new(config: Config.from_yaml(yaml))
-          else
-            raise ArgumentError, 'Provide exactly one of config or yaml'
-          end
+          parsed = case [present?(config), present?(yaml)]
+                   in [true, false]
+                     HashUtil.deep_symbolize_keys(config, context: 'config')
+                   in [false, true]
+                     Config.from_yaml(yaml)
+                   else
+                     raise ArgumentError, 'Provide exactly one of config or yaml'
+                   end
+          Contract.assert_published_request!(parsed)
+          new(config: parsed)
         end
 
         private

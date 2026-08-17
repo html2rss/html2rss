@@ -166,7 +166,7 @@ module Html2rss
 
         def tool_error_response(error)
           Log.error("mcp error #{error.class}: #{error.message}")
-          Contract.response(Outcome.from_error(error, botasaurus_configured: botasaurus_configured?))
+          Contract.response(Outcome.from_error(error))
         end
 
         def handle_tool_call

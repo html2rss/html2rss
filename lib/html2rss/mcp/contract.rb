@@ -9,6 +9,9 @@ module Html2rss
       # Published MCP request strategies (excludes +local_file+).
       STRATEGIES = %w[auto faraday botasaurus].freeze
 
+      # Raised when apply/validate config uses an unpublished MCP request adapter.
+      class UnpublishedRequestError < ArgumentError; end
+
       # JSON Schema property for a source page URL.
       URL_PROPERTY = {
         type: 'string',
@@ -144,6 +147,25 @@ module Html2rss
             error: !outcome.ok,
             structured_content: wire
           )
+        end
+
+        ##
+        # Rejects unpublished MCP request adapters so apply/validate cannot
+        # {File.read} arbitrary paths. CLI and Config still allow +local_file+.
+        #
+        # @param config [Hash]
+        # @return [void]
+        # @raise [UnpublishedRequestError] when +strategy+ is outside {STRATEGIES}
+        #   or +request.local_file_path+ is present
+        def assert_published_request!(config)
+          strategy = config[:strategy]
+          unless strategy.nil? || STRATEGIES.include?(strategy.to_s)
+            raise UnpublishedRequestError,
+                  "MCP does not accept strategy #{strategy} (published: #{STRATEGIES.join(', ')})"
+          end
+          return unless config.dig(:request, :local_file_path)
+
+          raise UnpublishedRequestError, 'MCP does not accept request.local_file_path'
         end
       end
     end

@@ -154,7 +154,7 @@ RSpec.describe Html2rss::MCP::Outcome do
   describe '.from_error' do
     it 'maps BotasaurusConfigurationError to read_runtime without leaking env', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- class/message only
       error = Html2rss::RequestService::BotasaurusConfigurationError.new('BOTASAURUS_SCRAPER_URL is required')
-      outcome = described_class.from_error(error, botasaurus_configured: false)
+      outcome = described_class.from_error(error)
 
       expect(outcome.ok).to be(false)
       expect(outcome.next_step.name).to eq(:read_runtime)
@@ -167,20 +167,27 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'maps NoFeedItemsExtracted to inspect_url' do
       error = Html2rss::NoFeedItemsExtracted.new(attempts: [], surface_category: nil)
-      outcome = described_class.from_error(error, botasaurus_configured: true)
+      outcome = described_class.from_error(error)
 
       expect(outcome.next_step.name).to eq(:inspect_url)
     end
 
     it 'maps XOR ArgumentError to validate_config' do
       error = ArgumentError.new('Provide exactly one of config or yaml')
-      outcome = described_class.from_error(error, botasaurus_configured: true)
+      outcome = described_class.from_error(error)
+
+      expect(outcome.next_step.name).to eq(:validate_config)
+    end
+
+    it 'maps UnpublishedRequestError to validate_config' do
+      error = Html2rss::MCP::Contract::UnpublishedRequestError.new('MCP does not accept strategy local_file')
+      outcome = described_class.from_error(error)
 
       expect(outcome.next_step.name).to eq(:validate_config)
     end
 
     it 'maps other exceptions to inspect_url' do
-      outcome = described_class.from_error(StandardError.new('boom'), botasaurus_configured: true)
+      outcome = described_class.from_error(StandardError.new('boom'))
 
       expect(outcome.next_step.name).to eq(:inspect_url)
     end
