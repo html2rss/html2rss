@@ -152,4 +152,84 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       expect(fields[:published_at]).to be_a(DateTime)
     end
   end
+
+  describe 'span-wrapped sibling list links' do
+    let(:html) do
+      <<~HTML
+        <div>
+          <a href="/news/one"><span>Title One About The First Story</span></a>
+          <a href="/news/two"><span>Title Two About The Second Story</span></a>
+        </div>
+      HTML
+    end
+
+    it 'does not use a sibling title as description', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'a')
+
+      expect(fields[:title]).to eq('Title One About The First Story')
+      expect(fields[:description]).to be_nil
+      expect(fields[:description].to_s).not_to include('Title Two')
+    end
+  end
+
+  describe 'heading items sharing a section' do
+    let(:html) do
+      <<~HTML
+        <section>
+          <h2><a href="/news/one">Title One About The First Story</a></h2>
+          <h2><a href="/news/two">Title Two About The Second Story</a></h2>
+        </section>
+      HTML
+    end
+
+    it 'does not use the next heading as description', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'h2')
+
+      expect(fields[:title]).to eq('Title One About The First Story')
+      expect(fields[:description]).to be_nil
+      expect(fields[:description].to_s).not_to include('Title Two')
+    end
+  end
+
+  describe 'heading wrapped in a header landmark' do
+    let(:html) do
+      <<~HTML
+        <div class="card">
+          <header>
+            <h3><a href="/news/story">Heading wrapped by header chrome</a></h3>
+          </header>
+          <p>Teaser outside the header wrapper.</p>
+          <time datetime="2024-03-12T09:00:00Z">12 March 2024</time>
+        </div>
+      HTML
+    end
+
+    it 'fills leftover fields from the outer card', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'h3')
+
+      expect(fields[:description]).to eq('Teaser outside the header wrapper.')
+      expect(fields[:published_at]).to be_a(DateTime)
+    end
+  end
+
+  describe 'heading wrapped in a title-wrap div' do
+    let(:html) do
+      <<~HTML
+        <div class="card">
+          <div class="title-wrap">
+            <h3><a href="/news/story">Heading wrapped by a title div</a></h3>
+          </div>
+          <p>Teaser outside the title wrapper.</p>
+          <time datetime="2024-03-12T09:00:00Z">12 March 2024</time>
+        </div>
+      HTML
+    end
+
+    it 'fills leftover fields from the outer card', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'h3')
+
+      expect(fields[:description]).to eq('Teaser outside the title wrapper.')
+      expect(fields[:published_at]).to be_a(DateTime)
+    end
+  end
 end

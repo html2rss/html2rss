@@ -20,6 +20,9 @@ module Html2rss
       # Immediate parent walk stops here — not a usable article card.
       CARD_WALK_STOP_TAGS = (UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | %w[html body]).freeze
 
+      # Inner tags that mean a wrapping <a> is a card, not a span-styled list link.
+      WRAPPING_ANCHOR_CHILD_TAGS = (HEADING_TAGS + %w[p]).freeze
+
       # Anchor selector used to identify the canonical article link element.
       MAIN_ANCHOR_SELECTOR = begin
         buf = +'a[href]:not([href=""])'

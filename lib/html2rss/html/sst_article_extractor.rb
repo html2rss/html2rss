@@ -196,7 +196,10 @@ module Html2rss
       end
 
       def wrapping_anchor_item?
-        @root.link? && @root.children.any?
+        return false unless @root.name == :a
+
+        tags = Navigator::WRAPPING_ANCHOR_CHILD_TAGS
+        @root.find { |n| !n.equal?(@root) && tags.include?(n.name.to_s) }
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
@@ -208,7 +211,7 @@ module Html2rss
         return @root, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
 
         parent = immediate_card_parent
-        unless parent
+        if !parent || crowded_card?(parent)
           Log.debug { "parent-walk abort at #{sst_parent&.name}" }
           return @root, lines, published_at
         end
@@ -221,7 +224,21 @@ module Html2rss
       def immediate_card_parent
         parent = sst_parent
         index = SST::Index.for_node(@root)
-        index&.parent_until(parent, ->(node) { node.equal?(parent) && Navigator.usable_card_parent?(node) })
+        index&.parent_until(parent, method(:usable_walk_parent?))
+      end
+
+      def usable_walk_parent?(node)
+        Navigator.usable_card_parent?(node) && !thin_heading_wrapper?(node)
+      end
+
+      def thin_heading_wrapper?(node)
+        node.children.none? do |child|
+          !child.equal?(@root) && !descendant_of?(@root, child)
+        end
+      end
+
+      def crowded_card?(node)
+        node.each_node.count(&:heading?) > 1 || node.each_node.count(&:link?) > 1
       end
 
       def sst_parent

@@ -138,8 +138,9 @@ module Html2rss
       end
 
       def wrapping_anchor_item?
-        article_tag.name.to_s == 'a' && article_tag.respond_to?(:element_children) &&
-          article_tag.element_children.any?
+        return false unless article_tag.name.to_s == 'a'
+
+        article_tag.at_css(Navigator::WRAPPING_ANCHOR_CHILD_TAGS.join(','))
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
@@ -151,7 +152,7 @@ module Html2rss
         return article_tag, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
 
         parent = immediate_card_parent
-        unless parent
+        if !parent || crowded_card?(parent)
           Log.debug { "parent-walk abort at #{article_tag.parent&.name}" }
           return article_tag, lines, published_at
         end
@@ -163,10 +164,22 @@ module Html2rss
 
       def immediate_card_parent
         parent = article_tag.respond_to?(:parent) ? article_tag.parent : nil
-        Navigator.parent_until_condition(
-          parent,
-          ->(node) { node.equal?(parent) && Navigator.usable_card_parent?(node) }
-        )
+        Navigator.parent_until_condition(parent, method(:usable_walk_parent?))
+      end
+
+      def usable_walk_parent?(node)
+        Navigator.usable_card_parent?(node) && !thin_heading_wrapper?(node)
+      end
+
+      def thin_heading_wrapper?(node)
+        node.element_children.none? do |child|
+          !child.equal?(article_tag) && !Navigator.descendant_of?(article_tag, child)
+        end
+      end
+
+      def crowded_card?(node)
+        node.css(Navigator::HEADING_TAGS.join(',')).size > 1 ||
+          node.css(Navigator::MAIN_ANCHOR_SELECTOR).size > 1
       end
 
       def generate_id
