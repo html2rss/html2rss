@@ -72,6 +72,34 @@ module Html2rss
       end
 
       ##
+      # Serializes a configuration hash to string-key YAML.
+      #
+      # This is the single serializer for CLI capture and MCP +capture_config+.
+      #
+      # @param hash [Hash] configuration hash (symbol or string keys)
+      # @return [String] YAML document without Ruby symbol-key prefixes
+      def to_yaml(hash)
+        YAML.dump(HashUtil.deep_stringify_keys(hash))
+      end
+
+      ##
+      # Parses a YAML configuration string into a symbol-keyed hash.
+      #
+      # Does not validate. Call {validate} or {from_hash} after this.
+      #
+      # @param string [String] YAML document
+      # @return [Hash{Symbol => Object}] configuration hash
+      # @raise [ArgumentError] if +string+ is not a String or does not deserialize to a Hash
+      def from_yaml(string)
+        raise ArgumentError, 'YAML must be a String' unless string.is_a?(String)
+
+        parsed = YAML.safe_load(string)
+        raise ArgumentError, 'YAML must deserialize to a Hash' unless parsed.is_a?(Hash)
+
+        HashUtil.deep_symbolize_keys(parsed, context: 'config')
+      end
+
+      ##
       # Loads the feed configuration from a YAML file.
       #
       # Supports multiple feeds defined under the specified key (default :feeds).

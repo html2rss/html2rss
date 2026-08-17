@@ -311,9 +311,12 @@ RSpec.describe Html2rss::CLI do
       allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
     end
 
-    it 'prints string-key YAML without symbol-key prefixes' do
-      expect { cli.capture('https://example.com') }
-        .to output(YAML.dump(Html2rss::HashUtil.deep_stringify_keys(captured_config))).to_stdout
+    it 'prints YAML through Config.to_yaml so CLI and MCP share one serializer', :aggregate_failures do
+      yaml = Html2rss::Config.to_yaml(captured_config)
+      allow(Html2rss::Config).to receive(:to_yaml).and_return(yaml)
+
+      expect { cli.capture('https://example.com') }.to output(yaml).to_stdout
+      expect(Html2rss::Config).to have_received(:to_yaml).with(captured_config)
     end
 
     {
