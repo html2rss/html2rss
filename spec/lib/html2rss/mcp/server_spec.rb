@@ -171,8 +171,8 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'inspect_url' do
       before do
-        allow(Html2rss::MCP::Server::Inspect).to receive(:call).and_return(
-          { url: 'https://example.com', strategy: :faraday, html_response: true }
+        allow(Html2rss::MCP::Inspect).to receive(:call).and_return(
+          { requested_url: 'https://example.com', strategy: :faraday, html_response: true }
         )
       end
 
@@ -180,7 +180,7 @@ RSpec.describe Html2rss::MCP::Server do
       it 'returns diagnostic JSON from Inspect', :aggregate_failures do
         result = call_tool.call('inspect_url', { url: 'https://example.com' })
 
-        expect(Html2rss::MCP::Server::Inspect).to have_received(:call).with(
+        expect(Html2rss::MCP::Inspect).to have_received(:call).with(
           url: 'https://example.com',
           strategy: 'auto'
         )
@@ -229,7 +229,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks inspect_url failures as isError' do
-        allow(Html2rss::MCP::Server::Inspect).to receive(:call).and_raise(StandardError, 'inspect boom')
+        allow(Html2rss::MCP::Inspect).to receive(:call).and_raise(StandardError, 'inspect boom')
         result = call_tool.call('inspect_url', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)
@@ -408,94 +408,6 @@ RSpec.describe Html2rss::MCP::Server do
 
       expect(response).to be_a(MCP::Tool::Response)
       expect(response.error?).to be(false)
-    end
-  end
-
-  describe Html2rss::MCP::Server::Inspect do
-    let(:html) { File.read('spec/fixtures/local_feed_test.html') }
-    let(:response) do
-      Html2rss::RequestService::Response.new(
-        body: html,
-        url: Html2rss::Url.from_absolute('https://example.com/blog'),
-        headers: { 'content-type' => 'text/html' }
-      )
-    end
-
-    before do
-      allow(described_class).to receive(:fetch_response).and_return(response)
-    end
-
-    it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do
-      result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
-
-      expect(result[:strategy]).to eq(:faraday)
-      expect(result[:html_response]).to be(true)
-      expect(result[:sst]).to include(:node_count, :segment_stats)
-    end
-
-    it 'builds a request session when fetching', :aggregate_failures do
-      allow(described_class).to receive(:fetch_response).and_call_original
-      session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
-      allow(Html2rss::RequestSession).to receive(:build).and_return(session)
-
-      expect(described_class.fetch_response('https://example.com/blog', :faraday)).to eq(response)
-      expect(Html2rss::RequestSession).to have_received(:build)
-    end
-
-    it 'reports none_found when no scraper matches' do
-      allow(Html2rss::AutoSource::Scraper).to receive(:from).and_raise(
-        Html2rss::AutoSource::Scraper::NoScraperFound.new(category: :unsupported_surface)
-      )
-
-      expect(described_class.scraper_info(Nokogiri::HTML::Document.parse(html)))
-        .to eq(none_found: 'unsupported_surface')
-    end
-
-    it 'reports xhr_capture with query-stripped endpoints for botasaurus', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      captured_response = Html2rss::RequestService::Response.new(
-        body: html,
-        url: Html2rss::Url.from_absolute('https://example.com/blog'),
-        headers: { 'content-type' => 'text/html' },
-        captured_responses: [
-          {
-            'url' => 'https://api.example.com/v1/articles?token=secret',
-            'body' => '[{"title":"Captured","url":"/a"}]'
-          }
-        ]
-      )
-      allow(described_class).to receive(:fetch_response).and_return(captured_response)
-
-      result = described_class.call(url: 'https://example.com/blog', strategy: :botasaurus)
-
-      expect(result[:xhr_capture]).to include(
-        count: 1,
-        candidate_articles: true,
-        sample_endpoints: ['https://api.example.com/v1/articles']
-      )
-      expect(result[:xhr_capture][:sample_endpoints].first).not_to include('token=')
-    end
-
-    it 'omits xhr_capture when strategy is not botasaurus' do
-      result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
-
-      expect(result).not_to have_key(:xhr_capture)
-    end
-
-    it 'returns error for non-HTML parsed bodies' do
-      expect(described_class.scraper_info({})).to eq(error: 'Response is not HTML')
-    end
-
-    it 'returns nil SST stats when normalization fails' do
-      allow(Html2rss::SST::Normalizer).to receive(:call).and_raise(ArgumentError)
-
-      expect(described_class.sst_stats_from(response)).to be_nil
-    end
-
-    it 'returns empty segments when segmenter fails' do
-      allow(Html2rss::AutoSource::Segmenter).to receive(:call).and_raise(StandardError)
-
-      sst = Html2rss::SST::Normalizer.call(html)
-      expect(described_class.discover_segments(sst, 'https://example.com/blog')).to eq([])
     end
   end
 end
