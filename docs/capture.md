@@ -1,86 +1,67 @@
-# Capture — Automatic Feed Config Derivation
+# Capture — Durable Feed Config Derivation
 
-The `Html2rss.capture` method (and its CLI alias `html2rss capture`) analyzes
-any URL through the auto-source pipeline and produces a reusable feed config
-hash with derived CSS selectors.
+The `Html2rss.capture` method (and CLI `html2rss capture`) analyzes a URL through
+the feed pipeline and produces a reusable config with **items selector + `enhance: true`**
+only — no brittle title/url/description attribute soup.
+
+This implements the durable shape described in issue #212.
 
 ## Use Case
 
-Speed up writing feed configs. Instead of manually inspecting HTML to craft CSS
-selectors, point `capture` at your target URL and let it produce a first draft.
-Tweak the output as needed.
+Speed up writing feed configs. Point `capture` at a listing URL and get a first draft
+that fills article fields via enhance at feed-build time.
 
 ## Gem API
 
 ```ruby
 config = Html2rss.capture('https://example.com/articles')
 
-# config contains a hash with :channel and :selectors keys:
 # {
-#   channel: { url: "https://example.com/articles", title: "...", time_zone: "UTC" },
+#   channel: { url: "...", title: "...", time_zone: "UTC" },
 #   selectors: {
-#     items: { selector: "div.post" },
-#     title: { selector: "h2 > a" },
-#     link: { selector: "a.more", extractor: "href" },
-#     description: { selector: "div.excerpt" }
+#     items: { selector: "div.post", enhance: true }
 #   }
 # }
 
-# Save to YAML for reuse (string keys — same wire form as hand-written configs)
 File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(config)))
-
-# Use immediately
 feed = Html2rss.feed(config)
 ```
+
+`Capture.build` returns a `CaptureResult` with quality meta (`has_selectors`,
+`segment_strategy`, `admission_drops`, `selected_strategy`).
 
 ### Options
 
 ```ruby
-# Pin a specific request strategy
 Html2rss.capture('https://spa-site.com', strategy: :botasaurus)
-
-# Provide a CSS selector hint for items
 Html2rss.capture('https://example.com', items_selector: '.article-card')
-
-# Analyze a local HTML file (stamps strategy: :local_file and local_file_path)
 Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: './page.html')
 ```
+
+`strategy: :auto` uses the same AutoFallback chain as scrape (`faraday` → `botasaurus`).
+When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps**
+`strategy:` into the emitted YAML so later `Html2rss.feed(config)` replays the same transport.
 
 ## CLI
 
 ```bash
-# Print a reusable YAML config
 html2rss capture https://example.com/articles
-
-# With Botasaurus strategy
 html2rss capture https://example.com --strategy botasaurus
-
-# Save to file
 html2rss capture https://example.com/articles > my-feed.yml
-
-# Read from a local HTML file
 html2rss capture https://example.com --input ./page.html
+html2rss capture https://example.com --explain   # quality JSON on stderr
 ```
 
 ## How It Works
 
-1. **Request** — fetches the page using the configured strategy
-2. **Discover** — runs the AutoSource pipeline to extract articles
-3. **Analyze** — normalizes the page into an SST document, segments it, and
-   maps segment positions back to extracted articles
-4. **Derive** — builds CSS selectors from SST tag_paths for items, title, link,
-   and description attributes
-5. **Assemble** — returns a complete config hash ready for serialization
+1. **Request** — `FeedPipeline` (AutoFallback when `:auto`)
+2. **Discover** — AutoSource extracts admitted articles
+3. **Segment** — try SST Segmenter strategies `:list` → `:cluster` → `:semantic`
+4. **Gate** — emit items selector only when ≥ `MIN_SELECTOR_MATCHES` articles match
+5. **Assemble** — `{ items: { selector:, enhance: true } }` plus channel
 
 ## Limitations
 
-- Selector quality depends on the page structure and auto-source detection.
-  Complex layouts may produce imperfect selectors that need manual adjustment.
-  Treat capture output as a first draft.
-- Capture segment discovery currently uses the list Segmenter strategy only
-  (not AutoSource's cluster/semantic heuristics), so some layouts may need a
-  manual `items_selector` hint.
-- The capture only derives items, title, link, and description selectors.
-  Description is omitted when it would resolve to the invalid CSS selector `.`
-  (item root equals description root). Additional attributes (author,
-  published_at, categories, enclosures) can be added manually.
+- Selector quality depends on page structure; treat output as a first draft.
+- When the quality gate fails, selectors are omitted (`has_selectors: false`) — fail loud
+  rather than inventing attribute selectors.

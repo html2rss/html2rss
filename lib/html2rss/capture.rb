@@ -2,20 +2,26 @@
 
 module Html2rss
   ##
-  # Analyzes a URL and produces a reusable feed config hash with derived CSS selectors.
+  # Analyzes a URL and produces a durable feed config: items selector + +enhance: true+.
   #
-  # Uses the auto-source pipeline to extract articles, then traces back through
-  # SST segments to build items + attribute selectors suitable for a static feed config.
-  class Capture # rubocop:disable Metrics/ClassLength
+  # Fetches via {FeedPipeline} (including AutoFallback for +:auto+), extracts articles,
+  # then derives a reusable items CSS selector from SST segments (list → cluster → semantic).
+  class Capture # rubocop:disable Metrics/ClassLength -- segment strategies + CSS trim stay co-located
     LEADING_TRIM_TAGS = %w[html body].freeze
     private_constant :LEADING_TRIM_TAGS
 
+    # Ordered Segmenter strategies tried until the items selector quality gate passes.
+    SEGMENT_STRATEGIES = %i[list cluster semantic].freeze
+
+    # Minimum matched segment/article pairs required to emit an items selector.
+    MIN_SELECTOR_MATCHES = 2
+
     ##
-    # Result of a capture operation.
-    # @!attribute config [Hash] feed config hash with +:channel+ and +:selectors+
-    # @!attribute articles_count [Integer] number of articles extracted
-    # @!attribute channel_title [String] derived channel title
-    CaptureResult = Data.define(:config, :articles_count, :channel_title)
+    # Result of a capture operation (config plus quality meta).
+    CaptureResult = Data.define(
+      :config, :articles_count, :channel_title, :has_selectors, :segment_strategy,
+      :admission_drops, :selected_strategy
+    )
 
     class << self
       ##
@@ -57,31 +63,47 @@ module Html2rss
     # Runs the capture pipeline.
     #
     # @return [CaptureResult]
-    def build # rubocop:disable Metrics/MethodLength
-      response = fetch_response
-      articles = extract_articles(response)
-      selectors = derive_selectors(response, articles)
+    def build # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- outcome + selector + result assembly
+      outcome = FeedPipeline.new(raw_config).to_outcome
+      selectors, segment_strategy = derive_selectors(outcome.response, outcome.articles)
 
       config = {
-        channel: build_channel(response),
+        channel: build_channel(outcome.response),
         selectors: selectors.empty? ? nil : selectors,
+        **strategy_stamp(outcome),
         **local_file_request_overlay
       }.compact
 
       CaptureResult.new(
         config:,
-        articles_count: articles.size,
-        channel_title: channel_title_from(response)
+        articles_count: outcome.articles.size,
+        channel_title: channel_title_from(outcome.response),
+        has_selectors: !selectors.empty?,
+        segment_strategy:,
+        admission_drops: outcome.admission_drops,
+        selected_strategy: outcome.selected_strategy
       )
     end
 
     private
 
+    def strategy_stamp(outcome)
+      concrete = outcome.selected_strategy || concrete_request_strategy
+      return {} if concrete.nil? || concrete == :auto
+
+      { strategy: concrete }
+    end
+
+    def concrete_request_strategy
+      plan = FeedPipeline::StrategyPlan.resolve(@strategy)
+      plan.is_a?(FeedPipeline::StrategyPlan::Concrete) ? plan.strategy : nil
+    end
+
     def raw_config
       @raw_config ||= build_raw_config
     end
 
-    def build_raw_config # rubocop:disable Metrics/MethodLength
+    def build_raw_config
       Config.auto_source_config(
         url: @url,
         items_selector: @items_selector_hint,
@@ -91,10 +113,7 @@ module Html2rss
           max_requests: @max_requests
         ),
         limit: @limit
-      ).tap do |config|
-        config[:strategy] = resolve_strategy(config[:strategy] || @strategy)
-        apply_local_file_path!(config)
-      end
+      ).tap { |config| apply_local_file_path!(config) }
     end
 
     def apply_local_file_path!(config)
@@ -111,62 +130,39 @@ module Html2rss
       { strategy: :local_file, request: { local_file_path: @local_file_path } }
     end
 
-    def resolve_strategy(strategy)
-      plan = FeedPipeline::StrategyPlan.resolve(strategy)
-      plan.is_a?(FeedPipeline::StrategyPlan::Auto) ? :faraday : plan.strategy
-    end
+    # @return [Array(Hash, Symbol, nil)] selectors hash and winning segment strategy
+    def derive_selectors(response, articles)
+      return hint_selectors if @items_selector_hint
+      return [{}, nil] if articles.empty? || !response.html_response?
 
-    def fetch_response
-      config = Config.from_hash(raw_config)
-      resources = FeedPipeline::RuntimePolicy.resources_for(config)
-      session = RequestSession.build(
-        config:,
-        strategy: config.strategy,
-        budget: resources.budget,
-        policy: resources.policy
-      )
-      session.fetch_initial_response
-    end
+      sst = SST::Normalizer.call(response.body)
+      return [{}, nil] unless sst
 
-    def extract_articles(response)
-      auto_source_opts = raw_config[:auto_source] || AutoSource::DEFAULT_CONFIG
-      AutoSource.new(response, auto_source_opts).articles
-    rescue AutoSource::Scraper::NoScraperFound
-      []
-    end
-
-    def derive_selectors(response, articles) # rubocop:disable Metrics/MethodLength
-      return {} if articles.empty? || !response.html_response?
-
-      sst = normalize_sst(response)
-      return {} unless sst
-
-      segments = discover_segments(sst)
-      return {} if segments.empty?
-
-      matched = match_segments_to_articles(segments, articles)
-      return {} if matched.empty?
-
-      build_selector_hash(matched, sst)
+      select_enhance_selectors(sst, articles)
     rescue ArgumentError => error
       Log.warn("Capture selector derivation failed: #{error.message}")
-      {}
+      [{}, nil]
     end
 
-    def normalize_sst(response)
-      SST::Normalizer.call(response.body)
+    def hint_selectors
+      [{ items: { selector: @items_selector_hint, enhance: true } }, :hint]
     end
 
-    def discover_segments(sst)
+    def select_enhance_selectors(sst, articles) # rubocop:disable Metrics/MethodLength -- strategy loop + gate
       link_resolver = Scoring::LinkResolver.new(@url)
 
-      AutoSource::Segmenter.call(
-        sst,
-        base_url: @url,
-        strategy: :list,
-        permit_unanchored: false,
-        link_resolver:
-      )
+      SEGMENT_STRATEGIES.each do |strategy|
+        segments = AutoSource::Segmenter.call(
+          sst, base_url: @url, strategy:, permit_unanchored: false, link_resolver:
+        )
+        matched = match_segments_to_articles(segments, articles)
+        items_sel = items_selector(matched)
+        next unless items_sel && matched.size >= MIN_SELECTOR_MATCHES
+
+        return [{ items: { selector: items_sel, enhance: true } }, strategy]
+      end
+
+      [{}, nil]
     end
 
     def match_segments_to_articles(segments, articles)
@@ -201,23 +197,9 @@ module Html2rss
       segment.root_node.visible_text.to_s.strip
     end
 
-    def build_selector_hash(matched, _sst)
-      items_sel = items_selector(matched)
-      return {} unless items_sel
-
-      first = matched.first
-      root = first[:segment].root_node
-
-      attrs = {}.tap do |a|
-        a[:title] = title_selector(root)
-        a[:url] = url_selector(first[:segment])
-        a[:description] = description_selector(root, first[:segment])
-      end.compact
-
-      { items: { selector: items_sel }, **attrs }
-    end
-
     def items_selector(matched)
+      return nil if matched.empty?
+
       roots = matched.map { |m| m[:segment].root_node }
       shared = shared_class_items_selector(roots)
       return shared if shared
@@ -263,39 +245,6 @@ module Html2rss
         prefix = prefix[0...i]
       end
       "/#{prefix.join('/')}"
-    end
-
-    def title_selector(root) # rubocop:disable Metrics/CyclomaticComplexity
-      heading = root.find(&:heading?)
-      relative = css_for_path(heading.tag_path, root.tag_path) if heading
-      relative ||= begin
-        link = root.find { |n| n.link? && n.visible_text.to_s.strip.length > 3 }
-        css_for_path(link.tag_path, root.tag_path) if link
-      end
-      return nil unless relative
-
-      { selector: relative }
-    end
-
-    def url_selector(segment)
-      return nil unless segment.primary_link
-
-      relative = css_for_path(segment.primary_link.tag_path, segment.root_node.tag_path)
-      { selector: relative, extractor: 'href' }
-    end
-
-    def description_selector(root, segment)
-      relative = css_for_path(root.tag_path, segment.root_node.tag_path)
-      return nil if relative.nil? || relative.empty? || relative == '.'
-
-      { selector: relative }
-    end
-
-    def css_for_path(full_path, root_path)
-      relative = full_path.delete_prefix(root_path)
-      return '.' if relative.empty?
-
-      relative.split('/').reject(&:empty?).join(' > ')
     end
 
     def build_channel(response)

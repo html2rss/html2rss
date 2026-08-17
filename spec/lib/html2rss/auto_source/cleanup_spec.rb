@@ -32,13 +32,22 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
   end
 
   describe '.call' do
-    subject(:cleaned) { described_class.call(articles, url:, keep_different_domain:) }
+    subject(:result) { described_class.call(articles, url:, keep_different_domain:) }
 
+    let(:cleaned) { result.articles }
     let(:keep_different_domain) { false }
 
-    it 'removes invalid articles' do
+    # rubocop:disable RSpec/ExampleLength -- articles + multi-reason tallies
+    it 'removes invalid articles and tallies the drop', :aggregate_failures do
       expect(cleaned).not_to include(articles[2])
+      expect(result.drop_tallies).to include(
+        'invalid' => 1,
+        'low_word_count' => 1,
+        'different_domain' => 1,
+        'bad_scheme' => 1
+      )
     end
+    # rubocop:enable RSpec/ExampleLength
 
     context 'with duplicated articles' do
       let(:duplicated_url_article) do
@@ -53,6 +62,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       it 'removes duplicate articles by URL', :aggregate_failures do
         expect(cleaned).not_to include(duplicated_url_article)
         expect(cleaned.first.url).to eq(duplicated_url_article.url)
+        expect(result.drop_tallies['duplicate_url']).to eq(1)
       end
     end
 
@@ -82,6 +92,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       it 'dedupes fragment variants and rejects page self-links', :aggregate_failures do
         expect(cleaned.map { |article| article.url.to_s }).to eq(['http://example.com/story-one'])
         expect(cleaned.size).to eq(1)
+        expect(result.drop_tallies).to include('duplicate_url' => 2, 'self_link' => 1)
       end
     end
 
@@ -154,6 +165,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       it 'hard-excludes commerce affiliate utility and taxonomy routes', :aggregate_failures do
         expect(cleaned.map { |article| article.url.to_s })
           .to eq(['https://example.com/news/deep-story-slug-here'])
+        expect(result.drop_tallies['excluded_destination']).to be >= 1
       end
     end
 
@@ -193,12 +205,17 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
           expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
         end
 
-        it "keeps=#{example[:reason].nil?} for #{example[:title].inspect}" do
+        # rubocop:disable RSpec/ExampleLength -- keep + reason tally contract
+        it "keeps=#{example[:reason].nil?} for #{example[:title].inspect}", :aggregate_failures do
           article = instance_double(Html2rss::Article, valid?: true, title: example[:title],
                                                        url: Html2rss::Url.from_absolute("http://example.com/t#{index}"))
-          expect(described_class.call([article], url:).map(&:title).include?(example[:title]))
-            .to eq(example[:reason].nil?)
+          call_result = described_class.call([article], url:)
+          expect(call_result.articles.map(&:title).include?(example[:title])).to eq(example[:reason].nil?)
+          next if example[:reason].nil?
+
+          expect(call_result.drop_tallies[example[:reason].to_s]).to eq(1)
         end
+        # rubocop:enable RSpec/ExampleLength
       end
     end
 
@@ -225,6 +242,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         titles = cleaned.map(&:title)
         expect(titles).to include('Привет мир сегодня', 'مرحبا بالعالم اليوم')
         expect(titles).not_to include('你好世界')
+        expect(result.drop_tallies['low_word_count']).to eq(1)
       end
     end
   end

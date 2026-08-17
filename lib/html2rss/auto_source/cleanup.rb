@@ -6,7 +6,8 @@ module Html2rss
     # Cleanup is responsible for cleaning up the extracted articles.
     # :reek:MissingSafeMethod { enabled: false }
     # It applies various strategies to filter and refine the article list.
-    class Cleanup
+    # Sole producer of admission drop tallies for {Html2rss::Status}.
+    class Cleanup # rubocop:disable Metrics/ClassLength -- reject steps + tallies stay co-located
       # Default cleanup behavior for auto-sourced article lists.
       DEFAULT_CONFIG = {
         keep_different_domain: false
@@ -49,25 +50,28 @@ module Html2rss
       ].freeze
       private_constant :JUNK_TITLE_RULES
 
+      # Admitted articles plus reason → count tallies for drops.
+      Result = Data.define(:articles, :drop_tallies)
+
       class << self
         # @param articles [Array<Article>] extracted article candidates
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
         # @param keep_different_domain [Boolean] whether to keep off-domain entries
-        # @return [Array<Article>] cleaned article list
-        def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain))
+        # @return [Result] cleaned articles and frozen drop tallies
+        def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain)) # rubocop:disable Metrics/MethodLength -- ordered reject pipeline
           Log.debug "Cleanup: start with #{articles.size} articles"
+          tallies = Hash.new(0)
 
-          articles.select!(&:valid?)
-
-          deduplicate_by_url!(articles)
-          keep_only_http_urls!(articles)
-          reject_self_links!(articles, url)
-          reject_different_domain!(articles, url) unless keep_different_domain
-          reject_excluded_destinations!(articles)
-          reject_low_quality_titles!(articles)
+          reject_invalid!(articles, tallies)
+          deduplicate_by_url!(articles, tallies)
+          keep_only_http_urls!(articles, tallies)
+          reject_self_links!(articles, url, tallies)
+          reject_different_domain!(articles, url, tallies) unless keep_different_domain
+          reject_excluded_destinations!(articles, tallies)
+          reject_low_quality_titles!(articles, tallies)
 
           Log.debug "Cleanup: end with #{articles.size} articles"
-          articles
+          Result.new(articles:, drop_tallies: tallies.freeze)
         end
 
         # First matching junk reason for a title, or nil when the title is acceptable.
@@ -85,34 +89,44 @@ module Html2rss
 
         private
 
-        def deduplicate_by_url!(articles)
+        def reject_invalid!(articles, tallies)
+          tally_reject!(articles, tallies, 'invalid') { |article| !article.valid? }
+        end
+
+        def deduplicate_by_url!(articles, tallies)
           seen = {}
-          articles.reject! do |article|
+          tally_reject!(articles, tallies, 'duplicate_url') do |article|
             identity = url_identity(article.url)
             identity.nil? || seen.key?(identity).tap { seen[identity] = true }
           end
         end
 
-        def keep_only_http_urls!(articles)
-          articles.select! { |article| VALID_SCHEMES.include?(article.url&.scheme) }
+        def keep_only_http_urls!(articles, tallies)
+          tally_reject!(articles, tallies, 'bad_scheme') do |article|
+            !VALID_SCHEMES.include?(article.url&.scheme)
+          end
         end
 
-        def reject_self_links!(articles, base_url)
+        def reject_self_links!(articles, base_url, tallies)
           source_identity = url_identity(base_url)
-          articles.reject! { |article| url_identity(article.url) == source_identity }
+          tally_reject!(articles, tallies, 'self_link') do |article|
+            url_identity(article.url) == source_identity
+          end
         end
 
-        def reject_different_domain!(articles, base_url)
+        def reject_different_domain!(articles, base_url, tallies)
           base_host = base_url.host
-          articles.select! { |article| article.url&.host == base_host }
+          tally_reject!(articles, tallies, 'different_domain') do |article|
+            article.url&.host != base_host
+          end
         end
 
         # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).
         # PathClassifier owns route facts; Cleanup owns feed-item admission.
-        # Align with Scoring's non_content_utility_path demotion, but as a hard gate so
-        # nested commerce routes (e.g. /jobs/stellenangebote/berlin) cannot fill limit.
-        def reject_excluded_destinations!(articles)
-          articles.reject! { |article| excluded_destination?(article.url) }
+        def reject_excluded_destinations!(articles, tallies)
+          tally_reject!(articles, tallies, 'excluded_destination') do |article|
+            excluded_destination?(article.url)
+          end
         end
 
         def excluded_destination?(url)
@@ -126,10 +140,30 @@ module Html2rss
 
         # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
         # blanking them would hide bad extraction as "unknown" and inflate empty items.
-        def reject_low_quality_titles!(articles)
-          articles.select! do |article|
+        def reject_low_quality_titles!(articles, tallies) # rubocop:disable Metrics/MethodLength -- junk vs word-count reasons
+          articles.reject! do |article|
             title = article.title
-            title.nil? || (word_count_at_least?(title, MIN_WORDS) && junk_reason(title).nil?)
+            next false if title.nil?
+
+            reason = junk_reason(title)
+            if reason
+              tallies[reason.to_s] += 1
+              next true
+            end
+
+            next false if word_count_at_least?(title, MIN_WORDS)
+
+            tallies['low_word_count'] += 1
+            true
+          end
+        end
+
+        def tally_reject!(articles, tallies, reason)
+          articles.reject! do |article|
+            next false unless yield(article)
+
+            tallies[reason] += 1
+            true
           end
         end
 

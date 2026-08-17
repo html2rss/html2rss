@@ -42,14 +42,6 @@ RSpec.describe Html2rss::MCP::Server do
     end
   end
 
-  describe '.resolve_mcp_strategy' do
-    it 'passes auto through and resolves concrete strategies', :aggregate_failures do
-      expect(described_class.resolve_mcp_strategy(:auto)).to eq(:auto)
-      expect(described_class.resolve_mcp_strategy('botasaurus')).to eq(:botasaurus)
-      expect(described_class.resolve_mcp_strategy(nil)).to eq(:auto)
-    end
-  end
-
   describe '.build' do
     # rubocop:disable RSpec/ExampleLength -- registration contract is one assertion story
     it 'registers tools, resources, prompts, and decision-tree instructions', :aggregate_failures do
@@ -61,6 +53,10 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.instructions).to include('capture_config')
       expect(protocol_server.tools['validate_config'].description).to include('html2rss://schema')
       expect(protocol_server.tools['capture_config'].description).to include('html2rss://schema')
+      scrape_schema = protocol_server.tools['scrape_url'].input_schema.to_h
+      inspect_schema = protocol_server.tools['inspect_url'].input_schema.to_h
+      expect(scrape_schema.dig(:properties, :strategy, :description)).to include('fallback chain')
+      expect(inspect_schema.dig(:properties, :strategy, :description)).to include('Faraday')
     end
     # rubocop:enable RSpec/ExampleLength
   end
@@ -68,16 +64,20 @@ RSpec.describe Html2rss::MCP::Server do
   describe 'tools/call contracts' do
     describe 'scrape_url' do
       before do
-        allow(Html2rss).to receive(:auto_json_feed).and_return(
-          { title: 'Channel', items: [{ title: 'A', url: 'https://example.com/a' }] }
+        status = Html2rss::Status.build(articles: [], dedup_dropped: 0, admission_drops: { 'credit' => 1 })
+        feed_result = instance_double(
+          Html2rss::FeedResult,
+          to_json_feed: { title: 'Channel', items: [{ title: 'A', url: 'https://example.com/a' }] },
+          status:
         )
+        allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
       end
 
       # rubocop:disable RSpec/ExampleLength -- tools/call + meta contract
-      it 'returns JSON items with quality meta via symbol-key kwargs', :aggregate_failures do
+      it 'returns JSON items with Status meta via symbol-key kwargs', :aggregate_failures do
         result = call_tool.call('scrape_url', { url: 'https://example.com', strategy: 'auto' })
 
-        expect(Html2rss).to have_received(:auto_json_feed).with(
+        expect(Html2rss).to have_received(:auto_feed_result).with(
           'https://example.com',
           hash_including(strategy: :auto)
         )
@@ -85,7 +85,12 @@ RSpec.describe Html2rss::MCP::Server do
         expect(JSON.parse(result.dig(:result, :content, 0, :text))).to eq(
           [{ 'title' => 'A', 'url' => 'https://example.com/a' }]
         )
-        expect(result.dig(:result, :_meta)).to include(total: 1, strategy: 'auto', channel_title: 'Channel')
+        expect(result.dig(:result, :_meta)).to include(
+          total: 1,
+          requested_strategy: 'auto',
+          channel_title: 'Channel',
+          admission_drops: { credit: 1 }
+        )
       end
       # rubocop:enable RSpec/ExampleLength
     end
@@ -95,7 +100,11 @@ RSpec.describe Html2rss::MCP::Server do
         Html2rss::Capture::CaptureResult.new(
           config: valid_config,
           articles_count: 3,
-          channel_title: 'Example'
+          channel_title: 'Example',
+          has_selectors: true,
+          segment_strategy: :list,
+          admission_drops: {},
+          selected_strategy: nil
         )
       end
 
@@ -115,7 +124,8 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :_meta)).to include(
           articles_count: 3,
           channel_title: 'Example',
-          has_selectors: true
+          has_selectors: true,
+          requested_strategy: 'auto'
         )
       end
       # rubocop:enable RSpec/ExampleLength
@@ -183,7 +193,7 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'error paths' do
       it 'marks scrape_url failures as isError', :aggregate_failures do
-        allow(Html2rss).to receive(:auto_json_feed).and_raise(StandardError, 'scrape boom')
+        allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
         result = call_tool.call('scrape_url', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)

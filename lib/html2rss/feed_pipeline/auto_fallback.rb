@@ -6,7 +6,7 @@ module Html2rss
     #
     # Owned by {FeedPipeline}; invoked only after {StrategyPlan} resolves +:auto+.
     # Hosted by the pipeline instance: session + extract call back into FeedPipeline.
-    class AutoFallback
+    class AutoFallback # rubocop:disable Metrics/ClassLength -- attempt state + logging stay co-located
       # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[faraday botasaurus].freeze
 
@@ -64,17 +64,22 @@ module Html2rss
         # @param dedup_dropped [Integer] articles removed by deduplication
         # @param selected_strategy [Symbol] concrete strategy that produced items
         # @param attempt_count [Integer] number of attempts recorded for this chain
+        # @param admission_drops [Hash{String => Integer}] Cleanup drop tallies
         # @return [void]
-        def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:)
+        # rubocop:disable Metrics/ParameterLists -- PipelineOutcome kwargs stay co-located
+        def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:,
+                     admission_drops: {})
           @result = PipelineOutcome.new(
             response:,
             articles:,
             dedup_dropped:,
             selected_strategy:,
             attempt_count:,
-            strategy_attempts: attempts
+            strategy_attempts: attempts,
+            admission_drops:
           )
         end
+        # rubocop:enable Metrics/ParameterLists
       end
 
       ##
@@ -132,15 +137,18 @@ module Html2rss
         nil
       end
 
-      def process_response(response:, strategy:, next_strategy:, request_session:, state:)
+      def process_response(response:, strategy:, next_strategy:, request_session:, state:) # rubocop:disable Metrics/MethodLength -- extract + success path
         state.remember_response(response)
-        articles, dedup_dropped = articles_for(response:, request_session:)
+        articles, dedup_dropped, admission_drops = articles_for(response:, request_session:)
         items_count = articles.size
         state.record_items(strategy:, items_count:, transport_meta: response.transport_meta)
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
-        return record_success(response:, strategy:, articles:, dedup_dropped:, state:) if items_count.positive?
+        if items_count.positive?
+          return record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:,
+                                state:)
+        end
 
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
@@ -149,15 +157,18 @@ module Html2rss
         pipeline.deduplicated_articles(config:, response:, request_session:)
       end
 
-      def record_success(response:, strategy:, articles:, dedup_dropped:, state:)
+      # rubocop:disable Metrics/ParameterLists -- success kwargs match PipelineOutcome
+      def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
         attempt_count = state.attempts.size
-        state.succeed!(response:, articles:, dedup_dropped:, selected_strategy: strategy, attempt_count:)
+        state.succeed!(response:, articles:, dedup_dropped:, selected_strategy: strategy,
+                       attempt_count:, admission_drops:)
         return unless attempt_count > 1
 
         Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempt_count} " \
                  "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                  "budget_remaining=#{budget_remaining_label}")
       end
+      # rubocop:enable Metrics/ParameterLists
 
       def finalize_failure(attempts:, response:)
         surface_category = response && AutoSource::Scraper.classify_no_scraper_surface(

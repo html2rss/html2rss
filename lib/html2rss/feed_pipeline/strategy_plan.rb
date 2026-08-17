@@ -42,6 +42,17 @@ module Html2rss
         end
 
         ##
+        # Cheap single-request diagnostic default: +:auto+ → +:faraday+.
+        # Does not run {AutoFallback}. Prefer {resolve} for scrape/capture feeds.
+        #
+        # @param name [Symbol, String, nil] plan name (+nil+ → +:auto+)
+        # @return [Symbol] concrete {RequestService} strategy
+        def concrete_for_diagnostic(name = AUTO_NAME)
+          plan = resolve(name || AUTO_NAME)
+          plan.is_a?(Auto) ? RequestService.default_strategy_name : plan.strategy
+        end
+
+        ##
         # @param name [Symbol, String, nil] candidate plan name
         # @return [Boolean] whether +name+ is a valid feed-level strategy plan
         def valid?(name)

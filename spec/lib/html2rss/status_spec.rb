@@ -84,7 +84,8 @@ RSpec.describe Html2rss::Status do
       status = described_class.build(
         articles: [],
         dedup_dropped: 1,
-        strategy_attempts: [{ strategy: :faraday, items_count: 0, error_class: nil }]
+        strategy_attempts: [{ strategy: :faraday, items_count: 0, error_class: nil }],
+        admission_drops: { 'self_link' => 1 }
       )
       restored = Marshal.load(Marshal.dump(status))
 
@@ -92,7 +93,9 @@ RSpec.describe Html2rss::Status do
       expect(restored.scraper_tallies).to be_frozen
       expect(restored.strategy_attempts).to be_frozen
       expect(restored.strategy_attempts.first).to be_frozen
+      expect(restored.admission_drops).to be_frozen
       expect(restored.dedup_dropped).to eq(1)
+      expect(restored.admission_drops).to eq('self_link' => 1)
       expect(restored.strategy_attempts).to eq([{ strategy: :faraday, items_count: 0, error_class: nil }])
       expect { restored.scraper_tallies['x'] = 1 }.to raise_error(FrozenError)
     end
@@ -134,13 +137,23 @@ RSpec.describe Html2rss::Status do
     end
     # rubocop:enable RSpec/ExampleLength
 
+    # rubocop:disable RSpec/ExampleLength -- member defaults + to_h omission
     it 'omits nil selected_strategy, zero attempt_count, and empty strategy_attempts', :aggregate_failures do
       status = described_class.build(articles: [], dedup_dropped: 3)
 
       expect(status.selected_strategy).to be_nil
       expect(status.attempt_count).to eq(0)
       expect(status.strategy_attempts).to eq([])
+      expect(status.admission_drops).to eq({})
       expect(status.to_h.keys).to contain_exactly(:version, :dedup_dropped)
+    end
+    # rubocop:enable RSpec/ExampleLength
+
+    it 'includes admission_drops when Cleanup recorded reasons', :aggregate_failures do
+      status = described_class.build(articles: [], dedup_dropped: 0, admission_drops: { 'credit' => 2 })
+
+      expect(status.admission_drops).to eq('credit' => 2)
+      expect(status.to_h).to include(admission_drops: { 'credit' => 2 })
     end
   end
 

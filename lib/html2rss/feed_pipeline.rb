@@ -3,19 +3,30 @@
 module Html2rss
   ##
   # Builds feeds from validated config through request, extraction, and rendering stages.
-  class FeedPipeline
+  class FeedPipeline # rubocop:disable Metrics/ClassLength -- outcome + collect seams stay co-located
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.
     # attempt_count: auto attempts attempted; 0 outside :auto.
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
     PipelineOutcome = Data.define(
-      :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts
+      :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
+      :admission_drops
     )
 
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
       @raw_config = raw_config
+    end
+
+    ##
+    # Runs the pipeline once and returns scrape-finished outcome (before Channel/Status).
+    # Used by {Capture} which needs the response body for SST selector derivation.
+    #
+    # @return [PipelineOutcome]
+    def to_outcome
+      config = Config.from_hash(raw_config, params: raw_config[:params])
+      pipeline_outcome_for(config)
     end
 
     ##
@@ -32,7 +43,8 @@ module Html2rss
         dedup_dropped: outcome.dedup_dropped,
         selected_strategy: outcome.selected_strategy,
         attempt_count: outcome.attempt_count,
-        strategy_attempts: outcome.strategy_attempts
+        strategy_attempts: outcome.strategy_attempts,
+        admission_drops: outcome.admission_drops
       )
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
@@ -56,11 +68,11 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @param response [Html2rss::RequestService::Response]
     # @param request_session [Html2rss::RequestSession]
-    # @return [Array(Array<Html2rss::Article>, Integer)] unique articles and drop count
+    # @return [Array(Array<Html2rss::Article>, Integer, Hash)] unique articles, dedup drops, admission drops
     def deduplicated_articles(config:, response:, request_session:)
-      collected = collect_articles(config:, response:, request_session:)
+      collected, admission_drops = collect_articles(config:, response:, request_session:)
       unique = Article::Deduplicator.new(collected).call
-      [unique, collected.size - unique.size]
+      [unique, collected.size - unique.size, admission_drops]
     end
 
     private
@@ -80,11 +92,12 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
-      articles, dedup_dropped = deduplicated_articles(config:, response:, request_session:)
+      articles, dedup_dropped, admission_drops = deduplicated_articles(config:, response:, request_session:)
       raise_empty_auto_source!(strategy:, response:) if config.auto_source && articles.empty?
 
       PipelineOutcome.new(
-        response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0, strategy_attempts: []
+        response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
+        strategy_attempts: [], admission_drops:
       )
     end
 
@@ -108,8 +121,9 @@ module Html2rss
     end
 
     def collect_articles(config:, response:, request_session:)
-      selector_articles(config:, response:, request_session:) +
-        auto_source_articles(config:, response:, request_session:)
+      selector = selector_articles(config:, response:, request_session:)
+      auto, admission_drops = auto_source_articles(config:, response:, request_session:)
+      [selector + auto, admission_drops]
     end
 
     # rubocop:disable Metrics/MethodLength
@@ -132,10 +146,12 @@ module Html2rss
     end
     # rubocop:enable Metrics/MethodLength
 
+    # @return [Array(Array<Html2rss::Article>, Hash{String => Integer})]
     def auto_source_articles(config:, response:, request_session:)
-      return [] unless (auto_source = config.auto_source)
+      return [[], {}] unless (auto_source = config.auto_source)
 
-      AutoSource.new(response, auto_source, request_session:).articles
+      source = AutoSource.new(response, auto_source, request_session:)
+      [source.articles, source.admission_drops]
     end
   end
 end

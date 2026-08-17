@@ -56,17 +56,6 @@ module Html2rss
         end
 
         ##
-        # Maps MCP strategy shortcut to a feed-level strategy plan.
-        # +:auto+ passes through as +:auto+ so the FeedPipeline's AutoFallback
-        # chain (faraday → botasaurus) is triggered for JS-rendered sites.
-        #
-        # @param strategy [String, Symbol, nil]
-        # @return [Symbol]
-        def resolve_mcp_strategy(strategy)
-          (strategy || :auto).to_sym
-        end
-
-        ##
         # @param text [String]
         # @param error [Boolean]
         # @param meta [Hash, nil]
@@ -141,7 +130,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy (auto collapses to faraday in MCP)'
+                  description: 'Request strategy (auto runs faraday → botasaurus fallback chain)'
                 },
                 limit: {
                   type: 'integer',
@@ -156,13 +145,15 @@ module Html2rss
               required: ['url']
             }
           ) do |server_context:, url:, strategy: 'auto', limit: 25, items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
-            resolved = Server.resolve_mcp_strategy(strategy)
-            feed = Html2rss.auto_json_feed(url, strategy: resolved, limit:, items_selector:)
+            plan = (strategy || :auto).to_sym
+            feed_result = Html2rss.auto_feed_result(url, strategy: plan, limit:, items_selector:)
+            feed = feed_result.to_json_feed
             items = feed[:items] || []
             Server.text_response(JSON.generate(items), meta: {
                                    total: items.size,
-                                   strategy: resolved.to_s,
-                                   channel_title: feed[:title]
+                                   requested_strategy: plan.to_s,
+                                   channel_title: feed[:title],
+                                   **feed_result.status.to_h
                                  })
           rescue StandardError => error
             Server.error_response(error)
@@ -182,7 +173,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy (auto collapses to faraday in MCP)'
+                  description: 'Request strategy (auto uses Faraday for cheap diagnostics; pin botasaurus when needed)'
                 }
               },
               required: ['url']
@@ -209,7 +200,7 @@ module Html2rss
                   type: 'string',
                   enum: %w[auto faraday botasaurus],
                   default: 'auto',
-                  description: 'Request strategy (auto collapses to faraday in MCP)'
+                  description: 'Request strategy (auto runs faraday → botasaurus fallback chain)'
                 },
                 items_selector: {
                   type: 'string',
@@ -219,18 +210,18 @@ module Html2rss
               required: ['url']
             }
           ) do |server_context:, url:, strategy: 'auto', items_selector: nil| # rubocop:disable Lint/UnusedBlockArgument
-            resolved = Server.resolve_mcp_strategy(strategy)
-            result = Html2rss::Capture.build(url, strategy: resolved, items_selector:)
-            selectors = result.config[:selectors]
-            Server.text_response(
-              JSON.pretty_generate(result.config),
-              meta: {
-                articles_count: result.articles_count,
-                channel_title: result.channel_title,
-                has_selectors: !selectors.nil? && !selectors.empty?,
-                strategy: resolved.to_s
-              }
-            )
+            plan = (strategy || :auto).to_sym
+            result = Html2rss::Capture.build(url, strategy: plan, items_selector:)
+            meta = {
+              articles_count: result.articles_count,
+              channel_title: result.channel_title,
+              has_selectors: result.has_selectors,
+              requested_strategy: plan.to_s
+            }
+            meta[:segment_strategy] = result.segment_strategy.to_s if result.segment_strategy
+            meta[:selected_strategy] = result.selected_strategy.to_s if result.selected_strategy
+            meta[:admission_drops] = result.admission_drops if result.admission_drops.any?
+            Server.text_response(JSON.pretty_generate(result.config), meta:)
           rescue StandardError => error
             Server.error_response(error)
           end
@@ -389,22 +380,11 @@ module Html2rss
         module_function
 
         ##
-        # Resolves feed-level strategy plans to concrete strategies for diagnostic fetch.
-        # +:auto+ collapses to +:faraday+ (inspect is a single-request diagnostic, not a fallback run).
-        #
-        # @param strategy [String, Symbol]
-        # @return [Symbol]
-        def concrete_strategy(strategy)
-          plan = FeedPipeline::StrategyPlan.resolve(Server.resolve_mcp_strategy(strategy))
-          plan.is_a?(FeedPipeline::StrategyPlan::Auto) ? :faraday : plan.strategy
-        end
-
-        ##
         # @param url [String]
         # @param strategy [String, Symbol]
         # @return [Hash]
         def call(url:, strategy: :auto) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-          resolved = concrete_strategy(strategy)
+          resolved = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
           response = fetch_response(url, resolved)
           parsed = response.parsed_body
 
@@ -431,9 +411,28 @@ module Html2rss
           blocked = Html2rss::RequestService::BlockedSurface.interstitial_signature_for(response.body)
           result[:blocked_surface] = blocked[:key].to_s if blocked
           result[:xhr_capture] = xhr_capture_info(response) if resolved == :botasaurus
+          merge_admission_diagnostics!(result, response)
 
           result
         end
+
+        ##
+        # Surfaces Cleanup admission_drops without re-running full AutoSource discovery.
+        # Uses articles already extractable from a cheap AutoSource pass only when HTML.
+        #
+        # @param result [Hash]
+        # @param response [Html2rss::RequestService::Response]
+        # @return [void]
+        def merge_admission_diagnostics!(result, response)
+          return unless response.html_response?
+
+          source = AutoSource.new(response, AutoSource::DEFAULT_CONFIG.merge(limit: 10))
+          articles = source.articles
+          result[:articles_count] = articles.size
+          drops = source.admission_drops
+          result[:admission_drops] = drops if drops.any?
+        end
+        module_function :merge_admission_diagnostics!
 
         ##
         # @param response [Html2rss::RequestService::Response]
