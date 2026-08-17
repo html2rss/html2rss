@@ -3,6 +3,8 @@
 module Html2rss
   ##
   # Builds feeds from validated config through request, extraction, and rendering stages.
+  #
+  # {include:file:lib/html2rss/feed_pipeline/README.md}
   class FeedPipeline # rubocop:disable Metrics/ClassLength -- outcome + collect seams stay co-located
     # Scrape-finished facts after request + extraction + dedup (before Channel/Status materialize).
     # selected_strategy: set on :auto success; nil otherwise.

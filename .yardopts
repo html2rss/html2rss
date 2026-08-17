@@ -1,7 +1,7 @@
 --markup markdown
 --markup-provider redcarpet
 --main README.md
---files README.md,LICENSE
+--files README.md,LICENSE,CONTEXT.md
 --charset utf-8
 --no-private
 --output-dir docs/

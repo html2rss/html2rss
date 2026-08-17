@@ -15,8 +15,8 @@ module Html2rss
   # @see Html2rss::AutoSource::Scraper::Schema
   # @see Html2rss::AutoSource::Scraper::SemanticHtml
   # @see Html2rss::AutoSource::Scraper::Html
-  # rubocop:disable Metrics/ClassLength -- defaults + tiered extract stay on the contributor entry type
-  class AutoSource
+  # {include:file:lib/html2rss/auto_source/README.md}
+  class AutoSource # rubocop:disable Metrics/ClassLength -- defaults + tiered extract stay on the contributor entry type
     # Default max articles to keep (also the short-circuit floor across scraper tiers).
     DEFAULT_LIMIT = 25
 
@@ -220,5 +220,4 @@ module Html2rss
       @opts.fetch(:cleanup, {})
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

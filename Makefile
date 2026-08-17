@@ -68,4 +68,4 @@ ready: ## Run the local PR readiness checks
 	bin/ready
 
 clean: ## Clean build artifacts
-	rm -rf coverage/ doc/ tmp/ html2rss-*.gem .rspec_status
+	rm -rf coverage/ doc/ docs/ tmp/ html2rss-*.gem .rspec_status

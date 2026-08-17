@@ -6,6 +6,8 @@ module Html2rss
   #
   # Fetches via {FeedPipeline} (including AutoFallback for +:auto+), extracts articles,
   # then derives a reusable items CSS selector from SST segments (list → cluster → semantic).
+  #
+  # {include:file:lib/html2rss/capture/README.md}
   class Capture # rubocop:disable Metrics/ClassLength -- segment strategies + CSS trim stay co-located
     LEADING_TRIM_TAGS = %w[html body].freeze
     private_constant :LEADING_TRIM_TAGS
