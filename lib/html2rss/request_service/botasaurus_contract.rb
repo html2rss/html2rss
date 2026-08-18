@@ -61,9 +61,9 @@ module Html2rss
         # @return [Boolean] true when upstream classified request as challenge blocked
         def challenge_block? = error_category == 'challenge_block'
 
-        # @return [Boolean] true when upstream returned non-200 or an error payload
+        # @return [Boolean] true when scrape transport is not 200 or error is present
         def upstream_failure?
-          transport_status != 200 || status != 200 || error_message?
+          transport_status != 200 || error_message?
         end
 
         # @return [String] normalized challenge error message
