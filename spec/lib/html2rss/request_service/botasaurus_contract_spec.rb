@@ -2,21 +2,55 @@
 
 require 'spec_helper'
 require 'json'
+require 'yaml'
 
 RSpec.describe Html2rss::RequestService::BotasaurusContract do
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
 
-  describe '::MAX_WAIT_TIMEOUT_SECONDS' do
-    it 'matches the Botasaurus scrape API wait ceiling' do
-      expect(described_class::MAX_WAIT_TIMEOUT_SECONDS).to eq(20)
+  describe 'OpenAPI scrape contract' do
+    # rubocop:disable RSpec/ExampleLength -- one sibling OpenAPI snapshot assertion
+    it 'matches the sibling ScrapeRequest / ScrapeResponse schemas', :aggregate_failures do
+      repo_root = File.expand_path('../../../..', __dir__)
+      openapi_path = File.expand_path('../botasaurus-scrape-api/openapi.yaml', repo_root)
+      skip "sibling OpenAPI not found at #{openapi_path}" unless File.exist?(openapi_path)
+
+      openapi = YAML.load_file(openapi_path)
+      schemas = openapi.fetch('components').fetch('schemas')
+      scrape_request = schemas.fetch('ScrapeRequest').fetch('properties')
+      scrape_response = schemas.fetch('ScrapeResponse').fetch('properties')
+      wait = scrape_request.fetch('wait_timeout_seconds')
+      retries = scrape_request.fetch('max_retries')
+      category = scrape_response.fetch('error_category')
+      scrape_responses = openapi.dig('paths', '/scrape', 'post', 'responses')
+      clamp_range = "[#{described_class::MIN_WAIT_TIMEOUT_SECONDS}, #{described_class::MAX_WAIT_TIMEOUT_SECONDS}]"
+
+      expect(described_class::REQUEST_OPTION_KEYS.map(&:to_s)).to match_array(scrape_request.keys - %w[url])
+      expect(described_class::EXECUTION_MODES).to eq(scrape_request.fetch('execution_mode').fetch('enum'))
+      expect(described_class::NAVIGATION_MODES).to eq(scrape_request.fetch('navigation_mode').fetch('enum'))
+      expect(described_class::DEFAULT_WAIT_TIMEOUT_SECONDS).to eq(wait.fetch('default'))
+      expect(wait.fetch('description')).to include(clamp_range)
+      expect(wait).not_to have_key('minimum')
+      expect(wait).not_to have_key('maximum')
+      expect(described_class::MAX_RETRIES).to eq(retries.fetch('maximum').to_i)
+      expect(described_class::ERROR_CATEGORIES).to eq(category.fetch('anyOf').find { _1['enum'] }.fetch('enum'))
+      expect(scrape_response.keys).to include(*described_class::META_KEYS)
+      expect(scrape_responses.keys).to include('200', '400', '403', '422', '502', '504')
+      expect(scrape_responses.except('200').values).to all(
+        include('content' => a_hash_including(
+          'application/json' => a_hash_including(
+            'schema' => { '$ref' => '#/components/schemas/ScrapeResponse' }
+          )
+        ))
+      )
     end
+    # rubocop:enable RSpec/ExampleLength
   end
 
-  describe '.option_keys' do
+  describe '::REQUEST_OPTION_KEYS' do
     it 'matches the validator BotasaurusRequestConfig key names' do
       validator_keys = Html2rss::Config::Validator::BotasaurusRequestConfig.key_map.map { |key| key.name.to_sym }
 
-      expect(described_class.option_keys).to match_array(validator_keys)
+      expect(described_class::REQUEST_OPTION_KEYS).to match_array(validator_keys)
     end
   end
 
@@ -28,16 +62,26 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
     let(:remaining_timeout_seconds) { 30 }
 
-    it 'caps auto-computed remaining-2 wait at the API maximum', :aggregate_failures do
-      expect(payload.fetch(:wait_timeout_seconds)).to be <= described_class::MAX_WAIT_TIMEOUT_SECONDS
-      expect(payload.fetch(:wait_timeout_seconds)).to eq(20)
+    it 'sends only the URL so OpenAPI defaults apply', :aggregate_failures do
+      expect(payload).to eq(url: 'https://example.com/')
+      expect(payload).not_to have_key(:wait_timeout_seconds)
+      expect(payload).not_to have_key(:max_retries)
     end
 
-    context 'when remaining budget minus reserve still exceeds the API max' do
+    context 'when remaining budget minus reserve still exceeds the OpenAPI wait default' do
       let(:remaining_timeout_seconds) { 25 }
 
-      it 'mins remaining-2 with MAX_WAIT_TIMEOUT_SECONDS' do
-        expect(payload.fetch(:wait_timeout_seconds)).to eq(20)
+      it 'does not inflate wait_timeout_seconds above the published default' do
+        expect(payload).not_to have_key(:wait_timeout_seconds)
+      end
+    end
+
+    context 'when remaining budget cannot cover the published wait default' do
+      let(:remaining_timeout_seconds) { 12 }
+
+      it 'clamps wait down and disables retries', :aggregate_failures do
+        expect(payload.fetch(:wait_timeout_seconds)).to eq(10)
+        expect(payload.fetch(:max_retries)).to eq(0)
       end
     end
 
@@ -52,7 +96,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     context 'when options include an unknown key' do
       let(:contract) { described_class.new(url:, options: { not_a_botasaurus_option: true, lang: 'de' }) }
 
-      it 'drops the unknown key and keeps validator keys', :aggregate_failures do
+      it 'drops the unknown key and keeps OpenAPI keys', :aggregate_failures do
         expect(payload).not_to have_key(:not_a_botasaurus_option)
         expect(payload[:lang]).to eq('de')
       end
@@ -91,7 +135,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       end
     end
 
-    context 'when FastAPI returns a 422 validation detail' do
+    context 'when the body is FastAPI HTTPValidationError detail' do
       let(:status) { 422 }
       let(:body) do
         JSON.generate(
@@ -100,7 +144,6 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
               {
                 'loc' => %w[body wait_timeout_seconds],
                 'msg' => 'Input should be less than or equal to 20',
-                'type' => 'less_than_equal',
                 'input' => 28
               }
             ]
@@ -108,34 +151,10 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
         )
       end
 
-      it 'names wait_timeout_seconds and the API cap on BotasaurusServiceError', :aggregate_failures do
+      it 'does not treat FastAPI detail as the scrape envelope', :aggregate_failures do
         expect(parsed).to be_upstream_failure
-        expect(parsed.upstream_failure_message).to include('wait_timeout_seconds')
-        expect(parsed.upstream_failure_message).to include('20')
-      end
-    end
-
-    # main-image compat: :latest still 422s schema errors as FastAPI `detail` until envelope 422 ships.
-    context 'when FastAPI returns 422 detail (main-image compat)' do
-      let(:status) { 422 }
-      let(:body) do
-        JSON.generate(
-          {
-            'detail' => [
-              {
-                'loc' => %w[body window_size],
-                'msg' => 'Input should be a valid list',
-                'type' => 'list_type',
-                'input' => [1920]
-              }
-            ]
-          }
-        )
-      end
-
-      it 'appends the field name from detail', :aggregate_failures do
-        expect(parsed).to be_upstream_failure
-        expect(parsed.upstream_failure_message).to include('window_size')
+        expect(parsed.upstream_failure_message).not_to include('wait_timeout_seconds')
+        expect(parsed.upstream_failure_message).not_to include('detail=')
       end
     end
   end
@@ -193,6 +212,33 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
 
       it { is_expected.to be_upstream_failure }
     end
+
+    context 'when html is omitted on a successful envelope' do
+      let(:payload) { { 'url' => 'https://example.com/', 'request_id' => 'req-1', 'error' => nil } }
+
+      it 'uses the OpenAPI empty-string default', :aggregate_failures do
+        expect(parsed).not_to be_upstream_failure
+        expect(parsed.html).to eq('')
+      end
+    end
+  end
+
+  describe 'ParsedResponse#timeout?' do
+    subject(:parsed) { described_class::ParsedResponse.new(payload:, transport_status:) }
+
+    let(:payload) { { 'error' => 'Scrape timed out after 20 seconds', 'error_category' => 'timeout' } }
+
+    context 'when transport is 504' do
+      let(:transport_status) { 504 }
+
+      it { is_expected.to be_timeout }
+    end
+
+    context 'when error_category is timeout on 502' do
+      let(:transport_status) { 502 }
+
+      it { is_expected.to be_timeout }
+    end
   end
 
   describe 'ParsedResponse#challenge_block?' do
@@ -207,5 +253,26 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
 
     it { is_expected.to be_challenge_block }
+  end
+
+  describe 'ParsedResponse#transport_meta' do
+    subject(:parsed) { described_class::ParsedResponse.new(payload:, transport_status: 200) }
+
+    let(:payload) do
+      {
+        'html' => '<html>ok</html>',
+        'error' => nil,
+        'metadata_error' => 'driver.requests.get failed',
+        'request_id' => 'req-meta'
+      }
+    end
+
+    it 'keeps metadata_error as telemetry without treating it as scrape failure', :aggregate_failures do
+      expect(parsed).not_to be_upstream_failure
+      expect(parsed.transport_meta).to include(
+        'metadata_error' => 'driver.requests.get failed',
+        'request_id' => 'req-meta'
+      )
+    end
   end
 end

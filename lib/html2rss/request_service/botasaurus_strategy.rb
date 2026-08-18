@@ -13,6 +13,7 @@ module Html2rss
       def fetch
         parsed_response = post_scrape_request
         raise_if_challenge_blocked!(parsed_response)
+        raise_if_timed_out!(parsed_response)
         raise_if_upstream_failed!(parsed_response)
         build_response(parsed_response)
       end
@@ -37,6 +38,13 @@ module Html2rss
         return unless parsed_response.challenge_block?
 
         raise BlockedSurfaceDetected, "Blocked surface detected: #{parsed_response.challenge_message}"
+      end
+
+      def raise_if_timed_out!(parsed_response)
+        return unless parsed_response.timeout?
+
+        log_timeout!(reason: 'botasaurus_upstream')
+        raise RequestTimedOut, parsed_response.upstream_failure_message
       end
 
       def raise_if_upstream_failed!(parsed_response)

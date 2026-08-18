@@ -45,16 +45,18 @@ module Html2rss
         optional(:media).maybe(:string)
       end
 
-      # Contract for Botasaurus-specific request options.
+      # Contract for Botasaurus-specific request options (OpenAPI ScrapeRequest minus url).
       BotasaurusRequestConfig = Dry::Schema.Params do
         config.validate_keys = true
 
-        optional(:execution_mode).filled(:string, included_in?: %w[auto request browser])
-        optional(:navigation_mode).filled(:string, included_in?: %w[auto get google_get google_get_bypass organic_get])
-        optional(:max_retries).filled(:integer, gteq?: 0, lteq?: 3)
+        botasaurus = Html2rss::RequestService::BotasaurusContract
+
+        optional(:execution_mode).filled(:string, included_in?: botasaurus::EXECUTION_MODES)
+        optional(:navigation_mode).filled(:string, included_in?: botasaurus::NAVIGATION_MODES)
+        optional(:max_retries).filled(:integer, gteq?: 0, lteq?: botasaurus::MAX_RETRIES)
         optional(:wait_for_selector).maybe(:string)
         optional(:wait_timeout_seconds).filled(
-          :integer, gt?: 0, lteq?: Html2rss::RequestService::BotasaurusContract::MAX_WAIT_TIMEOUT_SECONDS
+          :integer, gteq?: botasaurus::MIN_WAIT_TIMEOUT_SECONDS, lteq?: botasaurus::MAX_WAIT_TIMEOUT_SECONDS
         )
         optional(:scroll).filled(:bool)
         optional(:scroll_to_bottom).filled(:bool)
@@ -65,7 +67,9 @@ module Html2rss
         optional(:headless).filled(:bool)
         optional(:proxy).filled(:string)
         optional(:user_agent).filled(:string)
-        optional(:window_size).value(:array, min_size?: 2, max_size?: 2).each(:integer, gt?: 0)
+        optional(:window_size).value(
+          :array, min_size?: botasaurus::WINDOW_SIZE_LENGTH, max_size?: botasaurus::WINDOW_SIZE_LENGTH
+        ).each(:integer, gt?: 0)
         optional(:lang).filled(:string)
         optional(:cookies).hash
         optional(:headers).hash

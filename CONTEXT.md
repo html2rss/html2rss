@@ -10,9 +10,9 @@ Shared wall-clock and HTTP request meters for one feed build. Constructed via `R
 
 Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and MCP Inspect all call that one predicate — do not reintroduce a parallel `html_document?`. Gzip/brotli inflate stays on `CompressedBody`, called only from the Faraday adapter; unlabeled octet-stream inflate must not grow onto Botasaurus or LocalFile.
 
-## Botasaurus option keys
+## Botasaurus scrape contract
 
-Types and the closed key set live on `Config::Validator::BotasaurusRequestConfig`. `BotasaurusContract#filtered_options` reads `key_map` at call time (no load-time `OPTION_KEYS` — the validator already references `BotasaurusContract::MAX_WAIT_TIMEOUT_SECONDS`). Wait ceiling and 422 clamp stay on Contract.
+OpenAPI `ScrapeRequest` / `ScrapeResponse` (sibling `botasaurus-scrape-api/openapi.yaml`) is the wire authority. Closed sets, wait bounds, and request option keys live on `RequestService::BotasaurusContract`. `Config::Validator::BotasaurusRequestConfig` consumes those constants for YAML admission. `BotasaurusStrategy` is Faraday `POST /scrape` plus gem error mapping (`challenge_block` → `BlockedSurfaceDetected`, `timeout` / 504 → `RequestTimedOut`). Do not reintroduce FastAPI `detail` parsing or client default overrides of published OpenAPI defaults.
 
 ## DOM chrome
 

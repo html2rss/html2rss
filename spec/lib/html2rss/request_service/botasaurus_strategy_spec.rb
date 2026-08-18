@@ -81,7 +81,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
   end
 
   describe 'request contract' do
-    it 'posts defaults and validates request policy', :aggregate_failures do
+    it 'posts the target URL and validates request policy', :aggregate_failures do
       execute
 
       expect(budget).to have_received(:consume!)
@@ -94,14 +94,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       path, body, headers = captured_post_args.first
       expect(path).to eq('/scrape')
       expect(headers).to eq('Content-Type' => 'application/json')
-      expect(JSON.parse(body)).to eq(
-        'url' => 'https://example.com/',
-        'execution_mode' => 'auto',
-        'navigation_mode' => 'auto',
-        'max_retries' => 1,
-        'headless' => false,
-        'wait_timeout_seconds' => 20
-      )
+      expect(JSON.parse(body)).to eq('url' => 'https://example.com/')
     end
 
     context 'when request includes optional botasaurus fields and headers' do
@@ -177,8 +170,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       [
         { remaining: 12, max_retries: 0, wait_timeout_seconds: 10 },
         { remaining: 10.5, max_retries: 0, wait_timeout_seconds: 8 },
-        { remaining: 20, max_retries: 1, wait_timeout_seconds: 18 },
-        { remaining: 25, max_retries: 1, wait_timeout_seconds: 20 }
+        { remaining: 20, max_retries: nil, wait_timeout_seconds: nil },
+        { remaining: 25, max_retries: nil, wait_timeout_seconds: nil }
       ].each do |example|
         context "with remaining=#{example[:remaining]}" do
           before do
@@ -322,12 +315,12 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         }
       end
 
-      it 'falls back to transport status, source url, and default headers', :aggregate_failures do
+      it 'falls back to transport status, source url, and empty headers', :aggregate_failures do
         result = execute
 
         expect(result.status).to eq(200)
         expect(result.url.to_s).to eq('https://example.com/')
-        expect(result.headers).to eq('content-type' => 'text/html')
+        expect(result.headers).to eq({})
         expect(result.captured_responses).to eq([])
       end
     end
@@ -379,26 +372,22 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       end
     end
 
-    context 'when FastAPI returns 422 detail for wait_timeout_seconds' do
-      let(:response_status) { 422 }
+    context 'when scrape envelope returns 504 timeout' do
+      let(:response_status) { 504 }
       let(:response_payload) do
         {
-          detail: [
-            {
-              loc: %w[body wait_timeout_seconds],
-              msg: 'Input should be less than or equal to 20',
-              type: 'less_than_equal',
-              input: 28
-            }
-          ]
+          html: '',
+          error: 'Scrape timed out after 20 seconds',
+          error_category: 'timeout',
+          request_id: 'req-504'
         }
       end
 
-      it 'raises BotasaurusServiceError naming wait_timeout_seconds' do
+      it 'raises RequestTimedOut with envelope diagnostics' do
         expect { execute }
           .to raise_error(
-            Html2rss::RequestService::BotasaurusServiceError,
-            /wait_timeout_seconds/
+            Html2rss::RequestService::RequestTimedOut,
+            /error_category=timeout.*req-504/
           )
       end
     end
@@ -453,7 +442,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       end
     end
 
-    context "when upstream payload omits required 'html'" do
+    context 'when the scrape envelope omits html on success' do
       let(:response_payload) do
         {
           final_url: 'https://redacted.example/path/',
@@ -463,9 +452,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         }
       end
 
-      it 'raises BotasaurusServiceError' do
-        expect { execute }
-          .to raise_error(Html2rss::RequestService::BotasaurusServiceError, /missing required 'html'/)
+      it 'maps the OpenAPI empty-string default' do
+        expect(execute.body).to eq('')
       end
     end
 
