@@ -296,6 +296,19 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       end
     end
 
+    [204, 301].each do |document_status|
+      context "when scrape envelope succeeds with document status_code #{document_status}" do
+        let(:response_payload) { base_payload.merge(status_code: document_status, error: nil) }
+
+        it 'does not raise and maps Response#status from the document code', :aggregate_failures do
+          result = execute
+
+          expect(result.status).to eq(document_status)
+          expect(result.body).to include('ok')
+        end
+      end
+    end
+
     context 'when response omits headers and url metadata' do
       let(:response_payload) do
         {
