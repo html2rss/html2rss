@@ -14,6 +14,11 @@ module Html2rss
 
       # Bodies that look like HTML even when Content-Type is missing, empty, or wrong.
       HTML_BODY_SNIFF = /\A\s*(?:<!DOCTYPE\s+html|<html)/i
+      # Charset from Content-Type or a leading <meta charset>.
+      CHARSET_PARAMETER = /charset\s*=\s*["']?([\w.:-]+)/i
+      # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).
+      META_CHARSET_BYTES = 2048
+      private_constant :CHARSET_PARAMETER, :META_CHARSET_BYTES
 
       ##
       # @param body [String] the body of the response
@@ -94,9 +99,43 @@ module Html2rss
       end
 
       def parse_html_document
-        Nokogiri::HTML(body).tap do |doc|
+        Nokogiri::HTML(decoded_html_body).tap do |doc|
           doc.xpath('//comment()').each(&:remove)
         end.freeze
+      end
+
+      def decoded_html_body
+        bytes = body.to_s.b
+        transcode_html(bytes, header_charset || meta_charset(bytes))
+      end
+
+      def transcode_html(bytes, charset)
+        encoding = html_encoding_for(charset)
+        return utf8_scrub(bytes) unless encoding
+
+        bytes.dup.force_encoding(encoding).encode(Encoding::UTF_8)
+      rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+        utf8_scrub(bytes)
+      end
+
+      def html_encoding_for(charset)
+        return if charset.nil? || utf8_charset?(charset)
+
+        Encoding.find(charset)
+      rescue ArgumentError
+        nil
+      end
+
+      def utf8_charset?(charset) = charset.to_s.downcase.gsub(/[\s_-]/, '') == 'utf8'
+
+      def utf8_scrub(bytes) = bytes.dup.force_encoding(Encoding::UTF_8).scrub
+
+      def header_charset
+        content_type[CHARSET_PARAMETER, 1]
+      end
+
+      def meta_charset(bytes)
+        bytes.byteslice(0, META_CHARSET_BYTES).to_s[CHARSET_PARAMETER, 1]
       end
 
       def html_document?
@@ -104,7 +143,7 @@ module Html2rss
       end
 
       def html_looking_body?
-        body.to_s.match?(HTML_BODY_SNIFF)
+        body.to_s.b.match?(HTML_BODY_SNIFF)
       end
     end
   end

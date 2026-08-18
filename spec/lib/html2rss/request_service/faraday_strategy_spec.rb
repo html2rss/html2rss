@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'brotli'
 require 'stringio'
 require 'zlib'
 
@@ -174,6 +175,36 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
 
     expect { execute }
       .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+  end
+
+  [
+    {
+      label: 'gzip',
+      encode: lambda { |html|
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      }
+    },
+    {
+      label: 'brotli',
+      encode: ->(html) { Brotli.deflate(html) }
+    }
+  ].each do |codec|
+    context "when #{codec[:label]} HTML is labeled application/octet-stream" do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:html) { '<!DOCTYPE html><html><body><div>decoded stream</div></body></html>' }
+      let(:response) do
+        instance_double(
+          Faraday::Response,
+          body: codec[:encode].call(html),
+          headers: { 'content-type' => 'application/octet-stream' },
+          env: response_env,
+          status: 200
+        )
+      end
+
+      it 'decodes the HTML document before parse' do
+        expect(execute.parsed_body.at_css('div').text).to eq('decoded stream')
+      end
+    end
   end
 
   describe 'RedirectLimitReached terminal URL retry' do # rubocop:disable RSpec/MultipleMemoizedHelpers

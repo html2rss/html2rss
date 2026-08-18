@@ -101,6 +101,29 @@ RSpec.describe Html2rss::RequestService::Response do
                           'Unsupported content type: application/octet-stream')
       end
     end
+
+    [
+      {
+        label: 'Content-Type charset',
+        headers: { 'content-type' => 'text/html; charset=windows-1252' },
+        html: '<!DOCTYPE html><html><body><h1>Caffè</h1></body></html>'
+      },
+      {
+        label: 'meta charset',
+        headers: { 'content-type' => 'text/html' },
+        html: '<!DOCTYPE html><html><head><meta charset="windows-1252"></head>' \
+              '<body><h1>Caffè</h1></body></html>'
+      }
+    ].each do |example|
+      context "when windows-1252 HTML uses #{example[:label]}" do
+        let(:body) { example[:html].encode('Windows-1252').force_encoding(Encoding::UTF_8) }
+        let(:headers) { example[:headers] }
+
+        it 'decodes Caffè instead of mojibake' do
+          expect(parsed_body.at_css('h1').text).to eq('Caffè')
+        end
+      end
+    end
   end
 
   describe '#url' do
