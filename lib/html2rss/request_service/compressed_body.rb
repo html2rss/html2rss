@@ -10,6 +10,7 @@ module Html2rss
     module CompressedBody
       # Gzip stream magic (RFC 1952).
       GZIP_MAGIC = "\x1F\x8B".b.freeze
+      # HTML prefix for unlabeled brotli trial decode. Same object as {Response::HTML_BODY_SNIFF}.
       HTML_BODY_SNIFF = Response::HTML_BODY_SNIFF
 
       module_function
