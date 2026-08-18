@@ -115,6 +115,31 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'when article hosts share a registrable domain' do
+      let(:url) { Html2rss::Url.from_absolute('https://www.wp.pl/') }
+      let(:articles) do
+        [
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://wiadomosci.wp.pl/story-one'),
+                          title: 'Wiadomosci Portal Story Title Words'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://film.wp.pl/story-two'),
+                          title: 'Film Portal Story Title Words'),
+          instance_double(Html2rss::Article,
+                          valid?: true,
+                          url: Html2rss::Url.from_absolute('https://otherdomain.com/story-three'),
+                          title: 'Offsite Portal Story Title Words')
+        ]
+      end
+
+      it 'keeps same-site portal hosts and still drops true off-site', :aggregate_failures do
+        expect(cleaned.map { |article| article.url.host }).to contain_exactly('wiadomosci.wp.pl', 'film.wp.pl')
+        expect(result.drop_tallies['different_domain']).to eq(1)
+      end
+    end
+
     it 'rejects titles with fewer than three words' do
       expect(cleaned).not_to include(articles[5])
     end
@@ -198,6 +223,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         { title: 'Hello {{article_title}} world token', reason: :template },
         { title: 'Jobs in Berlin', reason: nil },
         { title: '5 Wahrheiten über die deutsche Leichtathletik', reason: nil },
+        { title: '{text: "Poland election results surprise analysts"}', reason: :json_blob },
+        { title: '{"text":"Onet widget headline extra words"}', reason: :json_blob },
         # First-match pin: agency-only credit beats slug shape for hyphenated CMS ids.
         { title: 'AFP', reason: :credit }
       ].each_with_index do |example, index|

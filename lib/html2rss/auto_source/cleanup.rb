@@ -40,6 +40,7 @@ module Html2rss
         [:credit, /\bHandout\b.+\b(?:#{AGENCY_ALT})\b|\b(?:#{AGENCY_ALT})\b.+\bHandout\b/ix],
         [:credit, /\A(?:Live\s+Updates|Analysis)\s*[•·.:-]?\s*.*\b(?:#{AGENCY_ALT})\b/ix],
         [:cms_token, /\A(?:lucy\.\w[\w.-]*|methode[-.][\w.-]+)\z/i],
+        [:json_blob, /\A\{\s*["']?text["']?\s*:/],
         [:slug, /\A\p{Alnum}+(?:[-_]\p{Alnum}+){2,}\z/],
         [:date_prefix, /\A\d{4}(?:[\s.-]+\d{1,2}){2}\b/],
         [:titleized_path, /\A(?:\d+|\p{Lu}[\p{L}\p{M}]*)(?:\s+(?:\d+|\p{Lu}[\p{L}\p{M}]*))*\s+\d{6,}\z/],
@@ -115,9 +116,9 @@ module Html2rss
         end
 
         def reject_different_domain!(articles, base_url, tallies)
-          base_host = base_url.host
+          base_domain = base_url.domain
           tally_reject!(articles, tallies, 'different_domain') do |article|
-            article.url&.host != base_host
+            article.url&.domain != base_domain
           end
         end
 
