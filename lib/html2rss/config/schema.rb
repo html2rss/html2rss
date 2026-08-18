@@ -92,6 +92,7 @@ module Html2rss
           exported = Html2rss::Config::Validator::BotasaurusRequestExport
                      .new.schema.json_schema(loose: true).except(:$schema)
           exported[:additionalProperties] = false
+          exported.fetch(:properties).fetch(:window_size)[:additionalProperties] = false
           request[:botasaurus] = exported
         end
 

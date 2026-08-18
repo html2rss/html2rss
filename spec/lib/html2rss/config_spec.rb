@@ -489,6 +489,24 @@ RSpec.describe Html2rss::Config do
       end
     end
 
+    context 'when botasaurus window_size includes an unknown property' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: {
+              window_size: { width: 1920, height: 1080, extra: 1 }
+            }
+          }
+        }
+      end
+
+      it 'rejects the botasaurus config' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
     context 'when botasaurus window_size omits height' do
       let(:config) do
         {

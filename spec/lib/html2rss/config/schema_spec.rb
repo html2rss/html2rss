@@ -157,6 +157,7 @@ RSpec.describe Html2rss::Config::Schema do
       expect(botasaurus).to have_key('cookies')
       expect(botasaurus).to have_key('headers')
       expect(window_size.fetch('type')).to eq('object')
+      expect(window_size.fetch('additionalProperties')).to be false
       expect(window_size.dig('properties', 'width')).to include('exclusiveMinimum' => 0)
       expect(window_size.dig('properties', 'height')).to include('exclusiveMinimum' => 0)
       expect(botasaurus_schema.fetch('additionalProperties')).to be false

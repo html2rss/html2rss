@@ -752,7 +752,8 @@
               "required": [
                 "width",
                 "height"
-              ]
+              ],
+              "additionalProperties": false
             },
             "lang": {
               "type": "string",
