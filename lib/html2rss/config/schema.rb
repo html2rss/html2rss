@@ -82,6 +82,18 @@ module Html2rss
 
           topics = schema.dig(:properties, :directory, :properties, :topics)
           topics[:minItems] = 1 if topics.is_a?(Hash)
+          apply_botasaurus_schema!(schema)
+        end
+
+        def apply_botasaurus_schema!(schema)
+          request = schema.dig(:properties, :request, :properties)
+          return unless request.is_a?(Hash)
+
+          exported = Html2rss::Config::Validator::BotasaurusRequestExport
+                     .new.schema.json_schema(loose: true).except(:$schema)
+          exported[:additionalProperties] = false
+          exported.fetch(:properties).fetch(:window_size)[:additionalProperties] = false
+          request[:botasaurus] = exported
         end
 
         # @return [Hash{Symbol => Hash}] catalog under $defs.post_processors / $defs.extractors

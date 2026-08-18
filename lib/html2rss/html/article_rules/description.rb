@@ -15,14 +15,22 @@ module Html2rss
         SECTION_NAMES = Set['press releases'].freeze
         # Skip date detection / DateTime.parse above this length.
         MAX_DATE_CHARS = 128
-        # Optional " - News article" suffix separators (ASCII/en/em dash).
-        CHIP_SEPARATORS = [' - ', ' – ', ' — '].freeze
+        # Optional type-chip / clock separators (ASCII/en/em dash, pipe, bullet).
+        CHIP_SEPARATORS = [' - ', ' – ', ' — ', ' | ', ' • '].freeze
+        # Trailing clock plus optional AM/PM and one timezone/offset token (IANA, GMT/UTC offset, or abbrev).
+        CLOCK_ZONE = %r{
+          \A
+          \d{1,2}:\d{2}(?::\d{2})?
+          (?:\s*(?:AM|PM))?
+          (?:\s+(?:[A-Za-z]+(?:/[A-Za-z_]+)+|(?:GMT|UTC)[+-]\d{1,2}(?::\d{2})?|[A-Za-z]{2,5}))?
+          \z
+        }ix
         # Whole-line date shapes after normalize (ISO, numeric, day-month, month-day).
         DATE_SHAPES = [
           /\A\d{4}-\d{1,2}-\d{1,2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?\z/i,
           %r{\A\d{1,2}[./-]\d{1,2}[./-]\d{2,4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z},
-          /\A\d{1,2}\.? \p{L}{3,9}\.? \d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i,
-          /\A\p{L}{3,9}\.? \d{1,2},? \d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i
+          /\A\d{1,2}\.? \p{L}{3,9}\.?\s*,?\s*\d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i,
+          /\A\p{L}{3,9}\.? \d{1,2}\s*,?\s*\d{4}(?: \d{1,2}:\d{2}(?::\d{2})?)?\z/i
         ].freeze
 
         class << self
@@ -70,11 +78,8 @@ module Html2rss
           def date_core(line)
             normalized = normalize(line)
             CHIP_SEPARATORS.each do |sep|
-              idx = normalized.rindex(sep)
-              next unless idx
-
-              suffix = normalized[(idx + sep.length)..].downcase
-              return normalized[0, idx] if TYPE_CHIPS.include?(suffix)
+              peeled = peel_separator(normalized, sep)
+              return peeled if peeled
             end
             normalized
           end
@@ -82,6 +87,22 @@ module Html2rss
           private
 
           def normalize(line) = line.to_s.gsub(/[[:space:]]+/, ' ').strip
+
+          def peel_separator(normalized, sep)
+            idx = normalized.rindex(sep)
+            return unless idx
+
+            left = normalized[0, idx]
+            right = normalized[(idx + sep.length)..]
+            return left if type_chip?(right) || clock_zone?(right)
+            return right if type_chip?(left)
+
+            nil
+          end
+
+          def type_chip?(text) = TYPE_CHIPS.include?(text.downcase)
+
+          def clock_zone?(text) = text.match?(CLOCK_ZONE)
 
           def chrome?(normalized, title:, type_chips:)
             key = normalized.downcase

@@ -12,8 +12,8 @@ module Html2rss
 
       def fetch
         parsed_response = post_scrape_request
-        raise_if_challenge_blocked!(parsed_response)
-        raise_if_upstream_failed!(parsed_response)
+        raise_from_error!(parsed_response) if parsed_response.is_a?(BotasaurusContract::Error)
+
         build_response(parsed_response)
       end
 
@@ -33,16 +33,23 @@ module Html2rss
         )
       end
 
-      def raise_if_challenge_blocked!(parsed_response)
-        return unless parsed_response.challenge_block?
-
-        raise BlockedSurfaceDetected, "Blocked surface detected: #{parsed_response.challenge_message}"
+      def raise_from_error!(error)
+        raise_if_challenge_blocked!(error)
+        raise_if_timed_out!(error)
+        raise BotasaurusServiceError, error.failure_message
       end
 
-      def raise_if_upstream_failed!(parsed_response)
-        return unless parsed_response.upstream_failure?
+      def raise_if_challenge_blocked!(error)
+        return unless error.challenge_block?
 
-        raise BotasaurusServiceError, parsed_response.upstream_failure_message
+        raise BlockedSurfaceDetected, "Blocked surface detected: #{error.challenge_message}"
+      end
+
+      def raise_if_timed_out!(error)
+        return unless error.timeout?
+
+        log_timeout!(reason: 'botasaurus_upstream')
+        raise RequestTimedOut, error.failure_message
       end
 
       def response_url(final_url)

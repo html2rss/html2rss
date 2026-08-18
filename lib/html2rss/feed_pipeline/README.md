@@ -29,7 +29,7 @@ These typically hop to the next chain member (among other `StandardError`s `Auto
 - Faraday connection / timeout errors
 - Empty extraction results when a later chain member may succeed
 
-These abort immediately (`AutoFallback::NON_FALLBACK_ERRORS`): unknown strategy, invalid URL, unsupported scheme or content type, budget exceeded, private network denied, cross-origin follow-up denied, response too large.
+These abort immediately (`AutoFallback::NON_FALLBACK_ERRORS`): unknown strategy, invalid URL, unsupported scheme, budget exceeded, private network denied, cross-origin follow-up denied, response too large.
 
 Retries share the feed's request/session policy. Pin a concrete strategy when you need a single-hop budget profile.
 

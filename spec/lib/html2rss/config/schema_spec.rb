@@ -139,10 +139,9 @@ RSpec.describe Html2rss::Config::Schema do
     end
 
     it 'exposes botasaurus request options and constraints', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      botasaurus = json_schema.dig('properties', 'request', 'properties', 'botasaurus', 'properties')
+      botasaurus_schema = json_schema.dig('properties', 'request', 'properties', 'botasaurus')
+      botasaurus = botasaurus_schema.fetch('properties')
       window_size = botasaurus.fetch('window_size')
-      min_window_size = window_size['minItems'] || window_size.dig('items', 'minLength')
-      max_window_size = window_size['maxItems'] || window_size.dig('items', 'maxLength')
 
       expect(botasaurus.fetch('execution_mode').fetch('enum'))
         .to contain_exactly('auto', 'request', 'browser')
@@ -150,14 +149,18 @@ RSpec.describe Html2rss::Config::Schema do
         .to contain_exactly('auto', 'get', 'google_get', 'google_get_bypass', 'organic_get')
       expect(botasaurus.dig('max_retries', 'minimum')).to eq(0)
       expect(botasaurus.dig('max_retries', 'maximum')).to eq(3)
-      expect(botasaurus.dig('wait_timeout_seconds', 'exclusiveMinimum')).to eq(0)
+      expect(botasaurus.dig('wait_timeout_seconds', 'minimum')).to eq(1)
+      expect(botasaurus.dig('wait_timeout_seconds', 'maximum')).to eq(20)
       expect(botasaurus).to have_key('scroll')
-      expect(botasaurus).to have_key('scroll_to_bottom')
+      expect(botasaurus).not_to have_key('scroll_to_bottom')
       expect(botasaurus).to have_key('block_trackers')
       expect(botasaurus).to have_key('cookies')
       expect(botasaurus).to have_key('headers')
-      expect(min_window_size).to eq(2)
-      expect(max_window_size).to eq(2)
+      expect(window_size.fetch('type')).to eq('object')
+      expect(window_size.fetch('additionalProperties')).to be false
+      expect(window_size.dig('properties', 'width')).to include('exclusiveMinimum' => 0)
+      expect(window_size.dig('properties', 'height')).to include('exclusiveMinimum' => 0)
+      expect(botasaurus_schema.fetch('additionalProperties')).to be false
     end
   end
 

@@ -210,9 +210,11 @@ RSpec.describe Html2rss::RequestService::Policy do
     context 'when the redirect downgrades the scheme' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:to_url) { Html2rss::Url.from_absolute('http://example.com/feed') }
 
-      it 'rejects the redirect' do
-        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::UnsupportedUrlScheme,
-                                                     'Redirect downgraded from https to http')
+      it 'rejects the redirect and names the hop', :aggregate_failures do
+        expect { validate_redirect! }.to raise_error(
+          Html2rss::RequestService::UnsupportedUrlScheme,
+          'Redirect downgraded from https://example.com/feed to http://example.com/feed'
+        )
       end
     end
 

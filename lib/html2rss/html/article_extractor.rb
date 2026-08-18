@@ -5,7 +5,7 @@ module Html2rss
     ##
     # ArticleExtractor is responsible for extracting details (headline, url, images, etc.)
     # from an article_tag DOM node. DOM chrome helpers live on {Navigator}.
-    # rubocop:disable Metrics/ClassLength -- leftover + parent-card walk colocated with field extractors
+    # rubocop:disable Metrics/ClassLength -- leftover re-extract stays with field extractors
     class ArticleExtractor
       class << self
         ##
@@ -130,29 +130,26 @@ module Html2rss
       end
 
       def heading_or_anchor_item?
-        heading_item? || wrapping_anchor_item?
+        heading_item? || article_tag.name.to_s == 'a'
       end
 
       def heading_item?
         Navigator::HEADING_TAGS.include?(article_tag.name.to_s)
       end
 
-      def wrapping_anchor_item?
-        return false unless article_tag.name.to_s == 'a'
-
-        article_tag.at_css(Navigator::WRAPPING_ANCHOR_CHILD_TAGS.join(','))
-      end
-
       def heading_or_anchor_miss?(title, lines, published_at)
-        heading_or_anchor_item? && published_at.nil? &&
-          ArticleRules::Description.from_lines(lines, title:).nil?
+        CardWalk.miss?(
+          heading_or_anchor_item: heading_or_anchor_item?,
+          published_at:,
+          description: ArticleRules::Description.from_lines(lines, title:)
+        )
       end
 
       def parent_card_fields(title, lines, published_at)
         return article_tag, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
 
         parent = immediate_card_parent
-        if !parent || crowded_card?(parent)
+        if !parent || crowded_parent?(parent)
           Log.debug { "parent-walk abort at #{article_tag.parent&.name}" }
           return article_tag, lines, published_at
         end
@@ -172,14 +169,22 @@ module Html2rss
       end
 
       def thin_heading_wrapper?(node)
-        node.element_children.none? do |child|
-          !child.equal?(article_tag) && !Navigator.descendant_of?(article_tag, child)
-        end
+        CardWalk.thin_wrapper?(
+          children: node.element_children,
+          item: article_tag,
+          descendant_of: ->(item, child) { Navigator.descendant_of?(item, child) }
+        )
       end
 
-      def crowded_card?(node)
-        node.css(Navigator::HEADING_TAGS.join(',')).size > 1 ||
-          node.css(Navigator::MAIN_ANCHOR_SELECTOR).size > 1
+      def crowded_parent?(node)
+        CardWalk.crowded?(
+          heading_count: node.css(Navigator::HEADING_TAGS.join(',')).size,
+          distinct_main_hrefs: distinct_main_hrefs(node)
+        )
+      end
+
+      def distinct_main_hrefs(node)
+        node.css(Navigator::MAIN_ANCHOR_SELECTOR).map { |anchor| anchor['href'] }.uniq.size
       end
 
       def generate_id

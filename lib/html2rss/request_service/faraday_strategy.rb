@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'brotli'
 require 'faraday'
 require 'faraday/follow_redirects'
 require 'faraday/gzip'
@@ -89,7 +90,8 @@ module Html2rss
       end
 
       def build_response(response)
-        Response.new(body: response.body, headers: response.headers, url: response_url(response),
+        Response.new(body: CompressedBody.decode(response.body, headers: response.headers),
+                     headers: response.headers, url: response_url(response),
                      status: response.status)
       end
 

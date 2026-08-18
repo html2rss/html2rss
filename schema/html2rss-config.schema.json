@@ -684,15 +684,10 @@
               "not": {
                 "type": "null"
               },
-              "exclusiveMinimum": 0
+              "minimum": 1,
+              "maximum": 20
             },
             "scroll": {
-              "type": "boolean",
-              "not": {
-                "type": "null"
-              }
-            },
-            "scroll_to_bottom": {
               "type": "boolean",
               "not": {
                 "type": "null"
@@ -737,13 +732,28 @@
               "minLength": 1
             },
             "window_size": {
-              "type": "array",
-              "items": {
-                "minLength": 2,
-                "maxLength": 2,
-                "type": "integer",
-                "exclusiveMinimum": 0
-              }
+              "type": "object",
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "not": {
+                    "type": "null"
+                  },
+                  "exclusiveMinimum": 0
+                },
+                "height": {
+                  "type": "integer",
+                  "not": {
+                    "type": "null"
+                  },
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "width",
+                "height"
+              ],
+              "additionalProperties": false
             },
             "lang": {
               "type": "string",
@@ -756,7 +766,8 @@
               "type": "object"
             }
           },
-          "required": []
+          "required": [],
+          "additionalProperties": false
         },
         "local_file_path": {
           "type": "string",

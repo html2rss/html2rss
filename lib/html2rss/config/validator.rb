@@ -45,17 +45,20 @@ module Html2rss
         optional(:media).maybe(:string)
       end
 
-      # Contract for Botasaurus-specific request options.
+      # Contract for Botasaurus-specific request options (OpenAPI ScrapeRequest minus url).
       BotasaurusRequestConfig = Dry::Schema.Params do
         config.validate_keys = true
 
-        optional(:execution_mode).filled(:string, included_in?: %w[auto request browser])
-        optional(:navigation_mode).filled(:string, included_in?: %w[auto get google_get google_get_bypass organic_get])
-        optional(:max_retries).filled(:integer, gteq?: 0, lteq?: 3)
+        botasaurus = Html2rss::RequestService::BotasaurusContract
+
+        optional(:execution_mode).filled(:string, included_in?: botasaurus::EXECUTION_MODES)
+        optional(:navigation_mode).filled(:string, included_in?: botasaurus::NAVIGATION_MODES)
+        optional(:max_retries).filled(:integer, gteq?: 0, lteq?: botasaurus::MAX_RETRIES)
         optional(:wait_for_selector).maybe(:string)
-        optional(:wait_timeout_seconds).filled(:integer, gt?: 0)
+        optional(:wait_timeout_seconds).filled(
+          :integer, gteq?: botasaurus::MIN_WAIT_TIMEOUT_SECONDS, lteq?: botasaurus::MAX_WAIT_TIMEOUT_SECONDS
+        )
         optional(:scroll).filled(:bool)
-        optional(:scroll_to_bottom).filled(:bool)
         optional(:block_images).filled(:bool)
         optional(:block_images_and_css).filled(:bool)
         optional(:block_trackers).filled(:bool)
@@ -63,10 +66,19 @@ module Html2rss
         optional(:headless).filled(:bool)
         optional(:proxy).filled(:string)
         optional(:user_agent).filled(:string)
-        optional(:window_size).value(:array, min_size?: 2, max_size?: 2).each(:integer, gt?: 0)
+        optional(:window_size).hash do
+          botasaurus::WINDOW_SIZE_PROPERTIES.each do |key|
+            required(key).filled(:integer, gt?: 0)
+          end
+        end
         optional(:lang).filled(:string)
         optional(:cookies).hash
         optional(:headers).hash
+      end
+
+      # JSON Schema export adapter for +BotasaurusRequestConfig+ (params schemas have no json_schema).
+      class BotasaurusRequestExport < Dry::Validation::Contract
+        params(BotasaurusRequestConfig)
       end
 
       # Contract for the top-level `request` section.
@@ -74,7 +86,7 @@ module Html2rss
         optional(:max_redirects).filled(:integer, gteq?: 0)
         optional(:max_requests).filled(:integer, gt?: 0)
         optional(:total_timeout_seconds).filled(:integer, gt?: 0)
-        optional(:botasaurus).hash(BotasaurusRequestConfig)
+        optional(:botasaurus).hash
         optional(:local_file_path).filled(:string)
       end
 
@@ -121,6 +133,17 @@ module Html2rss
 
         errors = Config::SelectorsValidator.call(value).errors
         errors.each { |error| key(:selectors).failure(error.text) } unless errors.empty?
+      end
+
+      rule(request: :botasaurus) do
+        next unless value
+
+        result = BotasaurusRequestConfig.call(value)
+        next if result.success?
+
+        result.errors.each do |error|
+          key([:request, :botasaurus, *error.path]).failure(error.text)
+        end
       end
 
       # URL validation delegated to Url class

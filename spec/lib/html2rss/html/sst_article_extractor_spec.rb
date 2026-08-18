@@ -14,15 +14,16 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       lambda do |html, item_selector: 'article'|
         wrapped = html.match?(/<html/i) ? html : "<html><body>#{html}</body></html>"
         doc = Html2rss::SST::Normalizer.call(wrapped)
-        name = item_selector.to_sym
-        root = doc.root.find { |n| n.name == name }
-        link = root.find(&:link?)
+        root = item_selector.split.reduce(doc.root) do |node, tag|
+          node&.find { |candidate| candidate.name == tag.to_sym }
+        end
+        link = root.name == :a ? root : root.find(&:link?)
         segment = Html2rss::AutoSource::Segment.build(
           root_node: root, primary_link: link, strategy: :semantic, position: 0
         )
         article = described_class.call(segment, base_url: 'https://example.com', time_zone: extractor_time_zone)
         { title: article&.title, description: article&.description, published_at: article&.published_at,
-          categories: article&.categories || [] }
+          categories: article&.categories || [], url: article&.url }
       end
     end
 

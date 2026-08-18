@@ -2,6 +2,7 @@
 
 require 'addressable/uri'
 require 'cgi'
+require 'ipaddr'
 require 'nokogiri'
 
 module Html2rss
@@ -152,6 +153,16 @@ module Html2rss
     # @return [String, nil] URI host component
     def host = @uri.host
 
+    # Registrable domain (eTLD+1). Same-site hosts like www.wp.pl and wiadomosci.wp.pl
+    # share `wp.pl`. IP literals stay the host so 1.2.3.4 is not treated as `3.4`.
+    #
+    # @return [String, nil]
+    def domain
+      return host if ip_address_host?
+
+      @uri.domain || host
+    end
+
     # @return [Integer, nil] URI port component
     def port = @uri.port
 
@@ -281,6 +292,15 @@ module Html2rss
     #
     # @return [String] the debug representation
     def inspect = "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
+
+    private
+
+    def ip_address_host?
+      IPAddr.new(host.to_s)
+      true
+    rescue IPAddr::Error
+      false
+    end
   end
   # rubocop:enable Metrics/ClassLength
 end

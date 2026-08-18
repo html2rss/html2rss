@@ -5,43 +5,40 @@ require 'json'
 module Html2rss
   class RequestService
     ##
-    # Maps html2rss request/response handling to the botasaurus-scrape-api contract.
-    class BotasaurusContract
-      # Default Botasaurus scrape options when no explicit config is provided.
-      DEFAULT_OPTIONS = {
-        execution_mode: 'auto',
-        navigation_mode: 'auto',
-        max_retries: 1,
-        headless: false
-      }.freeze
+    # Maps html2rss request/response handling to botasaurus-scrape-api OpenAPI 2.0
+    # +ScrapeRequest+ / +ScrapeSuccess+ / +ScrapeError+ (sibling +openapi.yaml+).
+    class BotasaurusContract # rubocop:disable Metrics/ClassLength -- Success/Error envelopes stay with the owner
+      # Closed set from OpenAPI ExecutionMode.
+      EXECUTION_MODES = %w[auto request browser].freeze
+      # Closed set from OpenAPI NavigationMode.
+      NAVIGATION_MODES = %w[auto get google_get google_get_bypass organic_get].freeze
+      # Closed set from OpenAPI ErrorCategory.
+      ERROR_CATEGORIES = %w[timeout challenge_block navigation_error metadata_error validation].freeze
 
-      # Allowlisted request.botasaurus keys forwarded to upstream.
-      OPTION_KEYS = %i[
-        execution_mode
-        navigation_mode
-        max_retries
-        wait_for_selector
-        wait_timeout_seconds
-        scroll
-        scroll_to_bottom
-        block_images
-        block_images_and_css
-        block_trackers
-        wait_for_complete_page_load
-        headless
-        proxy
-        user_agent
-        window_size
-        lang
-        headers
-        cookies
+      # ScrapeRequest properties except +url+ (html2rss supplies the target URL).
+      REQUEST_OPTION_KEYS = %i[
+        execution_mode navigation_mode max_retries wait_for_selector wait_timeout_seconds
+        scroll block_images block_images_and_css block_trackers
+        wait_for_complete_page_load user_agent headers cookies window_size lang headless proxy
       ].freeze
 
-      # Allowlisted upstream response keys exposed as Response#transport_meta.
-      META_KEYS = %w[
-        request_id strategy_used render_ms challenge_detected blocked_detected attempts error_category
-        execution_tier detected_challenge
-      ].freeze
+      # OpenAPI WindowSize required keys (positive integers).
+      WINDOW_SIZE_PROPERTIES = %i[width height].freeze
+
+      # Published wait clamp floor (`[1, 20]` in OpenAPI description).
+      MIN_WAIT_TIMEOUT_SECONDS = 1
+      # Published wait clamp ceiling; YAML values above this are rejected.
+      MAX_WAIT_TIMEOUT_SECONDS = 20
+      # OpenAPI wait_timeout_seconds default (omitted from the client payload).
+      DEFAULT_WAIT_TIMEOUT_SECONDS = 15
+
+      # OpenAPI max_retries maximum (default 2 is applied upstream when omitted).
+      MAX_RETRIES = 3
+
+      # Allowlisted ScrapeDiagnostics keys nested under diagnostics.
+      DIAGNOSTICS_KEYS = %w[request_id attempts strategy_used render_ms execution_tier challenge].freeze
+      # Allowlisted ChallengeSignal keys nested under diagnostics.challenge.
+      CHALLENGE_KEYS = %w[blocked detected marker].freeze
 
       # Remaining seconds at or below which Botasaurus retries are disabled.
       TIGHT_BUDGET_SECONDS = 12
@@ -49,72 +46,52 @@ module Html2rss
       # Seconds reserved from remaining budget before setting wait_timeout_seconds.
       BUDGET_WAIT_RESERVE_SECONDS = 2
 
-      # Parsed Botasaurus response wrapper.
-      class ParsedResponse
-        # Fallback headers when upstream omits response headers.
-        DEFAULT_HEADERS = { 'content-type' => 'text/html' }.freeze
+      ##
+      # Parsed OpenAPI ScrapeSuccess envelope (HTTP 200).
+      class Success
         # Per-body size cap for captured XHR JSON (defense-in-depth vs upstream).
         MAX_XHR_BODY_BYTES = 500_000
         # Aggregate size cap across all captured XHR bodies.
         MAX_XHR_AGGREGATE_BYTES = 2_000_000
 
-        # @param payload [Hash{String => Object}] parsed Botasaurus response payload
-        # @param transport_status [Integer] HTTP status returned by Botasaurus
-        def initialize(payload:, transport_status:)
+        # @param payload [Hash{String => Object}] parsed ScrapeSuccess object
+        def initialize(payload:)
           @payload = payload
-          @transport_status = transport_status
+          html
+          diagnostics
         end
 
-        # @return [Boolean] true when upstream classified request as challenge blocked
-        def challenge_block? = error_category == 'challenge_block'
-
-        # @return [Boolean] true when upstream returned non-200 or an error payload
-        def upstream_failure?
-          transport_status != 200 || status != 200 || error_message?
-        end
-
-        # @return [String] normalized challenge error message
-        def challenge_message
-          error || 'Botasaurus challenge block detected.'
-        end
-
-        # @return [String] actionable upstream failure summary
-        def upstream_failure_message
-          details = ["status=#{status}"]
-          details << "error_category=#{error_category}" if error_category
-          details << "error=#{error}" if error
-          details << "request_id=#{request_id}" if request_id
-          "Botasaurus scrape failed (#{details.join(', ')})."
-        end
-
-        # @return [String] rendered HTML body from Botasaurus
-        # @raise [BotasaurusServiceError] when html is missing
+        # @return [String] rendered HTML body
         def html
           value = payload['html']
-          raise BotasaurusServiceError, "Botasaurus response missing required 'html' field" if value.nil?
+          raise BotasaurusServiceError, 'Botasaurus scrape success requires html' unless value.is_a?(String)
 
-          value.to_s
+          value
         end
 
-        # @return [Hash{String => String}] normalized response headers
+        # @return [Hash{String => String}] normalized response headers (null → {})
         def headers
           raw_headers = payload['headers']
-          return DEFAULT_HEADERS.dup unless raw_headers.is_a?(Hash) && raw_headers.any?
+          return {} unless raw_headers.is_a?(Hash) && raw_headers.any?
 
           raw_headers.to_h { |key, value| [key.to_s, value.to_s] }
         end
 
-        # @return [Integer] resolved status code (payload status_code or transport status)
+        # @return [Integer, nil] document status_code when present
         def status
           status_code = payload['status_code']
-          status_code.is_a?(Integer) ? status_code : transport_status
+          status_code.is_a?(Integer) ? status_code : nil
         end
 
         # @return [String, nil] final URL reported by upstream
         def final_url = payload['final_url']
 
-        # @return [Hash{String => Object}] allowlisted upstream telemetry (frozen)
-        def transport_meta = payload.slice(*META_KEYS).compact.freeze
+        # @return [Hash{String => Object}] diagnostics plus success-only metadata_error (frozen)
+        def transport_meta
+          meta = diagnostics.dup
+          meta['metadata_error'] = metadata_error if metadata_error
+          meta.freeze
+        end
 
         # @return [Array<Hash{String => Object}>] size-capped XHR/fetch captures (absent → [])
         def xhr_responses
@@ -133,17 +110,13 @@ module Html2rss
 
         private
 
-        attr_reader :payload, :transport_status
+        attr_reader :payload
 
-        def error = payload['error']
+        def diagnostics = BotasaurusContract.diagnostics_from(payload)
 
-        def request_id = payload['request_id']
-
-        def error_category = payload['error_category']
-
-        def error_message?
-          value = error
-          value.is_a?(String) ? !value.empty? : !value.nil?
+        def metadata_error
+          value = payload['metadata_error']
+          value.is_a?(String) && !value.empty? ? value : nil
         end
 
         def normalize_xhr_entry(entry)
@@ -185,6 +158,91 @@ module Html2rss
       end
 
       ##
+      # Parsed OpenAPI ScrapeError envelope (HTTP 400/403/422/502/504).
+      class Error
+        # @param payload [Hash{String => Object}] parsed ScrapeError object
+        # @param transport_status [Integer] HTTP status returned by Botasaurus
+        def initialize(payload:, transport_status:)
+          @payload = payload
+          @transport_status = transport_status
+          error
+          error_category
+          diagnostics
+        end
+
+        # @return [Boolean] true when upstream classified request as challenge blocked
+        def challenge_block? = error_category == 'challenge_block'
+
+        # @return [Boolean] true when the scrape envelope reports a timeout
+        def timeout?
+          transport_status == 504 || error_category == 'timeout'
+        end
+
+        # @return [String] normalized challenge error message
+        def challenge_message
+          [error, challenge_marker].find { |value| value.is_a?(String) && !value.empty? } ||
+            'Botasaurus challenge block detected.'
+        end
+
+        # @return [String] actionable upstream failure summary
+        def failure_message
+          details = ["status=#{transport_status}", "error_category=#{error_category}", "error=#{error}"]
+          details << "request_id=#{request_id}" if request_id
+          "Botasaurus scrape failed (#{details.join(', ')})."
+        end
+
+        private
+
+        attr_reader :payload, :transport_status
+
+        def error
+          value = payload['error']
+          raise BotasaurusServiceError, 'Botasaurus scrape error requires error' unless value.is_a?(String)
+
+          value
+        end
+
+        def error_category
+          value = payload['error_category']
+          return value if ERROR_CATEGORIES.include?(value)
+
+          raise BotasaurusServiceError, 'Botasaurus scrape error requires error_category'
+        end
+
+        def diagnostics = BotasaurusContract.diagnostics_from(payload)
+
+        def request_id = diagnostics['request_id']
+
+        def challenge_marker
+          challenge = diagnostics['challenge']
+          challenge.is_a?(Hash) ? challenge['marker'] : nil
+        end
+      end
+
+      ##
+      # @param payload [Hash{String => Object}] scrape envelope
+      # @return [Hash{String => Object}] allowlisted diagnostics (frozen)
+      # @raise [BotasaurusServiceError] when diagnostics or request_id are missing
+      def self.diagnostics_from(payload)
+        raw = payload['diagnostics']
+        raise BotasaurusServiceError, 'Botasaurus scrape envelope requires diagnostics' unless raw.is_a?(Hash)
+        raise BotasaurusServiceError, 'Botasaurus diagnostics require request_id' if raw['request_id'].to_s.empty?
+
+        sliced = raw.slice(*DIAGNOSTICS_KEYS)
+        sliced['challenge'] = compact_challenge(sliced['challenge'])
+        sliced.compact.freeze
+      end
+
+      # @param challenge [Object] diagnostics.challenge value
+      # @return [Hash{String => Object}, nil]
+      def self.compact_challenge(challenge)
+        return unless challenge.is_a?(Hash)
+
+        challenge.slice(*CHALLENGE_KEYS).compact
+      end
+      private_class_method :compact_challenge
+
+      ##
       # @param url [Html2rss::Url] canonical URL to scrape
       # @param headers [Hash] request headers from context
       # @param options [Hash] validated request.botasaurus options
@@ -194,6 +252,7 @@ module Html2rss
       # @option options [Integer] :max_retries
       # @option options [String] :wait_for_selector
       # @option options [Integer] :wait_timeout_seconds
+      # @option options [Boolean] :scroll
       # @option options [Boolean] :block_images
       # @option options [Boolean] :block_images_and_css
       # @option options [Boolean] :block_trackers
@@ -201,7 +260,7 @@ module Html2rss
       # @option options [Boolean] :headless
       # @option options [String] :proxy
       # @option options [String] :user_agent
-      # @option options [Array<Integer>] :window_size
+      # @option options [Hash] :window_size
       # @option options [String] :lang
       # @option options [Hash] :cookies
       # @option options [Hash] :headers
@@ -212,29 +271,36 @@ module Html2rss
         @remaining_timeout_seconds = remaining_timeout_seconds
       end
 
-      # @return [Hash] payload for POST /scrape (budget-clamped when remaining is known)
+      # @return [Hash] payload for POST /scrape (explicit options plus budget clamp-downs)
       def request_payload
-        payload = DEFAULT_OPTIONS.merge(filtered_options)
+        payload = { url: url.to_s }.merge(filtered_options)
         forwarded_headers = merged_headers
         payload[:headers] = forwarded_headers if forwarded_headers&.any?
-        payload.merge(url: url.to_s).then { clamp_for_budget(_1) }
+        clamp_for_budget(payload)
       end
 
       # @param transport_response [Faraday::Response] upstream HTTP response
-      # @return [ParsedResponse]
-      # @raise [BotasaurusServiceError] when payload is not valid JSON object
+      # @return [Success, Error]
+      # @raise [BotasaurusServiceError] when payload is not a scrape envelope
       def parse_response(transport_response)
-        payload = JSON.parse(transport_response.body.to_s)
-        raise BotasaurusServiceError, 'Botasaurus response must be a JSON object' unless payload.is_a?(Hash)
+        payload = json_object(transport_response.body.to_s)
+        return Success.new(payload:) if transport_response.status == 200
 
-        ParsedResponse.new(payload:, transport_status: transport_response.status)
-      rescue JSON::ParserError => error
-        raise BotasaurusServiceError, "Botasaurus response JSON parse failed: #{error.message}"
+        Error.new(payload:, transport_status: transport_response.status)
       end
 
       private
 
       attr_reader :url, :headers, :options, :remaining_timeout_seconds
+
+      def json_object(body)
+        payload = JSON.parse(body)
+        return payload if payload.is_a?(Hash)
+
+        raise BotasaurusServiceError, 'Botasaurus response must be a JSON object'
+      rescue JSON::ParserError => error
+        raise BotasaurusServiceError, "Botasaurus response JSON parse failed: #{error.message}"
+      end
 
       def merged_headers
         explicit = options[:headers] || {}
@@ -244,21 +310,46 @@ module Html2rss
       end
 
       def filtered_options
-        OPTION_KEYS.each_with_object({}) do |key, normalized|
+        REQUEST_OPTION_KEYS.each_with_object({}) do |key, normalized|
           normalized[key] = options[key] if options.key?(key)
         end
       end
 
       def clamp_for_budget(payload)
         remaining = remaining_timeout_seconds
-        return payload if remaining.nil?
-
         clamped = payload.dup
-        clamped[:max_retries] = 0 if remaining <= TIGHT_BUDGET_SECONDS
-        budget_wait = [1, (remaining - BUDGET_WAIT_RESERVE_SECONDS).floor].max
-        configured = clamped[:wait_timeout_seconds]
-        clamped[:wait_timeout_seconds] = configured ? [configured, budget_wait].min : budget_wait
+        unless remaining.nil?
+          apply_tight_retries!(clamped, remaining)
+          apply_budget_wait!(clamped, remaining)
+        end
+        cap_wait_timeout!(clamped)
         clamped
+      end
+
+      def apply_tight_retries!(payload, remaining)
+        payload[:max_retries] = 0 if remaining <= TIGHT_BUDGET_SECONDS
+      end
+
+      def apply_budget_wait!(payload, remaining)
+        budget_wait = budget_wait_seconds(remaining)
+        configured = payload[:wait_timeout_seconds]
+        if configured
+          payload[:wait_timeout_seconds] = [configured, budget_wait].min
+        elsif budget_wait < DEFAULT_WAIT_TIMEOUT_SECONDS
+          payload[:wait_timeout_seconds] = budget_wait
+        end
+      end
+
+      def budget_wait_seconds(remaining)
+        reserved = [MIN_WAIT_TIMEOUT_SECONDS, (remaining - BUDGET_WAIT_RESERVE_SECONDS).floor].max
+        [reserved, MAX_WAIT_TIMEOUT_SECONDS].min
+      end
+
+      def cap_wait_timeout!(payload)
+        wait = payload[:wait_timeout_seconds]
+        return unless wait
+
+        payload[:wait_timeout_seconds] = [wait, MAX_WAIT_TIMEOUT_SECONDS].min
       end
     end
   end

@@ -115,7 +115,7 @@ module Html2rss
       # @raise [UnsupportedUrlScheme] if the redirect downgrades from HTTPS to HTTP
       def validate_redirect!(from_url:, to_url:, origin_url:, relation:)
         if from_url.scheme == 'https' && to_url.scheme == 'http'
-          raise UnsupportedUrlScheme, 'Redirect downgraded from https to http'
+          raise UnsupportedUrlScheme, "Redirect downgraded from #{from_url} to #{to_url}"
         end
 
         validate_request!(url: to_url, origin_url:, relation:)

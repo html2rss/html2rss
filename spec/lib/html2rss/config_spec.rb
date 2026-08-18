@@ -420,7 +420,7 @@ RSpec.describe Html2rss::Config do
               headless: false,
               proxy: 'http://user:pass@proxy:8080',
               user_agent: 'Mozilla/5.0',
-              window_size: [1920, 1080],
+              window_size: { width: 1920, height: 1080 },
               lang: 'en-US'
             }
           }
@@ -432,6 +432,22 @@ RSpec.describe Html2rss::Config do
 
         expect(result).to be_success
         expect(result.to_h.dig(:request, :botasaurus, :navigation_mode)).to eq('google_get_bypass')
+      end
+    end
+
+    context 'when botasaurus wait_timeout_seconds exceeds the API maximum' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: { wait_timeout_seconds: 45 }
+          }
+        }
+      end
+
+      it 'rejects an explicit wait above the Botasaurus API cap' do
+        expect(described_class.validate(config)).to be_failure
       end
     end
 
@@ -455,20 +471,74 @@ RSpec.describe Html2rss::Config do
       end
     end
 
-    context 'when botasaurus window_size length is not exactly two items' do
+    context 'when botasaurus window_size is not a width/height object' do
       let(:config) do
         {
           channel: { url: 'http://example.com' },
           selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
           request: {
             botasaurus: {
-              window_size: [1920]
+              window_size: [1920, 1080]
             }
           }
         }
       end
 
       it 'rejects the botasaurus config' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
+    context 'when botasaurus window_size includes an unknown property' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: {
+              window_size: { width: 1920, height: 1080, extra: 1 }
+            }
+          }
+        }
+      end
+
+      it 'rejects the botasaurus config' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
+    context 'when botasaurus window_size omits height' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: {
+              window_size: { width: 1920 }
+            }
+          }
+        }
+      end
+
+      it 'rejects the botasaurus config' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
+    context 'when botasaurus includes removed scroll_to_bottom' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: {
+              scroll_to_bottom: true
+            }
+          }
+        }
+      end
+
+      it 'rejects the unknown key' do
         expect(described_class.validate(config)).to be_failure
       end
     end
@@ -644,6 +714,20 @@ RSpec.describe Html2rss::Config do
 
       it 'raises an ArgumentError' do
         expect { instance }.to raise_error(described_class::InvalidConfig, /Invalid configuration:/)
+      end
+    end
+
+    context 'when botasaurus wait_timeout_seconds exceeds the API maximum' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: { botasaurus: { wait_timeout_seconds: 45 } }
+        }
+      end
+
+      it 'raises InvalidConfig naming wait_timeout_seconds' do
+        expect { instance }.to raise_error(described_class::InvalidConfig, /wait_timeout_seconds/)
       end
     end
   end

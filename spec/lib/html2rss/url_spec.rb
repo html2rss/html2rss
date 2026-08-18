@@ -180,6 +180,14 @@ RSpec.describe Html2rss::Url do
       expect(url.host).to eq('example.com')
     end
 
+    it 'returns the registrable domain (eTLD+1)' do
+      expect(described_class.from_absolute('https://www.wp.pl/').domain).to eq('wp.pl')
+    end
+
+    it 'uses the host for IP addresses instead of a public-suffix suffix' do
+      expect(described_class.from_absolute('https://1.2.3.4/story').domain).to eq('1.2.3.4')
+    end
+
     it 'delegates path method' do
       expect(url.path).to eq('/path')
     end

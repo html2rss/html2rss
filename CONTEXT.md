@@ -6,6 +6,14 @@ Contributor map for the four Strong module deepenings on this branch. Prefer the
 
 Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once — no `RuntimeInput` passthrough). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms` — strategies must not reimplement `remaining || policy.total`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
 
+## HTML-ness
+
+Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and MCP Inspect all call that one predicate — do not reintroduce a parallel `html_document?`. Gzip/brotli inflate stays on `CompressedBody`, called only from the Faraday adapter; unlabeled octet-stream inflate must not grow onto Botasaurus or LocalFile.
+
+## Botasaurus scrape contract
+
+OpenAPI 2.0 `ScrapeRequest` / `ScrapeSuccess` / `ScrapeError` (sibling `botasaurus-scrape-api/openapi.yaml`) is the wire authority. There is no `ScrapeResponse` alias. Closed sets, wait bounds, request option keys, and `window_size` `{width, height}` live on `RequestService::BotasaurusContract`. `Config::Validator::BotasaurusRequestConfig` consumes those constants for YAML admission (`scroll` is scroll-to-bottom; there is no `scroll_to_bottom`). `BotasaurusStrategy` is Faraday `POST /scrape` plus gem error mapping: 200 → `Success`; 4xx/5xx → `Error` (`challenge_block` → `BlockedSurfaceDetected`, `timeout` / 504 → `RequestTimedOut`, otherwise `BotasaurusServiceError`). `Response#transport_meta` is `diagnostics` plus success-only `metadata_error`. Do not flatten old 1.x field names, parse FastAPI `detail`, or override published OpenAPI defaults.
+
 ## DOM chrome
 
 Layout noise and primary-link recognition for the **manual selector** path: ignored container tags/paths, class-clustering exclusions, utility landmarks, heading tags, main-anchor CSS, and visible-text extraction. Owned by `Html2rss::Html::Navigator` (+ `TextExtractor`). `Html::ArticleExtractor` serves selectors only.
@@ -26,7 +34,11 @@ Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoS
 
 ## Enhance leftover fields
 
-Visible leftover after excluding heading/anchor/kicker/`time` is split once on block newlines. Keep/drop (CTA, date-shaped, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Dates stay on `ArticleRules::Date` (datetime attrs + date-shaped leftover lines, channel `time_zone`; invalid identifiers fall back to UTC so extract does not raise). Categories stay on `ArticleRules::Category` (class tokens, not layout `label`/`section` substrings) and reject Description keepers except type chips, which are leftover chrome rather than taxonomy. Both `Html::ArticleExtractor` and `Html::SstArticleExtractor` call those modules — do not copy leftover denylists into `Cleanup.junk_reason`. Heading-only items and wrapping `<a>` cards (heading or `p` inside) may walk ancestors via `Navigator.parent_until_condition` / `SST::Index#parent_until`, skipping thin heading wrappers and landmarks/`html`/`body`, and aborting when the parent has more than one heading or eligible link.
+Visible leftover after excluding heading/anchor/kicker/`time` is split once on block newlines. Keep/drop (CTA, date-shaped, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Dates stay on `ArticleRules::Date` (datetime attrs + date-shaped leftover lines, channel `time_zone`; invalid identifiers fall back to UTC so extract does not raise). Categories stay on `ArticleRules::Category` (class tokens, not layout `label`/`section` substrings) and reject Description keepers except type chips, which are leftover chrome rather than taxonomy. Both `Html::ArticleExtractor` and `Html::SstArticleExtractor` call those modules — do not copy leftover denylists into `Cleanup.junk_reason`.
+
+## Leftover parent-card walk
+
+When a heading-only item or wrapping `<a>` lacks leftover description and date, extractors climb via `Navigator.parent_until_condition` / `SST::Index#parent_until`. Walk policy (`miss?` / `thin_wrapper?` / `crowded?` from heading count + distinct main hrefs) is owned by `Html2rss::Html::CardWalk`. Adapters still traverse. Capture's items-selector lift is a second job: it shares only `Navigator.usable_card_parent?` stop tags and aborts with `contains_other_root?` (listing-root set). Do not fold Capture lift into CardWalk.
 
 ## DOM candidate clustering
 

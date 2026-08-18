@@ -202,7 +202,7 @@ module Html2rss
     def items_selector(matched)
       return nil if matched.empty?
 
-      roots = matched.map { |m| m[:segment].root_node }
+      roots = lift_heading_link_roots(matched.map { |m| m[:segment].root_node })
       shared = shared_class_items_selector(roots)
       return shared if shared
 
@@ -212,6 +212,58 @@ module Html2rss
       return nil if tag_path.empty?
 
       css_from_trimmed_tag_path(tag_path)
+    end
+
+    def lift_heading_link_roots(roots)
+      roots.map { |root| lift_heading_link_root(root, roots) }
+    end
+
+    def lift_heading_link_root(root, all_roots)
+      return root unless heading_or_inner_title_link?(root)
+
+      index = SST::Index.for_node(root)
+      return root unless index
+
+      walk_usable_card(root, index, all_roots)
+    end
+
+    def walk_usable_card(root, index, all_roots)
+      candidate = root
+      parent = index.parent_of(root)
+      while parent && Html::Navigator.usable_card_parent?(parent)
+        break if contains_other_root?(parent, root, all_roots)
+
+        candidate = parent
+        parent = index.parent_of(parent)
+      end
+      candidate
+    end
+
+    def heading_or_inner_title_link?(node)
+      name = node.name.to_s
+      return false if wrapping_anchor_root?(node)
+
+      Html::Navigator::HEADING_TAGS.include?(name) || name == 'a'
+    end
+
+    def wrapping_anchor_root?(node)
+      return false unless node.name.to_s == 'a'
+      return false unless node.respond_to?(:find)
+
+      tags = Html::Navigator::WRAPPING_ANCHOR_CHILD_TAGS
+      node.find { |child| !child.equal?(node) && tags.include?(child.name.to_s) }
+    end
+
+    def contains_other_root?(parent, root, all_roots)
+      all_roots.any? do |other|
+        next if other.equal?(root)
+
+        other.equal?(parent) || sst_descendant?(other, parent)
+      end
+    end
+
+    def sst_descendant?(child, ancestor)
+      SST::Index.for_node(child)&.descendant_of?(child, ancestor)
     end
 
     def shared_class_items_selector(roots)

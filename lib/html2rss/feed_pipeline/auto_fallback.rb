@@ -15,7 +15,6 @@ module Html2rss
         RequestService::UnknownStrategy,
         RequestService::InvalidUrl,
         RequestService::UnsupportedUrlScheme,
-        RequestService::UnsupportedResponseContentType,
         RequestService::RequestBudgetExceeded,
         RequestService::PrivateNetworkDenied,
         RequestService::CrossOriginFollowUpDenied,
@@ -125,6 +124,9 @@ module Html2rss
         return unless response
 
         process_response(response:, strategy:, next_strategy:, request_session:, state:)
+      rescue RequestService::UnsupportedResponseContentType => error
+        state.record_error(strategy:, error:)
+        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy
       end
 
       def fetch_response(request_session:, strategy:, next_strategy:, state:)
@@ -138,8 +140,8 @@ module Html2rss
       end
 
       def process_response(response:, strategy:, next_strategy:, request_session:, state:) # rubocop:disable Metrics/MethodLength -- extract + success path
-        state.remember_response(response)
         articles, dedup_dropped, admission_drops = articles_for(response:, request_session:)
+        state.remember_response(response)
         items_count = articles.size
         state.record_items(strategy:, items_count:, transport_meta: response.transport_meta)
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \

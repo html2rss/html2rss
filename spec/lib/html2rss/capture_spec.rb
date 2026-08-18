@@ -5,11 +5,11 @@ require 'spec_helper'
 RSpec.describe Html2rss::Capture do
   let(:url) { 'https://example.com/blog' }
 
-  def html_response(body, page_url: url)
+  def html_response(body, page_url: url, content_type: 'text/html')
     Html2rss::RequestService::Response.new(
       body:,
       url: Html2rss::Url.from_absolute(page_url),
-      headers: { 'content-type' => 'text/html' }
+      headers: { 'content-type' => content_type }
     )
   end
 
@@ -44,6 +44,21 @@ RSpec.describe Html2rss::Capture do
         )
         expect(result.config[:channel]).to include(url:, title: a_string_matching(/\S/), time_zone: 'UTC')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
+      end
+    end
+
+    context 'when HTML is labeled octet-stream' do
+      subject(:result) do
+        response = html_response(File.read('spec/fixtures/local_feed_test.html'),
+                                 content_type: 'application/octet-stream')
+        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+        stub_outcome(response, articles:)
+        described_class.new(url).build
+      end
+
+      it 'derives selectors from sniffed HTML', :aggregate_failures do
+        expect(result.has_selectors).to be true
+        expect(result.config[:selectors]).to eq(items: { selector: 'div.item', enhance: true })
       end
     end
 
@@ -92,6 +107,81 @@ RSpec.describe Html2rss::Capture do
         )
       end
       # rubocop:enable RSpec/ExampleLength
+    end
+
+    it 'lifts heading-link item roots to the research card', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <article class="research-card">
+            <h3><a href="/pub/1">Title of the first publication about research</a></h3>
+            <p>Sibling teaser about the first research paper with extra words.</p>
+          </article>
+          <article class="research-card">
+            <h3><a href="/pub/2">Title of the second publication about research</a></h3>
+            <p>Sibling teaser about the second research paper with extra words.</p>
+          </article>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:)
+
+      items = described_class.new(url).build.config.dig(:selectors, :items)
+      expect(items[:enhance]).to be true
+      expect(items[:selector]).to eq('article.research-card')
+    end
+
+    it 'lifts list-strategy heading roots to the enclosing research card', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <article class="research-card">
+            <h3><a href="/pub/1">Title of the first publication about research</a></h3>
+            <p>Sibling teaser about the first research paper with extra words.</p>
+          </article>
+          <article class="research-card">
+            <h3><a href="/pub/2">Title of the second publication about research</a></h3>
+            <p>Sibling teaser about the second research paper with extra words.</p>
+          </article>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:)
+
+      allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |sst, strategy:, **|
+        next [] unless strategy == :list
+
+        sst.index.each_node.select { |node| node.name.to_s == 'h3' }.map do |heading|
+          anchor = heading.children.find { |child| child.name.to_s == 'a' }
+          instance_double(Html2rss::AutoSource::Segment, primary_link: anchor, root_node: heading)
+        end
+      end
+
+      items = described_class.new(url).build.config.dig(:selectors, :items)
+      expect(items[:enhance]).to be true
+      expect(items[:selector]).to eq('article.research-card')
+    end
+
+    it 'keeps Equinor-style wrapping anchors as the item root', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <a href="/news/one">
+            <h2>Equinor starts first offshore wind project</h2>
+            <p>The project will add capacity to the North Sea grid this decade.</p>
+          </a>
+          <a href="/news/two">
+            <h2>Equinor starts second offshore wind project</h2>
+            <p>The project will add capacity to the North Sea grid this decade.</p>
+          </a>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:)
+
+      items = described_class.new(url).build.config.dig(:selectors, :items)
+      expect(items[:enhance]).to be true
+      expect(items[:selector]).to eq('a')
     end
 
     context 'when selector derivation raises ArgumentError' do
