@@ -315,6 +315,24 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
     end
   end
 
+  describe 'clock plus teaser is not date chrome' do
+    let(:html) do
+      <<~HTML
+        <article>
+          <h2><a href="/news/story">Headline about the reactor design</a></h2>
+          <p>12 March 2024 - 10:00 Team announces a new reactor design</p>
+        </article>
+      HTML
+    end
+
+    it 'keeps the teaser line in the description', :aggregate_failures do
+      fields = leftover_fields.call(html)
+
+      expect(fields[:description]).to eq('12 March 2024 - 10:00 Team announces a new reactor design')
+      expect(fields[:description]).to include('Team announces a new reactor design')
+    end
+  end
+
   describe 'Nokia-shaped wrapping anchor with pipe date' do
     let(:html) do
       <<~HTML

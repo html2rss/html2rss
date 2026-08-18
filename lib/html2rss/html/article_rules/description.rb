@@ -17,8 +17,14 @@ module Html2rss
         MAX_DATE_CHARS = 128
         # Optional type-chip / clock separators (ASCII/en/em dash, pipe, bullet).
         CHIP_SEPARATORS = [' - ', ' – ', ' — ', ' | ', ' • '].freeze
-        # Trailing clock plus optional AM/PM and timezone label (not ISO T-offset).
-        CLOCK_ZONE = /\A\d{1,2}:\d{2}(?::\d{2})?(?:\s*(?:AM|PM))?(?:\s+\S.*)?\z/i
+        # Trailing clock plus optional AM/PM and one timezone/offset token (IANA, GMT/UTC offset, or abbrev).
+        CLOCK_ZONE = %r{
+          \A
+          \d{1,2}:\d{2}(?::\d{2})?
+          (?:\s*(?:AM|PM))?
+          (?:\s+(?:[A-Za-z]+(?:/[A-Za-z_]+)+|(?:GMT|UTC)[+-]\d{1,2}(?::\d{2})?|[A-Za-z]{2,5}))?
+          \z
+        }ix
         # Whole-line date shapes after normalize (ISO, numeric, day-month, month-day).
         DATE_SHAPES = [
           /\A\d{4}-\d{1,2}-\d{1,2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?\z/i,
