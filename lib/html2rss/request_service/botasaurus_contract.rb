@@ -15,28 +15,6 @@ module Html2rss
         headless: false
       }.freeze
 
-      # Allowlisted request.botasaurus keys forwarded to upstream.
-      OPTION_KEYS = %i[
-        execution_mode
-        navigation_mode
-        max_retries
-        wait_for_selector
-        wait_timeout_seconds
-        scroll
-        scroll_to_bottom
-        block_images
-        block_images_and_css
-        block_trackers
-        wait_for_complete_page_load
-        headless
-        proxy
-        user_agent
-        window_size
-        lang
-        headers
-        cookies
-      ].freeze
-
       # Allowlisted upstream response keys exposed as Response#transport_meta.
       META_KEYS = %w[
         request_id strategy_used render_ms challenge_detected blocked_detected attempts error_category
@@ -51,6 +29,18 @@ module Html2rss
 
       # Botasaurus scrape API Field(..., le=DEFAULT_SCRAPE_TIMEOUT_SECONDS) ceiling.
       MAX_WAIT_TIMEOUT_SECONDS = 20
+
+      class << self
+        ##
+        # Validator-owned request.botasaurus keys, resolved lazily to avoid a load-time
+        # cycle with {Config::Validator::BotasaurusRequestConfig} (which references
+        # {MAX_WAIT_TIMEOUT_SECONDS}).
+        #
+        # @return [Array<Symbol>]
+        def option_keys
+          Config::Validator::BotasaurusRequestConfig.key_map.map { |schema_key| schema_key.name.to_sym }
+        end
+      end
 
       # Parsed Botasaurus response wrapper.
       class ParsedResponse # rubocop:disable Metrics/ClassLength -- payload accessors stay with 422 detail parse
@@ -268,7 +258,7 @@ module Html2rss
       end
 
       def filtered_options
-        OPTION_KEYS.each_with_object({}) do |key, normalized|
+        self.class.option_keys.each_with_object({}) do |key, normalized|
           normalized[key] = options[key] if options.key?(key)
         end
       end

@@ -12,6 +12,14 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
   end
 
+  describe '.option_keys' do
+    it 'matches the validator BotasaurusRequestConfig key names' do
+      validator_keys = Html2rss::Config::Validator::BotasaurusRequestConfig.key_map.map { |key| key.name.to_sym }
+
+      expect(described_class.option_keys).to match_array(validator_keys)
+    end
+  end
+
   describe '#request_payload' do
     subject(:payload) { contract.request_payload }
 
@@ -30,6 +38,23 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
 
       it 'mins remaining-2 with MAX_WAIT_TIMEOUT_SECONDS' do
         expect(payload.fetch(:wait_timeout_seconds)).to eq(20)
+      end
+    end
+
+    context 'when options include a validator-legal key' do
+      let(:contract) { described_class.new(url:, options: { scroll: true }) }
+
+      it 'forwards the key that the validator already accepted' do
+        expect(payload[:scroll]).to be true
+      end
+    end
+
+    context 'when options include an unknown key' do
+      let(:contract) { described_class.new(url:, options: { not_a_botasaurus_option: true, lang: 'de' }) }
+
+      it 'drops the unknown key and keeps validator keys', :aggregate_failures do
+        expect(payload).not_to have_key(:not_a_botasaurus_option)
+        expect(payload[:lang]).to eq('de')
       end
     end
   end
