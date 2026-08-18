@@ -415,6 +415,35 @@ RSpec.describe Html2rss::AutoSource do
         expect(article.scraper).to eq(Html2rss::AutoSource::Scraper::Microdata)
       end
     end
+
+    context 'when the listing is wrapping a.card links (ISS Africa shape)' do
+      let(:url) { Html2rss::Url.from_absolute('https://issafrica.org/iss-today') }
+      let(:body) do
+        cards = [
+          ['/iss-today/sahel-conflict-needs-more-attention', 'Sahel conflict needs more attention today'],
+          ['/iss-today/west-africa-coup-watch-briefing', 'West Africa coup watch briefing today'],
+          ['/iss-today/sudan-peace-talks-stall-again', 'Sudan peace talks stall again this week']
+        ]
+        items = cards.map do |href, title|
+          <<~CARD
+            <a class="card" href="#{href}">
+              <div class="card__image"><img src="/img/#{href.split('/').last}.jpg" alt=""></div>
+              <div class="card__content">
+                <h3>#{title}</h3>
+                <p>Teaser line for the ISS Today briefing.</p>
+              </div>
+            </a>
+          CARD
+        end.join
+        "<!DOCTYPE html><html><body>#{items}</body></html>"
+      end
+
+      it 'admits at least one article from the wrapping cards', :aggregate_failures do
+        expect(articles.size).to be >= 1
+        expect(articles.map { |article| article.url.to_s }).to all(include('/iss-today/'))
+        expect(articles.map(&:title)).to all(match(/\A\S+(?:\s+\S+){2,}/))
+      end
+    end
   end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers
