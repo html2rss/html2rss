@@ -270,4 +270,87 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       expect(fields[:published_at].to_date).to eq(Date.new(2024, 3, 12))
     end
   end
+
+  describe 'DIIS-shaped heading-link item' do
+    let(:html) do
+      <<~HTML
+        <article class="research-card">
+          <h3><a href="/research/publication-one">Title of the publication about research</a></h3>
+          <p>Sibling teaser that lives beside the heading link.</p>
+          <time datetime="2024-03-12T09:00:00Z">12 March 2024</time>
+        </article>
+      HTML
+    end
+
+    it 'walks from h3 a to the card for teaser, date, and url', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'h3 a')
+
+      expect(fields[:title]).to eq('Title of the publication about research')
+      expect(fields[:description]).to eq('Sibling teaser that lives beside the heading link.')
+      expect(fields[:published_at]).to be_a(DateTime)
+      expect(fields[:url].to_s).to include('/research/publication-one')
+    end
+  end
+
+  describe 'heading-link plus same-href Read more' do
+    let(:html) do
+      <<~HTML
+        <div class="card">
+          <h3><a href="/news/story">Heading title about the story</a></h3>
+          <p>Sibling teaser that lives beside the heading.</p>
+          <a href="/news/story">Read more</a>
+          <time datetime="2024-03-12T09:00:00Z">12 March 2024</time>
+        </div>
+      HTML
+    end
+
+    it 'does not treat title plus CTA as two articles', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'h3 a')
+
+      expect(fields[:title]).to eq('Heading title about the story')
+      expect(fields[:description]).to eq('Sibling teaser that lives beside the heading.')
+      expect(fields[:description].to_s).not_to eq('Read more')
+      expect(fields[:published_at]).to be_a(DateTime)
+      expect(fields[:url].to_s).to include('/news/story')
+    end
+  end
+
+  describe 'Nokia-shaped wrapping anchor with pipe date' do
+    let(:html) do
+      <<~HTML
+        <a href="/news/story">
+          <h2>Nokia headline about the product launch</h2>
+          <span>August 06 , 2026 | 13:00 PM Europe/Amsterdam</span>
+        </a>
+      HTML
+    end
+
+    it 'parses the calendar day and drops the pipe clock line', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'a')
+
+      expect(fields[:title]).to eq('Nokia headline about the product launch')
+      expect(fields[:published_at]).to be_a(DateTime)
+      expect(fields[:published_at].to_date).to eq(Date.new(2026, 8, 6))
+      expect(fields[:description]).to be_nil
+    end
+  end
+
+  describe 'Telenor-shaped wrapping anchor with bullet juli date' do
+    let(:html) do
+      <<~HTML
+        <a href="/news/story">
+          <h2>Telenor headline about the network upgrade</h2>
+          <span>Press release • 16 juli, 2026</span>
+        </a>
+      HTML
+    end
+
+    it 'drops the type-chip date line from description', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'a')
+
+      expect(fields[:title]).to eq('Telenor headline about the network upgrade')
+      expect(fields[:description]).to be_nil
+      expect(fields[:description].to_s).not_to include('juli')
+    end
+  end
 end

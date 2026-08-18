@@ -36,5 +36,30 @@ RSpec.describe Html2rss::Html::ArticleRules::Description do
       expect(described_class.date_shaped?("a#{' ' * 10_000}")).to be(false)
       expect(described_class.date_shaped?("a - #{'  ' * 5_000}")).to be(false)
     end
+
+    it 'accepts a Nokia-shaped pipe date with spaced comma and clock zone' do
+      expect(described_class.date_shaped?('August 06 , 2026 | 13:00 PM Europe/Amsterdam')).to be(true)
+    end
+
+    it 'accepts a Telenor-shaped leading type-chip with juli' do
+      expect(described_class.date_shaped?('Press release • 16 juli, 2026')).to be(true)
+    end
+  end
+
+  describe '.date_core Nokia/Telenor fragments' do
+    it 'keeps the calendar day from a pipe clock line' do
+      expect(described_class.date_core('August 06 , 2026 | 13:00 PM Europe/Amsterdam'))
+        .to match(/August 06\s*,?\s*2026/)
+    end
+  end
+
+  describe '.keep?' do
+    it 'drops a Telenor-shaped type-chip date line' do
+      expect(described_class.keep?('Press release • 16 juli, 2026')).to be(false)
+    end
+
+    it 'keeps a longer read-more sentence' do
+      expect(described_class.keep?('Read more about the trial')).to be(true)
+    end
   end
 end
