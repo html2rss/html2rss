@@ -53,7 +53,7 @@ module Html2rss
       MAX_WAIT_TIMEOUT_SECONDS = 20
 
       # Parsed Botasaurus response wrapper.
-      class ParsedResponse
+      class ParsedResponse # rubocop:disable Metrics/ClassLength -- payload accessors stay with 422 detail parse
         # Fallback headers when upstream omits response headers.
         DEFAULT_HEADERS = { 'content-type' => 'text/html' }.freeze
         # Per-body size cap for captured XHR JSON (defense-in-depth vs upstream).

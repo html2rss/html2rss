@@ -351,7 +351,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         {
           detail: [
             {
-              loc: ['body', 'wait_timeout_seconds'],
+              loc: %w[body wait_timeout_seconds],
               msg: 'Input should be less than or equal to 20',
               type: 'less_than_equal',
               input: 28

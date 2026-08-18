@@ -304,7 +304,7 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
       HTML
     end
 
-    it 'does not treat title plus CTA as two articles', :aggregate_failures do
+    it 'does not treat title plus CTA as two articles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       fields = leftover_fields.call(html, item_selector: 'h3 a')
 
       expect(fields[:title]).to eq('Heading title about the story')

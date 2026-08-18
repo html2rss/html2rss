@@ -450,8 +450,8 @@ RSpec.describe Html2rss do
       expect(feed_return).to be_a(RSS::Rss)
       expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
       expect(feed_return.channel.link).to eq 'https://www.welt.de/'
-      # Admission hard-exclude + no Html padding: fewer clean items beats a padded homepage.
-      expect(feed_return.items.size).to eq(75)
+      # eTLD+1 keeps same-site portal hosts (go.welt.de, asbs.welt.de) with www.welt.de.
+      expect(feed_return.items.size).to eq(86)
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_source
@@ -469,7 +469,7 @@ RSpec.describe Html2rss do
     end
 
     it 'returns items', :slow do
-      expect(feed_return[:items].size).to eq(75)
+      expect(feed_return[:items].size).to eq(86)
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_json_feed

@@ -52,7 +52,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
           {
             'detail' => [
               {
-                'loc' => ['body', 'wait_timeout_seconds'],
+                'loc' => %w[body wait_timeout_seconds],
                 'msg' => 'Input should be less than or equal to 20',
                 'type' => 'less_than_equal',
                 'input' => 28
@@ -64,8 +64,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
 
       it 'names wait_timeout_seconds and the API cap on BotasaurusServiceError', :aggregate_failures do
         expect(parsed).to be_upstream_failure
-        expect(parsed.upstream_failure_message).to match(/wait_timeout_seconds/)
-        expect(parsed.upstream_failure_message).to match(/20/)
+        expect(parsed.upstream_failure_message).to include('wait_timeout_seconds')
+        expect(parsed.upstream_failure_message).to include('20')
       end
     end
   end
