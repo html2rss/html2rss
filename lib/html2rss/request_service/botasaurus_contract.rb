@@ -50,7 +50,7 @@ module Html2rss
       BUDGET_WAIT_RESERVE_SECONDS = 2
 
       # Parsed Botasaurus response wrapper.
-      class ParsedResponse
+      class ParsedResponse # rubocop:disable Metrics/ClassLength -- payload accessors stay with 422 detail parse
         # Fallback headers when upstream omits response headers.
         DEFAULT_HEADERS = { 'content-type' => 'text/html' }.freeze
         # Per-body size cap for captured XHR JSON (defense-in-depth vs upstream).
@@ -84,6 +84,7 @@ module Html2rss
           details << "error_category=#{error_category}" if error_category
           details << "error=#{error}" if error
           details << "request_id=#{request_id}" if request_id
+          details.concat(validation_detail_parts)
           "Botasaurus scrape failed (#{details.join(', ')})."
         end
 
@@ -144,6 +145,26 @@ module Html2rss
         def error_message?
           value = error
           value.is_a?(String) ? !value.empty? : !value.nil?
+        end
+
+        def validation_detail_parts
+          raw = payload['detail']
+          return ["detail=#{raw}"] if raw.is_a?(String) && !raw.empty?
+          return [] unless raw.is_a?(Array)
+
+          raw.filter_map { |entry| format_detail_entry(entry) }
+        end
+
+        def format_detail_entry(entry)
+          return unless entry.is_a?(Hash)
+
+          field = Array(entry['loc']).last
+          msg = entry['msg']
+          return if field.nil? && msg.nil?
+
+          summary = [field, msg].compact.join(': ')
+          input = entry['input']
+          input.nil? ? summary : "#{summary} (input=#{input})"
         end
 
         def normalize_xhr_entry(entry)

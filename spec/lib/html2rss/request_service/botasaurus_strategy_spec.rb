@@ -357,6 +357,27 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
   end
 
   describe 'failure handling' do
+    context 'when scrape envelope returns 422 naming window_size' do
+      let(:response_status) { 422 }
+      let(:response_payload) do
+        {
+          url: 'https://example.com/',
+          html: '',
+          error: 'window_size: List should have at least 2 items',
+          error_category: 'navigation_error',
+          request_id: 'req-422'
+        }
+      end
+
+      it 'raises BotasaurusServiceError naming window_size' do
+        expect { execute }
+          .to raise_error(
+            Html2rss::RequestService::BotasaurusServiceError,
+            /window_size/
+          )
+      end
+    end
+
     context 'when upstream returns non-200 status with error details' do
       let(:response_status) { 502 }
       let(:response_payload) do
