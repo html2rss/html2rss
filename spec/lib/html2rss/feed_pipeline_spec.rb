@@ -4,11 +4,11 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::FeedPipeline do
   let(:build_response) do
-    lambda do |body:, url: 'https://example.com/news'|
+    lambda do |body:, url: 'https://example.com/news', headers: { 'content-type' => 'text/html' }|
       Html2rss::RequestService::Response.new(
         body:,
         url: Html2rss::Url.from_absolute(url),
-        headers: { 'content-type' => 'text/html' },
+        headers:,
         status: 200
       )
     end
@@ -242,6 +242,64 @@ RSpec.describe Html2rss::FeedPipeline do
             expect(error.surface_category).to eq(:app_shell)
             expect(error.message).to include('app-shell surface detected')
           end
+        end
+      end
+
+      context 'when Faraday raises UnsupportedResponseContentType' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:strategy_results) do
+          {
+            faraday: Html2rss::RequestService::UnsupportedResponseContentType.new(
+              'Unsupported content type: application/octet-stream'
+            ),
+            botasaurus: item_response
+          }
+        end
+
+        it 'falls back to Botasaurus instead of aborting auto', :aggregate_failures do
+          rss = pipeline.to_result.to_rss
+
+          expect(rss.items.map(&:title)).to eq(['bota'])
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
+        end
+      end
+
+      context 'when Faraday returns HTML labeled as octet-stream' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:strategy_results) do
+          {
+            faraday: build_response.call(
+              body: '<html><body><article><h1>seznam</h1></article></body></html>',
+              headers: { 'content-type' => 'application/octet-stream' }
+            ),
+            botasaurus: item_response
+          }
+        end
+
+        it 'extracts Faraday HTML without calling Botasaurus', :aggregate_failures do
+          rss = pipeline.to_result.to_rss
+
+          expect(rss.items.map(&:title)).to eq(['seznam'])
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+        end
+      end
+
+      context 'when Faraday returns non-HTML octet-stream' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:strategy_results) do
+          {
+            faraday: build_response.call(
+              body: "PK\x03\x04not-html",
+              headers: { 'content-type' => 'application/octet-stream' }
+            ),
+            botasaurus: item_response
+          }
+        end
+
+        it 'records the Faraday error and uses Botasaurus', :aggregate_failures do
+          rss = pipeline.to_result.to_rss
+
+          expect(rss.items.map(&:title)).to eq(['bota'])
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
         end
       end
 

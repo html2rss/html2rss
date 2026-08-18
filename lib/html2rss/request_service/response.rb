@@ -12,6 +12,9 @@ module Html2rss
       # Default when a strategy does not capture sub-resource responses.
       EMPTY_CAPTURED_RESPONSES = [].freeze
 
+      # Bodies that look like HTML even when Content-Type is missing, empty, or wrong.
+      HTML_BODY_SNIFF = /\A\s*(?:<!DOCTYPE\s+html|<html)/i
+
       ##
       # @param body [String] the body of the response
       # @param url [Html2rss::Url] the final request URL
@@ -71,11 +74,8 @@ module Html2rss
       # @return [Nokogiri::HTML::Document, Hash] the parsed body of the response, frozen object
       # @raise [UnsupportedResponseContentType] if the content type is not supported
       def parsed_body
-        @parsed_body ||= if html_response?
-                           Nokogiri::HTML(body).tap do |doc|
-                             # Remove comments from the document to avoid processing irrelevant content
-                             doc.xpath('//comment()').each(&:remove)
-                           end.freeze
+        @parsed_body ||= if html_document?
+                           parse_html_document
                          elsif json_response?
                            JSON.parse(body, symbolize_names: true).freeze
                          else
@@ -91,6 +91,20 @@ module Html2rss
         headers.fetch(name) do
           headers.find { |key, _value| key.casecmp?(name) }&.last
         end
+      end
+
+      def parse_html_document
+        Nokogiri::HTML(body).tap do |doc|
+          doc.xpath('//comment()').each(&:remove)
+        end.freeze
+      end
+
+      def html_document?
+        html_response? || (!json_response? && html_looking_body?)
+      end
+
+      def html_looking_body?
+        body.to_s.match?(HTML_BODY_SNIFF)
       end
     end
   end

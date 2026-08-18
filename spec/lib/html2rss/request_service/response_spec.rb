@@ -75,6 +75,32 @@ RSpec.describe Html2rss::RequestService::Response do
                            'Unsupported content type: text/plain')
       end
     end
+
+    [
+      { content_type: 'application/octet-stream', label: 'octet-stream' },
+      { content_type: '', label: 'empty' },
+      { content_type: 'text/plain', label: 'wrong' }
+    ].each do |example|
+      context "when Content-Type is #{example[:label]} but the body looks like HTML" do
+        let(:body) { "<!DOCTYPE html><html><body><div>#{example[:label]}</div></body></html>" }
+        let(:headers) { example[:content_type].empty? ? {} : { 'content-type' => example[:content_type] } }
+
+        it 'parses the HTML document' do
+          expect(parsed_body.at_css('div').text).to eq(example[:label])
+        end
+      end
+    end
+
+    context 'when Content-Type is octet-stream and the body is not HTML' do
+      let(:body) { "PK\x03\x04not-html" }
+      let(:headers) { { 'content-type' => 'application/octet-stream' } }
+
+      it 'raises UnsupportedResponseContentType' do
+        expect { parsed_body }
+          .to raise_error(Html2rss::RequestService::UnsupportedResponseContentType,
+                          'Unsupported content type: application/octet-stream')
+      end
+    end
   end
 
   describe '#url' do
