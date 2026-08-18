@@ -9,7 +9,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
 
   describe 'OpenAPI scrape contract' do
     # rubocop:disable RSpec/ExampleLength -- one sibling OpenAPI snapshot assertion
-    it 'matches the sibling ScrapeRequest / ScrapeResponse schemas', :aggregate_failures do
+    it 'matches the sibling ScrapeRequest / ScrapeSuccess / ScrapeError schemas', :aggregate_failures do
       repo_root = File.expand_path('../../../..', __dir__)
       openapi_path = File.expand_path('../botasaurus-scrape-api/openapi.yaml', repo_root)
       skip "sibling OpenAPI not found at #{openapi_path}" unless File.exist?(openapi_path)
@@ -17,28 +17,38 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       openapi = YAML.load_file(openapi_path)
       schemas = openapi.fetch('components').fetch('schemas')
       scrape_request = schemas.fetch('ScrapeRequest').fetch('properties')
-      scrape_response = schemas.fetch('ScrapeResponse').fetch('properties')
+      scrape_success = schemas.fetch('ScrapeSuccess').fetch('properties')
+      scrape_error = schemas.fetch('ScrapeError').fetch('properties')
       wait = scrape_request.fetch('wait_timeout_seconds')
       retries = scrape_request.fetch('max_retries')
-      category = scrape_response.fetch('error_category')
+      diagnostics = schemas.fetch('ScrapeDiagnostics').fetch('properties')
+      window_size = schemas.fetch('WindowSize')
       scrape_responses = openapi.dig('paths', '/scrape', 'post', 'responses')
       clamp_range = "[#{described_class::MIN_WAIT_TIMEOUT_SECONDS}, #{described_class::MAX_WAIT_TIMEOUT_SECONDS}]"
 
+      expect(schemas.keys).not_to include('ScrapeResponse')
+      expect(scrape_request.keys).not_to include('scroll_to_bottom')
       expect(described_class::REQUEST_OPTION_KEYS.map(&:to_s)).to match_array(scrape_request.keys - %w[url])
-      expect(described_class::EXECUTION_MODES).to eq(scrape_request.fetch('execution_mode').fetch('enum'))
-      expect(described_class::NAVIGATION_MODES).to eq(scrape_request.fetch('navigation_mode').fetch('enum'))
+      expect(described_class::EXECUTION_MODES).to eq(schemas.fetch('ExecutionMode').fetch('enum'))
+      expect(described_class::NAVIGATION_MODES).to eq(schemas.fetch('NavigationMode').fetch('enum'))
+      expect(described_class::ERROR_CATEGORIES).to eq(schemas.fetch('ErrorCategory').fetch('enum'))
+      expect(described_class::WINDOW_SIZE_PROPERTIES.map(&:to_s)).to match_array(window_size.fetch('required'))
       expect(described_class::DEFAULT_WAIT_TIMEOUT_SECONDS).to eq(wait.fetch('default'))
       expect(wait.fetch('description')).to include(clamp_range)
       expect(wait).not_to have_key('minimum')
       expect(wait).not_to have_key('maximum')
       expect(described_class::MAX_RETRIES).to eq(retries.fetch('maximum').to_i)
-      expect(described_class::ERROR_CATEGORIES).to eq(category.fetch('anyOf').find { _1['enum'] }.fetch('enum'))
-      expect(scrape_response.keys).to include(*described_class::META_KEYS)
-      expect(scrape_responses.keys).to include('200', '400', '403', '422', '502', '504')
+      expect(described_class::DIAGNOSTICS_KEYS).to match_array(diagnostics.keys)
+      expect(scrape_success.keys).to include('html', 'diagnostics', 'metadata_error', 'xhr_responses')
+      expect(scrape_error.keys).to include('error', 'error_category', 'diagnostics')
+      expect(scrape_error.keys).not_to include('html')
+      expect(scrape_responses.dig('200', 'content', 'application/json', 'schema')).to eq(
+        { '$ref' => '#/components/schemas/ScrapeSuccess' }
+      )
       expect(scrape_responses.except('200').values).to all(
         include('content' => a_hash_including(
           'application/json' => a_hash_including(
-            'schema' => { '$ref' => '#/components/schemas/ScrapeResponse' }
+            'schema' => { '$ref' => '#/components/schemas/ScrapeError' }
           )
         ))
       )
@@ -66,6 +76,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       expect(payload).to eq(url: 'https://example.com/')
       expect(payload).not_to have_key(:wait_timeout_seconds)
       expect(payload).not_to have_key(:max_retries)
+      expect(payload).not_to have_key(:headless)
     end
 
     context 'when remaining budget minus reserve still exceeds the OpenAPI wait default' do
@@ -93,11 +104,21 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       end
     end
 
+    context 'when options include window_size' do
+      let(:contract) { described_class.new(url:, options: { window_size: { width: 1920, height: 1080 } }) }
+
+      it 'forwards the OpenAPI object shape' do
+        expect(payload[:window_size]).to eq(width: 1920, height: 1080)
+      end
+    end
+
     context 'when options include an unknown key' do
-      let(:contract) { described_class.new(url:, options: { not_a_botasaurus_option: true, lang: 'de' }) }
+      let(:contract) do
+        described_class.new(url:, options: { scroll_to_bottom: true, lang: 'de' })
+      end
 
       it 'drops the unknown key and keeps OpenAPI keys', :aggregate_failures do
-        expect(payload).not_to have_key(:not_a_botasaurus_option)
+        expect(payload).not_to have_key(:scroll_to_bottom)
         expect(payload[:lang]).to eq('de')
       end
     end
@@ -108,10 +129,19 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
 
     let(:transport_response) { instance_double(Faraday::Response, status:, body:) }
     let(:status) { 200 }
-    let(:body) { JSON.generate({ 'html' => '<html></html>', 'status_code' => 200 }) }
+    let(:body) do
+      JSON.generate(
+        {
+          'url' => 'https://example.com/',
+          'html' => '<html></html>',
+          'status_code' => 200,
+          'diagnostics' => { 'request_id' => 'req-ok' }
+        }
+      )
+    end
 
-    it 'returns a ParsedResponse for a scrape envelope' do
-      expect(parsed).to be_a(described_class::ParsedResponse)
+    it 'returns Success for a scrape success envelope' do
+      expect(parsed).to be_a(described_class::Success)
     end
 
     context 'when scrape envelope returns 422 naming window_size' do
@@ -120,22 +150,22 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
         JSON.generate(
           {
             'url' => 'https://example.com/',
-            'html' => '',
-            'error' => 'window_size: List should have at least 2 items',
-            'error_category' => 'navigation_error',
-            'request_id' => 'req-422'
+            'error' => 'window_size.width: Field required',
+            'error_category' => 'validation',
+            'diagnostics' => { 'request_id' => 'req-422' }
           }
         )
       end
 
-      it 'is an upstream failure that names the field', :aggregate_failures do
-        expect(parsed).to be_upstream_failure
-        expect(parsed.upstream_failure_message).to include('window_size')
-        expect(parsed.upstream_failure_message).to include('req-422')
+      it 'returns Error naming the field', :aggregate_failures do
+        expect(parsed).to be_a(described_class::Error)
+        expect(parsed.failure_message).to include('window_size.width')
+        expect(parsed.failure_message).to include('req-422')
+        expect(parsed.failure_message).to include('error_category=validation')
       end
     end
 
-    context 'when the body is FastAPI HTTPValidationError detail' do
+    context 'when the body is not a scrape envelope' do
       let(:status) { 422 }
       let(:body) do
         JSON.generate(
@@ -151,82 +181,97 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
         )
       end
 
-      it 'does not treat FastAPI detail as the scrape envelope', :aggregate_failures do
-        expect(parsed).to be_upstream_failure
-        expect(parsed.upstream_failure_message).not_to include('wait_timeout_seconds')
-        expect(parsed.upstream_failure_message).not_to include('detail=')
+      it 'fails loud instead of reading a non-envelope body' do
+        expect { parsed }.to raise_error(
+          Html2rss::RequestService::BotasaurusServiceError,
+          /requires (error|diagnostics|error_category)/
+        )
+      end
+    end
+
+    context 'when success omits html' do
+      let(:body) { JSON.generate({ 'url' => 'https://example.com/', 'diagnostics' => { 'request_id' => 'req-1' } }) }
+
+      it 'fails loud because html is required' do
+        expect { parsed }.to raise_error(
+          Html2rss::RequestService::BotasaurusServiceError,
+          /requires html/
+        )
       end
     end
   end
 
-  describe 'ParsedResponse#upstream_failure?' do
-    subject(:parsed) { described_class::ParsedResponse.new(payload:, transport_status:) }
+  describe 'Success#status' do
+    subject(:parsed) { described_class::Success.new(payload:) }
 
-    let(:transport_status) { 200 }
     let(:payload) do
       {
         'html' => '<html>ok</html>',
         'status_code' => 200,
-        'error' => nil
+        'diagnostics' => { 'request_id' => 'req-1' }
       }
     end
 
     [204, 301].each do |document_status|
-      context "when transport is 200, error is null, and status_code is #{document_status}" do
+      context "when status_code is #{document_status}" do
         let(:payload) do
           {
             'html' => '<html>ok</html>',
             'status_code' => document_status,
-            'error' => nil
+            'diagnostics' => { 'request_id' => 'req-1' }
           }
         end
 
-        it 'is not an upstream failure and keeps the document status', :aggregate_failures do
-          expect(parsed).not_to be_upstream_failure
+        it 'keeps the document status' do
           expect(parsed.status).to eq(document_status)
         end
       end
     end
 
-    context 'when transport is 502' do
-      let(:transport_status) { 502 }
+    context 'when status_code is null' do
       let(:payload) do
         {
-          'html' => '<html>error</html>',
-          'status_code' => 502,
-          'error' => 'navigation failed'
+          'html' => '<html>ok</html>',
+          'status_code' => nil,
+          'diagnostics' => { 'request_id' => 'req-1' }
         }
       end
 
-      it { is_expected.to be_upstream_failure }
-    end
-
-    context 'when error is present' do
-      let(:payload) do
-        {
-          'html' => '<html>error</html>',
-          'status_code' => 200,
-          'error' => 'metadata collection failed'
-        }
-      end
-
-      it { is_expected.to be_upstream_failure }
-    end
-
-    context 'when html is omitted on a successful envelope' do
-      let(:payload) { { 'url' => 'https://example.com/', 'request_id' => 'req-1', 'error' => nil } }
-
-      it 'uses the OpenAPI empty-string default', :aggregate_failures do
-        expect(parsed).not_to be_upstream_failure
-        expect(parsed.html).to eq('')
+      it 'does not invent a document status' do
+        expect(parsed.status).to be_nil
       end
     end
   end
 
-  describe 'ParsedResponse#timeout?' do
-    subject(:parsed) { described_class::ParsedResponse.new(payload:, transport_status:) }
+  describe 'Error' do
+    subject(:parsed) { described_class::Error.new(payload:, transport_status:) }
 
-    let(:payload) { { 'error' => 'Scrape timed out after 20 seconds', 'error_category' => 'timeout' } }
+    let(:transport_status) { 502 }
+    let(:payload) do
+      {
+        'url' => 'https://example.com/',
+        'error' => 'navigation failed',
+        'error_category' => 'navigation_error',
+        'diagnostics' => { 'request_id' => 'req-502' }
+      }
+    end
+
+    it 'is not a timeout or challenge block', :aggregate_failures do
+      expect(parsed).not_to be_timeout
+      expect(parsed).not_to be_challenge_block
+    end
+  end
+
+  describe 'Error#timeout?' do
+    subject(:parsed) { described_class::Error.new(payload:, transport_status:) }
+
+    let(:payload) do
+      {
+        'error' => 'Scrape timed out after 20 seconds',
+        'error_category' => 'timeout',
+        'diagnostics' => { 'request_id' => 'req-timeout' }
+      }
+    end
 
     context 'when transport is 504' do
       let(:transport_status) { 504 }
@@ -241,37 +286,48 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
   end
 
-  describe 'ParsedResponse#challenge_block?' do
-    subject(:parsed) { described_class::ParsedResponse.new(payload:, transport_status: 502) }
+  describe 'Error#challenge_block?' do
+    subject(:parsed) { described_class::Error.new(payload:, transport_status: 502) }
 
     let(:payload) do
       {
-        'html' => '<html>challenge</html>',
         'error' => 'Challenge block detected',
-        'error_category' => 'challenge_block'
+        'error_category' => 'challenge_block',
+        'diagnostics' => {
+          'request_id' => 'req-challenge',
+          'challenge' => { 'blocked' => true, 'detected' => true, 'marker' => 'Just a moment...' }
+        }
       }
     end
 
     it { is_expected.to be_challenge_block }
   end
 
-  describe 'ParsedResponse#transport_meta' do
-    subject(:parsed) { described_class::ParsedResponse.new(payload:, transport_status: 200) }
+  describe 'Success#transport_meta' do
+    subject(:parsed) { described_class::Success.new(payload:) }
 
     let(:payload) do
       {
         'html' => '<html>ok</html>',
-        'error' => nil,
         'metadata_error' => 'driver.requests.get failed',
-        'request_id' => 'req-meta'
+        'diagnostics' => {
+          'request_id' => 'req-meta',
+          'attempts' => 1,
+          'strategy_used' => nil,
+          'render_ms' => 154,
+          'execution_tier' => 'http_request',
+          'challenge' => { 'blocked' => false, 'detected' => false, 'marker' => nil }
+        }
       }
     end
 
-    it 'keeps metadata_error as telemetry without treating it as scrape failure', :aggregate_failures do
-      expect(parsed).not_to be_upstream_failure
+    it 'keeps metadata_error as telemetry without treating it as scrape failure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- html plus nested diagnostics
+      expect(parsed.html).to eq('<html>ok</html>')
       expect(parsed.transport_meta).to include(
         'metadata_error' => 'driver.requests.get failed',
-        'request_id' => 'req-meta'
+        'request_id' => 'req-meta',
+        'execution_tier' => 'http_request',
+        'challenge' => { 'blocked' => false, 'detected' => false }
       )
     end
   end

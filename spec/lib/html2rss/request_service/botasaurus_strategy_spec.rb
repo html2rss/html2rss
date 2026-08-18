@@ -38,15 +38,16 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       status_code: 200,
       headers: { 'content-type' => 'text/html' },
       html: '<html><body>ok</body></html>',
-      error: nil,
       metadata_error: nil,
-      request_id: 'request-id',
-      attempts: 2,
-      strategy_used: 'google_get_bypass',
-      render_ms: 5000,
-      blocked_detected: false,
-      challenge_detected: false,
-      error_category: nil
+      xhr_responses: [],
+      diagnostics: {
+        request_id: 'request-id',
+        attempts: 2,
+        strategy_used: 'google_get_bypass',
+        render_ms: 5000,
+        execution_tier: 'browser_driver',
+        challenge: { blocked: false, detected: false, marker: nil }
+      }
     }
   end
   let(:sanitized_sample_payload) do
@@ -56,15 +57,16 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       'status_code' => 200,
       'headers' => { 'content-type' => 'text/html' },
       'html' => '<html>redacted</html>',
-      'error' => nil,
       'metadata_error' => nil,
-      'request_id' => '8d78d630-280c-407f-9884-d71f3c092956',
-      'attempts' => 2,
-      'strategy_used' => 'google_get_bypass',
-      'render_ms' => 8074,
-      'blocked_detected' => false,
-      'challenge_detected' => false,
-      'error_category' => nil
+      'xhr_responses' => [],
+      'diagnostics' => {
+        'request_id' => '8d78d630-280c-407f-9884-d71f3c092956',
+        'attempts' => 2,
+        'strategy_used' => 'google_get_bypass',
+        'render_ms' => 8074,
+        'execution_tier' => 'browser_driver',
+        'challenge' => { 'blocked' => false, 'detected' => false, 'marker' => nil }
+      }
     }
   end
 
@@ -116,7 +118,6 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
             wait_for_selector: 'h1',
             wait_timeout_seconds: 15,
             scroll: true,
-            scroll_to_bottom: false,
             block_images: true,
             block_images_and_css: false,
             block_trackers: true,
@@ -124,7 +125,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
             headless: true,
             proxy: 'http://proxy.local:8080',
             user_agent: 'Agent/1.0',
-            window_size: [1920, 1080],
+            window_size: { width: 1920, height: 1080 },
             lang: 'en-US',
             cookies: { 'session' => 'test-session-token' },
             headers: { 'X-Override' => 'Overridden' },
@@ -144,7 +145,6 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
           'wait_for_selector' => 'h1',
           'wait_timeout_seconds' => 15,
           'scroll' => true,
-          'scroll_to_bottom' => false,
           'block_images' => true,
           'block_images_and_css' => false,
           'block_trackers' => true,
@@ -152,7 +152,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
           'headless' => true,
           'proxy' => 'http://proxy.local:8080',
           'user_agent' => 'Agent/1.0',
-          'window_size' => [1920, 1080],
+          'window_size' => { 'width' => 1920, 'height' => 1080 },
           'lang' => 'en-US',
           'cookies' => { 'session' => 'test-session-token' },
           'headers' => {
@@ -217,9 +217,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         'request_id' => 'request-id',
         'strategy_used' => 'google_get_bypass',
         'render_ms' => 5000,
-        'blocked_detected' => false,
-        'challenge_detected' => false,
-        'attempts' => 2
+        'attempts' => 2,
+        'execution_tier' => 'browser_driver',
+        'challenge' => { 'blocked' => false, 'detected' => false }
       )
       expect(result.transport_meta).to be_frozen
     end
@@ -252,7 +252,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     end
 
     context 'when xhr_responses exceed the aggregate size cap' do
-      let(:chunk) { 'y' * Html2rss::RequestService::BotasaurusContract::ParsedResponse::MAX_XHR_BODY_BYTES }
+      let(:chunk) { 'y' * Html2rss::RequestService::BotasaurusContract::Success::MAX_XHR_BODY_BYTES }
       let(:response_payload) do
         base_payload.merge(
           'xhr_responses' => Array.new(5) do |index|
@@ -272,7 +272,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     end
 
     context 'when an individual xhr body exceeds the per-body size cap' do
-      let(:oversized_body) { 'x' * (Html2rss::RequestService::BotasaurusContract::ParsedResponse::MAX_XHR_BODY_BYTES + 1) }
+      let(:oversized_body) { 'x' * (Html2rss::RequestService::BotasaurusContract::Success::MAX_XHR_BODY_BYTES + 1) }
       let(:response_payload) do
         base_payload.merge(
           'xhr_responses' => [
@@ -292,7 +292,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
 
     [204, 301].each do |document_status|
       context "when scrape envelope succeeds with document status_code #{document_status}" do
-        let(:response_payload) { base_payload.merge(status_code: document_status, error: nil) }
+        let(:response_payload) { base_payload.merge(status_code: document_status) }
 
         it 'does not raise and maps Response#status from the document code', :aggregate_failures do
           result = execute
@@ -306,22 +306,23 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     context 'when response omits headers and url metadata' do
       let(:response_payload) do
         {
+          url: 'https://example.com/',
           final_url: nil,
           status_code: nil,
           headers: nil,
           html: '<html>fallback</html>',
-          error: nil,
-          error_category: nil
+          diagnostics: { request_id: 'req-fallback' }
         }
       end
 
-      it 'falls back to transport status, source url, and empty headers', :aggregate_failures do
+      it 'keeps a nil document status, source url, and empty headers', :aggregate_failures do
         result = execute
 
-        expect(result.status).to eq(200)
+        expect(result.status).to be_nil
         expect(result.url.to_s).to eq('https://example.com/')
         expect(result.headers).to eq({})
         expect(result.captured_responses).to eq([])
+        expect(result.transport_meta).to include('request_id' => 'req-fallback')
       end
     end
 
@@ -335,13 +336,12 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
 
         expect(sanitized_sample_payload).to include(
           'status_code' => 200,
-          'error' => nil,
-          'metadata_error' => nil,
+          'metadata_error' => nil
+        )
+        expect(sanitized_sample_payload.fetch('diagnostics')).to include(
           'attempts' => 2,
           'strategy_used' => 'google_get_bypass',
-          'blocked_detected' => false,
-          'challenge_detected' => false,
-          'error_category' => nil
+          'challenge' => { 'blocked' => false, 'detected' => false, 'marker' => nil }
         )
         expect(result.url.to_s).to eq('https://redacted.example/technology/')
         expect(result.headers.fetch('content-type')).to include('text/html')
@@ -356,10 +356,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       let(:response_payload) do
         {
           url: 'https://example.com/',
-          html: '',
-          error: 'window_size: List should have at least 2 items',
-          error_category: 'navigation_error',
-          request_id: 'req-422'
+          error: 'window_size.width: Field required',
+          error_category: 'validation',
+          diagnostics: { request_id: 'req-422' }
         }
       end
 
@@ -376,10 +375,10 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       let(:response_status) { 504 }
       let(:response_payload) do
         {
-          html: '',
+          url: 'https://example.com/',
           error: 'Scrape timed out after 20 seconds',
           error_category: 'timeout',
-          request_id: 'req-504'
+          diagnostics: { request_id: 'req-504' }
         }
       end
 
@@ -396,11 +395,10 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       let(:response_status) { 502 }
       let(:response_payload) do
         {
-          html: '<html>error</html>',
-          status_code: 502,
+          url: 'https://example.com/',
           error: 'navigation failed',
           error_category: 'navigation_error',
-          request_id: 'trace-123'
+          diagnostics: { request_id: 'trace-123' }
         }
       end
 
@@ -413,23 +411,16 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       end
     end
 
-    context 'when upstream returns 200 with error payload' do
+    context 'when success includes metadata_error' do
       let(:response_payload) do
-        {
-          html: '<html>error</html>',
-          status_code: 200,
-          error: 'metadata collection failed',
-          error_category: 'metadata_error',
-          request_id: 'trace-456'
-        }
+        base_payload.merge(metadata_error: 'metadata collection failed')
       end
 
-      it 'raises BotasaurusServiceError' do
-        expect { execute }
-          .to raise_error(
-            Html2rss::RequestService::BotasaurusServiceError,
-            /status=200, error_category=metadata_error, error=metadata collection failed, request_id=trace-456/
-          )
+      it 'keeps HTML success and records metadata_error as telemetry', :aggregate_failures do
+        result = execute
+
+        expect(result.body).to include('ok')
+        expect(result.transport_meta).to include('metadata_error' => 'metadata collection failed')
       end
     end
 
@@ -445,24 +436,30 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     context 'when the scrape envelope omits html on success' do
       let(:response_payload) do
         {
+          url: 'https://example.com/',
           final_url: 'https://redacted.example/path/',
           status_code: 200,
-          error: nil,
-          error_category: nil
+          diagnostics: { request_id: 'req-missing-html' }
         }
       end
 
-      it 'maps the OpenAPI empty-string default' do
-        expect(execute.body).to eq('')
+      it 'raises because html is required' do
+        expect { execute }
+          .to raise_error(Html2rss::RequestService::BotasaurusServiceError, /requires html/)
       end
     end
 
     context 'when upstream reports challenge_block' do
+      let(:response_status) { 502 }
       let(:response_payload) do
         {
-          html: '<html>challenge</html>',
+          url: 'https://example.com/',
           error: 'Challenge block detected',
-          error_category: 'challenge_block'
+          error_category: 'challenge_block',
+          diagnostics: {
+            request_id: 'req-challenge',
+            challenge: { blocked: true, detected: true, marker: 'Just a moment...' }
+          }
         }
       end
 

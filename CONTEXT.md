@@ -12,7 +12,7 @@ Whether a response document is HTML is owned by `RequestService::Response#html_r
 
 ## Botasaurus scrape contract
 
-OpenAPI `ScrapeRequest` / `ScrapeResponse` (sibling `botasaurus-scrape-api/openapi.yaml`) is the wire authority. Closed sets, wait bounds, and request option keys live on `RequestService::BotasaurusContract`. `Config::Validator::BotasaurusRequestConfig` consumes those constants for YAML admission. `BotasaurusStrategy` is Faraday `POST /scrape` plus gem error mapping (`challenge_block` → `BlockedSurfaceDetected`, `timeout` / 504 → `RequestTimedOut`). Do not reintroduce FastAPI `detail` parsing or client default overrides of published OpenAPI defaults.
+OpenAPI 2.0 `ScrapeRequest` / `ScrapeSuccess` / `ScrapeError` (sibling `botasaurus-scrape-api/openapi.yaml`) is the wire authority. There is no `ScrapeResponse` alias. Closed sets, wait bounds, request option keys, and `window_size` `{width, height}` live on `RequestService::BotasaurusContract`. `Config::Validator::BotasaurusRequestConfig` consumes those constants for YAML admission (`scroll` is scroll-to-bottom; there is no `scroll_to_bottom`). `BotasaurusStrategy` is Faraday `POST /scrape` plus gem error mapping: 200 → `Success`; 4xx/5xx → `Error` (`challenge_block` → `BlockedSurfaceDetected`, `timeout` / 504 → `RequestTimedOut`, otherwise `BotasaurusServiceError`). `Response#transport_meta` is `diagnostics` plus success-only `metadata_error`. Do not flatten old 1.x field names, parse FastAPI `detail`, or override published OpenAPI defaults.
 
 ## DOM chrome
 
