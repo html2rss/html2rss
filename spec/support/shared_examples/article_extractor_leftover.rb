@@ -191,6 +191,27 @@ RSpec.shared_examples 'article extractor leftover hygiene' do
     end
   end
 
+  describe 'crowded parent with two distinct content hrefs' do
+    let(:html) do
+      <<~HTML
+        <div class="card">
+          <h3><a href="/news/one">Title One About The First Story</a></h3>
+          <p>Shared teaser that must not attach to one crowded heading.</p>
+          <h3><a href="/news/two">Title Two About The Second Story</a></h3>
+        </div>
+      HTML
+    end
+
+    it 'aborts the parent walk instead of taking the shared teaser', :aggregate_failures do
+      fields = leftover_fields.call(html, item_selector: 'h3')
+
+      expect(fields[:title]).to eq('Title One About The First Story')
+      expect(fields[:description]).to be_nil
+      expect(fields[:description].to_s).not_to include('Shared teaser')
+      expect(fields[:description].to_s).not_to include('Title Two')
+    end
+  end
+
   describe 'heading wrapped in a header landmark' do
     let(:html) do
       <<~HTML

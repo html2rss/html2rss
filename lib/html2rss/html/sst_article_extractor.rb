@@ -196,15 +196,18 @@ module Html2rss
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
-        heading_or_anchor_item? && published_at.nil? &&
-          ArticleRules::Description.from_lines(lines, title:).nil?
+        CardWalk.miss?(
+          heading_or_anchor_item: heading_or_anchor_item?,
+          published_at:,
+          description: ArticleRules::Description.from_lines(lines, title:)
+        )
       end
 
       def parent_card_fields(title, lines, published_at)
         return @root, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
 
         parent = immediate_card_parent
-        if !parent || crowded_card?(parent)
+        if !parent || crowded_parent?(parent)
           Log.debug { "parent-walk abort at #{sst_parent&.name}" }
           return @root, lines, published_at
         end
@@ -225,13 +228,18 @@ module Html2rss
       end
 
       def thin_heading_wrapper?(node)
-        node.children.none? do |child|
-          !child.equal?(@root) && !descendant_of?(@root, child)
-        end
+        CardWalk.thin_wrapper?(
+          children: node.children,
+          item: @root,
+          descendant_of: ->(item, child) { descendant_of?(item, child) }
+        )
       end
 
-      def crowded_card?(node)
-        node.each_node.count(&:heading?) > 1 || distinct_main_hrefs(node) > 1
+      def crowded_parent?(node)
+        CardWalk.crowded?(
+          heading_count: node.each_node.count(&:heading?),
+          distinct_main_hrefs: distinct_main_hrefs(node)
+        )
       end
 
       def distinct_main_hrefs(node)
