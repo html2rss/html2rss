@@ -70,6 +70,27 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       expect(parsed).to be_a(described_class::ParsedResponse)
     end
 
+    context 'when scrape envelope returns 422 naming window_size' do
+      let(:status) { 422 }
+      let(:body) do
+        JSON.generate(
+          {
+            'url' => 'https://example.com/',
+            'html' => '',
+            'error' => 'window_size: List should have at least 2 items',
+            'error_category' => 'navigation_error',
+            'request_id' => 'req-422'
+          }
+        )
+      end
+
+      it 'is an upstream failure that names the field', :aggregate_failures do
+        expect(parsed).to be_upstream_failure
+        expect(parsed.upstream_failure_message).to include('window_size')
+        expect(parsed.upstream_failure_message).to include('req-422')
+      end
+    end
+
     context 'when FastAPI returns a 422 validation detail' do
       let(:status) { 422 }
       let(:body) do
@@ -91,6 +112,30 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
         expect(parsed).to be_upstream_failure
         expect(parsed.upstream_failure_message).to include('wait_timeout_seconds')
         expect(parsed.upstream_failure_message).to include('20')
+      end
+    end
+
+    # main-image compat: :latest still 422s schema errors as FastAPI `detail` until envelope 422 ships.
+    context 'when FastAPI returns 422 detail (main-image compat)' do
+      let(:status) { 422 }
+      let(:body) do
+        JSON.generate(
+          {
+            'detail' => [
+              {
+                'loc' => %w[body window_size],
+                'msg' => 'Input should be a valid list',
+                'type' => 'list_type',
+                'input' => [1920]
+              }
+            ]
+          }
+        )
+      end
+
+      it 'appends the field name from detail', :aggregate_failures do
+        expect(parsed).to be_upstream_failure
+        expect(parsed.upstream_failure_message).to include('window_size')
       end
     end
   end
