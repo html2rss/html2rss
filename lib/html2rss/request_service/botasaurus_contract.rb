@@ -49,6 +49,9 @@ module Html2rss
       # Seconds reserved from remaining budget before setting wait_timeout_seconds.
       BUDGET_WAIT_RESERVE_SECONDS = 2
 
+      # Botasaurus scrape API Field(..., le=DEFAULT_SCRAPE_TIMEOUT_SECONDS) ceiling.
+      MAX_WAIT_TIMEOUT_SECONDS = 20
+
       # Parsed Botasaurus response wrapper.
       class ParsedResponse
         # Fallback headers when upstream omits response headers.
@@ -84,6 +87,7 @@ module Html2rss
           details << "error_category=#{error_category}" if error_category
           details << "error=#{error}" if error
           details << "request_id=#{request_id}" if request_id
+          details.concat(validation_detail_parts)
           "Botasaurus scrape failed (#{details.join(', ')})."
         end
 
@@ -144,6 +148,26 @@ module Html2rss
         def error_message?
           value = error
           value.is_a?(String) ? !value.empty? : !value.nil?
+        end
+
+        def validation_detail_parts
+          raw = payload['detail']
+          return ["detail=#{raw}"] if raw.is_a?(String) && !raw.empty?
+          return [] unless raw.is_a?(Array)
+
+          raw.filter_map { |entry| format_detail_entry(entry) }
+        end
+
+        def format_detail_entry(entry)
+          return unless entry.is_a?(Hash)
+
+          field = Array(entry['loc']).last
+          msg = entry['msg']
+          return if field.nil? && msg.nil?
+
+          summary = [field, msg].compact.join(': ')
+          input = entry['input']
+          input.nil? ? summary : "#{summary} (input=#{input})"
         end
 
         def normalize_xhr_entry(entry)
@@ -250,15 +274,23 @@ module Html2rss
       end
 
       def clamp_for_budget(payload)
-        remaining = remaining_timeout_seconds
-        return payload if remaining.nil?
-
         clamped = payload.dup
-        clamped[:max_retries] = 0 if remaining <= TIGHT_BUDGET_SECONDS
-        budget_wait = [1, (remaining - BUDGET_WAIT_RESERVE_SECONDS).floor].max
-        configured = clamped[:wait_timeout_seconds]
-        clamped[:wait_timeout_seconds] = configured ? [configured, budget_wait].min : budget_wait
+        remaining = remaining_timeout_seconds
+        unless remaining.nil?
+          clamped[:max_retries] = 0 if remaining <= TIGHT_BUDGET_SECONDS
+          budget_wait = [1, (remaining - BUDGET_WAIT_RESERVE_SECONDS).floor].max
+          configured = clamped[:wait_timeout_seconds]
+          clamped[:wait_timeout_seconds] = configured ? [configured, budget_wait].min : budget_wait
+        end
+        cap_wait_timeout!(clamped)
         clamped
+      end
+
+      def cap_wait_timeout!(payload)
+        wait = payload[:wait_timeout_seconds]
+        return unless wait
+
+        payload[:wait_timeout_seconds] = [wait, MAX_WAIT_TIMEOUT_SECONDS].min
       end
     end
   end

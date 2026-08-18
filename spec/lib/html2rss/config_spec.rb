@@ -435,6 +435,22 @@ RSpec.describe Html2rss::Config do
       end
     end
 
+    context 'when botasaurus wait_timeout_seconds exceeds the API maximum' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: {
+            botasaurus: { wait_timeout_seconds: 45 }
+          }
+        }
+      end
+
+      it 'rejects an explicit wait above the Botasaurus API cap' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
+
     context 'when request includes invalid botasaurus options' do
       let(:config) do
         {
@@ -644,6 +660,20 @@ RSpec.describe Html2rss::Config do
 
       it 'raises an ArgumentError' do
         expect { instance }.to raise_error(described_class::InvalidConfig, /Invalid configuration:/)
+      end
+    end
+
+    context 'when botasaurus wait_timeout_seconds exceeds the API maximum' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          request: { botasaurus: { wait_timeout_seconds: 45 } }
+        }
+      end
+
+      it 'raises InvalidConfig naming wait_timeout_seconds' do
+        expect { instance }.to raise_error(described_class::InvalidConfig, /wait_timeout_seconds/)
       end
     end
   end

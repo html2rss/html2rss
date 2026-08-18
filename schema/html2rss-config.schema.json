@@ -684,7 +684,8 @@
               "not": {
                 "type": "null"
               },
-              "exclusiveMinimum": 0
+              "exclusiveMinimum": 0,
+              "maximum": 20
             },
             "scroll": {
               "type": "boolean",

@@ -53,7 +53,9 @@ module Html2rss
         optional(:navigation_mode).filled(:string, included_in?: %w[auto get google_get google_get_bypass organic_get])
         optional(:max_retries).filled(:integer, gteq?: 0, lteq?: 3)
         optional(:wait_for_selector).maybe(:string)
-        optional(:wait_timeout_seconds).filled(:integer, gt?: 0)
+        optional(:wait_timeout_seconds).filled(
+          :integer, gt?: 0, lteq?: Html2rss::RequestService::BotasaurusContract::MAX_WAIT_TIMEOUT_SECONDS
+        )
         optional(:scroll).filled(:bool)
         optional(:scroll_to_bottom).filled(:bool)
         optional(:block_images).filled(:bool)

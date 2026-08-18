@@ -100,7 +100,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         'navigation_mode' => 'auto',
         'max_retries' => 1,
         'headless' => false,
-        'wait_timeout_seconds' => 28
+        'wait_timeout_seconds' => 20
       )
     end
 
@@ -177,7 +177,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       [
         { remaining: 12, max_retries: 0, wait_timeout_seconds: 10 },
         { remaining: 10.5, max_retries: 0, wait_timeout_seconds: 8 },
-        { remaining: 20, max_retries: 1, wait_timeout_seconds: 18 }
+        { remaining: 20, max_retries: 1, wait_timeout_seconds: 18 },
+        { remaining: 25, max_retries: 1, wait_timeout_seconds: 20 }
       ].each do |example|
         context "with remaining=#{example[:remaining]}" do
           before do
@@ -344,6 +345,30 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
   end
 
   describe 'failure handling' do
+    context 'when FastAPI returns 422 detail for wait_timeout_seconds' do
+      let(:response_status) { 422 }
+      let(:response_payload) do
+        {
+          detail: [
+            {
+              loc: ['body', 'wait_timeout_seconds'],
+              msg: 'Input should be less than or equal to 20',
+              type: 'less_than_equal',
+              input: 28
+            }
+          ]
+        }
+      end
+
+      it 'raises BotasaurusServiceError naming wait_timeout_seconds' do
+        expect { execute }
+          .to raise_error(
+            Html2rss::RequestService::BotasaurusServiceError,
+            /wait_timeout_seconds/
+          )
+      end
+    end
+
     context 'when upstream returns non-200 status with error details' do
       let(:response_status) { 502 }
       let(:response_payload) do
