@@ -5,6 +5,7 @@ module Html2rss
     ##
     # ArticleExtractor is responsible for extracting details (headline, url, images, etc.)
     # from an article_tag DOM node. DOM chrome helpers live on {Navigator}.
+    # rubocop:disable Metrics/ClassLength -- leftover + parent-card walk colocated with field extractors
     class ArticleExtractor
       class << self
         ##
@@ -14,9 +15,10 @@ module Html2rss
         # @param base_url [String, Html2rss::Url] base url used to resolve relative links
         # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
         # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
+        # @param time_zone [String] channel time zone for naive leftover dates
         # @return [Hash{Symbol => Object}] extracted article attributes
-        def call(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false)
-          new(article_tag, base_url:, selected_anchor:, fallback_anchorless:).call
+        def call(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false, time_zone: 'UTC')
+          new(article_tag, base_url:, selected_anchor:, fallback_anchorless:, time_zone:).call
         end
       end
 
@@ -25,32 +27,38 @@ module Html2rss
       # @param base_url [String, Html2rss::Url] base url used to resolve relative links
       # @param selected_anchor [Nokogiri::XML::Node, nil] explicit primary anchor for the container
       # @param fallback_anchorless [Boolean] whether to fall back to anchorless extraction
-      def initialize(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false)
+      # @param time_zone [String] channel time zone for naive leftover dates
+      def initialize(article_tag, base_url:, selected_anchor: nil, fallback_anchorless: false, time_zone: 'UTC')
         raise ArgumentError, 'article_tag is required' unless article_tag
 
         @article_tag = article_tag
         @base_url = base_url
         @selected_anchor = selected_anchor
         @fallback_anchorless = fallback_anchorless
+        @time_zone = time_zone
       end
 
       # @return [Hash{Symbol => Object}] extracted article attributes
-      def call
+      def call # rubocop:disable Metrics/MethodLength
+        title = extract_title
+        lines = leftover_lines
+        published_at = extract_published_at(lines)
+        source, lines, published_at = parent_card_fields(title, lines, published_at)
         {
-          title: extract_title,
+          title:,
           url: extract_url,
           image: extract_image,
-          description: extract_description,
+          description: ArticleRules::Description.from_lines(lines, title:),
           id: generate_id,
-          published_at: extract_published_at,
+          published_at:,
           enclosures: extract_enclosures,
-          categories: extract_categories
+          categories: CategoryExtractor.call(source, title:)
         }
       end
 
       private
 
-      attr_reader :article_tag, :base_url, :selected_anchor
+      attr_reader :article_tag, :base_url, :selected_anchor, :time_zone
 
       def extract_url
         @extract_url ||= begin
@@ -106,13 +114,72 @@ module Html2rss
         end
       end
 
-      def extract_description
-        exclude = [heading, selected_anchor, kicker_node].compact
-        description = Navigator.extract_visible_text(article_tag, exclude_nodes: exclude)
-        return if description.nil?
+      def leftover_lines
+        leftover_lines_from(article_tag)
+      end
 
-        desc = description.strip
-        desc.empty? ? nil : desc
+      def leftover_lines_from(node)
+        ArticleRules::Description.lines_from(
+          Navigator.extract_visible_text(node, exclude_nodes: leftover_exclude_nodes_for(node))
+        )
+      end
+
+      def leftover_exclude_nodes_for(node)
+        times = node.respond_to?(:css) ? node.css('time') : []
+        [heading, selected_anchor, kicker_node, *times].compact
+      end
+
+      def heading_or_anchor_item?
+        heading_item? || wrapping_anchor_item?
+      end
+
+      def heading_item?
+        Navigator::HEADING_TAGS.include?(article_tag.name.to_s)
+      end
+
+      def wrapping_anchor_item?
+        return false unless article_tag.name.to_s == 'a'
+
+        article_tag.at_css(Navigator::WRAPPING_ANCHOR_CHILD_TAGS.join(','))
+      end
+
+      def heading_or_anchor_miss?(title, lines, published_at)
+        heading_or_anchor_item? && published_at.nil? &&
+          ArticleRules::Description.from_lines(lines, title:).nil?
+      end
+
+      def parent_card_fields(title, lines, published_at)
+        return article_tag, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
+
+        parent = immediate_card_parent
+        if !parent || crowded_card?(parent)
+          Log.debug { "parent-walk abort at #{article_tag.parent&.name}" }
+          return article_tag, lines, published_at
+        end
+
+        new_lines = leftover_lines_from(parent)
+        new_date = extract_published_at_from(parent, new_lines)
+        [parent, new_lines, new_date || published_at]
+      end
+
+      def immediate_card_parent
+        parent = article_tag.respond_to?(:parent) ? article_tag.parent : nil
+        Navigator.parent_until_condition(parent, method(:usable_walk_parent?))
+      end
+
+      def usable_walk_parent?(node)
+        Navigator.usable_card_parent?(node) && !thin_heading_wrapper?(node)
+      end
+
+      def thin_heading_wrapper?(node)
+        node.element_children.none? do |child|
+          !child.equal?(article_tag) && !Navigator.descendant_of?(article_tag, child)
+        end
+      end
+
+      def crowded_card?(node)
+        node.css(Navigator::HEADING_TAGS.join(',')).size > 1 ||
+          node.css(Navigator::MAIN_ANCHOR_SELECTOR).size > 1
       end
 
       def generate_id
@@ -126,9 +193,15 @@ module Html2rss
       end
 
       def extract_image = ImageExtractor.call(article_tag, base_url:)
-      def extract_published_at = DateExtractor.call(article_tag)
+
+      def extract_published_at(lines) = extract_published_at_from(article_tag, lines)
+
+      def extract_published_at_from(node, lines)
+        DateExtractor.call(node, leftover_lines: lines, time_zone:)
+      end
+
       def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
-      def extract_categories = CategoryExtractor.call(article_tag)
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

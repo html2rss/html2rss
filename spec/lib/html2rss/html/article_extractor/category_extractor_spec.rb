@@ -11,16 +11,15 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       let(:html_content) do
         <<~HTML
           <article>
-            <div class="category-news">News</div>
+            <div class="category-news">Politics</div>
             <span class="post-tag">Technology</span>
             <div class="article-category">Science</div>
           </article>
         HTML
       end
 
-      it 'extracts categories from elements with category-related class names' do
-        categories = described_class.call(article_tag)
-        expect(categories).to contain_exactly('News', 'Technology', 'Science')
+      it 'extracts categories from elements with category-related class tokens' do
+        expect(described_class.call(article_tag)).to contain_exactly('Politics', 'Technology', 'Science')
       end
     end
 
@@ -29,17 +28,46 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
         <<~HTML
           <article>
             <div class="topic-politics">Politics</div>
-            <span class="section-sports">Sports</span>
-            <div class="label-health">Health</div>
             <div class="theme-tech">Tech</div>
             <div class="subject-science">Science</div>
           </article>
         HTML
       end
 
-      it 'extracts categories from additional category patterns' do
-        categories = described_class.call(article_tag)
-        expect(categories).to contain_exactly('Politics', 'Sports', 'Health', 'Tech', 'Science')
+      it 'extracts categories from topic/theme/subject class tokens' do
+        expect(described_class.call(article_tag)).to contain_exactly('Politics', 'Tech', 'Science')
+      end
+    end
+
+    context 'when layout classes contain section or label substrings' do
+      let(:html_content) do
+        <<~HTML
+          <article class="p-section__news__teaser">
+            <h2>Headline</h2>
+            <div class="label-health">Health</div>
+            <span class="section-sports">Sports</span>
+            <p>Teaser about the story.</p>
+          </article>
+        HTML
+      end
+
+      it 'does not treat layout classes as categories' do
+        expect(described_class.call(article_tag)).to eq([])
+      end
+    end
+
+    context 'when the item root itself has a category class' do
+      let(:html_content) do
+        <<~HTML
+          <article class="category-news">
+            <h2>Root should not become a category</h2>
+            <p>Teaser paragraph.</p>
+          </article>
+        HTML
+      end
+
+      it 'does not add the item root visible text as a category' do
+        expect(described_class.call(article_tag)).to eq([])
       end
     end
 
@@ -55,8 +83,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts categories from data attributes' do
-        categories = described_class.call(article_tag)
-        expect(categories).to contain_exactly('World News', 'Breaking', 'Current Events')
+        expect(described_class.call(article_tag)).to contain_exactly('World News', 'Breaking', 'Current Events')
       end
     end
 
@@ -72,8 +99,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts categories from direct attributes' do
-        categories = described_class.call(article_tag)
-        expect(categories).to contain_exactly('Finance', 'Markets', 'Economy')
+        expect(described_class.call(article_tag)).to contain_exactly('Finance', 'Markets', 'Economy')
       end
     end
 
@@ -94,8 +120,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts text from individual anchor tags within category containers' do
-        categories = described_class.call(article_tag)
-        expect(categories).to contain_exactly('Technology', 'AI', 'Ruby', 'Rails')
+        expect(described_class.call(article_tag)).to contain_exactly('Technology', 'AI', 'Ruby', 'Rails')
       end
     end
 
@@ -110,27 +135,24 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'extracts text from the category anchor tags directly' do
-        categories = described_class.call(article_tag)
-        expect(categories).to contain_exactly('Gadgets', 'Hardware')
+        expect(described_class.call(article_tag)).to contain_exactly('Gadgets', 'Hardware')
       end
     end
 
-    context 'when category text contains multiple items separated by newlines' do
+    context 'when a category container wraps a full teaser' do
       let(:html_content) do
         <<~HTML
           <article>
             <div class="categories">
-              Web Development
-              Mobile Apps
-              Cloud Computing
+              <h2>Headline in the wrapper</h2>
+              <p>Teaser paragraph that must not become a category.</p>
             </div>
           </article>
         HTML
       end
 
-      it 'splits categories by newlines and trims whitespace' do
-        categories = described_class.call(article_tag)
-        expect(categories).to contain_exactly('Web Development', 'Mobile Apps', 'Cloud Computing')
+      it 'does not split the container full text into categories' do
+        expect(described_class.call(article_tag)).to eq([])
       end
     end
 
@@ -138,33 +160,34 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       let(:html_content) do
         <<~HTML
           <article>
-            <div class="category-news">News</div>
-            <span class="post-tag">News</span>
-            <div data-category="News">Content</div>
+            <div class="category-news">Politics</div>
+            <span class="post-tag">Politics</span>
+            <div data-category="Politics">Content</div>
           </article>
         HTML
       end
 
       it 'returns unique categories' do
-        categories = described_class.call(article_tag)
-        expect(categories).to eq(['News'])
+        expect(described_class.call(article_tag)).to eq(['Politics'])
       end
     end
 
-    context 'when article has empty or whitespace-only category values' do
+    context 'when values are chrome rather than categories' do
       let(:html_content) do
         <<~HTML
           <article>
-            <div class="category-empty">   </div>
+            <div data-category="Read more">CTA</div>
+            <div data-tag="12 March 2024">Date</div>
+            <div data-topic="Informatietype:">Label</div>
+            <span class="post-tag">News</span>
             <span class="post-tag">Valid Tag</span>
             <div data-category="">Content</div>
           </article>
         HTML
       end
 
-      it 'filters out empty and whitespace-only categories' do
-        categories = described_class.call(article_tag)
-        expect(categories).to eq(['Valid Tag'])
+      it 'keeps News taxonomy chips and drops CTA, date, and field-label values' do
+        expect(described_class.call(article_tag)).to contain_exactly('News', 'Valid Tag')
       end
     end
 
@@ -179,15 +202,13 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
 
       it 'returns an empty array' do
-        categories = described_class.call(article_tag)
-        expect(categories).to eq([])
+        expect(described_class.call(article_tag)).to eq([])
       end
     end
 
     context 'when article_tag is nil' do
       it 'returns an empty array' do
-        categories = described_class.call(nil)
-        expect(categories).to eq([])
+        expect(described_class.call(nil)).to eq([])
       end
     end
   end

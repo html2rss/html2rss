@@ -126,7 +126,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         { title: '[Plonk]',
           url: be_a(Html2rss::Url),
           image: nil,
-          description: '[Plonk]',
+          description: nil,
           id: '/',
           published_at: nil,
           enclosures: [] }
@@ -137,7 +137,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
           title: 'Bla bla bla',
           url: be_a(Html2rss::Url),
           image: nil,
-          description: 'Bla bla bla',
+          description: nil,
           id: '/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html',
           published_at: nil,
           enclosures: []

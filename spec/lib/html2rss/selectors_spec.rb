@@ -192,6 +192,26 @@ RSpec.describe Html2rss::Selectors do
         expect(enhanced_article[:url].to_s).to eq('http://example.com/#no-link-article')
       end
     end
+
+    context 'when leftover contains a naive date' do
+      let(:time_zone) { 'Europe/Berlin' }
+      let(:body) do
+        <<~HTML
+          <html><body>
+            <article>
+              <h1>Dated leftover article</h1>
+              <a href="/article1">More</a>
+              <span>12 March 2024</span>
+            </article>
+          </body></html>
+        HTML
+      end
+
+      it 'localizes leftover dates with the channel time_zone', :aggregate_failures do
+        expect(enhanced_article[:published_at]).to be_a(DateTime)
+        expect(enhanced_article[:published_at].zone).to eq('+01:00')
+      end
+    end
   end
 
   describe '#select' do

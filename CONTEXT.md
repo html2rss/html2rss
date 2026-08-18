@@ -24,6 +24,10 @@ Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::Lin
 
 Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoSource::Cleanup` (scheme/domain/self-link/title floor **and** destination-class hard exclude). Destination facts come from `LinkDestination::DestinationFacts` / `PathClassifier` — Cleanup does not own path lexicon Sets. Title string backstop stays `Cleanup.junk_reason` only. Scoring may demote or rank-time drop for heuristic discovery; it does not admit feed items. `AutoSource` short-circuits Html when earlier tiers already admitted ≥1 clean article below `limit` (quality over padding).
 
+## Enhance leftover fields
+
+Visible leftover after excluding heading/anchor/kicker/`time` is split once on block newlines. Keep/drop (CTA, date-shaped, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Dates stay on `ArticleRules::Date` (datetime attrs + date-shaped leftover lines, channel `time_zone`; invalid identifiers fall back to UTC so extract does not raise). Categories stay on `ArticleRules::Category` (class tokens, not layout `label`/`section` substrings) and reject Description keepers except type chips, which are leftover chrome rather than taxonomy. Both `Html::ArticleExtractor` and `Html::SstArticleExtractor` call those modules — do not copy leftover denylists into `Cleanup.junk_reason`. Heading-only items and wrapping `<a>` cards (heading or `p` inside) may walk ancestors via `Navigator.parent_until_condition` / `SST::Index#parent_until`, skipping thin heading wrappers and landmarks/`html`/`body`, and aborting when the parent has more than one heading or eligible link.
+
 ## DOM candidate clustering
 
 Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Scraper::Sitemap` (XML, not heuristic HTML).

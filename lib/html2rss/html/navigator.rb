@@ -17,6 +17,12 @@ module Html2rss
       # Ancestor tags that usually indicate navigation/utility regions inside a content container.
       UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].to_set.freeze
 
+      # Immediate parent walk stops here — not a usable article card.
+      CARD_WALK_STOP_TAGS = (UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | %w[html body]).freeze
+
+      # Inner tags that mean a wrapping <a> is a card, not a span-styled list link.
+      WRAPPING_ANCHOR_CHILD_TAGS = (HEADING_TAGS + %w[p]).freeze
+
       # Anchor selector used to identify the canonical article link element.
       MAIN_ANCHOR_SELECTOR = begin
         buf = +'a[href]:not([href=""])'
@@ -92,6 +98,18 @@ module Html2rss
 
             node = node.parent
           end
+        end
+
+        ##
+        # Immediate parent is a usable article card (not html/body/landmark chrome).
+        #
+        # @param node [Nokogiri::XML::Node, SST::Node, nil]
+        # @return [Boolean]
+        def usable_card_parent?(node)
+          return false unless node
+          return false if node.respond_to?(:document?) && node.document?
+
+          !CARD_WALK_STOP_TAGS.include?(node.name.to_s)
         end
 
         ##

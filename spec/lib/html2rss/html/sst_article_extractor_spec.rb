@@ -8,6 +8,27 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     Html2rss::AutoSource::Segment.build(root_node: root, primary_link: link, strategy: :semantic, position: 0)
   end
 
+  describe 'leftover hygiene' do
+    let(:extractor_time_zone) { 'UTC' }
+    let(:leftover_fields) do
+      lambda do |html, item_selector: 'article'|
+        wrapped = html.match?(/<html/i) ? html : "<html><body>#{html}</body></html>"
+        doc = Html2rss::SST::Normalizer.call(wrapped)
+        name = item_selector.to_sym
+        root = doc.root.find { |n| n.name == name }
+        link = root.find(&:link?)
+        segment = Html2rss::AutoSource::Segment.build(
+          root_node: root, primary_link: link, strategy: :semantic, position: 0
+        )
+        article = described_class.call(segment, base_url: 'https://example.com', time_zone: extractor_time_zone)
+        { title: article&.title, description: article&.description, published_at: article&.published_at,
+          categories: article&.categories || [] }
+      end
+    end
+
+    it_behaves_like 'article extractor leftover hygiene'
+  end
+
   it 'extracts core article fields from an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>

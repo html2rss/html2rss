@@ -3,9 +3,28 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss::Html::ArticleExtractor do
-  subject(:article_hash) { described_class.call(article_tag, base_url: 'https://example.com', selected_anchor:) }
+  subject(:article_hash) do
+    described_class.call(article_tag, base_url: 'https://example.com', selected_anchor:, time_zone: 'UTC')
+  end
 
   let(:selected_anchor) { Html2rss::Html::Navigator.main_anchor_for(article_tag) }
+
+  describe 'leftover hygiene' do
+    let(:extractor_time_zone) { 'UTC' }
+    let(:leftover_fields) do
+      lambda do |html, item_selector: 'article'|
+        tag = Nokogiri::HTML.fragment(html).at_css(item_selector)
+        described_class.call(
+          tag,
+          base_url: 'https://example.com',
+          selected_anchor: Html2rss::Html::Navigator.main_anchor_for(tag),
+          time_zone: extractor_time_zone
+        )
+      end
+    end
+
+    it_behaves_like 'article extractor leftover hygiene'
+  end
 
   describe '#call with selected_anchor' do
     let(:article_tag) do
@@ -49,7 +68,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       it 'returns the article_hash', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(article_hash).to a_hash_including(
           title: 'Sample Heading',
-          description: "FCK PTN\nSample description",
+          description: 'Sample description',
           id: 'fck-ptn',
           published_at: an_instance_of(DateTime),
           url: Html2rss::Url.from_absolute('https://example.com/sample'),
@@ -103,7 +122,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       { title: nil,
         url: nil,
         image: be_a(Html2rss::Url),
-        description: "FCK PTN\nSample description",
+        description: 'Sample description',
         id: nil,
         published_at: be_a(DateTime),
         categories: [],

@@ -13,6 +13,8 @@ module Html2rss
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
       # Inline emphasis tags used as title fallbacks when no heading exists.
       FALLBACK_HEADING_NAMES = %i[strong b].freeze
+      # Nested blocks that mean a category node is actually a content container.
+      CATEGORY_CONTAINER_NAMES = %i[p article section].to_set.freeze
 
       class << self
         ##
@@ -20,9 +22,10 @@ module Html2rss
         # @param base_url [String, Html2rss::Url]
         # @param scraper [Class, nil]
         # @param fallback_anchorless [Boolean]
+        # @param time_zone [String] channel time zone for naive leftover dates
         # @return [Html2rss::Article, nil]
-        def call(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false)
-          new(ranked_or_segment, base_url:, scraper:, fallback_anchorless:).call
+        def call(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false, time_zone: 'UTC')
+          new(ranked_or_segment, base_url:, scraper:, fallback_anchorless:, time_zone:).call
         end
       end
 
@@ -30,7 +33,8 @@ module Html2rss
       # @param base_url [String, Html2rss::Url]
       # @param scraper [Class, nil]
       # @param fallback_anchorless [Boolean]
-      def initialize(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false)
+      # @param time_zone [String] channel time zone for naive leftover dates
+      def initialize(ranked_or_segment, base_url:, scraper: nil, fallback_anchorless: false, time_zone: 'UTC')
         segment = ranked_or_segment.is_a?(Scoring::RankedSegment) ? ranked_or_segment.segment : ranked_or_segment
         raise ArgumentError, 'segment is required' unless segment.is_a?(AutoSource::Segment)
 
@@ -40,20 +44,25 @@ module Html2rss
         @base_url = base_url
         @scraper = scraper
         @fallback_anchorless = fallback_anchorless
+        @time_zone = time_zone
       end
 
       ##
       # @return [Html2rss::Article, nil]
       def call # rubocop:disable Metrics/MethodLength
+        title = extract_title
+        lines = leftover_lines
+        published_at = extract_published_at(lines)
+        root, lines, published_at = parent_card_fields(title, lines, published_at)
         attrs = {
-          title: extract_title,
+          title:,
           url: extract_url,
           image: extract_image,
-          description: extract_description,
+          description: ArticleRules::Description.from_lines(lines, title:),
           id: generate_id,
-          published_at: extract_published_at,
+          published_at:,
           enclosures: extract_enclosures,
-          categories: extract_categories,
+          categories: extract_categories(title, root:),
           scraper: @scraper
         }
         article = Article.new(**attrs)
@@ -172,13 +181,68 @@ module Html2rss
         ancestor.descendants.any? { |d| d.equal?(child) }
       end
 
-      def extract_description
-        exclude = [heading, @selected_anchor, kicker_node].compact
-        description = @root.visible_text(exclude:)
-        return if description.nil?
+      def leftover_lines
+        leftover_lines_from(@root)
+      end
 
-        desc = description.strip
-        desc.empty? ? nil : desc
+      def leftover_lines_from(node)
+        times = node.find_all { |n| n.name == :time }
+        exclude = [heading, @selected_anchor, kicker_node, *times].compact
+        ArticleRules::Description.lines_from(node.visible_text(exclude:))
+      end
+
+      def heading_or_anchor_item?
+        @root.heading? || wrapping_anchor_item?
+      end
+
+      def wrapping_anchor_item?
+        return false unless @root.name == :a
+
+        tags = Navigator::WRAPPING_ANCHOR_CHILD_TAGS
+        @root.find { |n| !n.equal?(@root) && tags.include?(n.name.to_s) }
+      end
+
+      def heading_or_anchor_miss?(title, lines, published_at)
+        heading_or_anchor_item? && published_at.nil? &&
+          ArticleRules::Description.from_lines(lines, title:).nil?
+      end
+
+      def parent_card_fields(title, lines, published_at)
+        return @root, lines, published_at unless heading_or_anchor_miss?(title, lines, published_at)
+
+        parent = immediate_card_parent
+        if !parent || crowded_card?(parent)
+          Log.debug { "parent-walk abort at #{sst_parent&.name}" }
+          return @root, lines, published_at
+        end
+
+        new_lines = leftover_lines_from(parent)
+        new_date = extract_published_at(new_lines, root: parent)
+        [parent, new_lines, new_date || published_at]
+      end
+
+      def immediate_card_parent
+        parent = sst_parent
+        index = SST::Index.for_node(@root)
+        index&.parent_until(parent, method(:usable_walk_parent?))
+      end
+
+      def usable_walk_parent?(node)
+        Navigator.usable_card_parent?(node) && !thin_heading_wrapper?(node)
+      end
+
+      def thin_heading_wrapper?(node)
+        node.children.none? do |child|
+          !child.equal?(@root) && !descendant_of?(@root, child)
+        end
+      end
+
+      def crowded_card?(node)
+        node.each_node.count(&:heading?) > 1 || node.each_node.count(&:link?) > 1
+      end
+
+      def sst_parent
+        SST::Index.for_node(@root)&.parent_of(@root)
       end
 
       def generate_id # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
@@ -240,9 +304,9 @@ module Html2rss
         ArticleRules::Image.best_from_styles(styles)
       end
 
-      def extract_published_at
-        datetimes = @root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
-        ArticleRules::Date.earliest(datetimes)
+      def extract_published_at(lines, root: @root)
+        datetimes = root.find_all { |n| n.attrs.datetime }.map { |n| n.attrs.datetime }
+        ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
       def extract_enclosures
@@ -271,14 +335,14 @@ module Html2rss
         end
       end
 
-      def extract_categories
+      def extract_categories(title, root: @root)
         Set.new.tap do |categories|
-          @root.find_all { |n| category_candidate?(n) }.each do |element|
-            add_category_text!(categories, element) if ArticleRules::Category.class_match?(element.attrs.class_attr)
+          root.find_all { |n| category_candidate?(n) }.each do |element|
+            add_category_text!(categories, element, title:) if category_text_node?(element, root)
             element.attrs.raw.each do |name, value|
               next unless ArticleRules::Category.attr_name_match?(name)
 
-              ArticleRules::Category.add_text!(categories, value)
+              ArticleRules::Category.add_text!(categories, value, title:)
             end
           end
         end.to_a
@@ -289,17 +353,35 @@ module Html2rss
           node.attrs.raw.keys.any? { |k| ArticleRules::Category.attr_name_match?(k) }
       end
 
-      def add_category_text!(categories, element)
+      def category_text_node?(element, root)
+        !element.equal?(root) && ArticleRules::Category.class_match?(element.attrs.class_attr)
+      end
+
+      def add_category_text!(categories, element, title:)
+        return if category_text_container?(element)
+
         if element.link?
-          ArticleRules::Category.add_text!(categories, element.visible_text)
+          ArticleRules::Category.add_text!(categories, element.visible_text, title:)
           return
         end
 
+        add_descendant_or_visible_category!(categories, element, title:)
+      end
+
+      def add_descendant_or_visible_category!(categories, element, title:)
         anchors = element.find_all(&:link?)
         if anchors.any?
-          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text) }
+          anchors.each { |a| ArticleRules::Category.add_text!(categories, a.visible_text, title:) }
         else
-          ArticleRules::Category.add_split_text!(categories, element.visible_text)
+          ArticleRules::Category.add_split_text!(categories, element.visible_text, title:)
+        end
+      end
+
+      def category_text_container?(element)
+        element.find do |node|
+          next if node.equal?(element)
+
+          node.heading? || CATEGORY_CONTAINER_NAMES.include?(node.name)
         end
       end
     end
