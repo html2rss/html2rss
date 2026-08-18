@@ -11,6 +11,10 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
   let(:html) { '<!DOCTYPE html><html><body><div>decoded stream</div></body></html>' }
   let(:headers) { {} }
 
+  it 'reuses Response::HTML_BODY_SNIFF instead of a lockstep copy' do
+    expect(described_class::HTML_BODY_SNIFF).to equal(Html2rss::RequestService::Response::HTML_BODY_SNIFF)
+  end
+
   context 'when the body is empty' do
     let(:body) { '' }
 

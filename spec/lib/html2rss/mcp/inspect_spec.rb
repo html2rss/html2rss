@@ -28,6 +28,25 @@ RSpec.describe Html2rss::MCP::Inspect do
     expect(result[:sst]).to include(:node_count, :segment_stats)
   end
 
+  context 'when Content-Type is octet-stream but the body is HTML' do
+    let(:response) do
+      Html2rss::RequestService::Response.new(
+        body: response_body,
+        url: response_url,
+        headers: { 'content-type' => 'application/octet-stream' },
+        status: response_status
+      )
+    end
+
+    it 'still reports html_response and runs SST', :aggregate_failures do
+      result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+
+      expect(result[:content_type]).to eq('application/octet-stream')
+      expect(result[:html_response]).to be(true)
+      expect(result[:sst]).to include(:node_count, :segment_stats)
+    end
+  end
+
   context 'when the fetch downgrades https to http' do
     let(:response_url) { Html2rss::Url.from_absolute('http://example.com/blog') }
     let(:response_status) { 301 }

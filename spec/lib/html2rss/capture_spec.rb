@@ -5,11 +5,11 @@ require 'spec_helper'
 RSpec.describe Html2rss::Capture do
   let(:url) { 'https://example.com/blog' }
 
-  def html_response(body, page_url: url)
+  def html_response(body, page_url: url, content_type: 'text/html')
     Html2rss::RequestService::Response.new(
       body:,
       url: Html2rss::Url.from_absolute(page_url),
-      headers: { 'content-type' => 'text/html' }
+      headers: { 'content-type' => content_type }
     )
   end
 
@@ -44,6 +44,21 @@ RSpec.describe Html2rss::Capture do
         )
         expect(result.config[:channel]).to include(url:, title: a_string_matching(/\S/), time_zone: 'UTC')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
+      end
+    end
+
+    context 'when HTML is labeled octet-stream' do
+      subject(:result) do
+        response = html_response(File.read('spec/fixtures/local_feed_test.html'),
+                                 content_type: 'application/octet-stream')
+        articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+        stub_outcome(response, articles:)
+        described_class.new(url).build
+      end
+
+      it 'derives selectors from sniffed HTML', :aggregate_failures do
+        expect(result.has_selectors).to be true
+        expect(result.config[:selectors]).to eq(items: { selector: 'div.item', enhance: true })
       end
     end
 

@@ -72,14 +72,16 @@ module Html2rss
       # @return [Boolean] whether response content is JSON
       def json_response? = content_type.include?('application/json')
 
-      # @return [Boolean] whether response content is HTML
-      def html_response? = content_type.include?('text/html')
+      # @return [Boolean] whether response content is HTML (header or sniffed body, never JSON)
+      def html_response?
+        content_type.include?('text/html') || (!json_response? && html_looking_body?)
+      end
 
       ##
       # @return [Nokogiri::HTML::Document, Hash] the parsed body of the response, frozen object
       # @raise [UnsupportedResponseContentType] if the content type is not supported
       def parsed_body
-        @parsed_body ||= if html_document?
+        @parsed_body ||= if html_response?
                            parse_html_document
                          elsif json_response?
                            JSON.parse(body, symbolize_names: true).freeze
@@ -136,10 +138,6 @@ module Html2rss
 
       def meta_charset(bytes)
         bytes.byteslice(0, META_CHARSET_BYTES).to_s[CHARSET_PARAMETER, 1]
-      end
-
-      def html_document?
-        html_response? || (!json_response? && html_looking_body?)
       end
 
       def html_looking_body?
