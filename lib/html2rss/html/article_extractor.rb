@@ -130,17 +130,11 @@ module Html2rss
       end
 
       def heading_or_anchor_item?
-        heading_item? || wrapping_anchor_item?
+        heading_item? || article_tag.name.to_s == 'a'
       end
 
       def heading_item?
         Navigator::HEADING_TAGS.include?(article_tag.name.to_s)
-      end
-
-      def wrapping_anchor_item?
-        return false unless article_tag.name.to_s == 'a'
-
-        article_tag.at_css(Navigator::WRAPPING_ANCHOR_CHILD_TAGS.join(','))
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
@@ -179,7 +173,11 @@ module Html2rss
 
       def crowded_card?(node)
         node.css(Navigator::HEADING_TAGS.join(',')).size > 1 ||
-          node.css(Navigator::MAIN_ANCHOR_SELECTOR).size > 1
+          distinct_main_hrefs(node) > 1
+      end
+
+      def distinct_main_hrefs(node)
+        node.css(Navigator::MAIN_ANCHOR_SELECTOR).map { |anchor| anchor['href'] }.uniq.size
       end
 
       def generate_id

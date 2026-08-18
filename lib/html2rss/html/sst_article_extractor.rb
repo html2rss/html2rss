@@ -192,14 +192,7 @@ module Html2rss
       end
 
       def heading_or_anchor_item?
-        @root.heading? || wrapping_anchor_item?
-      end
-
-      def wrapping_anchor_item?
-        return false unless @root.name == :a
-
-        tags = Navigator::WRAPPING_ANCHOR_CHILD_TAGS
-        @root.find { |n| !n.equal?(@root) && tags.include?(n.name.to_s) }
+        @root.heading? || @root.name == :a
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
@@ -238,7 +231,11 @@ module Html2rss
       end
 
       def crowded_card?(node)
-        node.each_node.count(&:heading?) > 1 || node.each_node.count(&:link?) > 1
+        node.each_node.count(&:heading?) > 1 || distinct_main_hrefs(node) > 1
+      end
+
+      def distinct_main_hrefs(node)
+        node.each_node.filter_map { |candidate| candidate.attrs.href if candidate.link? }.uniq.size
       end
 
       def sst_parent
