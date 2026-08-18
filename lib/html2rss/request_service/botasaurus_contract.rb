@@ -8,9 +8,11 @@ module Html2rss
     # Maps html2rss request/response handling to botasaurus-scrape-api OpenAPI 2.0
     # +ScrapeRequest+ / +ScrapeSuccess+ / +ScrapeError+ (sibling +openapi.yaml+).
     class BotasaurusContract # rubocop:disable Metrics/ClassLength -- Success/Error envelopes stay with the owner
-      # Closed sets from OpenAPI ExecutionMode / NavigationMode / ErrorCategory.
+      # Closed set from OpenAPI ExecutionMode.
       EXECUTION_MODES = %w[auto request browser].freeze
+      # Closed set from OpenAPI NavigationMode.
       NAVIGATION_MODES = %w[auto get google_get google_get_bypass organic_get].freeze
+      # Closed set from OpenAPI ErrorCategory.
       ERROR_CATEGORIES = %w[timeout challenge_block navigation_error metadata_error validation].freeze
 
       # ScrapeRequest properties except +url+ (html2rss supplies the target URL).
@@ -23,10 +25,11 @@ module Html2rss
       # OpenAPI WindowSize required keys (positive integers).
       WINDOW_SIZE_PROPERTIES = %i[width height].freeze
 
-      # Published wait default, plus the API clamp ceiling (`[1, 20]` in OpenAPI description).
-      # Config admission rejects waits above the ceiling instead of sending values that would be clamped.
+      # Published wait clamp floor (`[1, 20]` in OpenAPI description).
       MIN_WAIT_TIMEOUT_SECONDS = 1
+      # Published wait clamp ceiling; YAML values above this are rejected.
       MAX_WAIT_TIMEOUT_SECONDS = 20
+      # OpenAPI wait_timeout_seconds default (omitted from the client payload).
       DEFAULT_WAIT_TIMEOUT_SECONDS = 15
 
       # OpenAPI max_retries maximum (default 2 is applied upstream when omitted).
@@ -34,6 +37,7 @@ module Html2rss
 
       # Allowlisted ScrapeDiagnostics keys nested under diagnostics.
       DIAGNOSTICS_KEYS = %w[request_id attempts strategy_used render_ms execution_tier challenge].freeze
+      # Allowlisted ChallengeSignal keys nested under diagnostics.challenge.
       CHALLENGE_KEYS = %w[blocked detected marker].freeze
 
       # Remaining seconds at or below which Botasaurus retries are disabled.
