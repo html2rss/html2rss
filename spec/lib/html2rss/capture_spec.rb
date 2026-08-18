@@ -94,6 +94,50 @@ RSpec.describe Html2rss::Capture do
       # rubocop:enable RSpec/ExampleLength
     end
 
+    it 'lifts heading-link item roots to the research card', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <article class="research-card">
+            <h3><a href="/pub/1">Title of the first publication about research</a></h3>
+            <p>Sibling teaser about the first research paper with extra words.</p>
+          </article>
+          <article class="research-card">
+            <h3><a href="/pub/2">Title of the second publication about research</a></h3>
+            <p>Sibling teaser about the second research paper with extra words.</p>
+          </article>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:)
+
+      items = described_class.new(url).build.config.dig(:selectors, :items)
+      expect(items[:enhance]).to be true
+      expect(items[:selector]).to eq('article.research-card')
+    end
+
+    it 'keeps Equinor-style wrapping anchors as the item root', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <a href="/news/one">
+            <h2>Equinor starts first offshore wind project</h2>
+            <p>The project will add capacity to the North Sea grid this decade.</p>
+          </a>
+          <a href="/news/two">
+            <h2>Equinor starts second offshore wind project</h2>
+            <p>The project will add capacity to the North Sea grid this decade.</p>
+          </a>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:)
+
+      items = described_class.new(url).build.config.dig(:selectors, :items)
+      expect(items[:enhance]).to be true
+      expect(items[:selector]).to eq('a')
+    end
+
     context 'when selector derivation raises ArgumentError' do
       subject(:result) { described_class.new(url).build }
 
