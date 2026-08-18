@@ -8,52 +8,82 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
   let(:url) { Html2rss::Url.from_absolute('https://example.com') }
 
   describe 'OpenAPI scrape contract' do
-    # rubocop:disable RSpec/ExampleLength -- one sibling OpenAPI snapshot assertion
-    it 'matches the sibling ScrapeRequest / ScrapeSuccess / ScrapeError schemas', :aggregate_failures do
-      repo_root = File.expand_path('../../../..', __dir__)
-      openapi_path = File.expand_path('../botasaurus-scrape-api/openapi.yaml', repo_root)
-      skip "sibling OpenAPI not found at #{openapi_path}" unless File.exist?(openapi_path)
+    let(:repo_root) { File.expand_path('../../../..', __dir__) }
+    let(:openapi_fixture) { File.expand_path('spec/fixtures/botasaurus/openapi.yaml', repo_root) }
+    let(:openapi) { YAML.load_file(openapi_fixture) }
+    let(:schemas) { openapi.fetch('components').fetch('schemas') }
 
-      openapi = YAML.load_file(openapi_path)
-      schemas = openapi.fetch('components').fetch('schemas')
-      scrape_request = schemas.fetch('ScrapeRequest').fetch('properties')
-      scrape_success = schemas.fetch('ScrapeSuccess').fetch('properties')
-      scrape_error = schemas.fetch('ScrapeError').fetch('properties')
-      wait = scrape_request.fetch('wait_timeout_seconds')
-      retries = scrape_request.fetch('max_retries')
-      diagnostics = schemas.fetch('ScrapeDiagnostics').fetch('properties')
-      window_size = schemas.fetch('WindowSize')
-      scrape_responses = openapi.dig('paths', '/scrape', 'post', 'responses')
-      clamp_range = "[#{described_class::MIN_WAIT_TIMEOUT_SECONDS}, #{described_class::MAX_WAIT_TIMEOUT_SECONDS}]"
-
+    it 'is the OpenAPI 2.0 Success/Error contract, not a ScrapeResponse hull', :aggregate_failures do
+      expect(openapi.dig('info', 'version')).to eq('2.0.0')
       expect(schemas.keys).not_to include('ScrapeResponse')
+    end
+
+    it 'locks request option keys to ScrapeRequest minus url', :aggregate_failures do
+      scrape_request = schemas.fetch('ScrapeRequest').fetch('properties')
+
       expect(scrape_request.keys).not_to include('scroll_to_bottom')
       expect(described_class::REQUEST_OPTION_KEYS.map(&:to_s)).to match_array(scrape_request.keys - %w[url])
+    end
+
+    it 'locks execution, navigation, and error closed sets', :aggregate_failures do
       expect(described_class::EXECUTION_MODES).to eq(schemas.fetch('ExecutionMode').fetch('enum'))
       expect(described_class::NAVIGATION_MODES).to eq(schemas.fetch('NavigationMode').fetch('enum'))
       expect(described_class::ERROR_CATEGORIES).to eq(schemas.fetch('ErrorCategory').fetch('enum'))
-      expect(described_class::WINDOW_SIZE_PROPERTIES.map(&:to_s)).to match_array(window_size.fetch('required'))
+    end
+
+    it 'locks window_size to required width and height' do
+      expect(described_class::WINDOW_SIZE_PROPERTIES.map(&:to_s))
+        .to match_array(schemas.fetch('WindowSize').fetch('required'))
+    end
+
+    it 'locks wait default and documented clamp without schema min/max', :aggregate_failures do
+      wait = schemas.dig('ScrapeRequest', 'properties', 'wait_timeout_seconds')
+      clamp = "[#{described_class::MIN_WAIT_TIMEOUT_SECONDS}, #{described_class::MAX_WAIT_TIMEOUT_SECONDS}]"
       expect(described_class::DEFAULT_WAIT_TIMEOUT_SECONDS).to eq(wait.fetch('default'))
-      expect(wait.fetch('description')).to include(clamp_range)
-      expect(wait).not_to have_key('minimum')
-      expect(wait).not_to have_key('maximum')
+      expect(wait.fetch('description')).to include(clamp)
+      expect(wait.keys).not_to include('minimum', 'maximum')
+    end
+
+    it 'locks max_retries to the OpenAPI maximum' do
+      retries = schemas.dig('ScrapeRequest', 'properties', 'max_retries')
+
       expect(described_class::MAX_RETRIES).to eq(retries.fetch('maximum').to_i)
-      expect(described_class::DIAGNOSTICS_KEYS).to match_array(diagnostics.keys)
-      expect(scrape_success.keys).to include('html', 'diagnostics', 'metadata_error', 'xhr_responses')
-      expect(scrape_error.keys).to include('error', 'error_category', 'diagnostics')
-      expect(scrape_error.keys).not_to include('html')
-      expect(scrape_responses.dig('200', 'content', 'application/json', 'schema')).to eq(
-        { '$ref' => '#/components/schemas/ScrapeSuccess' }
-      )
-      expect(scrape_responses.except('200').values).to all(
-        include('content' => a_hash_including(
-          'application/json' => a_hash_including(
-            'schema' => { '$ref' => '#/components/schemas/ScrapeError' }
-          )
-        ))
+    end
+
+    it 'locks diagnostics and ChallengeSignal keys', :aggregate_failures do
+      expect(described_class::DIAGNOSTICS_KEYS)
+        .to match_array(schemas.fetch('ScrapeDiagnostics').fetch('properties').keys)
+      expect(described_class::CHALLENGE_KEYS)
+        .to match_array(schemas.fetch('ChallengeSignal').fetch('properties').keys)
+    end
+
+    it 'keeps html on Success and error fields on Error', :aggregate_failures do
+      expect(schemas.dig('ScrapeSuccess', 'properties').keys)
+        .to include('html', 'diagnostics', 'metadata_error', 'xhr_responses')
+      expect(schemas.dig('ScrapeError', 'properties').keys)
+        .to include('error', 'error_category', 'diagnostics')
+      expect(schemas.dig('ScrapeError', 'properties').keys).not_to include('html')
+    end
+
+    it 'maps scrape HTTP 200 to ScrapeSuccess' do
+      expect(openapi.dig('paths', '/scrape', 'post', 'responses', '200', 'content', 'application/json', 'schema'))
+        .to eq('$ref' => '#/components/schemas/ScrapeSuccess')
+    end
+
+    it 'maps non-200 scrape statuses to ScrapeError' do
+      error_ref = { '$ref' => '#/components/schemas/ScrapeError' }
+      responses = openapi.dig('paths', '/scrape', 'post', 'responses').except('200').values
+      expect(responses).to all(
+        include('content' => a_hash_including('application/json' => a_hash_including('schema' => error_ref)))
       )
     end
-    # rubocop:enable RSpec/ExampleLength
+
+    it 'stays in sync with the sibling OpenAPI when that repo is checked out' do
+      sibling = File.expand_path('../botasaurus-scrape-api/openapi.yaml', repo_root)
+      skip "sibling OpenAPI not found at #{sibling}" unless File.exist?(sibling)
+
+      expect(YAML.load_file(openapi_fixture)).to eq(YAML.load_file(sibling))
+    end
   end
 
   describe '::REQUEST_OPTION_KEYS' do

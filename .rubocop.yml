@@ -13,6 +13,7 @@ AllCops:
   ParserEngine: parser_prism
   Exclude:
     - vendor/**/*
+    - spec/fixtures/**/*.{yml,yaml}
 
 Metrics/BlockLength:
   Exclude:

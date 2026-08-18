@@ -13,7 +13,7 @@ bin/list-changed-paths \
   'Gemfile' \
   'Rakefile' \
   'exe/*' \
-  'spec/*' >"$files"
+  'spec/**/*.rb' >"$files"
 
 if [ -s "$files" ]; then
   xargs -0 bin/rubocop <"$files"

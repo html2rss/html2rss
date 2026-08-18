@@ -331,18 +331,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         sanitized_sample_payload.merge('html' => 'x' * 562_671)
       end
 
-      it 'accepts known sample fields and preserves large rendered body', :aggregate_failures do
+      it 'preserves large rendered body and final URL from the sample envelope', :aggregate_failures do
         result = execute
 
-        expect(sanitized_sample_payload).to include(
-          'status_code' => 200,
-          'metadata_error' => nil
-        )
-        expect(sanitized_sample_payload.fetch('diagnostics')).to include(
-          'attempts' => 2,
-          'strategy_used' => 'google_get_bypass',
-          'challenge' => { 'blocked' => false, 'detected' => false, 'marker' => nil }
-        )
         expect(result.url.to_s).to eq('https://redacted.example/technology/')
         expect(result.headers.fetch('content-type')).to include('text/html')
         expect(result.body.bytesize).to eq(562_671)
