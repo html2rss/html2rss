@@ -137,6 +137,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Use `make quick` during implementation for the fast local feedback loop. It should stay focused on changed-file linting and targeted specs.
 - Treat `make ready` as the implementation quality gate before handoff or a potential PR merge. It must cover the repo's required merge checks.
 - When adding or modifying configuration options in `lib/html2rss/selectors/config.rb` or `lib/html2rss/config/validator.rb`, update `lib/html2rss/config/schema.rb` (`Html2rss::Config::Schema`) so the property is exported to the JSON schema, then run `make schema` to sync `schema/html2rss-config.schema.json`.
+- Catalog metadata on `directory` (`title`, `summary`, `topics`) is validated in `DirectoryConfig`. When changing those rules, regenerate the schema and coordinate `html2rss-configs` validation plus `Html2rss::Configs::Catalog`.
 - Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
