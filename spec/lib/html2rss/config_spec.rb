@@ -322,7 +322,30 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(config_with_unknown_strategy)).to be_failure
     end
 
-    context 'when directory includes valid topics' do
+    context 'when directory includes valid metadata' do
+      let(:config) do
+        {
+          directory: {
+            title: 'Example — News',
+            summary: 'Latest headlines from Example.',
+            topics: %w[sports news]
+          },
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+        }
+      end
+
+      it 'accepts the directory metadata contract', :aggregate_failures do
+        result = described_class.validate(config)
+
+        expect(result).to be_success
+        expect(result.to_h.dig(:directory, :title)).to eq('Example — News')
+        expect(result.to_h.dig(:directory, :summary)).to eq('Latest headlines from Example.')
+        expect(result.to_h.dig(:directory, :topics)).to eq(%w[sports news])
+      end
+    end
+
+    context 'when directory title is missing' do
       let(:config) do
         {
           directory: { topics: %w[sports news] },
@@ -331,18 +354,33 @@ RSpec.describe Html2rss::Config do
         }
       end
 
-      it 'accepts the directory topics contract', :aggregate_failures do
-        result = described_class.validate(config)
+      it 'rejects directory without title' do
+        expect(described_class.validate(config)).to be_failure
+      end
+    end
 
-        expect(result).to be_success
-        expect(result.to_h.dig(:directory, :topics)).to eq(%w[sports news])
+    context 'when directory summary exceeds 160 characters' do
+      let(:config) do
+        {
+          directory: {
+            title: 'Example — News',
+            summary: 'x' * 161,
+            topics: %w[news]
+          },
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+        }
+      end
+
+      it 'rejects an oversized summary' do
+        expect(described_class.validate(config)).to be_failure
       end
     end
 
     context 'when directory topics are empty' do
       let(:config) do
         {
-          directory: { topics: [] },
+          directory: { title: 'Example — News', topics: [] },
           channel: { url: 'http://example.com' },
           selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
         }
@@ -356,7 +394,7 @@ RSpec.describe Html2rss::Config do
     context 'when directory topics include an unknown value' do
       let(:config) do
         {
-          directory: { topics: %w[sports unknown-topic] },
+          directory: { title: 'Example — News', topics: %w[sports unknown-topic] },
           channel: { url: 'http://example.com' },
           selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
         }
