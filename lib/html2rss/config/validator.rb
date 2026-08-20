@@ -35,6 +35,8 @@ module Html2rss
 
       # Contract for catalog-only `directory` metadata (topics for feed directories).
       DirectoryConfig = Dry::Schema.Params do
+        required(:title).filled(:string)
+        optional(:summary).maybe(:string, max_size?: 160)
         optional(:topics).value(:array, min_size?: 1).each(:string, included_in?: DIRECTORY_TOPICS)
       end
 

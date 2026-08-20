@@ -66,6 +66,17 @@
     "directory": {
       "type": "object",
       "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "maxLength": 160
+        },
         "topics": {
           "type": "array",
           "items": {
@@ -92,7 +103,9 @@
           "minItems": 1
         }
       },
-      "required": []
+      "required": [
+        "title"
+      ]
     },
     "headers": {
       "type": "object",
