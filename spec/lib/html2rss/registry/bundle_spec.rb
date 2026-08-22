@@ -19,6 +19,22 @@ RSpec.describe Html2rss::Registry::Bundle do
       expect(bundle.catalog_entries.map(&:id)).to eq(bundle.catalog_entries.map(&:id).sort)
     end
 
+    it 'rejects duplicate registry.id values' do # rubocop:disable RSpec/ExampleLength
+      dir = File.join(RegistryTestSupport::FIXTURE_ROOT, 'duplicate-id')
+      FileUtils.rm_rf(dir)
+      FileUtils.cp_r(RegistryTestSupport::VALID_BUNDLE, dir)
+      duplicate_config = File.join(dir, 'configs/duplicate.com/news.yml')
+      FileUtils.mkdir_p(File.dirname(duplicate_config))
+      FileUtils.cp(File.join(dir, 'configs/anthropic.com/news.yml'), duplicate_config)
+      write_manifest!(dir, build_fixture_manifest(bundle_dir: dir))
+
+      expect do
+        described_class.load(dir, trust: :signed, public_keys:)
+      end.to raise_error(Html2rss::Registry::InvalidConfig, %r{Duplicate registry.id values: anthropic.com/news})
+    ensure
+      FileUtils.rm_rf(dir)
+    end
+
     it 'validates every bundled config' do
       with_invalid_bundle do |invalid_dir|
         expect { described_class.load(invalid_dir, trust: :integrity_only, public_keys:) }
