@@ -43,11 +43,15 @@ module Html2rss
       # @param public_key_id [String]
       # @return [Manifest]
       def self.build(file_index:, registry_id:, version:, public_key_id:)
+        normalized_index = file_index.transform_keys do |path|
+          BundleRelativePath.validate_config_path!(path)
+        end
+
         new(
           registry_id:,
           version:,
           public_key_id:,
-          files: file_index.transform_keys(&:to_s)
+          files: normalized_index.transform_keys(&:to_s)
         )
       end
 
@@ -64,9 +68,9 @@ module Html2rss
       # @return [Hash{String => String}]
       def self.file_index(bundle_dir, relative_paths)
         relative_paths.each_with_object({}) do |relative_path, index|
-          absolute_path = File.join(bundle_dir, relative_path)
+          absolute_path = BundleRelativePath.resolve_config!(bundle_dir, relative_path)
           digest = Digest::SHA256.file(absolute_path).hexdigest
-          index[relative_path] = digest
+          index[BundleRelativePath.validate_config_path!(relative_path)] = digest
         end
       end
 
@@ -106,7 +110,7 @@ module Html2rss
       # @param digest [String]
       # @return [void]
       def self.validate_file_entry!(path, digest)
-        raise ManifestError, "Invalid file path #{path.inspect}" unless path.to_s.start_with?('configs/')
+        BundleRelativePath.validate_config_path!(path)
         return if digest.to_s.match?(/\A[0-9a-f]{64}\z/)
 
         raise ManifestError, "Invalid digest for #{path}"

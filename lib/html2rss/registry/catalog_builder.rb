@@ -11,19 +11,19 @@ module Html2rss
       class Error < Html2rss::Registry::Error; end
       # Raised when directory.title is missing from a bundled config.
       class MissingDirectoryTitle < Error; end
-
-      # Relative prefix for config paths inside a bundle.
-      CONFIGS_PREFIX = 'configs/'
+      # Raised when registry.id is missing from a bundled config.
+      class MissingRegistryId < Error; end
 
       module_function
 
       ##
       # @param bundle_dir [String] extracted registry bundle root
+      # @param manifest [Manifest] verified manifest listing config paths
       # @return [Array<CatalogEntry>] sorted catalog entries
-      def entries(bundle_dir)
-        config_paths(bundle_dir).sort.filter_map do |relative_path|
+      def entries(bundle_dir, manifest:)
+        manifest.files.keys.sort.filter_map do |relative_path|
           build_entry(bundle_dir, relative_path)
-        end
+        end.sort_by(&:id)
       end
 
       ##
@@ -31,7 +31,8 @@ module Html2rss
       # @param relative_path [String] path relative to bundle root, e.g. configs/foo/bar.yml
       # @return [CatalogEntry]
       def build_entry(bundle_dir, relative_path)
-        config = load_config(File.join(bundle_dir, relative_path))
+        absolute_path = BundleRelativePath.resolve_config!(bundle_dir, relative_path)
+        config = load_config(absolute_path)
         assemble_entry(relative_path, config)
       end
 
@@ -41,10 +42,10 @@ module Html2rss
       # @return [CatalogEntry]
       def assemble_entry(relative_path, config)
         title = require_directory_title!(config.fetch(:directory, {}), relative_path)
-        id, path = entry_identifiers(relative_path)
+        id = entry_id(config, relative_path)
 
         CatalogEntry.new(
-          id:, path:,
+          id:, path: "/#{id}.rss",
           directory: directory_payload(config.fetch(:directory, {}), title),
           channel: channel_payload(config.fetch(:channel, {}), title),
           parameters: parameters_payload(config.fetch(:channel, {}), config[:parameters])
@@ -52,21 +53,14 @@ module Html2rss
       end
 
       ##
+      # @param config [Hash]
       # @param relative_path [String]
-      # @return [Array(String, String)]
-      def entry_identifiers(relative_path)
-        id = entry_id(relative_path)
-        [id, "/#{id}.rss"]
-      end
+      # @return [String]
+      def entry_id(config, relative_path = nil)
+        id = config.dig(:registry, :id)
+        raise MissingRegistryId, "Missing registry.id in #{relative_path}" if id.to_s.strip.empty?
 
-      ##
-      # @param bundle_dir [String]
-      # @return [Array<String>]
-      def config_paths(bundle_dir)
-        configs_root = File.join(bundle_dir, 'configs')
-        Dir.glob(File.join(configs_root, '**', '*.yml')).map do |absolute_path|
-          absolute_path.delete_prefix("#{bundle_dir}/")
-        end
+        id.to_s
       end
 
       ##
@@ -120,14 +114,6 @@ module Html2rss
           schema: parameter_schema(channel.fetch(:url), parameters_block),
           defaults: default_parameters(parameters_block)
         }
-      end
-
-      ##
-      # @param relative_path [String]
-      # @return [String]
-      def entry_id(relative_path)
-        relative = relative_path.delete_prefix(CONFIGS_PREFIX)
-        File.join(*relative.split('/')[0..-2], File.basename(relative, '.yml'))
       end
 
       ##

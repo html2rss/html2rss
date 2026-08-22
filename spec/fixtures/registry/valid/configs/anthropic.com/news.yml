@@ -1,4 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/html2rss/html2rss/refs/heads/master/schema/html2rss-config.schema.json
+registry:
+  id: anthropic.com/news
 directory:
   topics:
     - tech
@@ -19,6 +21,12 @@ selectors:
     selector: '[class*="__title"]'
   url:
     extractor: href
+
+
+
+
+
+
 
 
 

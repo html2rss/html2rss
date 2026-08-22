@@ -40,9 +40,9 @@ module Html2rss
       # @return [void]
       def verify_signature!(bundle_dir, manifest, trust:, public_keys:)
         case trust
-        when :integrity_only
+        in :integrity_only
           nil
-        when :signed
+        in :signed
           verify_ed25519_signature!(bundle_dir, manifest, public_keys:)
         else
           raise VerificationError, "Unknown trust mode: #{trust.inspect}"
@@ -54,13 +54,14 @@ module Html2rss
       # @param manifest [Manifest]
       # @param public_keys [Hash{String => OpenSSL::PKey::PKey}]
       # @return [void]
-      def verify_ed25519_signature!(bundle_dir, manifest, public_keys:)
+      def verify_ed25519_signature!(bundle_dir, manifest, public_keys:) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
         signature_path = File.join(bundle_dir, Manifest::SIGNATURE_FILE)
         raise VerificationError, "Missing #{Manifest::SIGNATURE_FILE}" unless File.file?(signature_path)
 
         public_key = public_keys.fetch(manifest.public_key_id) do
           raise VerificationError, "Unknown public_key_id: #{manifest.public_key_id}"
         end
+        ensure_ed25519_public_key!(public_key)
 
         signature = File.read(signature_path).strip.unpack1('m0')
         valid = public_key.verify(nil, signature, manifest.canonical_bytes)
@@ -75,7 +76,7 @@ module Html2rss
       # @return [void]
       def verify_files!(bundle_dir, manifest)
         manifest.files.each do |relative_path, expected_digest|
-          absolute_path = File.join(bundle_dir, relative_path)
+          absolute_path = BundleRelativePath.resolve_config!(bundle_dir, relative_path)
           raise VerificationError, "Missing file #{relative_path}" unless File.file?(absolute_path)
 
           actual_digest = Digest::SHA256.file(absolute_path).hexdigest
@@ -84,6 +85,24 @@ module Html2rss
           raise VerificationError, "Digest mismatch for #{relative_path}"
         end
       end
+
+      ##
+      # @param public_key [OpenSSL::PKey::PKey]
+      # @return [void]
+      def ensure_ed25519_public_key!(public_key)
+        return if ed25519_key?(public_key)
+
+        raise VerificationError, 'Public key must be Ed25519'
+      end
+
+      ##
+      # @param key [OpenSSL::PKey::PKey]
+      # @return [Boolean]
+      def ed25519_key?(key)
+        key.is_a?(OpenSSL::PKey::PKey) && key.oid == 'ED25519'
+      end
+      module_function :ed25519_key?
+      private_class_method :ensure_ed25519_public_key!
     end
   end
 end

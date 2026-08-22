@@ -107,6 +107,24 @@
         "title"
       ]
     },
+    "registry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
     "headers": {
       "type": "object",
       "description": "HTTP headers applied to every request.",
