@@ -28,12 +28,36 @@ module Html2rss
       # @param manifest [Manifest]
       # @return [Hash{String => Hash}]
       def self.load_configs!(directory, manifest)
-        manifest.files.keys.sort.each_with_object({}) do |relative_path, configs|
-          absolute_path = BundleRelativePath.resolve_config!(directory, relative_path)
-          config = YAML.safe_load_file(absolute_path, symbolize_names: true)
-          validate_config!(relative_path, config)
-          configs[CatalogBuilder.entry_id(config, relative_path)] = config
+        entry_ids = []
+        configs = manifest.files.keys.sort.each_with_object({}) do |relative_path, loaded|
+          loaded.merge!(load_config_entry(directory, relative_path, entry_ids))
         end
+        reject_duplicate_registry_ids!(entry_ids)
+        configs
+      end
+
+      ##
+      # @param directory [String]
+      # @param relative_path [String]
+      # @param entry_ids [Array<String>]
+      # @return [Hash{String => Hash}]
+      def self.load_config_entry(directory, relative_path, entry_ids)
+        absolute_path = BundleRelativePath.resolve_config!(directory, relative_path)
+        config = YAML.safe_load_file(absolute_path, symbolize_names: true)
+        validate_config!(relative_path, config)
+        entry_id = CatalogBuilder.entry_id(config, relative_path)
+        entry_ids << entry_id
+        { entry_id => config }
+      end
+
+      ##
+      # @param entry_ids [Array<String>]
+      # @return [void]
+      def self.reject_duplicate_registry_ids!(entry_ids)
+        duplicates = entry_ids.group_by(&:itself).select { |_, group| group.size > 1 }.keys
+        return if duplicates.empty?
+
+        raise InvalidConfig, "Duplicate registry.id values: #{duplicates.sort.join(', ')}"
       end
 
       ##
