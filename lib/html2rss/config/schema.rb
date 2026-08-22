@@ -83,6 +83,19 @@ module Html2rss
           topics = schema.dig(:properties, :directory, :properties, :topics)
           topics[:minItems] = 1 if topics.is_a?(Hash)
           apply_botasaurus_schema!(schema)
+          apply_registry_schema!(schema)
+        end
+
+        def apply_registry_schema!(schema)
+          registry = schema.dig(:properties, :registry, :properties)
+          return unless registry.is_a?(Hash)
+
+          pattern = Html2rss::Config::Validator::REGISTRY_ID_JSON_SCHEMA_PATTERN
+          registry.fetch(:id)[:pattern] = pattern
+          aliases = registry[:aliases]
+          return unless aliases.is_a?(Hash)
+
+          aliases[:items] = { type: 'string', pattern: }
         end
 
         def apply_botasaurus_schema!(schema)

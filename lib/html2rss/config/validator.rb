@@ -22,6 +22,8 @@ module Html2rss
       ].freeze
       # Allowed characters for explicit feed identity in `registry.id` and `registry.aliases`.
       REGISTRY_ID_FORMAT = %r{\A[a-z0-9._/-]+\z}
+      # JSON Schema `pattern` for +REGISTRY_ID_FORMAT+ (full-string match).
+      REGISTRY_ID_JSON_SCHEMA_PATTERN = '^[a-z0-9._/-]+$'
 
       # Contract for the top-level `channel` section.
       ChannelConfig = Dry::Schema.Params do

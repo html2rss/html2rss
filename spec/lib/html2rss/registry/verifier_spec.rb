@@ -17,6 +17,20 @@ RSpec.describe Html2rss::Registry::Verifier do
       expect(manifest.registry_id).to eq('test')
     end
 
+    it 'rejects unknown public_key_id for signed trust' do
+      expect do
+        described_class.verify!(bundle_dir, trust: :signed, public_keys: {})
+      end.to raise_error(Html2rss::Registry::VerificationError, /Unknown public_key_id: test-key/)
+    end
+
+    it 'rejects missing manifest signature for signed trust' do
+      File.delete(File.join(bundle_dir, Html2rss::Registry::Manifest::SIGNATURE_FILE))
+
+      expect do
+        described_class.verify!(bundle_dir, trust: :signed, public_keys:)
+      end.to raise_error(Html2rss::Registry::VerificationError, /Missing manifest.sig/)
+    end
+
     it 'accepts integrity-only verification without a signature' do
       File.delete(File.join(bundle_dir, Html2rss::Registry::Manifest::SIGNATURE_FILE))
       manifest = described_class.verify!(bundle_dir, trust: :integrity_only, public_keys:)
