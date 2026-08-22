@@ -2,12 +2,17 @@
 
 require 'faraday'
 require 'json'
+require 'securerandom'
 
 module Html2rss
   class RequestService
     ##
     # Strategy to delegate fetching to a Botasaurus scrape API.
     class BotasaurusStrategy < Strategy
+      TRANSPORT_ACCEPT = 'application/json'
+      TRANSPORT_ENCODING = 'identity'
+      REQUEST_ID_HEADER = 'X-Request-Id'
+
       private
 
       def fetch
@@ -18,7 +23,9 @@ module Html2rss
       end
 
       def post_scrape_request
-        transport_response = client.post('/scrape', JSON.generate(contract.request_payload), content_type_header)
+        request_id = SecureRandom.uuid
+        Log.debug("#{self.class}: POST /scrape #{REQUEST_ID_HEADER}=#{request_id}")
+        transport_response = client.post('/scrape', JSON.generate(contract.request_payload), post_headers(request_id))
         contract.parse_response(transport_response)
       end
 
@@ -70,7 +77,23 @@ module Html2rss
       end
 
       def client
-        @client ||= Faraday.new(url: scraper_base_url.to_s, request: request_options)
+        # No :gzip middleware on this client — compression is for remote target fetches only.
+        @client ||= Faraday.new(url: scraper_base_url.to_s, headers: client_headers, request: request_options)
+      end
+
+      def client_headers
+        {
+          'User-Agent' => Config::RequestHeaders::DEFAULT_USER_AGENT,
+          'Accept' => TRANSPORT_ACCEPT,
+          'Accept-Encoding' => TRANSPORT_ENCODING
+        }
+      end
+
+      def post_headers(request_id)
+        {
+          'Content-Type' => 'application/json',
+          REQUEST_ID_HEADER => request_id
+        }
       end
 
       def request_options
@@ -81,10 +104,6 @@ module Html2rss
         @attempt_timeout_seconds ||= ctx.budget.effective_timeout_seconds(
           fallback: ctx.policy.total_timeout_seconds
         )
-      end
-
-      def content_type_header
-        { 'Content-Type' => 'application/json' }
       end
 
       def scraper_base_url

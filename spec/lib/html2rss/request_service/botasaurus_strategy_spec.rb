@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'climate_control'
+require 'yaml'
 
 # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
 RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
@@ -92,10 +93,19 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         origin_url: ctx.origin_url,
         relation: :initial
       )
-      expect(Faraday).to have_received(:new).with(url: 'http://localhost:4010/', request: { timeout: 30 })
+      expect(Faraday).to have_received(:new).with(
+        url: 'http://localhost:4010/',
+        headers: {
+          'User-Agent' => Html2rss::Config::RequestHeaders::DEFAULT_USER_AGENT,
+          'Accept' => described_class::TRANSPORT_ACCEPT,
+          'Accept-Encoding' => described_class::TRANSPORT_ENCODING
+        },
+        request: { timeout: 30 }
+      )
       path, body, headers = captured_post_args.first
       expect(path).to eq('/scrape')
-      expect(headers).to eq('Content-Type' => 'application/json')
+      expect(headers).to include('Content-Type' => 'application/json')
+      expect(headers).to have_key(described_class::REQUEST_ID_HEADER)
       expect(JSON.parse(body)).to eq('url' => 'https://example.com/')
     end
 
@@ -201,6 +211,72 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       end
     end
     # rubocop:enable RSpec/NestedGroups
+  end
+
+  describe 'transport headers' do
+    let(:repo_root) { File.expand_path('../../../..', __dir__) }
+    let(:openapi_fixture) { File.expand_path('spec/fixtures/botasaurus/openapi.yaml', repo_root) }
+
+    it 'sets client headers on Faraday.new', :aggregate_failures do
+      execute
+
+      expect(Faraday).to have_received(:new).with(
+        hash_including(
+          headers: {
+            'User-Agent' => Html2rss::Config::RequestHeaders::DEFAULT_USER_AGENT,
+            'Accept' => described_class::TRANSPORT_ACCEPT,
+            'Accept-Encoding' => described_class::TRANSPORT_ENCODING
+          }
+        )
+      )
+    end
+
+    it 'sends Content-Type and X-Request-Id on POST', :aggregate_failures do
+      allow(SecureRandom).to receive(:uuid).and_return('stubbed-request-id')
+
+      execute
+
+      _, _, headers = captured_post_args.first
+      expect(headers).to eq(
+        'Content-Type' => 'application/json',
+        described_class::REQUEST_ID_HEADER => 'stubbed-request-id'
+      )
+    end
+
+    it 'generates a fresh X-Request-Id per strategy instance', :aggregate_failures do
+      described_class.new(ctx).execute
+      first_id = captured_post_args.first.fetch(2).fetch(described_class::REQUEST_ID_HEADER)
+
+      described_class.new(ctx).execute
+      second_id = captured_post_args.last.fetch(2).fetch(described_class::REQUEST_ID_HEADER)
+
+      expect(first_id).not_to eq(second_id)
+    end
+
+    it 'forwards ctx.headers only in the JSON body, not on the transport hop', :aggregate_failures do
+      ctx_with_headers = Html2rss::RequestService::Context.new(
+        url: 'https://example.com',
+        headers: { 'Accept-Language' => 'en-US' },
+        request: request_config,
+        policy:,
+        budget:
+      )
+      described_class.new(ctx_with_headers).execute
+
+      _, body, transport_headers = captured_post_args.first
+      expect(transport_headers.keys).not_to include('Accept-Language')
+      expect(JSON.parse(body).fetch('headers')).to include('Accept-Language' => 'en-US')
+    end
+
+    it 'locks REQUEST_ID_HEADER to OpenAPI POST /scrape header parameter name' do
+      openapi = YAML.load_file(openapi_fixture)
+      parameters = openapi.dig('paths', '/scrape', 'post', 'parameters') || []
+      header_param = parameters.find { |param| param['in'] == 'header' }
+
+      skip 'OpenAPI lacks X-Request-Id header param; sync fixture after scrape-api Phase 1' unless header_param
+
+      expect(described_class::REQUEST_ID_HEADER).to eq(header_param.fetch('name'))
+    end
   end
 
   describe 'response mapping' do
