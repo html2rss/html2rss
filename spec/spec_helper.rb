@@ -24,6 +24,7 @@ if ENV['COVERAGE']
     add_group 'Feed Builder', 'lib/html2rss/feed_builder'
     add_group 'Html', 'lib/html2rss/html'
     add_group 'MCP', 'lib/html2rss/mcp'
+    add_group 'Registry', 'lib/html2rss/registry'
 
     # Add multiple output formats
     formatter SimpleCov::Formatter::MultiFormatter.new([
@@ -44,6 +45,7 @@ require_relative 'support/helpers/sst_test_helpers'
 require_relative 'support/helpers/mcp_test_helpers'
 require_relative 'support/helpers/feed_test_helpers'
 require_relative 'support/helpers/thread_helpers'
+require_relative 'support/registry_test_support'
 
 # Load shared examples
 Dir.glob('**/*.rb', base: File.join(__dir__, 'support/shared_examples')).each do |f|
