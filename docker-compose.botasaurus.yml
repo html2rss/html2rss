@@ -4,3 +4,5 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:4010:4010"
+    environment:
+      SENTRY_DSN: ${SENTRY_DSN:-}
