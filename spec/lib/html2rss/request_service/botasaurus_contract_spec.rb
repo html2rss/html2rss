@@ -97,10 +97,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
   describe '#request_payload' do
     subject(:payload) { contract.request_payload }
 
-    let(:contract) do
-      described_class.new(url:, remaining_timeout_seconds:)
-    end
-    let(:remaining_timeout_seconds) { 30 }
+    let(:contract) { described_class.new(url:) }
 
     it 'sends only the URL so OpenAPI defaults apply', :aggregate_failures do
       expect(payload).to eq(url: 'https://example.com/')
@@ -109,20 +106,11 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       expect(payload).not_to have_key(:headless)
     end
 
-    context 'when remaining budget minus reserve still exceeds the OpenAPI wait default' do
-      let(:remaining_timeout_seconds) { 25 }
+    context 'when configured wait_timeout_seconds exceeds the work budget cap' do
+      let(:contract) { described_class.new(url:, options: { wait_timeout_seconds: 35 }) }
 
-      it 'does not inflate wait_timeout_seconds above the published default' do
-        expect(payload).not_to have_key(:wait_timeout_seconds)
-      end
-    end
-
-    context 'when remaining budget cannot cover the published wait default' do
-      let(:remaining_timeout_seconds) { 12 }
-
-      it 'clamps wait down and disables retries', :aggregate_failures do
-        expect(payload.fetch(:wait_timeout_seconds)).to eq(10)
-        expect(payload.fetch(:max_retries)).to eq(0)
+      it 'caps wait_timeout_seconds at MAX_WAIT_TIMEOUT_SECONDS' do
+        expect(payload.fetch(:wait_timeout_seconds)).to eq(described_class::MAX_WAIT_TIMEOUT_SECONDS)
       end
     end
 
@@ -203,8 +191,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
             'detail' => [
               {
                 'loc' => %w[body wait_timeout_seconds],
-                'msg' => 'Input should be less than or equal to 20',
-                'input' => 28
+                'msg' => 'Input should be less than or equal to 30',
+                'input' => 35
               }
             ]
           }

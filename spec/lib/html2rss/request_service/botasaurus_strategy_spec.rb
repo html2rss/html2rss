@@ -175,42 +175,27 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       end
     end
 
-    # rubocop:disable RSpec/NestedGroups -- budget clamp matrix stays with request contract
-    context 'when remaining budget is tight' do
-      [
-        { remaining: 12, max_retries: 0, wait_timeout_seconds: 10 },
-        { remaining: 10.5, max_retries: 0, wait_timeout_seconds: 8 },
-        { remaining: 20, max_retries: nil, wait_timeout_seconds: nil },
-        { remaining: 25, max_retries: nil, wait_timeout_seconds: nil }
-      ].each do |example|
-        context "with remaining=#{example[:remaining]}" do
-          before do
-            allow(budget).to receive(:effective_timeout_seconds).and_return(example[:remaining])
-          end
-
-          it 'clamps max_retries and wait_timeout_seconds', :aggregate_failures do
-            execute
-
-            payload = JSON.parse(captured_post_args.first.fetch(1))
-            expect(payload['max_retries']).to eq(example[:max_retries])
-            expect(payload['wait_timeout_seconds']).to eq(example[:wait_timeout_seconds])
-          end
-        end
+    context 'when feed budget exceeds the scrape-api transport cap' do
+      before do
+        allow(budget).to receive(:effective_timeout_seconds).and_return(60.0)
       end
 
-      context 'when configured wait_timeout_seconds is below the budget cap' do
-        let(:request_config) { { botasaurus: { wait_timeout_seconds: 5 } } }
+      it 'uses the scrape total plus transport buffer for Faraday timeout' do
+        execute
 
-        before { allow(budget).to receive(:effective_timeout_seconds).and_return(20) }
-
-        it 'keeps the lower configured wait timeout' do
-          execute
-
-          expect(JSON.parse(captured_post_args.first.fetch(1))['wait_timeout_seconds']).to eq(5)
-        end
+        cap = Html2rss::RequestService::BotasaurusContract::SCRAPE_TIMEOUT_SECONDS +
+              Html2rss::RequestService::BotasaurusContract::TRANSPORT_BUFFER_SECONDS
+        expect(Faraday).to have_received(:new).with(
+          url: 'http://localhost:4010/',
+          headers: {
+            'User-Agent' => Html2rss::Config::RequestHeaders::DEFAULT_USER_AGENT,
+            'Accept' => described_class::TRANSPORT_ACCEPT,
+            'Accept-Encoding' => described_class::TRANSPORT_ENCODING
+          },
+          request: { timeout: cap }
+        )
       end
     end
-    # rubocop:enable RSpec/NestedGroups
   end
 
   describe 'transport headers' do

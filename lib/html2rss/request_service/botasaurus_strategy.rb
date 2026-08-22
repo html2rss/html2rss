@@ -74,8 +74,7 @@ module Html2rss
         @contract ||= BotasaurusContract.new(
           url: ctx.url,
           headers: ctx.headers,
-          options: ctx.request.fetch(:botasaurus, {}),
-          remaining_timeout_seconds: attempt_timeout_seconds
+          options: ctx.request.fetch(:botasaurus, {})
         )
       end
 
@@ -104,9 +103,10 @@ module Html2rss
       end
 
       def attempt_timeout_seconds
-        @attempt_timeout_seconds ||= ctx.budget.effective_timeout_seconds(
-          fallback: ctx.policy.total_timeout_seconds
-        )
+        @attempt_timeout_seconds ||= begin
+          budget = ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+          [budget, BotasaurusContract::SCRAPE_TIMEOUT_SECONDS + BotasaurusContract::TRANSPORT_BUFFER_SECONDS].min
+        end
       end
 
       def scraper_base_url

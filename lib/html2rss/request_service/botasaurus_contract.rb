@@ -7,7 +7,7 @@ module Html2rss
     ##
     # Maps html2rss request/response handling to botasaurus-scrape-api OpenAPI 2.0
     # +ScrapeRequest+ / +ScrapeSuccess+ / +ScrapeError+ (sibling +openapi.yaml+).
-    class BotasaurusContract # rubocop:disable Metrics/ClassLength -- Success/Error envelopes stay with the owner
+    class BotasaurusContract
       # Closed set from OpenAPI ExecutionMode.
       EXECUTION_MODES = %w[auto request browser].freeze
       # Closed set from OpenAPI NavigationMode.
@@ -25,12 +25,19 @@ module Html2rss
       # OpenAPI WindowSize required keys (positive integers).
       WINDOW_SIZE_PROPERTIES = %i[width height].freeze
 
-      # Published wait clamp floor (`[1, 20]` in OpenAPI description).
+      # Faraday POST /scrape cap mirroring botasaurus-scrape-api total scrape wall (`SCRAPE_TIMEOUT_SECONDS`).
+      SCRAPE_TIMEOUT_SECONDS = Integer(ENV.fetch('BOTASAURUS_SCRAPE_TIMEOUT_SECONDS', 45))
+      # Post-boot navigate/wait budget mirrored from scrape-api (`SCRAPE_WORK_TIMEOUT_SECONDS`).
+      SCRAPE_WORK_TIMEOUT_SECONDS = Integer(ENV.fetch('BOTASAURUS_SCRAPE_WORK_TIMEOUT_SECONDS', 30))
+      # Seconds added to the scrape total for client transport overhead.
+      TRANSPORT_BUFFER_SECONDS = 2
+
+      # Published wait clamp floor (`[1, SCRAPE_WORK_TIMEOUT_SECONDS]` in OpenAPI description).
       MIN_WAIT_TIMEOUT_SECONDS = 1
       # Published wait clamp ceiling; YAML values above this are rejected.
-      MAX_WAIT_TIMEOUT_SECONDS = 20
+      MAX_WAIT_TIMEOUT_SECONDS = SCRAPE_WORK_TIMEOUT_SECONDS
       # OpenAPI wait_timeout_seconds default (omitted from the client payload).
-      DEFAULT_WAIT_TIMEOUT_SECONDS = 15
+      DEFAULT_WAIT_TIMEOUT_SECONDS = [15, SCRAPE_WORK_TIMEOUT_SECONDS].min
 
       # OpenAPI max_retries maximum (default 2 is applied upstream when omitted).
       MAX_RETRIES = 3
@@ -39,12 +46,6 @@ module Html2rss
       DIAGNOSTICS_KEYS = %w[request_id attempts strategy_used render_ms execution_tier challenge].freeze
       # Allowlisted ChallengeSignal keys nested under diagnostics.challenge.
       CHALLENGE_KEYS = %w[blocked detected marker].freeze
-
-      # Remaining seconds at or below which Botasaurus retries are disabled.
-      TIGHT_BUDGET_SECONDS = 12
-
-      # Seconds reserved from remaining budget before setting wait_timeout_seconds.
-      BUDGET_WAIT_RESERVE_SECONDS = 2
 
       ##
       # Parsed OpenAPI ScrapeSuccess envelope (HTTP 200).
@@ -246,7 +247,6 @@ module Html2rss
       # @param url [Html2rss::Url] canonical URL to scrape
       # @param headers [Hash] request headers from context
       # @param options [Hash] validated request.botasaurus options
-      # @param remaining_timeout_seconds [Numeric, nil] shared request budget remainder for clamps
       # @option options [String] :execution_mode
       # @option options [String] :navigation_mode
       # @option options [Integer] :max_retries
@@ -264,19 +264,19 @@ module Html2rss
       # @option options [String] :lang
       # @option options [Hash] :cookies
       # @option options [Hash] :headers
-      def initialize(url:, headers: {}, options: {}, remaining_timeout_seconds: nil)
+      def initialize(url:, headers: {}, options: {})
         @url = url
         @headers = headers
         @options = options
-        @remaining_timeout_seconds = remaining_timeout_seconds
       end
 
-      # @return [Hash] payload for POST /scrape (explicit options plus budget clamp-downs)
+      # @return [Hash] payload for POST /scrape (explicit options plus wait cap)
       def request_payload
         payload = { url: url.to_s }.merge(filtered_options)
         forwarded_headers = merged_headers
         payload[:headers] = forwarded_headers if forwarded_headers&.any?
-        clamp_for_budget(payload)
+        cap_wait_timeout!(payload)
+        payload
       end
 
       # @param transport_response [Faraday::Response] upstream HTTP response
@@ -291,7 +291,7 @@ module Html2rss
 
       private
 
-      attr_reader :url, :headers, :options, :remaining_timeout_seconds
+      attr_reader :url, :headers, :options
 
       def json_object(body)
         payload = JSON.parse(body)
@@ -313,36 +313,6 @@ module Html2rss
         REQUEST_OPTION_KEYS.each_with_object({}) do |key, normalized|
           normalized[key] = options[key] if options.key?(key)
         end
-      end
-
-      def clamp_for_budget(payload)
-        remaining = remaining_timeout_seconds
-        clamped = payload.dup
-        unless remaining.nil?
-          apply_tight_retries!(clamped, remaining)
-          apply_budget_wait!(clamped, remaining)
-        end
-        cap_wait_timeout!(clamped)
-        clamped
-      end
-
-      def apply_tight_retries!(payload, remaining)
-        payload[:max_retries] = 0 if remaining <= TIGHT_BUDGET_SECONDS
-      end
-
-      def apply_budget_wait!(payload, remaining)
-        budget_wait = budget_wait_seconds(remaining)
-        configured = payload[:wait_timeout_seconds]
-        if configured
-          payload[:wait_timeout_seconds] = [configured, budget_wait].min
-        elsif budget_wait < DEFAULT_WAIT_TIMEOUT_SECONDS
-          payload[:wait_timeout_seconds] = budget_wait
-        end
-      end
-
-      def budget_wait_seconds(remaining)
-        reserved = [MIN_WAIT_TIMEOUT_SECONDS, (remaining - BUDGET_WAIT_RESERVE_SECONDS).floor].max
-        [reserved, MAX_WAIT_TIMEOUT_SECONDS].min
       end
 
       def cap_wait_timeout!(payload)
