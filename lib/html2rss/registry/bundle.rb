@@ -18,7 +18,7 @@ module Html2rss
       def self.load(directory, trust:, public_keys: {})
         manifest = Verifier.verify!(directory, trust:, public_keys:)
         configs = load_configs!(directory, manifest)
-        catalog_entries = CatalogBuilder.entries(directory)
+        catalog_entries = CatalogBuilder.entries(directory, manifest:)
 
         BundleData.new(manifest:, configs:, catalog_entries:)
       end
@@ -29,9 +29,10 @@ module Html2rss
       # @return [Hash{String => Hash}]
       def self.load_configs!(directory, manifest)
         manifest.files.keys.sort.each_with_object({}) do |relative_path, configs|
-          config = YAML.safe_load_file(File.join(directory, relative_path), symbolize_names: true)
+          absolute_path = BundleRelativePath.resolve_config!(directory, relative_path)
+          config = YAML.safe_load_file(absolute_path, symbolize_names: true)
           validate_config!(relative_path, config)
-          configs[CatalogBuilder.entry_id(relative_path)] = config
+          configs[CatalogBuilder.entry_id(config, relative_path)] = config
         end
       end
 

@@ -21,6 +21,8 @@ module Html2rss
         'security', 'travel', 'environment', 'consumer', 'civic', 'product', 'research',
         'health', 'culture', 'education', 'rights', 'transport'
       ].freeze
+      # Allowed characters for explicit feed identity in `registry.id` and `registry.aliases`.
+      REGISTRY_ID_FORMAT = %r{\A[a-z0-9._/-]+\z}
 
       # Contract for the top-level `channel` section.
       ChannelConfig = Dry::Schema.Params do
@@ -39,6 +41,12 @@ module Html2rss
         required(:title).filled(:string)
         optional(:summary).maybe(:string, max_size?: 160)
         optional(:topics).value(:array, min_size?: 1).each(:string, included_in?: DIRECTORY_TOPICS)
+      end
+
+      # Contract for explicit feed identity in bundled registry configs.
+      RegistryConfig = Dry::Schema.Params do
+        required(:id).filled(:string, format?: REGISTRY_ID_FORMAT)
+        optional(:aliases).value(:array).each(:string, format?: REGISTRY_ID_FORMAT)
       end
 
       # Contract for a stylesheet entry in `stylesheets`.
@@ -103,6 +111,7 @@ module Html2rss
         optional(:strategy).filled(:symbol)
         required(:channel).hash(ChannelConfig)
         optional(:directory).hash(DirectoryConfig)
+        optional(:registry).hash(RegistryConfig)
         optional(:headers).hash
         optional(:stylesheets).array(StylesheetConfig)
         optional(:auto_source).hash(Config::AutoSourceContract)

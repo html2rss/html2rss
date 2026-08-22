@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "public_key_id": "test-key",
   "files": {
-    "configs/anthropic.com/news.yml": "f924d1503c08bd5bd62645accbdbaad398ab655e0512871ddbaeba3e12a98ede",
-    "configs/cnet.com/section_sub.yml": "d0ec74d3fa2441d55490a9da9b3b5d5caca708acb9dac32b91d38e09e99868e7"
+    "configs/anthropic.com/news.yml": "0deaaffdafa8541d36bd0c4cbdfa4d03ba2f6253a1a2233c55dbfb3d15d3aa06",
+    "configs/cnet.com/section_sub.yml": "f38ec616700966b921ee5adf77d584c0470fd04fdbf66ee20e379b31f2778feb"
   }
 }

@@ -16,7 +16,7 @@ Signed registry bundles replace the runtime `html2rss-configs` gem. Each bundle 
 - **manifest.sig** — Base64-encoded Ed25519 signature over the canonical manifest bytes (see below).
 - **configs/** — feed YAML files validated by `Html2rss::Config::Validator`.
 
-Feed ids mirror the config path: `configs/anthropic.com/news.yml` → id `anthropic.com/news`.
+Feed ids come from each config's declared `registry.id` (not the filesystem path).
 
 ## manifest.json
 
@@ -38,7 +38,19 @@ Feed ids mirror the config path: `configs/anthropic.com/news.yml` → id `anthro
 | `registry_id` | Stable registry identifier (`official`, operator-defined). |
 | `version` | Publisher version string (release tag, date, semver). |
 | `public_key_id` | Key id used to sign this manifest; must match a pinned public key for `:signed` trust. |
-| `files` | Map of bundle-relative paths → lowercase hex SHA-256. Every path must start with `configs/`. |
+| `files` | Map of bundle-relative paths → lowercase hex SHA-256. Every path must stay under `configs/`; `..` segments are rejected. |
+
+## Config identity
+
+Every bundled YAML must declare explicit feed identity:
+
+```yaml
+registry:
+  id: anthropic.com/news
+  aliases: []   # optional previous ids after a rename
+```
+
+`Html2rss::Registry::CatalogBuilder` uses `registry.id` as the catalog entry id. Path under `configs/` is contributor ergonomics only.
 
 ## Canonical manifest bytes
 
@@ -51,7 +63,7 @@ Implementations must sign and verify the same byte sequence. Pretty-printed `man
 
 ## Signing
 
-- Algorithm: **Ed25519** (`OpenSSL::PKey` or equivalent).
+- Algorithm: **Ed25519** (`OpenSSL::PKey::Ed25519` or equivalent).
 - Signature file: **Base64** (strict, no whitespace) in `manifest.sig`.
 - Verification: `public_key.verify(nil, signature, canonical_bytes)` (Ed25519; pass `nil` digest with OpenSSL 3+).
 
@@ -68,17 +80,20 @@ Publish a new `public_key_id` and public key in the web image (or operator confi
 
 `Html2rss::Registry::Verifier.verify!(bundle_dir, trust:, public_keys:)` is the single verify entry point.
 
-## Archive extraction limits
+## Archive limits
 
 `Html2rss::Registry::Archive.extract!` enforces:
 
-| Limit | Value |
-| --- | --- |
-| Max tarball bytes | 52_428_800 (50 MiB) |
-| Max files | 10_000 |
-| Max single file | 1_048_576 (1 MiB) |
+| Limit | Constant | Value |
+| --- | --- | --- |
+| Max compressed download bytes | `MAX_DOWNLOAD_BYTES` | 52_428_800 (50 MiB) |
+| Max decompressed extract bytes | `MAX_EXTRACT_BYTES` | 52_428_800 (50 MiB) |
+| Max files | `MAX_FILES` | 10_000 |
+| Max single file | `MAX_FILE_BYTES` | 1_048_576 (1 MiB) |
 
-Rejected entries: absolute paths, `..` traversal, symlinks, hard links.
+Rejected entries: absolute paths, `..` traversal, symlinks, hard links, character/block devices, FIFOs.
+
+`Html2rss::Registry::Archive.pack_dir` / `pack_io` create gzip-compressed tarballs using the same layout rules.
 
 ## Runtime loading
 
@@ -87,11 +102,11 @@ Rejected entries: absolute paths, `..` traversal, symlinks, hard links.
 1. Verifies the bundle (`Verifier`).
 2. Loads every manifest-listed YAML file.
 3. Validates each config through `Html2rss::Config::Validator`.
-4. Builds catalog entries via `CatalogBuilder` (domain shape: `id`, `path`, `directory`, `channel`, `parameters` — no wire `source` / `registry` fields).
+4. Builds catalog entries via `CatalogBuilder` from the manifest file list (domain shape: `id`, `path`, `directory`, `channel`, `parameters` — no wire `source` / `registry` fields).
 
 ## Catalog domain vs API wire
 
-Core `CatalogEntry#to_h` is **not** the HTTP API contract. The web layer maps entries to wire rows (`source: registry`, `registry: id`, etc.).
+Core `CatalogEntry` uses `Data.define` serialization. The web layer maps entries to wire rows (`source: registry`, `registry: id`, etc.).
 
 ## Building bundles
 
