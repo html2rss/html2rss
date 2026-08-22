@@ -9,8 +9,11 @@ module Html2rss
     ##
     # Strategy to delegate fetching to a Botasaurus scrape API.
     class BotasaurusStrategy < Strategy
+      # Content-Type negotiation for the scrape API transport hop.
       TRANSPORT_ACCEPT = 'application/json'
+      # Disable compressed bodies so Faraday returns raw JSON without implicit decoding surprises.
       TRANSPORT_ENCODING = 'identity'
+      # Correlates each POST /scrape with botasaurus-scrape-api request logs.
       REQUEST_ID_HEADER = 'X-Request-Id'
 
       private
