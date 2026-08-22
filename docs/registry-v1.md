@@ -110,4 +110,4 @@ Core `CatalogEntry` uses `Data.define` serialization. The web layer maps entries
 
 ## Building bundles
 
-Phase 2 adds `tool/registry-build` in `html2rss-configs`, calling `Manifest.build` and optional `--sign` in release CI. Build tooling must enforce the same size/file limits as `Archive.extract!`.
+Build bundles with `tool/registry-build` in `html2rss-configs` (`make registry-build`), calling `Manifest.build` and optional `--sign` in release CI. Build tooling must enforce the same size/file limits as `Archive.extract!`.
