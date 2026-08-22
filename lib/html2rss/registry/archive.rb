@@ -1,16 +1,20 @@
 # frozen_string_literal: true
 
+require 'stringio'
 require 'rubygems/package'
 require 'zlib'
 require 'fileutils'
+require 'forwardable'
 
 module Html2rss
   module Registry
     ##
-    # Safely extracts registry bundle tar archives with size and slip limits.
+    # Safely packs and extracts registry bundle tar archives with size and slip limits.
     module Archive
-      # Maximum compressed tarball bytes accepted during extraction.
-      MAX_TARBALL_BYTES = 52_428_800
+      # Maximum compressed tarball bytes accepted during download/extraction.
+      MAX_DOWNLOAD_BYTES = 52_428_800
+      # Maximum decompressed bytes written during extraction.
+      MAX_EXTRACT_BYTES = 52_428_800
       # Maximum number of tar entries accepted during extraction.
       MAX_FILES = 10_000
       # Maximum bytes written for a single extracted file.
@@ -19,13 +23,40 @@ module Html2rss
       module_function
 
       ##
+      # @param source_dir [String] directory tree to pack
+      # @param io [IO, nil] destination stream; defaults to a new StringIO
+      # @return [IO] gzip-compressed tar stream positioned at start
+      def pack_dir(source_dir, io: nil)
+        tar_data = StringIO.new
+        Gem::Package::TarWriter.new(tar_data) { |tar| pack_tree!(tar, source_dir, source_dir) }
+        tar_data.rewind
+
+        buffer = StringIO.new
+        Zlib::GzipWriter.wrap(buffer) { |gzip| IO.copy_stream(tar_data, gzip) }
+        packed = StringIO.new(buffer.string)
+        return packed if io.nil?
+
+        io.write(packed.string)
+        io.rewind if io.respond_to?(:rewind)
+        io
+      end
+
+      ##
+      # @param source_dir [String]
+      # @return [StringIO] gzip-compressed tar stream positioned at start
+      def pack_io(source_dir)
+        pack_dir(source_dir)
+      end
+
+      ##
       # @param tar_io [IO] tar or gzip-compressed tar stream
       # @param into [String] destination directory
       # @return [String] destination directory
       def extract!(tar_io, into:)
         FileUtils.mkdir_p(into)
-        state = { bytes: 0, files: 0 }
-        with_tar_reader(tar_io) { |tar| extract_tar!(tar, into:, state:) }
+        state = { download_bytes: 0, extract_bytes: 0, files: 0 }
+        counting_io = CountingIO.new(tar_io, limit: MAX_DOWNLOAD_BYTES, label: 'download')
+        with_tar_reader(counting_io) { |tar| extract_tar!(tar, into:, state:) }
         into
       end
 
@@ -47,16 +78,16 @@ module Html2rss
         state[:files] += 1
         raise ArchiveError, "Archive exceeds max files (#{MAX_FILES})" if state[:files] > MAX_FILES
 
-        validate_entry_path!(entry.full_name)
+        BundleRelativePath.validate_archive_entry!(entry.full_name)
         return if entry.directory?
 
-        destination = File.join(into, entry.full_name)
+        destination = File.join(into, BundleRelativePath.normalize(entry.full_name))
         FileUtils.mkdir_p(File.dirname(destination))
         written = write_entry!(entry, destination)
-        state[:bytes] += written
-        return unless state[:bytes] > MAX_TARBALL_BYTES
+        state[:extract_bytes] += written
+        return unless state[:extract_bytes] > MAX_EXTRACT_BYTES
 
-        raise ArchiveError, "Archive exceeds max bytes (#{MAX_TARBALL_BYTES})"
+        raise ArchiveError, "Archive exceeds max extract bytes (#{MAX_EXTRACT_BYTES})"
       end
 
       ##
@@ -82,15 +113,6 @@ module Html2rss
       end
 
       ##
-      # @param relative_path [String]
-      # @return [void]
-      def validate_entry_path!(relative_path)
-        path = relative_path.delete_prefix('./')
-        raise ArchiveError, "Absolute path in archive: #{relative_path}" if path.start_with?('/')
-        raise ArchiveError, "Path traversal in archive: #{relative_path}" if path.split('/').include?('..')
-      end
-
-      ##
       # @param entry [Gem::Package::TarReader::Entry]
       # @param destination [String]
       # @return [Integer] bytes written
@@ -112,8 +134,13 @@ module Html2rss
       # @param entry [Gem::Package::TarReader::Entry]
       # @return [void]
       def reject_special_entry!(entry)
-        raise ArchiveError, "Hard link not allowed: #{entry.full_name}" if entry.header.typeflag == '1'
-        raise ArchiveError, "Symlink not allowed: #{entry.full_name}" if entry.header.typeflag == '2'
+        case entry.header.typeflag
+        when '1' then raise ArchiveError, "Hard link not allowed: #{entry.full_name}"
+        when '2' then raise ArchiveError, "Symlink not allowed: #{entry.full_name}"
+        when '3' then raise ArchiveError, "Character device not allowed: #{entry.full_name}"
+        when '4' then raise ArchiveError, "Block device not allowed: #{entry.full_name}"
+        when '6' then raise ArchiveError, "FIFO not allowed: #{entry.full_name}"
+        end
       end
 
       ##
@@ -125,6 +152,70 @@ module Html2rss
 
         raise ArchiveError, "File exceeds max bytes (#{MAX_FILE_BYTES}): #{entry.full_name}"
       end
+
+      ##
+      # @param tar [Gem::Package::TarWriter]
+      # @param source_dir [String]
+      # @param root_dir [String]
+      # @return [void]
+      def pack_tree!(tar, source_dir, root_dir)
+        Dir.glob(File.join(source_dir, '**', '*'), File::FNM_DOTMATCH).sort.each do |path|
+          relative = path.delete_prefix("#{root_dir}/")
+          next if relative.empty?
+
+          if File.directory?(path)
+            tar.mkdir(relative, 0o755)
+          else
+            tar.add_file(relative, 0o644) { |io| io.write(File.read(path)) }
+          end
+        end
+      end
+
+      # IO wrapper enforcing a byte limit while reading archive input.
+      class CountingIO
+        extend Forwardable
+
+        def_delegators :@io, :pos, :seek, :eof?, :close
+
+        # @param io [IO]
+        # @param limit [Integer]
+        # @param label [String]
+        def initialize(io, limit:, label:)
+          @io = io
+          @limit = limit
+          @label = label
+          @bytes = 0
+        end
+
+        ##
+        # @param length [Integer, nil]
+        # @param outbuf [String, nil]
+        # @return [String, nil]
+        def read(length = nil, outbuf = nil)
+          chunk = @io.read(length, outbuf)
+          track!(chunk)
+          chunk
+        end
+
+        ##
+        # @return [Integer]
+        def rewind
+          @bytes = 0
+          @io.rewind
+        end
+
+        private
+
+        def track!(chunk)
+          return if chunk.nil?
+
+          @bytes += chunk.bytesize
+          return unless @bytes > @limit
+
+          raise ArchiveError, "Archive exceeds max #{@label} bytes (#{@limit})"
+        end
+      end
+      private_constant :CountingIO
     end
   end
 end
