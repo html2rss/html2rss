@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'fileutils'
+require 'yaml'
 
 RSpec.describe Html2rss::Registry::Bundle do
   let(:bundle_dir) { RegistryTestSupport::VALID_BUNDLE }
@@ -17,6 +18,18 @@ RSpec.describe Html2rss::Registry::Bundle do
       expect(bundle.manifest.registry_id).to eq('test')
       expect(bundle.configs.keys).to include('anthropic.com/news', 'cnet.com/section_sub')
       expect(bundle.catalog_entries.map(&:id)).to eq(bundle.catalog_entries.map(&:id).sort)
+    end
+
+    it 'reads each config YAML file once' do # rubocop:disable RSpec/ExampleLength
+      relative_paths = bundled_config_paths(bundle_dir)
+      allow(YAML).to receive(:safe_load_file).and_call_original
+
+      described_class.load(bundle_dir, trust: :signed, public_keys:)
+
+      relative_paths.each do |relative_path|
+        absolute_path = File.join(bundle_dir, relative_path)
+        expect(YAML).to have_received(:safe_load_file).with(absolute_path, symbolize_names: true).once
+      end
     end
 
     it 'rejects duplicate registry.id values' do # rubocop:disable RSpec/ExampleLength

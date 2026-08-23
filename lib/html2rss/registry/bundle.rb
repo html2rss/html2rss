@@ -17,8 +17,9 @@ module Html2rss
       # @return [BundleData]
       def self.load(directory, trust:, public_keys: {})
         manifest = Verifier.verify!(directory, trust:, public_keys:)
-        configs = load_configs!(directory, manifest)
-        catalog_entries = CatalogBuilder.entries(directory, manifest:)
+        path_configs = load_path_configs!(directory, manifest)
+        configs = index_by_entry_id!(path_configs)
+        catalog_entries = CatalogBuilder.entries_from_configs(path_configs)
 
         BundleData.new(manifest:, configs:, catalog_entries:)
       end
@@ -26,11 +27,22 @@ module Html2rss
       ##
       # @param directory [String]
       # @param manifest [Manifest]
-      # @return [Hash{String => Hash}]
-      def self.load_configs!(directory, manifest)
+      # @return [Hash{String => Hash}] relative_path => validated config
+      def self.load_path_configs!(directory, manifest)
+        manifest.files.keys.sort.to_h do |relative_path|
+          [relative_path, load_config!(directory, relative_path)]
+        end
+      end
+
+      ##
+      # @param path_configs [Hash{String => Hash}]
+      # @return [Hash{String => Hash}] registry.id => config
+      def self.index_by_entry_id!(path_configs)
         entry_ids = []
-        configs = manifest.files.keys.sort.each_with_object({}) do |relative_path, loaded|
-          loaded.merge!(load_config_entry(directory, relative_path, entry_ids))
+        configs = path_configs.to_h do |relative_path, config|
+          entry_id = CatalogBuilder.entry_id(config, relative_path)
+          entry_ids << entry_id
+          [entry_id, config]
         end
         reject_duplicate_registry_ids!(entry_ids)
         configs
@@ -39,15 +51,12 @@ module Html2rss
       ##
       # @param directory [String]
       # @param relative_path [String]
-      # @param entry_ids [Array<String>]
-      # @return [Hash{String => Hash}]
-      def self.load_config_entry(directory, relative_path, entry_ids)
+      # @return [Hash]
+      def self.load_config!(directory, relative_path)
         absolute_path = BundleRelativePath.resolve_config!(directory, relative_path)
         config = YAML.safe_load_file(absolute_path, symbolize_names: true)
         validate_config!(relative_path, config)
-        entry_id = CatalogBuilder.entry_id(config, relative_path)
-        entry_ids << entry_id
-        { entry_id => config }
+        config
       end
 
       ##
@@ -71,6 +80,8 @@ module Html2rss
         message = result.errors(full: true).map(&:text).join('; ')
         raise InvalidConfig, "Invalid config #{relative_path}: #{message}"
       end
+      private_class_method :load_path_configs!, :index_by_entry_id!, :load_config!,
+                           :reject_duplicate_registry_ids!, :validate_config!
     end
   end
 end
