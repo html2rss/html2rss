@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "public_key_id": "test-key",
   "files": {
-    "configs/anthropic.com/news.yml": "e7a9668802907f484bc1d90adc3ae9645657ba0b265defb8beb3747207d63646",
+    "configs/anthropic.com/news.yml": "57bc377775301fcefe18ae0da0fed90ed3c81b51241e00b75155adbe30b07366",
     "configs/cnet.com/section_sub.yml": "f38ec616700966b921ee5adf77d584c0470fd04fdbf66ee20e379b31f2778feb"
   }
 }

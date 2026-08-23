@@ -9,7 +9,19 @@ module Html2rss
       :path,
       :directory,
       :channel,
-      :parameters
-    )
+      :parameters,
+      :source,
+      :registry
+    ) do
+      def initialize(id:, path:, directory:, channel:, parameters:, source: 'registry', registry: nil)
+        super
+      end
+
+      ##
+      # @return [Hash{Symbol => Object}]
+      def to_h
+        super.compact
+      end
+    end
   end
 end

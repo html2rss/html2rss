@@ -20,6 +20,33 @@ module Html2rss
       attr_reader :registry_id, :version, :public_key_id, :files
 
       ##
+      # @param version [String]
+      # @return [String]
+      def self.normalize_version(version)
+        version.to_s.delete_prefix('v')
+      end
+
+      ##
+      # @param left [String]
+      # @param right [String]
+      # @return [Integer]
+      def self.compare_versions(left, right)
+        Gem::Version.new(normalize_version(left)) <=> Gem::Version.new(normalize_version(right))
+      rescue ArgumentError
+        normalize_version(left) <=> normalize_version(right)
+      end
+
+      ##
+      # @param manifest_version [String]
+      # @param max_version [String, nil]
+      # @return [Boolean]
+      def self.exceeds_max?(manifest_version, max_version)
+        return false if max_version.to_s.empty?
+
+        compare_versions(manifest_version, max_version).positive?
+      end
+
+      ##
       # @param json [String]
       # @return [Manifest]
       def self.parse(json)
