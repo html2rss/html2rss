@@ -64,6 +64,7 @@ RSpec.describe Html2rss::Registry::CatalogBuilder do
       expect(entry.id).to eq('cnet.com/section_sub')
       expect(entry.parameters[:defaults]).to eq('section' => 'tech')
       expect(entry.parameters[:schema]['section']).to eq('type' => 'string')
+      expect(entry.to_h.keys).to contain_exactly(:id, :path, :directory, :channel, :parameters)
     end
   end
 
