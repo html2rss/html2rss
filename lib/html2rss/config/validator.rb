@@ -7,14 +7,8 @@ module Html2rss
     # Validates the configuration hash using Dry::Validation.
     # The configuration options adhere to the documented schema in README.md.
     class Validator < Dry::Validation::Contract # rubocop:disable Metrics/ClassLength
-      # URI format used for channel URL validation.
-      URI_REGEXP = Url::URI_REGEXP
-      # Allowed stylesheet MIME types.
-      STYLESHEET_TYPES = FeedBuilder::Rss::Stylesheet::TYPES
       # Optional language/region format (`en` or `en-US`).
       LANGUAGE_FORMAT_REGEX = /\A[a-z]{2}(-[A-Z]{2})?\z/
-      # Baseline strategy-plan enum (:auto plus concrete RequestService strategies).
-      BASE_STRATEGY_OPTIONS = Html2rss::FeedPipeline::StrategyPlan.accepted_names.freeze
       # Controlled vocabulary for catalog-only `directory.topics` (not RSS channel fields).
       DIRECTORY_TOPICS = %w[
         sports energy tech science news entertainment jobs finance
@@ -27,14 +21,14 @@ module Html2rss
 
       # Contract for the top-level `channel` section.
       ChannelConfig = Dry::Schema.Params do
-        required(:url).filled(:string, format?: URI_REGEXP)
+        required(:url).filled(:string, format?: Url::URI_REGEXP)
         optional(:title).maybe(:string)
         optional(:description).maybe(:string)
         optional(:language).maybe(:string, format?: LANGUAGE_FORMAT_REGEX)
         optional(:ttl).maybe(:integer, gt?: 0)
         optional(:time_zone).maybe(:string)
         optional(:author).maybe(:string)
-        optional(:image).maybe(:string, format?: URI_REGEXP)
+        optional(:image).maybe(:string, format?: Url::URI_REGEXP)
       end
 
       # Contract for catalog-only `directory` metadata (topics for feed directories).
@@ -53,7 +47,7 @@ module Html2rss
       # Contract for a stylesheet entry in `stylesheets`.
       StylesheetConfig = Dry::Schema.Params do
         required(:href).filled(:string)
-        required(:type).filled(:string, included_in?: STYLESHEET_TYPES)
+        required(:type).filled(:string, included_in?: FeedBuilder::Rss::Stylesheet::TYPES)
         optional(:media).maybe(:string)
       end
 
@@ -131,7 +125,7 @@ module Html2rss
         next if value.nil?
         next if Html2rss::FeedPipeline::StrategyPlan.valid?(value)
 
-        key.failure("must be one of: #{BASE_STRATEGY_OPTIONS.join(', ')}")
+        key.failure("must be one of: #{Html2rss::FeedPipeline::StrategyPlan.accepted_names.join(', ')}")
       end
 
       # Ensure at least one of :selectors or :auto_source is present.
