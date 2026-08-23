@@ -60,7 +60,7 @@ RSpec.describe Html2rss::Registry::Manifest do
   end
 
   describe '.compare_versions' do
-    it 'compares semantic/calendar versions numerically' do
+    it 'compares semantic/calendar versions numerically', :aggregate_failures do
       expect(described_class.compare_versions('v2026.08.22', '2026.08.21')).to eq(1)
       expect(described_class.compare_versions('2026.08.21', '2026.08.22')).to eq(-1)
       expect(described_class.compare_versions('1.0.0', '1.0.0')).to eq(0)
@@ -80,4 +80,3 @@ RSpec.describe Html2rss::Registry::Manifest do
     end
   end
 end
-
