@@ -12,8 +12,7 @@
 /.mutant/
 /.worktrees/
 # YARD HTML only — regenerate with `make docs`; never write source here
-docs/*
-!docs/registry-v1.md
+docs/
 /vendor/
 /target/
 

@@ -100,9 +100,9 @@ Rejected entries: absolute paths, `..` traversal, symlinks, hard links, characte
 `Html2rss::Registry::Bundle.load(directory, trust:, public_keys:)`:
 
 1. Verifies the bundle (`Verifier`).
-2. Loads every manifest-listed YAML file.
+2. Loads every manifest-listed YAML file once.
 3. Validates each config through `Html2rss::Config::Validator`.
-4. Builds catalog entries via `CatalogBuilder` from the manifest file list (domain shape: `id`, `path`, `directory`, `channel`, `parameters` — no wire `source` / `registry` fields).
+4. Builds catalog entries via `CatalogBuilder.entries_from_configs` from those hashes (domain shape: `id`, `path`, `directory`, `channel`, `parameters` — no wire `source` / `registry` fields).
 
 ## Catalog domain vs API wire
 
