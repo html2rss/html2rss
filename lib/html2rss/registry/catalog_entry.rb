@@ -13,6 +13,14 @@ module Html2rss
       :source,
       :registry
     ) do
+      ##
+      # @param id [String]
+      # @param path [String]
+      # @param directory [Hash{Symbol => Object}]
+      # @param channel [Hash{Symbol => Object}]
+      # @param parameters [Hash{Symbol => Object}]
+      # @param source [String]
+      # @param registry [String, nil]
       def initialize(id:, path:, directory:, channel:, parameters:, source: 'registry', registry: nil) # rubocop:disable Metrics/ParameterLists
         super
       end
