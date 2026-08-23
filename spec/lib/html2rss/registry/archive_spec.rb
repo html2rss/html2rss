@@ -14,7 +14,7 @@ RSpec.describe Html2rss::Registry::Archive do
         FileUtils.mkdir_p(configs_dir)
         File.write(File.join(configs_dir, 'feed.yml'), "channel:\n  url: https://example.com\n")
 
-        tar_io = described_class.pack_io(source_dir)
+        tar_io = described_class.pack_dir(source_dir)
         Dir.mktmpdir do |destination|
           described_class.extract!(tar_io, into: destination)
           expect(File.read(File.join(destination, 'configs/example.com/feed.yml'))).to include('example.com')
@@ -89,7 +89,7 @@ RSpec.describe Html2rss::Registry::Archive do
       configs_dir = File.join(source_dir, 'configs/example.com')
       FileUtils.mkdir_p(configs_dir)
       File.write(File.join(configs_dir, 'feed.yml'), "channel:\n  url: https://example.com\n")
-      return described_class.pack_io(source_dir)
+      return described_class.pack_dir(source_dir)
     end
   end
 

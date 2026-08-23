@@ -6,6 +6,10 @@
 
 * **registry:** colocate format guide at `lib/html2rss/registry/README.md`
 
+### Changed
+
+* require Ruby `>= 4.0`
+
 ## [0.28.0](https://github.com/html2rss/html2rss/compare/v0.27.1...v0.28.0) (2026-08-22)
 
 
