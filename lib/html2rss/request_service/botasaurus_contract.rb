@@ -28,7 +28,7 @@ module Html2rss
       # Faraday POST /scrape cap mirroring botasaurus-scrape-api total scrape wall (`SCRAPE_TIMEOUT_SECONDS`).
       SCRAPE_TIMEOUT_SECONDS = Integer(ENV.fetch('BOTASAURUS_SCRAPE_TIMEOUT_SECONDS', 45))
       # Post-boot navigate/wait budget mirrored from scrape-api (`SCRAPE_WORK_TIMEOUT_SECONDS`).
-      SCRAPE_WORK_TIMEOUT_SECONDS = Integer(ENV.fetch('BOTASAURUS_SCRAPE_WORK_TIMEOUT_SECONDS', 20))
+      SCRAPE_WORK_TIMEOUT_SECONDS = Integer(ENV.fetch('BOTASAURUS_SCRAPE_WORK_TIMEOUT_SECONDS', 30))
       # Seconds added to the scrape total for client transport overhead.
       TRANSPORT_BUFFER_SECONDS = 2
 
