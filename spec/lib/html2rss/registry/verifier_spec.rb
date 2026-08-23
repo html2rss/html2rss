@@ -11,7 +11,7 @@ RSpec.describe Html2rss::Registry::Verifier do
       end
     end
 
-    it 'rejects unknown public_key_id for signed trust' do # rubocop:disable RSpec/ExampleLength
+    it 'rejects unknown public_key_id for signed trust' do
       with_copied_valid_bundle do |bundle_dir|
         expect do
           described_class.verify!(bundle_dir, trust: :signed, public_keys: {})
