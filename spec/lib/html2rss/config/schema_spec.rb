@@ -150,7 +150,7 @@ RSpec.describe Html2rss::Config::Schema do
       expect(botasaurus.dig('max_retries', 'minimum')).to eq(0)
       expect(botasaurus.dig('max_retries', 'maximum')).to eq(3)
       expect(botasaurus.dig('wait_timeout_seconds', 'minimum')).to eq(1)
-      expect(botasaurus.dig('wait_timeout_seconds', 'maximum')).to eq(30)
+      expect(botasaurus.dig('wait_timeout_seconds', 'maximum')).to eq(20)
       expect(botasaurus).to have_key('scroll')
       expect(botasaurus).not_to have_key('scroll_to_bottom')
       expect(botasaurus).to have_key('block_trackers')

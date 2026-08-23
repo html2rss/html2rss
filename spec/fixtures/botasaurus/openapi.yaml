@@ -10,7 +10,7 @@ info:
     - `POST /scrape` — scrape a public `http`/`https` URL
 
 
-    `wait_timeout_seconds` values outside `[1, 30]`
+    `wait_timeout_seconds` values outside `[1, 20]`
 
     are **clamped** into that range so scrape still runs; they are not rejected
 
@@ -174,7 +174,7 @@ paths:
             application/json:
               example:
                 url: https://example.com
-                error: Scrape timed out after 45 seconds
+                error: Scrape timed out after 20 seconds
                 error_category: timeout
                 diagnostics:
                   request_id: b01ef2f8-f641-4e75-8ef2-0b73f7b4f372
@@ -411,7 +411,7 @@ components:
         wait_timeout_seconds:
           type: integer
           title: Wait Timeout Seconds
-          description: Selector wait timeout in seconds. Values outside [1, 30] are
+          description: Selector wait timeout in seconds. Values outside [1, 20] are
             clamped into that range so scrape still runs; they are not rejected with
             422.
           default: 15
