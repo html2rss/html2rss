@@ -93,7 +93,7 @@ Publish a new `public_key_id` and public key in the web image (or operator confi
 
 Rejected entries: absolute paths, `..` traversal, symlinks, hard links, character/block devices, FIFOs.
 
-`Html2rss::Registry::Archive.pack_dir` / `pack_io` create gzip-compressed tarballs using the same layout rules.
+`Html2rss::Registry::Archive.pack_dir` creates gzip-compressed tarballs using the same layout rules.
 
 ## Runtime loading
 
