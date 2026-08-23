@@ -10,8 +10,7 @@
 # rspec failure tracking
 .rspec_status
 # YARD HTML only — regenerate with `make docs`; never write source here
-docs/*
-!docs/registry-v1.md
+docs/
 /vendor/
 
 # Local/Dev environment files

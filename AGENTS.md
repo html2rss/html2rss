@@ -141,6 +141,6 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
-- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
+- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,registry}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
 - Wire those guides with `{include:file:lib/.../README.md}` on the owning class. Do not add them to `.yardopts --files`: YARD extra-file names are `File.basename` without extension, so extra `README.md` files all emit `file.README.html` and clobber the gem README.
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.
