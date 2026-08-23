@@ -2,6 +2,10 @@
 
 require 'openssl'
 require 'fileutils'
+require 'tmpdir'
+require 'stringio'
+require 'rubygems/package'
+require 'zlib'
 
 module RegistryTestSupport
   FIXTURE_ROOT = File.expand_path('../fixtures/registry', __dir__)
@@ -47,23 +51,27 @@ module RegistryTestSupport
     end.sort
   end
 
-  def manifest_relative_paths(bundle_dir)
-    bundled_config_paths(bundle_dir)
-  end
+  def manifest_relative_paths(bundle_dir) = bundled_config_paths(bundle_dir)
 
-  def build_invalid_bundle!
-    dir = File.join(FIXTURE_ROOT, 'invalid-config')
-    FileUtils.rm_rf(dir)
-    write_invalid_config!(dir)
-    write_manifest!(dir, invalid_manifest(dir))
-    dir
+  ##
+  # Yields a writable tmpdir copy of the valid fixture (never mutate shared fixtures).
+  #
+  # @yieldparam bundle_dir [String]
+  # @return [void]
+  def with_copied_valid_bundle
+    Dir.mktmpdir('registry-valid-') do |tmpdir|
+      FileUtils.cp_r(File.join(VALID_BUNDLE, '.'), tmpdir)
+      write_manifest!(tmpdir, build_fixture_manifest(bundle_dir: tmpdir))
+      yield tmpdir
+    end
   end
 
   def with_invalid_bundle
-    dir = build_invalid_bundle!
-    yield dir
-  ensure
-    FileUtils.rm_rf(dir)
+    Dir.mktmpdir('registry-invalid-') do |dir|
+      write_invalid_config!(dir)
+      write_manifest!(dir, invalid_manifest(dir))
+      yield dir
+    end
   end
 
   def write_invalid_config!(dir)
@@ -82,6 +90,45 @@ module RegistryTestSupport
       version: '1.0.0',
       public_key_id: TEST_KEY_ID
     )
+  end
+
+  def pack_fixture_tar_gz
+    Dir.mktmpdir do |source_dir|
+      configs_dir = File.join(source_dir, 'configs/example.com')
+      FileUtils.mkdir_p(configs_dir)
+      File.write(File.join(configs_dir, 'feed.yml'), "channel:\n  url: https://example.com\n")
+      return Html2rss::Registry::Archive.pack_dir(source_dir)
+    end
+  end
+
+  def tar_gz_with_entry(name, body)
+    tar_data = StringIO.new
+    Gem::Package::TarWriter.new(tar_data) { |tar| tar.add_file(name, 0o644) { |io| io.write(body) } }
+    gzip_tar(StringIO.new(tar_data.string))
+  end
+
+  def tar_gz_with_symlink(name, target)
+    tar_data = StringIO.new
+    Gem::Package::TarWriter.new(tar_data) { |tar| tar.add_symlink(name, target, 0o777) }
+    gzip_tar(StringIO.new(tar_data.string))
+  end
+
+  def tar_gz_with_header(typeflag:, name:, linkname: nil)
+    header = Gem::Package::TarHeader.new(
+      name:,
+      mode: 0o644,
+      size: 0,
+      prefix: '',
+      typeflag:,
+      linkname: linkname.to_s
+    ).to_s
+    gzip_tar(StringIO.new(header + ("\0" * 512)))
+  end
+
+  def gzip_tar(tar_io)
+    buffer = StringIO.new
+    Zlib::GzipWriter.wrap(buffer) { |gz| gz.write(tar_io.string) }
+    StringIO.new(buffer.string)
   end
 end
 
