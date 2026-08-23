@@ -785,7 +785,7 @@
                 "type": "null"
               },
               "minimum": 1,
-              "maximum": 20
+              "maximum": 30
             },
             "scroll": {
               "type": "boolean",
