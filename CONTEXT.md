@@ -268,3 +268,19 @@ Abstract hooks are not stubbed: a subclass missing one fails with `NoMethodError
 Console writes are forbidden by `Html2rss/NoConsoleOutput`: `warn`/`puts`/`print`/`printf`/`putc`/`p`/`pp`/`abort` without a receiver or on `self`/`Kernel`, `Warning.warn`, `display` on any receiver, and any reference to `$stdout`, `$stderr`, `$>`, `$DEFAULT_OUTPUT`, `STDOUT` or `STDERR`. Library code logs through `Html2rss::Log`. The CLI (`lib/html2rss/cli.rb`, `lib/html2rss/cli/**`) owns user-facing stdout/stderr and is excluded; a standard stream passed to `Logger.new` is the log sink, not a write.
 `rescue ArgumentError` / `TypeError` in `lib/` names stdlib raises only (`DateTime.parse`, `Time.parse`/`httpdate`, `Encoding.find`, Brotli/Zlib inflate, TZInfo).
 `AutoSource::OPERATIONAL_ERRORS` keeps `ArgumentError`: publisher bytes still raise stdlib `ArgumentError` inside scrapers (e.g. `WordpressApi` runs `CGI.unescapeHTML(...).gsub` on REST HTML; a `&#xD800;` entity unescapes to an invalid UTF-8 string and `gsub` raises `invalid byte sequence in UTF-8`), and that is an operational page failure to quarantine, not a bug. Lib-raised errors reach the quarantine as `Html2rss::Error`; any `Html2rss::ContractError` (including `AutoSource::ScraperContractError`) is re-raised, because it is a bug.
+
+## Registry
+
+Signed `registry.v1` bundles: verify, load configs once, assemble domain catalog rows. Format guide: `lib/html2rss/registry/README.md` (included from `Html2rss::Registry`).
+
+**Load path:** `Bundle.load` → `Verifier.verify!` → one YAML read per manifest path → `Config.validate` → `CatalogBuilder.entries_from_configs`. No disk re-read on the bundle path. No `Registry.load` forwarding hull.
+
+**Path safety:** `BundleRelativePath` owns `configs/` validation and resolution; `Archive.extract!` calls `validate_archive_entry!` before write.
+
+**Catalog admission:** `CatalogBuilder` raises `MissingRegistryId` / `MissingDirectoryTitle` for bundled rows. General feed YAML may omit `directory`/`registry`; validator stays optional there — no second Dry bundled contract.
+
+**Domain vs wire:** `CatalogEntry` is domain-only (`id`, `path`, `directory`, `channel`, `parameters`). `html2rss-web` `Registry::Index#catalog_rows` stamps `source` / `registry` at the catalog API edge. No gem wire defaults or compat aliases.
+
+**Aliases:** `registry.aliases` is schema-validated only; resolution is deferred to web.
+
+**Public leaf APIs:** `Bundle.load`, `Verifier.verify!`, `Archive.extract!` / `Archive.pack_dir`, `Manifest.parse` / `Manifest.build`, `CatalogBuilder.entries_from_configs` (+ `directory_payload` / `channel_payload` / `parameters_payload` for web local feeds), `TestSupport.sign!`, `BundleRelativePath` helpers.

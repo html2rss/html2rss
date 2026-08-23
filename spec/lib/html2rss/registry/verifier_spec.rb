@@ -11,7 +11,7 @@ RSpec.describe Html2rss::Registry::Verifier do
       end
     end
 
-    it 'rejects unknown public_key_id for signed trust' do
+    it 'rejects unknown public_key_id for signed trust' do # rubocop:disable RSpec/ExampleLength
       with_copied_valid_bundle do |bundle_dir|
         expect do
           described_class.verify!(bundle_dir, trust: :signed, public_keys: {})
@@ -19,7 +19,7 @@ RSpec.describe Html2rss::Registry::Verifier do
       end
     end
 
-    it 'rejects missing manifest signature for signed trust' do
+    it 'rejects missing manifest signature for signed trust' do # rubocop:disable RSpec/ExampleLength
       with_copied_valid_bundle do |bundle_dir|
         File.delete(File.join(bundle_dir, Html2rss::Registry::Manifest::SIGNATURE_FILE))
 
@@ -37,7 +37,7 @@ RSpec.describe Html2rss::Registry::Verifier do
       end
     end
 
-    it 'rejects tampered config files' do
+    it 'rejects tampered config files' do # rubocop:disable RSpec/ExampleLength
       with_copied_valid_bundle do |bundle_dir|
         config_path = File.join(bundle_dir, 'configs/anthropic.com/news.yml')
         File.write(config_path, "#{File.read(config_path)}\n")
@@ -48,7 +48,7 @@ RSpec.describe Html2rss::Registry::Verifier do
       end
     end
 
-    it 'rejects invalid signatures' do
+    it 'rejects invalid signatures' do # rubocop:disable RSpec/ExampleLength
       with_copied_valid_bundle do |bundle_dir|
         File.write(File.join(bundle_dir, Html2rss::Registry::Manifest::SIGNATURE_FILE), ['bad'].pack('m0'))
 
