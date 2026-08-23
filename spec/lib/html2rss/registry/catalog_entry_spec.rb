@@ -13,8 +13,8 @@ RSpec.describe Html2rss::Registry::CatalogEntry do
     )
   end
 
-  it 'serializes domain fields to a plain hash', :aggregate_failures do
-    expect(entry.to_h[:id]).to eq('example.com/news')
-    expect(entry.to_h[:path]).to eq('/example.com/news.rss')
+  it 'omits wire fields from to_h', :aggregate_failures do
+    expect(entry.to_h.keys).to contain_exactly(:id, :path, :directory, :channel, :parameters)
+    expect(entry.to_h).not_to include(:source, :registry)
   end
 end
