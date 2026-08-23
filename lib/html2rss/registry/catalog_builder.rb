@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'yaml'
-
 module Html2rss
   module Registry
     ##
@@ -17,23 +15,14 @@ module Html2rss
       module_function
 
       ##
-      # @param bundle_dir [String] extracted registry bundle root
-      # @param manifest [Manifest] verified manifest listing config paths
+      # Assembles catalog rows from already-loaded configs (no disk I/O).
+      #
+      # @param path_configs [Hash{String => Hash}] relative_path => validated config
       # @return [Array<CatalogEntry>] sorted catalog entries
-      def entries(bundle_dir, manifest:)
-        manifest.files.keys.sort.filter_map do |relative_path|
-          build_entry(bundle_dir, relative_path)
-        end.sort_by(&:id)
-      end
-
-      ##
-      # @param bundle_dir [String]
-      # @param relative_path [String] path relative to bundle root, e.g. configs/foo/bar.yml
-      # @return [CatalogEntry]
-      def build_entry(bundle_dir, relative_path)
-        absolute_path = BundleRelativePath.resolve_config!(bundle_dir, relative_path)
-        config = load_config(absolute_path)
-        assemble_entry(relative_path, config)
+      def entries_from_configs(path_configs)
+        path_configs.keys.sort
+                    .filter_map { |relative_path| assemble_entry(relative_path, path_configs.fetch(relative_path)) }
+                    .sort_by(&:id)
       end
 
       ##
@@ -61,13 +50,6 @@ module Html2rss
         raise MissingRegistryId, "Missing registry.id in #{relative_path}" if id.to_s.strip.empty?
 
         id.to_s
-      end
-
-      ##
-      # @param path [String]
-      # @return [Hash]
-      def load_config(path)
-        YAML.safe_load_file(path, symbolize_names: true)
       end
 
       ##

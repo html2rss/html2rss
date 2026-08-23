@@ -1,37 +1,42 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
-require 'fileutils'
 
 RSpec.describe Html2rss::Registry::CatalogBuilder do
-  let(:bundle_dir) { RegistryTestSupport::VALID_BUNDLE }
-  let(:manifest) { build_fixture_manifest }
-
-  before do
-    write_manifest!(bundle_dir, manifest)
+  let(:anthropic_config) do
+    {
+      registry: { id: 'anthropic.com/news' },
+      directory: { title: 'Anthropic — News', topics: ['ai'] },
+      channel: { url: 'https://www.anthropic.com/news' },
+      selectors: { items: { selector: 'li' } }
+    }
   end
 
-  describe '.entries' do
-    subject(:entries) { described_class.entries(bundle_dir, manifest:) }
+  let(:cnet_config) do
+    {
+      registry: { id: 'cnet.com/section_sub' },
+      directory: { title: 'CNET Section', topics: ['tech'] },
+      channel: { url: 'https://www.cnet.com/%{section}/' }, # rubocop:disable Style/FormatStringToken
+      parameters: { section: { type: 'string', default: 'tech' } },
+      selectors: { items: { selector: 'li' } }
+    }
+  end
+
+  describe '.entries_from_configs' do
+    subject(:entries) do
+      described_class.entries_from_configs(
+        'configs/anthropic.com/news.yml' => anthropic_config,
+        'configs/cnet.com/section_sub.yml' => cnet_config
+      )
+    end
 
     it 'returns sorted catalog entries', :aggregate_failures do
-      expect(entries).not_to be_empty
-      expect(entries.map(&:id)).to eq(entries.map(&:id).sort)
+      expect(entries.map(&:id)).to eq(%w[anthropic.com/news cnet.com/section_sub])
       expect(entries).to all(be_a(Html2rss::Registry::CatalogEntry))
     end
 
-    it 'ignores unlisted yaml files outside the manifest' do # rubocop:disable RSpec/ExampleLength
-      extra_path = File.join(bundle_dir, 'configs/example.com/extra.yml')
-      FileUtils.mkdir_p(File.dirname(extra_path))
-      File.write(
-        extra_path,
-        "registry:\n  id: example.com/extra\ndirectory:\n  title: Extra\n  topics: [news]\n" \
-        "channel:\n  url: https://example.com\nselectors:\n  items:\n    selector: li\n"
-      )
-
+    it 'ignores configs not present in the path map' do
       expect(entries.map(&:id)).not_to include('example.com/extra')
-    ensure
-      FileUtils.rm_f(extra_path)
     end
 
     context 'with anthropic.com/news' do
@@ -52,10 +57,9 @@ RSpec.describe Html2rss::Registry::CatalogBuilder do
     end
   end
 
-  describe '.build_entry' do
+  describe '.assemble_entry' do
     it 'maps parameterized configs to schema and defaults', :aggregate_failures do
-      relative_path = 'configs/cnet.com/section_sub.yml'
-      entry = described_class.build_entry(bundle_dir, relative_path)
+      entry = described_class.assemble_entry('configs/cnet.com/section_sub.yml', cnet_config)
 
       expect(entry.id).to eq('cnet.com/section_sub')
       expect(entry.parameters[:defaults]).to eq('section' => 'tech')
