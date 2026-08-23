@@ -31,7 +31,7 @@ RSpec.describe Html2rss::Registry::Manifest do
   end
 
   describe '.parse' do
-    it 'round-trips canonical bytes' do
+    it 'round-trips canonical bytes' do # rubocop:disable RSpec/ExampleLength
       with_copied_valid_bundle do |bundle_dir|
         manifest = build_fixture_manifest(bundle_dir:)
         write_manifest!(bundle_dir, manifest)

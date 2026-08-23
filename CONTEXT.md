@@ -59,3 +59,19 @@ Supported pagination strategy names and factory classes live in `RequestSession:
 ## Extractor / post-processor registry
 
 Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. `Config::SelectorsValidator::Selector` derives required option fields from each class's `Options` and types from `OPTION_TYPES` / `OPTIONAL_OPTION_TYPES` (when defined); schema enums for `extractor` and `post_process[].name` are overlaid from the same registries. Do not hardcode name lists or per-name `case` type soups in the validator or schema.
+
+## Registry
+
+Signed `registry.v1` bundles: verify, load configs once, assemble domain catalog rows. Format guide: `lib/html2rss/registry/README.md` (included from `Html2rss::Registry`).
+
+**Load path:** `Bundle.load` → `Verifier.verify!` → one YAML read per manifest path → `Config.validate` → `CatalogBuilder.entries_from_configs`. No disk re-read on the bundle path. No `Registry.load` forwarding hull.
+
+**Path safety:** `BundleRelativePath` owns `configs/` validation and resolution; `Archive.extract!` calls `validate_archive_entry!` before write.
+
+**Catalog admission:** `CatalogBuilder` raises `MissingRegistryId` / `MissingDirectoryTitle` for bundled rows. General feed YAML may omit `directory`/`registry`; validator stays optional there — no second Dry bundled contract.
+
+**Domain vs wire:** `CatalogEntry` is domain-only (`id`, `path`, `directory`, `channel`, `parameters`). `html2rss-web` `Registry::Index#catalog_rows` stamps `source` / `registry` at the catalog API edge. No gem wire defaults or compat aliases.
+
+**Aliases:** `registry.aliases` is schema-validated only; resolution is deferred to web.
+
+**Public leaf APIs:** `Bundle.load`, `Verifier.verify!`, `Archive.extract!` / `Archive.pack_dir`, `Manifest.parse` / `Manifest.build`, `CatalogBuilder.entries_from_configs` (+ `directory_payload` / `channel_payload` / `parameters_payload` for web local feeds), `TestSupport.sign!`, `BundleRelativePath` helpers.
