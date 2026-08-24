@@ -5,8 +5,8 @@ module Html2rss
     ##
     # Builds same-origin entry-resolution candidates (feeds, nav, list links, paths).
     class CandidateGenerator
-      # Tournament-only HTML path suffixes (not the full Syndication DEFAULT_PATHS list).
-      LISTING_PATHS = %w[/news /blog /releases /changelog /updates].freeze
+      # Tournament-only HTML path suffixes (shared with {Syndication::CandidateCatalog}).
+      LISTING_PATHS = Syndication::CandidateCatalog::LISTING_PATHS
       # Max candidates returned to the probe stage.
       DEFAULT_MAX = 5
       # Nav/header/footer anchor sources for DestinationFacts ranking.

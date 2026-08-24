@@ -8,18 +8,7 @@ module Html2rss
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
     module Discovery # rubocop:disable Metrics/ModuleLength -- discovery + path probes stay co-located
       # Common feed path suffixes probed after head +rel=alternate+ hints.
-      DEFAULT_PATHS = %w[
-        /feed
-        /feed.xml
-        /rss
-        /rss.xml
-        /atom.xml
-        /index.xml
-        /news/rss
-        /news/feed
-        /blog/feed
-        /blog/rss.xml
-      ].freeze
+      DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
 
       # Content-Type substrings that indicate syndication.
       FEED_CT_MARKERS = %w[xml rss atom].freeze
