@@ -58,7 +58,6 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @param strategy [Symbol]
     # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
-    # @return [Html2rss::RequestSession]
     # @param scrape_url [String, nil] effective fetch URL override for resolved targets
     # @return [Html2rss::RequestSession]
     def request_session_for(config, strategy:, resources:, scrape_url: nil)

@@ -72,8 +72,10 @@ module Html2rss
 
     # Tournament + optional retry orchestration for {FeedPipeline::AutoFallback}.
     class Orchestrator
+      # Minimum remaining request budget required before probing candidates.
       MIN_BUDGET_REMAINING = 3
 
+      # Error classes that abort resolution instead of falling through (mirrors AutoFallback).
       NON_FALLBACK_ERRORS = FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS
 
       ##
