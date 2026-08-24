@@ -24,6 +24,15 @@ RSpec.describe Html2rss::PageRecon do
     expect(result.sst).to include(:node_count, :segment_stats)
   end
 
+  it 'assess shares surface and cheap article facts with call', :aggregate_failures do
+    assessment = described_class.assess(response:, url: 'https://example.com/blog')
+    result = described_class.call(response:, url: 'https://example.com/blog')
+
+    expect(assessment.surface_category).to eq(result.surface_category)
+    expect(assessment.articles_count).to eq(result.articles_count)
+    expect(assessment.admission_drops).to eq(result.admission_drops)
+  end
+
   it 'maps FeedLink alternates without path guessing' do
     body = <<~HTML
       <!DOCTYPE html><html><head>

@@ -8,6 +8,10 @@ module Html2rss
   # article count — not request strategy selection or MCP next-step policy.
   class PageRecon # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
     ##
+    # Cheap surface + admission facts shared by AutoFallback gates and FeedResolution probes.
+    Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response)
+
+    ##
     # Recon facts used by Inspect and FeedResolution.
     Result = Data.define(
       :requested_url,
@@ -55,6 +59,16 @@ module Html2rss
     end
 
     ##
+    # Cheap page assessment for policy gates and probe scoring (fixed AutoSource limit).
+    #
+    # @param response [Html2rss::RequestService::Response]
+    # @param url [String, Html2rss::Url]
+    # @return [Assessment]
+    def self.assess(response:, url:)
+      new(response:, url:).assess
+    end
+
+    ##
     # @param sst [Html2rss::SST::Document]
     # @param url [String, Html2rss::Url]
     # @return [Array]
@@ -74,12 +88,27 @@ module Html2rss
     end
 
     ##
+    # @return [Assessment]
+    def assess
+      return feed_assessment if response.feed_response?
+
+      parsed = html_parsed_body
+      articles_count, admission_drops = cheap_articles
+      Assessment.new(
+        surface_category: surface_category(parsed),
+        articles_count:,
+        admission_drops:,
+        html_response: true
+      )
+    end
+
+    ##
     # @return [Result]
     def call # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- assemble recon Result
       requested = Url.from_absolute(url)
       final = response.url
       parsed = html_parsed_body
-      articles_count, admission_drops = cheap_articles
+      assessment = assess
       sst_payload, segment_stats = sst_payload_and_segments(requested)
 
       Result.new(
@@ -88,9 +117,9 @@ module Html2rss
         status: response.status,
         scheme_downgrade: scheme_downgrade?(requested, final),
         alternate_feeds: alternate_feeds_from(parsed),
-        surface_category: surface_category(parsed),
-        articles_count:,
-        admission_drops:,
+        surface_category: assessment.surface_category,
+        articles_count: assessment.articles_count,
+        admission_drops: assessment.admission_drops,
         segment_stats:,
         html_response: response.html_response?,
         content_type: response.content_type,
@@ -102,6 +131,15 @@ module Html2rss
     private
 
     attr_reader :response, :url
+
+    def feed_assessment
+      Assessment.new(
+        surface_category: :unsupported_surface,
+        articles_count: 0,
+        admission_drops: {},
+        html_response: false
+      )
+    end
 
     def html_parsed_body
       return unless response.html_response?
