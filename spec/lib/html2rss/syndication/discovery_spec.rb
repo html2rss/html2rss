@@ -95,13 +95,13 @@ RSpec.describe Html2rss::Syndication::Discovery do
       miss = Html2rss::RequestService::Response.new(
         body: 'not a feed',
         headers: { 'content-type' => 'text/html' },
-        url: Html2rss::Url.from_absolute('https://example.com/news/feed'),
+        url: Html2rss::Url.from_absolute('https://example.com/news/rss.xml'),
         status: 200
       )
       hit = Html2rss::RequestService::Response.new(
         body: '<rss version="2.0"></rss>',
         headers: { 'content-type' => 'application/rss+xml' },
-        url: Html2rss::Url.from_absolute('https://example.com/news/rss.xml'),
+        url: Html2rss::Url.from_absolute('https://example.com/news/atom.xml'),
         status: 200
       )
 

@@ -44,16 +44,31 @@ module Html2rss
       # @param extra_paths [Array<String>] additional path guesses
       # @return [Html2rss::Url, nil]
       def best_feed_url(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [])
+        best_feed_response(
+          page_url:, request_session:, parsed_body:, html:, extra_paths:
+        )&.url
+      end
+
+      ##
+      # Like {#best_feed_url} but returns the validated syndication response for parsing.
+      #
+      # @param page_url [String, Html2rss::Url]
+      # @param request_session [Html2rss::RequestSession]
+      # @param parsed_body [Nokogiri::HTML::Document, nil]
+      # @param html [String, nil]
+      # @param extra_paths [Array<String>]
+      # @return [Html2rss::RequestService::Response, nil]
+      def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [])
         page = Html2rss::Url.from_absolute(page_url)
         candidates = candidate_urls(page_url: page, parsed_body:, html:, extra_paths:)
         Log.debug(
           "Syndication::Discovery: host=#{page.host} candidate_count=#{candidates.size}"
         )
 
-        first_feedish_url(candidates, request_session:, origin_url: page).tap do |selected|
-          next unless selected
+        first_feedish_response(candidates, request_session:, origin_url: page).tap do |response|
+          next unless response
 
-          Log.info("Syndication::Discovery: host=#{page.host} selected_feed_url=#{selected}")
+          Log.info("Syndication::Discovery: host=#{page.host} selected_feed_url=#{response.url}")
         end
       end
 
@@ -99,11 +114,17 @@ module Html2rss
         ["#{dir}feed", "#{dir}rss.xml", "#{dir}atom.xml"]
       end
 
-      def first_feedish_url(urls, request_session:, origin_url:)
+      def first_feedish_response(urls, request_session:, origin_url:)
         urls.lazy.filter_map do |url|
           response = probe(url, request_session:, origin_url:)
-          url if feedish?(response)
+          response if feedish?(response)
         end.first
+      end
+      module_function :first_feedish_response
+      private_class_method :first_feedish_response
+
+      def first_feedish_url(urls, request_session:, origin_url:)
+        first_feedish_response(urls, request_session:, origin_url:)&.url
       end
       module_function :first_feedish_url
       private_class_method :first_feedish_url
