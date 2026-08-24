@@ -75,10 +75,19 @@ Publish a new `public_key_id` and public key in the web image (or operator confi
 
 | Mode | When | Checks |
 | --- | --- | --- |
-| `:signed` | Network sync, release CI | Ed25519 signature + file digests |
-| `:integrity_only` | Local `path:` mounts, seed copy | File digests only (disk/image trust) |
+| `:signed` | Network sync, release CI, embedded image bundles | Ed25519 signature + file digests |
+| `:integrity_only` | Local `path:` mounts | File digests only (disk/image trust) |
 
 `Html2rss::Registry::Verifier.verify!(bundle_dir, trust:, public_keys:)` is the single verify entry point.
+
+## Container Storage Model
+
+In containerized deployments (such as `html2rss-web`):
+
+1. **Embedded Image Bundle (`/app/registries/<id>`):** Extracted during container image build. Immutable and read-only.
+2. **Runtime Data Volume (`/app/data/registries/<id>`):** Writable directory used for periodic network synchronization.
+3. **Lookup Resolution:** The application checks for a runtime-synced bundle first. If none exists, it reads directly from the embedded image bundle.
+4. **Zero Startup Overhead:** No files are copied to the data volume on boot. Container initialization is purely in-memory.
 
 ## Archive limits
 
@@ -111,3 +120,4 @@ Core `CatalogEntry` uses `Data.define` serialization. The web layer maps entries
 ## Building bundles
 
 Build bundles with `tool/registry-build` in `html2rss-configs` (`make registry-build`), calling `Manifest.build` and optional `--sign` in release CI. Build tooling must enforce the same size/file limits as `Archive.extract!`.
+
