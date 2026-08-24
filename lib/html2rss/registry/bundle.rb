@@ -36,16 +36,30 @@ module Html2rss
 
       ##
       # @param path_configs [Hash{String => Hash}]
-      # @return [Hash{String => Hash}] registry.id => config
+      # @return [Hash{String => Hash}] registry.id and aliases => config
       def self.index_by_entry_id!(path_configs)
-        entry_ids = []
-        configs = path_configs.to_h do |relative_path, config|
-          entry_id = CatalogBuilder.entry_id(config, relative_path)
-          entry_ids << entry_id
-          [entry_id, config]
+        configs = {}
+        path_configs.each do |relative_path, config|
+          primary_id = CatalogBuilder.entry_id(config, relative_path)
+          register_entry_id!(configs, primary_id, config, label: 'registry.id')
+
+          Array(config.dig(:registry, :aliases)).map(&:to_s).reject(&:empty?).each do |alias_id|
+            register_entry_id!(configs, alias_id, config, label: 'alias')
+          end
         end
-        reject_duplicate_registry_ids!(entry_ids)
         configs
+      end
+
+      ##
+      # @param configs [Hash{String => Hash}]
+      # @param id [String]
+      # @param config [Hash]
+      # @param label [String]
+      # @return [void]
+      def self.register_entry_id!(configs, id, config, label:)
+        raise InvalidConfig, "Duplicate or conflicting #{label}: #{id}" if configs.key?(id)
+
+        configs[id] = config
       end
 
       ##
@@ -60,16 +74,6 @@ module Html2rss
       end
 
       ##
-      # @param entry_ids [Array<String>]
-      # @return [void]
-      def self.reject_duplicate_registry_ids!(entry_ids)
-        duplicates = entry_ids.group_by(&:itself).select { |_, group| group.size > 1 }.keys
-        return if duplicates.empty?
-
-        raise InvalidConfig, "Duplicate registry.id values: #{duplicates.sort.join(', ')}"
-      end
-
-      ##
       # @param relative_path [String]
       # @param config [Hash]
       # @return [void]
@@ -80,8 +84,8 @@ module Html2rss
         message = result.errors(full: true).map(&:text).join('; ')
         raise InvalidConfig, "Invalid config #{relative_path}: #{message}"
       end
-      private_class_method :load_path_configs!, :index_by_entry_id!, :load_config!,
-                           :reject_duplicate_registry_ids!, :validate_config!
+      private_class_method :load_path_configs!, :index_by_entry_id!, :register_entry_id!,
+                           :load_config!, :validate_config!
     end
   end
 end

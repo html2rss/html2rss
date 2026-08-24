@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'tmpdir'
 
-RSpec.describe Html2rss::Registry::TestSupport do
+RSpec.describe Html2rss::Registry::Signer do
   describe '.sign!' do
     it 'writes an Ed25519 signature for a manifest' do
       manifest = build_fixture_manifest

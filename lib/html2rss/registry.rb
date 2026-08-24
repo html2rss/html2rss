@@ -18,7 +18,7 @@ module Html2rss
   # Public leaf APIs (no namespace forwarding hull):
   # +Bundle.load+, +Verifier.verify!+, +Archive.extract!+ / +Archive.pack_dir+,
   # +Manifest.parse+ / +Manifest.build+, +CatalogBuilder.entries_from_configs+,
-  # +TestSupport.sign!+, +BundleRelativePath+ helpers.
+  # +Signer.sign!+, +BundleRelativePath+ helpers.
   #
   # {include:file:lib/html2rss/registry/README.md}
   module Registry
