@@ -38,7 +38,44 @@ RSpec.describe Html2rss::Registry::Bundle do
 
         expect do
           described_class.load(bundle_dir, trust: :signed, public_keys:)
-        end.to raise_error(Html2rss::Registry::InvalidConfig, %r{Duplicate registry.id values: anthropic.com/news})
+        end.to raise_error(
+          Html2rss::Registry::InvalidConfig,
+          %r{Duplicate or conflicting registry.id: anthropic.com/news}
+        )
+      end
+    end
+
+    it 'indexes registry.aliases into configs without duplicating catalog entries', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      with_copied_valid_bundle do |bundle_dir|
+        config_path = File.join(bundle_dir, 'configs/anthropic.com/news.yml')
+        yaml = YAML.safe_load_file(config_path)
+        yaml['registry']['aliases'] = ['anthropic.com/press', 'anthropic.com/legacy-news']
+        File.write(config_path, YAML.dump(yaml))
+        write_manifest!(bundle_dir, build_fixture_manifest(bundle_dir:))
+
+        bundle = described_class.load(bundle_dir, trust: :signed, public_keys:)
+
+        canonical_config = bundle.configs['anthropic.com/news']
+        expect(bundle.configs['anthropic.com/press']).to be(canonical_config)
+        expect(bundle.configs['anthropic.com/legacy-news']).to be(canonical_config)
+        expect(bundle.catalog_entries.map(&:id)).not_to include('anthropic.com/press', 'anthropic.com/legacy-news')
+      end
+    end
+
+    it 'rejects conflicting aliases' do # rubocop:disable RSpec/ExampleLength
+      with_copied_valid_bundle do |bundle_dir|
+        config_path = File.join(bundle_dir, 'configs/anthropic.com/news.yml')
+        yaml = YAML.safe_load_file(config_path)
+        yaml['registry']['aliases'] = ['cnet.com/section_sub']
+        File.write(config_path, YAML.dump(yaml))
+        write_manifest!(bundle_dir, build_fixture_manifest(bundle_dir:))
+
+        expect do
+          described_class.load(bundle_dir, trust: :signed, public_keys:)
+        end.to raise_error(
+          Html2rss::Registry::InvalidConfig,
+          %r{Duplicate or conflicting (?:alias|registry\.id): cnet\.com/section_sub}
+        )
       end
     end
 

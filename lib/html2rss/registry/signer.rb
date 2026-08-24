@@ -5,8 +5,8 @@ require 'openssl'
 module Html2rss
   module Registry
     ##
-    # Shared helpers for signing registry manifests in tests and tooling.
-    module TestSupport
+    # Signs registry.v1 manifests using Ed25519 private keys.
+    module Signer
       module_function
 
       ##

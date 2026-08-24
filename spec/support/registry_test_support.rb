@@ -26,7 +26,7 @@ module RegistryTestSupport
   end
 
   def sign_manifest!(bundle_dir, manifest)
-    Html2rss::Registry::TestSupport.sign!(manifest, key_pem: test_private_key_pem, bundle_dir:)
+    Html2rss::Registry::Signer.sign!(manifest, key_pem: test_private_key_pem, bundle_dir:)
   end
 
   def write_manifest!(bundle_dir, manifest)
