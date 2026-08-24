@@ -84,6 +84,16 @@ module Html2rss
     end
 
     ##
+    # Surface class only — no AutoSource extract (for empty-extract error labels).
+    #
+    # @param response [Html2rss::RequestService::Response]
+    # @param url [String, Html2rss::Url]
+    # @return [Symbol]
+    def self.surface_category_for(response:, url:)
+      new(response:, url:).surface_category_for
+    end
+
+    ##
     # @param sst [Html2rss::SST::Document]
     # @param url [String, Html2rss::Url]
     # @return [Array]
@@ -115,6 +125,14 @@ module Html2rss
         admission_drops:,
         html_response: true
       )
+    end
+
+    ##
+    # @return [Symbol]
+    def surface_category_for
+      return :unsupported_surface if response.feed_response?
+
+      surface_category(html_parsed_body)
     end
 
     ##

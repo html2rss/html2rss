@@ -8,7 +8,7 @@ Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss:
 
 ## Page assessment
 
-Cheap surface class and admitted article count for policy gates and probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates or empty-extract surfaces — both AutoFallback and concrete empty paths use `assess`.
+Cheap surface class and admitted article count for policy gates and probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
 
 ## Syndication candidate catalog
 

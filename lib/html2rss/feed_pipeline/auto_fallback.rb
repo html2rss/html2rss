@@ -216,7 +216,7 @@ module Html2rss
       def surface_category_for(response)
         return unless response
 
-        PageRecon.assess(response:, url: response.url).surface_category
+        PageRecon.surface_category_for(response:, url: response.url)
       end
 
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

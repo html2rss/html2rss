@@ -33,6 +33,25 @@ RSpec.describe Html2rss::PageRecon do
     expect(assessment.admission_drops).to eq(result.admission_drops)
   end
 
+  it 'surface_category_for matches assess without a second extract job' do
+    expect(described_class.surface_category_for(response:, url: 'https://example.com/blog')).to eq(
+      described_class.assess(response:, url: 'https://example.com/blog').surface_category
+    )
+  end
+
+  it 'marks feed responses as unsupported_surface via surface_category_for' do
+    feed = Html2rss::RequestService::Response.new(
+      body: '<rss version="2.0"><channel></channel></rss>',
+      url: Html2rss::Url.from_absolute('https://example.com/feed.xml'),
+      headers: { 'content-type' => 'application/rss+xml' },
+      status: 200
+    )
+
+    expect(described_class.surface_category_for(response: feed, url: feed.url.to_s)).to eq(
+      :unsupported_surface
+    )
+  end
+
   it 'maps FeedLink alternates without path guessing' do
     body = <<~HTML
       <!DOCTYPE html><html><head>

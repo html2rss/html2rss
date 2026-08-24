@@ -170,7 +170,7 @@ module Html2rss
     end
 
     def empty_auto_source_surface(response)
-      PageRecon.assess(response:, url: response.url).surface_category
+      PageRecon.surface_category_for(response:, url: response.url)
     end
   end
 end
