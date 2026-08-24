@@ -2,6 +2,22 @@
 
 Contributor map for the four Strong module deepenings on this branch. Prefer these homes over reintroducing dual ownership.
 
+## Scrape target
+
+Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, updated when `FeedResolution.try_apply!` selects a winner (including zero-item retries so later auto-fallback strategies keep the resolved URL). `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.
+
+## Page assessment
+
+Cheap surface class and admitted article count for policy gates and probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
+
+## Syndication candidate catalog
+
+Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it — do not duplicate path arrays.
+
+## Feed resolution scoring
+
+Probe score weights and drop penalties for the entry URL tournament. Owned by `FeedResolution::Scorer`. `FeedResolution::Probe` fetches; `Selector` picks winners from `Probe::Scored` — do not inline scoring in `Probe`.
+
 ## Request Budget
 
 Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once — no `RuntimeInput` passthrough). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms` — strategies must not reimplement `remaining || policy.total`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.

@@ -9,11 +9,11 @@ AutoFallback escalates strategies.
 | Concern | Owner |
 | --- | --- |
 | When to resolve | `FeedResolution::Policy` |
-| Candidate URLs (cap 5) | `FeedResolution::CandidateGenerator` |
-| Cheap probe + score | `FeedResolution::Probe` |
+| Candidate URLs (cap 5) | `FeedResolution::CandidateGenerator` (via `Syndication::CandidateCatalog`) |
+| Cheap probe + score | `FeedResolution::Probe` + `FeedResolution::Scorer` |
 | Winner pick | `FeedResolution::Selector` |
-| Public `call` → `Result` | `FeedResolution` |
-| Page surface / cheap article count | `PageRecon` (shared) |
+| Public `call` → `Result`; retry orchestration | `FeedResolution` (`try_apply!`) |
+| Page surface / cheap article count | `PageRecon::Assessment` (shared) |
 | Native feed discover/parse | `Syndication` (not this module) |
 
 ## Non-goals
