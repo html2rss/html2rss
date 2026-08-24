@@ -42,6 +42,146 @@ module Html2rss
     end
     # rubocop:enable Metrics/ParameterLists
 
+    ##
+    # Outcome of {FeedResolution.try_apply!} for the auto-fallback chain.
+    ApplyOutcome = Data.define(:scrape_target, :status)
+
+    ##
+    # Runs the tournament and, when a winner applies, re-fetches and re-extracts articles.
+    #
+    # @param pipeline [Html2rss::FeedPipeline]
+    # @param config [Html2rss::Config]
+    # @param response [Html2rss::RequestService::Response]
+    # @param session [Html2rss::RequestSession]
+    # @param strategy [Symbol]
+    # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
+    # @param articles [Array]
+    # @param scrape_target [Html2rss::ScrapeTarget]
+    # @param state [Html2rss::FeedPipeline::AutoFallback::AttemptState]
+    # @param budget [Html2rss::RequestService::Budget]
+    # @return [ApplyOutcome, nil] `:succeeded` when retry extract yielded items; `:applied` when
+    #   the effective URL changed but retry did not succeed
+    # rubocop:disable Metrics/ParameterLists -- orchestration kwargs stay co-located
+    def self.try_apply!(pipeline:, config:, response:, session:, strategy:, resources:, articles:,
+                        scrape_target:, state:, budget:)
+      Orchestrator.new(
+        pipeline:, config:, response:, session:, strategy:, resources:, articles:,
+        scrape_target:, state:, budget:
+      ).call
+    end
+    # rubocop:enable Metrics/ParameterLists
+
+    # Tournament + optional retry orchestration for {FeedPipeline::AutoFallback}.
+    class Orchestrator
+      MIN_BUDGET_REMAINING = 3
+
+      NON_FALLBACK_ERRORS = FeedPipeline::AutoFallback::NON_FALLBACK_ERRORS
+
+      ##
+      # @param pipeline [Html2rss::FeedPipeline]
+      # @param config [Html2rss::Config]
+      # @param response [Html2rss::RequestService::Response]
+      # @param session [Html2rss::RequestSession]
+      # @param strategy [Symbol]
+      # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
+      # @param articles [Array]
+      # @param scrape_target [Html2rss::ScrapeTarget]
+      # @param state [Html2rss::FeedPipeline::AutoFallback::AttemptState]
+      # @param budget [Html2rss::RequestService::Budget]
+      # rubocop:disable Metrics/ParameterLists -- orchestration context stays co-located
+      def initialize(pipeline:, config:, response:, session:, strategy:, resources:, articles:,
+                     scrape_target:, state:, budget:)
+        @pipeline = pipeline
+        @config = config
+        @response = response
+        @session = session
+        @strategy = strategy
+        @resources = resources
+        @articles = articles
+        @scrape_target = scrape_target
+        @state = state
+        @budget = budget
+      end
+      # rubocop:enable Metrics/ParameterLists
+
+      ##
+      # @return [ApplyOutcome, nil]
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- eligibility + tournament + retry path
+      def call
+        return unless eligible?
+
+        state.mark_resolution_tried!
+        resolution = run_tournament
+        state.remember_entry_resolution(resolution)
+        return unless resolution.applied
+
+        effective = scrape_target.with_effective(resolution.scrape_url)
+        return ApplyOutcome.new(scrape_target: effective, status: :succeeded) if retry_with(
+          resolution, effective:
+        )
+
+        ApplyOutcome.new(scrape_target: effective, status: :applied)
+      rescue RequestService::RequestBudgetExceeded
+        Log.warn('FeedResolution: entry resolution skipped (request budget exhausted)')
+        nil
+      rescue *NON_FALLBACK_ERRORS
+        raise
+      rescue StandardError => error
+        Log.warn("FeedResolution: entry resolution retry failed (#{error.class})")
+        nil
+      end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+      private
+
+      attr_reader :pipeline, :config, :response, :session, :strategy, :resources, :articles,
+                  :scrape_target, :state, :budget, :assessment
+
+      def eligible?
+        return false if state.resolution_tried?
+        return false if response.feed_response?
+        return false if budget.remaining_requests < MIN_BUDGET_REMAINING
+
+        @assessment = PageRecon.assess(response:, url: config.url)
+        Policy.resolve?(
+          config:, articles_count: articles.size, surface_category: assessment.surface_category
+        )
+      end
+
+      def run_tournament
+        FeedResolution.call(
+          entry_url: config.url,
+          response:,
+          session:,
+          config:,
+          articles_count: articles.size,
+          surface_category: assessment.surface_category
+        )
+      end
+
+      def retry_with(_resolution, effective:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- retry extract path
+        retry_session = pipeline.request_session_for(
+          config, strategy:, resources:, scrape_url: effective.effective_url
+        )
+        retry_response = retry_session.fetch_initial_response
+        retry_articles, dedup_dropped, admission_drops = pipeline.deduplicated_articles(
+          config:, response: retry_response, request_session: retry_session
+        )
+        state.remember_response(retry_response)
+        state.record_items(
+          strategy:, items_count: retry_articles.size, transport_meta: retry_response.transport_meta
+        )
+        return unless retry_articles.size.positive?
+
+        state.succeed!(
+          response: retry_response, articles: retry_articles, dedup_dropped:,
+          selected_strategy: strategy, attempt_count: state.attempts.size, admission_drops:,
+          entry_url: effective.entry_url, scrape_url: effective.effective_url
+        )
+        true
+      end
+    end
+
     # Internal tournament runner (keeps {FeedResolution} a Zeitwerk namespace module).
     class Runner
       ##

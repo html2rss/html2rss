@@ -119,6 +119,7 @@ module Html2rss
         @pipeline = pipeline
         @config = config
         @resources = resources
+        @scrape_target = ScrapeTarget.from_config(config)
       end
 
       ##
@@ -132,7 +133,7 @@ module Html2rss
 
       private
 
-      attr_reader :strategies, :budget, :pipeline, :config, :resources
+      attr_reader :strategies, :budget, :pipeline, :config, :resources, :scrape_target
 
       def run_attempts
         AttemptState.new.tap do |state|
@@ -144,7 +145,9 @@ module Html2rss
       end
 
       def attempt(strategy:, next_strategy:, state:)
-        request_session = pipeline.request_session_for(config, strategy:, resources:)
+        request_session = pipeline.request_session_for(
+          config, strategy:, resources:, scrape_url: scrape_target.effective_url
+        )
         response = fetch_response(request_session:, strategy:, next_strategy:, state:)
         return unless response
 
@@ -164,7 +167,7 @@ module Html2rss
         nil
       end
 
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- extract + resolution path
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
       def process_response(response:, strategy:, next_strategy:, request_session:, state:)
         articles, dedup_dropped, admission_drops = articles_for(response:, request_session:)
         state.remember_response(response)
@@ -174,9 +177,12 @@ module Html2rss
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
 
-        if (resolved = maybe_resolve!(response:, strategy:, request_session:, state:,
-                                      articles:)) && (resolved == :succeeded)
-          return
+        if (outcome = FeedResolution.try_apply!(
+          pipeline:, config:, response:, session: request_session, strategy:, resources:,
+          articles:, scrape_target:, state:, budget:
+        ))
+          @scrape_target = outcome.scrape_target
+          return if outcome.status == :succeeded
         end
 
         if items_count.positive?
@@ -192,66 +198,14 @@ module Html2rss
         pipeline.deduplicated_articles(config:, response:, request_session:)
       end
 
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity -- resolution retry
-      def maybe_resolve!(response:, strategy:, request_session:, state:, articles:)
-        return if state.resolution_tried?
-        return if response.feed_response?
-        # Reserve slots for at least one probe, one re-fetch, and one later strategy attempt.
-        return if budget.remaining_requests < 3
-
-        surface = empty_surface_category(response)
-        return unless FeedResolution::Policy.resolve?(
-          config:, articles_count: articles.size, surface_category: surface
-        )
-
-        state.mark_resolution_tried!
-        resolution = FeedResolution.call(
-          entry_url: config.url,
-          response:,
-          session: request_session,
-          config:,
-          articles_count: articles.size,
-          surface_category: surface
-        )
-        state.remember_entry_resolution(resolution)
-        return unless resolution.applied
-
-        config.scrape_url = resolution.scrape_url
-        retry_session = pipeline.request_session_for(config, strategy:, resources:)
-        retry_response = retry_session.fetch_initial_response
-        retry_articles, dedup_dropped, admission_drops = articles_for(
-          response: retry_response, request_session: retry_session
-        )
-        state.remember_response(retry_response)
-        state.record_items(
-          strategy:, items_count: retry_articles.size, transport_meta: retry_response.transport_meta
-        )
-        return unless retry_articles.size.positive?
-
-        record_success(
-          response: retry_response, strategy:, articles: retry_articles, dedup_dropped:,
-          admission_drops:, state:
-        )
-        :succeeded
-      rescue RequestService::RequestBudgetExceeded
-        Log.warn("#{self.class}: entry resolution skipped (request budget exhausted)")
-        nil
-      rescue *NON_FALLBACK_ERRORS
-        raise
-      rescue StandardError => error
-        Log.warn("#{self.class}: entry resolution retry failed (#{error.class})")
-        nil
-      end
-      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
-
       # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- success kwargs match PipelineOutcome
       def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
         attempt_count = state.attempts.size
         state.succeed!(
           response:, articles:, dedup_dropped:, selected_strategy: strategy,
           attempt_count:, admission_drops:,
-          entry_url: config.url,
-          scrape_url: config.scrape_url
+          entry_url: scrape_target.entry_url,
+          scrape_url: scrape_target.effective_url
         )
         return unless attempt_count > 1
 
@@ -262,15 +216,15 @@ module Html2rss
       # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
       def finalize_failure(attempts:, response:)
-        surface_category = empty_surface_category(response)
+        surface_category = surface_category_for(response)
         raise NoFeedItemsExtracted.new(attempts:, surface_category:)
       end
 
-      def empty_surface_category(response)
+      def surface_category_for(response)
         return unless response
         return :unsupported_surface if response.feed_response?
 
-        AutoSource::Scraper.classify_no_scraper_surface(response.parsed_body, body: response.body)
+        PageRecon.assess(response:, url: response.url).surface_category
       end
 
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
