@@ -264,24 +264,16 @@ module Html2rss
     def headers = config[:headers]
     # @return [Hash{Symbol => Object}] channel configuration
     def channel = config[:channel]
-    # @return [String] source channel URL
+    ##
+    # Source channel URL (also the default scrape URL).
+    #
+    # @return [String]
     def url = config.dig(:channel, :url)
 
     ##
-    # URL used for the active scrape fetch. Defaults to {#url}; may be rewritten once
-    # per pipeline run by {FeedResolution}.
-    #
+    # @deprecated Use {ScrapeTarget} for entry vs effective URLs after resolution.
     # @return [String]
-    def scrape_url
-      @scrape_url || url
-    end
-
-    ##
-    # @param value [String, Html2rss::Url]
-    # @return [String]
-    def scrape_url=(value)
-      @scrape_url = Html2rss::Url.from_absolute(value).to_s
-    end
+    def scrape_url = url
 
     # @return [String, nil] configured channel time zone
     def time_zone = config.dig(:channel, :time_zone)
