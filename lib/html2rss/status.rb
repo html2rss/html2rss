@@ -21,14 +21,15 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
       # @param attempt_count [Integer] auto-fallback attempt count (0 when not under +:auto+)
       # @param strategy_attempts [Array<Hash>] auto-fallback attempt hashes (empty outside +:auto+)
       # @param admission_drops [Hash{String => Integer}] Cleanup reason → count (empty when unused)
+      # @param scrape_target [Html2rss::ScrapeTarget, nil] domain URL pair (mapped to wire strings)
       # @param entry_url [String, nil] original channel URL when entry resolution ran
       # @param scrape_url [String, nil] effective scrape URL after resolution
-      # @param entry_resolution [Hash, nil] resolution diagnostics (+applied+, +probe_count+)
+      # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil] resolution diagnostics
       # @return [Html2rss::Status]
       # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- Status kwargs stay co-located
       def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0,
-                strategy_attempts: [], admission_drops: {}, entry_url: nil, scrape_url: nil,
-                entry_resolution: nil)
+                strategy_attempts: [], admission_drops: {}, scrape_target: nil,
+                entry_url: nil, scrape_url: nil, entry_resolution: nil)
         tallies = articles.filter_map(&:scraper).tally.transform_keys { |klass| scraper_name(klass) }
         new(
           version: Html2rss::VERSION,
@@ -38,8 +39,8 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
           attempt_count:,
           strategy_attempts:,
           admission_drops:,
-          entry_url:,
-          scrape_url:,
+          entry_url: entry_url || scrape_target&.entry_url,
+          scrape_url: scrape_url || scrape_target&.effective_url,
           entry_resolution:
         )
       end
@@ -154,7 +155,8 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
     def freeze_entry_resolution(value)
       return if value.nil?
 
-      value.to_h.transform_keys(&:to_sym).freeze
+      hash = value.respond_to?(:to_h) ? value.to_h : value
+      hash.to_h.transform_keys(&:to_sym).freeze
     end
 
     def validate_counters!(dedup:, attempts:, selected_strategy:)

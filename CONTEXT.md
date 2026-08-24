@@ -8,7 +8,7 @@ Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss:
 
 ## Page assessment
 
-Cheap surface class and admitted article count for policy gates and probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
+Cheap surface class and admitted article count for policy gates and probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates or empty-extract surfaces — both AutoFallback and concrete empty paths use `assess`.
 
 ## Syndication candidate catalog
 
@@ -16,7 +16,19 @@ Shared path lexicon for native feed discovery and entry-resolution listing guess
 
 ## Feed resolution scoring
 
-Probe score weights and drop penalties for the entry URL tournament. Owned by `FeedResolution::Scorer`. `FeedResolution::Probe` fetches; `Selector` picks winners from `Probe::Scored` — do not inline scoring in `Probe`.
+Probe score weights, drop penalties, and winner pick for the entry URL tournament. Owned by `FeedResolution::Scorer`. `FeedResolution::Probe` fetches via `PageRecon.assess` (not fat `PageRecon.call`); do not inline scoring in `Probe`.
+
+## Surface category
+
+Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`). `PageRecon::Assessment` exposes those predicates; `FeedResolution::Policy` and `Scorer` call them — do not re-list WEAK Sets.
+
+## Entry-resolution options
+
+Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Options` (`enabled?`, `max_probes`, `request_slots`). Policy eligibility, Runner probe caps, and budget slot reservation consume it — do not dig the Hash in three places.
+
+## Pipeline outcome URLs
+
+`FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash — do not flatten the domain pair earlier.
 
 ## Request Budget
 

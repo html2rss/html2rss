@@ -48,11 +48,7 @@ module Html2rss
         # @param result [Html2rss::FeedResolution::Result]
         # @return [void]
         def remember_entry_resolution(result)
-          @entry_resolution = {
-            applied: result.applied,
-            probe_count: result.probe_count,
-            reason: result.reason
-          }
+          @entry_resolution = FeedResolution::Diag.from_result(result)
         end
 
         # @param strategy [Symbol] strategy that raised
@@ -84,12 +80,11 @@ module Html2rss
         # @param selected_strategy [Symbol] concrete strategy that produced items
         # @param attempt_count [Integer] number of attempts recorded for this chain
         # @param admission_drops [Hash{String => Integer}] Cleanup drop tallies
-        # @param entry_url [String, nil]
-        # @param scrape_url [String, nil]
+        # @param scrape_target [Html2rss::ScrapeTarget]
         # @return [void]
         # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- PipelineOutcome kwargs stay co-located
         def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:,
-                     admission_drops: {}, entry_url: nil, scrape_url: nil)
+                     scrape_target:, admission_drops: {})
           @result = PipelineOutcome.new(
             response:,
             articles:,
@@ -98,8 +93,7 @@ module Html2rss
             attempt_count:,
             strategy_attempts: attempts,
             admission_drops:,
-            entry_url:,
-            scrape_url:,
+            scrape_target:,
             entry_resolution:
           )
         end
@@ -198,14 +192,13 @@ module Html2rss
         pipeline.deduplicated_articles(config:, response:, request_session:)
       end
 
-      # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- success kwargs match PipelineOutcome
+      # rubocop:disable Metrics/ParameterLists -- success kwargs match PipelineOutcome
       def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
         attempt_count = state.attempts.size
         state.succeed!(
           response:, articles:, dedup_dropped:, selected_strategy: strategy,
           attempt_count:, admission_drops:,
-          entry_url: scrape_target.entry_url,
-          scrape_url: scrape_target.effective_url
+          scrape_target:
         )
         return unless attempt_count > 1
 
@@ -213,7 +206,7 @@ module Html2rss
                  "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                  "budget_remaining=#{budget_remaining_label}")
       end
-      # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
+      # rubocop:enable Metrics/ParameterLists
 
       def finalize_failure(attempts:, response:)
         surface_category = surface_category_for(response)
@@ -222,7 +215,6 @@ module Html2rss
 
       def surface_category_for(response)
         return unless response
-        return :unsupported_surface if response.feed_response?
 
         PageRecon.assess(response:, url: response.url).surface_category
       end

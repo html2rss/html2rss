@@ -153,7 +153,7 @@ RSpec.describe Html2rss::FeedResolution do
 
       expect(outcome).to have_attributes(status: :succeeded)
       expect(state.result.articles).to eq([article])
-      expect(state.result.scrape_url).to eq(listing_url)
+      expect(state.result.scrape_target.effective_url).to eq(listing_url)
     end
   end
 end

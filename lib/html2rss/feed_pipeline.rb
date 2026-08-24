@@ -12,7 +12,7 @@ module Html2rss
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
     PipelineOutcome = Data.define(
       :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
-      :admission_drops, :entry_url, :scrape_url, :entry_resolution
+      :admission_drops, :scrape_target, :entry_resolution
     )
 
     ##
@@ -47,8 +47,7 @@ module Html2rss
         attempt_count: outcome.attempt_count,
         strategy_attempts: outcome.strategy_attempts,
         admission_drops: outcome.admission_drops,
-        entry_url: outcome.entry_url,
-        scrape_url: outcome.scrape_url,
+        scrape_target: outcome.scrape_target,
         entry_resolution: outcome.entry_resolution
       )
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
@@ -106,7 +105,7 @@ module Html2rss
       PipelineOutcome.new(
         response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
         strategy_attempts: [], admission_drops:,
-        entry_url: config.url, scrape_url: config.scrape_url, entry_resolution: nil
+        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil
       )
     end
 
@@ -171,9 +170,7 @@ module Html2rss
     end
 
     def empty_auto_source_surface(response)
-      return :unsupported_surface if response.feed_response?
-
-      AutoSource::Scraper.classify_no_scraper_surface(response.parsed_body, body: response.body)
+      PageRecon.assess(response:, url: response.url).surface_category
     end
   end
 end
