@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 require 'spec_helper'
 
 RSpec.describe Html2rss::PageRecon do
@@ -42,3 +44,5 @@ RSpec.describe Html2rss::PageRecon do
     )
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

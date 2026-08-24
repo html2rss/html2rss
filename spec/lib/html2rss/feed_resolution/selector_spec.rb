@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 require 'spec_helper'
 
 RSpec.describe Html2rss::FeedResolution::Selector do
@@ -32,3 +34,5 @@ RSpec.describe Html2rss::FeedResolution::Selector do
     ).to be_nil
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

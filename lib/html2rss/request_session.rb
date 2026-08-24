@@ -19,7 +19,7 @@ module Html2rss
       # @return [RequestSession] configured request session
       def build(config:, strategy:, budget:, policy:, logger: Html2rss::Log)
         context = RequestService::Context.new(
-          url: config.url, headers: config.headers, request: config.request, policy:, budget:
+          url: config.scrape_url, headers: config.headers, request: config.request, policy:, budget:
         )
         new(context:, strategy:, logger:)
       end

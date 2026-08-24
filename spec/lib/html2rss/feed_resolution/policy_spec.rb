@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 require 'spec_helper'
 
 RSpec.describe Html2rss::FeedResolution::Policy do
@@ -10,7 +12,7 @@ RSpec.describe Html2rss::FeedResolution::Policy do
   it 'resolves when articles are below the floor on a high-entropy surface' do
     expect(
       described_class.resolve?(
-        config: config,
+        config:,
         articles_count: 1,
         surface_category: :high_entropy_surface
       )
@@ -20,7 +22,7 @@ RSpec.describe Html2rss::FeedResolution::Policy do
   it 'skips blocked surfaces' do
     expect(
       described_class.resolve?(
-        config: config,
+        config:,
         articles_count: 0,
         surface_category: :blocked_surface
       )
@@ -47,3 +49,5 @@ RSpec.describe Html2rss::FeedResolution::Policy do
     ).to be false
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

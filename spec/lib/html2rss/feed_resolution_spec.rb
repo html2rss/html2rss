@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 require 'spec_helper'
 
 RSpec.describe Html2rss::FeedResolution do
@@ -69,3 +71,5 @@ RSpec.describe Html2rss::FeedResolution do
     expect(result).to have_attributes(applied: false, reason: :policy_skip)
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

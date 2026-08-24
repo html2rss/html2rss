@@ -12,7 +12,7 @@ module Html2rss
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
     PipelineOutcome = Data.define(
       :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
-      :admission_drops
+      :admission_drops, :entry_url, :scrape_url, :entry_resolution
     )
 
     ##
@@ -46,7 +46,10 @@ module Html2rss
         selected_strategy: outcome.selected_strategy,
         attempt_count: outcome.attempt_count,
         strategy_attempts: outcome.strategy_attempts,
-        admission_drops: outcome.admission_drops
+        admission_drops: outcome.admission_drops,
+        entry_url: outcome.entry_url,
+        scrape_url: outcome.scrape_url,
+        entry_resolution: outcome.entry_resolution
       )
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
@@ -99,7 +102,8 @@ module Html2rss
 
       PipelineOutcome.new(
         response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
-        strategy_attempts: [], admission_drops:
+        strategy_attempts: [], admission_drops:,
+        entry_url: config.url, scrape_url: config.scrape_url, entry_resolution: nil
       )
     end
 

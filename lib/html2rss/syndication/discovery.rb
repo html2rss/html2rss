@@ -6,7 +6,7 @@ module Html2rss
     # Finds a same-origin RSS/Atom URL for a page via head alternates and path guesses.
     #
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
-    module Discovery
+    module Discovery # rubocop:disable Metrics/ModuleLength -- discovery + path probes stay co-located
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = %w[
         /feed
@@ -95,10 +95,10 @@ module Html2rss
         return true if response.feed_response?
 
         ct = response.content_type.downcase
-        return true if FEED_CT_MARKERS.any? { |marker| ct.include?(marker) }
+        return true if FEED_CT_MARKERS.any? { |marker| ct.include?(marker) } # rubocop:disable Style/ArrayIntersect
 
         body = response.body.to_s[0, 800].downcase
-        FEED_BODY_MARKERS.any? { |marker| body.include?(marker) }
+        FEED_BODY_MARKERS.any? { |marker| body.include?(marker) } # rubocop:disable Style/ArrayIntersect
       end
 
       ##

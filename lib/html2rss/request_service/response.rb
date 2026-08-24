@@ -159,12 +159,13 @@ module Html2rss
         ct = content_type.downcase
         return false if ct.empty? || ct.include?('html') || ct.include?('json')
 
-        FEED_CT_MARKERS.any? { |marker| ct.include?(marker) }
+        # Substring match against Content-Type (not Array#intersect? on a String).
+        FEED_CT_MARKERS.any? { |marker| ct.include?(marker) } # rubocop:disable Style/ArrayIntersect
       end
 
       def feed_looking_body?
         snippet = body.to_s[0, 800].downcase
-        FEED_BODY_MARKERS.any? { |marker| snippet.include?(marker) }
+        FEED_BODY_MARKERS.any? { |marker| snippet.include?(marker) } # rubocop:disable Style/ArrayIntersect
       end
     end
   end

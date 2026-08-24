@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 require 'spec_helper'
 
 RSpec.describe Html2rss::Syndication::Parser do
@@ -108,3 +110,5 @@ RSpec.describe Html2rss::Syndication::Parser do
     end
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

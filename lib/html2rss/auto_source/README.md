@@ -10,9 +10,10 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 
 ## Live flow
 
-1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML).
+1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML). Direct syndication responses skip HTML scrapers and parse via `Syndication::Parser`.
 2. **Scraper tiers** — Enabled scrapers that claim the page (shallow `articles?` or instance `extractable?`) run in `Scraper::SCRAPER_TIERS` order. Merge within a tier, then stop when enough articles survive Cleanup:
 
+   0. Native feed: NativeFeed (head alternates + path discovery → RSS/Atom parse)
    1. In-page structured: Schema, Microdata, Microformats2, JsonState, XhrArticles
    2. Follow-up IO: WordPress API, Sitemap, MetaOembed
    3. Heuristic: SemanticHtml
@@ -24,6 +25,8 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
    `SST::Normalizer` → `AutoSource::Segmenter` → `Scoring::Engine` → extractor / article materialization.
 
 5. **Cleanup** — Merge, dedupe, hard-exclude non-article destinations (via `PathClassifier` facts), drop junk titles, and trim to `limit`. Html is skipped when earlier tiers already admitted clean items.
+
+6. **Entry URL resolution** (pipeline, not this class) — when AutoFallback sees a weak homepage extract, `FeedResolution` may rewrite the scrape URL to a listing/feed before escalating strategies. See {Html2rss::FeedPipeline} and {Html2rss::FeedResolution}.
 
 Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (repeated tag paths), `:cluster` (class/structure grids for anchorless cards). Scoring ranks and demotes; `LinkDestination::NoisePolicy` owns content-anchor eligibility. Cleanup owns feed-item admission.
 

@@ -41,6 +41,7 @@ module Html2rss
         # @param url [String, Html2rss::Url]
         # @param request_session [Html2rss::RequestSession, nil]
         # @param _opts [Hash]
+        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         def initialize(parsed_body, url:, request_session: nil, **_opts)
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
@@ -50,7 +51,7 @@ module Html2rss
         ##
         # @yieldparam article [Hash{Symbol => Object}]
         # @return [Enumerator, void]
-        def each
+        def each(&)
           return enum_for(:each) unless block_given?
 
           articles = fetch_articles
@@ -60,14 +61,14 @@ module Html2rss
           end
 
           Log.info("#{self.class}: host=#{url.host} item_count=#{articles.size} fallback=false")
-          articles.each { |article| yield article }
+          articles.each(&)
         end
 
         private
 
         attr_reader :parsed_body, :url, :request_session
 
-        def fetch_articles
+        def fetch_articles # rubocop:disable Metrics/MethodLength -- discovery + parse path
           return [] unless request_session
 
           response = Syndication::Discovery.best_feed_response(

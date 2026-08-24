@@ -6,8 +6,9 @@ module Html2rss
   #
   # Owns surface class, native feed hints, segment stats, and a cheap AutoSource
   # article count — not request strategy selection or MCP next-step policy.
-  class PageRecon
-    # @return [Data] recon facts used by Inspect and FeedResolution
+  class PageRecon # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
+    ##
+    # Recon facts used by Inspect and FeedResolution.
     Result = Data.define(
       :requested_url,
       :final_url,
@@ -25,7 +26,7 @@ module Html2rss
     ) do
       ##
       # @return [Hash{Symbol => Object}]
-      def to_h
+      def to_h # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- omit-empty optional keys
         {
           requested_url:,
           final_url:,
@@ -54,6 +55,17 @@ module Html2rss
     end
 
     ##
+    # @param sst [Html2rss::SST::Document]
+    # @param url [String, Html2rss::Url]
+    # @return [Array]
+    def self.discover_segments(sst, url)
+      link_resolver = Scoring::LinkResolver.new(url)
+      AutoSource::Segmenter.call(sst, base_url: url, strategy: :list, link_resolver:)
+    rescue StandardError
+      []
+    end
+
+    ##
     # @param response [Html2rss::RequestService::Response]
     # @param url [String, Html2rss::Url]
     def initialize(response:, url:)
@@ -63,7 +75,7 @@ module Html2rss
 
     ##
     # @return [Result]
-    def call
+    def call # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- assemble recon Result
       requested = Url.from_absolute(url)
       final = response.url
       parsed = html_parsed_body
@@ -85,17 +97,6 @@ module Html2rss
         blocked_surface: blocked_surface_key,
         sst: sst_payload
       )
-    end
-
-    ##
-    # @param sst [Html2rss::SST::Document]
-    # @param url [String, Html2rss::Url]
-    # @return [Array]
-    def self.discover_segments(sst, url)
-      link_resolver = Scoring::LinkResolver.new(url)
-      AutoSource::Segmenter.call(sst, base_url: url, strategy: :list, link_resolver:)
-    rescue StandardError
-      []
     end
 
     private

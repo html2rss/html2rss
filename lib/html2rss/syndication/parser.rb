@@ -52,7 +52,7 @@ module Html2rss
       module_function :article_hash
       private_class_method :article_hash
 
-      def rss_item_hash(item, base_url:)
+      def rss_item_hash(item, base_url:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- RSS item mapping
         url = absolute_url(item.link, base_url:)
         return unless url
 
@@ -69,7 +69,7 @@ module Html2rss
       module_function :rss_item_hash
       private_class_method :rss_item_hash
 
-      def atom_entry_hash(entry, base_url:)
+      def atom_entry_hash(entry, base_url:) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity -- Atom entry mapping
         url = atom_link(entry, base_url:)
         return unless url
 
