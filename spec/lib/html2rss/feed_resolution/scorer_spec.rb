@@ -5,19 +5,21 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::FeedResolution::Scorer do
-  let(:base_recon) do
-    {
-      requested_url: 'https://example.com/',
-      final_url: 'https://example.com/news',
-      status: 200,
-      scheme_downgrade: false,
-      alternate_feeds: [],
-      segment_stats: nil,
-      html_response: true,
-      content_type: 'text/html',
-      blocked_surface: nil,
-      sst: nil
-    }
+  def assessment(surface_category:, articles_count:, admission_drops: {})
+    Html2rss::PageRecon::Assessment.new(
+      surface_category:,
+      articles_count:,
+      admission_drops:,
+      html_response: true
+    )
+  end
+
+  def scored(url:, score:, articles_count:)
+    Html2rss::FeedResolution::Probe::Scored.new(
+      url: Html2rss::Url.from_absolute(url),
+      score:,
+      articles_count:
+    )
   end
 
   it 'scores feed item counts linearly' do
@@ -25,13 +27,11 @@ RSpec.describe Html2rss::FeedResolution::Scorer do
   end
 
   it 'adds a listing bonus for non-weak HTML surfaces', :aggregate_failures do
-    listing = described_class.score_recon(
-      Html2rss::PageRecon::Result.new(**base_recon, surface_category: :listing, articles_count: 3,
-                                                    admission_drops: {})
+    listing = described_class.score_assessment(
+      assessment(surface_category: :listing, articles_count: 3)
     )
-    weak = described_class.score_recon(
-      Html2rss::PageRecon::Result.new(**base_recon, surface_category: :app_shell, articles_count: 3,
-                                                    admission_drops: {})
+    weak = described_class.score_assessment(
+      assessment(surface_category: :app_shell, articles_count: 3)
     )
 
     expect(listing).to be > weak
@@ -39,16 +39,35 @@ RSpec.describe Html2rss::FeedResolution::Scorer do
   end
 
   it 'penalizes high admission drop ratios' do
-    penalized = described_class.score_recon(
-      Html2rss::PageRecon::Result.new(**base_recon, surface_category: :listing, articles_count: 2,
-                                                    admission_drops: { 'junk' => 8 })
+    penalized = described_class.score_assessment(
+      assessment(surface_category: :listing, articles_count: 2, admission_drops: { 'junk' => 8 })
     )
-    clean = described_class.score_recon(
-      Html2rss::PageRecon::Result.new(**base_recon, surface_category: :listing, articles_count: 2,
-                                                    admission_drops: {})
+    clean = described_class.score_assessment(
+      assessment(surface_category: :listing, articles_count: 2)
     )
 
     expect(penalized).to be < clean
+  end
+
+  it 'picks the highest score that beats the entry article count' do
+    winner = described_class.pick_winner(
+      scored: [
+        scored(url: 'https://example.com/a', score: 10, articles_count: 2),
+        scored(url: 'https://example.com/b', score: 30, articles_count: 5)
+      ],
+      entry_articles_count: 1
+    )
+
+    expect(winner.url.to_s).to eq('https://example.com/b')
+  end
+
+  it 'returns nil when no candidate beats the entry count' do
+    expect(
+      described_class.pick_winner(
+        scored: [scored(url: 'https://example.com/a', score: 10, articles_count: 1)],
+        entry_articles_count: 3
+      )
+    ).to be_nil
   end
 end
 

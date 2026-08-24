@@ -10,10 +10,12 @@ AutoFallback escalates strategies.
 | --- | --- |
 | When to resolve | `FeedResolution::Policy` |
 | Candidate URLs (cap 5) | `FeedResolution::CandidateGenerator` (via `Syndication::CandidateCatalog`) |
-| Cheap probe + score | `FeedResolution::Probe` + `FeedResolution::Scorer` |
-| Winner pick | `FeedResolution::Selector` |
+| Cheap probe + score + winner pick | `FeedResolution::Probe` + `FeedResolution::Scorer` |
+| Typed entry_resolution options | `FeedResolution::Options` |
+| Wire-safe resolution diag | `FeedResolution::Diag` |
 | Public `call` → `Result`; retry orchestration | `FeedResolution` (`try_apply!`) |
 | Page surface / cheap article count | `PageRecon::Assessment` (shared) |
+| Surface weak/blocked predicates | `Html2rss::SurfaceCategory` |
 | Native feed discover/parse | `Syndication` (not this module) |
 
 ## Non-goals

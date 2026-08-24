@@ -3,7 +3,7 @@
 module Html2rss
   module FeedResolution
     ##
-    # Cheap follow-up probe that scores a candidate via {PageRecon} or syndication parse.
+    # Cheap follow-up probe that scores a candidate via {PageRecon.assess} or syndication parse.
     class Probe
       ##
       # @param url [Html2rss::Url]
@@ -47,11 +47,11 @@ module Html2rss
           )
         end
 
-        recon = PageRecon.call(response:, url: response.url)
+        assessment = PageRecon.assess(response:, url: response.url)
         Scored.new(
           url: response.url,
-          score: Scorer.score_recon(recon),
-          articles_count: recon.articles_count
+          score: Scorer.score_assessment(assessment),
+          articles_count: assessment.articles_count
         )
       end
     end

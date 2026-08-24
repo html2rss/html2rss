@@ -21,9 +21,8 @@ module Html2rss
     # @return [Integer] probe slots reserved in the baseline request budget
     def self.request_slots_for(auto_source)
       return 0 unless auto_source
-      return 0 if auto_source.dig(:entry_resolution, :enabled) == false
 
-      auto_source.dig(:entry_resolution, :max_probes) || DEFAULT_CONFIG[:max_probes]
+      Options.from_auto_source(auto_source).request_slots
     end
 
     ##
@@ -176,7 +175,7 @@ module Html2rss
         state.succeed!(
           response: retry_response, articles: retry_articles, dedup_dropped:,
           selected_strategy: strategy, attempt_count: state.attempts.size, admission_drops:,
-          entry_url: effective.entry_url, scrape_url: effective.effective_url
+          scrape_target: effective
         )
         true
       end
@@ -218,7 +217,7 @@ module Html2rss
         return skip(:no_candidates) if candidates.empty?
 
         scored = probe_candidates(candidates)
-        winner = Selector.call(scored:, entry_articles_count: articles_count)
+        winner = Scorer.pick_winner(scored:, entry_articles_count: articles_count)
         return skip(:no_winner, probe_count: scored.size) unless winner
 
         apply(winner, probe_count: scored.size)
@@ -230,7 +229,7 @@ module Html2rss
       attr_reader :entry_url, :response, :session, :config, :articles_count, :surface_category
 
       def max_probes
-        config.auto_source.dig(:entry_resolution, :max_probes) || DEFAULT_CONFIG[:max_probes]
+        Options.from_auto_source(config.auto_source).max_probes
       end
 
       def probe_candidates(candidates)

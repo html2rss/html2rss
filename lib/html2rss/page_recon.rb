@@ -9,8 +9,23 @@ module Html2rss
   class PageRecon # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
     ##
     # Cheap surface + admission facts shared by AutoFallback gates and FeedResolution probes.
-    Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response)
+    Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response) do
+      ##
+      # @return [Html2rss::SurfaceCategory]
+      def category = SurfaceCategory.coerce(surface_category)
 
+      ##
+      # @return [Boolean]
+      def weak? = category.weak?
+
+      ##
+      # @return [Boolean]
+      def blocked? = category.blocked?
+
+      ##
+      # @return [Boolean]
+      def listing_bonus? = category.listing_bonus?
+    end
     ##
     # Recon facts used by Inspect and FeedResolution.
     Result = Data.define(
