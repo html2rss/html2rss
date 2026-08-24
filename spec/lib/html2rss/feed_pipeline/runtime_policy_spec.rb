@@ -22,6 +22,10 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     }
   end
 
+  # Default auto_source reserves NativeFeed + entry_resolution probes on top of
+  # wordpress_api/sitemap/pagination; that baseline exceeds Policy::MAX_REQUESTS_CEILING.
+  let(:request_ceiling) { Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING }
+
   describe '.from_config' do
     context 'when max_requests is explicitly configured' do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(request: raw_config[:request].merge(max_requests: 1))) }
@@ -35,8 +39,8 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     context 'when max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
-      it 'sizes HTTP request slots', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(8)
+      it 'sizes HTTP request slots up to the policy ceiling', :aggregate_failures do
+        expect(runtime_policy.max_requests).to eq(request_ceiling)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
@@ -44,10 +48,12 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     context 'when strategy is auto and max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :auto)) }
 
-      it 'adds auto fallback retry budget to the runtime policy', :aggregate_failures do
+      it 'includes auto fallback retry slots but still clamps to the policy ceiling', :aggregate_failures do
+        baseline = described_class.send(:baseline_request_budget_for, config)
         expected_retry_budget = Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1
 
-        expect(runtime_policy.max_requests).to eq(8 + expected_retry_budget)
+        expect(baseline).to be >= (1 + expected_retry_budget)
+        expect(runtime_policy.max_requests).to eq(request_ceiling)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
@@ -55,8 +61,8 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     context 'when strategy is non-auto and max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :faraday)) }
 
-      it 'keeps baseline request budget unchanged for non-auto strategies' do
-        expect(runtime_policy.max_requests).to eq(8)
+      it 'keeps non-auto baselines under the same policy ceiling' do
+        expect(runtime_policy.max_requests).to eq(request_ceiling)
       end
     end
 
@@ -72,8 +78,9 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
         )
       end
 
-      it 'reserves request budget using default max_pages of 5' do
-        expect(runtime_policy.max_requests).to eq(10) # 1 initial + (5-1) pagination + 1 wordpress_api + 4 sitemap
+      it 'reserves request budget using default max_pages of 5 (clamped to ceiling)' do
+        # 1 initial + (5-1) pagination + scrapers + entry_resolution → ceiling
+        expect(runtime_policy.max_requests).to eq(request_ceiling)
       end
     end
 
@@ -104,7 +111,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     it 'builds a Budget with request pools', :aggregate_failures do
       budget = described_class.budget_for(config)
 
-      expect(budget.remaining_requests).to eq(8)
+      expect(budget.remaining_requests).to eq(request_ceiling)
     end
   end
 end
