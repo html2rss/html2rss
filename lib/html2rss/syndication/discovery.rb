@@ -91,15 +91,32 @@ module Html2rss
       # @return [Boolean]
       def feedish?(response)
         return false unless response
-        return false if response.status && !response.status.between?(200, 299)
+        return false unless successful_status?(response)
         return true if response.feed_response?
 
-        ct = response.content_type.downcase
-        return true if FEED_CT_MARKERS.any? { |marker| ct.include?(marker) } # rubocop:disable Style/ArrayIntersect
+        feed_content_type?(response) || feed_body_sniff?(response)
+      end
 
+      def successful_status?(response)
+        status = response.status
+        status.nil? || status.between?(200, 299)
+      end
+      module_function :successful_status?
+      private_class_method :successful_status?
+
+      def feed_content_type?(response)
+        ct = response.content_type.downcase
+        FEED_CT_MARKERS.any? { |marker| ct.include?(marker) } # rubocop:disable Style/ArrayIntersect
+      end
+      module_function :feed_content_type?
+      private_class_method :feed_content_type?
+
+      def feed_body_sniff?(response)
         body = response.body.to_s[0, 800].downcase
         FEED_BODY_MARKERS.any? { |marker| body.include?(marker) } # rubocop:disable Style/ArrayIntersect
       end
+      module_function :feed_body_sniff?
+      private_class_method :feed_body_sniff?
 
       ##
       # Directory-relative feed path guesses for a page URL.

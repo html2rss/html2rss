@@ -54,7 +54,8 @@ module Html2rss
       def nav_candidates
         return [] unless parsed_html
 
-        parsed_html.css(NAV_SELECTORS).filter_map { |anchor| ranked_anchor_url(anchor) }
+        parsed_html.css(NAV_SELECTORS)
+                   .filter_map { |anchor| ranked_anchor_url(anchor) }
                    .sort_by { |(_url, rank)| -rank }
                    .map(&:first)
       end
@@ -76,7 +77,7 @@ module Html2rss
         sst = SST::Normalizer.call(response.body)
         segments = PageRecon.discover_segments(sst, entry_url)
         segments.filter_map { |segment| primary_link_url(segment) }
-      rescue ArgumentError, StandardError
+      rescue StandardError
         []
       end
 

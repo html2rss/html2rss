@@ -719,6 +719,7 @@ RSpec.describe Html2rss::Config do
       let(:expected_auto_source_config) do
         {
           limit: 25,
+          entry_resolution: { enabled: true, max_probes: 5 },
           scraper: {
             semantic_html: { enabled: true, fallback_anchorless: true }, # wasn't explicitly set -> default
             schema: { enabled: false },       # keeps the value from the config
@@ -733,6 +734,7 @@ RSpec.describe Html2rss::Config do
             meta_oembed: { enabled: true },   # wasn't explicitly set -> default
             microdata: { enabled: true },     # wasn't explicitly set -> default
             microformats2: { enabled: true }, # wasn't explicitly set -> default
+            native_feed: { enabled: true },   # wasn't explicitly set -> default
             sitemap: { enabled: true, max_age_days: 30, min_priority: 0.3 }, # wasn't explicitly set -> default
             wordpress_api: { enabled: true } # wasn't explicitly set -> default
           },
