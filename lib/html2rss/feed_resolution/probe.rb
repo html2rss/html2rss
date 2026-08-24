@@ -5,13 +5,6 @@ module Html2rss
     ##
     # Cheap follow-up probe that scores a candidate via {PageRecon} or syndication parse.
     class Probe
-      # Weight for admitted article counts on HTML probes.
-      ARTICLE_WEIGHT = 10
-      # Bonus when the surface looks like a listing rather than a hub/shell.
-      LISTING_SURFACE_BONUS = 5
-      # Surfaces that indicate the candidate is still a weak hub.
-      WEAK_SURFACES = Policy::WEAK_SURFACES
-
       ##
       # @param url [Html2rss::Url]
       # @param score [Numeric]
@@ -44,23 +37,22 @@ module Html2rss
 
       attr_reader :request_session, :origin_url
 
-      def score_response(url, response)
+      def score_response(_url, response) # rubocop:disable Metrics/MethodLength -- feed vs HTML branches
         if response.feed_response?
           count = Syndication::Parser.parse_response(response).size
-          return Scored.new(url: response.url, score: count * ARTICLE_WEIGHT, articles_count: count)
+          return Scored.new(
+            url: response.url,
+            score: Scorer.score_feed(articles_count: count),
+            articles_count: count
+          )
         end
 
-        recon = PageRecon.call(response:, url:)
-        Scored.new(url: response.url, score: score_recon(recon), articles_count: recon.articles_count)
-      end
-
-      def score_recon(recon)
-        score = recon.articles_count * ARTICLE_WEIGHT
-        score += LISTING_SURFACE_BONUS unless WEAK_SURFACES.include?(recon.surface_category)
-        drops = recon.admission_drops.values.sum
-        total = recon.articles_count + drops
-        score -= ((drops.to_f / total) * ARTICLE_WEIGHT).round if total.positive?
-        score
+        recon = PageRecon.call(response:, url: response.url)
+        Scored.new(
+          url: response.url,
+          score: Scorer.score_recon(recon),
+          articles_count: recon.articles_count
+        )
       end
     end
   end
