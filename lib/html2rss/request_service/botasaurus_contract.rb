@@ -43,7 +43,7 @@ module Html2rss
       MAX_RETRIES = 3
 
       # Allowlisted ScrapeDiagnostics keys nested under diagnostics.
-      DIAGNOSTICS_KEYS = %w[request_id attempts strategy_used render_ms execution_tier challenge].freeze
+      DIAGNOSTICS_KEYS = %w[request_id attempts strategy_used render_ms execution_tier challenge timeout_phase].freeze
       # Allowlisted ChallengeSignal keys nested under diagnostics.challenge.
       CHALLENGE_KEYS = %w[blocked detected marker].freeze
 

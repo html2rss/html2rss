@@ -174,12 +174,15 @@ paths:
             application/json:
               example:
                 url: https://example.com
-                error: Scrape timed out after 45 seconds
+                error: Scrape timed out after 45 seconds (phase=work)
                 error_category: timeout
                 diagnostics:
                   request_id: b01ef2f8-f641-4e75-8ef2-0b73f7b4f372
-                  attempts: 0
-                  render_ms: 0
+                  attempts: 1
+                  strategy_used: get
+                  render_ms: 45012
+                  execution_tier: browser_driver
+                  timeout_phase: work
               schema:
                 $ref: '#/components/schemas/ScrapeError'
 components:
@@ -324,6 +327,15 @@ components:
           examples:
           - blocked: false
             detected: false
+        timeout_phase:
+          anyOf:
+          - $ref: '#/components/schemas/TimeoutPhase'
+          - type: 'null'
+          description: 'When `error_category` is `timeout`, which stage burned the
+            budget: `queue` (threadpool wait), `boot` (browser/driver start), or `work`
+            (navigate/wait/scroll). Null for non-timeout outcomes.'
+          examples:
+          - work
       type: object
       required:
       - request_id
@@ -622,6 +634,13 @@ components:
       - html
       - diagnostics
       title: ScrapeSuccess
+    TimeoutPhase:
+      type: string
+      enum:
+      - queue
+      - boot
+      - work
+      title: TimeoutPhase
     WindowSize:
       properties:
         width:
