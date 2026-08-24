@@ -173,10 +173,15 @@ module Html2rss
       # rubocop:enable Metrics/ParameterLists
 
       def finalize_failure(attempts:, response:)
-        surface_category = response && AutoSource::Scraper.classify_no_scraper_surface(
-          response.parsed_body, body: response.body
-        )
+        surface_category = empty_surface_category(response)
         raise NoFeedItemsExtracted.new(attempts:, surface_category:)
+      end
+
+      def empty_surface_category(response)
+        return unless response
+        return :unsupported_surface if response.feed_response?
+
+        AutoSource::Scraper.classify_no_scraper_surface(response.parsed_body, body: response.body)
       end
 
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

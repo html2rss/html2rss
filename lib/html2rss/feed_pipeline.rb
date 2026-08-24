@@ -103,15 +103,6 @@ module Html2rss
       )
     end
 
-    def raise_empty_auto_source!(strategy:, response:)
-      raise NoFeedItemsExtracted.new(
-        attempts: [{ strategy:, items_count: 0, error_class: nil }],
-        surface_category: AutoSource::Scraper.classify_no_scraper_surface(
-          response.parsed_body, body: response.body
-        )
-      )
-    end
-
     def run_auto_pipeline(config, resources:)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
@@ -131,6 +122,7 @@ module Html2rss
     # rubocop:disable Metrics/MethodLength
     def selector_articles(config:, response:, request_session:)
       return [] unless (selectors = config.selectors)
+      return [] if response.feed_response?
 
       page_responses = request_session.page_responses(
         response,
@@ -151,9 +143,30 @@ module Html2rss
     # @return [Array(Array<Html2rss::Article>, Hash{String => Integer})]
     def auto_source_articles(config:, response:, request_session:)
       return [[], {}] unless (auto_source = config.auto_source)
+      return syndication_articles(response) if response.feed_response?
 
       source = AutoSource.new(response, auto_source, request_session:)
       [source.articles, source.admission_drops]
+    end
+
+    def syndication_articles(response)
+      articles = Syndication::Parser.parse_response(response).map do |hash|
+        Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed)
+      end
+      [articles, {}]
+    end
+
+    def raise_empty_auto_source!(strategy:, response:)
+      raise NoFeedItemsExtracted.new(
+        attempts: [{ strategy:, items_count: 0, error_class: nil }],
+        surface_category: empty_auto_source_surface(response)
+      )
+    end
+
+    def empty_auto_source_surface(response)
+      return :unsupported_surface if response.feed_response?
+
+      AutoSource::Scraper.classify_no_scraper_surface(response.parsed_body, body: response.body)
     end
   end
 end
