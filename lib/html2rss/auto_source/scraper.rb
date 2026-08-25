@@ -23,7 +23,9 @@ module Html2rss
 
       # Extraction tiers: merge within a tier, then stop when AutoSource has enough articles.
       # Heuristic scrapers are separate tiers so SemanticHtml can satisfy before Html runs.
+      # NativeFeed is tier 0 so syndication wins before structured HTML scrapers.
       SCRAPER_TIERS = [
+        [NativeFeed].freeze,
         [Schema, Microdata, Microformats2, JsonState, XhrArticles].freeze,
         [WordpressApi, Sitemap, MetaOembed].freeze,
         [SemanticHtml].freeze,
@@ -36,7 +38,7 @@ module Html2rss
       # Heuristic scrapers that share one memoized SST::Document per page.
       HEURISTIC_SCRAPERS = [SemanticHtml, Html].freeze
       # Scrapers that accept a shared follow-up +request_session+.
-      REQUEST_SESSION_SCRAPERS = [WordpressApi, Sitemap, MetaOembed].freeze
+      REQUEST_SESSION_SCRAPERS = [NativeFeed, WordpressApi, Sitemap, MetaOembed].freeze
       # Scrapers that consume browser-captured XHR/fetch JSON bodies.
       CAPTURED_RESPONSE_SCRAPERS = [XhrArticles].freeze
 
@@ -83,6 +85,7 @@ module Html2rss
       # Returns an array of scraper classes that claim to find articles in the parsed body.
       # @param parsed_body [Nokogiri::HTML::Document] The parsed HTML document.
       # @param opts [Hash] The options hash.
+      # @option opts [Hash] :native_feed scraper toggle and configuration
       # @option opts [Hash] :wordpress_api scraper toggle and configuration
       # @option opts [Hash] :schema scraper toggle and configuration
       # @option opts [Hash] :microdata scraper toggle and configuration

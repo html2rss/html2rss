@@ -9,6 +9,9 @@ module Html2rss
       optional(:limit).filled(:integer, gt?: 0)
 
       optional(:scraper).hash do # rubocop:disable Metrics/BlockLength
+        optional(:native_feed).hash do
+          optional(:enabled).filled(:bool)
+        end
         optional(:wordpress_api).hash do
           optional(:enabled).filled(:bool)
         end

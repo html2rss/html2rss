@@ -60,6 +60,43 @@ RSpec.describe Html2rss::RequestService::Response do
 
       it { expect(instance.html_response?).to be false }
     end
+
+    context 'when the response is RSS' do
+      let(:body) { '<?xml version="1.0"?><rss version="2.0"><channel></channel></rss>' }
+      let(:headers) { { 'content-type' => 'application/rss+xml' } }
+
+      it { expect(instance.html_response?).to be false }
+    end
+  end
+
+  describe '#feed_response?' do
+    context 'when Content-Type advertises RSS' do
+      let(:body) { '<?xml version="1.0"?><rss version="2.0"></rss>' }
+      let(:headers) { { 'content-type' => 'application/rss+xml' } }
+
+      it { expect(instance.feed_response?).to be true }
+    end
+
+    context 'when Content-Type is wrong but the body sniffs as Atom' do
+      let(:body) { '<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>' }
+      let(:headers) { { 'content-type' => 'text/plain' } }
+
+      it { expect(instance.feed_response?).to be true }
+    end
+
+    context 'when the response is HTML' do
+      let(:body) { '<!DOCTYPE html><html><body>hi</body></html>' }
+      let(:headers) { { 'content-type' => 'text/html' } }
+
+      it { expect(instance.feed_response?).to be false }
+    end
+
+    context 'when Content-Type is image/svg+xml' do
+      let(:body) { '<svg xmlns="http://www.w3.org/2000/svg"></svg>' }
+      let(:headers) { { 'content-type' => 'image/svg+xml' } }
+
+      it { expect(instance.feed_response?).to be false }
+    end
   end
 
   describe '#parsed_body' do

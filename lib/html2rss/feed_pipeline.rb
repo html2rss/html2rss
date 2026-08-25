@@ -131,6 +131,7 @@ module Html2rss
     # rubocop:disable Metrics/MethodLength
     def selector_articles(config:, response:, request_session:)
       return [] unless (selectors = config.selectors)
+      return [] if response.feed_response?
 
       page_responses = request_session.page_responses(
         response,
@@ -151,9 +152,17 @@ module Html2rss
     # @return [Array(Array<Html2rss::Article>, Hash{String => Integer})]
     def auto_source_articles(config:, response:, request_session:)
       return [[], {}] unless (auto_source = config.auto_source)
+      return syndication_articles(response) if response.feed_response?
 
       source = AutoSource.new(response, auto_source, request_session:)
       [source.articles, source.admission_drops]
+    end
+
+    def syndication_articles(response)
+      articles = Syndication::Parser.parse_response(response).map do |hash|
+        Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed)
+      end
+      [articles, {}]
     end
   end
 end
