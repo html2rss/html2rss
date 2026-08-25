@@ -72,6 +72,19 @@ RSpec.describe Html2rss::FeedResolution do
     expect(result).to have_attributes(applied: false, reason: :policy_skip)
   end
 
+  it 'raises when articles is not an Array' do
+    expect do
+      described_class.call(
+        entry_url:,
+        response:,
+        session:,
+        config:,
+        articles: nil,
+        surface_category: :listing
+      )
+    end.to raise_error(ArgumentError, 'articles must be an Array')
+  end
+
   describe '.try_apply!' do
     let(:listing_url) { 'https://example.com/news' }
     let(:retry_session) { instance_double(Html2rss::RequestSession) }
