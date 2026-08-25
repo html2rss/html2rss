@@ -10,9 +10,10 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 
 ## Live flow
 
-1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML).
+1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML). Direct syndication responses skip HTML scrapers and parse via `Syndication::Parser`.
 2. **Scraper tiers** — Enabled scrapers that claim the page (shallow `articles?` or instance `extractable?`) run in `Scraper::SCRAPER_TIERS` order. Merge within a tier, then stop when enough articles survive Cleanup:
 
+   0. Native feed: NativeFeed (head alternates + path discovery → RSS/Atom parse)
    1. In-page structured: Schema, Microdata, Microformats2, JsonState, XhrArticles
    2. Follow-up IO: WordPress API, Sitemap, MetaOembed
    3. Heuristic: SemanticHtml

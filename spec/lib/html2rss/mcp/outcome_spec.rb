@@ -67,10 +67,10 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.inspect' do
-    it 'points at done when recon found native alternate feeds' do
+    it 'points at scrape_url when recon found native alternate feeds (runtime consumes them)' do
       outcome = described_class.inspect(payload: { alternate_feeds: [{ href: 'https://example.com/feed.xml' }] })
 
-      expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :done))
+      expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :scrape_url))
     end
 
     it 'points at capture_config when recon found extractable articles' do

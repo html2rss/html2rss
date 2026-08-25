@@ -24,7 +24,8 @@ module Html2rss
                        'scheme_downgrade, alternate_feeds).',
           validate_config: 'Call validate_config with payload.yaml or a config hash (XOR, not both).',
           apply_config: 'Call apply_config next. Confirm payload.item_count before shipping.',
-          scrape_url: 'Call scrape_url for articles now. strategy auto already runs Faraday then Botasaurus.',
+          scrape_url: 'Call scrape_url for articles now. strategy auto already runs Faraday then Botasaurus ' \
+                      'and promotes native RSS/Atom when present.',
           capture_config: 'Call capture_config for a reusable YAML draft, then follow next_step.',
           read_runtime: 'Read html2rss://runtime. Set BOTASAURUS_SCRAPER_URL on the MCP process ' \
                         'if botasaurus_configured is false.'
@@ -150,7 +151,8 @@ module Html2rss
         end
 
         def inspect_next_step(payload)
-          return NextStep.done if Array(payload[:alternate_feeds]).any?
+          # Runtime scrape_url now consumes native alternates (NativeFeed / direct feed parse).
+          return NextStep.scrape_url if Array(payload[:alternate_feeds]).any?
           return NextStep.capture_config if payload[:articles_count].to_i.positive?
 
           NextStep.scrape_url
