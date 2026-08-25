@@ -4,7 +4,7 @@ Contributor map for the four Strong module deepenings on this branch. Prefer the
 
 ## Scrape target
 
-Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, updated when `FeedResolution.try_apply!` selects a winner (including zero-item retries so later auto-fallback strategies keep the resolved URL). `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.
+Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.
 
 ## Page assessment
 
@@ -40,7 +40,7 @@ Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Option
 
 ## Pipeline outcome URLs
 
-`FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash — do not flatten the domain pair earlier.
+`FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash — do not flatten the domain pair earlier. `Diag.applied: true` means the tournament picked a winner; it does not mean wire `scrape_url` changed. Only `Status` `scrape_url` / `ScrapeTarget.effective_url` reflect a sticky rewrite after a successful retry.
 
 ## Request Budget
 
