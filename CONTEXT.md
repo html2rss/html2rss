@@ -14,9 +14,13 @@ Cheap surface class and admitted article count for probe scoring. Owned by `Page
 
 Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it — do not duplicate path arrays.
 
+## URL document identity
+
+Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it — do not reintroduce string `chomp('/')` same-page compares. Differs from `Url#==` (slash-sensitive); do not change `==`.
+
 ## Feed resolution policy
 
-Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` (derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`). Do not pass `articles_count:`.
+Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` Array (`ArgumentError` otherwise; derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`). Do not pass `articles_count:`.
 
 ## Feed resolution candidates
 
