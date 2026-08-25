@@ -15,7 +15,7 @@ module Html2rss
       # Bodies that look like HTML even when Content-Type is missing, empty, or wrong.
       HTML_BODY_SNIFF = /\A\s*(?:<!DOCTYPE\s+html|<html)/i
       # Content-Type markers for RSS/Atom syndication responses.
-      FEED_CT_MARKERS = %w[rss+xml atom+xml rss atom xml].freeze
+      FEED_CT_MARKERS = %w[rss+xml atom+xml rss atom].freeze
       # Body sniff for unlabeled syndication (first 800 bytes, downcased).
       FEED_BODY_MARKERS = ['<rss', '<feed xmlns', '<feed '].freeze
       # Charset from Content-Type or a leading <meta charset>.

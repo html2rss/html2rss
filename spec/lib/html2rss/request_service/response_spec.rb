@@ -90,6 +90,13 @@ RSpec.describe Html2rss::RequestService::Response do
 
       it { expect(instance.feed_response?).to be false }
     end
+
+    context 'when Content-Type is image/svg+xml' do
+      let(:body) { '<svg xmlns="http://www.w3.org/2000/svg"></svg>' }
+      let(:headers) { { 'content-type' => 'image/svg+xml' } }
+
+      it { expect(instance.feed_response?).to be false }
+    end
   end
 
   describe '#parsed_body' do
