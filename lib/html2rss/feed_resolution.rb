@@ -58,8 +58,8 @@ module Html2rss
     # @param scrape_target [Html2rss::ScrapeTarget]
     # @param state [Html2rss::FeedPipeline::AutoFallback::AttemptState]
     # @param budget [Html2rss::RequestService::Budget]
-    # @return [ApplyOutcome, nil] `:succeeded` when retry extract yielded items; `:applied` when
-    #   the effective URL changed but retry did not succeed
+    # @return [ApplyOutcome, nil] `:succeeded` sticky scrape target when retry extract yielded items;
+    #   `nil` when no winner or retry was empty (entry scrape target kept; Diag.applied may still be true)
     # rubocop:disable Metrics/ParameterLists -- orchestration kwargs stay co-located
     def self.try_apply!(pipeline:, config:, response:, session:, strategy:, resources:, articles:,
                         scrape_target:, state:, budget:)
@@ -107,7 +107,7 @@ module Html2rss
 
       ##
       # @return [ApplyOutcome, nil]
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- eligibility + tournament + retry path
+      # rubocop:disable Metrics/MethodLength -- eligibility + tournament + retry path
       def call
         return unless eligible?
 
@@ -121,7 +121,7 @@ module Html2rss
           resolution, effective:
         )
 
-        ApplyOutcome.new(scrape_target: effective, status: :applied)
+        nil
       rescue RequestService::RequestBudgetExceeded
         Log.warn('FeedResolution: entry resolution skipped (request budget exhausted)')
         nil
@@ -131,7 +131,7 @@ module Html2rss
         Log.warn("FeedResolution: entry resolution retry failed (#{error.class})")
         nil
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+      # rubocop:enable Metrics/MethodLength
 
       private
 

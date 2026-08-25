@@ -176,7 +176,7 @@ module Html2rss
           articles:, scrape_target:, state:, budget:
         ))
           @scrape_target = outcome.scrape_target
-          return if outcome.status == :succeeded
+          return
         end
 
         if items_count.positive?

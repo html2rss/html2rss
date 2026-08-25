@@ -115,7 +115,7 @@ RSpec.describe Html2rss::FeedResolution do
       )
     end
 
-    it 'returns :applied with an updated scrape target when retry yields zero items', :aggregate_failures do
+    it 'returns nil and keeps entry scrape target when retry yields zero items', :aggregate_failures do
       listing = Html2rss::RequestService::Response.new(
         body: <<~HTML,
           <!DOCTYPE html><html><body>
@@ -135,11 +135,10 @@ RSpec.describe Html2rss::FeedResolution do
         articles: [], scrape_target:, state:, budget:
       )
 
-      expect(outcome).to have_attributes(
-        status: :applied,
-        scrape_target: have_attributes(entry_url:, effective_url: listing_url)
-      )
+      expect(outcome).to be_nil
+      expect(scrape_target).to have_attributes(entry_url:, effective_url: entry_url)
       expect(state.resolution_tried?).to be(true)
+      expect(state.entry_resolution).to have_attributes(applied: true, reason: :winner)
     end
 
     it 'returns :succeeded when retry extract yields items', :aggregate_failures do
