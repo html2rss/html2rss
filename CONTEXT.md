@@ -8,11 +8,19 @@ Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss:
 
 ## Page assessment
 
-Cheap surface class and admitted article count for policy gates and probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
+Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; tournament policy uses that typed `articles:` array — do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
 
 ## Syndication candidate catalog
 
 Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it — do not duplicate path arrays.
+
+## Feed resolution policy
+
+Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` (derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`). Do not pass `articles_count:`.
+
+## Feed resolution candidates
+
+Same-origin probe URL mix for the tournament. Owned by `FeedResolution::CandidateGenerator`: one Discovery feed slot + up to `max - 1` listing URLs (taxonomy-first nav → segment first-wins `:list` → `:cluster` → `:semantic` → `LISTING_PATHS`). Do not concat-then-`.first(max)` (starves listing seeds).
 
 ## Feed resolution scoring
 
