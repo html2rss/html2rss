@@ -2,7 +2,8 @@
 
 Backend-only entry URL tournament: when the pasted URL is a weak homepage/hub
 (or NativeFeed-majority extract), probe same-origin listing/feed candidates and
-rewrite the scrape URL before AutoFallback escalates strategies.
+sticky-rewrite the scrape URL only when the retry extract yields items
+(`try_apply!` `:succeeded`) before AutoFallback escalates strategies.
 
 Goal: best **article listing** for AutoSource. A native feed may still win the
 tournament on item count (feed-as-means) — intentional.
@@ -16,8 +17,8 @@ tournament on item count (feed-as-means) — intentional.
 | Listing path lexicon (`LISTING_PATHS`) | `Syndication::CandidateCatalog` (consumed, not owned here) |
 | Cheap probe + score + winner pick | `FeedResolution::Probe` + `FeedResolution::Scorer` |
 | Typed entry_resolution options | `FeedResolution::Options` |
-| Wire-safe resolution diag | `FeedResolution::Diag` |
-| Public `call` → `Result`; retry orchestration | `FeedResolution` (`try_apply!`) |
+| Wire-safe resolution diag (`applied` = tournament win, not sticky URL) | `FeedResolution::Diag` |
+| Public `call` → `Result`; retry orchestration (sticky `ScrapeTarget` only on `:succeeded`) | `FeedResolution` (`try_apply!`) |
 | Page surface for policy/scoring | `PageRecon::Assessment` + `Html2rss::SurfaceCategory` |
 | Native feed discover/parse | `Syndication` (not this module) |
 
