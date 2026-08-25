@@ -50,7 +50,7 @@ RSpec.describe Html2rss::FeedResolution do
       response:,
       session:,
       config:,
-      articles_count: 0,
+      articles: [],
       surface_category: :high_entropy_surface
     )
 
@@ -65,7 +65,7 @@ RSpec.describe Html2rss::FeedResolution do
       response:,
       session:,
       config:,
-      articles_count: 0,
+      articles: [],
       surface_category: :blocked_surface
     )
 

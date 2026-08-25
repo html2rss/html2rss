@@ -30,13 +30,13 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response]
     # @param session [Html2rss::RequestSession]
     # @param config [Html2rss::Config]
-    # @param articles_count [Integer]
+    # @param articles [Array<Html2rss::Article>]
     # @param surface_category [Symbol, nil]
     # @return [Result]
     # rubocop:disable Metrics/ParameterLists -- tournament kwargs stay co-located
-    def self.call(entry_url:, response:, session:, config:, articles_count:, surface_category: nil)
+    def self.call(entry_url:, response:, session:, config:, articles:, surface_category: nil)
       Runner.new(
-        entry_url:, response:, session:, config:, articles_count:, surface_category:
+        entry_url:, response:, session:, config:, articles:, surface_category:
       ).call
     end
     # rubocop:enable Metrics/ParameterLists
@@ -145,7 +145,7 @@ module Html2rss
 
         @assessment = PageRecon.assess(response:, url: config.url)
         Policy.resolve?(
-          config:, articles_count: articles.size, surface_category: assessment.surface_category
+          config:, articles:, surface_category: assessment.surface_category
         )
       end
 
@@ -155,7 +155,7 @@ module Html2rss
           response:,
           session:,
           config:,
-          articles_count: articles.size,
+          articles:,
           surface_category: assessment.surface_category
         )
       end
@@ -190,15 +190,15 @@ module Html2rss
       # @param response [Html2rss::RequestService::Response]
       # @param session [Html2rss::RequestSession]
       # @param config [Html2rss::Config]
-      # @param articles_count [Integer]
+      # @param articles [Array<Html2rss::Article>]
       # @param surface_category [Symbol, nil]
       # rubocop:disable Metrics/ParameterLists -- tournament context stays co-located
-      def initialize(entry_url:, response:, session:, config:, articles_count:, surface_category: nil)
+      def initialize(entry_url:, response:, session:, config:, articles:, surface_category: nil)
         @entry_url = Html2rss::Url.from_absolute(entry_url)
         @response = response
         @session = session
         @config = config
-        @articles_count = articles_count.to_i
+        @articles = Array(articles)
         @surface_category = surface_category
       end
       # rubocop:enable Metrics/ParameterLists
@@ -208,7 +208,7 @@ module Html2rss
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- policy → candidates → probe → select
       def call
         return skip(:policy_skip) unless Policy.resolve?(
-          config:, articles_count:, surface_category:
+          config:, articles:, surface_category:
         )
 
         candidates = CandidateGenerator.call(
@@ -219,7 +219,7 @@ module Html2rss
         return skip(:no_candidates) if candidates.empty?
 
         scored = probe_candidates(candidates)
-        winner = Scorer.pick_winner(scored:, entry_articles_count: articles_count)
+        winner = Scorer.pick_winner(scored:, entry_articles_count: articles.size)
         return skip(:no_winner, probe_count: scored.size) unless winner
 
         apply(winner, probe_count: scored.size)
@@ -228,7 +228,7 @@ module Html2rss
 
       private
 
-      attr_reader :entry_url, :response, :session, :config, :articles_count, :surface_category
+      attr_reader :entry_url, :response, :session, :config, :articles, :surface_category
 
       def max_probes
         Options.from_auto_source(config.auto_source).max_probes
