@@ -59,4 +59,10 @@ RSpec.describe Html2rss::FeedResolution::Policy do
       described_class.resolve?(config:, articles:, surface_category: :listing)
     ).to be true
   end
+
+  it 'raises when articles is not an Array' do
+    expect do
+      described_class.resolve?(config:, articles: nil, surface_category: :listing)
+    end.to raise_error(ArgumentError, 'articles must be an Array')
+  end
 end

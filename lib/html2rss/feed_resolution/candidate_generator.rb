@@ -6,10 +6,8 @@ module Html2rss
     # Builds same-origin entry-resolution candidates: one feed slot plus listing seeds.
     #
     # Mix is 1 feed + up to +listing_cap+ listing URLs (nav → segment first-wins →
-    # {LISTING_PATHS}). Feed never pads into listing slots.
+    # {Syndication::CandidateCatalog::LISTING_PATHS}). Feed never pads into listing slots.
     class CandidateGenerator
-      # Tournament-only HTML path suffixes (shared with {Syndication::CandidateCatalog}).
-      LISTING_PATHS = Syndication::CandidateCatalog::LISTING_PATHS
       # Max candidates returned to the probe stage.
       DEFAULT_MAX = 5
       # Nav/header/footer anchor sources for DestinationFacts ranking.
@@ -46,17 +44,14 @@ module Html2rss
 
       attr_reader :entry_url, :response, :max
 
-      def listing_cap
-        max > 1 ? max - 1 : 0
-      end
+      def listing_cap = max > 1 ? max - 1 : 0
 
       def feed_slot
         return unless parsed_html
 
         url = Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).first
         return unless url
-        return if same_page?(url)
-        return unless same_registrable_domain?(url)
+        return unless eligible_url?(url)
 
         url
       end
@@ -64,8 +59,7 @@ module Html2rss
       def listing_urls
         (nav_candidates + segment_seed_urls + listing_path_candidates)
           .uniq
-          .reject { |url| same_page?(url) }
-          .select { |url| same_registrable_domain?(url) }
+          .select { eligible_url?(_1) }
       end
 
       def nav_candidates
@@ -89,9 +83,9 @@ module Html2rss
       end
 
       def segment_seed_urls
-        return [] unless response.html_response?
+        return [] unless parsed_html
 
-        sst = SST::Normalizer.call(response.body)
+        sst = SST::Normalizer.call(parsed_html)
         link_resolver = Scoring::LinkResolver.new(entry_url)
 
         SEGMENT_STRATEGIES.each do |strategy|
@@ -114,7 +108,7 @@ module Html2rss
       end
 
       def listing_path_candidates
-        LISTING_PATHS.filter_map { |path| absolute_same_origin(path) }
+        Syndication::CandidateCatalog::LISTING_PATHS.filter_map { |path| absolute_same_origin(path) }
       end
 
       def parsed_html
@@ -133,8 +127,8 @@ module Html2rss
         nil
       end
 
-      def same_page?(url)
-        url.to_s.chomp('/') == entry_url.to_s.chomp('/')
+      def eligible_url?(url)
+        !entry_url.same_document?(url) && same_registrable_domain?(url)
       end
 
       def same_registrable_domain?(url)

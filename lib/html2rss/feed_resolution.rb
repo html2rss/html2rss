@@ -239,34 +239,33 @@ module Html2rss
         candidates.filter_map { |url| probe.call(url) }
       end
 
-      def apply(winner, probe_count:) # rubocop:disable Metrics/MethodLength -- log + Result stay co-located
-        Log.info(
-          "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{winner.url.host} " \
-          "applied=true probe_count=#{probe_count} winner_score=#{winner.score} reason=winner"
-        )
-        Result.new(
-          entry_url: entry_url.to_s,
-          scrape_url: winner.url.to_s,
+      def apply(winner, probe_count:)
+        result(
           applied: true,
           reason: :winner,
+          scrape_url: winner.url.to_s,
           probe_count:,
           winner_score: winner.score
         )
       end
 
-      def skip(reason, probe_count: 0) # rubocop:disable Metrics/MethodLength -- log + Result stay co-located
-        Log.info(
-          "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{entry_url.host} " \
-          "applied=false probe_count=#{probe_count} winner_score=nil reason=#{reason}"
-        )
-        Result.new(
-          entry_url: entry_url.to_s,
-          scrape_url: entry_url.to_s,
+      def skip(reason, probe_count: 0)
+        result(
           applied: false,
           reason:,
+          scrape_url: entry_url.to_s,
           probe_count:,
           winner_score: nil
         )
+      end
+
+      def result(applied:, reason:, scrape_url:, probe_count:, winner_score:)
+        scrape_host = Html2rss::Url.from_absolute(scrape_url).host
+        Log.info(
+          "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{scrape_host} " \
+          "applied=#{applied} probe_count=#{probe_count} winner_score=#{winner_score.inspect} reason=#{reason}"
+        )
+        Result.new(entry_url: entry_url.to_s, scrape_url:, applied:, reason:, probe_count:, winner_score:)
       end
     end
   end
