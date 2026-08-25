@@ -2,6 +2,46 @@
 
 Contributor map for the four Strong module deepenings on this branch. Prefer these homes over reintroducing dual ownership.
 
+## Scrape target
+
+Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.
+
+## Page assessment
+
+Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; tournament policy uses that typed `articles:` array — do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
+
+## Syndication candidate catalog
+
+Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it — do not duplicate path arrays.
+
+## URL document identity
+
+Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it — do not reintroduce string `chomp('/')` same-page compares. Differs from `Url#==` (slash-sensitive); do not change `==`.
+
+## Feed resolution policy
+
+Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` Array (`ArgumentError` otherwise; derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`). Do not pass `articles_count:`.
+
+## Feed resolution candidates
+
+Same-origin probe URL mix for the tournament. Owned by `FeedResolution::CandidateGenerator`: one Discovery feed slot + up to `max - 1` listing URLs (taxonomy-first nav → segment first-wins `:list` → `:cluster` → `:semantic` → `LISTING_PATHS`). Do not concat-then-`.first(max)` (starves listing seeds).
+
+## Feed resolution scoring
+
+Probe score weights, drop penalties, and winner pick for the entry URL tournament. Owned by `FeedResolution::Scorer`. `FeedResolution::Probe` fetches via `PageRecon.assess` (not fat `PageRecon.call`); do not inline scoring in `Probe`.
+
+## Surface category
+
+Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`). `PageRecon::Assessment` exposes those predicates; `FeedResolution::Policy` and `Scorer` call them — do not re-list WEAK Sets.
+
+## Entry-resolution options
+
+Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Options` (`enabled?`, `max_probes`, `request_slots`). Policy eligibility, Runner probe caps, and budget slot reservation consume it — do not dig the Hash in three places.
+
+## Pipeline outcome URLs
+
+`FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash — do not flatten the domain pair earlier. `Diag.applied: true` means the tournament picked a winner; it does not mean wire `scrape_url` changed. Only `Status` `scrape_url` / `ScrapeTarget.effective_url` reflect a sticky rewrite after a successful retry.
+
 ## Request Budget
 
 Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once — no `RuntimeInput` passthrough). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms` — strategies must not reimplement `remaining || policy.total`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.

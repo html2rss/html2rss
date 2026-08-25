@@ -7,6 +7,10 @@ module Html2rss
     # Runtime source of truth for validating auto-source config values.
     AutoSourceContract = Dry::Schema.Params do # rubocop:disable Metrics/BlockLength
       optional(:limit).filled(:integer, gt?: 0)
+      optional(:entry_resolution).hash do
+        optional(:enabled).filled(:bool)
+        optional(:max_probes).filled(:integer, gt?: 0)
+      end
 
       optional(:scraper).hash do # rubocop:disable Metrics/BlockLength
         optional(:native_feed).hash do

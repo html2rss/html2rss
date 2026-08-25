@@ -24,16 +24,32 @@ module Html2rss
       ##
       # Mutable run state for one auto-fallback chain: attempts plus selected result.
       class AttemptState
-        attr_reader :attempts, :result, :last_response
+        attr_reader :attempts, :result, :last_response, :entry_resolution
 
         def initialize
           @attempts = []
           @result = nil
           @last_response = nil
+          @entry_resolution = nil
+          @resolution_tried = false
         end
 
         # @return [Boolean] true when a strategy already yielded items
         def succeeded? = !result.nil?
+
+        # @return [Boolean] whether entry resolution already ran for this chain
+        def resolution_tried? = @resolution_tried
+
+        # @return [void]
+        def mark_resolution_tried!
+          @resolution_tried = true
+        end
+
+        # @param result [Html2rss::FeedResolution::Result]
+        # @return [void]
+        def remember_entry_resolution(result)
+          @entry_resolution = FeedResolution::Diag.from_result(result)
+        end
 
         # @param strategy [Symbol] strategy that raised
         # @param error [Exception] caught error
@@ -64,10 +80,11 @@ module Html2rss
         # @param selected_strategy [Symbol] concrete strategy that produced items
         # @param attempt_count [Integer] number of attempts recorded for this chain
         # @param admission_drops [Hash{String => Integer}] Cleanup drop tallies
+        # @param scrape_target [Html2rss::ScrapeTarget]
         # @return [void]
-        # rubocop:disable Metrics/ParameterLists -- PipelineOutcome kwargs stay co-located
+        # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- PipelineOutcome kwargs stay co-located
         def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:,
-                     admission_drops: {})
+                     scrape_target:, admission_drops: {})
           @result = PipelineOutcome.new(
             response:,
             articles:,
@@ -75,10 +92,12 @@ module Html2rss
             selected_strategy:,
             attempt_count:,
             strategy_attempts: attempts,
-            admission_drops:
+            admission_drops:,
+            scrape_target:,
+            entry_resolution:
           )
         end
-        # rubocop:enable Metrics/ParameterLists
+        # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
       end
 
       ##
@@ -94,6 +113,7 @@ module Html2rss
         @pipeline = pipeline
         @config = config
         @resources = resources
+        @scrape_target = ScrapeTarget.from_config(config)
       end
 
       ##
@@ -107,7 +127,7 @@ module Html2rss
 
       private
 
-      attr_reader :strategies, :budget, :pipeline, :config, :resources
+      attr_reader :strategies, :budget, :pipeline, :config, :resources, :scrape_target
 
       def run_attempts
         AttemptState.new.tap do |state|
@@ -119,7 +139,9 @@ module Html2rss
       end
 
       def attempt(strategy:, next_strategy:, state:)
-        request_session = pipeline.request_session_for(config, strategy:, resources:)
+        request_session = pipeline.request_session_for(
+          config, strategy:, resources:, scrape_url: scrape_target.effective_url
+        )
         response = fetch_response(request_session:, strategy:, next_strategy:, state:)
         return unless response
 
@@ -139,7 +161,8 @@ module Html2rss
         nil
       end
 
-      def process_response(response:, strategy:, next_strategy:, request_session:, state:) # rubocop:disable Metrics/MethodLength -- extract + success path
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
+      def process_response(response:, strategy:, next_strategy:, request_session:, state:)
         articles, dedup_dropped, admission_drops = articles_for(response:, request_session:)
         state.remember_response(response)
         items_count = articles.size
@@ -147,6 +170,15 @@ module Html2rss
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
+
+        if (outcome = FeedResolution.try_apply!(
+          pipeline:, config:, response:, session: request_session, strategy:, resources:,
+          articles:, scrape_target:, state:, budget:
+        ))
+          @scrape_target = outcome.scrape_target
+          return
+        end
+
         if items_count.positive?
           return record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:,
                                 state:)
@@ -154,6 +186,7 @@ module Html2rss
 
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
       def articles_for(response:, request_session:)
         pipeline.deduplicated_articles(config:, response:, request_session:)
@@ -162,8 +195,11 @@ module Html2rss
       # rubocop:disable Metrics/ParameterLists -- success kwargs match PipelineOutcome
       def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
         attempt_count = state.attempts.size
-        state.succeed!(response:, articles:, dedup_dropped:, selected_strategy: strategy,
-                       attempt_count:, admission_drops:)
+        state.succeed!(
+          response:, articles:, dedup_dropped:, selected_strategy: strategy,
+          attempt_count:, admission_drops:,
+          scrape_target:
+        )
         return unless attempt_count > 1
 
         Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempt_count} " \

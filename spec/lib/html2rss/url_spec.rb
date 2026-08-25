@@ -152,6 +152,36 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#same_document?' do
+    it 'matches paths that differ only by a trailing slash', :aggregate_failures do
+      bare = described_class.from_absolute('https://example.com/blog')
+      slash = described_class.from_absolute('https://example.com/blog/')
+
+      expect(bare).to be_same_document(slash)
+      expect(bare).not_to eq(slash)
+    end
+
+    it 'ignores fragments when comparing document identity' do
+      with_fragment = described_class.from_absolute('https://example.com/blog#top')
+      with_slash = described_class.from_absolute('https://example.com/blog/')
+
+      expect(with_fragment).to be_same_document(with_slash)
+    end
+
+    it 'requires matching query strings' do
+      left = described_class.from_absolute('https://example.com/a?x=1')
+      right = described_class.from_absolute('https://example.com/a?x=2')
+
+      expect(left).not_to be_same_document(right)
+    end
+
+    it 'returns false for non-Url arguments' do
+      url = described_class.from_absolute('https://example.com/blog')
+
+      expect(url.same_document?('https://example.com/blog')).to be false
+    end
+  end
+
   describe '#with_query_values' do
     it 'returns a new url with the provided query values' do
       url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F')
