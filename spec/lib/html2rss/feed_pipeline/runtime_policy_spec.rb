@@ -36,7 +36,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
       it 'sizes HTTP request slots', :aggregate_failures do
-        expect(runtime_policy.max_requests).to eq(8)
+        expect(runtime_policy.max_requests).to eq(9)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
@@ -47,7 +47,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       it 'adds auto fallback retry budget to the runtime policy', :aggregate_failures do
         expected_retry_budget = Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1
 
-        expect(runtime_policy.max_requests).to eq(8 + expected_retry_budget)
+        expect(runtime_policy.max_requests).to eq(9 + expected_retry_budget)
         expect(runtime_policy.max_redirects).to eq(8)
       end
     end
@@ -56,7 +56,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :faraday)) }
 
       it 'keeps baseline request budget unchanged for non-auto strategies' do
-        expect(runtime_policy.max_requests).to eq(8)
+        expect(runtime_policy.max_requests).to eq(9)
       end
     end
 
@@ -73,7 +73,9 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       end
 
       it 'reserves request budget using default max_pages of 5' do
-        expect(runtime_policy.max_requests).to eq(10) # 1 initial + (5-1) pagination + 1 wordpress_api + 4 sitemap
+        # Baseline is 11 (1 + 4 pagination + 1 native_feed + 1 wordpress_api + 4 sitemap)
+        # but Policy clamps at MAX_REQUESTS_CEILING (10).
+        expect(runtime_policy.max_requests).to eq(10)
       end
     end
 
@@ -104,7 +106,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     it 'builds a Budget with request pools', :aggregate_failures do
       budget = described_class.budget_for(config)
 
-      expect(budget.remaining_requests).to eq(8)
+      expect(budget.remaining_requests).to eq(9)
     end
   end
 end
