@@ -3,7 +3,10 @@
 module Html2rss
   module FeedResolution
     ##
-    # Builds same-origin entry-resolution candidates (feeds, nav, list links, paths).
+    # Builds same-origin entry-resolution candidates: one feed slot plus listing seeds.
+    #
+    # Mix is 1 feed + up to +listing_cap+ listing URLs (nav → segment first-wins →
+    # {LISTING_PATHS}). Feed never pads into listing slots.
     class CandidateGenerator
       # Tournament-only HTML path suffixes (shared with {Syndication::CandidateCatalog}).
       LISTING_PATHS = Syndication::CandidateCatalog::LISTING_PATHS
@@ -11,6 +14,8 @@ module Html2rss
       DEFAULT_MAX = 5
       # Nav/header/footer anchor sources for DestinationFacts ranking.
       NAV_SELECTORS = 'header a[href], nav a[href], footer a[href]'
+      # Segment strategies tried first-wins (≥2 same-origin primary links).
+      SEGMENT_STRATEGIES = %i[list cluster semantic].freeze
 
       ##
       # @param entry_url [String, Html2rss::Url]
@@ -34,21 +39,33 @@ module Html2rss
       ##
       # @return [Array<Html2rss::Url>]
       def call
-        (feed_candidates + nav_candidates + list_link_candidates + listing_path_candidates)
-          .uniq
-          .reject { |url| same_page?(url) }
-          .select { |url| same_registrable_domain?(url) }
-          .first(@max)
+        [feed_slot, *listing_urls.first(listing_cap)].compact.uniq
       end
 
       private
 
       attr_reader :entry_url, :response, :max
 
-      def feed_candidates
-        return [] unless parsed_html
+      def listing_cap
+        max > 1 ? max - 1 : 0
+      end
 
-        Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).first(max)
+      def feed_slot
+        return unless parsed_html
+
+        url = Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).first
+        return unless url
+        return if same_page?(url)
+        return unless same_registrable_domain?(url)
+
+        url
+      end
+
+      def listing_urls
+        (nav_candidates + segment_seed_urls + listing_path_candidates)
+          .uniq
+          .reject { |url| same_page?(url) }
+          .select { |url| same_registrable_domain?(url) }
       end
 
       def nav_candidates
@@ -66,26 +83,34 @@ module Html2rss
 
         facts = LinkDestination::DestinationFacts.build(url)
         rank = 0
-        rank += 2 if facts.content_path
-        rank += 1 if facts.taxonomy_path
+        rank += 3 if facts.taxonomy_path
+        rank += 1 if facts.content_path
         [url, rank] if rank.positive?
       end
 
-      def list_link_candidates
+      def segment_seed_urls
         return [] unless response.html_response?
 
         sst = SST::Normalizer.call(response.body)
-        segments = PageRecon.discover_segments(sst, entry_url)
-        segments.filter_map { |segment| primary_link_url(segment) }
+        link_resolver = Scoring::LinkResolver.new(entry_url)
+
+        SEGMENT_STRATEGIES.each do |strategy|
+          urls = segment_urls_for(sst, strategy, link_resolver)
+          return urls if urls.size >= 2
+        end
+        []
       rescue StandardError
         []
       end
 
-      def primary_link_url(segment)
-        href = segment.primary_link&.attrs&.href
-        absolute_same_origin(href)
-      rescue StandardError
-        nil
+      def segment_urls_for(sst, strategy, link_resolver)
+        segmenter = AutoSource::Segmenter.new(sst, base_url: entry_url, strategy:, link_resolver:)
+        primary = AutoSource::Segmenter::PrimaryLink.new(segmenter)
+
+        segmenter.call.filter_map do |segment|
+          link = segment.primary_link || primary.select(segment.root_node)
+          absolute_same_origin(link&.attrs&.href)
+        end.uniq
       end
 
       def listing_path_candidates

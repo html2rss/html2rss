@@ -30,11 +30,17 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     )
   end
 
-  it 'returns same-origin feed, nav, and listing path candidates capped at max', :aggregate_failures do
+  it 'keeps one feed slot and listing nav without feed-path starvation', :aggregate_failures do
     urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
 
-    expect(urls).to include('https://example.com/feed.xml')
-    expect(urls.size).to be <= 5
+    expect(urls.grep(%r{/feed(?:\.xml)?\z|/rss(?:\.xml)?\z})).to eq(['https://example.com/feed.xml'])
+    expect(urls).to include('https://example.com/blog').and have_attributes(size: be <= 5)
     expect(urls).not_to include('https://example.com/')
+  end
+
+  it 'returns only the feed slot when max is 1' do
+    urls = described_class.call(entry_url:, response:, max: 1).map(&:to_s)
+
+    expect(urls).to eq(['https://example.com/feed.xml'])
   end
 end
