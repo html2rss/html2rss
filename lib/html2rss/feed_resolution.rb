@@ -18,7 +18,7 @@ module Html2rss
 
     ##
     # @param auto_source [Hash, nil]
-    # @return [Integer] probe slots reserved in the baseline request budget
+    # @return [Integer] entry-resolution budget slots (probes + retry GET when enabled)
     def self.request_slots_for(auto_source)
       return 0 unless auto_source
 

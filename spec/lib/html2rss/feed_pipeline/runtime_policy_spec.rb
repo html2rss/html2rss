@@ -22,8 +22,8 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     }
   end
 
-  # Default auto_source reserves NativeFeed + entry_resolution probes on top of
-  # wordpress_api/sitemap/pagination; that baseline exceeds Policy::MAX_REQUESTS_CEILING.
+  # Default auto_source reserves NativeFeed (+1) + entry_resolution (max_probes+1 retry)
+  # on top of wordpress_api/sitemap/pagination; that baseline exceeds Policy::MAX_REQUESTS_CEILING.
   let(:request_ceiling) { Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING }
 
   describe '.from_config' do
@@ -39,10 +39,21 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     context 'when max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
-      it 'sizes HTTP request slots up to the policy ceiling', :aggregate_failures do
+      # rubocop:disable RSpec/ExampleLength -- composition pieces asserted together
+      it 'composes NativeFeed and entry_resolution slots then clamps to the ceiling', :aggregate_failures do
+        baseline = described_class.send(:baseline_request_budget_for, config)
+        native_slots = Html2rss::AutoSource::Scraper::NativeFeed.request_slots
+        fr_opts = Html2rss::FeedResolution::Options.from_auto_source(config.auto_source)
+        fr_slots = Html2rss::FeedResolution.request_slots_for(config.auto_source)
+
+        expect(native_slots).to eq(1)
+        expect(fr_opts.max_probes).to eq(5)
+        expect(fr_slots).to eq(fr_opts.max_probes + 1)
+        expect(baseline).to be >= (1 + native_slots + fr_slots)
         expect(runtime_policy.max_requests).to eq(request_ceiling)
         expect(runtime_policy.max_redirects).to eq(8)
       end
+      # rubocop:enable RSpec/ExampleLength
     end
 
     context 'when strategy is auto and max_requests is omitted' do

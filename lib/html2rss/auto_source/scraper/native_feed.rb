@@ -74,7 +74,8 @@ module Html2rss
           response = Syndication::Discovery.best_feed_response(
             page_url: url,
             request_session:,
-            parsed_body:
+            parsed_body:,
+            max_probes: self.class.request_slots
           )
           return [] unless response
 

@@ -118,6 +118,26 @@ RSpec.describe Html2rss::Syndication::Discovery do
       # Candidates: /news/feed (error), /news/rss.xml (miss), /news/atom.xml (hit)
       expect(selected.to_s).to eq('https://example.com/news/atom.xml')
     end
+
+    it 'caps candidate probes at max_probes when no feed is found', :aggregate_failures do
+      miss = Html2rss::RequestService::Response.new(
+        body: 'not a feed',
+        headers: { 'content-type' => 'text/html' },
+        url: Html2rss::Url.from_absolute('https://example.com/news/feed'),
+        status: 200
+      )
+      allow(session).to receive(:follow_up).and_return(miss)
+
+      selected = described_class.best_feed_url(
+        page_url:,
+        request_session: session,
+        html: '',
+        max_probes: 1
+      )
+
+      expect(selected).to be_nil
+      expect(session).to have_received(:follow_up).once
+    end
   end
 end
 

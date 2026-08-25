@@ -22,10 +22,10 @@ module Html2rss
       def enabled? = enabled
 
       ##
-      # Probe slots reserved in the baseline request budget.
+      # Probe slots plus one Orchestrator retry GET when enabled.
       #
       # @return [Integer]
-      def request_slots = enabled? ? max_probes : 0
+      def request_slots = enabled? ? max_probes + 1 : 0
     end
   end
 end

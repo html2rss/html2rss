@@ -101,6 +101,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       articles = described_class.new(parsed_body, url: page_url, request_session: session).to_a
 
       expect(articles).to eq([])
+      expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_response).with(
+        hash_including(max_probes: described_class.request_slots)
+      )
       expect(Html2rss::Log).to have_received(:info).with(
         a_string_including('item_count=0', 'fallback=true')
       )

@@ -26,12 +26,16 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML when available
       # @param html [String, nil] raw HTML when a document is unavailable
       # @param extra_paths [Array<String>] additional path guesses
+      # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
       # @return [Html2rss::Url, nil]
-      def best_feed_url(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [])
+      # rubocop:disable Metrics/ParameterLists -- discovery kwargs stay co-located
+      def best_feed_url(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
+                        max_probes: nil)
         best_feed_response(
-          page_url:, request_session:, parsed_body:, html:, extra_paths:
+          page_url:, request_session:, parsed_body:, html:, extra_paths:, max_probes:
         )&.url
       end
+      # rubocop:enable Metrics/ParameterLists
 
       ##
       # Like {#best_feed_url} but returns the validated syndication response for parsing.
@@ -41,20 +45,26 @@ module Html2rss
       # @param parsed_body [Nokogiri::HTML::Document, nil]
       # @param html [String, nil]
       # @param extra_paths [Array<String>]
+      # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
       # @return [Html2rss::RequestService::Response, nil]
-      def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [])
+      # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- discovery kwargs stay co-located
+      def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
+                             max_probes: nil)
         page = Html2rss::Url.from_absolute(page_url)
         candidates = candidate_urls(page_url: page, parsed_body:, html:, extra_paths:)
         Log.debug(
           "Syndication::Discovery: host=#{page.host} candidate_count=#{candidates.size}"
         )
 
-        first_feedish_response(candidates, request_session:, origin_url: page).tap do |response|
+        first_feedish_response(
+          candidates, request_session:, origin_url: page, max_probes:
+        ).tap do |response|
           next unless response
 
           Log.info("Syndication::Discovery: host=#{page.host} selected_feed_url=#{response.url}")
         end
       end
+      # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
       ##
       # Ordered candidate feed URLs (head alternates first, then path guesses).
@@ -100,8 +110,9 @@ module Html2rss
         ["#{dir}feed", "#{dir}rss.xml", "#{dir}atom.xml"]
       end
 
-      def first_feedish_response(urls, request_session:, origin_url:)
-        urls.lazy.filter_map do |url|
+      def first_feedish_response(urls, request_session:, origin_url:, max_probes: nil)
+        scoped = max_probes.nil? ? urls.lazy : urls.lazy.take(max_probes)
+        scoped.filter_map do |url|
           response = probe(url, request_session:, origin_url:)
           response if feedish?(response)
         end.first
@@ -109,8 +120,8 @@ module Html2rss
       module_function :first_feedish_response
       private_class_method :first_feedish_response
 
-      def first_feedish_url(urls, request_session:, origin_url:)
-        first_feedish_response(urls, request_session:, origin_url:)&.url
+      def first_feedish_url(urls, request_session:, origin_url:, max_probes: nil)
+        first_feedish_response(urls, request_session:, origin_url:, max_probes:)&.url
       end
       module_function :first_feedish_url
       private_class_method :first_feedish_url
