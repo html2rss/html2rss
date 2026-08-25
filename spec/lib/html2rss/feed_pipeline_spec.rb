@@ -440,5 +440,42 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(result.status.to_generator_comment).not_to include('botasaurus')
       end
     end
+
+    context 'when the entry URL is a direct syndication feed' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:config) do
+        {
+          strategy: :faraday,
+          channel: { url: 'https://example.com/feed.xml', title: 'Feed' },
+          auto_source: {}
+        }
+      end
+      let(:pipeline) { described_class.new(config) }
+      let(:feed_response) do
+        build_response.call(
+          body: <<~XML,
+            <?xml version="1.0"?>
+            <rss version="2.0">
+              <channel>
+                <title>Feed</title>
+                <link>https://example.com/</link>
+                <description>d</description>
+                <item>
+                  <title>Direct item</title>
+                  <link>https://example.com/posts/1</link>
+                </item>
+              </channel>
+            </rss>
+          XML
+          url: 'https://example.com/feed.xml',
+          headers: { 'content-type' => 'application/rss+xml' }
+        )
+      end
+
+      before { stub_first_strategy_success.call(feed_response) }
+
+      it 'parses syndication items without HTML AutoSource' do
+        expect(pipeline.to_result.to_rss.items.map(&:title)).to eq(['Direct item'])
+      end
+    end
   end
 end

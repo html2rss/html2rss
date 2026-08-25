@@ -7,8 +7,14 @@ RSpec.describe Html2rss::AutoSource::Scraper do
   it { expect(described_class::SCRAPERS).to be_an(Array) }
 
   describe '::SCRAPER_TIERS' do
-    it 'starts with in-page structured scrapers' do
-      expect(described_class::SCRAPER_TIERS.first).to include(
+    it 'starts with NativeFeed before in-page structured scrapers' do
+      expect(described_class::SCRAPER_TIERS.first).to eq(
+        [Html2rss::AutoSource::Scraper::NativeFeed]
+      )
+    end
+
+    it 'places structured scrapers in the second tier' do
+      expect(described_class::SCRAPER_TIERS[1]).to include(
         Html2rss::AutoSource::Scraper::Schema,
         Html2rss::AutoSource::Scraper::JsonState
       )
@@ -22,6 +28,12 @@ RSpec.describe Html2rss::AutoSource::Scraper do
 
     it 'flattens tiers into SCRAPERS' do
       expect(described_class::SCRAPERS).to eq(described_class::SCRAPER_TIERS.flatten)
+    end
+
+    it 'registers NativeFeed for request sessions' do
+      expect(described_class::REQUEST_SESSION_SCRAPERS).to include(
+        Html2rss::AutoSource::Scraper::NativeFeed
+      )
     end
   end
 

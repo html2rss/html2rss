@@ -24,6 +24,9 @@ module Html2rss
     DEFAULT_CONFIG = {
       limit: DEFAULT_LIMIT,
       scraper: {
+        native_feed: {
+          enabled: true
+        },
         wordpress_api: {
           enabled: true
         },
