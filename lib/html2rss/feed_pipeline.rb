@@ -108,6 +108,17 @@ module Html2rss
       )
     end
 
+    def raise_empty_auto_source!(strategy:, response:)
+      raise NoFeedItemsExtracted.new(
+        attempts: [{ strategy:, items_count: 0, error_class: nil }],
+        surface_category: empty_auto_source_surface(response)
+      )
+    end
+
+    def empty_auto_source_surface(response)
+      PageRecon.surface_category_for(response:, url: response.url)
+    end
+
     def run_auto_pipeline(config, resources:)
       AutoFallback.new(
         strategies: AutoFallback::CHAIN,
@@ -159,17 +170,6 @@ module Html2rss
         Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed)
       end
       [articles, {}]
-    end
-
-    def raise_empty_auto_source!(strategy:, response:)
-      raise NoFeedItemsExtracted.new(
-        attempts: [{ strategy:, items_count: 0, error_class: nil }],
-        surface_category: empty_auto_source_surface(response)
-      )
-    end
-
-    def empty_auto_source_surface(response)
-      PageRecon.surface_category_for(response:, url: response.url)
     end
   end
 end
