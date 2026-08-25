@@ -14,11 +14,15 @@ module Html2rss
 
       # Bodies that look like HTML even when Content-Type is missing, empty, or wrong.
       HTML_BODY_SNIFF = /\A\s*(?:<!DOCTYPE\s+html|<html)/i
+      # Content-Type markers for RSS/Atom syndication responses.
+      FEED_CT_MARKERS = %w[rss+xml atom+xml rss atom].freeze
+      # Body sniff for unlabeled syndication (first 800 bytes, downcased).
+      FEED_BODY_MARKERS = ['<rss', '<feed xmlns', '<feed '].freeze
       # Charset from Content-Type or a leading <meta charset>.
       CHARSET_PARAMETER = /charset\s*=\s*["']?([\w.:-]+)/i
       # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).
       META_CHARSET_BYTES = 2048
-      private_constant :CHARSET_PARAMETER, :META_CHARSET_BYTES
+      private_constant :CHARSET_PARAMETER, :META_CHARSET_BYTES, :FEED_CT_MARKERS, :FEED_BODY_MARKERS
 
       ##
       # @param body [String] the body of the response
@@ -74,7 +78,14 @@ module Html2rss
 
       # @return [Boolean] whether response content is HTML (header or sniffed body, never JSON)
       def html_response?
-        content_type.include?('text/html') || (!json_response? && html_looking_body?)
+        content_type.include?('text/html') || (!json_response? && !feed_response? && html_looking_body?)
+      end
+
+      # @return [Boolean] whether response content is RSS/Atom (header or sniffed body)
+      def feed_response?
+        return @feed_response if defined?(@feed_response)
+
+        @feed_response = feed_content_type? || (!json_response? && !html_looking_body? && feed_looking_body?)
       end
 
       ##
@@ -142,6 +153,19 @@ module Html2rss
 
       def html_looking_body?
         body.to_s.b.match?(HTML_BODY_SNIFF)
+      end
+
+      def feed_content_type?
+        ct = content_type.downcase
+        return false if ct.empty? || ct.include?('html') || ct.include?('json')
+
+        # Substring match against Content-Type (not Array#intersect? on a String).
+        FEED_CT_MARKERS.any? { |marker| ct.include?(marker) } # rubocop:disable Style/ArrayIntersect
+      end
+
+      def feed_looking_body?
+        snippet = body.to_s[0, 800].downcase
+        FEED_BODY_MARKERS.any? { |marker| snippet.include?(marker) } # rubocop:disable Style/ArrayIntersect
       end
     end
   end
