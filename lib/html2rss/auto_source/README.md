@@ -26,6 +26,8 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 
 5. **Cleanup** — Merge, dedupe, hard-exclude non-article destinations (via `PathClassifier` facts), drop junk titles, and trim to `limit`. Html is skipped when earlier tiers already admitted clean items.
 
+6. **Entry URL resolution** (pipeline, not this class) — when AutoFallback sees a weak homepage extract, `FeedResolution` may rewrite the scrape URL to a listing/feed before escalating strategies. See {Html2rss::FeedPipeline} and {Html2rss::FeedResolution}.
+
 Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (repeated tag paths), `:cluster` (class/structure grids for anchorless cards). Scoring ranks and demotes; `LinkDestination::NoisePolicy` owns content-anchor eligibility. Cleanup owns feed-item admission.
 
 ## Nokogiri vs SST boundaries

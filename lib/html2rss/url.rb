@@ -282,6 +282,18 @@ module Html2rss
     alias eql? ==
 
     ##
+    # Whether +other+ names the same document (trailing slash and fragment ignored).
+    # Differs from {#==}: `/blog` and `/blog/` match; query strings must still match.
+    #
+    # @param other [Object]
+    # @return [Boolean]
+    def same_document?(other)
+      return false unless other.is_a?(Url)
+
+      document_identity == other.document_identity
+    end
+
+    ##
     # Returns the hash code for this URL.
     #
     # @return [Integer] the hash code
@@ -292,6 +304,16 @@ module Html2rss
     #
     # @return [String] the debug representation
     def inspect = "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
+
+    protected
+
+    # Scheme, authority, slash-stripped path, and query (fragment omitted).
+    #
+    # @return [String]
+    def document_identity
+      uri = @uri.omit(:fragment)
+      "#{uri.scheme}\0#{uri.authority}\0#{uri.path.to_s.chomp('/')}\0#{uri.query}"
+    end
 
     private
 

@@ -157,6 +157,25 @@
           },
           "exclusiveMinimum": 0
         },
+        "entry_resolution": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
+            },
+            "max_probes": {
+              "type": "integer",
+              "not": {
+                "type": "null"
+              },
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": []
+        },
         "scraper": {
           "type": "object",
           "properties": {
@@ -350,6 +369,10 @@
       "required": [],
       "default": {
         "limit": 25,
+        "entry_resolution": {
+          "enabled": true,
+          "max_probes": 5
+        },
         "scraper": {
           "native_feed": {
             "enabled": true

@@ -15,14 +15,17 @@ module Html2rss
       # @param strategy [Symbol] request strategy for the session
       # @param budget [RequestService::Budget] shared request budget
       # @param policy [RequestService::Policy] request policy (from FeedPipeline::RuntimePolicy.resources_for)
+      # @param scrape_url [String, nil] effective fetch URL when it differs from config channel URL
       # @param logger [Logger] logger used for operational warnings
       # @return [RequestSession] configured request session
-      def build(config:, strategy:, budget:, policy:, logger: Html2rss::Log)
+      # rubocop:disable Metrics/ParameterLists -- scrape_url override stays beside config
+      def build(config:, strategy:, budget:, policy:, scrape_url: nil, logger: Html2rss::Log)
         context = RequestService::Context.new(
-          url: config.url, headers: config.headers, request: config.request, policy:, budget:
+          url: scrape_url || config.url, headers: config.headers, request: config.request, policy:, budget:
         )
         new(context:, strategy:, logger:)
       end
+      # rubocop:enable Metrics/ParameterLists
     end
 
     ##

@@ -12,7 +12,7 @@ module Html2rss
     # strategy_attempts: auto attempt hashes (with optional transport_meta); empty outside :auto.
     PipelineOutcome = Data.define(
       :response, :articles, :dedup_dropped, :selected_strategy, :attempt_count, :strategy_attempts,
-      :admission_drops
+      :admission_drops, :scrape_target, :entry_resolution
     )
 
     ##
@@ -46,7 +46,9 @@ module Html2rss
         selected_strategy: outcome.selected_strategy,
         attempt_count: outcome.attempt_count,
         strategy_attempts: outcome.strategy_attempts,
-        admission_drops: outcome.admission_drops
+        admission_drops: outcome.admission_drops,
+        scrape_target: outcome.scrape_target,
+        entry_resolution: outcome.entry_resolution
       )
       FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
@@ -56,13 +58,15 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @param strategy [Symbol]
     # @param resources [Html2rss::FeedPipeline::RuntimePolicy::Resources]
+    # @param scrape_url [String, nil] effective fetch URL override for resolved targets
     # @return [Html2rss::RequestSession]
-    def request_session_for(config, strategy:, resources:)
+    def request_session_for(config, strategy:, resources:, scrape_url: nil)
       RequestSession.build(
         config:,
         strategy:,
         budget: resources.budget,
-        policy: resources.policy
+        policy: resources.policy,
+        scrape_url:
       )
     end
 
@@ -99,19 +103,9 @@ module Html2rss
 
       PipelineOutcome.new(
         response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
-        strategy_attempts: [], admission_drops:
+        strategy_attempts: [], admission_drops:,
+        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil
       )
-    end
-
-    def raise_empty_auto_source!(strategy:, response:)
-      raise NoFeedItemsExtracted.new(
-        attempts: [{ strategy:, items_count: 0, error_class: nil }],
-        surface_category: empty_auto_source_surface(response)
-      )
-    end
-
-    def empty_auto_source_surface(response)
-      PageRecon.surface_category_for(response:, url: response.url)
     end
 
     def run_auto_pipeline(config, resources:)
@@ -165,6 +159,17 @@ module Html2rss
         Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed)
       end
       [articles, {}]
+    end
+
+    def raise_empty_auto_source!(strategy:, response:)
+      raise NoFeedItemsExtracted.new(
+        attempts: [{ strategy:, items_count: 0, error_class: nil }],
+        surface_category: empty_auto_source_surface(response)
+      )
+    end
+
+    def empty_auto_source_surface(response)
+      PageRecon.surface_category_for(response:, url: response.url)
     end
   end
 end
