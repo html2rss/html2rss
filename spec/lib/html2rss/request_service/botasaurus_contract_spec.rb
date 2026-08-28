@@ -38,7 +38,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
 
     it 'locks wait default and documented clamp without schema min/max', :aggregate_failures do
       wait = schemas.dig('ScrapeRequest', 'properties', 'wait_timeout_seconds')
-      clamp = "[#{described_class::MIN_WAIT_TIMEOUT_SECONDS}, #{described_class::MAX_WAIT_TIMEOUT_SECONDS}]"
+      clamp = "[#{described_class::MIN_WAIT_TIMEOUT_SECONDS}, SCRAPE_WORK_TIMEOUT_SECONDS]"
       expect(described_class::DEFAULT_WAIT_TIMEOUT_SECONDS).to eq(wait.fetch('default'))
       expect(wait.fetch('description')).to include(clamp)
       expect(wait.keys).not_to include('minimum', 'maximum')
@@ -301,6 +301,41 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       let(:transport_status) { 502 }
 
       it { is_expected.to be_timeout }
+    end
+  end
+
+  describe 'Error#timeout_phase' do
+    subject(:parsed) { described_class::Error.new(payload:, transport_status: 504) }
+
+    let(:payload) do
+      {
+        'error' => 'Scraper at capacity; retry shortly',
+        'error_category' => 'timeout',
+        'diagnostics' => {
+          'request_id' => 'req-queue',
+          'timeout_phase' => 'queue'
+        }
+      }
+    end
+
+    it 'parses timeout_phase from diagnostics and includes it in failure_message', :aggregate_failures do
+      expect(parsed.timeout_phase).to eq('queue')
+      expect(parsed.failure_message).to include('timeout_phase=queue')
+    end
+
+    context 'when timeout_phase is absent' do
+      let(:payload) do
+        {
+          'error' => 'Scrape timed out after 20 seconds',
+          'error_category' => 'timeout',
+          'diagnostics' => { 'request_id' => 'req-timeout' }
+        }
+      end
+
+      it 'leaves timeout_phase nil and omits it from failure_message', :aggregate_failures do
+        expect(parsed.timeout_phase).to be_nil
+        expect(parsed.failure_message).not_to include('timeout_phase=')
+      end
     end
   end
 

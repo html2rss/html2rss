@@ -441,6 +441,32 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
             /error_category=timeout.*req-504/
           )
       end
+
+      it 'leaves timeout_phase nil when diagnostics omit it', :aggregate_failures do
+        expect { execute }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
+          expect(error.timeout_phase).to be_nil
+        end
+      end
+    end
+
+    context 'when scrape envelope returns 504 with timeout_phase' do
+      let(:response_status) { 504 }
+      let(:response_payload) do
+        {
+          url: 'https://example.com/',
+          error: 'Browser failed to start in time',
+          error_category: 'timeout',
+          diagnostics: { request_id: 'req-boot', timeout_phase: 'boot' }
+        }
+      end
+
+      it 'raises RequestTimedOut carrying timeout_phase and failure_message', :aggregate_failures do
+        expect { execute }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
+          expect(error.timeout_phase).to eq('boot')
+          expect(error.message).to include('timeout_phase=boot')
+          expect(error.message).to include('req-boot')
+        end
+      end
     end
 
     context 'when upstream returns non-200 status with error details' do
@@ -526,6 +552,14 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
 
       expect { execute }
         .to raise_error(Html2rss::RequestService::RequestTimedOut, /Timed out/)
+    end
+
+    it 'leaves timeout_phase nil on transport-hop timeouts', :aggregate_failures do
+      allow(connection).to receive(:post).and_raise(Faraday::TimeoutError, 'Timed out')
+
+      expect { execute }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
+        expect(error.timeout_phase).to be_nil
+      end
     end
 
     it 'maps network errors to BotasaurusConnectionFailed' do

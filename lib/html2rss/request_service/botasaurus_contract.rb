@@ -43,7 +43,7 @@ module Html2rss
       MAX_RETRIES = 3
 
       # Allowlisted ScrapeDiagnostics keys nested under diagnostics.
-      DIAGNOSTICS_KEYS = %w[request_id attempts strategy_used render_ms execution_tier challenge].freeze
+      DIAGNOSTICS_KEYS = %w[request_id attempts strategy_used render_ms execution_tier challenge timeout_phase].freeze
       # Allowlisted ChallengeSignal keys nested under diagnostics.challenge.
       CHALLENGE_KEYS = %w[blocked detected marker].freeze
 
@@ -185,10 +185,17 @@ module Html2rss
             'Botasaurus challenge block detected.'
         end
 
+        # @return [String, nil] scrape-api timeout stage when present on diagnostics
+        def timeout_phase
+          value = diagnostics['timeout_phase']
+          value.is_a?(String) && !value.empty? ? value : nil
+        end
+
         # @return [String] actionable upstream failure summary
         def failure_message
           details = ["status=#{transport_status}", "error_category=#{error_category}", "error=#{error}"]
           details << "request_id=#{request_id}" if request_id
+          details << "timeout_phase=#{timeout_phase}" if timeout_phase
           "Botasaurus scrape failed (#{details.join(', ')})."
         end
 

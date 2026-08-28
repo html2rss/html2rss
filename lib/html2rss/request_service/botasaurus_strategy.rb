@@ -59,7 +59,7 @@ module Html2rss
         return unless error.timeout?
 
         log_timeout!(reason: 'botasaurus_upstream')
-        raise RequestTimedOut, error.failure_message
+        raise RequestTimedOut.new(error.failure_message, timeout_phase: error.timeout_phase)
       end
 
       def response_url(final_url)

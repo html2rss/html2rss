@@ -31,8 +31,20 @@ module Html2rss
     class ResponseTooLarge < Html2rss::Error; end
     # Raised when blocked content surfaces are detected.
     class BlockedSurfaceDetected < Html2rss::Error; end
+
     # Raised when a request times out.
-    class RequestTimedOut < Html2rss::Error; end
+    class RequestTimedOut < Html2rss::Error
+      ##
+      # @param message [String, nil] timeout failure summary
+      # @param timeout_phase [String, nil] scrape-api stage when known (+queue+/+boot+/+work+)
+      def initialize(message = nil, timeout_phase: nil)
+        @timeout_phase = timeout_phase
+        super(message)
+      end
+
+      # @return [String, nil] scrape-api timeout stage, or nil for transport/budget timeouts
+      attr_reader :timeout_phase
+    end
 
     # Raised when Botasaurus configuration is missing or invalid.
     class BotasaurusConfigurationError < Html2rss::Error
