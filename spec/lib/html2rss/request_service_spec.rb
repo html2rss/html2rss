@@ -25,6 +25,17 @@ RSpec.describe Html2rss::RequestService do
     end
   end
 
+  describe 'RequestTimedOut' do
+    it 'exposes optional timeout_phase', :aggregate_failures do
+      timed_out = described_class::RequestTimedOut.new('timed out', timeout_phase: 'work')
+      transport = described_class::RequestTimedOut.new('timed out')
+
+      expect(timed_out.timeout_phase).to eq('work')
+      expect(timed_out.message).to eq('timed out')
+      expect(transport.timeout_phase).to be_nil
+    end
+  end
+
   describe '.default_strategy_name' do
     specify(:aggregate_failures) do
       expect(described_class.default_strategy_name).to be :faraday

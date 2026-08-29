@@ -174,12 +174,15 @@ paths:
             application/json:
               example:
                 url: https://example.com
-                error: Scrape timed out after 45 seconds
+                error: Scrape timed out after 45 seconds (phase=work)
                 error_category: timeout
                 diagnostics:
                   request_id: b01ef2f8-f641-4e75-8ef2-0b73f7b4f372
-                  attempts: 0
-                  render_ms: 0
+                  attempts: 1
+                  strategy_used: get
+                  render_ms: 45012
+                  execution_tier: browser_driver
+                  timeout_phase: work
               schema:
                 $ref: '#/components/schemas/ScrapeError'
 components:
@@ -324,6 +327,15 @@ components:
           examples:
           - blocked: false
             detected: false
+        timeout_phase:
+          anyOf:
+          - $ref: '#/components/schemas/TimeoutPhase'
+          - type: 'null'
+          description: 'When `error_category` is `timeout`, which stage burned the
+            budget: `queue` (threadpool wait), `boot` (browser/driver start), or `work`
+            (navigate/wait/scroll). Null for non-timeout outcomes.'
+          examples:
+          - work
       type: object
       required:
       - request_id
@@ -411,9 +423,9 @@ components:
         wait_timeout_seconds:
           type: integer
           title: Wait Timeout Seconds
-          description: Selector wait timeout in seconds. Values outside [1, 30] are
-            clamped into that range so scrape still runs; they are not rejected with
-            422.
+          description: Selector wait timeout in seconds. Values outside [1, SCRAPE_WORK_TIMEOUT_SECONDS]
+            are clamped into that range so scrape still runs; they are not rejected
+            with 422.
           default: 15
           examples:
           - 15
@@ -603,8 +615,6 @@ components:
           title: Xhr Responses
           description: JSON XHR/fetch sub-resource bodies captured on the browser
             tier (empty on the HTTP-request tier).
-          examples:
-          - []
         diagnostics:
           $ref: '#/components/schemas/ScrapeDiagnostics'
           description: Per-request tracing, strategy, timing, and challenge signals.
@@ -622,6 +632,13 @@ components:
       - html
       - diagnostics
       title: ScrapeSuccess
+    TimeoutPhase:
+      type: string
+      enum:
+      - queue
+      - boot
+      - work
+      title: TimeoutPhase
     WindowSize:
       properties:
         width:
