@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+* **registry:** colocate format guide at `lib/html2rss/registry/README.md`
+
+### Changed
+
+* require Ruby `>= 4.0`
+
+## [0.28.0](https://github.com/html2rss/html2rss/compare/v0.27.1...v0.28.0) (2026-08-22)
+
+
+### Features
+
+* **registry:** add verified registry v1 bundle loading, manifest verification, and catalog builder ([#476](https://github.com/html2rss/html2rss/pull/476))
+* reject duplicate `registry.id` values when loading verified bundles
+
+
 ## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)
 
 

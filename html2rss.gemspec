@@ -14,7 +14,8 @@ Gem::Specification.new do |spec|
   spec.description   = 'Supports JSON content, custom HTTP headers, and post-processing of extracted content.'
   spec.homepage      = 'https://github.com/html2rss/html2rss'
   spec.license       = 'MIT'
-  spec.required_ruby_version = '>= 3.3'
+  # Ruby 4 floor matches .tool-versions; TargetRubyVersion stays 3.3 until repo-wide idiom cleanup.
+  spec.required_ruby_version = '>= 4.0' # rubocop:disable Gemspec/RequiredRubyVersion
 
   if spec.respond_to?(:metadata)
     spec.metadata['allowed_push_host'] = 'https://rubygems.org'

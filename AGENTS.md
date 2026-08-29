@@ -137,10 +137,10 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Use `make quick` during implementation for the fast local feedback loop. It should stay focused on changed-file linting and targeted specs.
 - Treat `make ready` as the implementation quality gate before handoff or a potential PR merge. It must cover the repo's required merge checks.
 - When adding or modifying configuration options in `lib/html2rss/selectors/config.rb` or `lib/html2rss/config/validator.rb`, update `lib/html2rss/config/schema.rb` (`Html2rss::Config::Schema`) so the property is exported to the JSON schema, then run `make schema` to sync `schema/html2rss-config.schema.json`.
-- Catalog metadata on `directory` (`title`, `summary`, `topics`) is validated in `DirectoryConfig`. When changing those rules, regenerate the schema and coordinate `html2rss-configs` validation plus `Html2rss::Configs::Catalog`.
+- Catalog metadata on `directory` (`title`, `summary`, `topics`) and feed identity on `registry` (`id`, `aliases`) are validated in `DirectoryConfig` and the config validator. When changing those rules, regenerate the schema and coordinate `html2rss-configs` validation plus `Html2rss::Registry::CatalogBuilder`.
 - Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
-- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
+- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,registry}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
 - Wire those guides with `{include:file:lib/.../README.md}` on the owning class. Do not add them to `.yardopts --files`: YARD extra-file names are `File.basename` without extension, so extra `README.md` files all emit `file.README.html` and clobber the gem README.
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.

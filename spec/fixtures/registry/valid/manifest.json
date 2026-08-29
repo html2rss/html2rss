@@ -1,0 +1,10 @@
+{
+  "format": "registry.v1",
+  "registry_id": "test",
+  "version": "1.0.0",
+  "public_key_id": "test-key",
+  "files": {
+    "configs/anthropic.com/news.yml": "66f664015c1681506ddd75aef8592b747c8027eb09b4a32c98f7388b99f280ad",
+    "configs/cnet.com/section_sub.yml": "f38ec616700966b921ee5adf77d584c0470fd04fdbf66ee20e379b31f2778feb"
+  }
+}
