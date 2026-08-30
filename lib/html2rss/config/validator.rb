@@ -19,6 +19,7 @@ module Html2rss
       DIRECTORY_TOPICS = %w[
         sports energy tech science news entertainment jobs finance
         security travel environment consumer civic product research
+        health culture education rights transport
       ].freeze
 
       # Contract for the top-level `channel` section.
