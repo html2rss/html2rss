@@ -63,13 +63,14 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.title).to eq('html2rss')
       expect(protocol_server.configuration.validate_tool_call_results?).to be(true)
       expect(protocol_server.tools.keys).to contain_exactly(
-        'scrape_url', 'inspect_url', 'capture_config', 'validate_config', 'apply_config'
+        'scrape_url', 'inspect_url', 'capture_config', 'validate_config', 'apply_config',
+        'batch_inspect_urls', 'batch_scrape_urls', 'generate_catalog_config', 'certify_config'
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
       expect(protocol_server.instructions).to include('html2rss://runtime')
-      expect(protocol_server.instructions).to include('Strive enhance: true')
-      expect(protocol_server.instructions).to include('payload.item_count')
+      expect(protocol_server.instructions).to include('generate_catalog_config')
+      expect(protocol_server.instructions).to include('certify_config')
       expect(protocol_server.instructions).not_to include('_meta')
       expect(protocol_server.instructions).not_to include('try explicit "faraday"')
       expect(protocol_server.tools['validate_config'].description).to include('html2rss://schema')
@@ -337,6 +338,93 @@ RSpec.describe Html2rss::MCP::Server do
         expect(envelope[:payload]).to include(strategy: 'faraday')
       end
       # rubocop:enable RSpec/ExampleLength
+    end
+
+    describe 'batch_inspect_urls' do
+      let(:batch_result) do
+        Html2rss::MCP::Batch::BatchResult.new(
+          total: 2, successful: 2,
+          results: [{ url: 'https://example.com/1', ok: true }, { url: 'https://example.com/2', ok: true }]
+        )
+      end
+
+      before do
+        allow(Html2rss::MCP::Batch).to receive(:inspect_urls).and_return(batch_result)
+      end
+
+      it 'returns batch inspection payload and next_step done', :aggregate_failures do
+        result = call_tool.call('batch_inspect_urls', { urls: ['https://example.com/1', 'https://example.com/2'] })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'done')
+        expect(envelope[:payload]).to include(total: 2, successful: 2)
+      end
+    end
+
+    describe 'batch_scrape_urls' do
+      let(:batch_result) do
+        Html2rss::MCP::Batch::BatchResult.new(
+          total: 1, successful: 1,
+          results: [{ url: 'https://example.com', ok: true, items_count: 3 }]
+        )
+      end
+
+      before do
+        allow(Html2rss::MCP::Batch).to receive(:scrape_urls).and_return(batch_result)
+      end
+
+      it 'returns batch scrape payload and next_step done', :aggregate_failures do
+        result = call_tool.call('batch_scrape_urls', { urls: ['https://example.com'] })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'done')
+        expect(envelope[:payload]).to include(total: 1, successful: 1)
+      end
+    end
+
+    describe 'generate_catalog_config' do
+      let(:catalog_result) do
+        Html2rss::MCP::CatalogConfig::CatalogResult.new(
+          yaml: "directory:\n  title: Example\n", domain: 'example.com', native_feed_detected: false,
+          alternate_feeds: [], articles_count: 5, suggested_topics: ['news']
+        )
+      end
+
+      before do
+        allow(Html2rss::MCP::CatalogConfig).to receive(:generate).and_return(catalog_result)
+      end
+
+      it 'returns generated catalog config and next_step certify_config', :aggregate_failures do
+        result = call_tool.call('generate_catalog_config', { url: 'https://example.com' })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'certify_config')
+        expect(envelope[:payload]).to include(domain: 'example.com', yaml: "directory:\n  title: Example\n")
+      end
+    end
+
+    describe 'certify_config' do
+      let(:report) do
+        Html2rss::MCP::Certify::CertificationReport.new(
+          valid: true, errors: nil, live_check: { item_count: 3, warnings: [] }
+        )
+      end
+
+      before do
+        allow(Html2rss::MCP::Certify).to receive(:check).and_return(report)
+      end
+
+      it 'returns certification report payload and next_step done', :aggregate_failures do
+        result = call_tool.call('certify_config', { config: valid_config })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'done')
+        expect(envelope[:payload]).to include(valid: true)
+      end
     end
 
     describe 'error paths' do

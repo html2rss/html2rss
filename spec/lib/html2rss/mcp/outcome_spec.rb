@@ -7,7 +7,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'exposes the closed set of wire names' do
       expect(described_class::NAMES.map(&:to_s)).to contain_exactly(
         'done', 'inspect_url', 'validate_config', 'apply_config',
-        'scrape_url', 'capture_config', 'read_runtime'
+        'scrape_url', 'capture_config', 'read_runtime', 'certify_config'
       )
     end
 
@@ -149,6 +149,81 @@ RSpec.describe Html2rss::MCP::Outcome do
 
       expect(outcome).to have_attributes(ok: false, next_step: have_attributes(name: :inspect_url))
     end
+  end
+
+  describe '.batch_inspect' do
+    it 'points at done when there is at least one successful result', :aggregate_failures do
+      batch_result = Html2rss::MCP::Batch::BatchResult.new(total: 1, successful: 1, results: [{ ok: true }])
+      outcome = described_class.batch_inspect(batch_result)
+
+      expect(outcome.ok).to be(true)
+      expect(outcome.next_step.name).to eq(:done)
+      expect(outcome.payload).to eq(total: 1, successful: 1, results: [{ ok: true }])
+    end
+
+    it 'points at inspect_url when there are zero successful results' do
+      batch_result = Html2rss::MCP::Batch::BatchResult.new(total: 1, successful: 0, results: [{ ok: false }])
+      outcome = described_class.batch_inspect(batch_result)
+
+      expect(outcome.next_step.name).to eq(:inspect_url)
+    end
+  end
+
+  describe '.batch_scrape' do
+    it 'points at done when there is at least one successful result', :aggregate_failures do
+      batch_result = Html2rss::MCP::Batch::BatchResult.new(total: 1, successful: 1, results: [{ ok: true }])
+      outcome = described_class.batch_scrape(batch_result)
+
+      expect(outcome.ok).to be(true)
+      expect(outcome.next_step.name).to eq(:done)
+    end
+
+    it 'points at scrape_url when there are zero successful results' do
+      batch_result = Html2rss::MCP::Batch::BatchResult.new(total: 1, successful: 0, results: [{ ok: false }])
+      outcome = described_class.batch_scrape(batch_result)
+
+      expect(outcome.next_step.name).to eq(:scrape_url)
+    end
+  end
+
+  describe '.catalog_config' do
+    # rubocop:disable RSpec/ExampleLength
+    it 'points at certify_config and includes catalog payload', :aggregate_failures do
+      catalog_result = Html2rss::MCP::CatalogConfig::CatalogResult.new(
+        yaml: 'yaml', domain: 'example.com', native_feed_detected: false,
+        alternate_feeds: [], articles_count: 5, suggested_topics: ['news']
+      )
+      outcome = described_class.catalog_config(catalog_result)
+
+      expect(outcome.ok).to be(true)
+      expect(outcome.next_step.name).to eq(:certify_config)
+      expect(outcome.payload[:domain]).to eq('example.com')
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
+
+  describe '.certify' do
+    # rubocop:disable RSpec/ExampleLength
+    it 'is ok and points at done when report is valid', :aggregate_failures do
+      report = Html2rss::MCP::Certify::CertificationReport.new(
+        valid: true, errors: nil, live_check: { item_count: 5 }
+      )
+      outcome = described_class.certify(report)
+
+      expect(outcome.ok).to be(true)
+      expect(outcome.next_step.name).to eq(:done)
+    end
+
+    it 'is not ok and points at validate_config when report is invalid', :aggregate_failures do
+      report = Html2rss::MCP::Certify::CertificationReport.new(
+        valid: false, errors: { channel: ['error'] }, live_check: nil
+      )
+      outcome = described_class.certify(report)
+
+      expect(outcome.ok).to be(false)
+      expect(outcome.next_step.name).to eq(:validate_config)
+    end
+    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '.from_error' do

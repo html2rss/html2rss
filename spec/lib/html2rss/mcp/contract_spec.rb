@@ -79,6 +79,65 @@ RSpec.describe Html2rss::MCP::Contract do
     end
   end
 
+  describe 'BATCH_INSPECT_INPUT_SCHEMA' do
+    let(:schema) { MCP::Tool::InputSchema.new(described_class::BATCH_INSPECT_INPUT_SCHEMA) }
+
+    it 'validates valid arguments', :aggregate_failures do
+      expect { schema.validate_arguments({ urls: ['https://example.com'] }) }.not_to raise_error
+      expect { schema.validate_arguments({ urls: ['https://example.com'], strategy: 'faraday', concurrency: 3 }) }
+        .not_to raise_error
+    end
+
+    it 'rejects empty urls array or missing urls', :aggregate_failures do
+      expect { schema.validate_arguments({}) }.to raise_error(MCP::Tool::InputSchema::ValidationError)
+      expect { schema.validate_arguments({ urls: [] }) }.to raise_error(MCP::Tool::InputSchema::ValidationError)
+    end
+  end
+
+  describe 'BATCH_SCRAPE_INPUT_SCHEMA' do
+    let(:schema) { MCP::Tool::InputSchema.new(described_class::BATCH_SCRAPE_INPUT_SCHEMA) }
+
+    it 'validates valid arguments' do
+      expect { schema.validate_arguments({ urls: ['https://example.com'], limit: 5 }) }.not_to raise_error
+    end
+
+    it 'rejects missing urls' do
+      expect { schema.validate_arguments({ limit: 5 }) }.to raise_error(MCP::Tool::InputSchema::ValidationError)
+    end
+  end
+
+  describe 'GENERATE_CATALOG_CONFIG_INPUT_SCHEMA' do
+    let(:schema) { MCP::Tool::InputSchema.new(described_class::GENERATE_CATALOG_CONFIG_INPUT_SCHEMA) }
+
+    it 'validates valid arguments', :aggregate_failures do
+      expect { schema.validate_arguments({ url: 'https://example.com' }) }.not_to raise_error
+      expect do
+        schema.validate_arguments({ url: 'https://example.com', topics: %w[news tech], title: 'Example' })
+      end.not_to raise_error
+    end
+
+    it 'rejects invalid topic enum' do
+      expect do
+        schema.validate_arguments({ url: 'https://example.com', topics: ['invalid_xyz'] })
+      end.to raise_error(MCP::Tool::InputSchema::ValidationError)
+    end
+  end
+
+  describe 'CERTIFY_INPUT_SCHEMA' do
+    let(:schema) { MCP::Tool::InputSchema.new(described_class::CERTIFY_INPUT_SCHEMA) }
+
+    it 'validates valid arguments', :aggregate_failures do
+      expect { schema.validate_arguments({ config: config_hash }) }.not_to raise_error
+      expect { schema.validate_arguments({ yaml: config_yaml, check_live_feed: false }) }.not_to raise_error
+    end
+
+    it 'rejects missing or XOR violating arguments', :aggregate_failures do
+      expect { schema.validate_arguments({}) }.to raise_error(MCP::Tool::InputSchema::ValidationError)
+      expect { schema.validate_arguments({ config: config_hash, yaml: config_yaml }) }
+        .to raise_error(MCP::Tool::InputSchema::ValidationError)
+    end
+  end
+
   describe '.output_schema' do
     it 'validates an Outcome wire hash' do
       wire = Html2rss::MCP::Outcome.apply(rss: '<rss/>', item_count: 1).to_h

@@ -86,13 +86,17 @@ Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is neve
 
 ### Tools
 
-| Name              | When to use                                                                 |
-| ----------------- | --------------------------------------------------------------------------- |
-| `scrape_url`      | One-shot articles now (`payload.items`; empty is still success)             |
-| `inspect_url`     | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)   |
-| `capture_config`  | YAML draft in `payload.yaml`; strive `enhance: true`                        |
-| `validate_config` | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)       |
-| `apply_config`    | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count` |
+| Name                      | When to use                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| `scrape_url`              | One-shot articles now (`payload.items`; empty is still success)                |
+| `inspect_url`             | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)      |
+| `capture_config`          | YAML draft in `payload.yaml`; strive `enhance: true`                           |
+| `validate_config`         | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)          |
+| `apply_config`            | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count`    |
+| `batch_inspect_urls`      | Parallel recon across multiple URLs (`urls`, `strategy`, `concurrency`)        |
+| `batch_scrape_urls`       | Parallel one-shot scrape across multiple URLs (`urls`, `limit`, `concurrency`) |
+| `generate_catalog_config` | Curated-catalog-ready YAML with `directory.topics` & native feed detection     |
+| `certify_config`          | End-to-end quality certification (schema + in-memory live feed validation)     |
 
 ### Resources
 

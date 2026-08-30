@@ -7,7 +7,7 @@ module Html2rss
     ##
     # Typed MCP tool result. Owns next-step policy and guidance copy so the
     # protocol adapter does not branch on quality heuristics.
-    class Outcome
+    class Outcome # rubocop:disable Metrics/ClassLength
       # Matches {ConfigArgument} XOR {ArgumentError} messages.
       XOR_ERROR = /exactly one of config or yaml/
       NextStep = Data.define(:name, :guidance)
@@ -16,7 +16,8 @@ module Html2rss
       # Closed set of agent next actions. Invalid names cannot be constructed.
       class NextStep
         # Wire names for +next_step+.
-        NAMES = %i[done inspect_url validate_config apply_config scrape_url capture_config read_runtime].freeze
+        NAMES = %i[done inspect_url validate_config apply_config scrape_url capture_config read_runtime
+                   certify_config].freeze
         # Default guidance copy keyed by {NAMES}.
         GUIDANCE = {
           done: 'Done. Read payload for the result.',
@@ -28,7 +29,8 @@ module Html2rss
                       'and promotes native RSS/Atom when present.',
           capture_config: 'Call capture_config for a reusable YAML draft, then follow next_step.',
           read_runtime: 'Read html2rss://runtime. Set BOTASAURUS_SCRAPER_URL on the MCP process ' \
-                        'if botasaurus_configured is false.'
+                        'if botasaurus_configured is false.',
+          certify_config: 'Call certify_config to run quality-gate validation on the feed config.'
         }.freeze
 
         ##
@@ -123,6 +125,39 @@ module Html2rss
           ok = !empty
           next_step = ok ? NextStep.done : NextStep.inspect_url
           new(ok:, next_step:, guidance: next_step.guidance, payload: { rss:, item_count: })
+        end
+
+        ##
+        # @param batch_result [Html2rss::MCP::Batch::BatchResult]
+        # @return [Outcome]
+        def batch_inspect(batch_result)
+          next_step = batch_result.successful.positive? ? NextStep.done : NextStep.inspect_url
+          new(ok: true, next_step:, guidance: next_step.guidance, payload: batch_result.to_h)
+        end
+
+        ##
+        # @param batch_result [Html2rss::MCP::Batch::BatchResult]
+        # @return [Outcome]
+        def batch_scrape(batch_result)
+          next_step = batch_result.successful.positive? ? NextStep.done : NextStep.scrape_url
+          new(ok: true, next_step:, guidance: next_step.guidance, payload: batch_result.to_h)
+        end
+
+        ##
+        # @param catalog_result [Html2rss::MCP::CatalogConfig::CatalogResult]
+        # @return [Outcome]
+        def catalog_config(catalog_result)
+          next_step = NextStep.certify_config
+          new(ok: true, next_step:, guidance: next_step.guidance, payload: catalog_result.to_h)
+        end
+
+        ##
+        # @param report [Html2rss::MCP::Certify::CertificationReport]
+        # @return [Outcome]
+        def certify(report)
+          ok = report.valid
+          next_step = ok ? NextStep.done : NextStep.validate_config
+          new(ok:, next_step:, guidance: next_step.guidance, payload: report.to_h)
         end
 
         ##

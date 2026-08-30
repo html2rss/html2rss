@@ -144,18 +144,18 @@ module Html2rss
           <<~TEXT.strip
             html2rss MCP — decide which tool to call:
 
-            1. Need articles now (no saved config)? → scrape_url (1 call)
+            1. Need articles now (no saved config)? → scrape_url (or batch_scrape_urls for multiple)
                - strategy "auto" runs Faraday → Botasaurus AutoFallback. Do not retry with explicit faraday after auto.
                - Empty scrape is still success (articles-now). Follow next_step / guidance (read_runtime if Botasaurus unset).
-            2. Need a reusable feed YAML? → capture_config → validate_config → apply_config
-               - capture_config returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Strive enhance: true (false only when chrome leaks).
-               - validate_config / apply_config accept config hash XOR yaml string.
-               - apply_config isError when zero RSS items (ship gate). Confirm payload.item_count.
-            3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect_url only if weak or recon.
-            4. Have a config already? → validate_config (must succeed) → apply_config
+            2. Need a reusable feed YAML? → capture_config (or generate_catalog_config for catalog feeds) → certify_config / validate_config → apply_config
+               - capture_config returns YAML inside payload.yaml.
+               - generate_catalog_config formats catalog YAML with directory.topics, title, and detects native feeds.
+               - certify_config validates schema and tests live feed extraction in 1 step.
+            3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect_url (or batch_inspect_urls).
+            4. Have a config already? → certify_config or validate_config → apply_config
             5. Schema / extractors / strategies / runtime → resources html2rss://schema|extractors|strategies|runtime
 
-            Prefer capture_config for durable config; scrape_url for one-shot extraction.
+            Prefer capture_config / generate_catalog_config for durable config; scrape_url / batch_scrape_urls for one-shot extraction.
             Follow envelope next_step and guidance. Botasaurus needs BOTASAURUS_SCRAPER_URL in this process env (boolean at html2rss://runtime; the URL is never returned).
           TEXT
         end
@@ -198,6 +198,10 @@ module Html2rss
           register_capture_config(server)
           register_validate_config(server)
           register_apply_config(server)
+          register_batch_inspect_urls(server)
+          register_batch_scrape_urls(server)
+          register_generate_catalog_config(server)
+          register_certify_config(server)
         end
 
         def register_scrape_url(server)
@@ -308,6 +312,71 @@ module Html2rss
           feed_result = Html2rss.feed_result(feed_config)
           rss = feed_result.to_rss
           Outcome.apply(rss: rss.to_s, item_count: rss.items.size, empty: feed_result.empty?)
+        end
+
+        def register_batch_inspect_urls(server)
+          define_envelope_tool(
+            server,
+            name: 'batch_inspect_urls',
+            description: 'Inspect multiple URLs in parallel with per-URL error isolation. ' \
+                         'Returns final redirected URLs, status codes, and rel="alternate" feeds.',
+            input_schema: Contract::BATCH_INSPECT_INPUT_SCHEMA
+          ) do |server_context:, urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY| # rubocop:disable Lint/UnusedBlockArgument
+            batch_inspect_outcome(urls:, strategy:, concurrency:)
+          end
+        end
+
+        def batch_inspect_outcome(urls:, strategy:, concurrency:)
+          Outcome.batch_inspect(Batch.inspect_urls(urls:, strategy:, concurrency:))
+        end
+
+        def register_batch_scrape_urls(server)
+          define_envelope_tool(
+            server,
+            name: 'batch_scrape_urls',
+            description: 'Scrape multiple URLs in parallel with per-URL error isolation. ' \
+                         'Returns structured JSON Feed items and extraction counts.',
+            input_schema: Contract::BATCH_SCRAPE_INPUT_SCHEMA
+          ) do |server_context:, urls:, strategy: 'auto', limit: 10, concurrency: Batch::DEFAULT_CONCURRENCY| # rubocop:disable Lint/UnusedBlockArgument
+            batch_scrape_outcome(urls:, strategy:, limit:, concurrency:)
+          end
+        end
+
+        def batch_scrape_outcome(urls:, strategy:, limit:, concurrency:)
+          Outcome.batch_scrape(Batch.scrape_urls(urls:, strategy:, limit:, concurrency:))
+        end
+
+        def register_generate_catalog_config(server)
+          define_envelope_tool(
+            server,
+            name: 'generate_catalog_config',
+            description: 'Generate a curated-catalog-ready feed config YAML and detect native feeds. ' \
+                         'Resolves domain via PublicSuffix and sets directory metadata.',
+            input_schema: Contract::GENERATE_CATALOG_CONFIG_INPUT_SCHEMA
+          ) do |server_context:, url:, strategy: 'auto', topics: nil, title: nil, summary: nil| # rubocop:disable Lint/UnusedBlockArgument, Metrics/ParameterLists
+            catalog_config_outcome(url:, strategy:, topics:, title:, summary:)
+          end
+        end
+
+        def catalog_config_outcome(url:, strategy:, topics:, title:, summary:)
+          Outcome.catalog_config(CatalogConfig.generate(url:, strategy:, topics:, title:, summary:))
+        end
+
+        def register_certify_config(server)
+          define_envelope_tool(
+            server,
+            name: 'certify_config',
+            description: 'Comprehensive feed config quality certification: validates schema and ' \
+                         'optionally runs in-memory live extraction to check item count and title/URL health.',
+            input_schema: Contract::CERTIFY_INPUT_SCHEMA,
+            annotations: Contract::ANNOTATIONS_VALIDATE
+          ) do |server_context:, config: nil, yaml: nil, check_live_feed: true| # rubocop:disable Lint/UnusedBlockArgument
+            certify_outcome(config:, yaml:, check_live_feed:)
+          end
+        end
+
+        def certify_outcome(config:, yaml:, check_live_feed:)
+          Outcome.certify(Certify.check(config:, yaml:, check_live_feed:))
         end
 
         def register_resources(server) # rubocop:disable Metrics/MethodLength
