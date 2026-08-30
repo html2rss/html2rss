@@ -3,34 +3,37 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService::BlockedSurface do
-  describe '.interstitial?' do
-    let(:cloudflare_body) do
-      '<html><head><title>Just a moment...</title></head>' \
-        '<body>Checking your browser before accessing example.com.</body></html>'
+  # Shared corpus owned by botasaurus-scrape-api (sibling under the org workspace).
+  challenge_fixture_root = Pathname(__dir__)
+                              .join('../../../../../botasaurus-scrape-api/tests/fixtures/challenge')
+                              .expand_path
+
+  def self.load_challenge_fixture(name, root:)
+    path = root.join(name)
+    skip "challenge corpus missing at #{path} (clone botasaurus-scrape-api sibling)" unless path.file?
+
+    path.read
+  end
+
+  describe '.interstitial? against shared challenge corpus' do
+    it 'returns true for cloudflare_interstitial.html' do
+      body = self.class.load_challenge_fixture('cloudflare_interstitial.html', root: challenge_fixture_root)
+      expect(described_class.interstitial?(body)).to be(true)
     end
 
-    let(:datadome_body) do
-      '<html><body>' \
-        '<script src="https://ct.captcha-delivery.com/c.js"></script>' \
-        '<div>DataDome interstitial challenge</div>' \
-        '</body></html>'
+    it 'returns true for datadome_interstitial.html' do
+      body = self.class.load_challenge_fixture('datadome_interstitial.html', root: challenge_fixture_root)
+      expect(described_class.interstitial?(body)).to be(true)
     end
 
-    let(:vercel_body) do
-      '<html><head><title>Vercel Security Checkpoint</title></head>' \
-        '<body>Checking the security of your connection before accessing example.com.</body></html>'
+    it 'returns true for vercel_checkpoint.html' do
+      body = self.class.load_challenge_fixture('vercel_checkpoint.html', root: challenge_fixture_root)
+      expect(described_class.interstitial?(body)).to be(true)
     end
 
-    it 'returns true when a Cloudflare interstitial signature matches' do
-      expect(described_class.interstitial?(cloudflare_body)).to be(true)
-    end
-
-    it 'returns true when a DataDome interstitial signature matches' do
-      expect(described_class.interstitial?(datadome_body)).to be(true)
-    end
-
-    it 'returns true when a Vercel Security Checkpoint signature matches' do
-      expect(described_class.interstitial?(vercel_body)).to be(true)
+    it 'returns false for clean.html' do
+      body = self.class.load_challenge_fixture('clean.html', root: challenge_fixture_root)
+      expect(described_class.interstitial?(body)).to be(false)
     end
 
     it 'does not raise when body includes invalid byte sequences', :aggregate_failures do
@@ -41,14 +44,19 @@ RSpec.describe Html2rss::RequestService::BlockedSurface do
   end
 
   describe '.interstitial_signature_for' do
-    it 'returns the DataDome signature key when matched' do
-      body = '<html><body>captcha-delivery.com DataDome</body></html>'
+    it 'returns the DataDome signature key for datadome_interstitial.html' do
+      body = self.class.load_challenge_fixture('datadome_interstitial.html', root: challenge_fixture_root)
       expect(described_class.interstitial_signature_for(body)[:key]).to eq(:datadome_interstitial)
     end
 
-    it 'returns the Vercel signature key when matched' do
-      body = '<html><title>Vercel Security Checkpoint</title></html>'
+    it 'returns the Vercel signature key for vercel_checkpoint.html' do
+      body = self.class.load_challenge_fixture('vercel_checkpoint.html', root: challenge_fixture_root)
       expect(described_class.interstitial_signature_for(body)[:key]).to eq(:vercel_security_checkpoint)
+    end
+
+    it 'returns the Cloudflare signature key for cloudflare_interstitial.html' do
+      body = self.class.load_challenge_fixture('cloudflare_interstitial.html', root: challenge_fixture_root)
+      expect(described_class.interstitial_signature_for(body)[:key]).to eq(:cloudflare_interstitial)
     end
   end
 end

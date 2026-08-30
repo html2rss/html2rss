@@ -18,6 +18,7 @@ module Html2rss
             /checking your browser before accessing/i,
             /please (?:enable|turn on) javascript and cookies/i,
             %r{cdn-cgi/challenge-platform}i,
+            /cf-challenge/i,
             /cloudflare ray id/i
           ],
           message: 'Blocked surface detected: Cloudflare anti-bot interstitial page. ' \
