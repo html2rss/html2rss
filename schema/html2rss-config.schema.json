@@ -97,7 +97,12 @@
               "consumer",
               "civic",
               "product",
-              "research"
+              "research",
+              "health",
+              "culture",
+              "education",
+              "rights",
+              "transport"
             ]
           },
           "minItems": 1

@@ -343,6 +343,11 @@ RSpec.describe Html2rss::Config do
         expect(result.to_h.dig(:directory, :summary)).to eq('Latest headlines from Example.')
         expect(result.to_h.dig(:directory, :topics)).to eq(%w[sports news])
       end
+
+      it 'accepts newly added topics such as health, culture, education, rights, and transport' do
+        expanded = config.merge(directory: { title: 'T', topics: %w[health culture education rights transport] })
+        expect(described_class.validate(expanded)).to be_success
+      end
     end
 
     context 'when directory title is missing' do
