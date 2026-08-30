@@ -22,8 +22,10 @@ RSpec.describe Html2rss::RequestService::ResponseGuard do
 
   describe '#inspect_body!' do
     let(:blocked_body) do
-      '<html><head><title>Just a moment...</title></head>' \
-        '<body>Checking your browser before accessing openai.com.</body></html>'
+      fixture = Pathname(__dir__).join('../../../fixtures/challenge/cloudflare_interstitial.html').expand_path
+      raise "challenge fixture missing at #{fixture}" unless fixture.file?
+
+      fixture.read
     end
 
     it 'raises when the final body exceeds the decompressed limit' do

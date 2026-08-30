@@ -174,7 +174,7 @@ paths:
             application/json:
               example:
                 url: https://example.com
-                error: Scrape timed out after 45 seconds (phase=work)
+                error: Page navigate/wait exceeded budget
                 error_category: timeout
                 diagnostics:
                   request_id: b01ef2f8-f641-4e75-8ef2-0b73f7b4f372
