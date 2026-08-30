@@ -22,10 +22,8 @@ RSpec.describe Html2rss::RequestService::ResponseGuard do
 
   describe '#inspect_body!' do
     let(:blocked_body) do
-      fixture = Pathname(__dir__)
-                  .join('../../../../../botasaurus-scrape-api/tests/fixtures/challenge/cloudflare_interstitial.html')
-                  .expand_path
-      skip "challenge corpus missing at #{fixture}" unless fixture.file?
+      fixture = Pathname(__dir__).join('../../../fixtures/challenge/cloudflare_interstitial.html').expand_path
+      raise "challenge fixture missing at #{fixture}" unless fixture.file?
 
       fixture.read
     end
