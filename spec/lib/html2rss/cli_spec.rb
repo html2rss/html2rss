@@ -247,6 +247,19 @@ RSpec.describe Html2rss::CLI do
       expect { cli.invoke(:capture, ['https://example.com'], { explain: true }) }
         .to output(/articles_count/).to_stderr
     end
+
+    it 'forwards --max-redirects and --max-requests to Capture.build' do # rubocop:disable RSpec/ExampleLength -- option wiring contract
+      cli.invoke(
+        :capture,
+        ['https://example.com'],
+        { max_redirects: 8, max_requests: 4 }
+      )
+
+      expect(Html2rss::Capture).to have_received(:build).with(
+        'https://example.com',
+        hash_including(max_redirects: 8, max_requests: 4)
+      )
+    end
   end
 
   describe '#test' do

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+* `Html2rss.capture` returns `Capture::CaptureResult` instead of a bare config Hash.
+  Use `result.yaml` or `result.config`. No compatibility shim.
+
 ## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)
 
 

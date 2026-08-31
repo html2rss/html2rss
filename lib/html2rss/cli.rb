@@ -55,6 +55,8 @@ module Html2rss
     desc 'capture [TARGET]', 'Analyze a URL or HTML and output a curated YAML feed config'
     method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
     method_option :items_selector, type: :string, desc: 'CSS selector hint for items'
+    method_option :max_redirects, type: :numeric, desc: 'Max redirects to follow'
+    method_option :max_requests, type: :numeric, desc: 'Max request budget'
     method_option :output_dir, aliases: '-o', type: :string,
                                desc: 'Base directory to write <domain>/index.yml'
     method_option :write, aliases: '-w', type: :string, desc: 'Specific file path to write YAML to'
@@ -82,6 +84,8 @@ module Html2rss
         force: options[:force],
         enhance: options[:enhance],
         limit: options[:limit]&.to_i,
+        max_redirects: options[:max_redirects],
+        max_requests: options[:max_requests],
         local_file_path:
       )
 

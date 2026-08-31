@@ -82,26 +82,6 @@ module Html2rss
       end
       module_function :scraper_info
 
-      ##
-      # @param response [Html2rss::RequestService::Response]
-      # @return [Hash, nil]
-      def sst_stats_from(response)
-        return nil unless response.html_response?
-
-        recon = PageRecon.call(response:, url: response.url)
-        return nil unless recon.sst
-
-        { node_count: recon.sst[:node_count], degraded: recon.sst[:degraded] }
-      end
-      module_function :sst_stats_from
-
-      ##
-      # @param sst [Html2rss::SST::Document]
-      # @param url [String]
-      # @return [Array]
-      def discover_segments(sst, url) = PageRecon.discover_segments(sst, url)
-      module_function :discover_segments
-
       def safe_parsed_body(response)
         return unless response.html_response?
 

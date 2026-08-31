@@ -154,18 +154,5 @@ RSpec.describe Html2rss::MCP::Inspect do
   it 'returns error for non-HTML parsed bodies' do
     expect(described_class.scraper_info({})).to eq(error: 'Response is not HTML')
   end
-
-  it 'returns nil SST stats when normalization fails' do
-    allow(Html2rss::SST::Normalizer).to receive(:call).and_raise(ArgumentError)
-
-    expect(described_class.sst_stats_from(response)).to be_nil
-  end
-
-  it 'returns empty segments when segmenter fails' do
-    allow(Html2rss::AutoSource::Segmenter).to receive(:call).and_raise(StandardError)
-
-    sst = Html2rss::SST::Normalizer.call(html)
-    expect(described_class.discover_segments(sst, 'https://example.com/blog')).to eq([])
-  end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

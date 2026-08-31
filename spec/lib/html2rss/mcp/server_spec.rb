@@ -190,6 +190,57 @@ RSpec.describe Html2rss::MCP::Server do
       # rubocop:enable RSpec/ExampleLength
     end
 
+    describe 'test_config' do
+      def test_result(success:, failure_kind: nil, **) # rubocop:disable Metrics/MethodLength
+        Html2rss::Test::Result.new(
+          success:,
+          item_count: success ? 2 : 0,
+          sample_items: success ? [{ title: 'A', url: 'https://example.com/a' }] : [],
+          channel_title: 'Example',
+          channel_url: 'https://example.com',
+          strategy_used: :faraday,
+          duration_seconds: 0.1,
+          validation_errors: success ? nil : { channel: ['is missing'] },
+          error_message: success ? nil : 'Configuration schema validation failed',
+          failure_kind:,
+          rss: success ? '<rss/>' : nil,
+          **
+        )
+      end
+
+      it 'returns apply_config next_step on successful tools/call', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
+        allow(Html2rss).to receive(:test).and_return(test_result(success: true))
+
+        result = call_tool.call('test_config', { config: valid_config, min_items: 1, strategy: 'auto' })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(Html2rss).to have_received(:test).with(
+          valid_config,
+          min_items: 1,
+          strategy: :auto
+        )
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'apply_config')
+        expect(envelope[:payload]).to include(item_count: 2, channel_title: 'Example')
+      end
+
+      it 'routes schema failure next_step to validate_config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
+        allow(Html2rss).to receive(:test).and_return(
+          test_result(success: false, failure_kind: Html2rss::Test::FailureKind.coerce(:schema))
+        )
+
+        result = call_tool.call('test_config', { config: { bad: true } })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(true)
+        expect(envelope).to include(ok: false, next_step: 'validate_config')
+        expect(envelope[:payload]).to include(
+          failure_kind: 'schema',
+          validation_errors: { channel: ['is missing'] }
+        )
+      end
+    end
+
     describe 'validate_config' do
       it 'succeeds for a valid config', :aggregate_failures do
         result = call_tool.call('validate_config', { config: valid_config })
