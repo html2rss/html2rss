@@ -2,6 +2,13 @@
 
 Contributor map for the four Strong module deepenings on this branch. Prefer these homes over reintroducing dual ownership.
 
+## Native feed preference
+
+Same-origin RSS/Atom preference for curation gates (Capture defer/`--force`, Recon `:defer`).
+Owned only by `Syndication::Discovery.best_feed_url` (head alternates + path probes via session).
+`PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second
+preference algorithm. Do not reintroduce Capture `FeedLink`-only probes or Recon “first alternate” fallbacks.
+
 ## Scrape target
 
 Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.

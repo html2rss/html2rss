@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'tmpdir'
+
 RSpec.describe Html2rss::Recon do
   let(:url) { 'https://example.com/news' }
   let(:html_body) do
@@ -29,27 +31,30 @@ RSpec.describe Html2rss::Recon do
       parsed_body: Nokogiri::HTML(html_body)
     )
   end
+  let(:fake_session) do
+    instance_double(Html2rss::RequestSession, fetch_initial_response: fake_response, follow_up: fake_response)
+  end
+  let(:discovered_feed) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
 
   before do
-    allow(described_class).to receive(:fetch_initial).and_return([nil, fake_response, nil])
+    allow(described_class).to receive(:fetch_initial).and_return([fake_session, fake_response, nil])
+    allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(discovered_feed)
   end
 
   describe '.call' do
-    it 'returns a Recon::Result with defer verdict when native feed is present', :aggregate_failures do
+    it 'returns a Recon::Result with defer verdict when Discovery finds a feed', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       result = described_class.call(url)
       expect(result).to be_a(Html2rss::Recon::Result)
       expect(result.defer?).to be(true)
       expect(result.verdict).to eq(Html2rss::Recon::Verdict.coerce(:defer))
+      expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
+        hash_including(request_session: fake_session, page_url: kind_of(Html2rss::Url))
+      )
     end
 
     context 'without stubbed fetch_initial' do
       before do
         allow(described_class).to receive(:fetch_initial).and_call_original
-        fake_session = instance_double(
-          Html2rss::RequestSession,
-          fetch_initial_response: fake_response,
-          follow_up: fake_response
-        )
         allow(Html2rss::RequestSession).to receive(:build).and_return(fake_session)
       end
 
@@ -59,7 +64,7 @@ RSpec.describe Html2rss::Recon do
       end
     end
 
-    context 'when no native feed and articles are found' do
+    context 'when Discovery finds no feed and articles are present' do
       let(:html_body) do
         <<~HTML
           <html>
@@ -68,8 +73,9 @@ RSpec.describe Html2rss::Recon do
           </html>
         HTML
       end
+      let(:discovered_feed) { nil }
 
-      it 'returns BUILD verdict' do
+      it 'returns BUILD verdict and does not fall back to PageRecon alternates' do
         result = described_class.call(url)
         expect(result.build?).to be(true)
       end
@@ -89,6 +95,7 @@ RSpec.describe Html2rss::Recon do
           parsed_body: nil
         )
       end
+      let(:discovered_feed) { nil }
 
       it 'returns DROP verdict' do
         result = described_class.call(url)
@@ -110,6 +117,7 @@ RSpec.describe Html2rss::Recon do
           parsed_body: Nokogiri::HTML(html_body)
         )
       end
+      let(:discovered_feed) { nil }
 
       it 'returns DROP verdict' do
         result = described_class.call('https://example.com/news')
@@ -132,6 +140,8 @@ RSpec.describe Html2rss::Recon do
   end
 
   describe '.batch' do
+    let(:discovered_feed) { nil }
+
     it 'processes an array of URLs concurrently', :aggregate_failures do
       results = described_class.batch([url])
       expect(results.size).to eq(1)

@@ -141,7 +141,7 @@ module Html2rss
       cache_html_body(response.body, url_obj, cache_dir, cache_mutex) if cache_dir && response.body
 
       recon = PageRecon.call(response:, url: url_obj, strategy: resolved_strategy)
-      native_feed = find_native_feed(url_obj, session, response) || recon.alternate_feeds.first&.dig(:href)
+      native_feed = find_native_feed(url_obj, session, response)
       notes = build_notes(recon, native_feed, response)
       verdict = determine_verdict(recon, native_feed)
 

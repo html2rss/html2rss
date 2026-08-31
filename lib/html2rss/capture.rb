@@ -158,15 +158,28 @@ module Html2rss
     end
 
     def probe_native_feed(response)
-      return nil unless response&.html_response? && @url
+      return nil unless response && @url
 
-      parsed = response.parsed_body
-      return nil unless parsed.is_a?(Nokogiri::HTML::Document)
-
-      links = Html::FeedLink.from_document(parsed)
-      links.first&.href
+      Syndication::Discovery.best_feed_url(
+        page_url: @url,
+        request_session: discovery_session,
+        parsed_body: (response.parsed_body if response.html_response?),
+        html: response.body
+      )&.to_s
     rescue StandardError
       nil
+    end
+
+    def discovery_session
+      config = Config.from_hash(raw_config)
+      resources = FeedPipeline::RuntimePolicy.resources_for(config)
+      strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(@strategy)
+      RequestSession.build(
+        config:,
+        strategy:,
+        budget: resources.budget,
+        policy: resources.policy
+      )
     end
 
     def infer_topics(text) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize, Metrics/MethodLength
