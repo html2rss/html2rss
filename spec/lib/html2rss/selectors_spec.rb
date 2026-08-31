@@ -112,6 +112,28 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
+    context 'when items selector is an anchor element and url selector is omitted' do
+      let(:selectors) do
+        {
+          items: { selector: 'a.card', enhance: false },
+          title: { selector: 'h3' }
+        }
+      end
+      let(:body) do
+        <<~HTML
+          <html><body>
+            <a class="card" href="/posts/first"><h3>First Post</h3></a>
+            <a class="card" href="/posts/second"><h3>Second Post</h3></a>
+          </body></html>
+        HTML
+      end
+
+      it 'automatically extracts the url from the anchor href attribute', :aggregate_failures do
+        urls = instance.articles.map { |article| article.url.to_s }
+        expect(urls).to eq(%w[http://example.com/posts/first http://example.com/posts/second])
+      end
+    end
+
     context 'when an enclosure selector is configured' do
       let(:selectors) do
         {
@@ -221,6 +243,17 @@ RSpec.describe Html2rss::Selectors do
 
     it 'returns the selected value' do
       expect(value).to eq('article1')
+    end
+
+    context 'when selecting :url on an anchor element without an explicit url selector' do
+      subject(:value) { instance.select(:url, item).to_s }
+
+      let(:item) { Nokogiri::HTML(body).at('a') }
+      let(:body) { '<html><body><a href="/target">Item</a></body></html>' }
+
+      it 'extracts and resolves the url directly from the item element' do
+        expect(value).to eq('http://example.com/target')
+      end
     end
 
     context 'when name is not a referencing a selector' do
