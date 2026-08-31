@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'digest'
 require 'uri'
 require 'fileutils'
 
@@ -15,15 +16,19 @@ module Html2rss
     #
     # @param url [String, Html2rss::Url] source page URL
     # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+    # @param cache_dir [String, nil] optional directory to cache raw HTML bodies
+    # @param cache_mutex [Mutex, nil] optional mutex serializing cache writes
     # @option options [Integer, nil] :max_redirects optional maximum redirects
     # @option options [Integer, nil] :max_requests optional request budget
     # @return [Html2rss::ReconResult]
-    def call(url, strategy: :auto, **) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+    def call(url, strategy: :auto, cache_dir: nil, cache_mutex: nil, **) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       url_obj = Url.from_absolute(url)
       resolved_strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
 
       session, response, error = fetch_initial(url_obj, resolved_strategy, **)
       return error_result(url_obj, error) if error
+
+      cache_html_body(response.body, url_obj, cache_dir, cache_mutex) if cache_dir && response.body
 
       recon = PageRecon.call(response:, url: url_obj, strategy: resolved_strategy)
       native_feed = find_native_feed(url_obj, session, response) || recon.alternate_feeds.first&.dig(:href)
@@ -47,6 +52,8 @@ module Html2rss
 
     ##
     # Runs batch reconnaissance across an Enumerable of URLs.
+    # Results are returned in input order. Concurrency uses a Thread pool
+    # (not Ractors) for I/O overlap with one loaded gem image.
     #
     # @param urls [Enumerable<String>] list of URLs
     # @param strategy [Symbol] request strategy
@@ -55,28 +62,27 @@ module Html2rss
     # @option options [Integer, nil] :max_redirects optional maximum redirects
     # @option options [Integer, nil] :max_requests optional request budget
     # @return [Array<Html2rss::ReconResult>]
-    def batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
+      url_list = urls.map { |u| u.to_s.strip }.reject(&:empty?)
+      return [] if url_list.empty?
+
       FileUtils.mkdir_p(cache_dir) if cache_dir
-      results = []
-      mutex = Mutex.new
-
+      results = Array.new(url_list.size)
+      cache_mutex = Mutex.new
       queue = Queue.new
-      urls.each { |u| queue << u.to_s.strip }
+      url_list.each_with_index { |u, i| queue << [i, u] }
 
-      threads = Array.new([max_threads, queue.size].min) do
+      worker_count = [max_threads, url_list.size].min
+      threads = Array.new(worker_count) do
         Thread.new do # rubocop:disable ThreadSafety/NewThread
-          until queue.empty?
-            target_url = begin
+          loop do
+            index, target_url = begin
               queue.pop(true)
             rescue ThreadError
-              nil
+              break
             end
-            break unless target_url
-            next if target_url.empty?
 
-            res = call(target_url, strategy:, **options)
-            cache_html_snapshot(res, cache_dir) if cache_dir
-            mutex.synchronize { results << res }
+            results[index] = call(target_url, strategy:, cache_dir:, cache_mutex:, **options)
           end
         end
       end
@@ -164,14 +170,23 @@ module Html2rss
     end
     private_class_method :error_result
 
-    def cache_html_snapshot(result, cache_dir)
-      slug = result.final_url.host.to_s.delete_prefix('www.')
-      slug = 'snapshot' if slug.empty?
-      file_path = File.join(cache_dir, "#{slug}.html")
-      File.write(file_path, result.notes.join("\n"))
+    # Writes the raw response body once under a host+url-digest filename.
+    #
+    # @param body [String]
+    # @param url_obj [Html2rss::Url]
+    # @param cache_dir [String]
+    # @param cache_mutex [Mutex, nil]
+    # @return [void]
+    def cache_html_body(body, url_obj, cache_dir, cache_mutex)
+      host = url_obj.host.to_s.delete_prefix('www.')
+      host = 'snapshot' if host.empty?
+      digest = Digest::SHA256.hexdigest(url_obj.to_s)[0, 12]
+      file_path = File.join(cache_dir, "#{host}-#{digest}.html")
+      writer = -> { File.write(file_path, body) }
+      cache_mutex ? cache_mutex.synchronize(&writer) : writer.call
     rescue StandardError => error
       Log.debug("Recon cache failed: #{error.message}")
     end
-    private_class_method :cache_html_snapshot
+    private_class_method :cache_html_body
   end
 end

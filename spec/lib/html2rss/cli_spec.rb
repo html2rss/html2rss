@@ -143,6 +143,21 @@ RSpec.describe Html2rss::CLI do
       end
     end
 
+    it 'parses slug\\turl lines from --file into bare URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      Tempfile.create('urls') do |f|
+        f.puts("news\thttps://example.com/news")
+        f.puts('# comment')
+        f.puts('https://example.com/blog')
+        f.flush
+        expect { cli.invoke(:recon, nil, { file: f.path, url_only: true }) }
+          .to output(%r{https://example.com/news}).to_stdout
+        expect(Html2rss::Recon).to have_received(:batch).with(
+          ['https://example.com/news', 'https://example.com/blog'],
+          hash_including(strategy: :auto)
+        )
+      end
+    end
+
     it 'raises Thor::Error when target is omitted' do
       expect { cli.recon(nil) }.to raise_error(Thor::Error, /target URL/)
     end
@@ -201,11 +216,11 @@ RSpec.describe Html2rss::CLI do
       end
     end
 
-    it 'writes captured YAML to directory with --out', :aggregate_failures do
+    it 'writes captured YAML to directory with --output-dir', :aggregate_failures do
       Dir.mktmpdir do |dir|
-        expect { cli.invoke(:capture, ['https://example.com'], { out: dir }) }
+        expect { cli.invoke(:capture, ['https://example.com'], { output_dir: dir }) }
           .to output(/Wrote captured config to/).to_stdout
-        expect(File.exist?(File.join(dir, 'example.com', 'index.yml'))).to be(true)
+        expect(File.read(File.join(dir, 'example.com', 'index.yml'))).to include('url: https://example.com')
       end
     end
 

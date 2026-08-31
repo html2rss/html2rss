@@ -55,7 +55,8 @@ module Html2rss
     desc 'capture [TARGET]', 'Analyze a URL or HTML and output a curated YAML feed config'
     method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
     method_option :items_selector, type: :string, desc: 'CSS selector hint for items'
-    method_option :output_dir, aliases: '-o', type: :string, desc: 'Base directory to write domain/slug.yml'
+    method_option :output_dir, aliases: '-o', type: :string,
+                               desc: 'Base directory to write <domain>/index.yml'
     method_option :write, aliases: '-w', type: :string, desc: 'Specific file path to write YAML to'
     method_option :topics, aliases: '-t', type: :string, desc: 'Comma-separated directory topics'
     method_option :title, type: :string, desc: 'Directory and channel title override'
@@ -257,16 +258,33 @@ module Html2rss
 
     private
 
-    def resolve_recon_targets(target, file_opt) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def resolve_recon_targets(target, file_opt)
       if file_opt
-        [File.readlines(file_opt, chomp: true).reject { |l| l.strip.empty? || l.start_with?('#') }, true]
+        [parse_recon_lines(File.readlines(file_opt, chomp: true)), true]
       elsif target == '-'
-        [$stdin.readlines.map(&:chomp).reject { |l| l.strip.empty? || l.start_with?('#') }, true]
+        [parse_recon_lines($stdin.readlines.map(&:chomp)), true]
       elsif target
         [Array(target), false]
       else
         [[], false]
       end
+    end
+
+    # Accepts bare URLs or `slug\\turl` lines (URL column wins).
+    #
+    # @param lines [Array<String>]
+    # @return [Array<String>]
+    def parse_recon_lines(lines)
+      lines.filter_map { |line| parse_recon_line(line) }
+    end
+
+    # @param line [String]
+    # @return [String, nil]
+    def parse_recon_line(line)
+      stripped = line.strip
+      return nil if stripped.empty? || stripped.start_with?('#')
+
+      stripped.include?("\t") ? stripped.split("\t", 2).last.strip : stripped
     end
 
     def filter_recon_results(results, verdict_filter)
@@ -317,8 +335,8 @@ module Html2rss
     end
 
     def handle_capture_output(result, url) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      if options[:out]
-        dir = File.join(options[:out], URI.parse(url).host.to_s.delete_prefix('www.'))
+      if options[:output_dir]
+        dir = File.join(options[:output_dir], URI.parse(url).host.to_s.delete_prefix('www.'))
         FileUtils.mkdir_p(dir)
         file_path = File.join(dir, 'index.yml')
         File.write(file_path, result.yaml)

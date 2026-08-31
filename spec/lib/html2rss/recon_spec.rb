@@ -137,11 +137,41 @@ RSpec.describe Html2rss::Recon do
       expect(results.first).to be_a(Html2rss::ReconResult)
     end
 
-    it 'caches HTML snapshot when cache_dir is given', :aggregate_failures do
+    it 'preserves input order across concurrent workers' do # rubocop:disable RSpec/ExampleLength
+      urls = %w[
+        https://example.com/a
+        https://example.com/b
+        https://example.com/c
+      ]
+      allow(described_class).to receive(:call) do |target_url, **|
+        sleep(0.01) if target_url.include?('/a')
+        Html2rss::ReconResult.new(
+          requested_url: Html2rss::Url.from_absolute(target_url),
+          final_url: Html2rss::Url.from_absolute(target_url),
+          status: 200,
+          verdict: :build,
+          native_feed: nil,
+          surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
+          articles_count: 1,
+          scheme_downgrade: false,
+          notes: [],
+          redirect_chain: [target_url],
+          html_bytesize: 10
+        )
+      end
+
+      results = described_class.batch(urls, max_threads: 3)
+      expect(results.map { |r| r.requested_url.to_s }).to eq(urls)
+    end
+
+    it 'caches HTML body bytes when cache_dir is given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       Dir.mktmpdir do |dir|
         results = described_class.batch([url], cache_dir: dir)
         expect(results.size).to eq(1)
-        expect(Dir.children(dir)).not_to be_empty
+        cached = Dir.glob(File.join(dir, '*.html'))
+        expect(cached).not_to be_empty
+        expect(File.read(cached.first)).to include('<title>Example News</title>')
+        expect(File.read(cached.first)).not_to include('native_rss=')
       end
     end
 
