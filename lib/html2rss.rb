@@ -35,7 +35,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
   # @option options [Integer, nil] :max_redirects optional maximum redirects
   # @option options [Integer, nil] :max_requests optional request budget
-  # @return [Html2rss::ReconResult]
+  # @return [Html2rss::Recon::Result]
   def self.recon(url, strategy: :auto, **)
     Recon.call(url, strategy:, **)
   end
@@ -48,7 +48,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param min_items [Integer] minimum required items (default: 1)
   # @param params [Hash] dynamic feed params
   # @param strategy [Symbol, nil] optional strategy override
-  # @return [Html2rss::TestResult]
+  # @return [Html2rss::Test::Result]
   def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil)
     Test.call(config_input, feed_name, min_items:, params:, strategy:)
   end

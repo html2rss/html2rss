@@ -35,10 +35,11 @@ RSpec.describe Html2rss::Recon do
   end
 
   describe '.call' do
-    it 'returns a ReconResult with defer verdict when native feed is present', :aggregate_failures do
+    it 'returns a Recon::Result with defer verdict when native feed is present', :aggregate_failures do
       result = described_class.call(url)
-      expect(result).to be_a(Html2rss::ReconResult)
+      expect(result).to be_a(Html2rss::Recon::Result)
       expect(result.defer?).to be(true)
+      expect(result.verdict).to eq(Html2rss::Recon::Verdict.coerce(:defer))
     end
 
     context 'without stubbed fetch_initial' do
@@ -134,7 +135,7 @@ RSpec.describe Html2rss::Recon do
     it 'processes an array of URLs concurrently', :aggregate_failures do
       results = described_class.batch([url])
       expect(results.size).to eq(1)
-      expect(results.first).to be_a(Html2rss::ReconResult)
+      expect(results.first).to be_a(Html2rss::Recon::Result)
     end
 
     it 'preserves input order across concurrent workers' do # rubocop:disable RSpec/ExampleLength
@@ -145,17 +146,16 @@ RSpec.describe Html2rss::Recon do
       ]
       allow(described_class).to receive(:call) do |target_url, **|
         sleep(0.01) if target_url.include?('/a')
-        Html2rss::ReconResult.new(
+        Html2rss::Recon::Result.new(
           requested_url: Html2rss::Url.from_absolute(target_url),
           final_url: Html2rss::Url.from_absolute(target_url),
           status: 200,
-          verdict: :build,
+          verdict: Html2rss::Recon::Verdict.coerce(:build),
           native_feed: nil,
           surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
           articles_count: 1,
           scheme_downgrade: false,
           notes: [],
-          redirect_chain: [target_url],
           html_bytesize: 10
         )
       end

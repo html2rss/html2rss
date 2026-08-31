@@ -166,9 +166,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       # rubocop:disable RSpec/ExampleLength -- tools/call envelope contract
-      it 'returns YAML inside payload and quality fields without _meta', :aggregate_failures do
-        yaml = Html2rss::Config.to_yaml(valid_config)
-        allow(Html2rss::Config).to receive(:to_yaml).and_return(yaml)
+      it 'returns CaptureResult.yaml (with modeline) inside payload without _meta', :aggregate_failures do
         result = call_tool.call('capture_config', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
@@ -176,17 +174,17 @@ RSpec.describe Html2rss::MCP::Server do
           'https://example.com',
           hash_including(strategy: :auto)
         )
-        expect(Html2rss::Config).to have_received(:to_yaml).with(valid_config)
         expect(result.dig(:result, :isError)).to be(false)
         expect(result.dig(:result, :_meta)).to be_nil
         expect(envelope).to include(ok: true, next_step: 'validate_config')
         expect(envelope[:payload]).to include(
-          yaml:,
+          yaml: capture_result.yaml,
           articles_count: 3,
           channel_title: 'Example',
           has_selectors: true,
           requested_strategy: 'auto'
         )
+        expect(envelope.dig(:payload, :yaml)).to include('yaml-language-server')
       end
       # rubocop:enable RSpec/ExampleLength
     end

@@ -61,17 +61,16 @@ RSpec.describe Html2rss::CLI do
 
   describe '#recon' do
     let(:recon_result) do
-      Html2rss::ReconResult.new(
+      Html2rss::Recon::Result.new(
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 200,
-        verdict: :build,
+        verdict: Html2rss::Recon::Verdict.coerce(:build),
         native_feed: nil,
         surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
         articles_count: 5,
         scheme_downgrade: false,
         notes: [],
-        redirect_chain: ['https://example.com/news'],
         html_bytesize: 2048
       )
     end
@@ -85,17 +84,16 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'exits with 3 for single URL with DEFER verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      defer_res = Html2rss::ReconResult.new(
+      defer_res = Html2rss::Recon::Result.new(
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 200,
-        verdict: :defer,
+        verdict: Html2rss::Recon::Verdict.coerce(:defer),
         native_feed: 'https://example.com/feed.xml',
         surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
         articles_count: 5,
         scheme_downgrade: false,
         notes: [],
-        redirect_chain: ['https://example.com/news'],
         html_bytesize: 2048
       )
       allow(Html2rss::Recon).to receive(:batch).and_return([defer_res])
@@ -105,17 +103,16 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'exits with 1 for single URL with DROP verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      drop_res = Html2rss::ReconResult.new(
+      drop_res = Html2rss::Recon::Result.new(
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 404,
-        verdict: :drop,
+        verdict: Html2rss::Recon::Verdict.coerce(:drop),
         native_feed: nil,
         surface_category: Html2rss::SurfaceCategory.coerce(:unsupported_surface),
         articles_count: 0,
         scheme_downgrade: false,
         notes: [],
-        redirect_chain: ['https://example.com/news'],
         html_bytesize: 0
       )
       allow(Html2rss::Recon).to receive(:batch).and_return([drop_res])
@@ -254,7 +251,7 @@ RSpec.describe Html2rss::CLI do
 
   describe '#test' do
     let(:test_result_success) do
-      Html2rss::TestResult.new(
+      Html2rss::Test::Result.new(
         success: true,
         item_count: 10,
         sample_items: [{ title: 'Item 1', url: 'https://example.com/1', published_at: nil }],
@@ -263,12 +260,14 @@ RSpec.describe Html2rss::CLI do
         strategy_used: :faraday,
         duration_seconds: 0.12,
         validation_errors: nil,
-        error_message: nil
+        error_message: nil,
+        failure_kind: nil,
+        rss: '<rss/>'
       )
     end
 
     let(:test_result_failure) do
-      Html2rss::TestResult.new(
+      Html2rss::Test::Result.new(
         success: false,
         item_count: 0,
         sample_items: [],
@@ -277,7 +276,9 @@ RSpec.describe Html2rss::CLI do
         strategy_used: :faraday,
         duration_seconds: 0.12,
         validation_errors: nil,
-        error_message: 'Extracted 0 items (minimum required: 1)'
+        error_message: 'Extracted 0 items (minimum required: 1)',
+        failure_kind: Html2rss::Test::FailureKind.coerce(:min_items),
+        rss: nil
       )
     end
 
@@ -299,6 +300,13 @@ RSpec.describe Html2rss::CLI do
 
       it 'supports --json output' do
         expect { cli.invoke(:test, ['config.yml'], { json: true }) }.to output(/"success": true/).to_stdout
+      end
+
+      it 'prints result.rss for --xml without a second Html2rss.feed call', :aggregate_failures do
+        allow(Html2rss).to receive(:feed)
+        expect { cli.invoke(:test, ['config.yml'], { xml: true }) }
+          .to output(%r{<rss/>}).to_stdout
+        expect(Html2rss).not_to have_received(:feed)
       end
     end
 

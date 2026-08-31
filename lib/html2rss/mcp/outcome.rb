@@ -115,7 +115,7 @@ module Html2rss
         end
 
         ##
-        # @param test_result [Html2rss::TestResult]
+        # @param test_result [Html2rss::Test::Result]
         # @return [Outcome]
         def test(test_result) # rubocop:disable Metrics/MethodLength
           next_step = test_result.success ? NextStep.done : NextStep.inspect_url

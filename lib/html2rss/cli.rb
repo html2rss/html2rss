@@ -127,7 +127,7 @@ module Html2rss
         end
       else
         render_test_card(result, input_source)
-        puts Html2rss.feed(raw_content) if options[:xml] && result.success
+        puts result.rss if options[:xml] && result.success
       end
 
       raise Thor::Error, (result.error_message || 'Test failed') unless result.success
@@ -290,8 +290,8 @@ module Html2rss
     def filter_recon_results(results, verdict_filter)
       return results unless verdict_filter
 
-      filter = verdict_filter.to_s.downcase
-      results.select { |r| r.verdict.to_s == filter }
+      expected = Recon::Verdict.coerce(verdict_filter.downcase)
+      results.select { |r| r.verdict == expected }
     end
 
     def render_recon_output(results, batch_mode) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -319,10 +319,12 @@ module Html2rss
     end
 
     def render_recon_card(result) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      color = case result.verdict
-              when :build then "\e[32m"
-              when :defer then "\e[33m"
-              else "\e[31m"
+      color = if result.build?
+                "\e[32m"
+              elsif result.defer?
+                "\e[33m"
+              else
+                "\e[31m"
               end
       puts "#{color}[#{result.verdict.to_s.upcase}]\e[0m #{result.requested_url}"
       if result.final_url != result.requested_url

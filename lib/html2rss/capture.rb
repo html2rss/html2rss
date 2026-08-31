@@ -61,7 +61,6 @@ module Html2rss
       def native_feed?
         !native_feed.nil?
       end
-      alias_method :has_native_feed?, :native_feed?
     end
 
     class << self

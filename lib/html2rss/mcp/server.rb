@@ -259,7 +259,7 @@ module Html2rss
           plan = (strategy || :auto).to_sym
           result = Html2rss::Capture.build(url, strategy: plan, items_selector:)
           Outcome.capture(
-            yaml: Config.to_yaml(result.config),
+            yaml: result.yaml,
             articles_count: result.articles_count,
             has_selectors: result.has_selectors,
             channel_title: result.channel_title,

@@ -12,6 +12,116 @@ module Html2rss
     module_function
 
     ##
+    # Closed curation verdict (:build / :defer / :drop).
+    class Verdict
+      NAMES = Set[:build, :defer, :drop].freeze
+
+      class << self
+        ##
+        # @param value [Verdict, Symbol, String]
+        # @return [Verdict]
+        def coerce(value)
+          return value if value.is_a?(self)
+
+          new(name: value.to_sym)
+        end
+      end
+
+      ##
+      # @return [Symbol]
+      attr_reader :name
+
+      ##
+      # @param name [Symbol]
+      def initialize(name:)
+        raise ArgumentError, "unknown verdict: #{name.inspect}" unless NAMES.include?(name)
+
+        @name = name
+        freeze
+      end
+
+      ##
+      # @return [Boolean]
+      def build? = name == :build
+
+      ##
+      # @return [Boolean]
+      def defer? = name == :defer
+
+      ##
+      # @return [Boolean]
+      def drop? = name == :drop
+
+      ##
+      # @return [Symbol]
+      def to_sym = name
+
+      ##
+      # @return [String]
+      def to_s = name.to_s
+
+      ##
+      # @param other [Object]
+      # @return [Boolean]
+      def ==(other)
+        other.is_a?(self.class) && name == other.name
+      end
+      alias eql? ==
+
+      ##
+      # @return [Integer]
+      def hash = [self.class, name].hash
+    end
+
+    ##
+    # Immutable outcome of a reconnaissance operation.
+    Result = Data.define(
+      :requested_url,
+      :final_url,
+      :status,
+      :verdict,
+      :native_feed,
+      :surface_category,
+      :articles_count,
+      :scheme_downgrade,
+      :notes,
+      :html_bytesize
+    ) do
+      ##
+      # @return [Boolean]
+      def build? = verdict.build?
+
+      ##
+      # @return [Boolean]
+      def defer? = verdict.defer?
+
+      ##
+      # @return [Boolean]
+      def drop? = verdict.drop?
+
+      ##
+      # @return [Boolean]
+      def native_feed? = !native_feed.nil?
+
+      ##
+      # @return [Hash{Symbol => Object}]
+      def to_h # rubocop:disable Metrics/MethodLength
+        {
+          requested_url: requested_url.to_s,
+          final_url: final_url.to_s,
+          status:,
+          verdict: verdict.to_sym,
+          native_feed: native_feed&.to_s,
+          surface_category: surface_category&.to_s,
+          articles_count:,
+          scheme_downgrade:,
+          notes:,
+          html_bytesize:
+        }.compact
+      end
+    end
+
+    ##
     # Runs reconnaissance on a single URL.
     #
     # @param url [String, Html2rss::Url] source page URL
@@ -20,7 +130,7 @@ module Html2rss
     # @param cache_mutex [Mutex, nil] optional mutex serializing cache writes
     # @option options [Integer, nil] :max_redirects optional maximum redirects
     # @option options [Integer, nil] :max_requests optional request budget
-    # @return [Html2rss::ReconResult]
+    # @return [Html2rss::Recon::Result]
     def call(url, strategy: :auto, cache_dir: nil, cache_mutex: nil, **) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       url_obj = Url.from_absolute(url)
       resolved_strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
@@ -33,9 +143,9 @@ module Html2rss
       recon = PageRecon.call(response:, url: url_obj, strategy: resolved_strategy)
       native_feed = find_native_feed(url_obj, session, response) || recon.alternate_feeds.first&.dig(:href)
       notes = build_notes(recon, native_feed, response)
-      verdict = determine_verdict(recon, native_feed, error)
+      verdict = determine_verdict(recon, native_feed)
 
-      ReconResult.new(
+      Result.new(
         requested_url: url_obj,
         final_url: response.url,
         status: response.status,
@@ -45,7 +155,6 @@ module Html2rss
         articles_count: recon.articles_count,
         scheme_downgrade: recon.scheme_downgrade,
         notes:,
-        redirect_chain: [url_obj.to_s, response.url.to_s].uniq,
         html_bytesize: response.body&.bytesize
       )
     end
@@ -61,7 +170,7 @@ module Html2rss
     # @param max_threads [Integer] concurrent worker count
     # @option options [Integer, nil] :max_redirects optional maximum redirects
     # @option options [Integer, nil] :max_requests optional request budget
-    # @return [Array<Html2rss::ReconResult>]
+    # @return [Array<Html2rss::Recon::Result>]
     def batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
       url_list = urls.map { |u| u.to_s.strip }.reject(&:empty?)
       return [] if url_list.empty?
@@ -142,29 +251,28 @@ module Html2rss
     end
     private_class_method :build_notes
 
-    def determine_verdict(recon, native_feed, error)
-      return :drop if error || recon.status.nil? || recon.status >= 400 || recon.scheme_downgrade
-      return :defer if native_feed
+    def determine_verdict(recon, native_feed)
+      return Verdict.coerce(:drop) if recon.status.nil? || recon.status >= 400 || recon.scheme_downgrade
+      return Verdict.coerce(:defer) if native_feed
 
       category = SurfaceCategory.coerce(recon.surface_category)
-      return :drop if category.blocked?
+      return Verdict.coerce(:drop) if category.blocked?
 
-      :build
+      Verdict.coerce(:build)
     end
     private_class_method :determine_verdict
 
     def error_result(url_obj, error) # rubocop:disable Metrics/MethodLength
-      ReconResult.new(
+      Result.new(
         requested_url: url_obj,
         final_url: url_obj,
         status: nil,
-        verdict: :drop,
+        verdict: Verdict.coerce(:drop),
         native_feed: nil,
         surface_category: SurfaceCategory.coerce(:unsupported_surface),
         articles_count: 0,
         scheme_downgrade: false,
         notes: ["error: #{error.class} - #{error.message}"],
-        redirect_chain: [url_obj.to_s],
         html_bytesize: nil
       )
     end
