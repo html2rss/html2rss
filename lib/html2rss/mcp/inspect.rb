@@ -3,8 +3,8 @@
 module Html2rss
   module MCP
     ##
-    # Diagnostic inspect path (not Capture ownership). Fetches once, then delegates
-    # shared recon to {Html2rss::PageRecon}; adds MCP-only scraper/XHR diagnostics.
+    # Diagnostic inspect path (not Capture ownership). Fetches via {PageRecon.probe},
+    # then adds MCP-only scraper/XHR diagnostics.
     module Inspect
       module_function
 
@@ -13,15 +13,15 @@ module Html2rss
       # @param strategy [String, Symbol]
       # @return [Hash]
       def call(url:, strategy: :auto)
-        resolved = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
-        response = fetch_response(url, resolved)
-        recon = PageRecon.call(response:, url:, strategy: resolved)
+        probe = PageRecon.probe(url, strategy:)
+        recon = probe.result
+        response = probe.response
 
         result = recon.to_h.merge(
-          strategy: resolved,
+          strategy: probe.strategy,
           scraper_eligibility: scraper_info(safe_parsed_body(response))
         )
-        result[:xhr_capture] = xhr_capture_info(response) if resolved == :botasaurus
+        result[:xhr_capture] = xhr_capture_info(response) if probe.strategy == :botasaurus
         result
       end
 
@@ -67,28 +67,6 @@ module Html2rss
         false
       end
       module_function :xhr_candidate_articles?
-
-      ##
-      # @param url [String]
-      # @param strategy [Symbol]
-      # @return [Html2rss::RequestService::Response]
-      def fetch_response(url, strategy) # rubocop:disable Metrics/MethodLength -- session construction
-        raw_config = Config.auto_source_config(
-          url:,
-          request_controls: Config::RequestControls.from_shortcut(strategy:)
-        )
-        raw_config[:strategy] = strategy
-        config = Config.from_hash(raw_config)
-        resources = FeedPipeline::RuntimePolicy.resources_for(config)
-        session = RequestSession.build(
-          config:,
-          strategy: config.strategy,
-          budget: resources.budget,
-          policy: resources.policy
-        )
-        session.fetch_initial_response
-      end
-      module_function :fetch_response
 
       ##
       # @param parsed [Object] parsed response body

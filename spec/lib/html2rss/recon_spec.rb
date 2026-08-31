@@ -2,6 +2,7 @@
 
 require 'tmpdir'
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers -- probe/response fixtures shared across verdict contexts
 RSpec.describe Html2rss::Recon do
   let(:url) { 'https://example.com/news' }
   let(:html_body) do
@@ -34,10 +35,21 @@ RSpec.describe Html2rss::Recon do
   let(:fake_session) do
     instance_double(Html2rss::RequestSession, fetch_initial_response: fake_response, follow_up: fake_response)
   end
+  let(:page_recon_result) do
+    Html2rss::PageRecon.call(response: fake_response, url:)
+  end
+  let(:probe) do
+    Html2rss::PageRecon::Probe.new(
+      session: fake_session,
+      response: fake_response,
+      result: page_recon_result,
+      strategy: :faraday
+    )
+  end
   let(:discovered_feed) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
 
   before do
-    allow(described_class).to receive(:fetch_initial).and_return([fake_session, fake_response, nil])
+    allow(Html2rss::PageRecon).to receive(:probe).and_return(probe)
     allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(discovered_feed)
   end
 
@@ -47,21 +59,12 @@ RSpec.describe Html2rss::Recon do
       expect(result).to be_a(Html2rss::Recon::Result)
       expect(result.defer?).to be(true)
       expect(result.verdict).to eq(Html2rss::Recon::Verdict.coerce(:defer))
+      expect(Html2rss::PageRecon).to have_received(:probe).with(
+        kind_of(Html2rss::Url), hash_including(strategy: :auto)
+      )
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
         hash_including(request_session: fake_session, page_url: kind_of(Html2rss::Url))
       )
-    end
-
-    context 'without stubbed fetch_initial' do
-      before do
-        allow(described_class).to receive(:fetch_initial).and_call_original
-        allow(Html2rss::RequestSession).to receive(:build).and_return(fake_session)
-      end
-
-      it 'invokes the real fetch_initial flow' do
-        result = described_class.call(url)
-        expect(result.defer?).to be(true)
-      end
     end
 
     context 'when Discovery finds no feed and articles are present' do
@@ -125,10 +128,9 @@ RSpec.describe Html2rss::Recon do
       end
     end
 
-    context 'when fetch raises an error' do
+    context 'when probe raises an error' do
       before do
-        allow(described_class).to receive(:fetch_initial).and_return([nil, nil,
-                                                                      StandardError.new('connection refused')])
+        allow(Html2rss::PageRecon).to receive(:probe).and_raise(StandardError.new('connection refused'))
       end
 
       it 'returns DROP verdict with error note', :aggregate_failures do
@@ -193,3 +195,4 @@ RSpec.describe Html2rss::Recon do
     end
   end
 end
+# rubocop:enable RSpec/MultipleMemoizedHelpers

@@ -133,29 +133,31 @@ module Html2rss
     # @return [Html2rss::Recon::Result]
     def call(url, strategy: :auto, cache_dir: nil, cache_mutex: nil, **) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       url_obj = Url.from_absolute(url)
-      resolved_strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
 
-      session, response, error = fetch_initial(url_obj, resolved_strategy, **)
-      return error_result(url_obj, error) if error
+      begin
+        probe = PageRecon.probe(url_obj, strategy:, **)
+      rescue StandardError => error
+        return error_result(url_obj, error)
+      end
 
-      cache_html_body(response.body, url_obj, cache_dir, cache_mutex) if cache_dir && response.body
+      cache_html_body(probe.response.body, url_obj, cache_dir, cache_mutex) if cache_dir && probe.response.body
 
-      recon = PageRecon.call(response:, url: url_obj, strategy: resolved_strategy)
-      native_feed = find_native_feed(url_obj, session, response)
-      notes = build_notes(recon, native_feed, response)
+      recon = probe.result
+      native_feed = find_native_feed(url_obj, probe.session, probe.response)
+      notes = build_notes(recon, native_feed, probe.response)
       verdict = determine_verdict(recon, native_feed)
 
       Result.new(
         requested_url: url_obj,
-        final_url: response.url,
-        status: response.status,
+        final_url: probe.response.url,
+        status: probe.response.status,
         verdict:,
         native_feed:,
         surface_category: SurfaceCategory.coerce(recon.surface_category),
         articles_count: recon.articles_count,
         scheme_downgrade: recon.scheme_downgrade,
         notes:,
-        html_bytesize: response.body&.bytesize
+        html_bytesize: probe.response.body&.bytesize
       )
     end
 
@@ -201,34 +203,9 @@ module Html2rss
 
     ##
     # @param url_obj [Html2rss::Url]
-    # @param strategy [Symbol]
-    # @option options [Integer, nil] :max_redirects
-    # @option options [Integer, nil] :max_requests
-    # @return [Array(Html2rss::RequestSession, Html2rss::RequestService::Response, StandardError)]
-    def fetch_initial(url_obj, strategy, **options) # rubocop:disable Metrics/MethodLength
-      raw_config = Config.auto_source_config(
-        url: url_obj.to_s,
-        request_controls: Config::RequestControls.from_shortcut(
-          strategy:,
-          max_redirects: options[:max_redirects],
-          max_requests: options[:max_requests]
-        )
-      )
-      raw_config[:strategy] = strategy
-      config = Config.from_hash(raw_config)
-      resources = FeedPipeline::RuntimePolicy.resources_for(config)
-      session = RequestSession.build(
-        config:,
-        strategy: config.strategy,
-        budget: resources.budget,
-        policy: resources.policy
-      )
-      [session, session.fetch_initial_response, nil]
-    rescue StandardError => error
-      [nil, nil, error]
-    end
-    private_class_method :fetch_initial
-
+    # @param session [Html2rss::RequestSession]
+    # @param response [Html2rss::RequestService::Response]
+    # @return [Html2rss::Url, nil]
     def find_native_feed(url_obj, session, response)
       Syndication::Discovery.best_feed_url(
         page_url: url_obj,

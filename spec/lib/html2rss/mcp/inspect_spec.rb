@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers -- response/probe fixtures share across contexts
 RSpec.describe Html2rss::MCP::Inspect do
   let(:html) { File.read('spec/fixtures/local_feed_test.html') }
   let(:response_url) { Html2rss::Url.from_absolute('https://example.com/blog') }
@@ -15,9 +16,18 @@ RSpec.describe Html2rss::MCP::Inspect do
       status: response_status
     )
   end
+  let(:probe_strategy) { :faraday }
+  let(:probe) do
+    Html2rss::PageRecon::Probe.new(
+      session: instance_double(Html2rss::RequestSession),
+      response:,
+      result: Html2rss::PageRecon.call(response:, url: 'https://example.com/blog'),
+      strategy: probe_strategy
+    )
+  end
 
   before do
-    allow(described_class).to receive(:fetch_response).and_return(response)
+    allow(Html2rss::PageRecon).to receive(:probe).and_return(probe)
   end
 
   it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do
@@ -86,12 +96,13 @@ RSpec.describe Html2rss::MCP::Inspect do
     end
   end
 
-  it 'builds a request session when fetching', :aggregate_failures do
-    allow(described_class).to receive(:fetch_response).and_call_original
+  it 'builds a request session via PageRecon.probe', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    allow(Html2rss::PageRecon).to receive(:probe).and_call_original
     session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
     allow(Html2rss::RequestSession).to receive(:build).and_return(session)
 
-    expect(described_class.fetch_response('https://example.com/blog', :faraday)).to eq(response)
+    result = Html2rss::PageRecon.probe('https://example.com/blog', strategy: :faraday)
+    expect(result.response).to eq(response)
     expect(Html2rss::RequestSession).to have_received(:build)
   end
 
@@ -116,7 +127,13 @@ RSpec.describe Html2rss::MCP::Inspect do
         }
       ]
     )
-    allow(described_class).to receive(:fetch_response).and_return(captured_response)
+    bot_probe = Html2rss::PageRecon::Probe.new(
+      session: instance_double(Html2rss::RequestSession),
+      response: captured_response,
+      result: Html2rss::PageRecon.call(response: captured_response, url: 'https://example.com/blog'),
+      strategy: :botasaurus
+    )
+    allow(Html2rss::PageRecon).to receive(:probe).and_return(bot_probe)
 
     result = described_class.call(url: 'https://example.com/blog', strategy: :botasaurus)
 
@@ -151,3 +168,4 @@ RSpec.describe Html2rss::MCP::Inspect do
     expect(described_class.discover_segments(sst, 'https://example.com/blog')).to eq([])
   end
 end
+# rubocop:enable RSpec/MultipleMemoizedHelpers

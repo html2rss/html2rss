@@ -17,6 +17,8 @@ Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss:
 
 Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; tournament policy uses that typed `articles:` array — do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
 
+Diagnostic URL fetch for curation Recon and MCP Inspect is owned by `PageRecon.probe` → `PageRecon::Probe` (`session`, `response`, `result`, `strategy`). Do not reintroduce twin `fetch_initial` / `fetch_response` helpers in those callers.
+
 ## Syndication candidate catalog
 
 Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it — do not duplicate path arrays.
