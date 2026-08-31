@@ -43,6 +43,8 @@ RSpec.describe Html2rss::Capture do
           items: { selector: 'div.item', enhance: true }
         )
         expect(result.config[:channel]).to include(url:, title: a_string_matching(/\S/), time_zone: 'UTC')
+        expect(result.config[:directory]).to include(:topics, :title, :summary)
+        expect(result.yaml).to include('# yaml-language-server')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
       end
     end

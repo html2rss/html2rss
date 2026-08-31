@@ -66,6 +66,17 @@ module Html2rss
         oneOf: XOR_ONE_OF
       }.freeze
 
+      # Input schema for +test_config+.
+      TEST_INPUT_SCHEMA = {
+        type: 'object',
+        properties: {
+          **CONFIG_XOR_PROPERTIES,
+          min_items: { type: 'integer', description: 'Minimum required items (default: 1)', default: 1 },
+          strategy: STRATEGY_PROPERTY
+        }.freeze,
+        oneOf: XOR_ONE_OF
+      }.freeze
+
       # Input schema for +scrape_url+.
       SCRAPE_INPUT_SCHEMA = {
         type: 'object',
@@ -113,7 +124,8 @@ module Html2rss
         inspect_url: 'Inspect URL',
         capture_config: 'Capture feed config',
         validate_config: 'Validate feed config',
-        apply_config: 'Apply feed config'
+        apply_config: 'Apply feed config',
+        test_config: 'Test feed config'
       }.freeze
 
       class << self
@@ -151,7 +163,7 @@ module Html2rss
 
         ##
         # Rejects unpublished MCP request adapters so apply/validate cannot
-        # {File.read} arbitrary paths. CLI and Config still allow +local_file+.
+        # +File.read+ arbitrary paths. CLI and Config still allow +local_file+.
         #
         # @param config [Hash]
         # @return [void]

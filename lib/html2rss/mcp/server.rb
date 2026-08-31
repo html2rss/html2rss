@@ -197,6 +197,7 @@ module Html2rss
           register_inspect_url(server)
           register_capture_config(server)
           register_validate_config(server)
+          register_test_config(server)
           register_apply_config(server)
         end
 
@@ -286,6 +287,24 @@ module Html2rss
         def validate_outcome(config:, yaml:)
           validation = Html2rss::Config.validate(ConfigArgument.parse(config:, yaml:).config)
           Outcome.validate(errors: validation.success? ? nil : validation.errors.to_h)
+        end
+
+        def register_test_config(server)
+          define_envelope_tool(
+            server,
+            name: 'test_config',
+            description: 'Validate schema and execute live extraction (asserting >= min_items items). ' \
+                         'Returns test summary in payload with sample items and timing.',
+            input_schema: Contract::TEST_INPUT_SCHEMA
+          ) do |server_context:, config: nil, yaml: nil, min_items: 1, strategy: 'auto'| # rubocop:disable Lint/UnusedBlockArgument
+            test_outcome(config:, yaml:, min_items:, strategy:)
+          end
+        end
+
+        def test_outcome(config:, yaml:, min_items: 1, strategy: 'auto')
+          feed_config = ConfigArgument.parse(config:, yaml:).config
+          test_result = Html2rss.test(feed_config, min_items:, strategy: (strategy || :auto).to_sym)
+          Outcome.test(test_result)
         end
 
         def register_apply_config(server)

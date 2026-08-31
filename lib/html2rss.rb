@@ -16,7 +16,7 @@ require 'html2rss/defaults'
 
 ##
 # The Html2rss namespace.
-module Html2rss
+module Html2rss # rubocop:disable Metrics/ModuleLength
   ##
   # The logger instance.
   module Log
@@ -26,6 +26,59 @@ module Html2rss
       def_delegator 'Html2rss', :logger
       def_delegators :logger, :debug, :info, :warn, :error, :fatal, :unknown, :level, :level=, :formatter, :formatter=
     end
+  end
+
+  ##
+  # Runs reconnaissance on a URL to discover redirect chains, native feeds, and surface classification.
+  #
+  # @param url [String, Html2rss::Url] source page URL
+  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @option options [Integer, nil] :max_redirects optional maximum redirects
+  # @option options [Integer, nil] :max_requests optional request budget
+  # @return [Html2rss::ReconResult]
+  def self.recon(url, strategy: :auto, **)
+    Recon.call(url, strategy:, **)
+  end
+
+  ##
+  # Tests a configuration by validating schema and asserting live item extraction.
+  #
+  # @param config_input [Hash, String] config hash, YAML string, or file path
+  # @param feed_name [String, nil] optional feed name in multi-feed file
+  # @param min_items [Integer] minimum required items (default: 1)
+  # @param params [Hash] dynamic feed params
+  # @param strategy [Symbol, nil] optional strategy override
+  # @return [Html2rss::TestResult]
+  def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil)
+    Test.call(config_input, feed_name, min_items:, params:, strategy:)
+  end
+
+  ##
+  # Validates a configuration hash, YAML string, or YAML file path against the schema.
+  #
+  # @param config_input [Hash, String]
+  # @param feed_name [String, nil]
+  # @param params [Hash]
+  # @return [Html2rss::Config::ValidationResult]
+  def self.validate(config_input, feed_name = nil, params: {})
+    param_arg = params.empty? ? Config::UNSET : params
+    if config_input.is_a?(Hash)
+      Config.validate(config_input, params: param_arg)
+    elsif File.file?(config_input.to_s)
+      Config.validate_yaml(config_input.to_s, feed_name, params:)
+    else
+      parsed = Config.from_yaml(config_input.to_s)
+      Config.validate(parsed, params: param_arg)
+    end
+  end
+
+  ##
+  # Exports the configuration JSON Schema as JSON string.
+  #
+  # @param pretty [Boolean] whether to pretty-print JSON
+  # @return [String]
+  def self.schema_json(pretty: true)
+    Config.json_schema_json(pretty:)
   end
 
   ##

@@ -474,4 +474,43 @@ RSpec.describe Html2rss do
 
     it_behaves_like 'auto source option forwarding', method: :auto_json_feed
   end
+
+  describe '.recon' do
+    it 'delegates to Recon.call' do
+      allow(Html2rss::Recon).to receive(:call).with('https://example.com', strategy: :auto)
+      described_class.recon('https://example.com')
+      expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto)
+    end
+  end
+
+  describe '.test' do
+    it 'delegates to Test.call' do
+      allow(Html2rss::Test).to receive(:call).with('config.yml', nil, min_items: 1, params: {}, strategy: nil)
+      described_class.test('config.yml')
+      expect(Html2rss::Test).to have_received(:call).with('config.yml', nil, min_items: 1, params: {}, strategy: nil)
+    end
+  end
+
+  describe '.validate' do
+    it 'validates hash config' do
+      config = { channel: { url: 'https://example.com' }, selectors: { items: { selector: 'div' } } }
+      expect(described_class.validate(config)).to be_a(Dry::Validation::Result)
+    end
+
+    it 'validates yaml file' do
+      expect(described_class.validate('spec/fixtures/single.test.yml')).to be_a(Dry::Validation::Result)
+    end
+
+    it 'validates yaml string' do
+      yaml = "channel:\n  url: https://example.com\nselectors:\n  items:\n    selector: div\n"
+      expect(described_class.validate(yaml)).to be_a(Dry::Validation::Result)
+    end
+  end
+
+  describe '.schema_json' do
+    it 'returns schema JSON string', :aggregate_failures do
+      expect(described_class.schema_json).to be_a(String)
+      expect(described_class.schema_json).to include('$schema')
+    end
+  end
 end

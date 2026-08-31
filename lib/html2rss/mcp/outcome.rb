@@ -8,7 +8,7 @@ module Html2rss
     # Typed MCP tool result. Owns next-step policy and guidance copy so the
     # protocol adapter does not branch on quality heuristics.
     class Outcome
-      # Matches {ConfigArgument} XOR {ArgumentError} messages.
+      # Matches {ConfigArgument} XOR +ArgumentError+ messages.
       XOR_ERROR = /exactly one of config or yaml/
       NextStep = Data.define(:name, :guidance)
 
@@ -112,6 +112,23 @@ module Html2rss
           ok = errors.nil?
           next_step = ok ? NextStep.apply_config : NextStep.validate_config
           new(ok:, next_step:, guidance: next_step.guidance, payload: ok ? {} : { errors: })
+        end
+
+        ##
+        # @param test_result [Html2rss::TestResult]
+        # @return [Outcome]
+        def test(test_result) # rubocop:disable Metrics/MethodLength
+          next_step = test_result.success ? NextStep.done : NextStep.inspect_url
+          new(
+            ok: test_result.success,
+            next_step:,
+            guidance: if test_result.success
+                        'Configuration passed test.'
+                      else
+                        test_result.error_message || 'Test failed.'
+                      end,
+            payload: test_result.to_h
+          )
         end
 
         ##

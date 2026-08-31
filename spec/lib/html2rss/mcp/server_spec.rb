@@ -63,7 +63,7 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.title).to eq('html2rss')
       expect(protocol_server.configuration.validate_tool_call_results?).to be(true)
       expect(protocol_server.tools.keys).to contain_exactly(
-        'scrape_url', 'inspect_url', 'capture_config', 'validate_config', 'apply_config'
+        'scrape_url', 'inspect_url', 'capture_config', 'validate_config', 'test_config', 'apply_config'
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
