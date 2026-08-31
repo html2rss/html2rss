@@ -17,7 +17,7 @@ module Html2rss
     # @param strategy [Symbol, nil] optional strategy override
     # @return [Html2rss::TestResult]
     def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
-      raw_config, validation = resolve_config_and_validate(config_input, feed_name, params:)
+      raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation.errors.to_h, raw_config) unless validation.success?
 
       raw_config[:strategy] = strategy.to_sym if strategy
@@ -52,25 +52,6 @@ module Html2rss
         execution_failure_result(error, raw_config, duration)
       end
     end
-
-    def resolve_config_and_validate(config_input, feed_name, params:) # rubocop:disable Metrics/MethodLength
-      param_arg = params.empty? ? Config::UNSET : params
-      if config_input.is_a?(Hash)
-        [config_input, Config.validate(config_input, params: param_arg)]
-      elsif File.file?(config_input.to_s)
-        file = config_input.to_s
-        validation = Config.validate_yaml(file, feed_name, params:)
-        config = Config.load_yaml(file, feed_name)
-        [config, validation]
-      else
-        # String YAML content
-        parsed = Config.from_yaml(config_input.to_s)
-        [parsed, Config.validate(parsed, params: param_arg)]
-      end
-    rescue StandardError => error
-      [{}, Struct.new(:success?, :errors).new(false, { parse: [error.message] })]
-    end
-    private_class_method :resolve_config_and_validate
 
     def extract_samples(items, limit: 3)
       items.first(limit).map do |item|

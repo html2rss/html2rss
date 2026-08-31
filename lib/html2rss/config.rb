@@ -16,6 +16,45 @@ module Html2rss
     # Sentinel to differentiate omitted params from explicit `nil`.
     UNSET = Object.new.freeze
 
+    ##
+    # Duck-compatible with {Dry::Validation::Result} for resolve-time outcomes
+    # (+#success?+, +#errors#to_h+). Used for parse failures so callers never see a Struct snowflake.
+    class ValidationResult
+      ##
+      # Frozen error bag exposing +#to_h+ like Dry::Validation::MessageSet.
+      class ErrorsView
+        # @param errors_hash [Hash]
+        def initialize(errors_hash)
+          @errors_hash = errors_hash
+        end
+
+        # @return [Hash]
+        def to_h = @errors_hash
+      end
+
+      ##
+      # @param message [String]
+      # @return [Html2rss::Config::ValidationResult]
+      def self.parse_failure(message)
+        new(success: false, errors_hash: { parse: [message] })
+      end
+
+      # @param success [Boolean]
+      # @param errors_hash [Hash]
+      def initialize(success:, errors_hash:)
+        @success = success
+        @errors_hash = errors_hash.freeze
+      end
+
+      ##
+      # @return [Boolean]
+      def success? = @success
+
+      ##
+      # @return [Html2rss::Config::ValidationResult::ErrorsView]
+      def errors = ErrorsView.new(@errors_hash)
+    end
+
     class << self
       ##
       # Returns the exported JSON Schema for html2rss configuration.
@@ -32,6 +71,22 @@ module Html2rss
       # @return [String] serialized JSON Schema
       def json_schema_json(pretty: true)
         pretty ? JSON.pretty_generate(json_schema) : JSON.generate(json_schema)
+      end
+
+      ##
+      # Resolves a Hash, YAML file path, or YAML string to a working config Hash and validates it.
+      # The returned Hash is a deep copy — callers may stamp strategy/params without mutating input.
+      #
+      # @param config_input [Hash, String] config hash, YAML string, or file path
+      # @param feed_name [String, nil] optional feed name for multi-feed files
+      # @param params [Hash] dynamic feed params
+      # @return [Array(Hash, Dry::Validation::Result, Html2rss::Config::ValidationResult)]
+      def resolve_and_validate(config_input, feed_name: nil, params: {})
+        param_arg = params.empty? ? UNSET : params
+        working = HashUtil.deep_dup(resolve_raw_hash(config_input, feed_name))
+        [working, validate(working, params: param_arg)]
+      rescue StandardError => error
+        [{}, ValidationResult.parse_failure(error.message)]
       end
 
       ##
@@ -216,6 +271,20 @@ module Html2rss
       def prepare_for_validation(config)
         Config::Preparer.new.call(HashUtil.deep_dup(config))
       end
+
+      # @param config_input [Hash, String]
+      # @param feed_name [String, nil]
+      # @return [Hash]
+      def resolve_raw_hash(config_input, feed_name)
+        if config_input.is_a?(Hash)
+          config_input
+        elsif File.file?(config_input.to_s)
+          load_yaml(config_input.to_s, feed_name)
+        else
+          from_yaml(config_input.to_s)
+        end
+      end
+      private :resolve_raw_hash
     end
 
     ##

@@ -84,6 +84,14 @@ RSpec.describe Html2rss::Test do
       end
     end
 
+    context 'when YAML cannot be parsed' do
+      it 'returns a schema failure without raising', :aggregate_failures do
+        result = described_class.call("- items\n")
+        expect(result.success).to be(false)
+        expect(result.validation_errors).to have_key(:parse)
+      end
+    end
+
     context 'when live extraction raises an error' do
       before do
         allow(Html2rss).to receive(:feed_result).and_raise(RuntimeError, 'network failure')

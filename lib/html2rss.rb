@@ -59,17 +59,10 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param config_input [Hash, String]
   # @param feed_name [String, nil]
   # @param params [Hash]
-  # @return [Html2rss::Config::ValidationResult]
+  # @return [Dry::Validation::Result, Html2rss::Config::ValidationResult]
   def self.validate(config_input, feed_name = nil, params: {})
-    param_arg = params.empty? ? Config::UNSET : params
-    if config_input.is_a?(Hash)
-      Config.validate(config_input, params: param_arg)
-    elsif File.file?(config_input.to_s)
-      Config.validate_yaml(config_input.to_s, feed_name, params:)
-    else
-      parsed = Config.from_yaml(config_input.to_s)
-      Config.validate(parsed, params: param_arg)
-    end
+    _raw, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
+    validation
   end
 
   ##

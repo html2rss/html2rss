@@ -505,6 +505,12 @@ RSpec.describe Html2rss do
       yaml = "channel:\n  url: https://example.com\nselectors:\n  items:\n    selector: div\n"
       expect(described_class.validate(yaml)).to be_a(Dry::Validation::Result)
     end
+
+    it 'returns Config::ValidationResult for unparseable YAML', :aggregate_failures do
+      result = described_class.validate("- items\n")
+      expect(result).to be_a(Html2rss::Config::ValidationResult)
+      expect(result).not_to be_success
+    end
   end
 
   describe '.schema_json' do
