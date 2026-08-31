@@ -35,6 +35,40 @@ Cloud development: [Open in GitHub Codespaces](https://github.com/codespaces/new
 Config -> Request -> Extraction -> Processing -> Building -> Output
 ```
 
+## CLI Usage
+
+The `html2rss` CLI provides composable commands for URL reconnaissance, automated feed generation, config capture, and validation:
+
+```bash
+# 1. Reconnaissance: check native RSS/Atom feeds, surfaces, and extractability
+html2rss recon https://example.com/news
+# Batch recon filtering for buildable URLs:
+html2rss recon --file urls.txt --verdict BUILD --url-only
+
+# 2. Automated Feed Generation: extract RSS directly without YAML configs
+html2rss auto https://example.com/news
+html2rss auto https://example.com/news --format jsonfeed --explain
+
+# 3. Capture: synthesize minimal YAML config with inferred directory metadata
+html2rss capture https://example.com/news --write feed.yml
+
+# 4. Test: combined schema validation + live extraction quality gate
+html2rss test feed.yml --min-items 5
+# Composable pipe: capture and immediately test before saving:
+html2rss capture https://example.com/news | html2rss test -
+
+# 5. Feed Generation: generate RSS from YAML config or direct URL
+html2rss feed feed.yml
+html2rss feed https://example.com/news
+
+# 6. Validate: validate YAML schema across single or globbed files
+html2rss validate config.yml
+html2rss validate "configs/**/*.yml"
+
+# 7. Schema: export the JSON Schema definition
+html2rss schema --write schema/html2rss-config.schema.json
+```
+
 ## Capture API
 
 The `Html2rss.capture` method analyzes any URL and produces a reusable feed config hash with an items selector and `enhance: true`. Use it to speed up writing feed configuration files.
@@ -64,7 +98,7 @@ HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies)
 
 **Strategy note:** MCP `scrape_url` / `capture_config` with `strategy: "auto"` run Faraday → Botasaurus AutoFallback. `inspect_url` uses Faraday when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect.
 
-**Tool-call budget:** `scrape_url` is 1 call (auto already hops). Durable config is `capture_config` → `validate_config` → `apply_config`. Call `inspect_url` only when scrape/capture is weak or you need recon (final URL, status, https→http, native RSS/Atom).
+**Tool-call budget:** `scrape_url` is 1 call (auto already hops). Durable config is `capture_config` → `validate_config` → `test_config` → `apply_config`. Call `inspect_url` only when scrape/capture is weak or you need recon (final URL, status, https→http, native RSS/Atom).
 
 Cursor / Claude Desktop `mcp.json` must put Botasaurus on the **MCP process** (not only your shell):
 
@@ -92,6 +126,7 @@ Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is neve
 | `inspect_url`     | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)   |
 | `capture_config`  | YAML draft in `payload.yaml`; strive `enhance: true`                        |
 | `validate_config` | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)       |
+| `test_config`     | Combined schema validation and live item extraction assertion               |
 | `apply_config`    | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count` |
 
 ### Resources
