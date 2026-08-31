@@ -10,6 +10,9 @@ module Html2rss
       # Ordered list of concrete request strategies attempted by the :auto plan.
       CHAIN = %i[faraday botasaurus].freeze
 
+      # Deterministic HTTP statuses that indicate permanent failure rather than anti-bot challenges.
+      DETERMINISTIC_HTTP_STATUSES = Set[400, 404, 410, 422, 451].freeze
+
       # Error classes that should abort auto fallback immediately.
       NON_FALLBACK_ERRORS = [
         RequestService::UnknownStrategy,
@@ -18,7 +21,8 @@ module Html2rss
         RequestService::RequestBudgetExceeded,
         RequestService::PrivateNetworkDenied,
         RequestService::CrossOriginFollowUpDenied,
-        RequestService::ResponseTooLarge
+        RequestService::ResponseTooLarge,
+        RequestService::RedirectLimitReached
       ].freeze
 
       ##
@@ -32,10 +36,19 @@ module Html2rss
           @last_response = nil
           @entry_resolution = nil
           @resolution_tried = false
+          @aborted = false
         end
 
         # @return [Boolean] true when a strategy already yielded items
         def succeeded? = !result.nil?
+
+        # @return [Boolean] whether attempts were aborted due to deterministic errors
+        def aborted? = @aborted
+
+        # @return [void]
+        def abort!
+          @aborted = true
+        end
 
         # @return [Boolean] whether entry resolution already ran for this chain
         def resolution_tried? = @resolution_tried
@@ -133,7 +146,7 @@ module Html2rss
         AttemptState.new.tap do |state|
           strategies.each_with_index do |strategy, index|
             attempt(strategy:, next_strategy: strategies[index + 1], state:)
-            break if state.succeeded?
+            break if state.succeeded? || state.aborted?
           end
         end
       end
@@ -184,9 +197,19 @@ module Html2rss
                                 state:)
         end
 
+        if deterministic_status?(response)
+          state.abort!
+          Log.debug("#{self.class}: deterministic HTTP #{response.status}; aborting auto fallback")
+          return
+        end
+
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
       # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+      def deterministic_status?(response)
+        DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
+      end
 
       def articles_for(response:, request_session:)
         pipeline.deduplicated_articles(config:, response:, request_session:)

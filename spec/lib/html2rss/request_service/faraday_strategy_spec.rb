@@ -279,7 +279,7 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
         raise Faraday::FollowRedirects::RedirectLimitReached, 'too many redirects'
       end
 
-      expect { execute }.to raise_error(Faraday::FollowRedirects::RedirectLimitReached, /too many redirects/)
+      expect { execute }.to raise_error(Html2rss::RequestService::RedirectLimitReached, /too many redirects/)
       expect(connection).to have_received(:get).twice
       expect(budget).to have_received(:consume!).once
     end
@@ -290,7 +290,7 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
         raise Faraday::FollowRedirects::RedirectLimitReached, 'too many redirects'
       end
 
-      expect { execute }.to raise_error(Faraday::FollowRedirects::RedirectLimitReached, /too many redirects/)
+      expect { execute }.to raise_error(Html2rss::RequestService::RedirectLimitReached, /too many redirects/)
       expect(connection).to have_received(:get).once
     end
   end

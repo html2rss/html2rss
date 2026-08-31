@@ -59,9 +59,13 @@ module Html2rss
       def request_with_terminal_redirect_retry(response_guard, deadline:)
         faraday_request(response_guard, deadline:, streaming_buffer: true)
       rescue Faraday::FollowRedirects::RedirectLimitReached => error
-        raise error unless terminal_redirect_retryable?
+        raise RedirectLimitReached, error.message unless terminal_redirect_retryable?
 
-        retry_from_terminal_redirect!(response_guard, deadline:)
+        begin
+          retry_from_terminal_redirect!(response_guard, deadline:)
+        rescue Faraday::FollowRedirects::RedirectLimitReached => retry_error
+          raise RedirectLimitReached, retry_error.message
+        end
       end
 
       def terminal_redirect_retryable?

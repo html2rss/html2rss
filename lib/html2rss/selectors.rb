@@ -95,13 +95,16 @@ module Html2rss
     # @return [Hash] Hash of attributes for the article.
     def extract_article(item, page_response = response)
       scope = item_scope_for(item, page_response.url)
-      @rss_item_attributes.each_with_object({}) do |selector_key, hash|
+      hash = @rss_item_attributes.each_with_object({}) do |selector_key, h|
         value = scope.select(selector_key)
         next if value.nil?
 
         article_key = SELECTOR_TO_ARTICLE_KEY.fetch(selector_key, selector_key)
-        hash[article_key] = article_key == :enclosures ? wrap_enclosure_value(value) : value
+        h[article_key] = article_key == :enclosures ? wrap_enclosure_value(value) : value
       end
+
+      hash[:url] ||= default_item_url(item, page_response.url) if anchor_element?(item)
+      hash
     end
 
     ##
@@ -157,13 +160,11 @@ module Html2rss
 
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
 
-      selector_key, config = selector_config_for(name)
+      selector_key, config = selector_config_for(name, allow_nil: name == :url)
+      return default_item_url(scope.item, scope.base_url) if fallback_url_selector?(selector_key, config, scope.item)
+      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined." if config.nil?
 
-      if SPECIAL_ATTRIBUTES.member?(selector_key)
-        select_special(selector_key, scope:, config:)
-      else
-        select_regular(selector_key, scope:, config:)
-      end
+      dispatch_select(selector_key, scope:, config:)
     end
 
     private
@@ -316,6 +317,29 @@ module Html2rss
       url = Url.from_relative(selected, scope.base_url)
 
       { url:, type: config[:content_type] }
+    end
+
+    def anchor_element?(item)
+      item.respond_to?(:name) && item.name.to_s.casecmp('a').zero?
+    end
+
+    def fallback_url_selector?(selector_key, config, item)
+      selector_key == :url && config.nil? && anchor_element?(item)
+    end
+
+    def dispatch_select(selector_key, scope:, config:)
+      if SPECIAL_ATTRIBUTES.member?(selector_key)
+        select_special(selector_key, scope:, config:)
+      else
+        select_regular(selector_key, scope:, config:)
+      end
+    end
+
+    def default_item_url(item, base_url)
+      href = item['href'].to_s.strip
+      return if href.empty?
+
+      Url.from_relative(href, base_url)
     end
   end
 end

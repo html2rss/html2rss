@@ -169,7 +169,7 @@ RSpec.describe Html2rss::CLI do
     context 'when the redirect limit is hit' do
       before do
         allow(Html2rss).to receive(:auto_feed_result).and_raise(
-          Faraday::FollowRedirects::RedirectLimitReached,
+          Html2rss::RequestService::RedirectLimitReached,
           'too many redirects; last one to: https://www.example.com/'
         )
       end
@@ -427,7 +427,7 @@ RSpec.describe Html2rss::CLI do
   describe 'redirect failures' do
     before do
       allow(Html2rss).to receive(:feed).and_raise(
-        Faraday::FollowRedirects::RedirectLimitReached,
+        Html2rss::RequestService::RedirectLimitReached,
         'too many redirects; last one to: https://www.example.com/'
       )
       allow(Html2rss).to receive(:config_from_yaml_file).and_return({ url: 'https://example.com' })

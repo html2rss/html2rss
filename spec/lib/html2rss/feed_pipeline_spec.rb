@@ -245,6 +245,46 @@ RSpec.describe Html2rss::FeedPipeline do
         end
       end
 
+      context 'when Faraday returns deterministic HTTP 404 Not Found' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:strategy_results) do
+          {
+            faraday: Html2rss::RequestService::Response.new(
+              body: '<html><body><h1>404 Not Found</h1></body></html>',
+              url: Html2rss::Url.from_absolute('https://example.com/news'),
+              headers: { 'content-type' => 'text/html' },
+              status: 404
+            ),
+            botasaurus: item_response
+          }
+        end
+
+        # rubocop:disable RSpec/ExampleLength
+        it 'aborts auto fallback immediately without attempting Botasaurus', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+            expect(error.attempts.size).to eq(1)
+            expect(error.attempts.first[:strategy]).to eq(:faraday)
+          end
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+        end
+        # rubocop:enable RSpec/ExampleLength
+      end
+
+      context 'when Faraday raises RequestService::RedirectLimitReached' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:strategy_results) do
+          {
+            faraday: Html2rss::RequestService::RedirectLimitReached.new('redirect limit reached'),
+            botasaurus: item_response
+          }
+        end
+
+        it 'aborts immediately without attempting Botasaurus', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RedirectLimitReached)
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+        end
+      end
+
       context 'when Faraday raises UnsupportedResponseContentType' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:strategy_results) do
           {
