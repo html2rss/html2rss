@@ -14,6 +14,7 @@ module Html2rss
     ##
     # Closed curation verdict (:build / :defer / :drop).
     class Verdict
+      # Closed set of curation verdict wire names.
       NAMES = Set[:build, :defer, :drop].freeze
 
       class << self

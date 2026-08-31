@@ -10,6 +10,7 @@ module Html2rss
     ##
     # Closed failure classification for a failed test run.
     class FailureKind
+      # Closed set of test failure wire names.
       NAMES = Set[:schema, :execution, :min_items].freeze
 
       class << self

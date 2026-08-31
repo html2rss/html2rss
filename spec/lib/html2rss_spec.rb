@@ -492,7 +492,7 @@ RSpec.describe Html2rss do
   end
 
   describe '.capture' do
-    it 'returns Capture::CaptureResult from Capture.build' do
+    it 'returns Capture::CaptureResult from Capture.build', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       capture_result = instance_double(Html2rss::Capture::CaptureResult)
       allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
 
