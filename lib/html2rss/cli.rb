@@ -280,7 +280,7 @@ module Html2rss
 
     def execute_feed # rubocop:disable Metrics/MethodLength
       yield
-    rescue Faraday::FollowRedirects::RedirectLimitReached => error
+    rescue Html2rss::RequestService::RedirectLimitReached => error
       raise Thor::Error,
             "#{error.message}. already retried the last redirect hop once; " \
             "retry with --max-redirects #{suggested_max_redirects} or use the final URL directly."

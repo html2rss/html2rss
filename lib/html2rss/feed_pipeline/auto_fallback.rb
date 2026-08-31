@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'faraday/follow_redirects'
-
 module Html2rss
   class FeedPipeline
     # Retries feed extraction across concrete request strategies for the :auto plan.
@@ -24,7 +22,7 @@ module Html2rss
         RequestService::PrivateNetworkDenied,
         RequestService::CrossOriginFollowUpDenied,
         RequestService::ResponseTooLarge,
-        Faraday::FollowRedirects::RedirectLimitReached
+        RequestService::RedirectLimitReached
       ].freeze
 
       ##

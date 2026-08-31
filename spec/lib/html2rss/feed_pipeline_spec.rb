@@ -270,16 +270,16 @@ RSpec.describe Html2rss::FeedPipeline do
         # rubocop:enable RSpec/ExampleLength
       end
 
-      context 'when Faraday raises Faraday::FollowRedirects::RedirectLimitReached' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+      context 'when Faraday raises RequestService::RedirectLimitReached' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:strategy_results) do
           {
-            faraday: Faraday::FollowRedirects::RedirectLimitReached.new('redirect limit reached'),
+            faraday: Html2rss::RequestService::RedirectLimitReached.new('redirect limit reached'),
             botasaurus: item_response
           }
         end
 
         it 'aborts immediately without attempting Botasaurus', :aggregate_failures do
-          expect { pipeline.to_result }.to raise_error(Faraday::FollowRedirects::RedirectLimitReached)
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RedirectLimitReached)
           expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
           expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         end

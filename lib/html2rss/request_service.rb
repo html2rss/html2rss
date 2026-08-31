@@ -29,6 +29,8 @@ module Html2rss
     class CrossOriginFollowUpDenied < Html2rss::Error; end
     # Raised when a response exceeds configured size limits.
     class ResponseTooLarge < Html2rss::Error; end
+    # Raised when HTTP redirect limits are exceeded.
+    class RedirectLimitReached < Html2rss::Error; end
     # Raised when blocked content surfaces are detected.
     class BlockedSurfaceDetected < Html2rss::Error; end
 
