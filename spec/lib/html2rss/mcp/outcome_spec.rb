@@ -7,7 +7,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'exposes the closed set of wire names' do
       expect(described_class::NAMES.map(&:to_s)).to contain_exactly(
         'done', 'inspect_url', 'validate_config', 'apply_config',
-        'scrape_url', 'capture_config', 'read_runtime'
+        'scrape_url', 'capture_config', 'read_runtime', 'test_config'
       )
     end
 
@@ -92,10 +92,10 @@ RSpec.describe Html2rss::MCP::Outcome do
         channel_title: 'Example', requested_strategy: 'auto' }
     end
 
-    it 'points at validate_config when the draft has articles and selectors' do
+    it 'points at test_config when the draft has articles and selectors' do
       outcome = described_class.capture(**base)
 
-      expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :validate_config))
+      expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :test_config))
     end
 
     it 'points at inspect_url when articles_count is zero' do
@@ -118,11 +118,11 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.validate' do
-    it 'points at apply_config with an empty payload on schema success', :aggregate_failures do
+    it 'points at test_config with an empty payload on schema success', :aggregate_failures do
       outcome = described_class.validate(errors: nil)
 
       expect(outcome.ok).to be(true)
-      expect(outcome.next_step.name).to eq(:apply_config)
+      expect(outcome.next_step.name).to eq(:test_config)
       expect(outcome.payload).to eq({})
     end
 
@@ -132,6 +132,48 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.ok).to be(false)
       expect(outcome.next_step.name).to eq(:validate_config)
       expect(outcome.payload).to eq(errors: { channel: ['is missing'] })
+    end
+  end
+
+  describe '.test' do
+    def test_result(failure_kind: nil, success: false, **) # rubocop:disable Metrics/MethodLength
+      Html2rss::Test::Result.new(
+        success:,
+        item_count: success ? 2 : 0,
+        sample_items: [],
+        channel_title: 'Example',
+        channel_url: 'https://example.com',
+        strategy_used: :faraday,
+        duration_seconds: 0.1,
+        validation_errors: nil,
+        error_message: success ? nil : 'failed',
+        failure_kind:,
+        rss: success ? '<rss/>' : nil,
+        **
+      )
+    end
+
+    it 'points at apply_config on success' do
+      expect(described_class.test(test_result(success: true)).next_step.name).to eq(:apply_config)
+    end
+
+    it 'points at validate_config on schema failure' do # rubocop:disable RSpec/ExampleLength
+      result = test_result(
+        failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
+        validation_errors: { channel: ['missing'] },
+        error_message: 'Configuration schema validation failed'
+      )
+      expect(described_class.test(result).next_step.name).to eq(:validate_config)
+    end
+
+    it 'points at capture_config on execution failure' do
+      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:execution))
+      expect(described_class.test(result).next_step.name).to eq(:capture_config)
+    end
+
+    it 'points at capture_config on min_items failure' do
+      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:min_items))
+      expect(described_class.test(result).next_step.name).to eq(:capture_config)
     end
   end
 

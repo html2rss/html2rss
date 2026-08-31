@@ -98,7 +98,7 @@ HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies)
 
 **Strategy note:** MCP `scrape_url` / `capture_config` with `strategy: "auto"` run Faraday → Botasaurus AutoFallback. `inspect_url` uses Faraday when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect.
 
-**Tool-call budget:** `scrape_url` is 1 call (auto already hops). Durable config is `capture_config` → `validate_config` → `test_config` → `apply_config`. Call `inspect_url` only when scrape/capture is weak or you need recon (final URL, status, https→http, native RSS/Atom).
+**Tool-call budget:** `scrape_url` is 1 call (auto already hops). Durable config is `capture_config` → `test_config` → `apply_config` (or `validate_config` → `test_config` → `apply_config` when you already have YAML). Call `inspect_url` only when scrape/capture is weak or you need recon (final URL, status, https→http, native RSS/Atom).
 
 Cursor / Claude Desktop `mcp.json` must put Botasaurus on the **MCP process** (not only your shell):
 

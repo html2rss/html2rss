@@ -147,12 +147,12 @@ module Html2rss
             1. Need articles now (no saved config)? → scrape_url (1 call)
                - strategy "auto" runs Faraday → Botasaurus AutoFallback. Do not retry with explicit faraday after auto.
                - Empty scrape is still success (articles-now). Follow next_step / guidance (read_runtime if Botasaurus unset).
-            2. Need a reusable feed YAML? → capture_config → validate_config → apply_config
+            2. Need a reusable feed YAML? → capture_config → test_config → apply_config
                - capture_config returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Strive enhance: true (false only when chrome leaks).
-               - validate_config / apply_config accept config hash XOR yaml string.
-               - apply_config isError when zero RSS items (ship gate). Confirm payload.item_count.
+               - test_config runs schema + live extraction (min items). apply_config is the ship gate (isError on zero items). Confirm payload.item_count.
+               - validate_config alone is for schema-only checks; on success next_step is test_config.
             3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect_url only if weak or recon.
-            4. Have a config already? → validate_config (must succeed) → apply_config
+            4. Have a config already? → validate_config (must succeed) → test_config → apply_config
             5. Schema / extractors / strategies / runtime → resources html2rss://schema|extractors|strategies|runtime
 
             Prefer capture_config for durable config; scrape_url for one-shot extraction.
@@ -245,7 +245,7 @@ module Html2rss
             server,
             name: 'capture_config',
             description: 'Derive a reusable html2rss feed config from a URL. ' \
-                         'Use when the goal is a durable YAML (then validate_config). ' \
+                         'Use when the goal is a durable YAML (then test_config → apply_config). ' \
                          'Returns YAML inside payload.yaml (same serializer as CLI capture). ' \
                          'Draft only — catalog feeds still need directory.topics and title/url; ' \
                          'strive enhance: true. Full schema options live in resource html2rss://schema.',
@@ -275,7 +275,7 @@ module Html2rss
             server,
             name: 'validate_config',
             description: 'Validate a feed config hash XOR yaml string against the html2rss JSON schema. ' \
-                         'Call before apply_config. Failures return isError with payload.errors. ' \
+                         'Call before test_config. Failures return isError with payload.errors. ' \
                          'Full schema lives in resource html2rss://schema.',
             input_schema: Contract::CONFIG_XOR_SCHEMA,
             annotations: Contract::ANNOTATIONS_VALIDATE
@@ -294,7 +294,8 @@ module Html2rss
             server,
             name: 'test_config',
             description: 'Validate schema and execute live extraction (asserting >= min_items items). ' \
-                         'Returns test summary in payload with sample items and timing.',
+                         'Call after capture_config or validate_config; on success next_step is apply_config. ' \
+                         'Returns test summary in payload with sample items, timing, and failure_kind.',
             input_schema: Contract::TEST_INPUT_SCHEMA
           ) do |server_context:, config: nil, yaml: nil, min_items: 1, strategy: 'auto'| # rubocop:disable Lint/UnusedBlockArgument
             test_outcome(config:, yaml:, min_items:, strategy:)
@@ -313,7 +314,7 @@ module Html2rss
             name: 'apply_config',
             description: 'Apply a validated feed config (hash XOR yaml) and return RSS XML in payload.rss. ' \
                          'isError when the feed has zero items (ship gate). payload.item_count is RSS item count. ' \
-                         'Use after validate_config succeeds.',
+                         'Use after test_config succeeds.',
             input_schema: Contract::APPLY_INPUT_SCHEMA
           ) do |server_context:, url:, config: nil, yaml: nil| # rubocop:disable Lint/UnusedBlockArgument
             apply_outcome(url:, config:, yaml:)
@@ -429,7 +430,7 @@ module Html2rss
             Build a reusable html2rss feed config for #{url}:
             1) capture_config — YAML is payload.yaml. Check payload.articles_count and payload.has_selectors. Strive to keep enhance: true (false only when chrome leaks into items).
             2) Follow next_step. If weak or you need recon, inspect_url. Auto already hops to Botasaurus; do not retry capture with botasaurus unless Faraday was blocked.
-            3) validate_config with yaml (or config hash) — must not be isError
+            3) test_config with yaml (or config hash) — schema + live extraction. On :schema failure, validate_config; on :execution/:min_items, recapture.
             4) apply_config — isError if zero items. Confirm payload.item_count before shipping.
             If the destination is html2rss-configs, rewrite the draft for directory.topics and explicit channel title/url. Return YAML.
           MSG

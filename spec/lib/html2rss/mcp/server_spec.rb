@@ -70,6 +70,7 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.instructions).to include('html2rss://runtime')
       expect(protocol_server.instructions).to include('Strive enhance: true')
       expect(protocol_server.instructions).to include('payload.item_count')
+      expect(protocol_server.instructions).to include('test_config')
       expect(protocol_server.instructions).not_to include('_meta')
       expect(protocol_server.instructions).not_to include('try explicit "faraday"')
       expect(protocol_server.tools['validate_config'].description).to include('html2rss://schema')
@@ -176,7 +177,7 @@ RSpec.describe Html2rss::MCP::Server do
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(result.dig(:result, :_meta)).to be_nil
-        expect(envelope).to include(ok: true, next_step: 'validate_config')
+        expect(envelope).to include(ok: true, next_step: 'test_config')
         expect(envelope[:payload]).to include(
           yaml: capture_result.yaml,
           articles_count: 3,
@@ -195,7 +196,7 @@ RSpec.describe Html2rss::MCP::Server do
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(false)
-        expect(envelope).to include(ok: true, next_step: 'apply_config', payload: {})
+        expect(envelope).to include(ok: true, next_step: 'test_config', payload: {})
       end
 
       it 'accepts yaml XOR config so catalog files skip JSON re-encoding' do
@@ -617,7 +618,7 @@ RSpec.describe Html2rss::MCP::Server do
 
       expect(response).to be_a(MCP::Tool::Response)
       expect(response.error?).to be(false)
-      expect(response.structured_content).to include(ok: true, next_step: 'apply_config')
+      expect(response.structured_content).to include(ok: true, next_step: 'test_config')
       expect(response.meta).to be_nil
     end
   end

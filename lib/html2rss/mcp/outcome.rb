@@ -7,7 +7,7 @@ module Html2rss
     ##
     # Typed MCP tool result. Owns next-step policy and guidance copy so the
     # protocol adapter does not branch on quality heuristics.
-    class Outcome
+    class Outcome # rubocop:disable Metrics/ClassLength -- next-step policy + factories stay co-located
       # Matches {ConfigArgument} XOR +ArgumentError+ messages.
       XOR_ERROR = /exactly one of config or yaml/
       NextStep = Data.define(:name, :guidance)
@@ -16,7 +16,8 @@ module Html2rss
       # Closed set of agent next actions. Invalid names cannot be constructed.
       class NextStep
         # Wire names for +next_step+.
-        NAMES = %i[done inspect_url validate_config apply_config scrape_url capture_config read_runtime].freeze
+        NAMES = %i[done inspect_url validate_config apply_config scrape_url capture_config
+                   read_runtime test_config].freeze
         # Default guidance copy keyed by {NAMES}.
         GUIDANCE = {
           done: 'Done. Read payload for the result.',
@@ -28,7 +29,9 @@ module Html2rss
                       'and promotes native RSS/Atom when present.',
           capture_config: 'Call capture_config for a reusable YAML draft, then follow next_step.',
           read_runtime: 'Read html2rss://runtime. Set BOTASAURUS_SCRAPER_URL on the MCP process ' \
-                        'if botasaurus_configured is false.'
+                        'if botasaurus_configured is false.',
+          test_config: 'Call test_config next (schema + live extraction). Confirm payload.item_count ' \
+                       'and failure_kind before shipping.'
         }.freeze
 
         ##
@@ -110,23 +113,19 @@ module Html2rss
         # @return [Outcome]
         def validate(errors:)
           ok = errors.nil?
-          next_step = ok ? NextStep.apply_config : NextStep.validate_config
+          next_step = ok ? NextStep.test_config : NextStep.validate_config
           new(ok:, next_step:, guidance: next_step.guidance, payload: ok ? {} : { errors: })
         end
 
         ##
         # @param test_result [Html2rss::Test::Result]
         # @return [Outcome]
-        def test(test_result) # rubocop:disable Metrics/MethodLength
-          next_step = test_result.success ? NextStep.done : NextStep.inspect_url
+        def test(test_result)
+          next_step = test_next_step(test_result)
           new(
             ok: test_result.success,
             next_step:,
-            guidance: if test_result.success
-                        'Configuration passed test.'
-                      else
-                        test_result.error_message || 'Test failed.'
-                      end,
+            guidance: test_guidance(test_result, next_step),
             payload: test_result.to_h
           )
         end
@@ -176,7 +175,23 @@ module Html2rss
         end
 
         def capture_next_step(articles_count:, has_selectors:)
-          articles_count.positive? && has_selectors ? NextStep.validate_config : NextStep.inspect_url
+          articles_count.positive? && has_selectors ? NextStep.test_config : NextStep.inspect_url
+        end
+
+        def test_next_step(test_result)
+          return NextStep.apply_config if test_result.success
+
+          kind = test_result.failure_kind
+          return NextStep.validate_config if kind&.schema?
+          return NextStep.capture_config if kind&.execution? || kind&.min_items?
+
+          NextStep.capture_config
+        end
+
+        def test_guidance(test_result, next_step)
+          return next_step.guidance if test_result.success
+
+          test_result.error_message || next_step.guidance
         end
 
         def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
