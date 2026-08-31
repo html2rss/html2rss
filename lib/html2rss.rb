@@ -202,7 +202,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param max_requests [Integer, nil] optional request budget override
   # @param limit [Integer, nil] max articles to keep
   # @param local_file_path [String, nil] optional local HTML file path
-  # @return [Hash] feed config hash with +:channel+ and +:selectors+
+  # @return [Html2rss::Capture::CaptureResult]
   def self.capture(url,
                    strategy: :auto,
                    items_selector: nil,
@@ -216,7 +216,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
                   max_redirects:,
                   max_requests:,
                   limit:,
-                  local_file_path:).config
+                  local_file_path:)
   end
 
   # rubocop:enable Metrics/ParameterLists

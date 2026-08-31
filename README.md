@@ -71,11 +71,12 @@ html2rss schema --write schema/html2rss-config.schema.json
 
 ## Capture API
 
-The `Html2rss.capture` method analyzes any URL and produces a reusable feed config hash with an items selector and `enhance: true`. Use it to speed up writing feed configuration files.
+The `Html2rss.capture` method analyzes any URL and returns a `Capture::CaptureResult` (config hash, YAML with schema modeline, and quality meta). Use it to speed up writing feed configuration files.
 
 ```ruby
-config = Html2rss.capture('https://example.com/articles')
-File.write('my-feed.yml', Html2rss::Config.to_yaml(config))
+result = Html2rss.capture('https://example.com/articles')
+File.write('my-feed.yml', result.yaml)
+# or: File.write('my-feed.yml', Html2rss::Config.to_yaml(result.config))
 ```
 
 The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`lib/html2rss/capture/README.md`](lib/html2rss/capture/README.md) for detailed documentation.

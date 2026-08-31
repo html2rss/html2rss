@@ -9,8 +9,9 @@ Point `capture` at a listing URL when you want a first-draft YAML config instead
 ## Gem API
 
 ```ruby
-config = Html2rss.capture('https://example.com/articles')
+result = Html2rss.capture('https://example.com/articles')
 
+# result.config =>
 # {
 #   channel: { url: "...", title: "...", time_zone: "UTC" },
 #   selectors: {
@@ -18,11 +19,11 @@ config = Html2rss.capture('https://example.com/articles')
 #   }
 # }
 
-File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(config)))
-feed = Html2rss.feed(config)
+File.write('my-feed.yml', result.yaml)
+feed = Html2rss.feed(result.config)
 ```
 
-`Capture.build` returns a `CaptureResult` with quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`). `Html2rss.capture` returns only the config hash.
+`Html2rss.capture` and `Capture.build` both return a `CaptureResult` with YAML (`#yaml`, includes the schema modeline) and quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`, `native_feed`).
 
 ### Options
 

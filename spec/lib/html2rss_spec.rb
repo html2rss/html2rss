@@ -491,6 +491,19 @@ RSpec.describe Html2rss do
     end
   end
 
+  describe '.capture' do
+    it 'returns Capture::CaptureResult from Capture.build' do
+      capture_result = instance_double(Html2rss::Capture::CaptureResult)
+      allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
+
+      expect(described_class.capture('https://example.com')).to eq(capture_result)
+      expect(Html2rss::Capture).to have_received(:build).with(
+        'https://example.com',
+        hash_including(strategy: :auto)
+      )
+    end
+  end
+
   describe '.validate' do
     it 'validates hash config' do
       config = { channel: { url: 'https://example.com' }, selectors: { items: { selector: 'div' } } }

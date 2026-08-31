@@ -9,6 +9,23 @@ Owned only by `Syndication::Discovery.best_feed_url` (head alternates + path pro
 `PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second
 preference algorithm. Do not reintroduce Capture `FeedLink`-only probes or Recon “first alternate” fallbacks.
 
+## Curation CLI / MCP
+
+Composable curation seams for recon → capture → validate/test → apply:
+
+| Fact | Owner |
+| --- | --- |
+| Diagnostic URL fetch + assess | `PageRecon.probe` → `PageRecon::Probe` |
+| Curation verdict | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`) |
+| Native feed URL (defer/gate) | `Syndication::Discovery.best_feed_url` only |
+| Config Hash/path/YAML → validated raw | `Config.resolve_and_validate` |
+| Validate + live + min_items + RSS | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`) |
+| MCP next_step / guidance | `MCP::Outcome` (includes `:test_config`) |
+| Capture YAML product | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`) |
+| Batch concurrency | `Recon.batch` Thread pool (not Ractors); preserves input order |
+
+`apply_config` zero-item ship gate stays distinct from `Test` min_items.
+
 ## Scrape target
 
 Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.
