@@ -165,8 +165,8 @@ module Html2rss
     # @param strategy [Symbol, nil] optional strategy override
     # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
     # @return [Html2rss::Test::Result]
-    def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists
-             strict_quality: false) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
+    def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
+             strict_quality: false)
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation.errors.to_h, raw_config) unless validation.success?
 
@@ -185,7 +185,8 @@ module Html2rss
         quality_report = build_quality_report(
           rss_doc.items,
           channel_url: raw_config.dig(:channel, :url).to_s,
-          raw_config:
+          raw_config:,
+          feed_result:
         )
 
         channel_title = feed_result.channel_title
@@ -230,12 +231,42 @@ module Html2rss
     end
     private_class_method :extract_samples
 
-    def build_quality_report(items, channel_url:, raw_config:)
+    def build_quality_report(items, channel_url:, raw_config:, feed_result:)
       audit = AutoSource::Cleanup.audit_feed_items(items)
       native_feed = probe_native_feed(channel_url, raw_config)&.to_s
-      QualityReport.from_audit(audit, native_feed:)
+      report = QualityReport.from_audit(audit, native_feed:)
+      append_url_mismatch_warning(report, channel_url, feed_result)
     end
     private_class_method :build_quality_report
+
+    def append_url_mismatch_warning(report, channel_url, feed_result)
+      return report unless url_mismatch?(channel_url, feed_result)
+
+      warnings = report.warnings.dup
+      warnings << :url_mismatch unless warnings.include?(:url_mismatch)
+      QualityReport.new(
+        warnings: warnings.freeze,
+        metrics: report.metrics.merge(url_mismatch: true),
+        native_feed: report.native_feed,
+        defer_reason: report.defer_reason
+      )
+    end
+    private_class_method :append_url_mismatch_warning
+
+    def url_mismatch?(channel_url, feed_result)
+      status = feed_result&.status
+      return false unless status
+
+      configured = channel_url.to_s
+      final = status.scrape_url.to_s
+      final = status.entry_url.to_s if final.empty?
+      return false if configured.empty? || final.empty?
+
+      !Url.from_absolute(configured).same_document?(Url.from_absolute(final))
+    rescue ArgumentError
+      false
+    end
+    private_class_method :url_mismatch?
 
     def quality_failure?(quality_report)
       metrics = quality_report.metrics
@@ -263,8 +294,10 @@ module Html2rss
 
     def outcome_failure(min_items_passed:, quality_failed:, item_count:, min_items:, quality_report:)
       return [nil, nil] if min_items_passed && !quality_failed
-      return [FailureKind.coerce(:min_items),
-              "Extracted #{item_count} items (minimum required: #{min_items})"] unless min_items_passed
+      unless min_items_passed
+        return [FailureKind.coerce(:min_items),
+                "Extracted #{item_count} items (minimum required: #{min_items})"]
+      end
 
       [FailureKind.coerce(:quality), quality_failure_message(quality_report)]
     end

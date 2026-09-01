@@ -149,6 +149,12 @@ RSpec.describe Html2rss::Recon do
         result = described_class.call('https://example.com/news')
         expect(result.drop?).to be(true)
       end
+
+      it 'includes a Botasaurus retry hint in notes', :aggregate_failures do
+        result = described_class.call('https://example.com/news')
+        expect(result.notes).to include('scheme_downgrade')
+        expect(result.notes.join(' ')).to include('botasaurus_retry')
+      end
     end
 
     context 'when probe raises an error' do

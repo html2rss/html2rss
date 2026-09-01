@@ -46,11 +46,17 @@ RSpec.describe Html2rss::Test do
   end
 
   let(:fake_feed_result) do
+    status = instance_double(
+      Html2rss::Status,
+      selected_strategy: :faraday,
+      entry_url: 'https://example.com/news',
+      scrape_url: 'https://example.com/news'
+    )
     instance_double(
       Html2rss::FeedResult,
       to_rss: fake_rss,
       channel_title: 'Example',
-      status: instance_double(Html2rss::Status, selected_strategy: :faraday)
+      status:
     )
   end
 
@@ -91,6 +97,15 @@ RSpec.describe Html2rss::Test do
         )
       end
 
+      it 'warns on url_mismatch when scrape URL differs from channel.url', :aggregate_failures do
+        allow(fake_feed_result.status).to receive(:scrape_url).and_return('https://example.com/blog/list')
+
+        result = described_class.call(valid_config, min_items: 1)
+
+        expect(result.quality_report.warnings).to include(:url_mismatch)
+        expect(result.quality_report.metrics[:url_mismatch]).to be(true)
+      end
+
       it 'advises when a native feed is discovered at channel.url', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         native = Html2rss::Url.from_absolute('https://example.com/feed.xml')
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(native)
@@ -114,9 +129,9 @@ RSpec.describe Html2rss::Test do
       it 'keeps warn-only quality_report when strict_quality is false despite duplicate URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         duplicate_items = [
           instance_double(RSS::Rss::Channel::Item, title: 'Story One Title Here', link: 'https://example.com/same',
-                                                    pubDate: nil),
+                                                   pubDate: nil),
           instance_double(RSS::Rss::Channel::Item, title: 'Story Two Title Here', link: 'https://example.com/same',
-                                                    pubDate: nil)
+                                                   pubDate: nil)
         ]
         allow(fake_rss).to receive(:items).and_return(duplicate_items)
 
@@ -130,9 +145,9 @@ RSpec.describe Html2rss::Test do
       it 'fails with :quality when strict_quality and duplicate URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         duplicate_items = [
           instance_double(RSS::Rss::Channel::Item, title: 'Story One Title Here', link: 'https://example.com/same',
-                                                    pubDate: nil),
+                                                   pubDate: nil),
           instance_double(RSS::Rss::Channel::Item, title: 'Story Two Title Here', link: 'https://example.com/same',
-                                                    pubDate: nil)
+                                                   pubDate: nil)
         ]
         allow(fake_rss).to receive(:items).and_return(duplicate_items)
 
@@ -150,7 +165,7 @@ RSpec.describe Html2rss::Test do
           instance_double(RSS::Rss::Channel::Item, title: 'Read More', link: 'https://example.com/a', pubDate: nil),
           instance_double(RSS::Rss::Channel::Item, title: 'Learn More', link: 'https://example.com/b', pubDate: nil),
           instance_double(RSS::Rss::Channel::Item, title: 'Valid Article Title Here', link: 'https://example.com/c',
-                                                    pubDate: nil)
+                                                   pubDate: nil)
         ]
         allow(fake_rss).to receive(:items).and_return(junk_items)
 
@@ -164,9 +179,9 @@ RSpec.describe Html2rss::Test do
       it 'prefers :min_items over :quality when both would fail', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         duplicate_items = [
           instance_double(RSS::Rss::Channel::Item, title: 'Story One Title Here', link: 'https://example.com/same',
-                                                    pubDate: nil),
+                                                   pubDate: nil),
           instance_double(RSS::Rss::Channel::Item, title: 'Story Two Title Here', link: 'https://example.com/same',
-                                                    pubDate: nil)
+                                                   pubDate: nil)
         ]
         allow(fake_rss).to receive(:items).and_return(duplicate_items)
 

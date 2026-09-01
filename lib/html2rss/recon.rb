@@ -193,7 +193,10 @@ module Html2rss
     def build_notes(recon, native_feed, response)
       notes = []
       notes << "native_rss=#{native_feed}" if native_feed
-      notes << 'scheme_downgrade' if recon.scheme_downgrade
+      if recon.scheme_downgrade
+        notes << 'scheme_downgrade'
+        notes << 'botasaurus_retry=Try strategy botasaurus once before DROP (HTTPS→HTTP may need JS fetch)'
+      end
       notes << "blocked=#{recon.blocked_surface}" if recon.blocked_surface
       notes << "html_bytes=#{response.body&.bytesize}" if response.body
       notes
