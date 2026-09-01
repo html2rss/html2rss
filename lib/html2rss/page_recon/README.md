@@ -4,16 +4,16 @@
 
 ## What inspect reports
 
-| Field | Meaning |
-| --- | --- |
-| `requested_url` | URL you passed in |
-| `final_url` | URL after redirects (may differ from requested) |
-| `status` | HTTP status of the **final** response |
-| `scheme_downgrade` | `true` when HTTPS entry landed on HTTP |
-| `alternate_feeds` | `rel=alternate` RSS/Atom links found in HTML |
+| Field              | Meaning                                                                     |
+| ------------------ | --------------------------------------------------------------------------- |
+| `requested_url`    | URL you passed in                                                           |
+| `final_url`        | URL after redirects (may differ from requested)                             |
+| `status`           | HTTP status of the **final** response                                       |
+| `scheme_downgrade` | `true` when HTTPS entry landed on HTTP                                      |
+| `alternate_feeds`  | `rel=alternate` RSS/Atom links found in HTML                                |
 | `surface_category` | AutoSource surface class (`high_entropy_surface`, `unsupported_surface`, …) |
-| `articles_count` | Cheap AutoSource extract (limit 10) — diagnostic only, not ship quality |
-| `strategy` | Concrete transport used (`inspect` maps `auto` → Faraday) |
+| `articles_count`   | Cheap AutoSource extract (limit 10) — diagnostic only, not ship quality     |
+| `strategy`         | Concrete transport used (`inspect` maps `auto` → Faraday)                   |
 
 CLI text output omits `requested_url`; it prints the requested URL as the card title. The `Final:` line appears **only when** `final_url` differs from `requested_url`:
 
@@ -50,18 +50,18 @@ Cross-host redirects (e.g. `apex.example` → `www.example`) no longer pin a sta
 
 ## inspect ≠ recon
 
-| Verb | Adds beyond diagnostics |
-| --- | --- |
+| Verb    | Adds beyond diagnostics                                              |
+| ------- | -------------------------------------------------------------------- |
 | inspect | Scraper eligibility, XHR hints (Botasaurus), surface + article count |
-| recon | Verdict (`:build` / `:defer` / `:drop`), native feed preference |
+| recon   | Verdict (`:build` / `:defer` / `:drop`), native feed preference      |
 
 Follow golden-path `next_step` from MCP envelopes; do not call recon when inspect already answers the question.
 
 ## Ownership
 
-| Concern | Owner |
-| --- | --- |
-| Diagnostic fetch + assess | `PageRecon::Diagnostics` → `PageRecon.probe` |
-| Surface class + cheap article count | `PageRecon::Assessment` |
-| Redirect follow + terminal retry | `RequestService::FaradayStrategy` |
-| Outbound header normalization | `Config::RequestHeaders` (no default `Host`; explicit override only) |
+| Concern                             | Owner                                                                |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| Diagnostic fetch + assess           | `PageRecon::Diagnostics` → `PageRecon.probe`                         |
+| Surface class + cheap article count | `PageRecon::Assessment`                                              |
+| Redirect follow + terminal retry    | `RequestService::FaradayStrategy`                                    |
+| Outbound header normalization       | `Config::RequestHeaders` (no default `Host`; explicit override only) |
