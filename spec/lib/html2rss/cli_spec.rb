@@ -391,7 +391,7 @@ RSpec.describe Html2rss::CLI do
         )
       end
 
-      it 'forwards --strict-quality to Html2rss.test' do
+      it 'forwards --strict-quality to Html2rss.test' do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss).to receive(:test).and_return(test_result_success)
 
         cli.invoke(:test, ['config.yml'], { strict_quality: true })

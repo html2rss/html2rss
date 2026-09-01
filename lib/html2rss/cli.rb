@@ -52,6 +52,8 @@ module Html2rss
     probe_target_options
     desc 'inspect [TARGET]', 'Fetch diagnostics for a URL (final URL, status, alternates, surface)'
     method_option :format, type: :string, enum: %w[text json], default: 'text'
+    method_option :deep, type: :boolean, default: false,
+                         desc: 'Single Botasaurus diagnostic hop when BOTASAURUS_SCRAPER_URL is set'
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
     def inspect(target = nil)
@@ -59,7 +61,7 @@ module Html2rss
         results = if batch_mode
                     Html2rss.batch_inspect(urls, strategy: current_strategy).results
                   else
-                    [Html2rss.inspect(urls.first, strategy: current_strategy).to_wire_h]
+                    [Html2rss.inspect(urls.first, strategy: current_strategy, deep: options[:deep]).to_wire_h]
                   end
         Render.inspect_output(results, format: options[:format], batch_mode:)
       end
@@ -245,6 +247,21 @@ module Html2rss
     # @return [void]
     def mcp
       Html2rss::MCP.start(transport: options[:transport].to_sym, port: options[:port])
+    end
+
+    desc 'doctor [TYPE]', 'Runtime preflight checks (botasaurus)'
+    method_option :sample, type: :string, desc: 'Optional URL for a Botasaurus sample scrape'
+    # @param type [String, nil] check type (default: botasaurus)
+    # @return [void]
+    def doctor(type = 'botasaurus')
+      case type.to_s
+      when 'botasaurus'
+        result = Html2rss::Doctor::Botasaurus.call(sample_url: options[:sample])
+        explain_json!(result.to_h)
+        raise Thor::Error, result.message unless result.ok
+      else
+        raise Thor::Error, "Unknown doctor type: #{type}. Supported: botasaurus"
+      end
     end
 
     private
