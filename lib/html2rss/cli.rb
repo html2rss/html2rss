@@ -215,44 +215,8 @@ module Html2rss
     method_option :quiet, aliases: '-q', type: :boolean, default: false
     # @param files [Array<String>] file paths or globs
     # @return [void]
-    def validate(*files) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-      if files.size == 2 && File.file?(files[0].to_s) && !File.exist?(files[1].to_s)
-        file = files[0]
-        feed_name = files[1]
-        result = Html2rss.validate(file, feed_name, params: options[:params] || {})
-        raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
-
-        puts 'Configuration is valid' unless options[:quiet]
-        return
-
-      end
-
-      target_files = resolve_validate_files(files)
-      failed = []
-
-      target_files.each do |file|
-        result = if file == '-'
-                   Html2rss.validate($stdin.read, params: options[:params] || {})
-                 else
-                   Html2rss.validate(file, params: options[:params] || {})
-                 end
-
-        if result.success?
-          puts(target_files.size == 1 ? 'Configuration is valid' : "ok   #{file}") unless options[:quiet]
-        else
-          error_details = result.errors.to_h
-          raise Thor::Error, "Invalid configuration: #{error_details}" if target_files.size == 1
-
-          warn "FAIL #{file}"
-          error_details.each { |key, msg| warn "       #{key}: #{Array(msg).join(', ')}" }
-          failed << file
-
-        end
-      end
-
-      return if failed.empty?
-
-      raise Thor::Error, "#{failed.size}/#{target_files.size} configurations failed validation."
+    def validate(*files)
+      Validate.run(files, params: options[:params] || {}, quiet: options[:quiet])
     end
 
     desc 'schema', 'Print or export the configuration JSON Schema'
@@ -352,17 +316,6 @@ module Html2rss
       else
         [input, 'raw_string']
       end
-    end
-
-    def resolve_validate_files(files)
-      return ['-'] if files.empty? || files == ['-']
-
-      resolved = []
-      files.each do |f|
-        matched = Dir.glob(f)
-        resolved.concat(matched.empty? ? [f] : matched)
-      end
-      resolved.uniq
     end
 
     def apply_runtime_request_overrides!(config)
