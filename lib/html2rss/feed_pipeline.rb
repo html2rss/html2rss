@@ -32,27 +32,24 @@ module Html2rss
     end
 
     ##
+    # Runs the pipeline once and returns scrape outcome plus {FeedResult} without a second fetch.
+    #
+    # @return [Array(PipelineOutcome, FeedResult)]
+    def to_outcome_and_result
+      config = Config.from_hash(raw_config, params: raw_config[:params])
+      outcome = pipeline_outcome_for(config)
+      [outcome, feed_result_for(config, outcome)]
+    end
+
+    ##
     # Runs the pipeline once and returns an opaque, Marshal-cacheable result.
     #
     # @return [Html2rss::FeedResult]
-    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- Status kwargs stay co-located with Channel
     def to_result
       config = Config.from_hash(raw_config, params: raw_config[:params])
       outcome = pipeline_outcome_for(config)
-      channel = Channel.from_response(outcome.response, overrides: config.channel)
-      status = Status.build(
-        articles: outcome.articles,
-        dedup_dropped: outcome.dedup_dropped,
-        selected_strategy: outcome.selected_strategy,
-        attempt_count: outcome.attempt_count,
-        strategy_attempts: outcome.strategy_attempts,
-        admission_drops: outcome.admission_drops,
-        scrape_target: outcome.scrape_target,
-        entry_resolution: outcome.entry_resolution
-      )
-      FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
+      feed_result_for(config, outcome)
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
     # @api private Host seam for {AutoFallback} (and single-strategy path).
     # @param config [Html2rss::Config]
@@ -170,6 +167,21 @@ module Html2rss
         Article.new(**hash, scraper: AutoSource::Scraper::NativeFeed)
       end
       [articles, {}]
+    end
+
+    def feed_result_for(config, outcome) # rubocop:disable Metrics/MethodLength
+      channel = Channel.from_response(outcome.response, overrides: config.channel)
+      status = Status.build(
+        articles: outcome.articles,
+        dedup_dropped: outcome.dedup_dropped,
+        selected_strategy: outcome.selected_strategy,
+        attempt_count: outcome.attempt_count,
+        strategy_attempts: outcome.strategy_attempts,
+        admission_drops: outcome.admission_drops,
+        scrape_target: outcome.scrape_target,
+        entry_resolution: outcome.entry_resolution
+      )
+      FeedResult.new(channel:, articles: outcome.articles, status:, stylesheets: config.stylesheets)
     end
   end
 end

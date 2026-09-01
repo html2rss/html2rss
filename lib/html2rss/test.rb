@@ -102,7 +102,8 @@ module Html2rss
       :error_message,
       :failure_kind,
       :rss,
-      :quality_report
+      :quality_report,
+      :enhance_compare
     ) do
       ##
       # @param success [Boolean]
@@ -117,9 +118,10 @@ module Html2rss
       # @param failure_kind [FailureKind, nil]
       # @param rss [String, nil]
       # @param quality_report [QualityReport, nil]
+      # @param enhance_compare [Hash, nil]
       def initialize(success:, item_count:, sample_items:, channel_title:, channel_url:, # rubocop:disable Metrics/ParameterLists
                      strategy_used:, duration_seconds:, validation_errors:, error_message:,
-                     failure_kind:, rss:, quality_report: nil)
+                     failure_kind:, rss:, quality_report: nil, enhance_compare: nil)
         super
       end
 
@@ -150,7 +152,8 @@ module Html2rss
           error_message:,
           failure_kind: failure_kind&.to_sym,
           rss:,
-          quality_report: quality_report&.to_h
+          quality_report: quality_report&.to_h,
+          enhance_compare:
         }.compact
       end
     end
@@ -164,9 +167,10 @@ module Html2rss
     # @param params [Hash] optional dynamic feed parameters
     # @param strategy [Symbol, nil] optional strategy override
     # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
+    # @param compare_enhance [Boolean] diagnostic enhance off vs on comparison on cached HTML
     # @return [Html2rss::Test::Result]
     def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
-             strict_quality: false)
+             strict_quality: false, compare_enhance: false)
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation.errors.to_h, raw_config) unless validation.success?
 
@@ -175,7 +179,7 @@ module Html2rss
 
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       begin
-        feed_result = Html2rss.feed_result(raw_config)
+        feed_result, pipeline_outcome = extract_feed(raw_config, compare_enhance:)
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
 
         rss_doc = feed_result.to_rss
@@ -186,8 +190,10 @@ module Html2rss
           rss_doc.items,
           channel_url: raw_config.dig(:channel, :url).to_s,
           raw_config:,
-          feed_result:
+          feed_result:,
+          pipeline_outcome:
         )
+        enhance_compare = build_enhance_compare(raw_config, pipeline_outcome) if compare_enhance
 
         channel_title = feed_result.channel_title
         channel_url = raw_config.dig(:channel, :url).to_s
@@ -212,7 +218,8 @@ module Html2rss
           error_message:,
           failure_kind:,
           rss: passed ? rss_xml : nil,
-          quality_report:
+          quality_report:,
+          enhance_compare:
         )
       rescue StandardError => error
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
@@ -231,13 +238,99 @@ module Html2rss
     end
     private_class_method :extract_samples
 
-    def build_quality_report(items, channel_url:, raw_config:, feed_result:)
+    ##
+    # Builds a ship-quality report for RSS items (shared by test and MCP apply).
+    #
+    # @param items [Array]
+    # @param channel_url [String]
+    # @param raw_config [Hash]
+    # @param feed_result [Html2rss::FeedResult]
+    # @param pipeline_outcome [Html2rss::FeedPipeline::PipelineOutcome, nil]
+    # @return [QualityReport]
+    def quality_report_for(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil)
+      build_quality_report(items, channel_url:, raw_config:, feed_result:, pipeline_outcome:)
+    end
+
+    def extract_feed(raw_config, compare_enhance:)
+      if enhance_audit_needed?(raw_config, compare_enhance:)
+        outcome, feed_result = FeedPipeline.new(raw_config).to_outcome_and_result
+        [feed_result, outcome]
+      else
+        [Html2rss.feed_result(raw_config), nil]
+      end
+    end
+    private_class_method :extract_feed
+
+    def enhance_audit_needed?(raw_config, compare_enhance:)
+      compare_enhance || enhance_enabled?(raw_config)
+    end
+    private_class_method :enhance_audit_needed?
+
+    def enhance_enabled?(raw_config)
+      config = Config.from_hash(raw_config)
+      return false unless config.selectors
+
+      !!config.selectors.dig(:items, :enhance)
+    end
+    private_class_method :enhance_enabled?
+
+    def build_enhance_compare(raw_config, pipeline_outcome)
+      return nil unless pipeline_outcome
+
+      config = Config.from_hash(raw_config)
+      return nil unless config.selectors
+
+      EnhanceAudit.compare(
+        response: pipeline_outcome.response,
+        selectors: config.selectors,
+        time_zone: config.time_zone
+      )
+    end
+    private_class_method :build_enhance_compare
+
+    def build_quality_report(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil)
       audit = AutoSource::Cleanup.audit_feed_items(items)
       native_feed = probe_native_feed(channel_url, raw_config)&.to_s
       report = QualityReport.from_audit(audit, native_feed:)
-      append_url_mismatch_warning(report, channel_url, feed_result)
+      report = append_url_mismatch_warning(report, channel_url, feed_result)
+      merge_enhance_audit(report, raw_config, pipeline_outcome)
     end
     private_class_method :build_quality_report
+
+    def merge_enhance_audit(report, raw_config, pipeline_outcome) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- warning merge + metrics
+      return report unless pipeline_outcome && enhance_enabled?(raw_config)
+
+      config = Config.from_hash(raw_config)
+      return report unless config.selectors
+
+      slice = EnhanceAudit.probe(
+        response: pipeline_outcome.response,
+        selectors: config.selectors,
+        time_zone: config.time_zone
+      )
+      return report unless slice
+
+      warnings = report.warnings.dup
+      slice.warnings.each { |warning| warnings << warning unless warnings.include?(warning) }
+      metrics = report.metrics.merge(enhance_gains: enhance_gains_to_h(slice.enhance_gains))
+      QualityReport.new(
+        warnings: warnings.freeze,
+        metrics:,
+        native_feed: report.native_feed,
+        defer_reason: report.defer_reason
+      )
+    end
+    private_class_method :merge_enhance_audit
+
+    def enhance_gains_to_h(enhance_gains)
+      {
+        items_probed: enhance_gains.items_probed,
+        keys_added: enhance_gains.keys_added,
+        descriptions_added: enhance_gains.descriptions_added,
+        no_op: enhance_gains.no_op
+      }
+    end
+    private_class_method :enhance_gains_to_h
 
     def append_url_mismatch_warning(report, channel_url, feed_result)
       return report unless url_mismatch?(channel_url, feed_result)

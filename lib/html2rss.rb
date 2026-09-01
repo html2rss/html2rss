@@ -95,9 +95,11 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param params [Hash] dynamic feed params
   # @param strategy [Symbol, nil] optional strategy override
   # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
+  # @param compare_enhance [Boolean] diagnostic enhance off vs on comparison on cached HTML
   # @return [Html2rss::Test::Result]
-  def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false) # rubocop:disable Metrics/ParameterLists
-    Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:)
+  def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, # rubocop:disable Metrics/ParameterLists
+                compare_enhance: false)
+    Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:, compare_enhance:)
   end
 
   ##
