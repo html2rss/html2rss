@@ -476,10 +476,14 @@ RSpec.describe Html2rss do
   end
 
   describe '.inspect' do
-    it 'delegates to PageRecon::Diagnostics.call' do
-      allow(Html2rss::PageRecon::Diagnostics).to receive(:call).with(url: 'https://example.com', strategy: :auto)
+    it 'delegates to PageRecon::Diagnostics.call' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:call).with(
+        url: 'https://example.com', strategy: :auto, deep: false
+      )
       described_class.inspect('https://example.com')
-      expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(url: 'https://example.com', strategy: :auto)
+      expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(
+        url: 'https://example.com', strategy: :auto, deep: false
+      )
     end
   end
 
@@ -492,10 +496,14 @@ RSpec.describe Html2rss do
   end
 
   describe '.test' do
-    it 'delegates to Test.call' do
-      allow(Html2rss::Test).to receive(:call).with('config.yml', nil, min_items: 1, params: {}, strategy: nil)
+    it 'delegates to Test.call' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Test).to receive(:call).with(
+        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false
+      )
       described_class.test('config.yml')
-      expect(Html2rss::Test).to have_received(:call).with('config.yml', nil, min_items: 1, params: {}, strategy: nil)
+      expect(Html2rss::Test).to have_received(:call).with(
+        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false
+      )
     end
   end
 

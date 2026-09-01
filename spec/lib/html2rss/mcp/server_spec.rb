@@ -72,7 +72,7 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
       expect(protocol_server.instructions).to include('html2rss://runtime', 'catalog_fingerprint')
-      expect(protocol_server.instructions).to include('Strive enhance: true')
+      expect(protocol_server.instructions).to include('Default enhance follows capture evidence')
       expect(protocol_server.instructions).to include('payload.item_count')
       expect(protocol_server.instructions).to include('test')
       expect(protocol_server.instructions).not_to include('_meta')
@@ -288,7 +288,8 @@ RSpec.describe Html2rss::MCP::Server do
         expect(Html2rss).to have_received(:test).with(
           valid_config,
           min_items: 1,
-          strategy: :auto
+          strategy: :auto,
+          strict_quality: false
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(envelope).to include(ok: true, next_step: 'apply')
@@ -313,6 +314,44 @@ RSpec.describe Html2rss::MCP::Server do
           metrics: hash_including(item_count: 2, unique_url_count: 1)
         )
         expect(envelope[:guidance]).to include('quality_report warnings: duplicate_urls')
+      end
+
+      it 'forwards strict_quality to Html2rss.test', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss).to receive(:test).and_return(test_result(success: true))
+
+        call_tool.call('test', { config: valid_config, min_items: 1, strict_quality: true })
+
+        expect(Html2rss).to have_received(:test).with(
+          valid_config,
+          min_items: 1,
+          strict_quality: true
+        )
+      end
+
+      it 'routes quality failure next_step to capture', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        quality_report = Html2rss::Test::QualityReport.new(
+          warnings: [:duplicate_urls],
+          metrics: { item_count: 2, unique_url_count: 1, junk_title_count: 0, short_title_count: 0,
+                     low_word_count: 0 },
+          native_feed: nil,
+          defer_reason: nil
+        )
+        allow(Html2rss).to receive(:test).and_return(
+          test_result(
+            success: false,
+            failure_kind: Html2rss::Test::FailureKind.coerce(:quality),
+            error_message: 'Feed quality check failed (duplicate_urls)',
+            quality_report:
+          )
+        )
+
+        result = call_tool.call('test', { config: valid_config, strict_quality: true })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(true)
+        expect(envelope).to include(ok: false, next_step: 'capture')
+        expect(envelope[:payload]).to include(failure_kind: 'quality')
+        expect(envelope[:guidance]).to include('quality_report')
       end
 
       it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -487,7 +526,8 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(
           url: 'https://example.com',
-          strategy: :auto
+          strategy: :auto,
+          deep: false
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(envelope[:payload]).to include(strategy: 'faraday')
@@ -640,12 +680,12 @@ RSpec.describe Html2rss::MCP::Server do
       expect(text).not_to include('_meta')
     end
 
-    it 'embeds catalog rewrite and enhance: true on capture-feed-config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'embeds catalog rewrite and evidence-based enhance on capture-feed-config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       prompt = protocol_server.prompts['capture-feed-config']
       result = prompt.template({ url: 'https://example.com' }, server_context: nil)
       text = result.to_h.dig(:messages, 0, :content, :text)
 
-      expect(text).to include('Strive to keep enhance: true').and include('directory.topics')
+      expect(text).to include('enhance defaults from admission evidence').and include('directory.topics')
       expect(text).to include('payload.yaml').and include('payload.item_count')
       expect(text).not_to include('_meta')
     end

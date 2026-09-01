@@ -27,7 +27,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
   end
 
   before do
-    allow(Html2rss::PageRecon).to receive(:probe).and_return(probe)
+    allow(Html2rss::PageRecon).to receive(:probe) { probe }
   end
 
   it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -37,6 +37,14 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
     expect(report).to be_a(described_class::Report)
     expect(result[:strategy]).to eq(:faraday)
     expect(result[:html_response]).to be(true)
+    expect(result[:html_present]).to be(true)
+    expect(result[:likely_js_shell]).to be(false)
+    expect(result[:redirect_summary]).to include(
+      requested_url: 'https://example.com/blog',
+      final_url: 'https://example.com/blog',
+      status: 200,
+      scheme_downgrade: false
+    )
     expect(result[:sst]).to include(:node_count, :segment_stats)
   end
 
@@ -97,6 +105,77 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
         [{ href: 'https://example.com/feed.xml', mime_type: 'application/rss+xml' }]
       )
       expect(result[:alternate_feeds].map { |feed| feed[:href] }).not_to include('/feed')
+    end
+  end
+
+  context 'when HTML is present but no articles match' do
+    let(:response_body) do
+      <<~HTML
+        <!DOCTYPE html>
+        <html><head><title>Shell</title></head>
+        <body><div id="root">#{'x' * 9_000}</div></body></html>
+      HTML
+    end
+
+    before do
+      allow(Html2rss::AutoSource::Scraper).to receive(:classify_no_scraper_surface).and_return(:app_shell)
+    end
+
+    it 'flags likely_js_shell', :aggregate_failures do
+      result = described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h
+
+      expect(result[:html_present]).to be(true)
+      expect(result[:articles_count]).to eq(0)
+      expect(result[:likely_js_shell]).to be(true)
+    end
+  end
+
+  context 'when a blocked interstitial is detected' do
+    let(:response_body) { '<html><body>Checking your browser before accessing</body></html>' }
+    let(:blocked_recon) do
+      Html2rss::PageRecon::Result.new(
+        requested_url: 'https://example.com/blog',
+        final_url: 'https://example.com/blog',
+        status: 200,
+        scheme_downgrade: false,
+        alternate_feeds: [],
+        surface_category: :blocked_surface,
+        articles_count: 0,
+        admission_drops: {},
+        segment_stats: nil,
+        html_response: true,
+        content_type: 'text/html',
+        blocked_surface: 'cloudflare',
+        sst: nil
+      )
+    end
+    let(:probe) do
+      Html2rss::PageRecon::Probe.new(
+        session: instance_double(Html2rss::RequestSession),
+        response:,
+        result: blocked_recon,
+        strategy: probe_strategy
+      )
+    end
+
+    it 'does not classify blocked pages as js shells', :aggregate_failures do
+      result = described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h
+
+      expect(result[:surface_category]).to eq(:blocked_surface)
+      expect(result[:likely_js_shell]).to be(false)
+    end
+  end
+
+  describe '.call with deep: true' do
+    it 'uses botasaurus when configured and strategy is auto', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::MCP::Runtime).to receive(:botasaurus_configured?).and_return(true)
+      allow(Html2rss::PageRecon).to receive(:probe).and_return(probe)
+
+      described_class.call(url: 'https://example.com/blog', strategy: :auto, deep: true)
+
+      expect(Html2rss::PageRecon).to have_received(:probe).with(
+        'https://example.com/blog', hash_including(strategy: :botasaurus)
+      )
     end
   end
 

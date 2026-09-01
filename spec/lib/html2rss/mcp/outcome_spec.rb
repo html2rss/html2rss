@@ -26,6 +26,71 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(described_class.instructions).to include('→ scrape').and include('→ capture → test → apply')
       expect(described_class.instructions).not_to include('scrape_url')
     end
+
+    it 'embeds auto strategy guidance in scrape_webpage_prompt' do
+      prompt = described_class.scrape_webpage_prompt('https://example.com')
+
+      expect(prompt).to include('https://example.com', 'strategy auto', 'payload.items')
+    end
+
+    it 'embeds evidence-based enhance guidance in capture_feed_config_prompt' do
+      prompt = described_class.capture_feed_config_prompt('https://example.com')
+
+      expect(prompt).to include('suggested_channel_url', 'enhance defaults from admission evidence')
+    end
+
+    describe '.inspect_guidance' do
+      def report(**data)
+        Html2rss::PageRecon::Diagnostics::Report.new(
+          data: { articles_count: 0, alternate_feeds: [], **data }
+        )
+      end
+
+      it 'returns default inspect guidance when articles are present' do
+        populated = Html2rss::PageRecon::Diagnostics::Report.new(
+          data: { articles_count: 3, alternate_feeds: [] }
+        )
+
+        expect(described_class.inspect_guidance(populated))
+          .to eq(described_class::GUIDANCE.fetch(:inspect))
+      end
+
+      it 'guides blocked surfaces toward botasaurus' do
+        expect(described_class.inspect_guidance(report(blocked_surface: true)))
+          .to include('anti-bot interstitial')
+      end
+
+      it 'guides blocked_surface category toward botasaurus' do
+        expect(described_class.inspect_guidance(report(surface_category: 'blocked_surface')))
+          .to include('inspect --deep')
+      end
+
+      it 'guides js shells toward auto or --deep' do
+        expect(described_class.inspect_guidance(report(likely_js_shell: true)))
+          .to include('JS-rendered shell')
+      end
+
+      it 'guides empty static pages toward redirect verification' do
+        expect(described_class.inspect_guidance(report)).to include('redirect_summary.final_url')
+      end
+    end
+
+    describe '.recon_guidance' do
+      it 'appends scheme downgrade hint' do
+        result = instance_double(Html2rss::Recon::Result, scheme_downgrade: true)
+        next_step = Html2rss::MCP::Outcome::NextStep.capture
+
+        expect(described_class.recon_guidance(result, next_step))
+          .to include('HTTPS→HTTP downgrade', next_step.guidance)
+      end
+
+      it 'returns next_step guidance when scheme is not downgraded' do
+        result = instance_double(Html2rss::Recon::Result, scheme_downgrade: false)
+        next_step = Html2rss::MCP::Outcome::NextStep.capture
+
+        expect(described_class.recon_guidance(result, next_step)).to eq(next_step.guidance)
+      end
+    end
   end
 
   describe '.scrape' do
@@ -233,6 +298,11 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'points at capture on min_items failure' do
       result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:min_items))
+      expect(described_class.test(result).next_step.name).to eq(:capture)
+    end
+
+    it 'points at capture on quality failure' do
+      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:quality))
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
   end

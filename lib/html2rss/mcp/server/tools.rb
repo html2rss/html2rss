@@ -25,7 +25,9 @@ module Html2rss
             input_schema: Contract::INSPECT_INPUT_SCHEMA,
             call: lambda { |url:, strategy: 'auto', **|
               Outcome.inspect(
-                report: PageRecon::Diagnostics.call(url:, strategy: Runtime.coerce_strategy(strategy))
+                report: PageRecon::Diagnostics.call(
+                  url:, strategy: Runtime.coerce_strategy(strategy), deep: false
+                )
               )
             }
           },
@@ -71,7 +73,8 @@ module Html2rss
                          'Use when the goal is a durable YAML (then test → apply). ' \
                          'Returns YAML inside payload.yaml (same serializer as CLI capture). ' \
                          'Draft only — catalog feeds still need directory.topics and title/url; ' \
-                         'strive enhance: true. Full schema options live in resource html2rss://schema.',
+                         'enhance defaults from admission evidence (false when chrome drops are high). ' \
+                         'Full schema options live in resource html2rss://schema.',
             input_schema: Contract::CAPTURE_INPUT_SCHEMA,
             handler: :capture_outcome
           },
@@ -94,11 +97,12 @@ module Html2rss
             description: 'Validate schema and execute live extraction (asserting >= min_items items). ' \
                          'Call after capture or validate; on success next_step is apply. ' \
                          'Returns test summary in payload with sample items, timing, failure_kind, ' \
-                         'and quality_report (warnings for duplicate URLs, junk titles, native feed).',
+                         'and quality_report (warnings for duplicate URLs, junk titles, native feed). ' \
+                         'Set strict_quality to fail on duplicate URLs, >50% junk titles, or short titles.',
             input_schema: Contract::TEST_INPUT_SCHEMA,
-            call: lambda { |config: nil, yaml: nil, min_items: 1, **kwargs|
+            call: lambda { |config: nil, yaml: nil, min_items: 1, strict_quality: false, **kwargs|
               feed_config = ConfigArgument.parse(config:, yaml:).config
-              test_args = { min_items: }
+              test_args = { min_items:, strict_quality: }
               test_args[:strategy] = Runtime.coerce_strategy(kwargs[:strategy]) if kwargs.key?(:strategy)
               test_result = Html2rss.test(feed_config, **test_args)
               Outcome.test(test_result)
@@ -235,7 +239,8 @@ module Html2rss
               segment_strategy: result.segment_strategy,
               selected_strategy: result.selected_strategy,
               admission_drops: result.admission_drops,
-              native_feed: result.native_feed
+              native_feed: result.native_feed,
+              suggested_channel_url: result.suggested_channel_url
             )
           end
 

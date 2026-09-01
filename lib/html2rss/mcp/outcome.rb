@@ -70,7 +70,8 @@ module Html2rss
         # @return [Outcome]
         def inspect(report:)
           next_step = inspect_next_step(report)
-          new(ok: true, next_step:, guidance: next_step.guidance, payload: report.to_wire_h)
+          guidance = Playbook.inspect_guidance(report)
+          new(ok: true, next_step:, guidance:, payload: report.to_wire_h)
         end
 
         ##
@@ -78,7 +79,8 @@ module Html2rss
         # @return [Outcome]
         def recon(result:)
           next_step = recon_next_step(result)
-          new(ok: true, next_step:, guidance: next_step.guidance, payload: result.to_h)
+          guidance = Playbook.recon_guidance(result, next_step)
+          new(ok: true, next_step:, guidance:, payload: result.to_h)
         end
 
         ##
@@ -91,13 +93,16 @@ module Html2rss
         # @param selected_strategy [Symbol, String, nil]
         # @param admission_drops [Hash]
         # @param native_feed [String, nil]
+        # @param suggested_channel_url [String, nil]
         # @return [Outcome]
         def capture(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
-                    segment_strategy: nil, selected_strategy: nil, admission_drops: {}, native_feed: nil)
+                    segment_strategy: nil, selected_strategy: nil, admission_drops: {}, native_feed: nil,
+                    suggested_channel_url: nil)
           next_step = capture_next_step(articles_count:, has_selectors:, native_feed:)
           new(ok: true, next_step:, guidance: next_step.guidance, payload: capture_payload(
             yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:,
-            segment_strategy:, selected_strategy:, admission_drops:, native_feed:
+            segment_strategy:, selected_strategy:, admission_drops:, native_feed:,
+            suggested_channel_url:
           ))
         end
 
@@ -204,7 +209,7 @@ module Html2rss
 
           kind = test_result.failure_kind
           return NextStep.validate if kind&.schema?
-          return NextStep.capture if kind&.execution? || kind&.min_items?
+          return NextStep.capture if kind&.execution? || kind&.min_items? || kind&.quality?
 
           NextStep.capture
         end
@@ -222,10 +227,12 @@ module Html2rss
         end
 
         def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
-                            segment_strategy:, selected_strategy:, admission_drops:, native_feed: nil)
+                            segment_strategy:, selected_strategy:, admission_drops:, native_feed: nil,
+                            suggested_channel_url: nil)
           {
             yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy: requested_strategy.to_s,
             **(native_feed ? { native_feed: native_feed.to_s } : {}),
+            **(suggested_channel_url ? { suggested_channel_url: suggested_channel_url.to_s } : {}),
             **(segment_strategy ? { segment_strategy: segment_strategy.to_s } : {}),
             **(selected_strategy ? { selected_strategy: selected_strategy.to_s } : {}),
             **(admission_drops.any? ? { admission_drops: } : {})

@@ -12,7 +12,7 @@ module Html2rss
         GUIDANCE = {
           done: 'Done. Read payload for the result.',
           inspect: 'Call inspect next. Read payload for diagnostics (final_url, status, ' \
-                   'scheme_downgrade, alternate_feeds).',
+                   'scheme_downgrade, alternate_feeds, likely_js_shell, redirect_summary).',
           recon: 'Call recon next. Read payload for verdict and native_feed preference.',
           validate: 'Call validate with payload.yaml or a config hash (XOR, not both).',
           apply: 'Call apply next. Confirm payload.item_count before shipping.',
@@ -39,10 +39,10 @@ module Html2rss
                  - strategy "auto" runs Faraday → Botasaurus AutoFallback. Do not retry with explicit faraday after auto.
                  - Empty scrape is still success (articles-now). Follow next_step / guidance (read_runtime if Botasaurus unset).
               2. Need a reusable feed YAML? → capture → test → apply
-                 - capture returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Strive enhance: true (false only when chrome leaks).
+                 - capture returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Default enhance follows capture evidence (false when admission_drops show chrome); override only when needed.
                  - test runs schema + live extraction (min items). apply is the ship gate (isError on zero items). Confirm payload.item_count and payload.quality_report warnings.
                  - validate alone is for schema-only checks; on success next_step is test.
-              3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect (or batch_inspect). When alternates warrant it, inspect next_step is recon.
+              3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect (or batch_inspect). Read likely_js_shell vs blocked_surface when articles_count is 0. When alternates warrant it, inspect next_step is recon.
               4. Have a config already? → validate (must succeed) → test → apply
               5. Schema / extractors / strategies / runtime → resources html2rss://schema|extractors|strategies|runtime
                  - runtime publishes version, mcp_contract_version, catalog_fingerprint, tools, botasaurus_configured.
@@ -71,12 +71,49 @@ module Html2rss
           def capture_feed_config_prompt(url)
             <<~MSG.strip
               Build a reusable html2rss feed config for #{url}:
-              1) capture — YAML is payload.yaml. Check payload.articles_count and payload.has_selectors. Strive to keep enhance: true (false only when chrome leaks into items). When payload.native_feed is set, follow next_step (done — use the native feed).
+              1) capture — YAML is payload.yaml. Check payload.articles_count, payload.has_selectors, and payload.suggested_channel_url. enhance defaults from admission evidence (false when chrome drops are high). When payload.native_feed is set, follow next_step (done — use the native feed).
               2) Follow next_step. If weak or you need recon, inspect then recon when alternates warrant it. Auto already hops to Botasaurus; do not retry capture with botasaurus unless Faraday was blocked.
               3) test with yaml (or config hash) — schema + live extraction. On :schema failure, validate; on :execution/:min_items, recapture.
               4) apply — isError if zero items. Confirm payload.item_count before shipping.
               If the destination is html2rss-configs, rewrite the draft for directory.topics and explicit channel title/url. Return YAML.
             MSG
+          end
+
+          ##
+          # @param report [PageRecon::Diagnostics::Report]
+          # @return [String]
+          def inspect_guidance(report)
+            return GUIDANCE.fetch(:inspect) unless report.articles_count.zero?
+
+            empty_extract_guidance(report.data)
+          end
+
+          ##
+          # @param data [Hash{Symbol => Object}]
+          # @return [String]
+          def empty_extract_guidance(data) # rubocop:disable Metrics/MethodLength
+            if data[:blocked_surface] || data[:surface_category].to_s == 'blocked_surface'
+              return 'Blocked or anti-bot interstitial likely. Retry scrape with strategy botasaurus once ' \
+                     '(or CLI inspect --deep when BOTASAURUS_SCRAPER_URL is set). ' \
+                     'Do not retry explicit faraday after auto.'
+            end
+            if data[:likely_js_shell]
+              return 'JS-rendered shell likely (html_present, zero articles). Use strategy auto or botasaurus; ' \
+                     'CLI inspect --deep for one Botasaurus diagnostic hop.'
+            end
+
+            'Empty extract on a static-looking page. Verify redirect_summary.final_url and surface; ' \
+              'capture may need selector hints.'
+          end
+
+          ##
+          # @param result [Html2rss::Recon::Result]
+          # @param next_step [Outcome::NextStep]
+          # @return [String]
+          def recon_guidance(result, next_step)
+            return next_step.guidance unless result.scheme_downgrade
+
+            "#{next_step.guidance} HTTPS→HTTP downgrade detected: try one Botasaurus scrape before DROP."
           end
         end
       end

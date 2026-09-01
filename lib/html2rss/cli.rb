@@ -52,6 +52,8 @@ module Html2rss
     probe_target_options
     desc 'inspect [TARGET]', 'Fetch diagnostics for a URL (final URL, status, alternates, surface)'
     method_option :format, type: :string, enum: %w[text json], default: 'text'
+    method_option :deep, type: :boolean, default: false,
+                         desc: 'Single Botasaurus diagnostic hop when BOTASAURUS_SCRAPER_URL is set'
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
     def inspect(target = nil)
@@ -59,7 +61,7 @@ module Html2rss
         results = if batch_mode
                     Html2rss.batch_inspect(urls, strategy: current_strategy).results
                   else
-                    [Html2rss.inspect(urls.first, strategy: current_strategy).to_wire_h]
+                    [Html2rss.inspect(urls.first, strategy: current_strategy, deep: options[:deep]).to_wire_h]
                   end
         Render.inspect_output(results, format: options[:format], batch_mode:)
       end
@@ -143,6 +145,8 @@ module Html2rss
     desc 'test [CONFIG_INPUT] [feed_name]', 'Validate schema AND execute live extraction (fails on 0 items)'
     method_option :params, type: :hash, default: {}
     method_option :min_items, type: :numeric, default: 1, desc: 'Minimum required articles to pass'
+    method_option :strict_quality, type: :boolean, default: false,
+                                   desc: 'Fail when ship-quality audit thresholds are exceeded'
     method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
     method_option :json, type: :boolean, desc: 'Output test outcome as JSON', default: false
     method_option :xml, type: :boolean, desc: 'Dump RSS XML alongside summary', default: false
@@ -157,7 +161,8 @@ module Html2rss
         feed_name,
         min_items: options.fetch(:min_items, 1).to_i,
         params: options[:params] || {},
-        strategy: options[:strategy]
+        strategy: options[:strategy],
+        strict_quality: options.fetch(:strict_quality, false)
       )
 
       if options[:json]
@@ -242,6 +247,21 @@ module Html2rss
     # @return [void]
     def mcp
       Html2rss::MCP.start(transport: options[:transport].to_sym, port: options[:port])
+    end
+
+    desc 'doctor [TYPE]', 'Runtime preflight checks (botasaurus)'
+    method_option :sample, type: :string, desc: 'Optional URL for a Botasaurus sample scrape'
+    # @param type [String, nil] check type (default: botasaurus)
+    # @return [void]
+    def doctor(type = 'botasaurus')
+      case type.to_s
+      when 'botasaurus'
+        result = Html2rss::Doctor::Botasaurus.call(sample_url: options[:sample])
+        explain_json!(result.to_h)
+        raise Thor::Error, result.message unless result.ok
+      else
+        raise Thor::Error, "Unknown doctor type: #{type}. Supported: botasaurus"
+      end
     end
 
     private

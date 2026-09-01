@@ -5,7 +5,7 @@ module Html2rss
     ##
     # Diagnostic inspect path (not Capture or Recon ownership). Fetches via {.probe},
     # then adds scraper/XHR diagnostics for curation inspect surfaces.
-    module Diagnostics
+    module Diagnostics # rubocop:disable Metrics/ModuleLength -- diagnostic wire fields stay co-located
       ##
       # Typed diagnostic report for inspect wire payloads and Outcome policy.
       Report = Data.define(:data) do
@@ -28,14 +28,19 @@ module Html2rss
         end
       end
 
+      # Minimum HTML body size to treat zero-article weak surfaces as likely JS shells.
+      JS_SHELL_MIN_BODY_BYTES = 8_192
+      private_constant :JS_SHELL_MIN_BODY_BYTES
+
       module_function
 
       ##
       # @param url [String]
       # @param strategy [String, Symbol]
+      # @param deep [Boolean] when true and strategy is auto, one Botasaurus hop if configured
       # @return [Report]
-      def call(url:, strategy: :auto)
-        probe = PageRecon.probe(url, strategy:)
+      def call(url:, strategy: :auto, deep: false)
+        probe = PageRecon.probe(url, strategy: resolve_inspect_strategy(strategy, deep:))
         recon = probe.result
         response = probe.response
 
@@ -113,13 +118,64 @@ module Html2rss
       def build_data(probe, recon, response)
         data = recon.to_h.merge(
           strategy: probe.strategy,
-          scraper_eligibility: scraper_info(safe_parsed_body(response))
+          scraper_eligibility: scraper_info(safe_parsed_body(response)),
+          html_present: html_present?(recon, response),
+          likely_js_shell: likely_js_shell?(recon, response),
+          redirect_summary: redirect_summary(recon)
         )
         data[:xhr_capture] = xhr_capture_info(response) if probe.strategy == :botasaurus
+        log_js_shell(data, response.body&.bytesize.to_i) if data[:likely_js_shell]
         data
       end
       module_function :build_data
       private_class_method :build_data
+
+      def resolve_inspect_strategy(strategy, deep:)
+        name = (strategy || :auto).to_sym
+        return :botasaurus if deep && name == :auto && MCP::Runtime.botasaurus_configured?
+
+        name
+      end
+      module_function :resolve_inspect_strategy
+      private_class_method :resolve_inspect_strategy
+
+      def html_present?(recon, response)
+        recon.html_response && !response.body.to_s.empty?
+      end
+      module_function :html_present?
+      private_class_method :html_present?
+
+      def likely_js_shell?(recon, response)
+        return false unless html_present?(recon, response)
+        return false if recon.articles_count.positive?
+        return false if recon.blocked_surface || recon.surface_category == :blocked_surface
+
+        return true if recon.surface_category == :app_shell
+
+        response.body.bytesize >= JS_SHELL_MIN_BODY_BYTES &&
+          SurfaceCategory.coerce(recon.surface_category).weak?
+      end
+      module_function :likely_js_shell?
+      private_class_method :likely_js_shell?
+
+      def redirect_summary(recon)
+        {
+          requested_url: recon.requested_url,
+          final_url: recon.final_url,
+          status: recon.status,
+          scheme_downgrade: recon.scheme_downgrade
+        }
+      end
+      module_function :redirect_summary
+      private_class_method :redirect_summary
+
+      def log_js_shell(data, body_bytesize)
+        Log.debug(
+          "Diagnostics js_shell: bytesize=#{body_bytesize} surface_category=#{data[:surface_category]}"
+        )
+      end
+      module_function :log_js_shell
+      private_class_method :log_js_shell
 
       def safe_parsed_body(response)
         return unless response.html_response?
