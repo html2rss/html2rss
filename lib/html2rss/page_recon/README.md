@@ -41,6 +41,8 @@ bin/html2rss inspect https://www.example
 
 Cross-host redirects (e.g. `apex.example` → `www.example`) no longer pin a stale `Host` header from the entry URL. `Config::RequestHeaders` omits `Host` by default; Faraday/Net::HTTP sets it per hop from the current request URL.
 
+When the first streamed fetch loses the redirect payload (empty body at the final URL), `FaradayStrategy` retries once without streaming so inspect/recon see the same HTML as a direct canonical URL fetch.
+
 ### What to do
 
 1. **Prefer the canonical URL** — if you know the site lives on `www`, pass that URL to inspect, recon, capture, and scrape.
