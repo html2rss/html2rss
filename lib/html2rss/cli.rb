@@ -81,6 +81,10 @@ module Html2rss
           cache_dir: options[:cache_dir]
         )
         filtered = filter_recon_results(results, options[:verdict])
+        if !batch_mode && options[:verdict] && filtered.empty? && results.any?
+          raise Thor::Error, "No results matched verdict #{options[:verdict].upcase}"
+        end
+
         Render.recon_output(
           filtered,
           format: options[:format],
@@ -153,7 +157,7 @@ module Html2rss
       result = Html2rss.test(
         raw_content,
         feed_name,
-        min_items: options[:min_items]&.to_i || 1,
+        min_items: options.fetch(:min_items, 1).to_i,
         params: options[:params] || {},
         strategy: options[:strategy]
       )

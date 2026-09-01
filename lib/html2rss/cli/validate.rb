@@ -15,6 +15,8 @@ module Html2rss
       # @raise [Thor::Error]
       def run(files, params:, quiet:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         if files.size == 2 && File.file?(files[0].to_s) && !File.exist?(files[1].to_s)
+          raise Thor::Error, "No such file: #{files[1]}" if path_like_config?(files[1])
+
           return run_named_feed(files[0], files[1], params:, quiet:)
         end
 
@@ -73,6 +75,17 @@ module Html2rss
       end
       module_function :validate_file
       private_class_method :validate_file
+
+      def path_like_config?(arg)
+        path = arg.to_s
+        return true if path.start_with?('-')
+        return true if path.end_with?('.yml', '.yaml')
+        return true if path.include?('/') || path.include?('*')
+
+        false
+      end
+      module_function :path_like_config?
+      private_class_method :path_like_config?
     end
   end
 end

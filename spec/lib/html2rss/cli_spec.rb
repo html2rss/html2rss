@@ -207,6 +207,11 @@ RSpec.describe Html2rss::CLI do
       end
     end
 
+    it 'raises Thor::Error when single URL does not match --verdict filter' do
+      expect { cli.invoke(:recon, ['https://example.com/news'], { verdict: 'DEFER' }) }
+        .to raise_error(Thor::Error, 'No results matched verdict DEFER')
+    end
+
     it 'raises Thor::Error when target is omitted' do
       expect { cli.recon(nil) }.to raise_error(Thor::Error, /target URL/)
     end
@@ -372,6 +377,18 @@ RSpec.describe Html2rss::CLI do
         expect { cli.invoke(:test, ['config.yml'], { xml: true }) }
           .to output(%r{<rss/>}).to_stdout
         expect(Html2rss).not_to have_received(:feed)
+      end
+
+      it 'forwards --min-items 0 to Html2rss.test' do
+        allow(Html2rss).to receive(:test).and_return(test_result_success)
+
+        cli.invoke(:test, ['config.yml'], { min_items: 0 })
+
+        expect(Html2rss).to have_received(:test).with(
+          'config.yml',
+          nil,
+          hash_including(min_items: 0)
+        )
       end
     end
 

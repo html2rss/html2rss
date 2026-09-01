@@ -39,6 +39,12 @@ RSpec.describe Html2rss::CLI::Validate do
         .to output("Configuration is valid\n").to_stdout
     end
 
+    it 'raises when the second argument looks like a missing config file' do
+      expect do
+        described_class.run(%w[spec/fixtures/single.test.yml missing.yml], params: {}, quiet: false)
+      end.to raise_error(Thor::Error, 'No such file: missing.yml')
+    end
+
     it 'reads config from stdin when file is "-"' do
       allow(Html2rss).to receive(:validate).with('yaml-from-stdin', params: {}).and_return(success)
       allow($stdin).to receive(:read).and_return('yaml-from-stdin')
