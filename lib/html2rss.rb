@@ -34,9 +34,10 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param deep [Boolean] when true and strategy is :auto, one Botasaurus hop if configured
   # @return [Html2rss::PageRecon::Diagnostics::Report]
-  def self.inspect(url, strategy: :auto, **)
-    PageRecon::Diagnostics.call(url:, strategy:, **)
+  def self.inspect(url, strategy: :auto, deep: false, **)
+    PageRecon::Diagnostics.call(url:, strategy:, deep:, **)
   end
 
   ##
@@ -95,7 +96,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param strategy [Symbol, nil] optional strategy override
   # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
   # @return [Html2rss::Test::Result]
-  def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false)
+  def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false) # rubocop:disable Metrics/ParameterLists
     Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:)
   end
 

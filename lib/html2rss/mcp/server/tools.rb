@@ -25,7 +25,9 @@ module Html2rss
             input_schema: Contract::INSPECT_INPUT_SCHEMA,
             call: lambda { |url:, strategy: 'auto', **|
               Outcome.inspect(
-                report: PageRecon::Diagnostics.call(url:, strategy: Runtime.coerce_strategy(strategy))
+                report: PageRecon::Diagnostics.call(
+                  url:, strategy: Runtime.coerce_strategy(strategy), deep: false
+                )
               )
             }
           },
@@ -71,7 +73,8 @@ module Html2rss
                          'Use when the goal is a durable YAML (then test → apply). ' \
                          'Returns YAML inside payload.yaml (same serializer as CLI capture). ' \
                          'Draft only — catalog feeds still need directory.topics and title/url; ' \
-                         'strive enhance: true. Full schema options live in resource html2rss://schema.',
+                         'enhance defaults from admission evidence (false when chrome drops are high). ' \
+                         'Full schema options live in resource html2rss://schema.',
             input_schema: Contract::CAPTURE_INPUT_SCHEMA,
             handler: :capture_outcome
           },
@@ -236,7 +239,8 @@ module Html2rss
               segment_strategy: result.segment_strategy,
               selected_strategy: result.selected_strategy,
               admission_drops: result.admission_drops,
-              native_feed: result.native_feed
+              native_feed: result.native_feed,
+              suggested_channel_url: result.suggested_channel_url
             )
           end
 
