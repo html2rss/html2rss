@@ -2,15 +2,9 @@
 
 `Html2rss.capture` (and CLI `html2rss capture`) analyzes a URL through the feed pipeline and produces a reusable config with **items selector + `enhance: true` only** — no title/url/description attribute-selector soup. At feed-build time, `enhance: true` fills missing article fields via `Html::ArticleExtractor` on each matched item.
 
-## Breaking change
+## API
 
-`Html2rss.capture` / `Capture.build` return `Capture::CaptureResult`, not a bare Hash.
-
-| Before | After |
-| --- | --- |
-| `config = Html2rss.capture(url)` then `Config.to_yaml(config)` | `result = Html2rss.capture(url)` then `result.yaml` or `Config.to_yaml(result.config)` |
-
-No compatibility shim: callers must use `#config` / `#yaml`.
+`Html2rss.capture` / `Capture.build` return `Capture::CaptureResult` — use `#yaml` or `#config`, not a bare Hash.
 
 ## When to use it
 

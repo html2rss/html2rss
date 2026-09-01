@@ -37,8 +37,6 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 
 ## CLI Usage
 
-**Breaking:** CLI commands unify on seven verbs. `feed` → `apply`, `auto` → `scrape`; `inspect` is new. See [CHANGELOG](CHANGELOG.md) Breaking and `CONTEXT.md` § Frozen contract.
-
 | Verb | Job |
 | --- | --- |
 | inspect | Cheap diagnostics (final URL, status, alternates, surface) |
@@ -78,9 +76,11 @@ html2rss validate "configs/**/*.yml"
 html2rss schema --write schema/html2rss-config.schema.json
 ```
 
+Historic CLI aliases: `feed` → `apply`, `auto` → `scrape`.
+
 ## Capture API
 
-**Breaking:** `Html2rss.capture` returns a `Capture::CaptureResult` (not a bare config Hash). Use `result.yaml` or `result.config`.
+`Html2rss.capture` returns a `Capture::CaptureResult`. Use `result.yaml` or `result.config`.
 
 ```ruby
 result = Html2rss.capture('https://example.com/articles')
@@ -91,8 +91,6 @@ File.write('my-feed.yml', result.yaml)
 The CLI alias `html2rss capture` prints the generated config as YAML to stdout. See [`lib/html2rss/capture/README.md`](lib/html2rss/capture/README.md) for detailed documentation.
 
 ## MCP Server
-
-**Breaking:** MCP tools rename to bare verbs (`scrape`, `inspect`, `capture`, …). See [CHANGELOG](CHANGELOG.md) Breaking. Update Cursor / Claude Desktop MCP configs accordingly.
 
 html2rss ships with an [MCP](https://modelcontextprotocol.io/) server that exposes gem capabilities as AI-consumable tools, resources, and prompts:
 

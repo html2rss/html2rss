@@ -6,7 +6,7 @@ module Html2rss
       ##
       # MCP tool registration and outcome mapping over public html2rss APIs.
       module Tools # rubocop:disable Metrics/ModuleLength
-        class << self
+        class << self # rubocop:disable Metrics/ClassLength
           ##
           # Registers all MCP tools on +server+ via +registrar+ ({Server.define_envelope_tool}).
           #
@@ -28,18 +28,18 @@ module Html2rss
 
           private
 
-          def register_url_tool(server, registrar, name:, description:, input_schema:, &outcome)
+          def register_url_tool(server, registrar, name:, description:, input_schema:)
             registrar.call(
               server,
               name:,
               description:,
               input_schema:
             ) do |server_context:, **kwargs| # rubocop:disable Lint/UnusedBlockArgument
-              outcome.call(**kwargs)
+              yield(**kwargs)
             end
           end
 
-          def register_batch_tool(server, registrar, name:, description:, input_schema:, batch_method:,
+          def register_batch_tool(server, registrar, name:, description:, input_schema:, batch_method:, # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
                                   limit_default: nil)
             registrar.call(
               server,
@@ -54,7 +54,7 @@ module Html2rss
             end
           end
 
-          def register_scrape(server, registrar)
+          def register_scrape(server, registrar) # rubocop:disable Metrics/MethodLength
             register_url_tool(
               server,
               registrar,
@@ -81,7 +81,7 @@ module Html2rss
             )
           end
 
-          def register_inspect(server, registrar)
+          def register_inspect(server, registrar) # rubocop:disable Metrics/MethodLength
             register_url_tool(
               server,
               registrar,
@@ -194,7 +194,7 @@ module Html2rss
             )
           end
 
-          def register_validate(server, registrar)
+          def register_validate(server, registrar) # rubocop:disable Metrics/MethodLength
             registrar.call(
               server,
               name: 'validate',

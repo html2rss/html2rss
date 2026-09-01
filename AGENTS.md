@@ -156,9 +156,9 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 
 **Ownership:** diagnostics → `PageRecon::Diagnostics`; verdict → `Recon`; capture YAML → `Capture::CaptureResult#yaml`; validate/test/apply/scrape facades → `lib/html2rss.rb`; MCP wire + playbook → `lib/html2rss/mcp/**` (`Outcome::Playbook` is instruction SSOT). See `CONTEXT.md` file ownership matrix.
 
-**Sync rule:** when changing CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep` names, or facade method names, update `CONTEXT.md`, this section, `README.md`, `lib/html2rss/mcp/README.md`, and `CHANGELOG.md` Breaking in the same PR wave. Grep gate (Wave 3): zero stale tool names in `lib/`, `spec/lib/`, `README`, `AGENTS`, `CONTEXT`, module READMEs.
+**Sync rule:** when changing CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep` names, or facade method names, update `CONTEXT.md`, this section, `README.md`, and `lib/html2rss/mcp/README.md` in the same PR wave. Grep gate (Wave 3): zero stale tool names in `lib/`, `spec/lib/`, `README`, `AGENTS`, `CONTEXT`, module READMEs.
 
-**Breaking policy:** no deprecation shims; no reintroduction of `_url`/`_config` suffixes or `batch_auto_feed`. Document all renames in `CHANGELOG.md` Breaking.
+**Alias policy:** CLI `feed` and `auto` are accepted historic aliases (`feed` → `apply`, `auto` → `scrape`). Do not reintroduce MCP `_url`/`_config` suffixes or `batch_auto_feed`.
 
 ## Operating Checklist
 
@@ -170,6 +170,6 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
 - Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,mcp}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
-- When changing curation verbs (CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep`, gem facades), sync `CONTEXT.md` § Frozen contract, this § Curation CLI / MCP, `README.md`, `lib/html2rss/mcp/README.md`, and `CHANGELOG.md` Breaking in the same PR wave.
+- When changing curation verbs (CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep`, gem facades), sync `CONTEXT.md` § Frozen contract, this § Curation CLI / MCP, `README.md`, and `lib/html2rss/mcp/README.md` in the same PR wave.
 - Wire those guides with `{include:file:lib/.../README.md}` on the owning class. Do not add them to `.yardopts --files`: YARD extra-file names are `File.basename` without extension, so extra `README.md` files all emit `file.README.html` and clobber the gem README.
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.

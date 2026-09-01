@@ -27,6 +27,8 @@ Parallel curation work shares this vocabulary. User/agent surfaces (CLI, MCP, `n
 
 Batch variants: `batch_inspect`, `batch_recon`, `batch_scrape` (CLI/MCP/facade — same bare prefix, no `_urls` suffix).
 
+CLI historic aliases: `feed` → `apply`, `auto` → `scrape` (Thor `map` only — canonical names unchanged).
+
 **Golden path:** optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
 
 ### Wire vs internal

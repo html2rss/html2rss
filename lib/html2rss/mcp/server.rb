@@ -12,7 +12,7 @@ module Html2rss
     # Strategy note: MCP +auto+ passes through to FeedPipeline AutoFallback
     # (faraday → botasaurus). Concrete strategies are used as-is.
     # Botasaurus requires +BOTASAURUS_SCRAPER_URL+.
-    module Server
+    module Server # rubocop:disable Metrics/ModuleLength
       # MCP server display name.
       SERVER_NAME = 'html2rss'
       # MCP server version (mirrors the gem version).
@@ -20,7 +20,7 @@ module Html2rss
       # Loopback bind for HTTP transport (local use only).
       HTTP_BIND_HOST = '127.0.0.1'
 
-      class << self
+      class << self # rubocop:disable Metrics/ClassLength
         ##
         # Starts the MCP server with the given transport.
         #

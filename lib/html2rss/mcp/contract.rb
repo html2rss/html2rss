@@ -129,7 +129,7 @@ module Html2rss
       # @param strategy_property [Hash] strategy JSON Schema property
       # @param extra_properties [Hash] additional tool-specific properties (e.g. +limit+ on scrape)
       # @return [Hash]
-      def self.batch_urls_input_schema(urls_description:, strategy_property:, extra_properties: {})
+      def self.batch_urls_input_schema(urls_description:, strategy_property:, extra_properties: {}) # rubocop:disable Metrics/MethodLength
         {
           type: 'object',
           properties: {

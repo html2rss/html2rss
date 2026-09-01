@@ -10,6 +10,9 @@ module Html2rss
   class CLI < Thor # rubocop:disable Metrics/ClassLength
     check_unknown_options!
 
+    map 'feed' => 'apply'
+    map 'auto' => 'scrape'
+
     # Supported CLI strategy names.
     STRATEGY_OPTION_ENUM = Html2rss::FeedPipeline::StrategyPlan.accepted_names.map(&:to_s).freeze
     # CLI strategy option description text.
@@ -17,64 +20,81 @@ module Html2rss
       'Optional request strategy (defaults to auto; ' \
       "auto tries #{Html2rss::FeedPipeline::AutoFallback::CHAIN.join(' -> ')})".freeze
 
+    # CLI `--file` description for inspect/recon candidate lists.
+    RECON_FILE_DESC = 'Candidate list file (one URL or slug\turl per line)'
+    # ANSI colors for recon verdict labels in text output.
+    VERDICT_COLORS = { build: "\e[32m", defer: "\e[33m" }.freeze
+
     ##
     # @return [Boolean] whether Thor should exit on command failure
     def self.exit_on_failure?
       true
     end
 
+    # Shared Thor options for inspect/recon URL targets.
+    def self.probe_target_options
+      method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
+      method_option :file, type: :string, desc: RECON_FILE_DESC
+    end
+
+    # Shared Thor request/transport options for feed-producing commands.
+    def self.feed_transport_options
+      method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
+      method_option :max_redirects, type: :numeric, desc: 'Max redirects to follow'
+      method_option :max_requests, type: :numeric, desc: 'Max request budget'
+      method_option :input, type: :string, desc: 'Local HTML file path'
+    end
+
+    # Shared Thor output options for apply/scrape.
+    def self.feed_emit_options
+      method_option :format, type: :string, enum: %w[rss jsonfeed], default: 'rss'
+      method_option :explain, type: :boolean, desc: 'Print status JSON to stderr', default: false
+    end
+
+    probe_target_options
     desc 'inspect [TARGET]', 'Fetch diagnostics for a URL (final URL, status, alternates, surface)'
-    method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
-    method_option :file, type: :string, desc: 'Candidate list file (one URL or slug\turl per line)'
     method_option :format, type: :string, enum: %w[text json], default: 'text'
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
     def inspect(target = nil)
-      urls, batch_mode = resolve_recon_targets(target, options[:file])
-      raise Thor::Error, 'A target URL, --file, or stdin (-) is required' if urls.empty?
-
-      if batch_mode
-        batch_result = Html2rss.batch_inspect(urls, strategy: current_strategy)
-        render_inspect_output(batch_result.results, batch_mode)
-      else
-        report = Html2rss.inspect(urls.first, strategy: current_strategy)
-        render_inspect_output([report.to_wire_h], batch_mode)
+      with_recon_targets(target) do |urls, batch_mode|
+        results = if batch_mode
+                    Html2rss.batch_inspect(urls, strategy: current_strategy).results
+                  else
+                    [Html2rss.inspect(urls.first, strategy: current_strategy).to_wire_h]
+                  end
+        render_inspect_output(results, batch_mode)
       end
     end
 
+    probe_target_options
     desc 'recon [TARGET]', 'Probe a URL or candidate list for redirect chains, native feeds, and surface readiness'
-    method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
-    method_option :file, type: :string, desc: 'Candidate list file (one URL or slug\turl per line)'
     method_option :cache_dir, type: :string, desc: 'Directory to cache raw HTML snapshots'
     method_option :verdict, type: :string, desc: 'Filter batch output by verdict (BUILD, DEFER, DROP)'
     method_option :url_only, type: :boolean, desc: 'Emit only URLs matching verdict (for pipe chaining)', default: false
     method_option :format, type: :string, enum: %w[text json tsv], default: 'text'
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
-    def recon(target = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      urls, batch_mode = resolve_recon_targets(target, options[:file])
-      raise Thor::Error, 'A target URL, --file, or stdin (-) is required' if urls.empty?
+    def recon(target = nil) # rubocop:disable Metrics/MethodLength
+      with_recon_targets(target) do |urls, batch_mode|
+        results = Html2rss::Recon.batch(
+          urls,
+          strategy: current_strategy,
+          cache_dir: options[:cache_dir]
+        )
+        filtered = filter_recon_results(results, options[:verdict])
+        render_recon_output(filtered, batch_mode)
 
-      results = Html2rss::Recon.batch(
-        urls,
-        strategy: current_strategy,
-        cache_dir: options[:cache_dir]
-      )
+        return if batch_mode || filtered.empty?
 
-      filtered = filter_recon_results(results, options[:verdict])
-      render_recon_output(filtered, batch_mode)
-
-      return if batch_mode || filtered.empty?
-
-      exit(3) if filtered.first.defer?
-      exit(1) if filtered.first.drop?
+        exit(3) if filtered.first.defer?
+        exit(1) if filtered.first.drop?
+      end
     end
 
+    feed_transport_options
     desc 'capture [TARGET]', 'Analyze a URL or HTML and output a curated YAML feed config'
-    method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
     method_option :items_selector, type: :string, desc: 'CSS selector hint for items'
-    method_option :max_redirects, type: :numeric, desc: 'Max redirects to follow'
-    method_option :max_requests, type: :numeric, desc: 'Max request budget'
     method_option :output_dir, aliases: '-o', type: :string,
                                desc: 'Base directory to write <domain>/index.yml'
     method_option :write, aliases: '-w', type: :string, desc: 'Specific file path to write YAML to'
@@ -83,7 +103,6 @@ module Html2rss
     method_option :summary, type: :string, desc: 'Directory summary override'
     method_option :enhance, type: :boolean, desc: 'Force enhance: true on items selector'
     method_option :force, type: :boolean, desc: 'Bypass native feed check', default: false
-    method_option :input, type: :string, desc: 'Local HTML file path'
     method_option :limit, type: :numeric, desc: 'Article limit (default: 25)'
     method_option :explain, type: :boolean, desc: 'Print capture diagnostics to stderr', default: false
     # @param target [String, nil] URL or local HTML file
@@ -112,7 +131,7 @@ module Html2rss
         exit(3)
       end
 
-      explain_capture!(result) if options[:explain]
+      explain_json!(capture_explain_payload(result)) if options[:explain]
       handle_capture_output(result, url)
     end
 
@@ -155,18 +174,14 @@ module Html2rss
       raise Thor::Error, (result.error_message || 'Test failed') unless result.success
     end
 
+    feed_transport_options
+    feed_emit_options
     desc 'apply [CONFIG_INPUT] [feed_name]', 'Print RSS built from YAML config to stdout'
     method_option :params, type: :hash, default: {}
-    method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
-    method_option :format, type: :string, enum: %w[rss jsonfeed], default: 'rss'
-    method_option :max_redirects, type: :numeric, desc: 'Max redirects to follow'
-    method_option :max_requests, type: :numeric, desc: 'Max request budget'
-    method_option :input, type: :string, desc: 'Local HTML file path'
-    method_option :explain, type: :boolean, desc: 'Print status JSON to stderr', default: false
     # @param source [String, nil] YAML file path or '-'
     # @param feed_name [String, nil] optional named feed
     # @return [void]
-    def apply(source = nil, feed_name = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    def apply(source = nil, feed_name = nil) # rubocop:disable Metrics/AbcSize
       config = if File.file?(source.to_s)
                  Html2rss.config_from_yaml_file(source.to_s, feed_name)
                else
@@ -177,31 +192,19 @@ module Html2rss
       apply_runtime_request_overrides!(config)
       apply_local_file_input!(config, options[:input]) if options[:input]
 
-      feed_res = execute_feed { Html2rss.apply(config) }
-      explain_status!(feed_res.status) if options[:explain]
-
-      format = options.fetch(:format, 'rss')
-      puts(format == 'jsonfeed' ? JSON.pretty_generate(feed_res.to_json_feed) : feed_res.to_rss)
+      run_feed_command { Html2rss.apply(config) }
     end
 
+    feed_transport_options
+    feed_emit_options
     desc 'scrape [URL]', 'Automatically source an RSS feed from a URL (one-shot auto-source)'
-    method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
-    method_option :format, type: :string, enum: %w[rss jsonfeed], default: 'rss'
     method_option :items_selector, type: :string, desc: 'CSS selector hint for items'
-    method_option :max_redirects, type: :numeric, desc: 'Max redirects to follow'
-    method_option :max_requests, type: :numeric, desc: 'Max request budget'
     method_option :limit, type: :numeric, desc: 'Max articles (auto-source)'
-    method_option :input, type: :string, desc: 'Local HTML file path'
-    method_option :explain, type: :boolean, desc: 'Print status JSON to stderr', default: false
     # @param url [String, nil]
     # @return [void]
     def scrape(url = nil)
-      format = options.fetch(:format, 'rss')
       strategy, local_file_path, url = prepare_auto_inputs(url, options[:input])
-      feed_result = execute_feed { scrape_feed_result_for(url, strategy, local_file_path) }
-
-      explain_status!(feed_result.status) if options[:explain]
-      puts(format == 'jsonfeed' ? JSON.pretty_generate(feed_result.to_json_feed) : feed_result.to_rss)
+      run_feed_command { scrape_feed_result_for(url, strategy, local_file_path) }
     end
 
     desc 'validate [CONFIG_FILES...]', 'Validate one or more YAML configs against the JSON Schema'
@@ -274,6 +277,13 @@ module Html2rss
 
     private
 
+    def with_recon_targets(target)
+      urls, batch_mode = resolve_recon_targets(target, options[:file])
+      raise Thor::Error, 'A target URL, --file, or stdin (-) is required' if urls.empty?
+
+      yield urls, batch_mode
+    end
+
     def resolve_recon_targets(target, file_opt)
       if file_opt
         [parse_recon_lines(File.readlines(file_opt, chomp: true)), true]
@@ -286,21 +296,13 @@ module Html2rss
       end
     end
 
-    # Accepts bare URLs or `slug\\turl` lines (URL column wins).
-    #
-    # @param lines [Array<String>]
-    # @return [Array<String>]
     def parse_recon_lines(lines)
-      lines.filter_map { |line| parse_recon_line(line) }
-    end
+      lines.filter_map do |line|
+        stripped = line.strip
+        next if stripped.empty? || stripped.start_with?('#')
 
-    # @param line [String]
-    # @return [String, nil]
-    def parse_recon_line(line)
-      stripped = line.strip
-      return nil if stripped.empty? || stripped.start_with?('#')
-
-      stripped.include?("\t") ? stripped.split("\t", 2).last.strip : stripped
+        stripped.include?("\t") ? stripped.split("\t", 2).last.strip : stripped
+      end
     end
 
     def filter_recon_results(results, verdict_filter)
@@ -314,27 +316,23 @@ module Html2rss
 
     def render_inspect_output(results, batch_mode)
       if options[:format] == 'json'
-        data = batch_mode ? results : results.first
-        puts JSON.pretty_generate(data)
+        render_json(results, batch_mode)
       else
         results.each { |data| render_inspect_card(data) }
       end
     end
 
-    def render_inspect_card(data) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-      puts data[:requested_url] || data['requested_url']
-      final = data[:final_url] || data['final_url']
-      requested = data[:requested_url] || data['requested_url']
-      if final && final != requested
-        status = data[:status] || data['status']
-        puts "        Final:    #{final} (HTTP #{status || 'ERR'})"
-      end
-      surface = data[:surface_category] || data['surface_category']
-      articles = data[:articles_count] || data['articles_count']
-      puts "        Surface:  #{surface} (#{articles} articles)"
-      alternates = data[:alternate_feeds] || data['alternate_feeds']
-      puts "        Feeds:    #{alternates.map { |f| f[:href] || f['href'] }.join(', ')}" if alternates&.any?
-      strategy = data[:strategy] || data['strategy']
+    def render_inspect_card(data) # rubocop:disable Metrics/MethodLength
+      requested = wire_val(data, :requested_url)
+      puts requested
+      render_probe_lines(
+        final: wire_val(data, :final_url), requested:,
+        status: wire_val(data, :status), surface: wire_val(data, :surface_category),
+        articles_count: wire_val(data, :articles_count)
+      )
+      alternates = wire_val(data, :alternate_feeds)
+      puts "        Feeds:    #{alternates.map { |f| wire_val(f, :href) }.join(', ')}" if alternates&.any?
+      strategy = wire_val(data, :strategy)
       puts "        Strategy: #{strategy}" if strategy
       puts ''
     end
@@ -343,8 +341,7 @@ module Html2rss
       if options[:url_only]
         results.each { |r| puts r.requested_url }
       elsif options[:format] == 'json'
-        data = results.map(&:to_h)
-        puts(batch_mode ? JSON.pretty_generate(data) : JSON.pretty_generate(data.first))
+        render_json(results.map(&:to_h), batch_mode)
       elsif options[:format] == 'tsv'
         puts %w[verdict status requested_url final_url native_feed notes].join("\t")
         results.each do |r|
@@ -364,21 +361,43 @@ module Html2rss
     end
 
     def render_recon_card(result) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      color = if result.build?
-                "\e[32m"
-              elsif result.defer?
-                "\e[33m"
-              else
-                "\e[31m"
-              end
+      color = VERDICT_COLORS.fetch(result.verdict.to_sym, "\e[31m")
       puts "#{color}[#{result.verdict.to_s.upcase}]\e[0m #{result.requested_url}"
-      if result.final_url != result.requested_url
-        puts "        Final:    #{result.final_url} (HTTP #{result.status || 'ERR'})"
-      end
-      puts "        Surface:  #{result.surface_category} (#{result.articles_count} articles)"
+      render_probe_lines(
+        final: result.final_url,
+        requested: result.requested_url,
+        status: result.status,
+        surface: result.surface_category,
+        articles_count: result.articles_count
+      )
       puts "        Feed:     #{result.native_feed}" if result.native_feed
       puts "        Notes:    #{result.notes.join(', ')}" if result.notes.any?
       puts ''
+    end
+
+    def render_probe_lines(final:, requested:, status:, surface:, articles_count:)
+      puts "        Final:    #{final} (HTTP #{status || 'ERR'})" if final && final != requested
+      puts "        Surface:  #{surface} (#{articles_count} articles)"
+    end
+
+    def render_json(data, batch_mode)
+      payload = batch_mode ? data : data.first
+      puts JSON.pretty_generate(payload)
+    end
+
+    def run_feed_command(&)
+      feed_res = execute_feed(&)
+      explain_json!(feed_res.status.to_h) if options[:explain]
+      emit_feed_result(feed_res, options.fetch(:format, 'rss'))
+    end
+
+    def emit_feed_result(feed_res, format)
+      payload = format == 'jsonfeed' ? JSON.pretty_generate(feed_res.to_json_feed) : feed_res.to_rss
+      puts payload
+    end
+
+    def wire_val(data, key)
+      data[key] || data[key.to_s]
     end
 
     def handle_capture_output(result, url) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
@@ -523,22 +542,20 @@ module Html2rss
       )
     end
 
-    def explain_status!(status)
-      $stderr.puts JSON.pretty_generate(status.to_h) # rubocop:disable Style/StderrPuts
+    def explain_json!(payload)
+      $stderr.puts JSON.pretty_generate(payload) # rubocop:disable Style/StderrPuts
     end
 
-    def explain_capture!(result) # rubocop:disable Metrics/MethodLength
-      $stderr.puts JSON.pretty_generate( # rubocop:disable Style/StderrPuts
-        {
-          articles_count: result.articles_count,
-          channel_title: result.channel_title,
-          has_selectors: result.has_selectors,
-          segment_strategy: result.segment_strategy,
-          selected_strategy: result.selected_strategy,
-          inferred_topics: result.inferred_topics,
-          admission_drops: result.admission_drops
-        }.compact
-      )
+    def capture_explain_payload(result)
+      {
+        articles_count: result.articles_count,
+        channel_title: result.channel_title,
+        has_selectors: result.has_selectors,
+        segment_strategy: result.segment_strategy,
+        selected_strategy: result.selected_strategy,
+        inferred_topics: result.inferred_topics,
+        admission_drops: result.admission_drops
+      }.compact
     end
 
     def check_file_exists!(path)
