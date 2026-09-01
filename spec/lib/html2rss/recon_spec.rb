@@ -82,18 +82,28 @@ RSpec.describe Html2rss::Recon do
         result = described_class.call(url)
         expect(result.build?).to be(true)
       end
+    end
 
-      context 'when Discovery raises an error' do
-        before do
-          allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url)
-            .and_raise(StandardError.new('timeout'))
-        end
+    context 'when Discovery raises an error' do
+      let(:html_body) do
+        <<~HTML
+          <html>
+            <head><title>News</title></head>
+            <body><article><h2><a href="/post-1">Post 1</a></h2></article></body>
+          </html>
+        HTML
+      end
+      let(:discovered_feed) { nil }
 
-        it 'records a discovery_error note and keeps BUILD verdict', :aggregate_failures do
-          result = described_class.call(url)
-          expect(result.build?).to be(true)
-          expect(result.notes).to include('discovery_error=StandardError: timeout')
-        end
+      before do
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url)
+          .and_raise(StandardError.new('timeout'))
+      end
+
+      it 'records a discovery_error note and keeps BUILD verdict', :aggregate_failures do
+        result = described_class.call(url)
+        expect(result.build?).to be(true)
+        expect(result.notes).to include('discovery_error=StandardError: timeout')
       end
     end
 

@@ -295,7 +295,7 @@ RSpec.describe Html2rss::MCP::Server do
         expect(envelope[:payload]).to include(item_count: 2, channel_title: 'Example')
       end
 
-      it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do
+      it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         config_with_strategy = valid_config.merge(strategy: :faraday)
         allow(Html2rss::Test).to receive(:call).and_return(test_result(success: true))
 

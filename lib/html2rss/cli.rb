@@ -81,9 +81,7 @@ module Html2rss
           cache_dir: options[:cache_dir]
         )
         filtered = filter_recon_results(results, options[:verdict])
-        if !batch_mode && options[:verdict] && filtered.empty? && results.any?
-          raise Thor::Error, "No results matched verdict #{options[:verdict].upcase}"
-        end
+        assert_recon_verdict_match!(filtered, results, batch_mode:)
 
         Render.recon_output(
           filtered,
@@ -283,6 +281,12 @@ module Html2rss
       results.select { |r| r.verdict == expected }
     rescue ArgumentError => error
       raise Thor::Error, error.message
+    end
+
+    def assert_recon_verdict_match!(filtered, results, batch_mode:)
+      return if batch_mode || !options[:verdict] || !filtered.empty? || results.empty?
+
+      raise Thor::Error, "No results matched verdict #{options[:verdict].upcase}"
     end
 
     def run_feed_command(&)

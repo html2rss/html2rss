@@ -379,7 +379,7 @@ RSpec.describe Html2rss::CLI do
         expect(Html2rss).not_to have_received(:feed)
       end
 
-      it 'forwards --min-items 0 to Html2rss.test' do
+      it 'forwards --min-items 0 to Html2rss.test' do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss).to receive(:test).and_return(test_result_success)
 
         cli.invoke(:test, ['config.yml'], { min_items: 0 })
