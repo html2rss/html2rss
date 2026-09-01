@@ -95,7 +95,7 @@ RSpec.describe Html2rss::MCP::Contract do
       )
     end
 
-    it 'closes the world only for validate_config' do
+    it 'closes the world only for validate' do
       expect(described_class::ANNOTATIONS_VALIDATE).to include(open_world_hint: false)
     end
   end

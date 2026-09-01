@@ -51,14 +51,14 @@ module Html2rss
         }.freeze
       }.freeze
 
-      # Input schema for +validate_config+ (config XOR yaml).
+      # Input schema for +validate+ (config XOR yaml).
       CONFIG_XOR_SCHEMA = {
         type: 'object',
         properties: CONFIG_XOR_PROPERTIES,
         oneOf: XOR_ONE_OF
       }.freeze
 
-      # Input schema for +apply_config+ (required URL plus config XOR yaml).
+      # Input schema for +apply+ (required URL plus config XOR yaml).
       APPLY_INPUT_SCHEMA = {
         type: 'object',
         properties: { url: URL_PROPERTY, **CONFIG_XOR_PROPERTIES }.freeze,
@@ -66,7 +66,7 @@ module Html2rss
         oneOf: XOR_ONE_OF
       }.freeze
 
-      # Input schema for +test_config+.
+      # Input schema for +test+.
       TEST_INPUT_SCHEMA = {
         type: 'object',
         properties: {
@@ -77,7 +77,7 @@ module Html2rss
         oneOf: XOR_ONE_OF
       }.freeze
 
-      # Input schema for +scrape_url+.
+      # Input schema for +scrape+.
       SCRAPE_INPUT_SCHEMA = {
         type: 'object',
         properties: {
@@ -89,25 +89,40 @@ module Html2rss
         required: %w[url]
       }.freeze
 
-      # Input schema for +inspect_url+.
+      # Input schema for +inspect+.
       INSPECT_INPUT_SCHEMA = {
         type: 'object',
         properties: { url: URL_PROPERTY, strategy: INSPECT_STRATEGY_PROPERTY }.freeze,
         required: %w[url]
       }.freeze
 
-      # Input schema for +capture_config+.
+      # Input schema for +recon+.
+      RECON_INPUT_SCHEMA = INSPECT_INPUT_SCHEMA
+
+      # Input schema for +capture+.
       CAPTURE_INPUT_SCHEMA = {
         type: 'object',
         properties: {
           url: URL_PROPERTY,
           strategy: STRATEGY_PROPERTY,
-          items_selector: { type: 'string', description: 'Optional CSS selector hint for items' }
+          items_selector: { type: 'string', description: 'Optional CSS selector hint for items' },
+          force: { type: 'boolean', description: 'Bypass native feed check', default: false },
+          topics: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Directory topics override'
+          }.freeze,
+          title: { type: 'string', description: 'Channel title override' },
+          summary: { type: 'string', description: 'Directory summary override' },
+          enhance: { type: 'boolean', description: 'Force enhance on or off' },
+          limit: { type: 'integer', description: 'Max articles to keep' },
+          max_redirects: { type: 'integer', description: 'Optional redirect limit override' },
+          max_requests: { type: 'integer', description: 'Optional request budget override' }
         }.freeze,
         required: %w[url]
       }.freeze
 
-      # Input schema for +batch_scrape_urls+.
+      # Input schema for +batch_scrape+.
       BATCH_SCRAPE_INPUT_SCHEMA = {
         type: 'object',
         properties: {
@@ -129,7 +144,7 @@ module Html2rss
         required: %w[urls]
       }.freeze
 
-      # Input schema for +batch_inspect_urls+.
+      # Input schema for +batch_inspect+.
       BATCH_INSPECT_INPUT_SCHEMA = {
         type: 'object',
         properties: {
@@ -150,6 +165,9 @@ module Html2rss
         required: %w[urls]
       }.freeze
 
+      # Input schema for +batch_recon+.
+      BATCH_RECON_INPUT_SCHEMA = BATCH_INSPECT_INPUT_SCHEMA
+
       # Tool annotations for open-world read-only tools.
       ANNOTATIONS_OPEN_WORLD = {
         read_only_hint: true,
@@ -158,19 +176,21 @@ module Html2rss
         open_world_hint: true
       }.freeze
 
-      # Tool annotations for +validate_config+ (closed world).
+      # Tool annotations for +validate+ (closed world).
       ANNOTATIONS_VALIDATE = ANNOTATIONS_OPEN_WORLD.merge(open_world_hint: false).freeze
 
       # Human titles for +tools/list+.
       TITLES = {
-        scrape_url: 'Scrape URL',
-        inspect_url: 'Inspect URL',
-        batch_scrape_urls: 'Batch scrape URLs',
-        batch_inspect_urls: 'Batch inspect URLs',
-        capture_config: 'Capture feed config',
-        validate_config: 'Validate feed config',
-        apply_config: 'Apply feed config',
-        test_config: 'Test feed config'
+        scrape: 'Scrape',
+        inspect: 'Inspect',
+        recon: 'Recon',
+        batch_scrape: 'Batch scrape',
+        batch_inspect: 'Batch inspect',
+        batch_recon: 'Batch recon',
+        capture: 'Capture',
+        validate: 'Validate',
+        apply: 'Apply',
+        test: 'Test'
       }.freeze
 
       class << self
