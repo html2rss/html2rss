@@ -267,7 +267,8 @@ module Html2rss
               channel_url: feed_config.dig(:channel, :url).to_s,
               raw_config: feed_config,
               feed_result:,
-              pipeline_outcome:
+              pipeline_outcome:,
+              probe_native_feed: false
             )
           end
 

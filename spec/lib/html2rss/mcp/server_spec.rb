@@ -545,11 +545,12 @@ RSpec.describe Html2rss::MCP::Server do
           to_outcome_and_result: [pipeline_outcome, enhance_feed_result]
         )
         allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
-        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url)
 
         result = call_tool.call('apply', { url: 'https://example.com', config: enhance_config })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
+        expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
         expect(envelope[:payload][:quality_report][:metrics][:enhance_gains]).to include(
           descriptions_added: be >= 1,
           no_op: false

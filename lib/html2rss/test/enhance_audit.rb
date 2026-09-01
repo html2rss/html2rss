@@ -49,6 +49,7 @@ module Html2rss
         end
 
         finalize_gains!(gains)
+        warnings << :enhance_no_op if gains.fetch(:no_op)
         AuditSlice.new(
           enhance_gains: EnhanceGains.new(
             items_probed: gains.fetch(:items_probed),
@@ -145,13 +146,9 @@ module Html2rss
       end
       private_class_method :finalize_gains!
 
-      def append_item_warnings!(warnings, item:, enhanced:, item_keys:) # rubocop:disable Metrics/MethodLength -- warn-only symbol dispatch
+      def append_item_warnings!(warnings, item:, enhanced:, item_keys:)
         curator_added = item_keys.slice(*CURATOR_KEYS)
-        if curator_added.empty?
-          warnings << :enhance_no_op
-          return
-        end
-
+        return if curator_added.empty?
         return unless curator_added.key?(:description)
 
         description = enhanced[:description].to_s.strip

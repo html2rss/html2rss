@@ -246,9 +246,18 @@ module Html2rss
     # @param raw_config [Hash]
     # @param feed_result [Html2rss::FeedResult]
     # @param pipeline_outcome [Html2rss::FeedPipeline::PipelineOutcome, nil]
+    # @param probe_native_feed [Boolean] when false, skip syndication discovery (apply ship gate)
     # @return [QualityReport]
-    def quality_report_for(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil)
-      build_quality_report(items, channel_url:, raw_config:, feed_result:, pipeline_outcome:)
+    def quality_report_for(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil, # rubocop:disable Metrics/ParameterLists
+                           probe_native_feed: true)
+      build_quality_report(
+        items,
+        channel_url:,
+        raw_config:,
+        feed_result:,
+        pipeline_outcome:,
+        probe_native_feed:
+      )
     end
 
     def extract_feed(raw_config, compare_enhance:)
@@ -288,9 +297,10 @@ module Html2rss
     end
     private_class_method :build_enhance_compare
 
-    def build_quality_report(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil)
+    def build_quality_report(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil, # rubocop:disable Metrics/ParameterLists
+                             probe_native_feed: true)
       audit = AutoSource::Cleanup.audit_feed_items(items)
-      native_feed = probe_native_feed(channel_url, raw_config)&.to_s
+      native_feed = probe_native_feed ? probe_native_feed_url(channel_url, raw_config)&.to_s : nil
       report = QualityReport.from_audit(audit, native_feed:)
       report = append_url_mismatch_warning(report, channel_url, feed_result)
       merge_enhance_audit(report, raw_config, pipeline_outcome)
@@ -416,7 +426,7 @@ module Html2rss
     end
     private_class_method :log_strict_quality_failure
 
-    def probe_native_feed(channel_url, raw_config)
+    def probe_native_feed_url(channel_url, raw_config)
       return nil if channel_url.to_s.empty?
 
       config = Config.from_hash(raw_config)
@@ -429,7 +439,7 @@ module Html2rss
     rescue StandardError
       nil
     end
-    private_class_method :probe_native_feed
+    private_class_method :probe_native_feed_url
 
     def validation_failure_result(errors, raw_config) # rubocop:disable Metrics/MethodLength
       Result.new(

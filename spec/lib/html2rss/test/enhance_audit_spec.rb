@@ -71,5 +71,23 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
         expect(slice.warnings).to include(:enhance_no_op)
       end
     end
+
+    context 'with mixed_listing.html' do
+      let(:selectors) do
+        {
+          items: { selector: 'article.card', enhance: true },
+          title: { selector: 'h2' },
+          url: { selector: 'a', extractor: 'href' }
+        }
+      end
+
+      it 'omits enhance_no_op when any item gains curator fields', :aggregate_failures do
+        slice = probe('mixed_listing.html', selectors)
+
+        expect(slice.enhance_gains.no_op).to be(false)
+        expect(slice.enhance_gains.descriptions_added).to be >= 1
+        expect(slice.warnings).not_to include(:enhance_no_op)
+      end
+    end
   end
 end
