@@ -148,8 +148,8 @@ Module guide: [`lib/html2rss/mcp/README.md`](lib/html2rss/mcp/README.md).
 | `batch_recon`   | Parallel recon across multiple URLs                                            |
 | `capture`       | YAML draft in `payload.yaml`; strive `enhance: true`                           |
 | `validate`      | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)          |
-| `test`          | Combined schema validation and live item extraction assertion                  |
-| `apply`         | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count`  |
+| `test`          | Schema + live extraction; `quality_report.enhance_gains` when enhance on; optional `compare_enhance` |
+| `apply`         | RSS in `payload.rss`; `isError` when zero items; `quality_report` may include `enhance_gains`          |
 
 ### Resources
 

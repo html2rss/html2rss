@@ -14,7 +14,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
     {
       channel: { url:, title: 'Example News', time_zone: 'UTC' },
       selectors: {
-        items: { selector: 'div.item' },
+        items: { selector: 'div.item', enhance: false },
         title: { selector: 'h2' },
         url: { selector: 'a', extractor: 'href' }
       }
@@ -99,11 +99,35 @@ RSpec.describe 'curation golden path (MCP policy)' do
       )
     end
 
+    let(:rss_items) do
+      [
+        instance_double(
+          RSS::Rss::Channel::Item,
+          title: 'Story One Title Here',
+          link: 'https://example.com/a',
+          pubDate: nil
+        ),
+        instance_double(
+          RSS::Rss::Channel::Item,
+          title: 'Story Two Title Here',
+          link: 'https://example.com/b',
+          pubDate: nil
+        )
+      ]
+    end
+
     let(:feed_result) do
+      status = instance_double(
+        Html2rss::Status,
+        selected_strategy: :faraday,
+        entry_url: url,
+        scrape_url: url
+      )
       instance_double(
         Html2rss::FeedResult,
         empty?: false,
-        to_rss: instance_double(RSS::Rss, to_s: '<rss version="2.0"/>', items: [Object.new, Object.new])
+        to_rss: instance_double(RSS::Rss, to_s: '<rss version="2.0"/>', items: rss_items),
+        status:
       )
     end
 
@@ -116,6 +140,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
           }
         )
       )
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       allow(Html2rss).to receive_messages(
         recon: Html2rss::Recon::Result.new(
           requested_url: url,

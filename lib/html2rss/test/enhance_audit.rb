@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# Enhancement audit probe for {Html2rss::Test}.
 module Html2rss
   module Test
     ##

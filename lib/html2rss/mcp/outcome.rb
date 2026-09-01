@@ -147,11 +147,14 @@ module Html2rss
         # @param rss [String]
         # @param item_count [Integer]
         # @param empty [Boolean] {FeedResult#empty?} (ship gate); defaults to zero items
+        # @param quality_report [Hash, nil] optional ship-quality audit summary
         # @return [Outcome]
-        def apply(rss:, item_count:, empty: item_count.zero?)
+        def apply(rss:, item_count:, empty: item_count.zero?, quality_report: nil)
           ok = !empty
           next_step = ok ? NextStep.done : NextStep.inspect
-          new(ok:, next_step:, guidance: next_step.guidance, payload: { rss:, item_count: })
+          payload = { rss:, item_count: }
+          payload[:quality_report] = quality_report if quality_report
+          new(ok:, next_step:, guidance: next_step.guidance, payload:)
         end
 
         ##

@@ -448,7 +448,8 @@
               "type": "boolean",
               "not": {
                 "type": "null"
-              }
+              },
+              "description": "List-card enrichment: run Html::ArticleExtractor on each matched item node to fill missing fields from the card HTML. Never fetches item detail pages. Future opt-in enhance_detail (per-item URL fetch) is not implemented."
             },
             "pagination": {
               "description": "Pagination configuration or maximum page count integer.",
@@ -509,7 +510,7 @@
           "required": [
             "selector"
           ],
-          "description": "Defines the items selector and optional enhancement settings."
+          "description": "Defines the items selector and list-card enhance settings (no detail-page fetch)."
         },
         "enclosure": {
           "$schema": "http://json-schema.org/draft-06/schema#",
