@@ -132,6 +132,34 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Feed-item admission (including hard-exclude of commerce/affiliate/utility destinations) lives in `AutoSource::Cleanup`; Scoring demotes/ranks only. Do not refill `limit` via the Html tier when earlier tiers already admitted clean items.
 - New junk title patterns require a fixture with expected **reason**; prefer fixing extractor title provenance when a reason keeps firing.
 
+## Curation CLI / MCP
+
+User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share **seven verbs** — no `_url` / `_config` suffixes on wire names. Full contract: `CONTEXT.md` § Frozen contract. Module guide: `lib/html2rss/mcp/README.md`.
+
+| Verb | Job |
+| --- | --- |
+| inspect | Cheap diagnostics (final URL, status, alternates, surface) |
+| recon | Verdict + native_feed preference (`:build` / `:defer` / `:drop`) |
+| capture | YAML draft config |
+| validate | Schema only |
+| test | Schema + live extraction (min_items) |
+| apply | Ship RSS from config |
+| scrape | Articles now (one-shot auto-source) |
+
+Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
+
+**Golden path:** optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
+
+**inspect ≠ recon:** inspect is diagnostics-only; recon adds curation verdict and native feed preference. MCP/CLI route inspect → recon when alternates warrant it (Wave 2A playbook policy).
+
+**Wire vs internal:** `Html2rss.feed` / `feed_result` and `auto_feed_result` stay pipeline internals — do not rename in `spec/examples/` or pipeline code. User-facing **`apply`** delegates to `feed_result`; **`scrape`** delegates to `auto_feed_result`.
+
+**Ownership:** diagnostics → `PageRecon::Diagnostics`; verdict → `Recon`; capture YAML → `Capture::CaptureResult#yaml`; validate/test/apply/scrape facades → `lib/html2rss.rb`; MCP wire + playbook → `lib/html2rss/mcp/**` (`Outcome::Playbook` is instruction SSOT). See `CONTEXT.md` file ownership matrix.
+
+**Sync rule:** when changing CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep` names, or facade method names, update `CONTEXT.md`, this section, `README.md`, `lib/html2rss/mcp/README.md`, and `CHANGELOG.md` Breaking in the same PR wave. Grep gate (Wave 3): zero stale tool names in `lib/`, `spec/lib/`, `README`, `AGENTS`, `CONTEXT`, module READMEs.
+
+**Breaking policy:** no deprecation shims; no reintroduction of `_url`/`_config` suffixes or `batch_auto_feed`. Document all renames in `CHANGELOG.md` Breaking.
+
 ## Operating Checklist
 
 - Use `make quick` during implementation for the fast local feedback loop. It should stay focused on changed-file linting and targeted specs.

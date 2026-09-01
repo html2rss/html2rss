@@ -9,22 +9,86 @@ Owned only by `Syndication::Discovery.best_feed_url` (head alternates + path pro
 `PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second
 preference algorithm. Do not reintroduce Capture `FeedLink`-only probes or Recon “first alternate” fallbacks.
 
+## Frozen contract
+
+Parallel curation work shares this vocabulary. User/agent surfaces (CLI, MCP, `next_step`, docs) use **seven verbs only** — no `_url` / `_config` suffixes on wire names.
+
+### User-facing verb table
+
+| Verb | Job | Domain | CLI | MCP | Facade |
+| --- | --- | --- | --- | --- | --- |
+| inspect | Diagnostics | `PageRecon::Diagnostics` | inspect | inspect | `Html2rss.inspect` |
+| recon | Verdict + native_feed | `Recon` | recon | recon | `Html2rss.recon`, `.batch_recon` |
+| capture | YAML draft | `Capture` | capture | capture | `Html2rss.capture` |
+| validate | Schema only | `Config` | validate | validate | `Html2rss.validate` |
+| test | Schema + live | `Test` | test | test | `Html2rss.test` |
+| apply | Ship RSS | `feed_result` | apply | apply | `Html2rss.apply` |
+| scrape | Articles now | `auto_feed_result` | scrape | scrape | `Html2rss.scrape`, `.batch_scrape` |
+
+Batch variants: `batch_inspect`, `batch_recon`, `batch_scrape` (CLI/MCP/facade — same bare prefix, no `_urls` suffix).
+
+**Golden path:** optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
+
+### Wire vs internal
+
+Pipeline internals keep existing names — do not rename `Html2rss.feed` / `feed_result` in pipeline specs or `spec/examples/`.
+
+| Internal API | Role | User-facing verb |
+| --- | --- | --- |
+| `Html2rss.feed` / `feed_result` | Build RSS from config Hash | **apply** |
+| `Html2rss.auto_feed_result` | Auto-source from URL | **scrape** |
+| `Html2rss.auto_source` / `auto_json_feed` | Lower-level auto helpers | used by scrape facade |
+
+CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_result`**. Facades delegate — they are not renames of pipeline entrypoints.
+
+### File ownership matrix
+
+| Path | Owner wave |
+| --- | --- |
+| `lib/html2rss/page_recon/diagnostics.rb`, `batch.rb` | Wave 1 |
+| `lib/html2rss/mcp/**` | Wave 2 Agent MCP |
+| `lib/html2rss/cli.rb`, `lib/html2rss.rb` (facades section) | Wave 2 Agent CLI |
+| `spec/lib/html2rss/cli_spec.rb`, `html2rss_spec.rb` | Wave 2 Agent CLI |
+| `spec/lib/html2rss/mcp/**` | Wave 2 Agent MCP |
+| `spec/lib/html2rss/page_recon/diagnostics_spec.rb` | Wave 1 create, Wave 2A may extend |
+| `AGENTS.md`, `README.md`, `CONTEXT.md`, `CHANGELOG.md`, `lib/html2rss/*/README.md`, `mcp.rb` YARD | Wave 2 Agent Docs |
+| `spec/integration/curation_golden_path_spec.rb` | Wave 3 Integrator |
+
+**Hot files (serialize or integrator-only):** `html2rss.rb` (Wave 2B), `CONTEXT.md` (Wave 0 draft → Docs finalize → Wave 3 sync).
+
+### Factory signatures (Wave 1/2 deliverables)
+
+```ruby
+# Wave 1
+PageRecon::Diagnostics.call(url:, strategy:) → Report
+PageRecon::Diagnostics.batch(urls:, ...) → [Report]
+Batch.batch_inspect / batch_recon / batch_scrape
+
+# Wave 2B
+Html2rss.inspect / .apply / .scrape / .batch_scrape / .batch_inspect / .batch_recon
+
+# Wave 2A
+Outcome::Playbook.instructions, Outcome factories typed, Contract::TITLES keys == verbs
+```
+
+Instruction prose SSOT: `Outcome::Playbook` (Wave 2A). Module guide: `lib/html2rss/mcp/README.md`.
+
 ## Curation CLI / MCP
 
-Composable curation seams for recon → capture → validate/test → apply:
+Composable curation seams for inspect → recon → capture → validate/test → apply:
 
 | Fact | Owner |
 | --- | --- |
-| Diagnostic URL fetch + assess | `PageRecon.probe` → `PageRecon::Probe` |
+| Diagnostic URL fetch + assess | `PageRecon::Diagnostics` (Wave 1+; today `PageRecon.probe` → `PageRecon::Probe`; `MCP::Inspect` relocates) |
 | Curation verdict | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`) |
 | Native feed URL (defer/gate) | `Syndication::Discovery.best_feed_url` only |
 | Config Hash/path/YAML → validated raw | `Config.resolve_and_validate` |
 | Validate + live + min_items + RSS | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`) |
-| MCP next_step / guidance | `MCP::Outcome` (includes `:test_config`) |
+| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (Wave 2A: bare verb `next_step` names) |
 | Capture YAML product | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`) |
-| Batch concurrency | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Html2rss.batch_auto_feed`, MCP) |
+| Batch concurrency | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP — Wave 1+; today `Html2rss.batch_auto_feed`) |
 
-`apply_config` zero-item ship gate stays distinct from `Test` min_items.
+`apply` zero-item ship gate stays distinct from `Test` min_items. **inspect ≠ recon:** inspect is cheap diagnostics; recon adds verdict and native_feed preference.
 
 ## Scrape target
 

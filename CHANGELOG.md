@@ -1,5 +1,58 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+Curation CLI, MCP, gem facades, and agent playbook unify on seven user-facing verbs. See `CONTEXT.md` § Frozen contract and `AGENTS.md` § Curation CLI / MCP.
+
+**MCP tool renames** (no deprecation shims):
+
+| Before | After |
+| --- | --- |
+| `inspect_url` | `inspect` |
+| *(recon folded into inspect)* | `recon` *(new standalone tool)* |
+| `capture_config` | `capture` |
+| `validate_config` | `validate` |
+| `test_config` | `test` |
+| `apply_config` | `apply` |
+| `scrape_url` | `scrape` |
+| `batch_inspect_urls` | `batch_inspect` |
+| `batch_scrape_urls` | `batch_scrape` |
+| — | `batch_recon` *(new)* |
+
+**MCP `next_step` values** rename to match bare verbs (`inspect`, `recon`, `capture`, `validate`, `test`, `apply`, `scrape`, `done`, `read_runtime`).
+
+**CLI command renames:**
+
+| Before | After |
+| --- | --- |
+| `feed` | `apply` |
+| `auto` | `scrape` |
+| — | `inspect` *(new)* |
+| `recon --quiet` | removed |
+
+**Gem facade / batch API:**
+
+| Before | After |
+| --- | --- |
+| *(no public inspect facade)* | `Html2rss.inspect` |
+| `Html2rss.feed` / `feed_result` | **unchanged internally**; user-facing **`Html2rss.apply`** delegates to `feed_result` |
+| `Html2rss.auto_feed_result` | **unchanged internally**; user-facing **`Html2rss.scrape`** delegates |
+| `Html2rss.batch_auto_feed` | **deleted** → `Html2rss.batch_scrape` |
+| `Batch.inspect_urls` | `Batch.batch_inspect` |
+| `Batch.scrape_urls` | `Batch.batch_scrape` |
+| — | `Batch.batch_recon`, `Html2rss.batch_recon`, `Html2rss.batch_inspect` |
+
+**Relocations:**
+
+| Before | After |
+| --- | --- |
+| `MCP::Inspect` | `PageRecon::Diagnostics` |
+| `spec/lib/html2rss/mcp/inspect_spec.rb` | `spec/lib/html2rss/page_recon/diagnostics_spec.rb` |
+
+Downstream: update Cursor `user-html2rss` MCP namespace tool names; `html2rss-configs` contributors use CLI `apply` not `feed`.
+
 ## [0.19.1](https://github.com/html2rss/html2rss/compare/v0.19.0...v0.19.1) (2026-05-01)
 
 
