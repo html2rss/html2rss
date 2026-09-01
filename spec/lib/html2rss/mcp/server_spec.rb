@@ -295,6 +295,19 @@ RSpec.describe Html2rss::MCP::Server do
         expect(envelope[:payload]).to include(item_count: 2, channel_title: 'Example')
       end
 
+      it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do
+        config_with_strategy = valid_config.merge(strategy: :faraday)
+        allow(Html2rss::Test).to receive(:call).and_return(test_result(success: true))
+
+        call_tool.call('test', { config: config_with_strategy, min_items: 1 })
+
+        expect(Html2rss::Test).to have_received(:call).with(
+          hash_including(strategy: 'faraday'),
+          nil,
+          hash_including(min_items: 1, strategy: nil)
+        )
+      end
+
       it 'routes schema failure next_step to validate', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
         allow(Html2rss).to receive(:test).and_return(
           test_result(success: false, failure_kind: Html2rss::Test::FailureKind.coerce(:schema))

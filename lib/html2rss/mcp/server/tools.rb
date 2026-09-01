@@ -20,9 +20,8 @@ module Html2rss
           {
             name: 'inspect',
             kind: :url,
-            description: 'Diagnostic page analysis (scrapers, SST, segments) plus recon: ' \
-                         'final_url, status, scheme_downgrade, rel=alternate RSS/Atom feeds. ' \
-                         'Use when scrape/capture is weak or you need those recon facts.',
+            description: 'Diagnostic page analysis (scrapers, SST, segments, final URL, status, ' \
+                         'rel=alternate feeds). Use recon for BUILD/DEFER/DROP verdict and native_feed preference.',
             input_schema: Contract::INSPECT_INPUT_SCHEMA,
             call: lambda { |url:, strategy: 'auto', **|
               Outcome.inspect(
@@ -96,9 +95,11 @@ module Html2rss
                          'Call after capture or validate; on success next_step is apply. ' \
                          'Returns test summary in payload with sample items, timing, and failure_kind.',
             input_schema: Contract::TEST_INPUT_SCHEMA,
-            call: lambda { |config: nil, yaml: nil, min_items: 1, strategy: 'auto', **|
+            call: lambda { |config: nil, yaml: nil, min_items: 1, **kwargs|
               feed_config = ConfigArgument.parse(config:, yaml:).config
-              test_result = Html2rss.test(feed_config, min_items:, strategy: Runtime.coerce_strategy(strategy))
+              test_args = { min_items: }
+              test_args[:strategy] = Runtime.coerce_strategy(kwargs[:strategy]) if kwargs.key?(:strategy)
+              test_result = Html2rss.test(feed_config, **test_args)
               Outcome.test(test_result)
             }
           },
