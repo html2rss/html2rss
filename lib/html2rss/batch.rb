@@ -59,7 +59,7 @@ module Html2rss
       # @param limit [Integer] max articles to extract per URL
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
-      def scrape_urls(urls:, strategy: :auto, limit: 10, concurrency: DEFAULT_CONCURRENCY)
+      def batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: DEFAULT_CONCURRENCY)
         run(urls, concurrency:) { |url| scrape_single_url(url:, strategy:, limit:) }
       end
 
@@ -70,13 +70,34 @@ module Html2rss
       # @param strategy [Symbol, String] request strategy (+:auto+, +:faraday+, +:botasaurus+)
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
-      def inspect_urls(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
-        results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency)
+      def batch_inspect(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
+        reports = PageRecon::Diagnostics.batch(urls:, strategy:, concurrency:)
+        results = reports.map(&:to_wire_h)
+        successful = reports.count { |report| diagnostic_success?(report) }
+
+        BatchResult.new(total: results.size, successful:, results:)
+      end
+
+      ##
+      # Runs recon across multiple URLs in parallel with per-URL error isolation.
+      #
+      # @param urls [Enumerable<String>] list of URLs to recon
+      # @param strategy [Symbol, String] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+      # @param concurrency [Integer] number of worker threads (default 5, max 10)
+      # @option options [String, nil] :cache_dir optional HTML cache directory
+      # @return [BatchResult]
+      def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **options)
+        results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency, **options)
         successful = results.count { |r| r.status ? r.status < 400 : false }
         BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
       end
 
       private
+
+      def diagnostic_success?(report)
+        status = report.to_wire_h[:status]
+        status ? status < 400 : false
+      end
 
       def scrape_single_url(url:, strategy:, limit:)
         plan = (strategy || :auto).to_sym

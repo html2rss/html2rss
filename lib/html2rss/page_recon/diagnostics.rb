@@ -1,28 +1,60 @@
 # frozen_string_literal: true
 
 module Html2rss
-  module MCP
+  class PageRecon
     ##
-    # Diagnostic inspect path (not Capture ownership). Fetches via {PageRecon.probe},
-    # then adds MCP-only scraper/XHR diagnostics.
-    module Inspect
+    # Diagnostic inspect path (not Capture or Recon ownership). Fetches via {.probe},
+    # then adds scraper/XHR diagnostics for curation inspect surfaces.
+    module Diagnostics
+      ##
+      # Typed diagnostic report for inspect wire payloads and Outcome policy.
+      Report = Data.define(:data) do
+        ##
+        # @return [Boolean]
+        def alternate_feeds?
+          Array(data[:alternate_feeds]).any?
+        end
+
+        ##
+        # @return [Integer]
+        def articles_count
+          data[:articles_count].to_i
+        end
+
+        ##
+        # @return [Hash{Symbol => Object}]
+        def to_wire_h
+          data
+        end
+      end
+
       module_function
 
       ##
       # @param url [String]
       # @param strategy [String, Symbol]
-      # @return [Hash]
+      # @return [Report]
       def call(url:, strategy: :auto)
         probe = PageRecon.probe(url, strategy:)
         recon = probe.result
         response = probe.response
 
-        result = recon.to_h.merge(
-          strategy: probe.strategy,
-          scraper_eligibility: scraper_info(safe_parsed_body(response))
-        )
-        result[:xhr_capture] = xhr_capture_info(response) if probe.strategy == :botasaurus
-        result
+        Report.new(data: build_data(probe, recon, response))
+      end
+
+      ##
+      # Runs diagnostic inspect across URLs with per-URL error isolation.
+      #
+      # @param urls [Enumerable<String>]
+      # @param strategy [Symbol, String]
+      # @param concurrency [Integer]
+      # @return [Array<Report>]
+      def batch(urls:, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY)
+        Batch.map(Array(urls), concurrency:) do |url|
+          call(url:, strategy:)
+        rescue StandardError => error
+          error_report(url, error)
+        end
       end
 
       ##
@@ -36,7 +68,6 @@ module Html2rss
           candidate_articles: captured.any? { |entry| xhr_candidate_articles?(entry) }
         }
       end
-      module_function :xhr_capture_info
 
       ##
       # @param entry [Hash] captured response hash
@@ -52,7 +83,6 @@ module Html2rss
       rescue URI::InvalidURIError
         nil
       end
-      module_function :redacted_endpoint
 
       ##
       # @param entry [Hash] captured response hash
@@ -66,7 +96,6 @@ module Html2rss
       rescue JSON::ParserError
         false
       end
-      module_function :xhr_candidate_articles?
 
       ##
       # @param parsed [Object] parsed response body
@@ -80,7 +109,17 @@ module Html2rss
           { none_found: error.category.to_s }
         end
       end
-      module_function :scraper_info
+
+      def build_data(probe, recon, response)
+        data = recon.to_h.merge(
+          strategy: probe.strategy,
+          scraper_eligibility: scraper_info(safe_parsed_body(response))
+        )
+        data[:xhr_capture] = xhr_capture_info(response) if probe.strategy == :botasaurus
+        data
+      end
+      module_function :build_data
+      private_class_method :build_data
 
       def safe_parsed_body(response)
         return unless response.html_response?
@@ -91,6 +130,26 @@ module Html2rss
       end
       module_function :safe_parsed_body
       private_class_method :safe_parsed_body
+
+      def error_report(url, error)
+        Report.new(
+          data: {
+            requested_url: url.to_s,
+            final_url: url.to_s,
+            status: nil,
+            scheme_downgrade: false,
+            alternate_feeds: [],
+            surface_category: :unsupported_surface,
+            articles_count: 0,
+            html_response: false,
+            content_type: nil,
+            strategy: nil,
+            scraper_eligibility: { error: "#{error.class} - #{error.message}" }
+          }
+        )
+      end
+      module_function :error_report
+      private_class_method :error_report
     end
   end
 end

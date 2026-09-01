@@ -238,7 +238,7 @@ module Html2rss
                          'Use when scrape/capture is weak or you need those recon facts.',
             input_schema: Contract::INSPECT_INPUT_SCHEMA
           ) do |server_context:, url:, strategy: 'auto'| # rubocop:disable Lint/UnusedBlockArgument
-            Outcome.inspect(payload: Inspect.call(url:, strategy:))
+            Outcome.inspect(payload: PageRecon::Diagnostics.call(url:, strategy:).to_wire_h)
           end
         end
 
@@ -255,7 +255,7 @@ module Html2rss
         end
 
         def batch_scrape_outcome(urls:, strategy:, limit:, concurrency:)
-          Outcome.batch_scrape(Batch.scrape_urls(urls:, strategy:, limit:, concurrency:))
+          Outcome.batch_scrape(Batch.batch_scrape(urls:, strategy:, limit:, concurrency:))
         end
 
         def register_batch_inspect_urls(server)
@@ -271,7 +271,7 @@ module Html2rss
         end
 
         def batch_inspect_outcome(urls:, strategy:, concurrency:)
-          Outcome.batch_inspect(Batch.inspect_urls(urls:, strategy:, concurrency:))
+          Outcome.batch_inspect(Batch.batch_inspect(urls:, strategy:, concurrency:))
         end
 
         def register_capture_config(server) # rubocop:disable Metrics/MethodLength

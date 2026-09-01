@@ -163,7 +163,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       before do
-        allow(Html2rss::Batch).to receive(:scrape_urls).and_return(batch_result)
+        allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
       end
 
       # rubocop:disable RSpec/ExampleLength
@@ -171,7 +171,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('batch_scrape_urls', { urls: ['https://example.com/a', 'https://example.com/b'] })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::Batch).to have_received(:scrape_urls).with(
+        expect(Html2rss::Batch).to have_received(:batch_scrape).with(
           urls: ['https://example.com/a', 'https://example.com/b'],
           strategy: 'auto',
           limit: 10,
@@ -197,7 +197,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       before do
-        allow(Html2rss::Batch).to receive(:inspect_urls).and_return(batch_result)
+        allow(Html2rss::Batch).to receive(:batch_inspect).and_return(batch_result)
       end
 
       # rubocop:disable RSpec/ExampleLength
@@ -205,7 +205,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('batch_inspect_urls', { urls: ['https://example.com/a', 'https://example.com/b'] })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::Batch).to have_received(:inspect_urls).with(
+        expect(Html2rss::Batch).to have_received(:batch_inspect).with(
           urls: ['https://example.com/a', 'https://example.com/b'],
           strategy: 'auto',
           concurrency: 5
@@ -437,8 +437,10 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'inspect_url' do
       before do
-        allow(Html2rss::MCP::Inspect).to receive(:call).and_return(
-          { requested_url: 'https://example.com', strategy: :faraday, html_response: true }
+        allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_return(
+          Html2rss::PageRecon::Diagnostics::Report.new(
+            data: { requested_url: 'https://example.com', strategy: :faraday, html_response: true }
+          )
         )
       end
 
@@ -447,7 +449,7 @@ RSpec.describe Html2rss::MCP::Server do
         result = call_tool.call('inspect_url', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::MCP::Inspect).to have_received(:call).with(
+        expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(
           url: 'https://example.com',
           strategy: 'auto'
         )
@@ -519,7 +521,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks inspect_url failures as isError' do
-        allow(Html2rss::MCP::Inspect).to receive(:call).and_raise(StandardError, 'inspect boom')
+        allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_raise(StandardError, 'inspect boom')
         result = call_tool.call('inspect_url', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)

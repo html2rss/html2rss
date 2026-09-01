@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 # rubocop:disable RSpec/MultipleMemoizedHelpers -- response/probe fixtures share across contexts
-RSpec.describe Html2rss::MCP::Inspect do
+RSpec.describe Html2rss::PageRecon::Diagnostics do
   let(:html) { File.read('spec/fixtures/local_feed_test.html') }
   let(:response_url) { Html2rss::Url.from_absolute('https://example.com/blog') }
   let(:response_status) { 200 }
@@ -31,8 +31,10 @@ RSpec.describe Html2rss::MCP::Inspect do
   end
 
   it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do
-    result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+    report = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+    result = report.to_wire_h
 
+    expect(report).to be_a(described_class::Report)
     expect(result[:strategy]).to eq(:faraday)
     expect(result[:html_response]).to be(true)
     expect(result[:sst]).to include(:node_count, :segment_stats)
@@ -49,7 +51,7 @@ RSpec.describe Html2rss::MCP::Inspect do
     end
 
     it 'still reports html_response and runs SST', :aggregate_failures do
-      result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+      result = described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h
 
       expect(result[:content_type]).to eq('application/octet-stream')
       expect(result[:html_response]).to be(true)
@@ -62,7 +64,7 @@ RSpec.describe Html2rss::MCP::Inspect do
     let(:response_status) { 301 }
 
     it 'surfaces final URL, status, and scheme_downgrade from the paid fetch', :aggregate_failures do
-      result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+      result = described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h
 
       expect(result[:requested_url]).to eq('https://example.com/blog')
       expect(result[:final_url]).to eq('http://example.com/blog')
@@ -87,8 +89,10 @@ RSpec.describe Html2rss::MCP::Inspect do
     end
 
     it 'maps FeedLink alternate feeds and does not guess /feed paths', :aggregate_failures do
-      result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+      report = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+      result = report.to_wire_h
 
+      expect(report.alternate_feeds?).to be(true)
       expect(result[:alternate_feeds]).to eq(
         [{ href: 'https://example.com/feed.xml', mime_type: 'application/rss+xml' }]
       )
@@ -135,7 +139,7 @@ RSpec.describe Html2rss::MCP::Inspect do
     )
     allow(Html2rss::PageRecon).to receive(:probe).and_return(bot_probe)
 
-    result = described_class.call(url: 'https://example.com/blog', strategy: :botasaurus)
+    result = described_class.call(url: 'https://example.com/blog', strategy: :botasaurus).to_wire_h
 
     expect(result[:xhr_capture]).to include(
       count: 1,
@@ -146,13 +150,37 @@ RSpec.describe Html2rss::MCP::Inspect do
   end
 
   it 'omits xhr_capture when strategy is not botasaurus' do
-    result = described_class.call(url: 'https://example.com/blog', strategy: :auto)
+    result = described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h
 
     expect(result).not_to have_key(:xhr_capture)
   end
 
   it 'returns error for non-HTML parsed bodies' do
     expect(described_class.scraper_info({})).to eq(error: 'Response is not HTML')
+  end
+
+  describe '.batch' do
+    it 'returns Reports in input order with per-URL error isolation', :aggregate_failures do
+      allow(described_class).to receive(:call).with(url: 'https://example.com/ok', strategy: :auto)
+                                              .and_return(described_class::Report.new(data: { status: 200 }))
+      allow(described_class).to receive(:call).with(url: 'https://example.com/fail', strategy: :auto)
+                                              .and_raise(StandardError, 'Connection failed')
+
+      reports = described_class.batch(urls: ['https://example.com/ok', 'https://example.com/fail'], concurrency: 2)
+
+      expect(reports.size).to eq(2)
+      expect(reports.first.to_wire_h[:status]).to eq(200)
+      expect(reports.last.to_wire_h[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
+    end
+  end
+
+  describe Html2rss::PageRecon::Diagnostics::Report do
+    it 'exposes alternate_feeds? and articles_count predicates', :aggregate_failures do
+      report = described_class.new(data: { alternate_feeds: [{ href: 'https://example.com/feed.xml' }], articles_count: 3 })
+
+      expect(report.alternate_feeds?).to be(true)
+      expect(report.articles_count).to eq(3)
+    end
   end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

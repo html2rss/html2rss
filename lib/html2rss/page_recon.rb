@@ -67,7 +67,7 @@ module Html2rss
 
     ##
     # Diagnostic fetch + assess bundle. One home for session build + initial GET + {call}.
-    # Consumed by curation {Html2rss::Recon} and MCP {Html2rss::MCP::Inspect}.
+    # Consumed by curation {Html2rss::Recon} and {Html2rss::PageRecon::Diagnostics}.
     Probe = Data.define(:session, :response, :result, :strategy)
 
     ##

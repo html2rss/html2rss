@@ -49,7 +49,7 @@ RSpec.describe Html2rss::Batch do
     # rubocop:enable RSpec/ExampleLength
   end
 
-  describe '.scrape_urls' do
+  describe '.batch_scrape' do
     let(:urls) { ['https://example.com/a', 'https://example.com/b'] }
 
     before do
@@ -67,7 +67,7 @@ RSpec.describe Html2rss::Batch do
 
     # rubocop:disable RSpec/ExampleLength
     it 'scrapes URLs in parallel and records structured items and errors', :aggregate_failures do
-      result = described_class.scrape_urls(urls:, strategy: :auto, limit: 10, concurrency: 2)
+      result = described_class.batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: 2)
 
       expect(result.total).to eq(2)
       expect(result.successful).to eq(1)
@@ -85,7 +85,66 @@ RSpec.describe Html2rss::Batch do
     # rubocop:enable RSpec/ExampleLength
   end
 
-  describe '.inspect_urls' do
+  describe '.batch_inspect' do
+    let(:urls) { ['https://example.com/one', 'https://example.com/two'] }
+
+    before do
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:batch).with(urls:, strategy: :auto, concurrency: 2) do
+        [
+          Html2rss::PageRecon::Diagnostics::Report.new(
+            data: {
+              requested_url: 'https://example.com/one',
+              final_url: 'https://example.com/one',
+              status: 200,
+              alternate_feeds: [],
+              articles_count: 5,
+              scheme_downgrade: false,
+              surface_category: :article_list,
+              html_response: true,
+              content_type: 'text/html',
+              strategy: :auto,
+              scraper_eligibility: []
+            }
+          ),
+          Html2rss::PageRecon::Diagnostics::Report.new(
+            data: {
+              requested_url: 'https://example.com/two',
+              final_url: 'https://example.com/two',
+              status: nil,
+              alternate_feeds: [],
+              articles_count: 0,
+              scheme_downgrade: false,
+              surface_category: :unsupported_surface,
+              html_response: false,
+              content_type: nil,
+              strategy: :auto,
+              scraper_eligibility: { error: 'StandardError - Connection failed' }
+            }
+          )
+        ]
+      end
+    end
+
+    # rubocop:disable RSpec/ExampleLength
+    it 'inspects URLs in parallel and isolates per-URL errors', :aggregate_failures do
+      result = described_class.batch_inspect(urls:, strategy: :auto, concurrency: 2)
+
+      expect(result.total).to eq(2)
+      expect(result.successful).to eq(1)
+
+      first = result.results.first
+      expect(first[:requested_url]).to eq('https://example.com/one')
+      expect(first[:status]).to eq(200)
+
+      second = result.results.last
+      expect(second[:requested_url]).to eq('https://example.com/two')
+      expect(second[:status]).to be_nil
+      expect(second[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
+    end
+    # rubocop:enable RSpec/ExampleLength
+  end
+
+  describe '.batch_recon' do
     let(:urls) { ['https://example.com/one', 'https://example.com/two'] }
 
     before do
@@ -120,8 +179,8 @@ RSpec.describe Html2rss::Batch do
     end
 
     # rubocop:disable RSpec/ExampleLength
-    it 'inspects URLs in parallel and isolates per-URL errors', :aggregate_failures do
-      result = described_class.inspect_urls(urls:, strategy: :auto, concurrency: 2)
+    it 'recons URLs in parallel and isolates per-URL errors', :aggregate_failures do
+      result = described_class.batch_recon(urls:, strategy: :auto, concurrency: 2)
 
       expect(result.total).to eq(2)
       expect(result.successful).to eq(1)
