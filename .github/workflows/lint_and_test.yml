@@ -36,8 +36,6 @@ jobs:
           bundler-cache: true
       - name: Run linting
         run: make lint
-      - name: Run YARD lint
-        run: make lint-yard
       - name: Generate config schema
         run: bundle exec rake config:schema
       - name: Ensure config schema is committed
@@ -56,6 +54,8 @@ jobs:
           ruby-version: "4.0"
           bundler-cache: true
       - run: gem install redcarpet
+      - name: Run YARD lint
+        run: make lint-yard
       - name: Generate documentation
         run: make docs
       - name: Upload documentation
