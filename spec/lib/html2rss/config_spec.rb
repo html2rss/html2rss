@@ -687,20 +687,6 @@ RSpec.describe Html2rss::Config do
     end
   end
 
-  describe '.validate_yaml' do
-    it 'validates a YAML config file' do
-      expect(described_class.validate_yaml('spec/fixtures/single.test.yml')).to be_success
-    end
-
-    it 'validates a parameterized YAML config file using parameter defaults' do
-      expect(described_class.validate_yaml('spec/fixtures/parameterized.test.yml')).to be_success
-    end
-
-    it 'fails a parameterized YAML config file when placeholders remain unresolved' do
-      expect(described_class.validate_yaml('spec/fixtures/parameterized_missing_default.test.yml')).to be_failure
-    end
-  end
-
   describe '#initialize' do
     subject(:instance) { described_class.new(config) }
 

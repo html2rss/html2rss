@@ -16,22 +16,12 @@ module Html2rss
     # Sentinel to differentiate omitted params from explicit `nil`.
     UNSET = Object.new.freeze
 
+    ValidationResult = Data.define(:success, :errors_hash)
+
     ##
     # Duck-compatible with {Dry::Validation::Result} for resolve-time outcomes
     # (+#success?+, +#errors#to_h+). Used for parse failures so callers never see a Struct snowflake.
     class ValidationResult
-      ##
-      # Frozen error bag exposing +#to_h+ like Dry::Validation::MessageSet.
-      class ErrorsView
-        # @param errors_hash [Hash]
-        def initialize(errors_hash)
-          @errors_hash = errors_hash
-        end
-
-        # @return [Hash]
-        def to_h = @errors_hash
-      end
-
       ##
       # @param message [String]
       # @return [Html2rss::Config::ValidationResult]
@@ -39,20 +29,17 @@ module Html2rss
         new(success: false, errors_hash: { parse: [message] })
       end
 
-      # @param success [Boolean]
-      # @param errors_hash [Hash]
-      def initialize(success:, errors_hash:)
-        @success = success
-        @errors_hash = errors_hash.freeze
-      end
-
       ##
       # @return [Boolean]
-      def success? = @success
+      def success? = success
 
       ##
-      # @return [Html2rss::Config::ValidationResult::ErrorsView]
-      def errors = ErrorsView.new(@errors_hash)
+      # @return [self]
+      def errors = self
+
+      ##
+      # @return [Hash]
+      def to_h = errors_hash
     end
 
     class << self
@@ -112,18 +99,6 @@ module Html2rss
       # @return [String] absolute path to the packaged JSON Schema file
       def schema_path
         Schema.path
-      end
-
-      ##
-      # Loads and validates a YAML configuration file.
-      #
-      # @param file [String] the YAML file to load
-      # @param feed_name [String, nil] optional feed name for multi-feed files
-      # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
-      # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Dry::Validation::Result] validation result after defaults are applied
-      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
-        validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
       end
 
       ##
@@ -338,11 +313,6 @@ module Html2rss
     #
     # @return [String]
     def url = config.dig(:channel, :url)
-
-    ##
-    # @deprecated Use {ScrapeTarget} for entry vs effective URLs after resolution.
-    # @return [String]
-    def scrape_url = url
 
     # @return [String, nil] configured channel time zone
     def time_zone = config.dig(:channel, :time_zone)
