@@ -71,7 +71,9 @@ module Html2rss
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
       def inspect_urls(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
-        run(urls, concurrency:) { |url| inspect_single_url(url:, strategy:) }
+        results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency)
+        successful = results.count { |r| r.status ? r.status < 400 : false }
+        BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
       end
 
       private
@@ -83,25 +85,6 @@ module Html2rss
         { url: url.to_s, ok: true, items_count: items.size, items:, channel_title: feed[:title] }
       rescue StandardError => error
         { url: url.to_s, ok: false, error: error.message }
-      end
-
-      def inspect_single_url(url:, strategy:)
-        build_inspect_payload(url, Recon.call(url, strategy:))
-      rescue StandardError => error
-        { url: url.to_s, ok: false, error: error.message }
-      end
-
-      def build_inspect_payload(url, recon)
-        {
-          url: url.to_s,
-          ok: recon.status ? recon.status < 400 : false,
-          status_code: recon.status,
-          final_url: recon.final_url.to_s,
-          verdict: recon.verdict.to_sym,
-          native_feed: recon.native_feed&.to_s,
-          surface_category: recon.surface_category&.to_s,
-          articles_count: recon.articles_count
-        }
       end
 
       def worker_pool_size(item_count, requested_concurrency)

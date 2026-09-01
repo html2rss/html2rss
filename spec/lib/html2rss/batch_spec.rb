@@ -89,18 +89,33 @@ RSpec.describe Html2rss::Batch do
     let(:urls) { ['https://example.com/one', 'https://example.com/two'] }
 
     before do
-      allow(Html2rss::Recon).to receive(:call) do |url, strategy:| # rubocop:disable Lint/UnusedBlockArgument
-        raise StandardError, 'Connection failed' if url.include?('two')
-
-        instance_double(
-          Html2rss::Recon::Result,
-          status: 200,
-          final_url: Html2rss::Url.from_absolute(url),
-          verdict: Html2rss::Recon::Verdict.coerce(:build),
-          native_feed: nil,
-          surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
-          articles_count: 5
-        )
+      allow(Html2rss::Recon).to receive(:batch).with(urls, strategy: :auto, max_threads: 2) do
+        [
+          Html2rss::Recon::Result.new(
+            requested_url: Html2rss::Url.from_absolute('https://example.com/one'),
+            final_url: Html2rss::Url.from_absolute('https://example.com/one'),
+            status: 200,
+            verdict: Html2rss::Recon::Verdict.coerce(:build),
+            native_feed: nil,
+            surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
+            articles_count: 5,
+            scheme_downgrade: false,
+            notes: [],
+            html_bytesize: 1024
+          ),
+          Html2rss::Recon::Result.new(
+            requested_url: Html2rss::Url.from_absolute('https://example.com/two'),
+            final_url: Html2rss::Url.from_absolute('https://example.com/two'),
+            status: nil,
+            verdict: Html2rss::Recon::Verdict.coerce(:drop),
+            native_feed: nil,
+            surface_category: Html2rss::SurfaceCategory.coerce(:unsupported_surface),
+            articles_count: 0,
+            scheme_downgrade: false,
+            notes: ['error: StandardError - Connection failed'],
+            html_bytesize: nil
+          )
+        ]
       end
     end
 
@@ -112,15 +127,15 @@ RSpec.describe Html2rss::Batch do
       expect(result.successful).to eq(1)
 
       first = result.results.first
-      expect(first[:url]).to eq('https://example.com/one')
-      expect(first[:ok]).to be(true)
-      expect(first[:status_code]).to eq(200)
+      expect(first[:requested_url]).to eq('https://example.com/one')
+      expect(first[:status]).to eq(200)
       expect(first[:verdict]).to eq(:build)
 
       second = result.results.last
-      expect(second[:url]).to eq('https://example.com/two')
-      expect(second[:ok]).to be(false)
-      expect(second[:error]).to eq('Connection failed')
+      expect(second[:requested_url]).to eq('https://example.com/two')
+      expect(second[:status]).to be_nil
+      expect(second[:verdict]).to eq(:drop)
+      expect(second[:notes]).to eq(['error: StandardError - Connection failed'])
     end
     # rubocop:enable RSpec/ExampleLength
   end
