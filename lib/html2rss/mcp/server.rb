@@ -144,10 +144,6 @@ module Html2rss
           Outcome::Playbook.instructions
         end
 
-        def botasaurus_configured?
-          !ENV['BOTASAURUS_SCRAPER_URL'].to_s.strip.empty?
-        end
-
         def tool_error_response(error)
           Log.error("mcp error #{error.class}: #{error.message}")
           Contract.response(Outcome.from_error(error))
@@ -181,7 +177,6 @@ module Html2rss
         end
 
         def register_resources(server) # rubocop:disable Metrics/MethodLength
-          configured = method(:botasaurus_configured?)
           server.define_resource(
             uri: 'html2rss://schema',
             name: 'Configuration JSON Schema',
@@ -221,7 +216,7 @@ module Html2rss
             mime_type: 'application/json'
           ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
             [{ uri: 'html2rss://runtime', mimeType: 'application/json',
-               text: JSON.pretty_generate(botasaurus_configured: configured.call) }]
+               text: JSON.pretty_generate(botasaurus_configured: Runtime.botasaurus_configured?) }]
           end
         end
 

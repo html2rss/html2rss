@@ -126,26 +126,17 @@ module Html2rss
         ##
         # @param batch_result [Html2rss::Batch::BatchResult]
         # @return [Outcome]
-        def batch_scrape(batch_result)
-          next_step = batch_result.successful.positive? ? NextStep.done : NextStep.scrape
-          new(ok: true, next_step:, guidance: next_step.guidance, payload: batch_result.to_h)
-        end
+        def batch_scrape(batch_result) = batch(batch_result, NextStep.scrape)
 
         ##
         # @param batch_result [Html2rss::Batch::BatchResult]
         # @return [Outcome]
-        def batch_inspect(batch_result)
-          next_step = batch_result.successful.positive? ? NextStep.done : NextStep.inspect
-          new(ok: true, next_step:, guidance: next_step.guidance, payload: batch_result.to_h)
-        end
+        def batch_inspect(batch_result) = batch(batch_result, NextStep.inspect)
 
         ##
         # @param batch_result [Html2rss::Batch::BatchResult]
         # @return [Outcome]
-        def batch_recon(batch_result)
-          next_step = batch_result.successful.positive? ? NextStep.done : NextStep.recon
-          new(ok: true, next_step:, guidance: next_step.guidance, payload: batch_result.to_h)
-        end
+        def batch_recon(batch_result) = batch(batch_result, NextStep.recon)
 
         ##
         # @param rss [String]
@@ -168,6 +159,11 @@ module Html2rss
         end
 
         private
+
+        def batch(batch_result, failure_step)
+          step = batch_result.successful.positive? ? NextStep.done : failure_step
+          new(ok: true, next_step: step, guidance: step.guidance, payload: batch_result.to_h)
+        end
 
         def scrape_next_step(empty, botasaurus_configured:)
           return NextStep.done unless empty

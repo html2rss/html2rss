@@ -69,15 +69,13 @@ module Html2rss
           end
 
           def scrape_outcome(url:, strategy:, limit:, items_selector:)
-            plan = (strategy || :auto).to_sym
-            feed_result = Html2rss.auto_feed_result(url, strategy: plan, limit:, items_selector:)
-            feed = feed_result.to_json_feed
+            wire = Batch.scrape_wire(url:, strategy:, limit:, items_selector:)
             Outcome.scrape(
-              items: feed[:items] || [],
-              requested_strategy: plan,
-              channel_title: feed[:title],
-              admission_drops: feed_result.status.admission_drops,
-              botasaurus_configured: botasaurus_configured?
+              items: wire[:items],
+              requested_strategy: wire[:strategy],
+              channel_title: wire[:channel_title],
+              admission_drops: wire[:admission_drops],
+              botasaurus_configured: Runtime.botasaurus_configured?
             )
           end
 
@@ -252,10 +250,6 @@ module Html2rss
             feed_result = Html2rss.feed_result(feed_config)
             rss = feed_result.to_rss
             Outcome.apply(rss: rss.to_s, item_count: rss.items.size, empty: feed_result.empty?)
-          end
-
-          def botasaurus_configured?
-            !ENV['BOTASAURUS_SCRAPER_URL'].to_s.strip.empty?
           end
         end
       end

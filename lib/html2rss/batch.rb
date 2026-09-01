@@ -52,6 +52,26 @@ module Html2rss
       end
 
       ##
+      # Single-URL scrape wire extraction: auto_feed_result → JSON Feed items.
+      #
+      # @param url [String]
+      # @param strategy [Symbol, String]
+      # @param limit [Integer]
+      # @param items_selector [String, nil]
+      # @return [Hash{Symbol => Object}] +:strategy+, +:items+, +:channel_title+, +:admission_drops+
+      def scrape_wire(url:, strategy:, limit:, items_selector: nil)
+        plan = (strategy || :auto).to_sym
+        feed_result = Html2rss.auto_feed_result(url, strategy: plan, limit:, items_selector:)
+        feed = feed_result.to_json_feed
+        {
+          strategy: plan,
+          items: feed[:items] || [],
+          channel_title: feed[:title],
+          admission_drops: feed_result.status.admission_drops
+        }
+      end
+
+      ##
       # Scrapes multiple URLs in parallel with per-URL error isolation.
       #
       # @param urls [Enumerable<String>] list of URLs to scrape
@@ -100,10 +120,11 @@ module Html2rss
       end
 
       def scrape_single_url(url:, strategy:, limit:)
-        plan = (strategy || :auto).to_sym
-        feed = Html2rss.auto_feed_result(url, strategy: plan, limit:).to_json_feed
-        items = feed[:items] || []
-        { url: url.to_s, ok: true, items_count: items.size, items:, channel_title: feed[:title] }
+        wire = scrape_wire(url:, strategy:, limit:)
+        {
+          url: url.to_s, ok: true, items_count: wire[:items].size,
+          items: wire[:items], channel_title: wire[:channel_title]
+        }
       rescue StandardError => error
         { url: url.to_s, ok: false, error: error.message }
       end
