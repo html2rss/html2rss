@@ -71,7 +71,7 @@ RSpec.describe Html2rss::MCP::Server do
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
-      expect(protocol_server.instructions).to include('html2rss://runtime')
+      expect(protocol_server.instructions).to include('html2rss://runtime', 'catalog_fingerprint')
       expect(protocol_server.instructions).to include('Strive enhance: true')
       expect(protocol_server.instructions).to include('payload.item_count')
       expect(protocol_server.instructions).to include('test')
@@ -595,12 +595,19 @@ RSpec.describe Html2rss::MCP::Server do
       expect(names).not_to include('local_file')
     end
 
-    it 'reports botasaurus_configured without leaking the URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'reports runtime catalog identity without leaking secrets', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010/secret-token') do
         result = read_resource.call('html2rss://runtime')
         text = result.dig(:result, :contents, 0, :text)
+        wire = JSON.parse(text)
 
-        expect(JSON.parse(text)).to eq('botasaurus_configured' => true)
+        expect(wire).to eq(
+          'version' => Html2rss::VERSION,
+          'mcp_contract_version' => Html2rss::MCP::Contract::MCP_CONTRACT_VERSION,
+          'catalog_fingerprint' => Html2rss::MCP::Contract.catalog_fingerprint,
+          'tools' => Html2rss::MCP::Contract.catalog_tools,
+          'botasaurus_configured' => true
+        )
         expect(text).not_to include('127.0.0.1')
         expect(text).not_to include('secret-token')
       end

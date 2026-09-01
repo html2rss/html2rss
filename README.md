@@ -132,7 +132,7 @@ Cursor / Claude Desktop `mcp.json` must put Botasaurus on the **MCP process** (n
 }
 ```
 
-Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is never returned). Every tool result is a JSON envelope (`ok`, `next_step`, `guidance`, `payload`) in both the text body and `structuredContent`. Follow `next_step` / `guidance`; do not parse scrape text as a raw item array.
+Read `html2rss://runtime` for `version`, `mcp_contract_version`, `catalog_fingerprint`, `tools`, and `botasaurus_configured` (the scraper URL is never returned). Refresh `tools/list` when `catalog_fingerprint` differs from your cache. Every tool result is a JSON envelope (`ok`, `next_step`, `guidance`, `payload`) in both the text body and `structuredContent`. Follow `next_step` / `guidance`; do not parse scrape text as a raw item array.
 
 Module guide: [`lib/html2rss/mcp/README.md`](lib/html2rss/mcp/README.md).
 
@@ -158,7 +158,7 @@ Module guide: [`lib/html2rss/mcp/README.md`](lib/html2rss/mcp/README.md).
 | `html2rss://schema`     | Full JSON Schema for feed configurations                        |
 | `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
 | `html2rss://strategies` | Published MCP strategies (`auto`, `faraday`, `botasaurus`)      |
-| `html2rss://runtime`    | `botasaurus_configured` boolean (never the scraper URL)         |
+| `html2rss://runtime`    | `version`, `mcp_contract_version`, `catalog_fingerprint`, `tools`, `botasaurus_configured` (never the scraper URL) |
 
 ### Prompts
 

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 module Html2rss
   module MCP
     ##
@@ -8,6 +10,10 @@ module Html2rss
     module Contract # rubocop:disable Metrics/ModuleLength -- published listing constants stay co-located
       # Published MCP request strategies (excludes +local_file+).
       STRATEGIES = %w[auto faraday botasaurus].freeze
+
+      # Bump when tool names, required inputs, or envelope semantics change (independent of gem +VERSION+).
+      MCP_CONTRACT_VERSION = 2
+      public_constant :MCP_CONTRACT_VERSION
 
       # Raised when apply/validate config uses an unpublished MCP request adapter.
       class UnpublishedRequestError < ArgumentError; end
@@ -195,7 +201,34 @@ module Html2rss
         test: 'Test'
       }.freeze
 
+      # @api private
+      CATALOG_ENTRY_LINE = lambda do |entry|
+        schema = entry.fetch(:input_schema)
+        required = Array(schema[:required]).sort.join(',')
+        one_of = Array(schema[:oneOf]).map { |branch| Array(branch[:required]).sort.join('+') }.sort.join('|')
+        [entry.fetch(:name), required, one_of].reject(&:empty?).join(':')
+      end.freeze
+
       class << self
+        ##
+        # Canonical MCP tool names in alphabetical order (same set as +tools/list+).
+        #
+        # @return [Array<String>]
+        def catalog_tools
+          Server::Tools::TOOLS.map { |entry| entry.fetch(:name) }.sort
+        end
+
+        ##
+        # Stable fingerprint of published tools, required keys, and +oneOf+ branches.
+        # Clients compare against a cached +tools/list+ to detect stale catalogs.
+        # Bump {MCP_CONTRACT_VERSION} for envelope or breaking wire semantics only.
+        #
+        # @return [String] 16-char hex digest prefix
+        def catalog_fingerprint
+          lines = Server::Tools::TOOLS.sort_by { |entry| entry.fetch(:name) }.map(&CATALOG_ENTRY_LINE)
+          Digest::SHA256.hexdigest(lines.join("\n")).slice(0, 16)
+        end
+
         ##
         # Envelope JSON Schema. Built lazily so Zeitwerk can load Contract before Outcome.
         #

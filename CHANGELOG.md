@@ -23,6 +23,8 @@ Curation CLI, MCP, gem facades, and agent playbook unify on seven user-facing ve
 
 **MCP `next_step` values** rename to match bare verbs (`inspect`, `recon`, `capture`, `validate`, `test`, `apply`, `scrape`, `done`, `read_runtime`).
 
+**MCP `html2rss://runtime` resource** now publishes `version`, `mcp_contract_version`, `catalog_fingerprint`, `tools`, and `botasaurus_configured` (was `botasaurus_configured` only). Bump `mcp_contract_version` when tool names or required inputs change; clients should refresh `tools/list` when `catalog_fingerprint` differs from cache.
+
 **CLI command renames:**
 
 | Before          | After             |

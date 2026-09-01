@@ -19,8 +19,9 @@ module Html2rss
           scrape: 'Call scrape for articles now. strategy auto already runs Faraday then Botasaurus ' \
                   'and promotes native RSS/Atom when present.',
           capture: 'Call capture for a reusable YAML draft, then follow next_step.',
-          read_runtime: 'Read html2rss://runtime. Set BOTASAURUS_SCRAPER_URL on the MCP process ' \
-                        'if botasaurus_configured is false.',
+          read_runtime: 'Read html2rss://runtime. Compare mcp_contract_version and catalog_fingerprint ' \
+                        'to your cached tools/list before retrying unknown tools. ' \
+                        'Set BOTASAURUS_SCRAPER_URL on the MCP process if botasaurus_configured is false.',
           test: 'Call test next (schema + live extraction). Confirm payload.item_count, ' \
                 'failure_kind, and payload.quality_report warnings before shipping.'
         }.freeze
@@ -44,9 +45,11 @@ module Html2rss
               3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect (or batch_inspect). When alternates warrant it, inspect next_step is recon.
               4. Have a config already? → validate (must succeed) → test → apply
               5. Schema / extractors / strategies / runtime → resources html2rss://schema|extractors|strategies|runtime
+                 - runtime publishes version, mcp_contract_version, catalog_fingerprint, tools, botasaurus_configured.
+                 - Refresh tools/list when catalog_fingerprint differs from your cache.
 
               Prefer capture for durable config; scrape / batch_scrape for one-shot extraction.
-              Follow envelope next_step and guidance. Botasaurus needs BOTASAURUS_SCRAPER_URL in this process env (boolean at html2rss://runtime; the URL is never returned).
+              Follow envelope next_step and guidance. Botasaurus needs BOTASAURUS_SCRAPER_URL in this process env (read html2rss://runtime; the URL is never returned).
             TEXT
           end
 
