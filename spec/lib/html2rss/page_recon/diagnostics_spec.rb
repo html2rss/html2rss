@@ -27,7 +27,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
   end
 
   before do
-    allow(Html2rss::PageRecon).to receive(:probe).and_return(probe)
+    allow(Html2rss::PageRecon).to receive(:probe) { probe }
   end
 
   it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -132,7 +132,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
 
   context 'when a blocked interstitial is detected' do
     let(:response_body) { '<html><body>Checking your browser before accessing</body></html>' }
-    let(:page_recon_result) do
+    let(:blocked_recon) do
       Html2rss::PageRecon::Result.new(
         requested_url: 'https://example.com/blog',
         final_url: 'https://example.com/blog',
@@ -147,6 +147,14 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
         content_type: 'text/html',
         blocked_surface: 'cloudflare',
         sst: nil
+      )
+    end
+    let(:probe) do
+      Html2rss::PageRecon::Probe.new(
+        session: instance_double(Html2rss::RequestSession),
+        response:,
+        result: blocked_recon,
+        strategy: probe_strategy
       )
     end
 

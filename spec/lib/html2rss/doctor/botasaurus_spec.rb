@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'climate_control'
 
 RSpec.describe Html2rss::Doctor::Botasaurus do
   describe '.call' do

@@ -39,10 +39,11 @@ module Html2rss
       # @param sample_url [String, nil] optional URL for a sample scrape smoke test
       # @return [Result]
       def call(sample_url: nil) # rubocop:disable Metrics/AbcSize
-        checks = [env_check_record]
+        env = env_check
+        checks = [env_check_record(env)]
         return missing_env_failure(checks) unless checks.first.ok
 
-        checks << health_check_record(checks.first.detail[:base_url])
+        checks << health_check_record(env[:base_url])
         return failure(checks, 'Botasaurus health check failed.') unless checks.last.ok
 
         checks << sample_scrape_record(sample_url) if sample_url
@@ -90,8 +91,7 @@ module Html2rss
         { ok: false, error: "#{error.class}: #{error.message}" }
       end
 
-      def env_check_record
-        env = env_check
+      def env_check_record(env = env_check)
         Check.new(name: :env, ok: env[:configured], detail: { var: env[:var], base_url_set: !env[:base_url].nil? })
       end
       module_function :env_check_record
