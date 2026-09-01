@@ -78,6 +78,12 @@ html2rss schema --write schema/html2rss-config.schema.json
 
 Historic CLI aliases: `feed` → `apply`, `auto` → `scrape`.
 
+### Inspect output
+
+Inspect follows redirects and reports the landing URL in `final_url`. CLI text shows a `Final:` line **only when** the landing URL differs from what you typed — that line means the redirect succeeded, not that inspect stopped early.
+
+Cross-host redirects (e.g. `https://apex.example/` → `https://www.example/`) set `Host` per hop via Faraday/Net::HTTP; html2rss does not pin the entry hostname. When `final_url` differs and status is 4xx, retry on `final_url` or pass the site's canonical hostname. Details: [`lib/html2rss/page_recon/README.md`](lib/html2rss/page_recon/README.md).
+
 ## Capture API
 
 `Html2rss.capture` returns a `Capture::CaptureResult`. Use `result.yaml` or `result.config`.

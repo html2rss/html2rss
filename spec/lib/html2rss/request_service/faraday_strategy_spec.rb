@@ -295,6 +295,60 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
     end
   end
 
+  describe 'cross-host redirect Host header' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:headers) do
+      Html2rss::Config::RequestHeaders.normalize({}, channel_language: 'en-US')
+    end
+    let(:ctx) do
+      Html2rss::RequestService::Context.new(
+        url: 'https://apex.example/',
+        headers:,
+        policy:,
+        budget:
+      )
+    end
+    let(:hop_hosts) { [] }
+    let(:host_capture_middleware) do
+      store = hop_hosts
+      Class.new(Faraday::Middleware) do
+        define_method(:initialize) { |app| @app = app }
+        define_method(:call) do |env|
+          store << env.request_headers['Host']
+          @app.call(env)
+        end
+      end
+    end
+    let(:test_connection) do
+      stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+        stub.get('https://apex.example/') { [301, { 'Location' => 'https://www.example/' }, ''] }
+        stub.get('https://www.example/') { [200, { 'Content-Type' => 'text/html' }, '<html>ok</html>'] }
+      end
+
+      Faraday.new(url: 'https://apex.example/', headers:) do |faraday|
+        faraday.use host_capture_middleware
+        faraday.use Faraday::FollowRedirects::Middleware, limit: policy.max_redirects
+        faraday.adapter :test, stubs
+      end
+    end
+
+    before do
+      allow(Faraday).to receive(:new).and_call_original
+      allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100.0, 100.0, 100.0)
+    end
+
+    it 'does not pin the entry Host on redirect hops', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      strategy = described_class.new(ctx)
+      strategy.instance_variable_set(:@client, test_connection)
+
+      result = VCR.turned_off { strategy.execute }
+
+      expect(headers).not_to include('Host')
+      expect(hop_hosts).to eq([nil, nil])
+      expect(result.status).to eq(200)
+      expect(result.url.to_s).to eq('https://www.example/')
+    end
+  end
+
   describe described_class::PeerIpValidator do # rubocop:disable RSpec/MultipleMemoizedHelpers
     let(:mock_socket) { instance_double(IPSocket, peeraddr: ['AF_INET', 443, '93.184.216.34', '93.184.216.34']) }
     let(:mock_net_http) do

@@ -4,12 +4,11 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::Config::RequestHeaders do
   subject(:normalized) do
-    described_class.normalize(headers, channel_language:, url:)
+    described_class.normalize(headers, channel_language:)
   end
 
   let(:headers) { {} }
   let(:channel_language) { 'de-DE' }
-  let(:url) { 'https://example.com/feed' }
 
   describe '.browser_defaults' do
     it 'returns a mutable copy of the default headers' do
@@ -28,8 +27,8 @@ RSpec.describe Html2rss::Config::RequestHeaders do
         expect(normalized).to include('Accept-Language' => 'de-DE,de;q=0.9')
       end
 
-      it 'infers the Host header from the URL' do
-        expect(normalized).to include('Host' => 'example.com')
+      it 'does not add a Host header' do
+        expect(normalized).not_to include('Host')
       end
     end
 
@@ -53,19 +52,19 @@ RSpec.describe Html2rss::Config::RequestHeaders do
       end
     end
 
+    context 'when Host is explicitly provided' do
+      let(:headers) { { 'Host' => 'custom.example' } }
+
+      it 'preserves the caller override' do
+        expect(normalized).to include('Host' => 'custom.example')
+      end
+    end
+
     context 'when the channel language is blank' do
       let(:channel_language) { '  ' }
 
       it 'falls back to en-US' do
         expect(normalized).to include('Accept-Language' => 'en-US,en;q=0.9')
-      end
-    end
-
-    context 'when the URL is blank' do
-      let(:url) { nil }
-
-      it 'does not add a Host header' do
-        expect(normalized).not_to include('Host')
       end
     end
   end

@@ -74,16 +74,16 @@ Instruction prose SSOT: `Outcome::Playbook`. Module guide: `lib/html2rss/mcp/REA
 
 Composable curation seams for inspect → recon → capture → validate/test → apply:
 
-| Fact                                      | Owner                                                                                                          |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Diagnostic URL fetch + assess             | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics) |
-| Curation verdict                          | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`)                                            |
-| Native feed URL (defer/gate)              | `Syndication::Discovery.best_feed_url` only                                                                    |
-| Config Hash/path/YAML → validated raw     | `Config.resolve_and_validate`                                                                                  |
-| Validate + live + min_items + RSS         | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`)                                               |
-| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names)                                             |
-| Capture YAML product                      | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`)                         |
-| Batch concurrency                         | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP)             |
+| Fact                                      | Owner                                                                                                                                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Diagnostic URL fetch + assess             | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics). Module guide: `lib/html2rss/page_recon/README.md` (redirect follow; no default `Host` — Faraday sets per hop) |
+| Curation verdict                          | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`)                                                                                                                                                           |
+| Native feed URL (defer/gate)              | `Syndication::Discovery.best_feed_url` only                                                                                                                                                                                   |
+| Config Hash/path/YAML → validated raw     | `Config.resolve_and_validate`                                                                                                                                                                                                 |
+| Validate + live + min_items + RSS         | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`)                                                                                                                                                              |
+| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names)                                                                                                                                                            |
+| Capture YAML product                      | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`)                                                                                                                                        |
+| Batch concurrency                         | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP)                                                                                                                            |
 
 `apply` zero-item ship gate stays distinct from `Test` min_items. **inspect ≠ recon:** inspect is cheap diagnostics; recon adds verdict and native_feed preference.
 

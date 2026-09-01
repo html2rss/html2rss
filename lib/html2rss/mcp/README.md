@@ -73,3 +73,7 @@ Do not duplicate playbook prose in `server.rb`.
 ## Strategy note
 
 `scrape` / `capture` with `strategy: "auto"` run the full AutoFallback chain. `inspect` maps `auto` to Faraday for cheap diagnostics; pin `botasaurus` when you need browser rendering for inspect.
+
+## Inspect redirects
+
+`payload.final_url` is the post-redirect landing URL. When it differs from the URL you passed and `status` is 4xx, inspect still followed redirects — retry on `final_url` or pass the site's canonical hostname (often `www`). Cross-host redirects set `Host` per hop; html2rss does not pin the entry hostname. See [`page_recon/README.md`](../page_recon/README.md).
