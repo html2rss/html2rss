@@ -273,4 +273,60 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
   end
+
+  describe '.audit_feed_items' do
+    def rss_item(title:, url:)
+      instance_double(RSS::Rss::Channel::Item, title:, link: url)
+    end
+
+    it 'returns no warnings for a clean multi-item feed', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      items = [
+        rss_item(title: 'First Article Title Here', url: 'https://example.com/a'),
+        rss_item(title: 'Second Article Title Here', url: 'https://example.com/b')
+      ]
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.warnings).to be_empty
+      expect(audit.metrics).to include(item_count: 2, unique_url_count: 2, junk_title_count: 0)
+    end
+
+    it 'warns on duplicate URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      items = [
+        rss_item(title: 'Story One Title Here', url: 'https://example.com/same'),
+        rss_item(title: 'Story Two Title Here', url: 'https://example.com/same')
+      ]
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.warnings).to include(:duplicate_urls)
+      expect(audit.metrics[:junk_title_count]).to eq(0)
+    end
+
+    it 'warns on CTA titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      items = [
+        rss_item(title: 'Read More', url: 'https://example.com/a'),
+        rss_item(title: 'Valid Article Title Here', url: 'https://example.com/b')
+      ]
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.warnings).to include(:generic_titles)
+      expect(audit.metrics[:junk_title_count]).to eq(1)
+    end
+
+    it 'warns on short titles', :aggregate_failures do
+      audit = described_class.audit_feed_items([rss_item(title: 'Ok', url: 'https://example.com/a')])
+
+      expect(audit.warnings).to include(:short_titles, :low_word_count)
+      expect(audit.metrics[:junk_title_count]).to eq(0)
+    end
+
+    [
+      { title: 'Read More', reason: :cta },
+      { title: 'learn more', reason: :cta },
+      { title: 'PDF', reason: :cta }
+    ].each do |example|
+      it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
+        expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
+      end
+    end
+  end
 end

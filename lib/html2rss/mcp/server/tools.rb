@@ -93,7 +93,8 @@ module Html2rss
             kind: :config_xor,
             description: 'Validate schema and execute live extraction (asserting >= min_items items). ' \
                          'Call after capture or validate; on success next_step is apply. ' \
-                         'Returns test summary in payload with sample items, timing, and failure_kind.',
+                         'Returns test summary in payload with sample items, timing, failure_kind, ' \
+                         'and quality_report (warnings for duplicate URLs, junk titles, native feed).',
             input_schema: Contract::TEST_INPUT_SCHEMA,
             call: lambda { |config: nil, yaml: nil, min_items: 1, **kwargs|
               feed_config = ConfigArgument.parse(config:, yaml:).config
