@@ -11,6 +11,8 @@ module Html2rss
   module Recon # rubocop:disable Metrics/ModuleLength
     module_function
 
+    Verdict = Data.define(:name)
+
     ##
     # Closed curation verdict (:build / :defer / :drop).
     class Verdict
@@ -29,16 +31,11 @@ module Html2rss
       end
 
       ##
-      # @return [Symbol]
-      attr_reader :name
-
-      ##
       # @param name [Symbol]
       def initialize(name:)
         raise ArgumentError, "unknown verdict: #{name.inspect}" unless NAMES.include?(name)
 
-        @name = name
-        freeze
+        super
       end
 
       ##
@@ -60,18 +57,6 @@ module Html2rss
       ##
       # @return [String]
       def to_s = name.to_s
-
-      ##
-      # @param other [Object]
-      # @return [Boolean]
-      def ==(other)
-        other.is_a?(self.class) && name == other.name
-      end
-      alias eql? ==
-
-      ##
-      # @return [Integer]
-      def hash = [self.class, name].hash
     end
 
     ##

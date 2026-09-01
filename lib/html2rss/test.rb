@@ -7,6 +7,8 @@ module Html2rss
   module Test # rubocop:disable Metrics/ModuleLength -- Result + FailureKind nest with owner
     module_function
 
+    FailureKind = Data.define(:name)
+
     ##
     # Closed failure classification for a failed test run.
     class FailureKind
@@ -25,16 +27,11 @@ module Html2rss
       end
 
       ##
-      # @return [Symbol]
-      attr_reader :name
-
-      ##
       # @param name [Symbol]
       def initialize(name:)
         raise ArgumentError, "unknown failure kind: #{name.inspect}" unless NAMES.include?(name)
 
-        @name = name
-        freeze
+        super
       end
 
       ##
@@ -56,18 +53,6 @@ module Html2rss
       ##
       # @return [String]
       def to_s = name.to_s
-
-      ##
-      # @param other [Object]
-      # @return [Boolean]
-      def ==(other)
-        other.is_a?(self.class) && name == other.name
-      end
-      alias eql? ==
-
-      ##
-      # @return [Integer]
-      def hash = [self.class, name].hash
     end
 
     ##
