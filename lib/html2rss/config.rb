@@ -370,8 +370,7 @@ module Html2rss
     def normalized_headers(validated_config)
       validated_config[:headers] = RequestHeaders.normalize(
         validated_config[:headers],
-        channel_language: validated_config.dig(:channel, :language),
-        url: validated_config.dig(:channel, :url)
+        channel_language: validated_config.dig(:channel, :language)
       )
       validated_config
     end

@@ -76,7 +76,7 @@ Composable curation seams for inspect → recon → capture → validate/test �
 
 | Fact                                      | Owner                                                                                                          |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Diagnostic URL fetch + assess             | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics) |
+| Diagnostic URL fetch + assess             | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics). Module guide: `lib/html2rss/page_recon/README.md` (redirect follow; no default `Host` — Faraday sets per hop) |
 | Curation verdict                          | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`)                                            |
 | Native feed URL (defer/gate)              | `Syndication::Discovery.best_feed_url` only                                                                    |
 | Config Hash/path/YAML → validated raw     | `Config.resolve_and_validate`                                                                                  |

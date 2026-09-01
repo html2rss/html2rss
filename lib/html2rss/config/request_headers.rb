@@ -59,20 +59,17 @@ module Html2rss
         #
         # @param headers [Hash, nil] caller provided headers
         # @param channel_language [String, nil] language defined on the channel
-        # @param url [String] request URL used to infer the Host header
         # @return [Hash{String => String}] normalized HTTP headers
-        def normalize(headers, channel_language:, url:)
-          new(headers || {}, channel_language:, url:).to_h
+        def normalize(headers, channel_language:)
+          new(headers || {}, channel_language:).to_h
         end
       end
 
       # @param headers [Hash{String, Symbol => String}] caller-provided headers
       # @param channel_language [String, nil] channel language hint for Accept-Language
-      # @param url [String, Html2rss::Url, nil] request URL used to infer Host
-      def initialize(headers, channel_language:, url:)
+      def initialize(headers, channel_language:)
         @headers = headers
         @channel_language = channel_language
-        @url = url
       end
 
       ##
@@ -86,14 +83,13 @@ module Html2rss
 
         defaults['Accept'] = normalize_accept(accept_override)
         defaults['Accept-Language'] = build_accept_language
-        defaults['Host'] ||= request_host
 
         defaults.compact
       end
 
       private
 
-      attr_reader :headers, :channel_language, :url
+      attr_reader :headers, :channel_language
 
       def normalize_custom_headers(custom)
         custom.transform_keys { canonicalize(_1) }
@@ -133,12 +129,6 @@ module Html2rss
         return primary if region.nil?
 
         "#{primary}-#{region},#{primary};q=0.9"
-      end
-
-      def request_host
-        return nil if url.nil? || url.empty?
-
-        Html2rss::Url.from_absolute(url).host
       end
     end
   end
