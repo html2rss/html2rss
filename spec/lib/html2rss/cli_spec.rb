@@ -7,7 +7,7 @@ require 'tempfile'
 RSpec.describe Html2rss::CLI do
   subject(:cli) { described_class.new }
 
-  describe '#feed' do
+  describe '#apply' do
     let(:rss_xml) { '<rss><channel><title>Example</title></channel></rss>' }
     let(:feed_res) do
       instance_double(
@@ -19,43 +19,87 @@ RSpec.describe Html2rss::CLI do
     end
 
     before do
-      allow(Html2rss).to receive(:feed_result).and_return(feed_res)
+      allow(Html2rss).to receive(:apply).and_return(feed_res)
     end
 
     it 'parses the YAML file and prints the RSS feed to stdout' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
 
-      expect { cli.feed('example.yml') }.to output("#{rss_xml}\n").to_stdout
-    end
-
-    it 'routes direct URLs to auto feed extraction' do
-      allow(Html2rss).to receive(:auto_feed_result).and_return(feed_res)
-
-      expect { cli.feed('https://example.com/news') }.to output("#{rss_xml}\n").to_stdout
+      expect { cli.apply('example.yml') }.to output("#{rss_xml}\n").to_stdout
     end
 
     it 'supports --format jsonfeed and --explain' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
-      expect { cli.invoke(:feed, ['example.yml'], { format: 'jsonfeed', explain: true }) }
+      expect { cli.invoke(:apply, ['example.yml'], { format: 'jsonfeed', explain: true }) }
         .to output(/"title": "Example"/).to_stdout
     end
 
     it 'handles local file input via --input' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
-      expect { cli.invoke(:feed, ['example.yml'], { input: 'spec/fixtures/page_1.html' }) }
+      expect { cli.invoke(:apply, ['example.yml'], { input: 'spec/fixtures/page_1.html' }) }
         .to output("#{rss_xml}\n").to_stdout
     end
 
     it 'raises Thor::Error on RedirectLimitReached' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
-      allow(Html2rss).to receive(:feed_result).and_raise(Html2rss::RequestService::RedirectLimitReached, 'too many')
-      expect { cli.feed('example.yml') }.to raise_error(Thor::Error, /too many/)
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::RequestService::RedirectLimitReached, 'too many')
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /too many/)
     end
 
     it 'raises Thor::Error on NoFeedItemsExtracted' do
       allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
-      allow(Html2rss).to receive(:feed_result).and_raise(Html2rss::NoFeedItemsExtracted.new(attempts: []))
-      expect { cli.feed('example.yml') }.to raise_error(Thor::Error, /No feed items extracted/)
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::NoFeedItemsExtracted.new(attempts: []))
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /No feed items extracted/)
+    end
+  end
+
+  describe '#inspect' do
+    let(:inspect_data) do
+      {
+        requested_url: 'https://example.com/news',
+        final_url: 'https://example.com/news',
+        status: 200,
+        surface_category: 'article_list',
+        articles_count: 5,
+        alternate_feeds: [],
+        strategy: :faraday
+      }
+    end
+    let(:report) { instance_double(Html2rss::PageRecon::Diagnostics::Report, to_wire_h: inspect_data) }
+    let(:batch_result) do
+      Html2rss::Batch::BatchResult.new(total: 1, successful: 1, results: [inspect_data])
+    end
+
+    before do
+      allow(Html2rss).to receive(:inspect).and_return(report)
+      allow(Html2rss).to receive(:batch_inspect).and_return(batch_result)
+    end
+
+    it 'prints diagnostics card to stdout' do
+      expect { cli.inspect('https://example.com/news') }.to output(/Surface:  article_list \(5 articles\)/).to_stdout
+    end
+
+    it 'supports --format json' do
+      expect { cli.invoke(:inspect, ['https://example.com/news'], { format: 'json' }) }
+        .to output(/"articles_count": 5/).to_stdout
+    end
+
+    it 'supports batch mode with --file' do
+      Tempfile.create('urls') do |f|
+        f.puts('https://example.com/news')
+        f.flush
+        expect { cli.invoke(:inspect, nil, { file: f.path }) }
+          .to output(/Surface:  article_list/).to_stdout
+      end
+    end
+
+    it 'raises Thor::Error when target is omitted' do
+      expect { cli.inspect(nil) }.to raise_error(Thor::Error, /target URL/)
+    end
+
+    it 'reads URLs from stdin (-)' do
+      allow($stdin).to receive(:readlines).and_return(["https://example.com/news\n"])
+      expect { cli.inspect('-') }.to output(/Surface:  article_list/).to_stdout
     end
   end
 
@@ -152,6 +196,15 @@ RSpec.describe Html2rss::CLI do
           ['https://example.com/news', 'https://example.com/blog'],
           hash_including(strategy: :auto)
         )
+      end
+    end
+
+    it 'raises Thor::Error for an unknown --verdict filter' do
+      Tempfile.create('urls') do |f|
+        f.puts('https://example.com/news')
+        f.flush
+        expect { cli.invoke(:recon, nil, { file: f.path, verdict: 'MAYBE' }) }
+          .to raise_error(Thor::Error, /unknown verdict/)
       end
     end
 
@@ -400,7 +453,7 @@ RSpec.describe Html2rss::CLI do
     end
   end
 
-  describe '#auto' do
+  describe '#scrape' do
     let(:rss_xml) { '<rss><channel><title>Example</title></channel></rss>' }
     let(:feed_res) do
       instance_double(
@@ -412,15 +465,15 @@ RSpec.describe Html2rss::CLI do
     end
 
     before do
-      allow(Html2rss).to receive(:auto_feed_result).and_return(feed_res)
+      allow(Html2rss).to receive(:scrape).and_return(feed_res)
     end
 
     it 'prints RSS to stdout' do
-      expect { cli.auto('https://example.com/news') }.to output("#{rss_xml}\n").to_stdout
+      expect { cli.scrape('https://example.com/news') }.to output("#{rss_xml}\n").to_stdout
     end
 
     it 'supports --format jsonfeed and --explain' do
-      expect { cli.invoke(:auto, ['https://example.com/news'], { format: 'jsonfeed', explain: true }) }
+      expect { cli.invoke(:scrape, ['https://example.com/news'], { format: 'jsonfeed', explain: true }) }
         .to output(/"title": "Example"/).to_stdout
     end
   end
