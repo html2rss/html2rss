@@ -20,6 +20,68 @@ module Html2rss
       # Loopback bind for HTTP transport (local use only).
       HTTP_BIND_HOST = '127.0.0.1'
 
+      # Declarative MCP resource registrations consumed by {register_resources}.
+      RESOURCES = [
+        {
+          uri: 'html2rss://schema',
+          name: 'Configuration JSON Schema',
+          description: 'Full JSON Schema for html2rss feed configurations',
+          mime_type: 'application/json',
+          body: lambda {
+            [{ uri: 'html2rss://schema', mimeType: 'application/json',
+               text: Html2rss::Config.json_schema_json(pretty: true) }]
+          }
+        },
+        {
+          uri: 'html2rss://extractors',
+          name: 'Available Extractors',
+          description: 'Registered extractor names for selector configs ' \
+                       '(full option docs live in html2rss://schema $defs)',
+          mime_type: 'application/json',
+          body: lambda {
+            extractors = Html2rss::Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s).sort
+            [{ uri: 'html2rss://extractors', mimeType: 'application/json',
+               text: JSON.pretty_generate(extractors) }]
+          }
+        },
+        {
+          uri: 'html2rss://strategies',
+          name: 'Available Strategies',
+          description: 'Published MCP request strategy names',
+          mime_type: 'application/json',
+          body: lambda {
+            [{ uri: 'html2rss://strategies', mimeType: 'application/json',
+               text: JSON.generate(Contract::STRATEGIES) }]
+          }
+        },
+        {
+          uri: 'html2rss://runtime',
+          name: 'Runtime capabilities',
+          description: 'Whether optional transports are configured in this MCP process (never leaks secrets)',
+          mime_type: 'application/json',
+          body: lambda {
+            [{ uri: 'html2rss://runtime', mimeType: 'application/json',
+               text: JSON.pretty_generate(botasaurus_configured: Runtime.botasaurus_configured?) }]
+          }
+        }
+      ].freeze
+
+      # Declarative MCP prompt registrations; SDK argument objects built at {register_prompts} time.
+      PROMPTS = [
+        {
+          name: 'scrape-webpage',
+          description: 'Guided one-shot scrape: one scrape call (auto already falls back)',
+          arguments: [{ name: 'url', description: 'URL to scrape', required: true }],
+          body: ->(args) { Outcome::Playbook.scrape_webpage_prompt(args.fetch(:url)) }
+        },
+        {
+          name: 'capture-feed-config',
+          description: 'Guided capture → validate → apply; YAML draft plus catalog rewrite',
+          arguments: [{ name: 'url', description: 'URL to analyze', required: true }],
+          body: ->(args) { Outcome::Playbook.capture_feed_config_prompt(args.fetch(:url)) }
+        }
+      ].freeze
+
       class << self # rubocop:disable Metrics/ClassLength
         ##
         # Starts the MCP server with the given transport.
@@ -176,80 +238,33 @@ module Html2rss
           Tools.register_all(server, registrar: method(:define_envelope_tool))
         end
 
-        def register_resources(server) # rubocop:disable Metrics/MethodLength
-          server.define_resource(
-            uri: 'html2rss://schema',
-            name: 'Configuration JSON Schema',
-            description: 'Full JSON Schema for html2rss feed configurations',
-            mime_type: 'application/json'
-          ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
-            schema = Html2rss::Config.json_schema_json(pretty: true)
-            [{ uri: 'html2rss://schema', mimeType: 'application/json', text: schema }]
-          end
-
-          server.define_resource(
-            uri: 'html2rss://extractors',
-            name: 'Available Extractors',
-            description: 'Registered extractor names for selector configs ' \
-                         '(full option docs live in html2rss://schema $defs)',
-            mime_type: 'application/json'
-          ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
-            extractors = Html2rss::Selectors::Extractors::NAME_TO_CLASS.keys.map(&:to_s).sort
-            [{ uri: 'html2rss://extractors', mimeType: 'application/json',
-               text: JSON.pretty_generate(extractors) }]
-          end
-
-          server.define_resource(
-            uri: 'html2rss://strategies',
-            name: 'Available Strategies',
-            description: 'Published MCP request strategy names',
-            mime_type: 'application/json'
-          ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
-            [{ uri: 'html2rss://strategies', mimeType: 'application/json',
-               text: JSON.generate(Contract::STRATEGIES) }]
-          end
-
-          server.define_resource(
-            uri: 'html2rss://runtime',
-            name: 'Runtime capabilities',
-            description: 'Whether optional transports are configured in this MCP process (never leaks secrets)',
-            mime_type: 'application/json'
-          ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
-            [{ uri: 'html2rss://runtime', mimeType: 'application/json',
-               text: JSON.pretty_generate(botasaurus_configured: Runtime.botasaurus_configured?) }]
+        def register_resources(server)
+          RESOURCES.each do |entry|
+            server.define_resource(
+              uri: entry[:uri],
+              name: entry[:name],
+              description: entry[:description],
+              mime_type: entry[:mime_type]
+            ) do |server_context: nil| # rubocop:disable Lint/UnusedBlockArgument
+              entry[:body].call
+            end
           end
         end
 
-        def register_prompts(server)
-          register_scrape_webpage_prompt(server)
-          register_capture_feed_config_prompt(server)
-        end
-
-        # -- SDK prompt types stay together
-        def register_scrape_webpage_prompt(server)
+        def register_prompts(server) # rubocop:disable Metrics/MethodLength -- prompt argument mapping
           to_result = method(:prompt_result)
-          server.define_prompt(
-            name: 'scrape-webpage',
-            description: 'Guided one-shot scrape: one scrape call (auto already falls back)',
-            arguments: [
-              ::MCP::Prompt::Argument.new(name: 'url', description: 'URL to scrape', required: true)
-            ]
-          ) do |args, server_context:| # rubocop:disable Lint/UnusedBlockArgument
-            to_result.call(Outcome::Playbook.scrape_webpage_prompt(args.fetch(:url)))
-          end
-        end
-
-        # -- SDK prompt types stay together
-        def register_capture_feed_config_prompt(server)
-          to_result = method(:prompt_result)
-          server.define_prompt(
-            name: 'capture-feed-config',
-            description: 'Guided capture → validate → apply; YAML draft plus catalog rewrite',
-            arguments: [
-              ::MCP::Prompt::Argument.new(name: 'url', description: 'URL to analyze', required: true)
-            ]
-          ) do |args, server_context:| # rubocop:disable Lint/UnusedBlockArgument
-            to_result.call(Outcome::Playbook.capture_feed_config_prompt(args.fetch(:url)))
+          PROMPTS.each do |entry|
+            arguments = entry[:arguments].map do |spec|
+              ::MCP::Prompt::Argument.new(name: spec[:name], description: spec[:description],
+                                          required: spec.fetch(:required, false))
+            end
+            server.define_prompt(
+              name: entry[:name],
+              description: entry[:description],
+              arguments:
+            ) do |args, server_context:| # rubocop:disable Lint/UnusedBlockArgument
+              to_result.call(entry[:body].call(args))
+            end
           end
         end
 

@@ -176,7 +176,7 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss::Batch).to have_received(:batch_scrape).with(
           urls: ['https://example.com/a', 'https://example.com/b'],
-          strategy: 'auto',
+          strategy: :auto,
           limit: 10,
           concurrency: 5
         )
@@ -210,7 +210,7 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss::Batch).to have_received(:batch_inspect).with(
           urls: ['https://example.com/a', 'https://example.com/b'],
-          strategy: 'auto',
+          strategy: :auto,
           concurrency: 5
         )
         expect(result.dig(:result, :isError)).to be(false)
@@ -454,7 +454,7 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(
           url: 'https://example.com',
-          strategy: 'auto'
+          strategy: :auto
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(envelope[:payload]).to include(strategy: 'faraday')
