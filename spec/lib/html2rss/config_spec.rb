@@ -288,6 +288,36 @@ RSpec.describe Html2rss::Config do
     end
   end
 
+  describe '.resolve_and_validate' do
+    let(:config) do
+      {
+        channel: { url: 'http://example.com' },
+        selectors: {
+          items: { selector: '.item' },
+          title: { selector: 'h2' },
+          guid: ['title']
+        }
+      }
+    end
+
+    it 'returns a deep-copied hash and dry validation result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      raw, validation = described_class.resolve_and_validate(config)
+      expect(validation).to be_success
+      expect(raw).to eq(config)
+      expect(raw).not_to equal(config)
+      raw[:strategy] = :faraday
+      expect(config).not_to have_key(:strategy)
+    end
+
+    it 'returns ValidationResult (not Struct) on parse failure', :aggregate_failures do
+      raw, validation = described_class.resolve_and_validate("- items\n")
+      expect(raw).to eq({})
+      expect(validation).to be_a(described_class::ValidationResult)
+      expect(validation).not_to be_success
+      expect(validation.errors.to_h).to have_key(:parse)
+    end
+  end
+
   describe '.validate' do
     let(:config) do
       {
@@ -654,20 +684,6 @@ RSpec.describe Html2rss::Config do
         expect(result).to be_failure
         expect(result.errors.to_h.fetch(nil)).to include('Missing parameter for formatting: key<query> not found')
       end
-    end
-  end
-
-  describe '.validate_yaml' do
-    it 'validates a YAML config file' do
-      expect(described_class.validate_yaml('spec/fixtures/single.test.yml')).to be_success
-    end
-
-    it 'validates a parameterized YAML config file using parameter defaults' do
-      expect(described_class.validate_yaml('spec/fixtures/parameterized.test.yml')).to be_success
-    end
-
-    it 'fails a parameterized YAML config file when placeholders remain unresolved' do
-      expect(described_class.validate_yaml('spec/fixtures/parameterized_missing_default.test.yml')).to be_failure
     end
   end
 

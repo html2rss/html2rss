@@ -4,7 +4,7 @@ module Html2rss
   ##
   # Immutable entry vs effective scrape URLs for one pipeline run.
   #
-  # Replaces mutating {Config#scrape_url=} after {FeedResolution} rewrites the fetch URL.
+  # Replaces mutating +Config#scrape_url=+ after {FeedResolution} rewrites the fetch URL.
   ScrapeTarget = Data.define(:entry_url, :effective_url) do
     ##
     # @param config [Html2rss::Config]

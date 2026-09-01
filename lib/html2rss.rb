@@ -16,7 +16,7 @@ require 'html2rss/defaults'
 
 ##
 # The Html2rss namespace.
-module Html2rss
+module Html2rss # rubocop:disable Metrics/ModuleLength
   ##
   # The logger instance.
   module Log
@@ -26,6 +26,156 @@ module Html2rss
       def_delegator 'Html2rss', :logger
       def_delegators :logger, :debug, :info, :warn, :error, :fatal, :unknown, :level, :level=, :formatter, :formatter=
     end
+  end
+
+  ##
+  # Cheap diagnostics for a URL (final URL, status, alternates, surface).
+  # Golden path step 1 (optional); use {.recon} for verdict and native_feed.
+  #
+  # @param url [String] source page URL
+  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @return [Html2rss::PageRecon::Diagnostics::Report]
+  def self.inspect(url, strategy: :auto, **)
+    PageRecon::Diagnostics.call(url:, strategy:, **)
+  end
+
+  ##
+  # Curation verdict and native_feed preference for a URL.
+  # Golden path step 2 (optional); adds verdict beyond {.inspect}.
+  #
+  # @param url [String, Html2rss::Url] source page URL
+  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @return [Html2rss::Recon::Result]
+  def self.recon(url, strategy: :auto, **)
+    Recon.call(url, strategy:, **)
+  end
+
+  ##
+  # Derives a reusable YAML-ready feed config from a URL.
+  # Golden path step 3.
+  #
+  # @param url [String] source page URL
+  # @param strategy [Symbol] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+  # @option options [String, nil] :items_selector optional CSS selector hint for items
+  # @option options [Array<String>, nil] :topics optional directory topics override
+  # @option options [String, nil] :title optional title override
+  # @option options [String, nil] :summary optional summary override
+  # @option options [Boolean] :force whether to ignore native feed detection
+  # @option options [Boolean, nil] :enhance whether to force enhance: true
+  # @option options [Integer, nil] :max_redirects optional redirect limit override
+  # @option options [Integer, nil] :max_requests optional request budget override
+  # @option options [Integer, nil] :limit max articles to keep
+  # @option options [String, nil] :local_file_path optional local HTML file path
+  # @return [Html2rss::Capture::CaptureResult]
+  def self.capture(url, strategy: :auto, **)
+    Capture.build(url, strategy:, **)
+  end
+
+  ##
+  # Validates a config hash, YAML string, or file path against the schema.
+  # Side door: schema-only check without live extraction.
+  #
+  # @param config_input [Hash, String]
+  # @param feed_name [String, nil]
+  # @param params [Hash]
+  # @return [Dry::Validation::Result, Html2rss::Config::ValidationResult]
+  def self.validate(config_input, feed_name = nil, params: {})
+    _raw, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
+    validation
+  end
+
+  ##
+  # Validates schema and asserts live item extraction.
+  # Golden path step 4.
+  #
+  # @param config_input [Hash, String] config hash, YAML string, or file path
+  # @param feed_name [String, nil] optional feed name in multi-feed file
+  # @param min_items [Integer] minimum required items (default: 1)
+  # @param params [Hash] dynamic feed params
+  # @param strategy [Symbol, nil] optional strategy override
+  # @return [Html2rss::Test::Result]
+  def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil)
+    Test.call(config_input, feed_name, min_items:, params:, strategy:)
+  end
+
+  ##
+  # Ships RSS from a validated config (user-facing verb for {.feed_result}).
+  # Golden path step 5.
+  #
+  # @param raw_config [Hash{Symbol => Object}] feed configuration
+  # @return [Html2rss::FeedResult]
+  def self.apply(raw_config)
+    feed_result(raw_config)
+  end
+
+  # rubocop:disable Metrics/ParameterLists
+
+  ##
+  # One-shot auto-source scrape from a URL (user-facing verb for {.auto_feed_result}).
+  #
+  # @param url [String] source page URL
+  # @param strategy [Symbol] request strategy to use
+  # @param items_selector [String, nil] optional selector hint for item extraction
+  # @param max_redirects [Integer, nil] optional redirect limit override
+  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
+  # @param local_file_path [String, nil] optional local HTML file path
+  # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
+  # @return [Html2rss::FeedResult]
+  def self.scrape(url,
+                  strategy: :auto,
+                  items_selector: nil,
+                  max_redirects: nil,
+                  max_requests: 4,
+                  local_file_path: nil,
+                  limit: nil)
+    auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
+                          local_file_path:, limit:)
+  end
+
+  ##
+  # Scrapes multiple URLs in parallel using auto-source article discovery.
+  #
+  # @param urls [Enumerable<String>] list of URLs to scrape
+  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param limit [Integer] max articles to keep per URL (default: 10)
+  # @param concurrency [Integer] max worker threads (default: 5)
+  # @return [Html2rss::Batch::BatchResult]
+  def self.batch_scrape(urls, strategy: :auto, limit: 10, concurrency: Batch::DEFAULT_CONCURRENCY)
+    Batch.batch_scrape(urls:, strategy:, limit:, concurrency:)
+  end
+
+  ##
+  # Inspects multiple URLs in parallel with per-URL error isolation.
+  #
+  # @param urls [Enumerable<String>] list of URLs to inspect
+  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param concurrency [Integer] max worker threads (default: 5)
+  # @return [Html2rss::Batch::BatchResult]
+  def self.batch_inspect(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY)
+    Batch.batch_inspect(urls:, strategy:, concurrency:)
+  end
+
+  ##
+  # Runs recon across multiple URLs in parallel with per-URL error isolation.
+  #
+  # @param urls [Enumerable<String>] list of URLs to recon
+  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param concurrency [Integer] max worker threads (default: 5)
+  # @option options [String, nil] :cache_dir optional HTML cache directory
+  # @return [Html2rss::Batch::BatchResult]
+  def self.batch_recon(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY, **)
+    Batch.batch_recon(urls:, strategy:, concurrency:, **)
+  end
+
+  # rubocop:enable Metrics/ParameterLists
+
+  ##
+  # Exports the configuration JSON Schema as JSON string.
+  #
+  # @param pretty [Boolean] whether to pretty-print JSON
+  # @return [String]
+  def self.schema_json(pretty: true)
+    Config.json_schema_json(pretty:)
   end
 
   ##
@@ -141,36 +291,6 @@ module Html2rss
                           limit: nil)
     auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
                           local_file_path:, limit:).to_json_feed
-  end
-
-  ##
-  # Analyzes a URL and produces a reusable YAML-ready feed config hash.
-  #
-  # Uses auto-source discovery to extract articles, then derives CSS selectors
-  # from the structural analysis.
-  #
-  # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy (+:auto+, +:faraday+, +:botasaurus+)
-  # @param items_selector [String, nil] optional CSS selector hint for items
-  # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer, nil] optional request budget override
-  # @param limit [Integer, nil] max articles to keep
-  # @param local_file_path [String, nil] optional local HTML file path
-  # @return [Hash] feed config hash with +:channel+ and +:selectors+
-  def self.capture(url,
-                   strategy: :auto,
-                   items_selector: nil,
-                   max_redirects: nil,
-                   max_requests: nil,
-                   limit: nil,
-                   local_file_path: nil)
-    Capture.build(url,
-                  strategy:,
-                  items_selector:,
-                  max_redirects:,
-                  max_requests:,
-                  limit:,
-                  local_file_path:).config
   end
 
   # rubocop:enable Metrics/ParameterLists

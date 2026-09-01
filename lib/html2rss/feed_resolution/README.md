@@ -10,17 +10,17 @@ tournament on item count (feed-as-means) — intentional.
 
 ## Ownership
 
-| Concern | Owner |
-| --- | --- |
-| When to resolve (`articles:` required; floor / weak / NativeFeed ≥50%) | `FeedResolution::Policy` |
-| Candidate mix (1 feed + up to 4 listing; taxonomy nav; segment first-wins) | `FeedResolution::CandidateGenerator` |
-| Listing path lexicon (`LISTING_PATHS`) | `Syndication::CandidateCatalog` (consumed, not owned here) |
-| Cheap probe + score + winner pick | `FeedResolution::Probe` + `FeedResolution::Scorer` |
-| Typed entry_resolution options | `FeedResolution::Options` |
-| Wire-safe resolution diag (`applied` = tournament win, not sticky URL) | `FeedResolution::Diag` |
-| Public `call` → `Result`; retry orchestration (sticky `ScrapeTarget` only on `:succeeded`) | `FeedResolution` (`try_apply!`) |
-| Page surface for policy/scoring | `PageRecon::Assessment` + `Html2rss::SurfaceCategory` |
-| Native feed discover/parse | `Syndication` (not this module) |
+| Concern                                                                                    | Owner                                                      |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| When to resolve (`articles:` required; floor / weak / NativeFeed ≥50%)                     | `FeedResolution::Policy`                                   |
+| Candidate mix (1 feed + up to 4 listing; taxonomy nav; segment first-wins)                 | `FeedResolution::CandidateGenerator`                       |
+| Listing path lexicon (`LISTING_PATHS`)                                                     | `Syndication::CandidateCatalog` (consumed, not owned here) |
+| Cheap probe + score + winner pick                                                          | `FeedResolution::Probe` + `FeedResolution::Scorer`         |
+| Typed entry_resolution options                                                             | `FeedResolution::Options`                                  |
+| Wire-safe resolution diag (`applied` = tournament win, not sticky URL)                     | `FeedResolution::Diag`                                     |
+| Public `call` → `Result`; retry orchestration (sticky `ScrapeTarget` only on `:succeeded`) | `FeedResolution` (`try_apply!`)                            |
+| Page surface for policy/scoring                                                            | `PageRecon::Assessment` + `Html2rss::SurfaceCategory`      |
+| Native feed discover/parse                                                                 | `Syndication` (not this module)                            |
 
 ### CandidateGenerator mix
 

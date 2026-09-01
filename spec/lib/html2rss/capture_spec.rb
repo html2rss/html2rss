@@ -5,6 +5,10 @@ require 'spec_helper'
 RSpec.describe Html2rss::Capture do
   let(:url) { 'https://example.com/blog' }
 
+  before do
+    allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+  end
+
   def html_response(body, page_url: url, content_type: 'text/html')
     Html2rss::RequestService::Response.new(
       body:,
@@ -27,6 +31,23 @@ RSpec.describe Html2rss::Capture do
   end
 
   describe '#build' do
+    it 'asks Syndication::Discovery for native feed preference with a session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      response = html_response(File.read('spec/fixtures/local_feed_test.html'))
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:)
+      feed = Html2rss::Url.from_absolute('https://example.com/feed.xml')
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(feed)
+
+      result = described_class.new(url).build
+      expect(result.native_feed).to eq(feed.to_s)
+      expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
+        hash_including(
+          page_url: url,
+          request_session: kind_of(Html2rss::RequestSession)
+        )
+      )
+    end
+
     context 'with a list fixture that shares an item class' do
       subject(:result) do
         response = html_response(File.read('spec/fixtures/local_feed_test.html'))
@@ -43,6 +64,8 @@ RSpec.describe Html2rss::Capture do
           items: { selector: 'div.item', enhance: true }
         )
         expect(result.config[:channel]).to include(url:, title: a_string_matching(/\S/), time_zone: 'UTC')
+        expect(result.config[:directory]).to include(:topics, :title, :summary)
+        expect(result.yaml).to include('# yaml-language-server')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
       end
     end

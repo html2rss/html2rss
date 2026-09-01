@@ -5,10 +5,10 @@ module Html2rss
     Outcome = Data.define(:ok, :next_step, :guidance, :payload)
 
     ##
-    # Typed MCP tool result. Owns next-step policy and guidance copy so the
-    # protocol adapter does not branch on quality heuristics.
-    class Outcome
-      # Matches {ConfigArgument} XOR {ArgumentError} messages.
+    # Typed MCP tool result. Owns next-step policy; guidance copy lives in
+    # {Playbook}.
+    class Outcome # rubocop:disable Metrics/ClassLength -- next-step policy + factories stay co-located
+      # Matches {ConfigArgument} XOR +ArgumentError+ messages.
       XOR_ERROR = /exactly one of config or yaml/
       NextStep = Data.define(:name, :guidance)
 
@@ -16,20 +16,7 @@ module Html2rss
       # Closed set of agent next actions. Invalid names cannot be constructed.
       class NextStep
         # Wire names for +next_step+.
-        NAMES = %i[done inspect_url validate_config apply_config scrape_url capture_config read_runtime].freeze
-        # Default guidance copy keyed by {NAMES}.
-        GUIDANCE = {
-          done: 'Done. Read payload for the result.',
-          inspect_url: 'Call inspect_url next. Read payload for recon (final_url, status, ' \
-                       'scheme_downgrade, alternate_feeds).',
-          validate_config: 'Call validate_config with payload.yaml or a config hash (XOR, not both).',
-          apply_config: 'Call apply_config next. Confirm payload.item_count before shipping.',
-          scrape_url: 'Call scrape_url for articles now. strategy auto already runs Faraday then Botasaurus ' \
-                      'and promotes native RSS/Atom when present.',
-          capture_config: 'Call capture_config for a reusable YAML draft, then follow next_step.',
-          read_runtime: 'Read html2rss://runtime. Set BOTASAURUS_SCRAPER_URL on the MCP process ' \
-                        'if botasaurus_configured is false.'
-        }.freeze
+        NAMES = %i[done inspect recon validate apply scrape capture read_runtime test].freeze
 
         ##
         # @param name [Symbol, String]
@@ -38,7 +25,7 @@ module Html2rss
           step = name.to_sym
           raise ArgumentError, "unknown next_step: #{name.inspect}" unless NAMES.include?(step)
 
-          super(name: step, guidance: (guidance || GUIDANCE.fetch(step)).freeze)
+          super(name: step, guidance: (guidance || Playbook::GUIDANCE.fetch(step)).freeze)
         end
 
         class << self
@@ -79,11 +66,19 @@ module Html2rss
         end
 
         ##
-        # @param payload [Hash] inspect recon Hash
+        # @param report [PageRecon::Diagnostics::Report]
         # @return [Outcome]
-        def inspect(payload:)
-          next_step = inspect_next_step(payload)
-          new(ok: true, next_step:, guidance: next_step.guidance, payload:)
+        def inspect(report:)
+          next_step = inspect_next_step(report)
+          new(ok: true, next_step:, guidance: next_step.guidance, payload: report.to_wire_h)
+        end
+
+        ##
+        # @param result [Html2rss::Recon::Result]
+        # @return [Outcome]
+        def recon(result:)
+          next_step = recon_next_step(result)
+          new(ok: true, next_step:, guidance: next_step.guidance, payload: result.to_h)
         end
 
         ##
@@ -95,13 +90,14 @@ module Html2rss
         # @param segment_strategy [Symbol, String, nil]
         # @param selected_strategy [Symbol, String, nil]
         # @param admission_drops [Hash]
+        # @param native_feed [String, nil]
         # @return [Outcome]
         def capture(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
-                    segment_strategy: nil, selected_strategy: nil, admission_drops: {})
-          next_step = capture_next_step(articles_count:, has_selectors:)
+                    segment_strategy: nil, selected_strategy: nil, admission_drops: {}, native_feed: nil)
+          next_step = capture_next_step(articles_count:, has_selectors:, native_feed:)
           new(ok: true, next_step:, guidance: next_step.guidance, payload: capture_payload(
             yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:,
-            segment_strategy:, selected_strategy:, admission_drops:
+            segment_strategy:, selected_strategy:, admission_drops:, native_feed:
           ))
         end
 
@@ -110,9 +106,37 @@ module Html2rss
         # @return [Outcome]
         def validate(errors:)
           ok = errors.nil?
-          next_step = ok ? NextStep.apply_config : NextStep.validate_config
+          next_step = ok ? NextStep.test : NextStep.validate
           new(ok:, next_step:, guidance: next_step.guidance, payload: ok ? {} : { errors: })
         end
+
+        ##
+        # @param test_result [Html2rss::Test::Result]
+        # @return [Outcome]
+        def test(test_result)
+          next_step = test_next_step(test_result)
+          new(
+            ok: test_result.success,
+            next_step:,
+            guidance: test_guidance(test_result, next_step),
+            payload: test_result.to_h
+          )
+        end
+
+        ##
+        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @return [Outcome]
+        def batch_scrape(batch_result) = batch(batch_result, NextStep.scrape)
+
+        ##
+        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @return [Outcome]
+        def batch_inspect(batch_result) = batch(batch_result, NextStep.inspect)
+
+        ##
+        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @return [Outcome]
+        def batch_recon(batch_result) = batch(batch_result, NextStep.recon)
 
         ##
         # @param rss [String]
@@ -121,7 +145,7 @@ module Html2rss
         # @return [Outcome]
         def apply(rss:, item_count:, empty: item_count.zero?)
           ok = !empty
-          next_step = ok ? NextStep.done : NextStep.inspect_url
+          next_step = ok ? NextStep.done : NextStep.inspect
           new(ok:, next_step:, guidance: next_step.guidance, payload: { rss:, item_count: })
         end
 
@@ -136,11 +160,16 @@ module Html2rss
 
         private
 
+        def batch(batch_result, failure_step)
+          step = batch_result.successful.positive? ? NextStep.done : failure_step
+          new(ok: true, next_step: step, guidance: step.guidance, payload: batch_result.to_h)
+        end
+
         def scrape_next_step(empty, botasaurus_configured:)
           return NextStep.done unless empty
           return NextStep.read_runtime unless botasaurus_configured
 
-          NextStep.inspect_url
+          NextStep.inspect
         end
 
         def scrape_payload(items:, requested_strategy:, channel_title:, admission_drops:)
@@ -150,22 +179,47 @@ module Html2rss
           }
         end
 
-        def inspect_next_step(payload)
-          # Runtime scrape_url now consumes native alternates (NativeFeed / direct feed parse).
-          return NextStep.scrape_url if Array(payload[:alternate_feeds]).any?
-          return NextStep.capture_config if payload[:articles_count].to_i.positive?
+        def inspect_next_step(report)
+          return NextStep.recon if report.alternate_feeds?
+          return NextStep.capture if report.articles_count.positive?
 
-          NextStep.scrape_url
+          NextStep.scrape
         end
 
-        def capture_next_step(articles_count:, has_selectors:)
-          articles_count.positive? && has_selectors ? NextStep.validate_config : NextStep.inspect_url
+        def recon_next_step(result)
+          return NextStep.done if result.defer?
+          return NextStep.capture if result.build?
+
+          NextStep.scrape
+        end
+
+        def capture_next_step(articles_count:, has_selectors:, native_feed: nil)
+          return NextStep.done if native_feed
+
+          articles_count.positive? && has_selectors ? NextStep.test : NextStep.inspect
+        end
+
+        def test_next_step(test_result)
+          return NextStep.apply if test_result.success
+
+          kind = test_result.failure_kind
+          return NextStep.validate if kind&.schema?
+          return NextStep.capture if kind&.execution? || kind&.min_items?
+
+          NextStep.capture
+        end
+
+        def test_guidance(test_result, next_step)
+          return next_step.guidance if test_result.success
+
+          test_result.error_message || next_step.guidance
         end
 
         def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
-                            segment_strategy:, selected_strategy:, admission_drops:)
+                            segment_strategy:, selected_strategy:, admission_drops:, native_feed: nil)
           {
             yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy: requested_strategy.to_s,
+            **(native_feed ? { native_feed: native_feed.to_s } : {}),
             **(segment_strategy ? { segment_strategy: segment_strategy.to_s } : {}),
             **(selected_strategy ? { selected_strategy: selected_strategy.to_s } : {}),
             **(admission_drops.any? ? { admission_drops: } : {})
@@ -175,14 +229,14 @@ module Html2rss
         def next_step_for_error(error)
           case error
           when RequestService::BotasaurusConfigurationError then NextStep.read_runtime
-          when Contract::UnpublishedRequestError then NextStep.validate_config
+          when Contract::UnpublishedRequestError then NextStep.validate
           when ArgumentError then argument_error_next_step(error)
-          else NextStep.inspect_url
+          else NextStep.inspect
           end
         end
 
         def argument_error_next_step(error)
-          XOR_ERROR.match?(error.message) ? NextStep.validate_config : NextStep.inspect_url
+          XOR_ERROR.match?(error.message) ? NextStep.validate : NextStep.inspect
         end
       end
     end

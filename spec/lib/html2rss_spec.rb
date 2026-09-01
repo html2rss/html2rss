@@ -474,4 +474,138 @@ RSpec.describe Html2rss do
 
     it_behaves_like 'auto source option forwarding', method: :auto_json_feed
   end
+
+  describe '.inspect' do
+    it 'delegates to PageRecon::Diagnostics.call' do
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:call).with(url: 'https://example.com', strategy: :auto)
+      described_class.inspect('https://example.com')
+      expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(url: 'https://example.com', strategy: :auto)
+    end
+  end
+
+  describe '.recon' do
+    it 'delegates to Recon.call' do
+      allow(Html2rss::Recon).to receive(:call).with('https://example.com', strategy: :auto)
+      described_class.recon('https://example.com')
+      expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto)
+    end
+  end
+
+  describe '.test' do
+    it 'delegates to Test.call' do
+      allow(Html2rss::Test).to receive(:call).with('config.yml', nil, min_items: 1, params: {}, strategy: nil)
+      described_class.test('config.yml')
+      expect(Html2rss::Test).to have_received(:call).with('config.yml', nil, min_items: 1, params: {}, strategy: nil)
+    end
+  end
+
+  describe '.apply' do
+    it 'delegates to feed_result', :aggregate_failures do
+      config = { channel: { url: 'https://example.com' } }
+      feed_result = instance_double(Html2rss::FeedResult)
+      allow(described_class).to receive(:feed_result).with(config).and_return(feed_result)
+
+      expect(described_class.apply(config)).to eq(feed_result)
+      expect(described_class).to have_received(:feed_result).with(config)
+    end
+  end
+
+  describe '.scrape' do
+    it 'delegates to auto_feed_result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      feed_result = instance_double(Html2rss::FeedResult)
+      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
+
+      expect(described_class.scrape('https://example.com', strategy: :faraday)).to eq(feed_result)
+      expect(described_class).to have_received(:auto_feed_result).with(
+        'https://example.com',
+        hash_including(strategy: :faraday)
+      )
+    end
+  end
+
+  describe '.batch_scrape' do
+    it 'delegates to Batch.batch_scrape', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      batch_result = instance_double(Html2rss::Batch::BatchResult)
+      allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
+
+      expect(described_class.batch_scrape(%w[https://a.test https://b.test], limit: 5)).to eq(batch_result)
+      expect(Html2rss::Batch).to have_received(:batch_scrape).with(
+        urls: %w[https://a.test https://b.test],
+        strategy: :auto,
+        limit: 5,
+        concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
+      )
+    end
+  end
+
+  describe '.batch_inspect' do
+    it 'delegates to Batch.batch_inspect', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      batch_result = instance_double(Html2rss::Batch::BatchResult)
+      allow(Html2rss::Batch).to receive(:batch_inspect).and_return(batch_result)
+
+      expect(described_class.batch_inspect(%w[https://a.test])).to eq(batch_result)
+      expect(Html2rss::Batch).to have_received(:batch_inspect).with(
+        urls: %w[https://a.test],
+        strategy: :auto,
+        concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
+      )
+    end
+  end
+
+  describe '.batch_recon' do
+    it 'delegates to Batch.batch_recon', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      batch_result = instance_double(Html2rss::Batch::BatchResult)
+      allow(Html2rss::Batch).to receive(:batch_recon).and_return(batch_result)
+
+      expect(described_class.batch_recon(%w[https://a.test], cache_dir: '/tmp/cache')).to eq(batch_result)
+      expect(Html2rss::Batch).to have_received(:batch_recon).with(
+        urls: %w[https://a.test],
+        strategy: :auto,
+        concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY,
+        cache_dir: '/tmp/cache'
+      )
+    end
+  end
+
+  describe '.capture' do
+    it 'returns Capture::CaptureResult from Capture.build', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      capture_result = instance_double(Html2rss::Capture::CaptureResult)
+      allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
+
+      expect(described_class.capture('https://example.com', topics: ['tech'], title: 'Example')).to eq(capture_result)
+      expect(Html2rss::Capture).to have_received(:build).with(
+        'https://example.com',
+        hash_including(strategy: :auto, topics: ['tech'], title: 'Example')
+      )
+    end
+  end
+
+  describe '.validate' do
+    it 'validates hash config' do
+      config = { channel: { url: 'https://example.com' }, selectors: { items: { selector: 'div' } } }
+      expect(described_class.validate(config)).to be_a(Dry::Validation::Result)
+    end
+
+    it 'validates yaml file' do
+      expect(described_class.validate('spec/fixtures/single.test.yml')).to be_a(Dry::Validation::Result)
+    end
+
+    it 'validates yaml string' do
+      yaml = "channel:\n  url: https://example.com\nselectors:\n  items:\n    selector: div\n"
+      expect(described_class.validate(yaml)).to be_a(Dry::Validation::Result)
+    end
+
+    it 'returns Config::ValidationResult for unparseable YAML', :aggregate_failures do
+      result = described_class.validate("- items\n")
+      expect(result).to be_a(Html2rss::Config::ValidationResult)
+      expect(result).not_to be_success
+    end
+  end
+
+  describe '.schema_json' do
+    it 'returns schema JSON string', :aggregate_failures do
+      expect(described_class.schema_json).to be_a(String)
+      expect(described_class.schema_json).to include('$schema')
+    end
+  end
 end

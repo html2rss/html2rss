@@ -2,10 +2,11 @@
 
 module Html2rss
   ##
-  # Shared page recon for MCP Inspect and FeedResolution probes.
+  # Shared page recon for MCP Inspect, curation Recon, and FeedResolution probes.
   #
   # Owns surface class, native feed hints, segment stats, and a cheap AutoSource
-  # article count — not request strategy selection or MCP next-step policy.
+  # article count. Diagnostic fetch for Inspect/Recon lives on {.probe} — not twin
+  # fetch helpers in those callers.
   class PageRecon # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
     ##
     # Cheap surface + admission facts shared by AutoFallback gates and FeedResolution probes.
@@ -65,6 +66,11 @@ module Html2rss
     end
 
     ##
+    # Diagnostic fetch + assess bundle. One home for session build + initial GET + {call}.
+    # Consumed by curation {Html2rss::Recon} and {Html2rss::PageRecon::Diagnostics}.
+    Probe = Data.define(:session, :response, :result, :strategy)
+
+    ##
     # @param response [Html2rss::RequestService::Response]
     # @param url [String, Html2rss::Url] requested entry URL
     # @param strategy [Symbol, nil] unused (reserved for callers that already chose a strategy)
@@ -72,6 +78,54 @@ module Html2rss
     def self.call(response:, url:, strategy: nil) # rubocop:disable Lint/UnusedMethodArgument
       new(response:, url:).call
     end
+
+    ##
+    # Builds a request session, fetches the URL once, and runs full page recon.
+    #
+    # @param url [String, Html2rss::Url]
+    # @param strategy [Symbol] request strategy (:auto resolves to a concrete diagnostic strategy)
+    # @option options [Integer, nil] :max_redirects
+    # @option options [Integer, nil] :max_requests
+    # @return [Probe]
+    def self.probe(url, strategy: :auto, **)
+      url_obj = Url.from_absolute(url)
+      resolved = FeedPipeline::StrategyPlan.concrete_for_diagnostic(strategy)
+      session = build_probe_session(url_obj, resolved, **)
+      response = session.fetch_initial_response
+      Probe.new(
+        session:,
+        response:,
+        result: call(response:, url: url_obj, strategy: resolved),
+        strategy: resolved
+      )
+    end
+
+    ##
+    # @param url_obj [Html2rss::Url]
+    # @param strategy [Symbol]
+    # @option options [Integer, nil] :max_redirects
+    # @option options [Integer, nil] :max_requests
+    # @return [Html2rss::RequestSession]
+    def self.build_probe_session(url_obj, strategy, **options) # rubocop:disable Metrics/MethodLength
+      raw_config = Config.auto_source_config(
+        url: url_obj.to_s,
+        request_controls: Config::RequestControls.from_shortcut(
+          strategy:,
+          max_redirects: options[:max_redirects],
+          max_requests: options[:max_requests]
+        )
+      )
+      raw_config[:strategy] = strategy
+      config = Config.from_hash(raw_config)
+      resources = FeedPipeline::RuntimePolicy.resources_for(config)
+      RequestSession.build(
+        config:,
+        strategy: config.strategy,
+        budget: resources.budget,
+        policy: resources.policy
+      )
+    end
+    private_class_method :build_probe_session
 
     ##
     # Cheap page assessment for policy gates and probe scoring (fixed AutoSource limit).

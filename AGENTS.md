@@ -122,7 +122,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 ## Description & HTML Processing Guidelines
 
 - **Preserve Layout Newlines**: When parsing, sanitizing, or modifying HTML text, ensure you preserve structural block newlines (`\n` or `\n\n`) and lists.
-- **Placeholder Newline Protection**: To collapse horizontal spaces without stripping structural newlines, temporarily replace newlines with a placeholder (e.g. ` __NEWLINE_PLACEHOLDER__ `) before calling standard whitespace-collapsing regular expressions (like `gsub(/\s+/, ' ')`), and restore them afterward.
+- **Placeholder Newline Protection**: To collapse horizontal spaces without stripping structural newlines, temporarily replace newlines with a placeholder (e.g. `__NEWLINE_PLACEHOLDER__`) before calling standard whitespace-collapsing regular expressions (like `gsub(/\s+/, ' ')`), and restore them afterward.
 - **Excluding Redundant Titles & Anchors**: To keep descriptions clean and avoid duplicate data, always exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor elements (`a`) when extracting visible text for an article's description.
 - Leftover keep/drop (CTA, date-shaped lines, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Both extractors call it. Do not copy leftover denylists into `Cleanup.junk_reason` (titles-only).
 - **Collapse Internal Text Wrapping**: Collapse consecutive wrapping whitespaces (including line breaks) inside raw HTML text nodes to a single space to prevent source code wrapping from turning into structural description newlines.
@@ -131,6 +131,34 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Path lexicon (Sets) vs shape (predicates) live in `PathClassifier`; extend by composing Sets—do not re-list the same tokens in multiple arrays.
 - Feed-item admission (including hard-exclude of commerce/affiliate/utility destinations) lives in `AutoSource::Cleanup`; Scoring demotes/ranks only. Do not refill `limit` via the Html tier when earlier tiers already admitted clean items.
 - New junk title patterns require a fixture with expected **reason**; prefer fixing extractor title provenance when a reason keeps firing.
+
+## Curation CLI / MCP
+
+User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share **seven verbs** — no `_url` / `_config` suffixes on wire names. Full contract: `CONTEXT.md` § Frozen contract. Module guide: `lib/html2rss/mcp/README.md`.
+
+| Verb     | Job                                                              |
+| -------- | ---------------------------------------------------------------- |
+| inspect  | Cheap diagnostics (final URL, status, alternates, surface)       |
+| recon    | Verdict + native_feed preference (`:build` / `:defer` / `:drop`) |
+| capture  | YAML draft config                                                |
+| validate | Schema only                                                      |
+| test     | Schema + live extraction (min_items)                             |
+| apply    | Ship RSS from config                                             |
+| scrape   | Articles now (one-shot auto-source)                              |
+
+Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
+
+**Golden path:** optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
+
+**inspect ≠ recon:** inspect is diagnostics-only; recon adds curation verdict and native feed preference. MCP/CLI route inspect → recon when alternates warrant it (`Outcome::Playbook` policy).
+
+**Wire vs internal:** `Html2rss.feed` / `feed_result` and `auto_feed_result` stay pipeline internals — do not rename in `spec/examples/` or pipeline code. User-facing **`apply`** delegates to `feed_result`; **`scrape`** delegates to `auto_feed_result`.
+
+**Ownership:** diagnostics → `PageRecon::Diagnostics`; verdict → `Recon`; capture YAML → `Capture::CaptureResult#yaml`; validate/test/apply/scrape facades → `lib/html2rss.rb`; MCP wire + playbook → `lib/html2rss/mcp/**` (`Outcome::Playbook` is instruction SSOT). See `CONTEXT.md` file ownership matrix.
+
+**Sync rule:** when changing CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep` names, or facade method names, update `CONTEXT.md`, this section, `README.md`, and `lib/html2rss/mcp/README.md` in the same PR wave. Grep gate (Wave 3): zero stale tool names in `lib/`, `spec/lib/`, `README`, `AGENTS`, `CONTEXT`, module READMEs.
+
+**Alias policy:** CLI `feed` and `auto` are accepted historic aliases (`feed` → `apply`, `auto` → `scrape`). Do not reintroduce MCP `_url`/`_config` suffixes or `batch_auto_feed`.
 
 ## Operating Checklist
 
@@ -141,6 +169,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
-- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
+- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,mcp}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
+- When changing curation verbs (CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep`, gem facades), sync `CONTEXT.md` § Frozen contract, this § Curation CLI / MCP, `README.md`, and `lib/html2rss/mcp/README.md` in the same PR wave.
 - Wire those guides with `{include:file:lib/.../README.md}` on the owning class. Do not add them to `.yardopts --files`: YARD extra-file names are `File.basename` without extension, so extra `README.md` files all emit `file.README.html` and clobber the gem README.
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.

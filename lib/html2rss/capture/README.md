@@ -2,6 +2,10 @@
 
 `Html2rss.capture` (and CLI `html2rss capture`) analyzes a URL through the feed pipeline and produces a reusable config with **items selector + `enhance: true` only** — no title/url/description attribute-selector soup. At feed-build time, `enhance: true` fills missing article fields via `Html::ArticleExtractor` on each matched item.
 
+## API
+
+`Html2rss.capture` / `Capture.build` return `Capture::CaptureResult` — use `#yaml` or `#config`, not a bare Hash.
+
 ## When to use it
 
 Point `capture` at a listing URL when you want a first-draft YAML config instead of hand-writing selectors. Treat the output as a draft: selector quality depends on page structure.
@@ -9,8 +13,9 @@ Point `capture` at a listing URL when you want a first-draft YAML config instead
 ## Gem API
 
 ```ruby
-config = Html2rss.capture('https://example.com/articles')
+result = Html2rss.capture('https://example.com/articles')
 
+# result.config =>
 # {
 #   channel: { url: "...", title: "...", time_zone: "UTC" },
 #   selectors: {
@@ -18,11 +23,13 @@ config = Html2rss.capture('https://example.com/articles')
 #   }
 # }
 
-File.write('my-feed.yml', YAML.dump(Html2rss::HashUtil.deep_stringify_keys(config)))
-feed = Html2rss.feed(config)
+File.write('my-feed.yml', result.yaml)
+rss = Html2rss.apply(result.config)
 ```
 
-`Capture.build` returns a `CaptureResult` with quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`). `Html2rss.capture` returns only the config hash.
+`Html2rss.capture` and `Capture.build` both return a `CaptureResult` with YAML (`#yaml`, includes the schema modeline) and quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`, `native_feed`).
+
+**Wire vs internal:** user-facing **`Html2rss.apply`** ships RSS from a config Hash. Pipeline internals **`Html2rss.feed` / `feed_result`** stay unchanged — use `apply` in CLI/MCP/docs examples, not `feed`.
 
 ### Options
 
@@ -30,15 +37,17 @@ feed = Html2rss.feed(config)
 Html2rss.capture('https://spa-site.com', strategy: :botasaurus)
 Html2rss.capture('https://example.com', items_selector: '.article-card')
 Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: './page.html')
+Html2rss.capture('https://example.com', max_redirects: 8, max_requests: 4)
 ```
 
-`strategy: :auto` uses the same AutoFallback chain as scrape (`faraday` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.feed(config)` replays the same transport.
+`strategy: :auto` uses the same AutoFallback chain as scrape (`faraday` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.apply(config)` replays the same transport.
 
 ## CLI
 
 ```bash
 html2rss capture https://example.com/articles
 html2rss capture https://example.com --strategy botasaurus
+html2rss capture https://example.com --max-redirects 8 --max-requests 4
 html2rss capture https://example.com/articles > my-feed.yml
 html2rss capture https://example.com --input ./page.html
 html2rss capture https://example.com --explain   # quality JSON on stderr; YAML on stdout

@@ -7,351 +7,405 @@ require 'tempfile'
 RSpec.describe Html2rss::CLI do
   subject(:cli) { described_class.new }
 
-  describe '#feed' do
+  describe '#apply' do
     let(:rss_xml) { '<rss><channel><title>Example</title></channel></rss>' }
+    let(:feed_res) do
+      instance_double(
+        Html2rss::FeedResult,
+        to_rss: rss_xml,
+        to_json_feed: { title: 'Example', items: [] },
+        status: instance_double(Html2rss::Status, to_h: {})
+      )
+    end
 
     before do
-      allow(Html2rss).to receive(:feed).and_return(rss_xml)
+      allow(Html2rss).to receive(:apply).and_return(feed_res)
     end
 
     it 'parses the YAML file and prints the RSS feed to stdout' do
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({ url: 'https://example.com' })
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
 
-      expect { cli.feed('example.yml') }.to output("#{rss_xml}\n").to_stdout
+      expect { cli.apply('example.yml') }.to output("#{rss_xml}\n").to_stdout
     end
 
-    it 'passes the feed_name to config_from_yaml_file' do
-      allow(Html2rss).to receive(:config_from_yaml_file).with('example.yml',
-                                                              'feed_name').and_return({ url: 'https://example.com' })
-
-      expect { cli.feed('example.yml', 'feed_name') }.to output("#{rss_xml}\n").to_stdout
+    it 'supports --format jsonfeed and --explain' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      expect { cli.invoke(:apply, ['example.yml'], { format: 'jsonfeed', explain: true }) }
+        .to output(/"title": "Example"/).to_stdout
     end
 
-    {
-      'strategy' => [{ strategy: 'botasaurus' }, { strategy: :botasaurus }],
-      'max_redirects' => [{ max_redirects: 8 }, { request: { max_redirects: 8 } }],
-      'max_requests' => [{ max_requests: 8 }, { request: { max_requests: 8 } }],
-      'params' => [{ params: { 'foo' => 'bar' } }, { params: { 'foo' => 'bar' } }]
-    }.each do |label, (options, expected_attrs)|
-      it "forwards #{label} to Html2rss.feed" do # rubocop:disable RSpec/ExampleLength
-        allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
-
-        cli.invoke(:feed, ['example.yml'], options)
-
-        expected = if expected_attrs.key?(:request)
-                     hash_including(request: hash_including(expected_attrs[:request]))
-                   else
-                     hash_including(expected_attrs)
-                   end
-        expect(Html2rss).to have_received(:feed).with(expected)
-      end
+    it 'handles local file input via --input' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      expect { cli.invoke(:apply, ['example.yml'], { input: 'spec/fixtures/page_1.html' }) }
+        .to output("#{rss_xml}\n").to_stdout
     end
 
-    it 'applies CLI defaults when the YAML config uses nil request overrides' do # rubocop:disable RSpec/ExampleLength
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return(
-        strategy: nil,
-        request: {
-          max_redirects: nil,
-          max_requests: nil
-        }
-      )
-
-      cli.feed('example.yml')
-
-      expect(Html2rss).to have_received(:feed).with(
-        hash_excluding(:strategy, :request)
-      )
+    it 'raises Thor::Error on RedirectLimitReached' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::RequestService::RedirectLimitReached, 'too many')
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /too many/)
     end
 
-    it 'preserves omitted request controls so downstream config can infer budgets' do
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
-
-      cli.feed('example.yml')
-
-      expect(Html2rss).to have_received(:feed).with(hash_excluding(:request))
-    end
-
-    context 'with input option' do
-      # Process-level local-file happy path lives in spec/exe/html2rss_spec.rb.
-      it 'wires --input to local_file strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        allow(Html2rss).to receive(:config_from_yaml_file).and_return({ channel: { url: 'https://example.com' } })
-
-        cli.invoke(:feed, ['example.yml'], { input: 'spec/fixtures/local_feed_test.html' })
-
-        expect(Html2rss).to have_received(:feed).with(
-          hash_including(
-            strategy: :local_file,
-            request: hash_including(local_file_path: File.expand_path('spec/fixtures/local_feed_test.html'))
-          )
-        )
-      end
-
-      it 'auto-detects channel.url from HTML when config url is missing' do
-        allow(Html2rss).to receive(:config_from_yaml_file).and_return({ channel: {} })
-
-        cli.invoke(:feed, ['example.yml'], { input: 'spec/fixtures/local_feed_test.html' })
-
-        expect(Html2rss).to have_received(:feed).with(
-          hash_including(channel: hash_including(url: 'https://example.com/blog'))
-        )
-      end
-
-      it 'raises Thor::Error when input file does not exist' do
-        allow(Html2rss).to receive(:config_from_yaml_file).and_return({})
-
-        expect { cli.invoke(:feed, ['example.yml'], { input: 'nonexistent.html' }) }
-          .to raise_error(Thor::Error, /Input file does not exist/)
-      end
+    it 'raises Thor::Error on NoFeedItemsExtracted' do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::NoFeedItemsExtracted.new(attempts: []))
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /No feed items extracted/)
     end
   end
 
-  describe '#auto' do
-    let(:auto_rss_xml) { '<rss><channel><title>Auto Source</title></channel></rss>' }
-    let(:auto_json_feed) { { version: 'https://jsonfeed.org/version/1.1', title: 'Auto Source', items: [] } }
-    let(:auto_defaults) do
+  describe '#inspect' do
+    let(:inspect_data) do
       {
-        strategy: :auto,
-        items_selector: nil,
-        max_redirects: nil,
-        max_requests: nil,
-        local_file_path: nil,
-        limit: nil
+        requested_url: 'https://example.com/news',
+        final_url: 'https://example.com/news',
+        status: 200,
+        surface_category: 'article_list',
+        articles_count: 5,
+        alternate_feeds: [],
+        strategy: :faraday
       }
     end
+    let(:report) { instance_double(Html2rss::PageRecon::Diagnostics::Report, to_wire_h: inspect_data) }
+    let(:batch_result) do
+      Html2rss::Batch::BatchResult.new(total: 1, successful: 1, results: [inspect_data])
+    end
 
-    let(:feed_result) do
-      instance_double(
-        Html2rss::FeedResult,
-        to_rss: auto_rss_xml,
-        to_json_feed: auto_json_feed,
-        status: Html2rss::Status.build(articles: [], dedup_dropped: 0)
+    before do
+      allow(Html2rss).to receive_messages(inspect: report, batch_inspect: batch_result)
+    end
+
+    it 'prints diagnostics card to stdout' do
+      expect { cli.inspect('https://example.com/news') }.to output(/Surface:  article_list \(5 articles\)/).to_stdout
+    end
+
+    it 'supports --format json' do
+      expect { cli.invoke(:inspect, ['https://example.com/news'], { format: 'json' }) }
+        .to output(/"articles_count": 5/).to_stdout
+    end
+
+    it 'supports batch mode with --file' do # rubocop:disable RSpec/ExampleLength
+      Tempfile.create('urls') do |f|
+        f.puts('https://example.com/news')
+        f.flush
+        expect { cli.invoke(:inspect, nil, { file: f.path }) }
+          .to output(/Surface:  article_list/).to_stdout
+      end
+    end
+
+    it 'raises Thor::Error when target is omitted' do
+      expect { cli.inspect(nil) }.to raise_error(Thor::Error, /target URL/)
+    end
+
+    it 'reads URLs from stdin (-)' do
+      allow($stdin).to receive(:readlines).and_return(["https://example.com/news\n"])
+      expect { cli.inspect('-') }.to output(/Surface:  article_list/).to_stdout
+    end
+  end
+
+  describe '#recon' do
+    let(:recon_result) do
+      Html2rss::Recon::Result.new(
+        requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
+        final_url: Html2rss::Url.from_absolute('https://example.com/news'),
+        status: 200,
+        verdict: Html2rss::Recon::Verdict.coerce(:build),
+        native_feed: nil,
+        surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
+        articles_count: 5,
+        scheme_downgrade: false,
+        notes: [],
+        html_bytesize: 2048
       )
     end
 
     before do
-      allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
+      allow(Html2rss::Recon).to receive(:batch).and_return([recon_result])
     end
 
-    it 'calls Html2rss.auto_feed_result and prints the RSS to stdout' do
-      expect { cli.auto('https://example.com') }.to output("#{auto_rss_xml}\n").to_stdout
+    it 'runs reconnaissance and prints card to stdout' do
+      expect { cli.recon('https://example.com/news') }.to output(/\[BUILD\]/).to_stdout
     end
 
-    {
-      'strategy' => [{ strategy: 'botasaurus' }, { strategy: :botasaurus }],
-      'items_selector' => [{ items_selector: '.item' }, { items_selector: '.item' }],
-      'max_redirects' => [{ max_redirects: 8 }, { max_redirects: 8 }],
-      'max_requests' => [{ max_requests: 8 }, { max_requests: 8 }],
-      'limit' => [{ limit: 10 }, { limit: 10 }]
-    }.each do |label, (options, expected_kwargs)|
-      it "forwards #{label} to Html2rss.auto_feed_result" do
-        cli.invoke(:auto, ['https://example.com'], options)
-
-        expect(Html2rss).to have_received(:auto_feed_result)
-          .with('https://example.com', **auto_defaults, **expected_kwargs)
+    it 'exits with 3 for single URL with DEFER verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      defer_res = Html2rss::Recon::Result.new(
+        requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
+        final_url: Html2rss::Url.from_absolute('https://example.com/news'),
+        status: 200,
+        verdict: Html2rss::Recon::Verdict.coerce(:defer),
+        native_feed: 'https://example.com/feed.xml',
+        surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
+        articles_count: 5,
+        scheme_downgrade: false,
+        notes: [],
+        html_bytesize: 2048
+      )
+      allow(Html2rss::Recon).to receive(:batch).and_return([defer_res])
+      expect { cli.recon('https://example.com/news') }.to raise_error(SystemExit) do |e|
+        expect(e.status).to eq(3)
       end
     end
 
-    it 'routes jsonfeed format to to_json_feed and pretty-prints', :aggregate_failures do
-      expected_output = "#{JSON.pretty_generate(auto_json_feed)}\n"
-
-      expect { cli.invoke(:auto, ['https://example.com'], { format: 'jsonfeed' }) }
-        .to output(expected_output).to_stdout
-      expect(Html2rss).to have_received(:auto_feed_result)
-        .with('https://example.com', **auto_defaults)
+    it 'exits with 1 for single URL with DROP verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      drop_res = Html2rss::Recon::Result.new(
+        requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
+        final_url: Html2rss::Url.from_absolute('https://example.com/news'),
+        status: 404,
+        verdict: Html2rss::Recon::Verdict.coerce(:drop),
+        native_feed: nil,
+        surface_category: Html2rss::SurfaceCategory.coerce(:unsupported_surface),
+        articles_count: 0,
+        scheme_downgrade: false,
+        notes: [],
+        html_bytesize: 0
+      )
+      allow(Html2rss::Recon).to receive(:batch).and_return([drop_res])
+      expect { cli.recon('https://example.com/news') }.to raise_error(SystemExit) do |e|
+        expect(e.status).to eq(1)
+      end
     end
 
-    it 'prints Status JSON to stderr when --explain is set', :aggregate_failures do
-      expect { cli.invoke(:auto, ['https://example.com'], { explain: true }) }
-        .to output("#{auto_rss_xml}\n").to_stdout
-        .and output(/"dedup_dropped"/).to_stderr
+    it 'supports --format json' do
+      expect { cli.invoke(:recon, ['https://example.com/news'], { format: 'json' }) }
+        .to output(/"verdict": "build"/).to_stdout
     end
 
-    context 'when the redirect limit is hit' do
-      before do
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(
-          Html2rss::RequestService::RedirectLimitReached,
-          'too many redirects; last one to: https://www.example.com/'
+    it 'supports --format tsv' do
+      expect { cli.invoke(:recon, ['https://example.com/news'], { format: 'tsv' }) }
+        .to output(/BUILD\t/).to_stdout
+    end
+
+    it 'supports batch mode with --verdict filter and --url-only' do # rubocop:disable RSpec/ExampleLength
+      Tempfile.create('urls') do |f|
+        f.puts('https://example.com/news')
+        f.flush
+        expect { cli.invoke(:recon, nil, { file: f.path, verdict: 'BUILD', url_only: true }) }
+          .to output(%r{https://example.com/news}).to_stdout
+      end
+    end
+
+    it 'parses slug\\turl lines from --file into bare URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      Tempfile.create('urls') do |f|
+        f.puts("news\thttps://example.com/news")
+        f.puts('# comment')
+        f.puts('https://example.com/blog')
+        f.flush
+        expect { cli.invoke(:recon, nil, { file: f.path, url_only: true }) }
+          .to output(%r{https://example.com/news}).to_stdout
+        expect(Html2rss::Recon).to have_received(:batch).with(
+          ['https://example.com/news', 'https://example.com/blog'],
+          hash_including(strategy: :auto)
         )
       end
+    end
 
-      it 'raises a CLI error with an actionable redirect hint' do
-        expect { cli.auto('https://example.com') }
-          .to raise_error(
-            Thor::Error,
-            /already retried the last redirect hop once; retry with --max-redirects 6 or use the final URL directly/
-          )
-      end
-
-      it 'increments the retry hint from an explicit max_redirects override' do
-        expect { cli.invoke(:auto, ['https://example.com'], { max_redirects: 8 }) }
-          .to raise_error(
-            Thor::Error,
-            /already retried the last redirect hop once; retry with --max-redirects 9 or use the final URL directly/
-          )
+    it 'raises Thor::Error for an unknown --verdict filter' do # rubocop:disable RSpec/ExampleLength
+      Tempfile.create('urls') do |f|
+        f.puts('https://example.com/news')
+        f.flush
+        expect { cli.invoke(:recon, nil, { file: f.path, verdict: 'MAYBE' }) }
+          .to raise_error(Thor::Error, /unknown verdict/)
       end
     end
 
-    context 'when botasaurus connectivity fails' do
-      before do
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(
-          Html2rss::RequestService::BotasaurusConnectionFailed,
-          'Botasaurus connection failed: Connection refused'
-        )
-      end
-
-      it 'raises a CLI error with botasaurus diagnostics' do
-        expect { cli.invoke(:auto, ['https://example.com'], { strategy: 'botasaurus' }) }
-          .to raise_error(Thor::Error, /Botasaurus connection failed/)
-      end
+    it 'raises Thor::Error when single URL does not match --verdict filter' do
+      expect { cli.invoke(:recon, ['https://example.com/news'], { verdict: 'DEFER' }) }
+        .to raise_error(Thor::Error, 'No results matched verdict DEFER')
     end
 
-    context 'when an anti-bot interstitial is detected' do
-      before do
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(
-          Html2rss::RequestService::BlockedSurfaceDetected,
-          'Blocked surface detected: Cloudflare anti-bot interstitial page. Retry with --strategy botasaurus.'
-        )
-      end
-
-      it 'raises a CLI error with blocked-surface guidance' do
-        expect { cli.auto('https://example.com') }
-          .to raise_error(Thor::Error, /Blocked surface detected: Cloudflare anti-bot interstitial page/)
-      end
+    it 'raises Thor::Error when target is omitted' do
+      expect { cli.recon(nil) }.to raise_error(Thor::Error, /target URL/)
     end
 
-    context 'when all auto fallback tiers return zero items' do
-      before do
-        allow(Html2rss).to receive(:auto_feed_result).and_raise(
-          Html2rss::NoFeedItemsExtracted.new(
-            attempts: [
-              { strategy: :faraday, items_count: 0, error_class: nil },
-              { strategy: :botasaurus, items_count: 0, error_class: nil }
-            ]
-          )
-        )
-      end
-
-      it 'raises a CLI error with zero-items guidance' do
-        expect { cli.auto('https://example.com') }
-          .to raise_error(Thor::Error, /No feed items extracted after auto fallback/)
-      end
-    end
-
-    context 'with input option' do
-      # Process-level local-file happy path lives in spec/exe/html2rss_spec.rb.
-      it 'raises Thor::Error when input file does not exist' do
-        expect { cli.invoke(:auto, [], { input: 'nonexistent.html' }) }
-          .to raise_error(Thor::Error, /Input file does not exist/)
-      end
-
-      it 'raises Thor::Error when no URL is provided and no canonical metadata is found' do # rubocop:disable RSpec/ExampleLength
-        Tempfile.create(%w[test .html]) do |temp|
-          temp.write('<html><body>no url metadata</body></html>')
-          temp.close
-
-          expect { cli.invoke(:auto, [], { input: temp.path }) }
-            .to raise_error(Thor::Error, /Could not auto-detect a base URL/)
-        end
-      end
-    end
-  end
-
-  describe '#schema' do
-    let(:schema_hash) { { 'type' => 'object', 'title' => 'html2rss' } }
-
-    before do
-      allow(Html2rss::Config).to receive(:json_schema).and_return(schema_hash)
-      allow(Html2rss::Config).to receive(:json_schema_json).and_call_original
-    end
-
-    it 'prints the schema JSON to stdout' do
-      expect { cli.schema }.to output("#{JSON.pretty_generate(schema_hash)}\n").to_stdout
-    end
-
-    it 'supports compact output' do
-      expect { cli.invoke(:schema, [], { pretty: false }) }
-        .to output("#{JSON.generate(schema_hash)}\n").to_stdout
-    end
-
-    it 'writes the schema to the requested file path', :aggregate_failures do
-      Dir.mktmpdir do |dir|
-        path = File.join(dir, 'nested', 'schema.json')
-
-        expect { cli.invoke(:schema, [], { write: path }) }.to output("#{path}\n").to_stdout
-        expect(JSON.parse(File.read(path))).to eq(schema_hash)
-      end
+    it 'reads URLs from stdin (-)' do
+      allow($stdin).to receive(:readlines).and_return(["https://example.com/news\n"])
+      expect { cli.recon('-') }.to output(/\[BUILD\]/).to_stdout
     end
   end
 
   describe '#capture' do
-    let(:captured_config) { { channel: { url: 'https://example.com', title: 'Example' } } }
+    let(:captured_config) do
+      {
+        channel: { url: 'https://example.com' },
+        selectors: { items: { selector: '.item', enhance: true } }
+      }
+    end
     let(:capture_result) do
       Html2rss::Capture::CaptureResult.new(
         config: captured_config,
-        articles_count: 2,
+        yaml: "channel:\n  url: https://example.com\n",
+        articles_count: 5,
         channel_title: 'Example',
         has_selectors: true,
         segment_strategy: :list,
-        admission_drops: {},
-        selected_strategy: nil
+        selected_strategy: :faraday,
+        inferred_topics: ['tech'],
+        native_feed: nil,
+        admission_drops: {}
       )
-    end
-    let(:capture_defaults) do
-      {
-        strategy: :auto,
-        items_selector: nil,
-        max_redirects: nil,
-        max_requests: nil,
-        limit: nil,
-        local_file_path: nil
-      }
     end
 
     before do
       allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
     end
 
-    it 'prints YAML through Config.to_yaml so CLI and MCP share one serializer', :aggregate_failures do
-      yaml = Html2rss::Config.to_yaml(captured_config)
-      allow(Html2rss::Config).to receive(:to_yaml).and_return(yaml)
-
-      expect { cli.capture('https://example.com') }.to output(yaml).to_stdout
-      expect(Html2rss::Config).to have_received(:to_yaml).with(captured_config)
+    it 'prints captured YAML to stdout' do
+      expect { cli.capture('https://example.com') }.to output("channel:\n  url: https://example.com\n").to_stdout
     end
 
-    {
-      'strategy' => [{ strategy: 'botasaurus' }, { strategy: :botasaurus }],
-      'items_selector' => [{ items_selector: '.item' }, { items_selector: '.item' }],
-      'max_redirects' => [{ max_redirects: 8 }, { max_redirects: 8 }],
-      'max_requests' => [{ max_requests: 8 }, { max_requests: 8 }],
-      'limit' => [{ limit: 10 }, { limit: 10 }]
-    }.each do |label, (options, expected_kwargs)|
-      it "forwards #{label} to Capture.build" do
-        cli.invoke(:capture, ['https://example.com'], options)
+    it 'raises Thor::Error when target and --input are omitted' do
+      expect { cli.capture(nil) }.to raise_error(Thor::Error, /URL is required/)
+    end
 
-        expect(Html2rss::Capture).to have_received(:build)
-          .with('https://example.com', **capture_defaults, **expected_kwargs)
+    it 'captures from local file via --input' do
+      expect { cli.invoke(:capture, [nil], { input: 'spec/fixtures/page_1.html' }) }
+        .to output(/channel:/).to_stdout
+    end
+
+    it 'writes captured YAML to file with --write', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      Dir.mktmpdir do |dir|
+        target_file = File.join(dir, 'feed.yml')
+        expect { cli.invoke(:capture, ['https://example.com'], { write: target_file }) }
+          .to output(/Wrote captured config to/).to_stdout
+        expect(File.read(target_file)).to include('url: https://example.com')
       end
     end
 
-    context 'when no URL is given and no input file is provided' do
-      it 'raises a Thor::Error' do
-        expect { cli.capture(nil) }
-          .to raise_error(Thor::Error, /A URL is required unless --input is specified/)
+    it 'writes captured YAML to directory with --output-dir', :aggregate_failures do
+      Dir.mktmpdir do |dir|
+        expect { cli.invoke(:capture, ['https://example.com'], { output_dir: dir }) }
+          .to output(/Wrote captured config to/).to_stdout
+        expect(File.read(File.join(dir, 'example.com', 'index.yml'))).to include('url: https://example.com')
       end
     end
 
-    context 'with input option' do
-      it 'forwards local_file_path into Capture', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        path = File.expand_path('spec/fixtures/local_feed_test.html')
-        cli.invoke(:capture, [], { input: 'spec/fixtures/local_feed_test.html' })
+    it 'warns and exits with code 3 when native feed is found without --force', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      feed_capture_result = Html2rss::Capture::CaptureResult.new(
+        config: captured_config,
+        yaml: "channel:\n  url: https://example.com\n",
+        articles_count: 5,
+        channel_title: 'Example',
+        has_selectors: true,
+        segment_strategy: :list,
+        selected_strategy: :faraday,
+        inferred_topics: ['tech'],
+        native_feed: 'https://example.com/feed.xml',
+        admission_drops: {}
+      )
+      allow(Html2rss::Capture).to receive(:build).and_return(feed_capture_result)
 
-        expect(Html2rss::Capture).to have_received(:build).with(
-          'https://example.com/blog',
-          **capture_defaults,
-          strategy: :local_file,
-          local_file_path: path
+      expect { cli.capture('https://example.com') }
+        .to output(%r{First-party RSS/Atom feed detected}).to_stderr
+        .and raise_error(SystemExit) do |exit_err|
+          expect(exit_err.status).to eq(3)
+        end
+    end
+
+    it 'supports --explain' do
+      expect { cli.invoke(:capture, ['https://example.com'], { explain: true }) }
+        .to output(/articles_count/).to_stderr
+    end
+
+    it 'forwards --max-redirects and --max-requests to Capture.build' do # rubocop:disable RSpec/ExampleLength -- option wiring contract
+      cli.invoke(
+        :capture,
+        ['https://example.com'],
+        { max_redirects: 8, max_requests: 4 }
+      )
+
+      expect(Html2rss::Capture).to have_received(:build).with(
+        'https://example.com',
+        hash_including(max_redirects: 8, max_requests: 4)
+      )
+    end
+  end
+
+  describe '#test' do
+    let(:test_result_success) do
+      Html2rss::Test::Result.new(
+        success: true,
+        item_count: 10,
+        sample_items: [{ title: 'Item 1', url: 'https://example.com/1', published_at: nil }],
+        channel_title: 'Example',
+        channel_url: 'https://example.com',
+        strategy_used: :faraday,
+        duration_seconds: 0.12,
+        validation_errors: nil,
+        error_message: nil,
+        failure_kind: nil,
+        rss: '<rss/>'
+      )
+    end
+
+    let(:test_result_failure) do
+      Html2rss::Test::Result.new(
+        success: false,
+        item_count: 0,
+        sample_items: [],
+        channel_title: 'Example',
+        channel_url: 'https://example.com',
+        strategy_used: :faraday,
+        duration_seconds: 0.12,
+        validation_errors: nil,
+        error_message: 'Extracted 0 items (minimum required: 1)',
+        failure_kind: Html2rss::Test::FailureKind.coerce(:min_items),
+        rss: nil
+      )
+    end
+
+    context 'when test passes' do
+      before do
+        allow(Html2rss).to receive(:test).and_return(test_result_success)
+        allow($stdout).to receive(:tty?).and_return(true)
+      end
+
+      it 'prints checkmark summary to stdout on TTY' do
+        expect { cli.test('config.yml') }.to output(/✓ Schema valid/).to_stdout
+      end
+
+      it 'passes config through to stdout when piped from stdin' do
+        allow($stdout).to receive(:tty?).and_return(false)
+        allow($stdin).to receive(:read).and_return("channel:\n  url: https://example.com\n")
+        expect { cli.test('-') }.to output("channel:\n  url: https://example.com\n").to_stdout
+      end
+
+      it 'supports --json output' do
+        expect { cli.invoke(:test, ['config.yml'], { json: true }) }.to output(/"success": true/).to_stdout
+      end
+
+      it 'prints result.rss for --xml without a second Html2rss.feed call', :aggregate_failures do
+        allow(Html2rss).to receive(:feed)
+        expect { cli.invoke(:test, ['config.yml'], { xml: true }) }
+          .to output(%r{<rss/>}).to_stdout
+        expect(Html2rss).not_to have_received(:feed)
+      end
+
+      it 'forwards --min-items 0 to Html2rss.test' do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss).to receive(:test).and_return(test_result_success)
+
+        cli.invoke(:test, ['config.yml'], { min_items: 0 })
+
+        expect(Html2rss).to have_received(:test).with(
+          'config.yml',
+          nil,
+          hash_including(min_items: 0)
         )
+      end
+    end
+
+    context 'when test fails' do
+      before do
+        allow(Html2rss).to receive(:test).and_return(test_result_failure)
+      end
+
+      it 'raises a Thor::Error on failure' do
+        expect { cli.test('config.yml') }
+          .to raise_error(Thor::Error, /Extracted 0 items/)
+      end
+
+      it 'supports --quiet when test fails' do
+        expect { cli.invoke(:test, ['config.yml'], { quiet: true }) }
+          .to output(/Extracted 0 items/).to_stderr
+          .and raise_error(Thor::Error)
       end
     end
   end
@@ -368,85 +422,90 @@ RSpec.describe Html2rss::CLI do
     end
 
     it 'starts the MCP server with HTTP transport when specified' do
-      cli.invoke(:mcp, [], { transport: 'http', port: 9090 })
+      cli.invoke(:mcp, [], { transport: 'http', port: 4010 })
 
-      expect(Html2rss::MCP).to have_received(:start).with(transport: :http, port: 9090)
+      expect(Html2rss::MCP).to have_received(:start).with(transport: :http, port: 4010)
     end
   end
 
   describe '#validate' do
-    let(:result) { instance_double(Dry::Validation::Result, success?: success, errors:) }
-    let(:errors) { instance_double(Dry::Validation::MessageSet, to_h: { selectors: ['bad config'] }) }
-
-    before do
-      allow(Html2rss::Config).to receive(:validate_yaml).and_return(result)
-    end
+    let(:result_success) { instance_double(Dry::Validation::Result, success?: true, errors: {}) }
+    let(:result_failure) { instance_double(Dry::Validation::Result, success?: false, errors: { selectors: ['bad config'] }) }
 
     context 'when the config is valid' do
-      let(:success) { true }
-
-      it 'prints a success message' do
-        expect { cli.validate('config.yml') }.to output("Configuration is valid\n").to_stdout
+      before do
+        allow(Html2rss).to receive(:validate).and_return(result_success)
       end
 
-      it 'passes the params option to runtime validation' do
-        cli.invoke(:validate, ['config.yml'], { params: { 'query' => 'ruby' } })
+      it 'prints confirmation' do
+        expect { cli.validate('config.yml') }.to output(/Configuration is valid/).to_stdout
+      end
 
-        expect(Html2rss::Config).to have_received(:validate_yaml).with('config.yml', nil, params: { 'query' => 'ruby' })
+      it 'validates from stdin (-)' do
+        allow($stdin).to receive(:read).and_return("channel:\n  url: https://example.com\n")
+        expect { cli.validate('-') }.to output(/Configuration is valid/).to_stdout
+      end
+
+      it 'validates multiple files with ok indicators' do
+        expect { cli.validate('spec/fixtures/single.test.yml', 'spec/fixtures/feeds.test.yml') }
+          .to output(%r{ok\s+spec/fixtures/single\.test\.yml}).to_stdout
       end
     end
 
     context 'when the config is invalid' do
-      let(:success) { false }
+      before do
+        allow(Html2rss).to receive(:validate).and_return(result_failure)
+      end
 
-      it 'raises a CLI error with runtime validation details' do
+      it 'raises a CLI error with details' do
         expect { cli.validate('config.yml') }
-          .to raise_error(Thor::Error, "Invalid configuration: #{errors.to_h}")
+          .to raise_error(Thor::Error, /Invalid configuration/)
+      end
+
+      it 'raises a CLI error summarizing multiple file failures' do
+        expect { cli.validate('spec/fixtures/single.test.yml', 'spec/fixtures/feeds.test.yml') }
+          .to raise_error(Thor::Error, %r{2/2 configurations failed validation})
       end
     end
   end
 
-  describe 'request budget failures' do
-    before do
-      allow(Html2rss).to receive(:feed).and_raise(
-        Html2rss::RequestService::RequestBudgetExceeded,
-        'Request budget exhausted'
+  describe '#scrape' do
+    let(:rss_xml) { '<rss><channel><title>Example</title></channel></rss>' }
+    let(:feed_res) do
+      instance_double(
+        Html2rss::FeedResult,
+        to_rss: rss_xml,
+        to_json_feed: { title: 'Example', items: [] },
+        status: instance_double(Html2rss::Status, to_h: {})
       )
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({ url: 'https://example.com' })
     end
 
-    it 'raises a CLI error with an increased retry hint' do
-      expect { cli.feed('example.yml') }
-        .to raise_error(
-          Thor::Error,
-          /retry with --max-requests 2 or increase request.max_requests in the config/
-        )
+    before do
+      allow(Html2rss).to receive(:scrape).and_return(feed_res)
+    end
+
+    it 'prints RSS to stdout' do
+      expect { cli.scrape('https://example.com/news') }.to output("#{rss_xml}\n").to_stdout
+    end
+
+    it 'supports --format jsonfeed and --explain' do
+      expect { cli.invoke(:scrape, ['https://example.com/news'], { format: 'jsonfeed', explain: true }) }
+        .to output(/"title": "Example"/).to_stdout
     end
   end
 
-  describe 'redirect failures' do
-    before do
-      allow(Html2rss).to receive(:feed).and_raise(
-        Html2rss::RequestService::RedirectLimitReached,
-        'too many redirects; last one to: https://www.example.com/'
-      )
-      allow(Html2rss).to receive(:config_from_yaml_file).and_return({ url: 'https://example.com' })
+  describe '#schema' do
+    it 'prints JSON schema to stdout' do
+      expect { cli.schema }.to output(/http-schema-url|\$schema/).to_stdout
     end
 
-    it 'raises a CLI error with an increased retry hint for feed' do
-      expect { cli.feed('example.yml') }
-        .to raise_error(
-          Thor::Error,
-          /already retried the last redirect hop once; retry with --max-redirects 6 or use the final URL directly/
-        )
-    end
-
-    it 'increments the feed retry hint from an explicit max_redirects override' do
-      expect { cli.invoke(:feed, ['example.yml'], { max_redirects: 8 }) }
-        .to raise_error(
-          Thor::Error,
-          /already retried the last redirect hop once; retry with --max-redirects 9 or use the final URL directly/
-        )
+    it 'writes schema to file with --write', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      Dir.mktmpdir do |dir|
+        target_file = File.join(dir, 'schema.json')
+        expect { cli.invoke(:schema, [], { write: target_file }) }
+          .to output(/schema\.json/).to_stdout
+        expect(File.read(target_file)).to include('$schema')
+      end
     end
   end
 end

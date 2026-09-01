@@ -32,14 +32,14 @@ Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (rep
 
 ## Nokogiri vs SST boundaries
 
-| Surface | Owns DOM |
-| --- | --- |
-| `Response#parsed_body` | Single HTML parse for the page |
-| Schema / Microdata / MF2 / JsonState / XhrArticles / MetaOembed / app-shell detection | Nokogiri |
-| Sitemap detection (CSS/XPath) | Nokogiri; URL list parsing uses raw `response.body` (XML string) |
-| Selectors path / Sanitize transformers | Nokogiri (unchanged) |
-| `SST::Normalizer` | Sole Nokogiri consumer on the heuristic auto-source path |
-| Segmenter, Scoring, `Html::SstArticleExtractor`, heuristic chrome (`SST::Tags` / `SST::Text`) | SST only |
+| Surface                                                                                       | Owns DOM                                                         |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `Response#parsed_body`                                                                        | Single HTML parse for the page                                   |
+| Schema / Microdata / MF2 / JsonState / XhrArticles / MetaOembed / app-shell detection         | Nokogiri                                                         |
+| Sitemap detection (CSS/XPath)                                                                 | Nokogiri; URL list parsing uses raw `response.body` (XML string) |
+| Selectors path / Sanitize transformers                                                        | Nokogiri (unchanged)                                             |
+| `SST::Normalizer`                                                                             | Sole Nokogiri consumer on the heuristic auto-source path         |
+| Segmenter, Scoring, `Html::SstArticleExtractor`, heuristic chrome (`SST::Tags` / `SST::Text`) | SST only                                                         |
 
 Production heuristic scrapers should reuse one `SST::Document` memoized from `parsed_body` (or a shared Document passed in), not re-parse HTML strings.
 

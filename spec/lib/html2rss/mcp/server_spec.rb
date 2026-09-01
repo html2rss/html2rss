@@ -63,19 +63,24 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.title).to eq('html2rss')
       expect(protocol_server.configuration.validate_tool_call_results?).to be(true)
       expect(protocol_server.tools.keys).to contain_exactly(
-        'scrape_url', 'inspect_url', 'capture_config', 'validate_config', 'apply_config'
+        'scrape', 'inspect', 'recon', 'batch_scrape', 'batch_inspect', 'batch_recon',
+        'capture', 'validate', 'test', 'apply'
+      )
+      expect(protocol_server.tools.keys).to match_array(
+        Html2rss::MCP::Contract::TITLES.keys.map(&:to_s)
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
       expect(protocol_server.instructions).to include('html2rss://runtime')
       expect(protocol_server.instructions).to include('Strive enhance: true')
       expect(protocol_server.instructions).to include('payload.item_count')
+      expect(protocol_server.instructions).to include('test')
       expect(protocol_server.instructions).not_to include('_meta')
       expect(protocol_server.instructions).not_to include('try explicit "faraday"')
-      expect(protocol_server.tools['validate_config'].description).to include('html2rss://schema')
-      expect(protocol_server.tools['capture_config'].description).to include('html2rss://schema')
-      scrape_schema = protocol_server.tools['scrape_url'].input_schema.to_h
-      inspect_schema = protocol_server.tools['inspect_url'].input_schema.to_h
+      expect(protocol_server.tools['validate'].description).to include('html2rss://schema')
+      expect(protocol_server.tools['capture'].description).to include('html2rss://schema')
+      scrape_schema = protocol_server.tools['scrape'].input_schema.to_h
+      inspect_schema = protocol_server.tools['inspect'].input_schema.to_h
       expect(scrape_schema.dig(:properties, :strategy, :description)).to include('fallback chain')
       expect(inspect_schema.dig(:properties, :strategy, :description)).to include('Faraday')
     end
@@ -83,7 +88,7 @@ RSpec.describe Html2rss::MCP::Server do
   end
 
   describe 'tools/call contracts' do
-    describe 'scrape_url' do
+    describe 'scrape' do
       before do
         status = Html2rss::Status.build(articles: [], dedup_dropped: 0, admission_drops: { 'credit' => 1 })
         feed_result = instance_double(
@@ -96,7 +101,7 @@ RSpec.describe Html2rss::MCP::Server do
 
       # rubocop:disable RSpec/ExampleLength -- tools/call envelope contract
       it 'returns an envelope with items in payload and no _meta', :aggregate_failures do
-        result = call_tool.call('scrape_url', { url: 'https://example.com', strategy: 'auto' })
+        result = call_tool.call('scrape', { url: 'https://example.com', strategy: 'auto' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(Html2rss).to have_received(:auto_feed_result).with(
@@ -125,12 +130,12 @@ RSpec.describe Html2rss::MCP::Server do
         )
         allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
 
-        result = call_tool.call('scrape_url', { url: 'https://example.com' })
+        result = call_tool.call('scrape', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(false)
       end
 
-      it 'points an empty scrape_url at read_runtime when Botasaurus is unset', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
+      it 'points an empty scrape at read_runtime when Botasaurus is unset', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
         feed_result = instance_double(
           Html2rss::FeedResult,
           to_json_feed: { title: 'Channel', items: [] },
@@ -139,7 +144,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
 
         ClimateControl.modify(BOTASAURUS_SCRAPER_URL: nil) do
-          result = call_tool.call('scrape_url', { url: 'https://example.com' })
+          result = call_tool.call('scrape', { url: 'https://example.com' })
           envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
           expect(result.dig(:result, :isError)).to be(false)
@@ -148,7 +153,74 @@ RSpec.describe Html2rss::MCP::Server do
       end
     end
 
-    describe 'capture_config' do
+    describe 'batch_scrape' do
+      let(:batch_result) do
+        Html2rss::Batch::BatchResult.new(
+          total: 2,
+          successful: 1,
+          results: [
+            { url: 'https://example.com/a', ok: true, items_count: 1, items: [{ title: 'A' }], channel_title: 'A' },
+            { url: 'https://example.com/b', ok: false, error: 'Boom' }
+          ]
+        )
+      end
+
+      before do
+        allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
+      end
+
+      # rubocop:disable RSpec/ExampleLength
+      it 'returns a batch scrape envelope', :aggregate_failures do
+        result = call_tool.call('batch_scrape', { urls: ['https://example.com/a', 'https://example.com/b'] })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(Html2rss::Batch).to have_received(:batch_scrape).with(
+          urls: ['https://example.com/a', 'https://example.com/b'],
+          strategy: :auto,
+          limit: 10,
+          concurrency: 5
+        )
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'done')
+        expect(envelope[:payload]).to include(total: 2, successful: 1)
+      end
+      # rubocop:enable RSpec/ExampleLength
+    end
+
+    describe 'batch_inspect' do
+      let(:batch_result) do
+        Html2rss::Batch::BatchResult.new(
+          total: 2,
+          successful: 2,
+          results: [
+            { url: 'https://example.com/a', ok: true, status_code: 200, final_url: 'https://example.com/a' },
+            { url: 'https://example.com/b', ok: true, status_code: 200, final_url: 'https://example.com/b' }
+          ]
+        )
+      end
+
+      before do
+        allow(Html2rss::Batch).to receive(:batch_inspect).and_return(batch_result)
+      end
+
+      # rubocop:disable RSpec/ExampleLength
+      it 'returns a batch inspect envelope', :aggregate_failures do
+        result = call_tool.call('batch_inspect', { urls: ['https://example.com/a', 'https://example.com/b'] })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(Html2rss::Batch).to have_received(:batch_inspect).with(
+          urls: ['https://example.com/a', 'https://example.com/b'],
+          strategy: :auto,
+          concurrency: 5
+        )
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'done')
+        expect(envelope[:payload]).to include(total: 2, successful: 2)
+      end
+      # rubocop:enable RSpec/ExampleLength
+    end
+
+    describe 'capture' do
       let(:capture_result) do
         Html2rss::Capture::CaptureResult.new(
           config: valid_config,
@@ -166,75 +238,137 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       # rubocop:disable RSpec/ExampleLength -- tools/call envelope contract
-      it 'returns YAML inside payload and quality fields without _meta', :aggregate_failures do
-        yaml = Html2rss::Config.to_yaml(valid_config)
-        allow(Html2rss::Config).to receive(:to_yaml).and_return(yaml)
-        result = call_tool.call('capture_config', { url: 'https://example.com' })
+      it 'returns CaptureResult.yaml (with modeline) inside payload without _meta', :aggregate_failures do
+        result = call_tool.call('capture', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(Html2rss::Capture).to have_received(:build).with(
           'https://example.com',
           hash_including(strategy: :auto)
         )
-        expect(Html2rss::Config).to have_received(:to_yaml).with(valid_config)
         expect(result.dig(:result, :isError)).to be(false)
         expect(result.dig(:result, :_meta)).to be_nil
-        expect(envelope).to include(ok: true, next_step: 'validate_config')
+        expect(envelope).to include(ok: true, next_step: 'test')
         expect(envelope[:payload]).to include(
-          yaml:,
+          yaml: capture_result.yaml,
           articles_count: 3,
           channel_title: 'Example',
           has_selectors: true,
           requested_strategy: 'auto'
         )
+        expect(envelope.dig(:payload, :yaml)).to include('yaml-language-server')
       end
       # rubocop:enable RSpec/ExampleLength
     end
 
-    describe 'validate_config' do
+    describe 'test' do
+      def test_result(success:, failure_kind: nil, **) # rubocop:disable Metrics/MethodLength
+        Html2rss::Test::Result.new(
+          success:,
+          item_count: success ? 2 : 0,
+          sample_items: success ? [{ title: 'A', url: 'https://example.com/a' }] : [],
+          channel_title: 'Example',
+          channel_url: 'https://example.com',
+          strategy_used: :faraday,
+          duration_seconds: 0.1,
+          validation_errors: success ? nil : { channel: ['is missing'] },
+          error_message: success ? nil : 'Configuration schema validation failed',
+          failure_kind:,
+          rss: success ? '<rss/>' : nil,
+          **
+        )
+      end
+
+      it 'returns apply next_step on successful tools/call', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
+        allow(Html2rss).to receive(:test).and_return(test_result(success: true))
+
+        result = call_tool.call('test', { config: valid_config, min_items: 1, strategy: 'auto' })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(Html2rss).to have_received(:test).with(
+          valid_config,
+          min_items: 1,
+          strategy: :auto
+        )
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'apply')
+        expect(envelope[:payload]).to include(item_count: 2, channel_title: 'Example')
+      end
+
+      it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        config_with_strategy = valid_config.merge(strategy: :faraday)
+        allow(Html2rss::Test).to receive(:call).and_return(test_result(success: true))
+
+        call_tool.call('test', { config: config_with_strategy, min_items: 1 })
+
+        expect(Html2rss::Test).to have_received(:call).with(
+          hash_including(strategy: 'faraday'),
+          nil,
+          hash_including(min_items: 1, strategy: nil)
+        )
+      end
+
+      it 'routes schema failure next_step to validate', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
+        allow(Html2rss).to receive(:test).and_return(
+          test_result(success: false, failure_kind: Html2rss::Test::FailureKind.coerce(:schema))
+        )
+
+        result = call_tool.call('test', { config: { bad: true } })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(result.dig(:result, :isError)).to be(true)
+        expect(envelope).to include(ok: false, next_step: 'validate')
+        expect(envelope[:payload]).to include(
+          failure_kind: 'schema',
+          validation_errors: { channel: ['is missing'] }
+        )
+      end
+    end
+
+    describe 'validate' do
       it 'succeeds for a valid config', :aggregate_failures do
-        result = call_tool.call('validate_config', { config: valid_config })
+        result = call_tool.call('validate', { config: valid_config })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(false)
-        expect(envelope).to include(ok: true, next_step: 'apply_config', payload: {})
+        expect(envelope).to include(ok: true, next_step: 'test', payload: {})
       end
 
       it 'accepts yaml XOR config so catalog files skip JSON re-encoding' do
-        result = call_tool.call('validate_config', { yaml: Html2rss::Config.to_yaml(valid_config) })
+        result = call_tool.call('validate', { yaml: Html2rss::Config.to_yaml(valid_config) })
 
         expect(result.dig(:result, :isError)).to be(false)
       end
 
       it 'marks XOR violations as isError' do
-        result = call_tool.call('validate_config', { config: valid_config, yaml: 'channel: {}' })
+        result = call_tool.call('validate', { config: valid_config, yaml: 'channel: {}' })
 
         expect(result.dig(:result, :isError)).to be(true)
       end
 
       it 'rejects local_file in the parsed config', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- unpublished-strategy envelope
         result = call_tool.call(
-          'validate_config',
+          'validate',
           { config: valid_config.merge(strategy: :local_file, request: { local_file_path: '/etc/passwd' }) }
         )
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(true)
-        expect(envelope).to include(ok: false, next_step: 'validate_config')
+        expect(envelope).to include(ok: false, next_step: 'validate')
         expect(envelope.dig(:payload, :class)).to eq('Html2rss::MCP::Contract::UnpublishedRequestError')
       end
 
       it 'marks invalid configs as isError with json error details', :aggregate_failures do
-        result = call_tool.call('validate_config', { config: { bad: true } })
+        result = call_tool.call('validate', { config: { bad: true } })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(true)
-        expect(envelope).to include(ok: false, next_step: 'validate_config')
+        expect(envelope).to include(ok: false, next_step: 'validate')
         expect(envelope[:payload][:errors]).to be_a(Hash)
       end
     end
 
-    describe 'apply_config' do
+    describe 'apply' do
       let(:feed_result) do
         instance_double(
           Html2rss::FeedResult,
@@ -250,7 +384,7 @@ RSpec.describe Html2rss::MCP::Server do
       # rubocop:disable RSpec/ExampleLength -- channel.url fill + RSS envelope
       it 'returns RSS XML from Html2rss.feed_result', :aggregate_failures do
         result = call_tool.call(
-          'apply_config',
+          'apply',
           { url: 'https://example.com', config: valid_config.except(:channel) }
         )
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
@@ -266,7 +400,7 @@ RSpec.describe Html2rss::MCP::Server do
       # rubocop:enable RSpec/ExampleLength
     end
 
-    describe 'apply_config unpublished local_file' do
+    describe 'apply unpublished local_file' do
       # rubocop:disable RSpec/ExampleLength -- security: isError without File.read
       it 'isError and does not read the local file', :aggregate_failures do
         Dir.mktmpdir do |dir|
@@ -279,14 +413,14 @@ RSpec.describe Html2rss::MCP::Server do
           end
 
           result = call_tool.call(
-            'apply_config',
+            'apply',
             { url: 'https://example.com',
               config: valid_config.merge(strategy: :local_file, request: { local_file_path: path }) }
           )
           envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
           expect(result.dig(:result, :isError)).to be(true)
-          expect(envelope).to include(ok: false, next_step: 'validate_config')
+          expect(envelope).to include(ok: false, next_step: 'validate')
           expect(envelope.dig(:payload, :class)).to eq('Html2rss::MCP::Contract::UnpublishedRequestError')
           expect(read_paths).not_to include(path)
         end
@@ -294,7 +428,7 @@ RSpec.describe Html2rss::MCP::Server do
       # rubocop:enable RSpec/ExampleLength
     end
 
-    describe 'apply_config ship gate' do
+    describe 'apply ship gate' do
       let(:feed_result) do
         instance_double(
           Html2rss::FeedResult,
@@ -308,7 +442,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks apply as isError and reports item_count from rss.items.size', :aggregate_failures do
-        result = call_tool.call('apply_config', { url: 'https://example.com', config: valid_config })
+        result = call_tool.call('apply', { url: 'https://example.com', config: valid_config })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(true)
@@ -317,21 +451,23 @@ RSpec.describe Html2rss::MCP::Server do
       end
     end
 
-    describe 'inspect_url' do
+    describe 'inspect' do
       before do
-        allow(Html2rss::MCP::Inspect).to receive(:call).and_return(
-          { requested_url: 'https://example.com', strategy: :faraday, html_response: true }
+        allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_return(
+          Html2rss::PageRecon::Diagnostics::Report.new(
+            data: { requested_url: 'https://example.com', strategy: :faraday, html_response: true }
+          )
         )
       end
 
       # rubocop:disable RSpec/ExampleLength -- tools/call diagnostic envelope
       it 'returns diagnostic JSON from Inspect', :aggregate_failures do
-        result = call_tool.call('inspect_url', { url: 'https://example.com' })
+        result = call_tool.call('inspect', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss::MCP::Inspect).to have_received(:call).with(
+        expect(Html2rss::PageRecon::Diagnostics).to have_received(:call).with(
           url: 'https://example.com',
-          strategy: 'auto'
+          strategy: :auto
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(envelope[:payload]).to include(strategy: 'faraday')
@@ -345,13 +481,13 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss::Log).to receive(:info)
       end
 
-      it 'marks scrape_url failures as isError', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- envelope error shape
+      it 'marks scrape failures as isError', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- envelope error shape
         allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
-        result = call_tool.call('scrape_url', { url: 'https://example.com' })
+        result = call_tool.call('scrape', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(true)
-        expect(envelope).to include(ok: false, next_step: 'inspect_url')
+        expect(envelope).to include(ok: false, next_step: 'inspect')
         expect(envelope[:payload]).to include(class: 'StandardError', message: 'scrape boom')
       end
 
@@ -363,7 +499,7 @@ RSpec.describe Html2rss::MCP::Server do
         )
 
         ClimateControl.modify(BOTASAURUS_SCRAPER_URL: secret) do
-          result = call_tool.call('scrape_url', { url: 'https://example.com', strategy: 'botasaurus' })
+          result = call_tool.call('scrape', { url: 'https://example.com', strategy: 'botasaurus' })
           text = result.dig(:result, :content, 0, :text)
           envelope = JSON.parse(text, symbolize_names: true)
 
@@ -381,35 +517,35 @@ RSpec.describe Html2rss::MCP::Server do
       it 'logs tool exceptions to the gem logger' do
         allow(Html2rss).to receive(:auto_feed_result).and_raise(StandardError, 'scrape boom')
 
-        call_tool.call('scrape_url', { url: 'https://example.com' })
+        call_tool.call('scrape', { url: 'https://example.com' })
 
         expect(Html2rss::Log).to have_received(:error).with('mcp error StandardError: scrape boom')
       end
 
-      it 'marks capture_config failures as isError' do
+      it 'marks capture failures as isError' do
         allow(Html2rss::Capture).to receive(:build).and_raise(StandardError, 'capture boom')
-        result = call_tool.call('capture_config', { url: 'https://example.com' })
+        result = call_tool.call('capture', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)
       end
 
-      it 'marks apply_config failures as isError' do
+      it 'marks apply failures as isError' do
         allow(Html2rss).to receive(:feed_result).and_raise(StandardError, 'feed boom')
-        result = call_tool.call('apply_config', { url: 'https://example.com', config: valid_config })
+        result = call_tool.call('apply', { url: 'https://example.com', config: valid_config })
 
         expect(result.dig(:result, :isError)).to be(true)
       end
 
-      it 'marks inspect_url failures as isError' do
-        allow(Html2rss::MCP::Inspect).to receive(:call).and_raise(StandardError, 'inspect boom')
-        result = call_tool.call('inspect_url', { url: 'https://example.com' })
+      it 'marks inspect failures as isError' do
+        allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_raise(StandardError, 'inspect boom')
+        result = call_tool.call('inspect', { url: 'https://example.com' })
 
         expect(result.dig(:result, :isError)).to be(true)
       end
 
-      it 'marks validate_config exceptions as isError' do
+      it 'marks validate exceptions as isError' do
         allow(Html2rss::Config).to receive(:validate).and_raise(StandardError, 'validate boom')
-        result = call_tool.call('validate_config', { config: valid_config })
+        result = call_tool.call('validate', { config: valid_config })
 
         expect(result.dig(:result, :isError)).to be(true)
       end
@@ -456,8 +592,8 @@ RSpec.describe Html2rss::MCP::Server do
       payload = { jsonrpc: '2.0', id: 4, method: 'tools/list', params: {} }
       result = JSON.parse(protocol_server.handle_json(JSON.generate(payload)), symbolize_names: true)
       tools = result.dig(:result, :tools)
-      scrape = tools.find { |tool| tool[:name] == 'scrape_url' }
-      validate = tools.find { |tool| tool[:name] == 'validate_config' }
+      scrape = tools.find { |tool| tool[:name] == 'scrape' }
+      validate = tools.find { |tool| tool[:name] == 'validate' }
 
       expect(tools).to all(include(:title, :annotations, :outputSchema))
       expect(scrape[:annotations]).to include(readOnlyHint: true, destructiveHint: false, openWorldHint: true)
@@ -472,7 +608,7 @@ RSpec.describe Html2rss::MCP::Server do
       result = prompt.template({ url: 'https://example.com' }, server_context: nil)
       text = result.to_h.dig(:messages, 0, :content, :text)
 
-      expect(text).to include('One call is enough').and include('Do not retry scrape_url with explicit faraday')
+      expect(text).to include('One call is enough').and include('Do not retry scrape with explicit faraday')
       expect(text).to include('next_step').and include('payload.items')
       expect(text).not_to include('_meta')
     end
@@ -501,11 +637,11 @@ RSpec.describe Html2rss::MCP::Server do
     it 'logs tools/call start and done without leaking arguments', :aggregate_failures do
       allow(Html2rss::Log).to receive(:info)
 
-      call_tool.call('validate_config', { config: valid_config })
+      call_tool.call('validate', { config: valid_config })
 
       expect(Html2rss::Log).to have_received(:info).with('mcp start tools/call')
       expect(Html2rss::Log).to have_received(:info).with(
-        a_string_matching(%r{\Amcp done tools/call tool=validate_config \d+\.\d+s\z})
+        a_string_matching(%r{\Amcp done tools/call tool=validate \d+\.\d+s\z})
       )
     end
     # rubocop:enable RSpec/ExampleLength
@@ -613,13 +749,13 @@ RSpec.describe Html2rss::MCP::Server do
     # rubocop:enable RSpec/ExampleLength
 
     it 'accepts keyword args with server_context', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      tool = protocol_server.tools['validate_config']
+      tool = protocol_server.tools['validate']
 
       response = tool.call(config: valid_config, server_context: nil)
 
       expect(response).to be_a(MCP::Tool::Response)
       expect(response.error?).to be(false)
-      expect(response.structured_content).to include(ok: true, next_step: 'apply_config')
+      expect(response.structured_content).to include(ok: true, next_step: 'test')
       expect(response.meta).to be_nil
     end
   end

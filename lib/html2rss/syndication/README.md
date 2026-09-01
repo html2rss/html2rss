@@ -4,12 +4,12 @@ Native RSS/Atom discovery and parse for auto-source promotion and direct feed UR
 
 ## Ownership
 
-| Concern | Owner |
-| --- | --- |
-| Head `rel=alternate` + common path probes + status-gated feedish | `Syndication::Discovery` |
-| RSS 2.0 / Atom → article hashes | `Syndication::Parser` |
-| Strict head-only link parse (no path guessing) | `Html::FeedLink` |
-| Response Content-Type / body feed sniff | `RequestService::Response#feed_response?` (sole sniff owner; Discovery only adds HTTP status gate) |
+| Concern                                                          | Owner                                                                                              |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Head `rel=alternate` + common path probes + status-gated feedish | `Syndication::Discovery`                                                                           |
+| RSS 2.0 / Atom → article hashes                                  | `Syndication::Parser`                                                                              |
+| Strict head-only link parse (no path guessing)                   | `Html::FeedLink`                                                                                   |
+| Response Content-Type / body feed sniff                          | `RequestService::Response#feed_response?` (sole sniff owner; Discovery only adds HTTP status gate) |
 
 ## Non-goals
 

@@ -2,6 +2,91 @@
 
 Contributor map for the four Strong module deepenings on this branch. Prefer these homes over reintroducing dual ownership.
 
+## Native feed preference
+
+Same-origin RSS/Atom preference for curation gates (Capture defer/`--force`, Recon `:defer`).
+Owned only by `Syndication::Discovery.best_feed_url` (head alternates + path probes via session).
+`PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second
+preference algorithm. Do not reintroduce Capture `FeedLink`-only probes or Recon “first alternate” fallbacks.
+
+## Frozen contract
+
+Parallel curation work shares this vocabulary. User/agent surfaces (CLI, MCP, `next_step`, docs) use **seven verbs only** — no `_url` / `_config` suffixes on wire names.
+
+### User-facing verb table
+
+| Verb     | Job                   | Domain                   | CLI      | MCP      | Facade                             |
+| -------- | --------------------- | ------------------------ | -------- | -------- | ---------------------------------- |
+| inspect  | Diagnostics           | `PageRecon::Diagnostics` | inspect  | inspect  | `Html2rss.inspect`                 |
+| recon    | Verdict + native_feed | `Recon`                  | recon    | recon    | `Html2rss.recon`, `.batch_recon`   |
+| capture  | YAML draft            | `Capture`                | capture  | capture  | `Html2rss.capture`                 |
+| validate | Schema only           | `Config`                 | validate | validate | `Html2rss.validate`                |
+| test     | Schema + live         | `Test`                   | test     | test     | `Html2rss.test`                    |
+| apply    | Ship RSS              | `feed_result`            | apply    | apply    | `Html2rss.apply`                   |
+| scrape   | Articles now          | `auto_feed_result`       | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
+
+Batch variants: `batch_inspect`, `batch_recon`, `batch_scrape` (CLI/MCP/facade — same bare prefix, no `_urls` suffix).
+
+CLI historic aliases: `feed` → `apply`, `auto` → `scrape` (Thor `map` only — canonical names unchanged).
+
+**Golden path:** optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
+
+### Wire vs internal
+
+Pipeline internals keep existing names — do not rename `Html2rss.feed` / `feed_result` in pipeline specs or `spec/examples/`.
+
+| Internal API                              | Role                       | User-facing verb      |
+| ----------------------------------------- | -------------------------- | --------------------- |
+| `Html2rss.feed` / `feed_result`           | Build RSS from config Hash | **apply**             |
+| `Html2rss.auto_feed_result`               | Auto-source from URL       | **scrape**            |
+| `Html2rss.auto_source` / `auto_json_feed` | Lower-level auto helpers   | used by scrape facade |
+
+CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_result`**. Facades delegate — they are not renames of pipeline entrypoints.
+
+### File ownership matrix
+
+| Path                                                                                              | Owner wave        |
+| ------------------------------------------------------------------------------------------------- | ----------------- |
+| `lib/html2rss/page_recon/diagnostics.rb`, `batch.rb`                                              | Wave 1            |
+| `lib/html2rss/mcp/**`                                                                             | Wave 2 Agent MCP  |
+| `lib/html2rss/cli.rb`, `lib/html2rss.rb` (facades section)                                        | Wave 2 Agent CLI  |
+| `spec/lib/html2rss/cli_spec.rb`, `html2rss_spec.rb`                                               | Wave 2 Agent CLI  |
+| `spec/lib/html2rss/mcp/**`                                                                        | Wave 2 Agent MCP  |
+| `spec/lib/html2rss/page_recon/diagnostics_spec.rb`                                                | Wave 1            |
+| `AGENTS.md`, `README.md`, `CONTEXT.md`, `CHANGELOG.md`, `lib/html2rss/*/README.md`, `mcp.rb` YARD | Wave 2 Agent Docs |
+| `spec/integration/curation_golden_path_spec.rb`                                                   | Wave 3 Integrator |
+
+**Hot files (serialize or integrator-only):** `html2rss.rb`, `CONTEXT.md` when the curation contract changes.
+
+### Factory signatures
+
+```text
+PageRecon::Diagnostics.call(url:, strategy:) → Report
+PageRecon::Diagnostics.batch(urls:, ...) → [Report]
+Batch.batch_inspect / batch_recon / batch_scrape
+Html2rss.inspect / .apply / .scrape / .batch_scrape / .batch_inspect / .batch_recon
+Outcome::Playbook.instructions, Outcome factories typed, Contract::TITLES keys == verbs
+```
+
+Instruction prose SSOT: `Outcome::Playbook`. Module guide: `lib/html2rss/mcp/README.md`.
+
+## Curation CLI / MCP
+
+Composable curation seams for inspect → recon → capture → validate/test → apply:
+
+| Fact                                      | Owner                                                                                                          |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Diagnostic URL fetch + assess             | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics) |
+| Curation verdict                          | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`)                                            |
+| Native feed URL (defer/gate)              | `Syndication::Discovery.best_feed_url` only                                                                    |
+| Config Hash/path/YAML → validated raw     | `Config.resolve_and_validate`                                                                                  |
+| Validate + live + min_items + RSS         | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`)                                               |
+| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names)                                             |
+| Capture YAML product                      | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`)                         |
+| Batch concurrency                         | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP)             |
+
+`apply` zero-item ship gate stays distinct from `Test` min_items. **inspect ≠ recon:** inspect is cheap diagnostics; recon adds verdict and native_feed preference.
+
 ## Scrape target
 
 Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.
@@ -9,6 +94,8 @@ Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss:
 ## Page assessment
 
 Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; tournament policy uses that typed `articles:` array — do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
+
+Diagnostic URL fetch for curation inspect and recon is owned by `PageRecon::Diagnostics` (via `PageRecon.probe` → `PageRecon::Probe`: `session`, `response`, `result`, `strategy`). Do not reintroduce twin `fetch_initial` / `fetch_response` helpers in those callers.
 
 ## Syndication candidate catalog
 
@@ -48,7 +135,7 @@ Shared wall-clock and HTTP request meters for one feed build. Constructed via `R
 
 ## HTML-ness
 
-Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and MCP Inspect all call that one predicate — do not reintroduce a parallel `html_document?`. Gzip/brotli inflate stays on `CompressedBody`, called only from the Faraday adapter; unlabeled octet-stream inflate must not grow onto Botasaurus or LocalFile.
+Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and curation inspect all call that one predicate — do not reintroduce a parallel `html_document?`. Gzip/brotli inflate stays on `CompressedBody`, called only from the Faraday adapter; unlabeled octet-stream inflate must not grow onto Botasaurus or LocalFile.
 
 ## Botasaurus scrape contract
 
@@ -66,7 +153,7 @@ Observing a semantic container plus its selected anchor and destination facts in
 
 ## Content-anchor eligibility
 
-Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Utility-landmark ancestry is computed by `AutoSource::Segmenter#landmark_ancestor?` and injected as `utility_landmark_ancestor:` — NoisePolicy does not walk `SST::Index`. Primary-link ranking weights are inlined in `Segmenter::PrimaryLink#candidate_facts`. Feature ids and `Score`/`RankedSegment` factories live on `Scoring::Engine`. Segmenter discovers candidates and may *call* NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
+Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Utility-landmark ancestry is computed by `AutoSource::Segmenter#landmark_ancestor?` and injected as `utility_landmark_ancestor:` — NoisePolicy does not walk `SST::Index`. Primary-link ranking weights are inlined in `Segmenter::PrimaryLink#candidate_facts`. Feature ids and `Score`/`RankedSegment` factories live on `Scoring::Engine`. Segmenter discovers candidates and may _call_ NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
 
 ## Feed-item admission
 

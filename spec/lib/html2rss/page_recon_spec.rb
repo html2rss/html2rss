@@ -71,6 +71,18 @@ RSpec.describe Html2rss::PageRecon do
       [{ href: 'https://example.com/feed.xml', mime_type: 'application/rss+xml' }]
     )
   end
+
+  it 'probe builds a session, fetches, and returns Probe', :aggregate_failures do
+    session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
+    allow(Html2rss::RequestSession).to receive(:build).and_return(session)
+
+    probe = described_class.probe('https://example.com/blog', strategy: :faraday)
+    expect(probe).to be_a(described_class::Probe)
+    expect(probe.session).to eq(session)
+    expect(probe.response).to eq(response)
+    expect(probe.strategy).to eq(:faraday)
+    expect(probe.result).to be_a(described_class::Result)
+  end
 end
 
 # rubocop:enable RSpec/ExampleLength
