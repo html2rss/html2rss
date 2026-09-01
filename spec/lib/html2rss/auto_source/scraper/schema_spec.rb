@@ -68,6 +68,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       it { is_expected.to be_truthy }
     end
 
+    context 'with uppercase JSON-LD MIME type' do
+      let(:parsed_body) do
+        Nokogiri::HTML("<script type=\"APPLICATION/LD+JSON\">#{news_article_schema_object.to_json}</script>")
+      end
+
+      it { is_expected.to be_truthy }
+    end
+
     context 'with an empty body' do
       let(:parsed_body) { Nokogiri::HTML.fragment('') }
 

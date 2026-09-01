@@ -25,8 +25,10 @@ module Html2rss
         end
 
         def feed_mime_type(type)
-          media_type = type.to_s.split(';', 2).first.strip.downcase
-          media_type if media_type in 'application/rss+xml' | 'application/atom+xml'
+          return Probe::APPLICATION_RSS_XML if Probe.mime_match?(type, Probe::APPLICATION_RSS_XML)
+          return Probe::APPLICATION_ATOM_XML if Probe.mime_match?(type, Probe::APPLICATION_ATOM_XML)
+
+          nil
         end
       end
     end

@@ -15,9 +15,6 @@ module Html2rss
       class Schema
         include Enumerable
 
-        # Selector for JSON-LD script tags containing Schema.org objects.
-        TAG_SELECTOR = 'script[type="application/ld+json"]'
-
         # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
         # Allows preceding entries in a JSON @type array (e.g. ["WebPage","NewsArticle"]).
         SUPPORTED_TYPES_RE = begin
@@ -44,7 +41,8 @@ module Html2rss
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @return [Boolean] whether the page includes supported schema types
           def articles?(parsed_body)
-            parsed_body.css(TAG_SELECTOR).any? { |script| supported_schema_type?(script) }
+            ::Html2rss::Html::Probe.scripts(parsed_body, ::Html2rss::Html::Probe::APPLICATION_LD_JSON)
+                                   .any? { |script| supported_schema_type?(script) }
           end
 
           # @param script [Nokogiri::XML::Element] schema JSON-LD script tag
@@ -168,9 +166,8 @@ module Html2rss
         private
 
         def schema_objects
-          @parsed_body.css(TAG_SELECTOR).flat_map do |tag|
-            Schema.from(tag)
-          end
+          ::Html2rss::Html::Probe.scripts(@parsed_body, ::Html2rss::Html::Probe::APPLICATION_LD_JSON)
+                                 .flat_map { |tag| Schema.from(tag) }
         end
 
         attr_reader :parsed_body, :url
