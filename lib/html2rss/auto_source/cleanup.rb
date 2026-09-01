@@ -47,12 +47,21 @@ module Html2rss
         [:video_chrome, /\AClipped\s+From\s+Video\b/i],
         [:video_chrome, /\AVideo\s*[•·]/i],
         [:template, /\ACreated\s+from\s+Template\s+ID\b/i],
-        [:template, /(\{\{[^}]+\}\}|%\{\w+\})/]
+        [:template, /(\{\{[^}]+\}\}|%\{\w+\})/],
+        [:cta, /\Aread more\z/i],
+        [:cta, /\Alearn more\z/i],
+        [:cta, /\Apdf\z/i]
       ].freeze
       private_constant :JUNK_TITLE_RULES
 
+      # Minimum present-title length before short-title warnings.
+      MIN_TITLE_LENGTH = 4
+
       # Admitted articles plus reason → count tallies for drops.
       Result = Data.define(:articles, :drop_tallies)
+
+      # Read-only ship-quality audit on RSS/article-like items (no mutation).
+      AuditResult = Data.define(:warnings, :metrics, :violations)
 
       class << self
         # @param articles [Array<Article>] extracted article candidates
@@ -88,7 +97,82 @@ module Html2rss
           JUNK_TITLE_RULES.find { |_, pattern| pattern.match?(normalized) }&.first
         end
 
+        # @param items [Array] RSS or article-like objects with title and link/url
+        # @return [AuditResult]
+        def audit_feed_items(items)
+          metrics = initial_audit_metrics(items.size)
+          violations = Hash.new(0)
+          warnings = audit_url_diversity(items, metrics, violations)
+          audit_item_titles(items, metrics, violations)
+          warnings = finalize_audit_warnings(warnings, metrics)
+          log_audit(metrics, warnings, violations)
+          AuditResult.new(warnings:, metrics: metrics.freeze, violations: violations.freeze)
+        end
+
         private
+
+        def initial_audit_metrics(item_count)
+          {
+            item_count:,
+            unique_url_count: 0,
+            junk_title_count: 0,
+            short_title_count: 0,
+            low_word_count: 0
+          }
+        end
+
+        def audit_url_diversity(items, metrics, violations)
+          unique_urls = items.filter_map { |item| url_identity(item_url(item)) }.uniq
+          metrics[:unique_url_count] = unique_urls.size
+          return [] unless items.size >= 2 && unique_urls.size < 2
+
+          violations[:duplicate_urls] += 1
+          [:duplicate_urls]
+        end
+
+        def audit_item_titles(items, metrics, violations)
+          items.each do |item|
+            title = normalize_title(item.title)
+            next if title.empty?
+
+            audit_short_title(title, metrics, violations)
+            audit_title_quality(title, metrics, violations)
+          end
+        end
+
+        def audit_short_title(title, metrics, violations)
+          return unless title.length < MIN_TITLE_LENGTH
+
+          metrics[:short_title_count] += 1
+          violations[:short_title] += 1
+        end
+
+        def audit_title_quality(title, metrics, violations)
+          reason = junk_reason(title)
+          if reason
+            metrics[:junk_title_count] += 1
+            violations[reason] += 1
+          elsif !word_count_at_least?(title, MIN_WORDS)
+            metrics[:low_word_count] += 1
+            violations[:low_word_count] += 1
+          end
+        end
+
+        def finalize_audit_warnings(warnings, metrics)
+          warnings = warnings.dup
+          warnings << :generic_titles if metrics[:junk_title_count].positive?
+          warnings << :short_titles if metrics[:short_title_count].positive?
+          warnings << :low_word_count if metrics[:low_word_count].positive?
+          warnings.freeze
+        end
+
+        def log_audit(metrics, warnings, violations)
+          Log.debug(
+            'Cleanup.audit_feed_items: ' \
+            "item_count=#{metrics[:item_count]} unique_urls=#{metrics[:unique_url_count]} " \
+            "warnings=#{warnings.join(',')} violations=#{violations.keys.join(',')}"
+          )
+        end
 
         def reject_invalid!(articles, tallies)
           tally_reject!(articles, tallies, 'invalid') { |article| !article.valid? }
@@ -170,6 +254,13 @@ module Html2rss
 
         def url_identity(url)
           url&.without_fragment&.to_s
+        end
+
+        def item_url(item)
+          raw = item.respond_to?(:link) ? item.link : item.url
+          raw.nil? || raw.to_s.empty? ? nil : Html2rss::Url.from_absolute(raw.to_s)
+        rescue ArgumentError
+          nil
         end
 
         def normalize_title(title)

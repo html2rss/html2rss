@@ -21,8 +21,8 @@ module Html2rss
           capture: 'Call capture for a reusable YAML draft, then follow next_step.',
           read_runtime: 'Read html2rss://runtime. Set BOTASAURUS_SCRAPER_URL on the MCP process ' \
                         'if botasaurus_configured is false.',
-          test: 'Call test next (schema + live extraction). Confirm payload.item_count ' \
-                'and failure_kind before shipping.'
+          test: 'Call test next (schema + live extraction). Confirm payload.item_count, ' \
+                'failure_kind, and payload.quality_report warnings before shipping.'
         }.freeze
 
         class << self
@@ -39,7 +39,7 @@ module Html2rss
                  - Empty scrape is still success (articles-now). Follow next_step / guidance (read_runtime if Botasaurus unset).
               2. Need a reusable feed YAML? → capture → test → apply
                  - capture returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Strive enhance: true (false only when chrome leaks).
-                 - test runs schema + live extraction (min items). apply is the ship gate (isError on zero items). Confirm payload.item_count.
+                 - test runs schema + live extraction (min items). apply is the ship gate (isError on zero items). Confirm payload.item_count and payload.quality_report warnings.
                  - validate alone is for schema-only checks; on success next_step is test.
               3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect (or batch_inspect). When alternates warrant it, inspect next_step is recon.
               4. Have a config already? → validate (must succeed) → test → apply

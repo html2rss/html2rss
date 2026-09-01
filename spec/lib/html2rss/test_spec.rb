@@ -24,17 +24,25 @@ RSpec.describe Html2rss::Test do
     }
   end
 
-  let(:fake_rss_item) do
-    instance_double(
-      RSS::Rss::Channel::Item,
-      title: 'Article 1',
-      link: 'https://example.com/news/1',
-      pubDate: nil
-    )
+  let(:fake_rss_items) do
+    [
+      instance_double(
+        RSS::Rss::Channel::Item,
+        title: 'First Example Article Title',
+        link: 'https://example.com/news/1',
+        pubDate: nil
+      ),
+      instance_double(
+        RSS::Rss::Channel::Item,
+        title: 'Second Example Article Title',
+        link: 'https://example.com/news/2',
+        pubDate: nil
+      )
+    ]
   end
 
   let(:fake_rss) do
-    instance_double(RSS::Rss, items: [fake_rss_item])
+    instance_double(RSS::Rss, items: fake_rss_items)
   end
 
   let(:fake_feed_result) do
@@ -59,21 +67,46 @@ RSpec.describe Html2rss::Test do
     context 'when schema is valid and items are extracted' do
       before do
         allow(Html2rss).to receive(:feed_result).and_return(fake_feed_result)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       end
 
       it 'returns a successful Test::Result with article count, samples, and rss', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         result = described_class.call(valid_config, min_items: 1)
         expect(result.success).to be(true)
-        expect(result.item_count).to eq(1)
-        expect(result.sample_items.size).to eq(1)
+        expect(result.item_count).to eq(2)
+        expect(result.sample_items.size).to eq(2)
         expect(result.rss).to be_a(String)
         expect(result.failure_kind).to be_nil
+      end
+
+      it 'attaches quality_report from feed audit', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        result = described_class.call(valid_config, min_items: 1)
+
+        expect(result.quality_report).to be_a(Html2rss::Test::QualityReport)
+        expect(result.quality_report.warnings).to be_empty
+        expect(result.quality_report.metrics).to include(item_count: 2, unique_url_count: 2)
+        expect(result.to_h[:quality_report]).to include(
+          warnings: [],
+          metrics: hash_including(item_count: 2)
+        )
+      end
+
+      it 'advises when a native feed is discovered at channel.url', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        native = Html2rss::Url.from_absolute('https://example.com/feed.xml')
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(native)
+
+        result = described_class.call(valid_config, min_items: 1)
+
+        expect(result.quality_report.warnings).to include(:native_feed_present)
+        expect(result.quality_report.native_feed).to eq('https://example.com/feed.xml')
+        expect(result.quality_report.defer_reason).to eq(:native_feed)
+        expect(result.success).to be(true)
       end
 
       it 'fails if extracted items are below min_items', :aggregate_failures do
         result = described_class.call(valid_config, min_items: 5)
         expect(result.success).to be(false)
-        expect(result.error_message).to include('Extracted 1 items (minimum required: 5)')
+        expect(result.error_message).to include('Extracted 2 items (minimum required: 5)')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:min_items))
         expect(result.rss).to be_nil
       end

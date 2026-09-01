@@ -56,6 +56,34 @@ module Html2rss
     end
 
     ##
+    # Ship-quality audit summary for a configuration test (warn-only).
+    QualityReport = Data.define(:warnings, :metrics, :native_feed, :defer_reason) do
+      ##
+      # @return [Hash{Symbol => Object}]
+      def to_h
+        {
+          warnings: warnings.map(&:to_s),
+          metrics:,
+          **(native_feed ? { native_feed:, defer_reason: defer_reason.to_s } : {})
+        }.compact
+      end
+
+      ##
+      # @param audit [Html2rss::AutoSource::Cleanup::AuditResult]
+      # @param native_feed [String, nil]
+      # @return [QualityReport]
+      def self.from_audit(audit, native_feed: nil)
+        report_warnings = audit.warnings.dup
+        defer_reason = nil
+        if native_feed
+          report_warnings << :native_feed_present unless report_warnings.include?(:native_feed_present)
+          defer_reason = :native_feed
+        end
+        new(warnings: report_warnings.freeze, metrics: audit.metrics, native_feed:, defer_reason:)
+      end
+    end
+
+    ##
     # Immutable outcome of a configuration test. Success carries +rss+ XML from the
     # first live extraction; failures carry a typed {FailureKind}.
     Result = Data.define(
@@ -69,8 +97,28 @@ module Html2rss
       :validation_errors,
       :error_message,
       :failure_kind,
-      :rss
+      :rss,
+      :quality_report
     ) do
+      ##
+      # @param success [Boolean]
+      # @param item_count [Integer]
+      # @param sample_items [Array<Hash>]
+      # @param channel_title [String, nil]
+      # @param channel_url [String, nil]
+      # @param strategy_used [Symbol, nil]
+      # @param duration_seconds [Float]
+      # @param validation_errors [Hash, nil]
+      # @param error_message [String, nil]
+      # @param failure_kind [FailureKind, nil]
+      # @param rss [String, nil]
+      # @param quality_report [QualityReport, nil]
+      def initialize(success:, item_count:, sample_items:, channel_title:, channel_url:, # rubocop:disable Metrics/ParameterLists
+                     strategy_used:, duration_seconds:, validation_errors:, error_message:,
+                     failure_kind:, rss:, quality_report: nil)
+        super
+      end
+
       ##
       # @return [Boolean] whether the schema validation succeeded
       def valid_schema?
@@ -97,7 +145,8 @@ module Html2rss
           validation_errors:,
           error_message:,
           failure_kind: failure_kind&.to_sym,
-          rss:
+          rss:,
+          quality_report: quality_report&.to_h
         }.compact
       end
     end
@@ -127,6 +176,11 @@ module Html2rss
         rss_xml = rss_doc.to_s
         item_count = rss_doc.items.size
         sample_items = extract_samples(rss_doc.items)
+        quality_report = build_quality_report(
+          rss_doc.items,
+          channel_url: raw_config.dig(:channel, :url).to_s,
+          raw_config:
+        )
 
         channel_title = feed_result.channel_title
         channel_url = raw_config.dig(:channel, :url).to_s
@@ -144,7 +198,8 @@ module Html2rss
           validation_errors: nil,
           error_message: passed ? nil : "Extracted #{item_count} items (minimum required: #{min_items})",
           failure_kind: passed ? nil : FailureKind.coerce(:min_items),
-          rss: passed ? rss_xml : nil
+          rss: passed ? rss_xml : nil,
+          quality_report:
         )
       rescue StandardError => error
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
@@ -163,6 +218,28 @@ module Html2rss
     end
     private_class_method :extract_samples
 
+    def build_quality_report(items, channel_url:, raw_config:)
+      audit = AutoSource::Cleanup.audit_feed_items(items)
+      native_feed = probe_native_feed(channel_url, raw_config)&.to_s
+      QualityReport.from_audit(audit, native_feed:)
+    end
+    private_class_method :build_quality_report
+
+    def probe_native_feed(channel_url, raw_config)
+      return nil if channel_url.to_s.empty?
+
+      config = Config.from_hash(raw_config)
+      resources = FeedPipeline::RuntimePolicy.resources_for(config)
+      strategy = FeedPipeline::StrategyPlan.concrete_for_diagnostic(raw_config[:strategy])
+      session = RequestSession.build(
+        config:, strategy:, budget: resources.budget, policy: resources.policy
+      )
+      Syndication::Discovery.best_feed_url(page_url: channel_url, request_session: session)
+    rescue StandardError
+      nil
+    end
+    private_class_method :probe_native_feed
+
     def validation_failure_result(errors, raw_config) # rubocop:disable Metrics/MethodLength
       Result.new(
         success: false,
@@ -175,7 +252,8 @@ module Html2rss
         validation_errors: errors,
         error_message: 'Configuration schema validation failed',
         failure_kind: FailureKind.coerce(:schema),
-        rss: nil
+        rss: nil,
+        quality_report: nil
       )
     end
     private_class_method :validation_failure_result
@@ -192,7 +270,8 @@ module Html2rss
         validation_errors: nil,
         error_message: "#{error.class}: #{error.message}",
         failure_kind: FailureKind.coerce(:execution),
-        rss: nil
+        rss: nil,
+        quality_report: nil
       )
     end
     private_class_method :execution_failure_result
