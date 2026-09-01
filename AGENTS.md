@@ -122,7 +122,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 ## Description & HTML Processing Guidelines
 
 - **Preserve Layout Newlines**: When parsing, sanitizing, or modifying HTML text, ensure you preserve structural block newlines (`\n` or `\n\n`) and lists.
-- **Placeholder Newline Protection**: To collapse horizontal spaces without stripping structural newlines, temporarily replace newlines with a placeholder (e.g. ` __NEWLINE_PLACEHOLDER__ `) before calling standard whitespace-collapsing regular expressions (like `gsub(/\s+/, ' ')`), and restore them afterward.
+- **Placeholder Newline Protection**: To collapse horizontal spaces without stripping structural newlines, temporarily replace newlines with a placeholder (e.g. `__NEWLINE_PLACEHOLDER__`) before calling standard whitespace-collapsing regular expressions (like `gsub(/\s+/, ' ')`), and restore them afterward.
 - **Excluding Redundant Titles & Anchors**: To keep descriptions clean and avoid duplicate data, always exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor elements (`a`) when extracting visible text for an article's description.
 - Leftover keep/drop (CTA, date-shaped lines, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Both extractors call it. Do not copy leftover denylists into `Cleanup.junk_reason` (titles-only).
 - **Collapse Internal Text Wrapping**: Collapse consecutive wrapping whitespaces (including line breaks) inside raw HTML text nodes to a single space to prevent source code wrapping from turning into structural description newlines.
@@ -136,15 +136,15 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 
 User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share **seven verbs** — no `_url` / `_config` suffixes on wire names. Full contract: `CONTEXT.md` § Frozen contract. Module guide: `lib/html2rss/mcp/README.md`.
 
-| Verb | Job |
-| --- | --- |
-| inspect | Cheap diagnostics (final URL, status, alternates, surface) |
-| recon | Verdict + native_feed preference (`:build` / `:defer` / `:drop`) |
-| capture | YAML draft config |
-| validate | Schema only |
-| test | Schema + live extraction (min_items) |
-| apply | Ship RSS from config |
-| scrape | Articles now (one-shot auto-source) |
+| Verb     | Job                                                              |
+| -------- | ---------------------------------------------------------------- |
+| inspect  | Cheap diagnostics (final URL, status, alternates, surface)       |
+| recon    | Verdict + native_feed preference (`:build` / `:defer` / `:drop`) |
+| capture  | YAML draft config                                                |
+| validate | Schema only                                                      |
+| test     | Schema + live extraction (min_items)                             |
+| apply    | Ship RSS from config                                             |
+| scrape   | Articles now (one-shot auto-source)                              |
 
 Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 

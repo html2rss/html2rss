@@ -17,10 +17,10 @@ There is no Browserless / Puppeteer-in-gem tier. Pin `botasaurus` when you want 
 
 ## Surfaces
 
-| Surface | `:auto` behavior |
-|---------|------------------|
-| Gem / CLI `apply`, MCP `scrape`, Capture | Full AutoFallback chain (`faraday` → `botasaurus`) |
-| MCP `inspect` | Cheap diagnostic: `StrategyPlan.concrete_for_diagnostic` maps `auto` to Faraday (pin `botasaurus` when you need browser rendering) |
+| Surface                                  | `:auto` behavior                                                                                                                   |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Gem / CLI `apply`, MCP `scrape`, Capture | Full AutoFallback chain (`faraday` → `botasaurus`)                                                                                 |
+| MCP `inspect`                            | Cheap diagnostic: `StrategyPlan.concrete_for_diagnostic` maps `auto` to Faraday (pin `botasaurus` when you need browser rendering) |
 
 ## Fallback vs abort
 

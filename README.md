@@ -37,15 +37,15 @@ Config -> Request -> Extraction -> Processing -> Building -> Output
 
 ## CLI Usage
 
-| Verb | Job |
-| --- | --- |
-| inspect | Cheap diagnostics (final URL, status, alternates, surface) |
-| recon | Verdict + native feed preference (`BUILD` / `DEFER` / `DROP`) |
-| capture | YAML draft config |
-| validate | Schema only |
-| test | Schema + live extraction (min items) |
-| apply | Ship RSS from config or URL |
-| scrape | Articles now (one-shot auto-source) |
+| Verb     | Job                                                           |
+| -------- | ------------------------------------------------------------- |
+| inspect  | Cheap diagnostics (final URL, status, alternates, surface)    |
+| recon    | Verdict + native feed preference (`BUILD` / `DEFER` / `DROP`) |
+| capture  | YAML draft config                                             |
+| validate | Schema only                                                   |
+| test     | Schema + live extraction (min items)                          |
+| apply    | Ship RSS from config or URL                                   |
+| scrape   | Articles now (one-shot auto-source)                           |
 
 Golden path: optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
 
@@ -132,33 +132,33 @@ Module guide: [`lib/html2rss/mcp/README.md`](lib/html2rss/mcp/README.md).
 
 ### Tools
 
-| Name | When to use |
-| --- | --- |
-| `scrape` | One-shot articles now (`payload.items`; empty is still success) |
-| `batch_scrape` | Parallel one-shot scrape across multiple URLs (`urls`, `limit`, `concurrency`) |
-| `inspect` | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds) |
-| `batch_inspect` | Parallel diagnostics across multiple URLs (`urls`, `strategy`, `concurrency`) |
-| `recon` | Verdict + native_feed preference |
-| `batch_recon` | Parallel recon across multiple URLs |
-| `capture` | YAML draft in `payload.yaml`; strive `enhance: true` |
-| `validate` | Schema-check a `config` hash XOR `yaml` string (`isError` on failure) |
-| `test` | Combined schema validation and live item extraction assertion |
-| `apply` | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count` |
+| Name            | When to use                                                                    |
+| --------------- | ------------------------------------------------------------------------------ |
+| `scrape`        | One-shot articles now (`payload.items`; empty is still success)                |
+| `batch_scrape`  | Parallel one-shot scrape across multiple URLs (`urls`, `limit`, `concurrency`) |
+| `inspect`       | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)      |
+| `batch_inspect` | Parallel diagnostics across multiple URLs (`urls`, `strategy`, `concurrency`)  |
+| `recon`         | Verdict + native_feed preference                                               |
+| `batch_recon`   | Parallel recon across multiple URLs                                            |
+| `capture`       | YAML draft in `payload.yaml`; strive `enhance: true`                           |
+| `validate`      | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)          |
+| `test`          | Combined schema validation and live item extraction assertion                  |
+| `apply`         | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count`  |
 
 ### Resources
 
-| URI | Description |
-| --- | --- |
-| `html2rss://schema` | Full JSON Schema for feed configurations |
+| URI                     | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `html2rss://schema`     | Full JSON Schema for feed configurations                        |
 | `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
-| `html2rss://strategies` | Published MCP strategies (`auto`, `faraday`, `botasaurus`) |
-| `html2rss://runtime` | `botasaurus_configured` boolean (never the scraper URL) |
+| `html2rss://strategies` | Published MCP strategies (`auto`, `faraday`, `botasaurus`)      |
+| `html2rss://runtime`    | `botasaurus_configured` boolean (never the scraper URL)         |
 
 ### Prompts
 
-| Name | Description |
-| --- | --- |
-| `scrape-webpage` | One `scrape` call; `inspect` only if weak or recon needed |
+| Name                  | Description                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `scrape-webpage`      | One `scrape` call; `inspect` only if weak or recon needed    |
 | `capture-feed-config` | Capture YAML → test → apply; catalog rewrite; strive enhance |
 
 The MCP module (`Html2rss::MCP`) lazy-loads the `mcp` gem — no cost when the server is not running.
@@ -175,11 +175,11 @@ Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and use strategy `botasa
 
 ## Request Strategies
 
-| Strategy     | Description                                                                   |
-| ------------ | ----------------------------------------------------------------------------- |
-| `auto`       | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI/MCP scrape)   |
-| `faraday`    | Plain HTTP requests via Faraday                                               |
-| `botasaurus` | Puppeteer-backed scraping for JavaScript pages                                |
+| Strategy     | Description                                                                 |
+| ------------ | --------------------------------------------------------------------------- |
+| `auto`       | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI/MCP scrape) |
+| `faraday`    | Plain HTTP requests via Faraday                                             |
+| `botasaurus` | Puppeteer-backed scraping for JavaScript pages                              |
 
 `inspect` keeps Faraday when `auto` for cheap diagnostics. Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
 

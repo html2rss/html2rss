@@ -15,15 +15,15 @@ Parallel curation work shares this vocabulary. User/agent surfaces (CLI, MCP, `n
 
 ### User-facing verb table
 
-| Verb | Job | Domain | CLI | MCP | Facade |
-| --- | --- | --- | --- | --- | --- |
-| inspect | Diagnostics | `PageRecon::Diagnostics` | inspect | inspect | `Html2rss.inspect` |
-| recon | Verdict + native_feed | `Recon` | recon | recon | `Html2rss.recon`, `.batch_recon` |
-| capture | YAML draft | `Capture` | capture | capture | `Html2rss.capture` |
-| validate | Schema only | `Config` | validate | validate | `Html2rss.validate` |
-| test | Schema + live | `Test` | test | test | `Html2rss.test` |
-| apply | Ship RSS | `feed_result` | apply | apply | `Html2rss.apply` |
-| scrape | Articles now | `auto_feed_result` | scrape | scrape | `Html2rss.scrape`, `.batch_scrape` |
+| Verb     | Job                   | Domain                   | CLI      | MCP      | Facade                             |
+| -------- | --------------------- | ------------------------ | -------- | -------- | ---------------------------------- |
+| inspect  | Diagnostics           | `PageRecon::Diagnostics` | inspect  | inspect  | `Html2rss.inspect`                 |
+| recon    | Verdict + native_feed | `Recon`                  | recon    | recon    | `Html2rss.recon`, `.batch_recon`   |
+| capture  | YAML draft            | `Capture`                | capture  | capture  | `Html2rss.capture`                 |
+| validate | Schema only           | `Config`                 | validate | validate | `Html2rss.validate`                |
+| test     | Schema + live         | `Test`                   | test     | test     | `Html2rss.test`                    |
+| apply    | Ship RSS              | `feed_result`            | apply    | apply    | `Html2rss.apply`                   |
+| scrape   | Articles now          | `auto_feed_result`       | scrape   | scrape   | `Html2rss.scrape`, `.batch_scrape` |
 
 Batch variants: `batch_inspect`, `batch_recon`, `batch_scrape` (CLI/MCP/facade — same bare prefix, no `_urls` suffix).
 
@@ -35,26 +35,26 @@ CLI historic aliases: `feed` → `apply`, `auto` → `scrape` (Thor `map` only �
 
 Pipeline internals keep existing names — do not rename `Html2rss.feed` / `feed_result` in pipeline specs or `spec/examples/`.
 
-| Internal API | Role | User-facing verb |
-| --- | --- | --- |
-| `Html2rss.feed` / `feed_result` | Build RSS from config Hash | **apply** |
-| `Html2rss.auto_feed_result` | Auto-source from URL | **scrape** |
-| `Html2rss.auto_source` / `auto_json_feed` | Lower-level auto helpers | used by scrape facade |
+| Internal API                              | Role                       | User-facing verb      |
+| ----------------------------------------- | -------------------------- | --------------------- |
+| `Html2rss.feed` / `feed_result`           | Build RSS from config Hash | **apply**             |
+| `Html2rss.auto_feed_result`               | Auto-source from URL       | **scrape**            |
+| `Html2rss.auto_source` / `auto_json_feed` | Lower-level auto helpers   | used by scrape facade |
 
 CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_result`**. Facades delegate — they are not renames of pipeline entrypoints.
 
 ### File ownership matrix
 
-| Path | Owner wave |
-| --- | --- |
-| `lib/html2rss/page_recon/diagnostics.rb`, `batch.rb` | Wave 1 |
-| `lib/html2rss/mcp/**` | Wave 2 Agent MCP |
-| `lib/html2rss/cli.rb`, `lib/html2rss.rb` (facades section) | Wave 2 Agent CLI |
-| `spec/lib/html2rss/cli_spec.rb`, `html2rss_spec.rb` | Wave 2 Agent CLI |
-| `spec/lib/html2rss/mcp/**` | Wave 2 Agent MCP |
-| `spec/lib/html2rss/page_recon/diagnostics_spec.rb` | Wave 1 |
+| Path                                                                                              | Owner wave        |
+| ------------------------------------------------------------------------------------------------- | ----------------- |
+| `lib/html2rss/page_recon/diagnostics.rb`, `batch.rb`                                              | Wave 1            |
+| `lib/html2rss/mcp/**`                                                                             | Wave 2 Agent MCP  |
+| `lib/html2rss/cli.rb`, `lib/html2rss.rb` (facades section)                                        | Wave 2 Agent CLI  |
+| `spec/lib/html2rss/cli_spec.rb`, `html2rss_spec.rb`                                               | Wave 2 Agent CLI  |
+| `spec/lib/html2rss/mcp/**`                                                                        | Wave 2 Agent MCP  |
+| `spec/lib/html2rss/page_recon/diagnostics_spec.rb`                                                | Wave 1            |
 | `AGENTS.md`, `README.md`, `CONTEXT.md`, `CHANGELOG.md`, `lib/html2rss/*/README.md`, `mcp.rb` YARD | Wave 2 Agent Docs |
-| `spec/integration/curation_golden_path_spec.rb` | Wave 3 Integrator |
+| `spec/integration/curation_golden_path_spec.rb`                                                   | Wave 3 Integrator |
 
 **Hot files (serialize or integrator-only):** `html2rss.rb`, `CONTEXT.md` when the curation contract changes.
 
@@ -74,16 +74,16 @@ Instruction prose SSOT: `Outcome::Playbook`. Module guide: `lib/html2rss/mcp/REA
 
 Composable curation seams for inspect → recon → capture → validate/test → apply:
 
-| Fact | Owner |
-| --- | --- |
-| Diagnostic URL fetch + assess | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics) |
-| Curation verdict | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`) |
-| Native feed URL (defer/gate) | `Syndication::Discovery.best_feed_url` only |
-| Config Hash/path/YAML → validated raw | `Config.resolve_and_validate` |
-| Validate + live + min_items + RSS | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`) |
-| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names) |
-| Capture YAML product | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`) |
-| Batch concurrency | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP) |
+| Fact                                      | Owner                                                                                                          |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Diagnostic URL fetch + assess             | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics) |
+| Curation verdict                          | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`)                                            |
+| Native feed URL (defer/gate)              | `Syndication::Discovery.best_feed_url` only                                                                    |
+| Config Hash/path/YAML → validated raw     | `Config.resolve_and_validate`                                                                                  |
+| Validate + live + min_items + RSS         | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`)                                               |
+| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names)                                             |
+| Capture YAML product                      | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`)                         |
+| Batch concurrency                         | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP)             |
 
 `apply` zero-item ship gate stays distinct from `Test` min_items. **inspect ≠ recon:** inspect is cheap diagnostics; recon adds verdict and native_feed preference.
 
@@ -153,7 +153,7 @@ Observing a semantic container plus its selected anchor and destination facts in
 
 ## Content-anchor eligibility
 
-Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Utility-landmark ancestry is computed by `AutoSource::Segmenter#landmark_ancestor?` and injected as `utility_landmark_ancestor:` — NoisePolicy does not walk `SST::Index`. Primary-link ranking weights are inlined in `Segmenter::PrimaryLink#candidate_facts`. Feature ids and `Score`/`RankedSegment` factories live on `Scoring::Engine`. Segmenter discovers candidates and may *call* NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
+Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::LinkDestination::NoisePolicy`. Utility-landmark ancestry is computed by `AutoSource::Segmenter#landmark_ancestor?` and injected as `utility_landmark_ancestor:` — NoisePolicy does not walk `SST::Index`. Primary-link ranking weights are inlined in `Segmenter::PrimaryLink#candidate_facts`. Feature ids and `Score`/`RankedSegment` factories live on `Scoring::Engine`. Segmenter discovers candidates and may _call_ NoisePolicy; it does not own eligibility weights. Scrapers pass the page `LinkResolver` into Segmenter so DestinationFacts memoization stays local to the page run.
 
 ## Feed-item admission
 
