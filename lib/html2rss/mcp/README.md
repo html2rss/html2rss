@@ -68,7 +68,7 @@ Do not duplicate playbook prose in `server.rb`.
 | Name | Description |
 | --- | --- |
 | `scrape-webpage` | One `scrape` call; `inspect` only if weak or recon needed |
-| `capture-feed-config` | Capture YAML → validate → apply; catalog rewrite; strive enhance |
+| `capture-feed-config` | Capture YAML → test → apply; catalog rewrite; strive enhance |
 
 ## Strategy note
 

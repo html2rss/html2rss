@@ -129,8 +129,9 @@ module Html2rss
       cache_html_body(probe.response.body, url_obj, cache_dir, cache_mutex) if cache_dir && probe.response.body
 
       recon = probe.result
-      native_feed = find_native_feed(url_obj, probe.session, probe.response)
+      native_feed, discovery_note = find_native_feed(url_obj, probe.session, probe.response)
       notes = build_notes(recon, native_feed, probe.response)
+      notes << discovery_note if discovery_note
       verdict = determine_verdict(recon, native_feed)
 
       Result.new(
@@ -175,16 +176,17 @@ module Html2rss
     # @param url_obj [Html2rss::Url]
     # @param session [Html2rss::RequestSession]
     # @param response [Html2rss::RequestService::Response]
-    # @return [Html2rss::Url, nil]
+    # @return [Array(Html2rss::Url, nil), String, nil)] feed URL and optional discovery error note
     def find_native_feed(url_obj, session, response)
-      Syndication::Discovery.best_feed_url(
+      feed = Syndication::Discovery.best_feed_url(
         page_url: url_obj,
         request_session: session,
         parsed_body: (response.parsed_body if response.html_response?),
         html: response.body
       )
-    rescue StandardError
-      nil
+      [feed, nil]
+    rescue StandardError => error
+      [nil, "discovery_error=#{error.class}: #{error.message}"]
     end
     private_class_method :find_native_feed
 

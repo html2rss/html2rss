@@ -82,6 +82,19 @@ RSpec.describe Html2rss::Recon do
         result = described_class.call(url)
         expect(result.build?).to be(true)
       end
+
+      context 'when Discovery raises an error' do
+        before do
+          allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url)
+            .and_raise(StandardError.new('timeout'))
+        end
+
+        it 'records a discovery_error note and keeps BUILD verdict', :aggregate_failures do
+          result = described_class.call(url)
+          expect(result.build?).to be(true)
+          expect(result.notes).to include('discovery_error=StandardError: timeout')
+        end
+      end
     end
 
     context 'when HTTP status is 404' do

@@ -159,7 +159,7 @@ Module guide: [`lib/html2rss/mcp/README.md`](lib/html2rss/mcp/README.md).
 | Name | Description |
 | --- | --- |
 | `scrape-webpage` | One `scrape` call; `inspect` only if weak or recon needed |
-| `capture-feed-config` | Capture YAML → validate → apply; catalog rewrite; strive enhance |
+| `capture-feed-config` | Capture YAML → test → apply; catalog rewrite; strive enhance |
 
 The MCP module (`Html2rss::MCP`) lazy-loads the `mcp` gem — no cost when the server is not running.
 

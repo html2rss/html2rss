@@ -76,7 +76,7 @@ module Html2rss
         },
         {
           name: 'capture-feed-config',
-          description: 'Guided capture → validate → apply; YAML draft plus catalog rewrite',
+          description: 'Guided capture → test → apply; YAML draft plus catalog rewrite',
           arguments: [{ name: 'url', description: 'URL to analyze', required: true }],
           body: ->(args) { Outcome::Playbook.capture_feed_config_prompt(args.fetch(:url)) }
         }
