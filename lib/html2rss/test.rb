@@ -13,7 +13,7 @@ module Html2rss
     # Closed failure classification for a failed test run.
     class FailureKind
       # Closed set of test failure wire names.
-      NAMES = Set[:schema, :execution, :min_items].freeze
+      NAMES = Set[:schema, :execution, :min_items, :quality].freeze
 
       class << self
         ##
@@ -45,6 +45,10 @@ module Html2rss
       ##
       # @return [Boolean]
       def min_items? = name == :min_items
+
+      ##
+      # @return [Boolean]
+      def quality? = name == :quality
 
       ##
       # @return [Symbol]
@@ -159,8 +163,10 @@ module Html2rss
     # @param min_items [Integer] minimum extracted items required to pass
     # @param params [Hash] optional dynamic feed parameters
     # @param strategy [Symbol, nil] optional strategy override
+    # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
     # @return [Html2rss::Test::Result]
-    def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
+    def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists
+             strict_quality: false) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation.errors.to_h, raw_config) unless validation.success?
 
@@ -185,7 +191,13 @@ module Html2rss
         channel_title = feed_result.channel_title
         channel_url = raw_config.dig(:channel, :url).to_s
         strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] || :faraday
-        passed = item_count >= min_items
+        min_items_passed = item_count >= min_items
+        quality_failed = strict_quality && min_items_passed && quality_failure?(quality_report)
+        passed = min_items_passed && !quality_failed
+        failure_kind, error_message = outcome_failure(min_items_passed:, quality_failed:, item_count:, min_items:,
+                                                      quality_report:)
+
+        log_strict_quality_failure(failure_kind, item_count) if quality_failed
 
         Result.new(
           success: passed,
@@ -196,8 +208,8 @@ module Html2rss
           strategy_used:,
           duration_seconds: duration.round(3),
           validation_errors: nil,
-          error_message: passed ? nil : "Extracted #{item_count} items (minimum required: #{min_items})",
-          failure_kind: passed ? nil : FailureKind.coerce(:min_items),
+          error_message:,
+          failure_kind:,
           rss: passed ? rss_xml : nil,
           quality_report:
         )
@@ -224,6 +236,59 @@ module Html2rss
       QualityReport.from_audit(audit, native_feed:)
     end
     private_class_method :build_quality_report
+
+    def quality_failure?(quality_report)
+      metrics = quality_report.metrics
+      item_count = metrics[:item_count]
+      return false if item_count.zero?
+
+      duplicate_urls_failure?(metrics) || junk_title_ratio_failure?(metrics) || short_title_failure?(metrics)
+    end
+    private_class_method :quality_failure?
+
+    def duplicate_urls_failure?(metrics)
+      metrics[:item_count] >= 2 && metrics[:unique_url_count] < 2
+    end
+    private_class_method :duplicate_urls_failure?
+
+    def junk_title_ratio_failure?(metrics)
+      metrics[:junk_title_count] > (metrics[:item_count] / 2.0)
+    end
+    private_class_method :junk_title_ratio_failure?
+
+    def short_title_failure?(metrics)
+      metrics[:short_title_count].positive?
+    end
+    private_class_method :short_title_failure?
+
+    def outcome_failure(min_items_passed:, quality_failed:, item_count:, min_items:, quality_report:)
+      return [nil, nil] if min_items_passed && !quality_failed
+      return [FailureKind.coerce(:min_items),
+              "Extracted #{item_count} items (minimum required: #{min_items})"] unless min_items_passed
+
+      [FailureKind.coerce(:quality), quality_failure_message(quality_report)]
+    end
+    private_class_method :outcome_failure
+
+    def quality_failure_message(quality_report)
+      reasons = quality_failure_reasons(quality_report.metrics)
+      "Feed quality check failed (#{reasons.join(', ')})"
+    end
+    private_class_method :quality_failure_message
+
+    def quality_failure_reasons(metrics)
+      reasons = []
+      reasons << 'duplicate_urls' if duplicate_urls_failure?(metrics)
+      reasons << 'generic_titles' if junk_title_ratio_failure?(metrics)
+      reasons << 'short_titles' if short_title_failure?(metrics)
+      reasons
+    end
+    private_class_method :quality_failure_reasons
+
+    def log_strict_quality_failure(failure_kind, item_count)
+      Log.info("Test strict quality: failure_kind=#{failure_kind.to_sym} item_count=#{item_count}")
+    end
+    private_class_method :log_strict_quality_failure
 
     def probe_native_feed(channel_url, raw_config)
       return nil if channel_url.to_s.empty?

@@ -78,6 +78,11 @@ module Html2rss
         properties: {
           **CONFIG_XOR_PROPERTIES,
           min_items: { type: 'integer', description: 'Minimum required items (default: 1)', default: 1 },
+          strict_quality: {
+            type: 'boolean',
+            description: 'Fail when ship-quality audit thresholds are exceeded (default: false)',
+            default: false
+          },
           strategy: STRATEGY_PROPERTY
         }.freeze,
         oneOf: XOR_ONE_OF

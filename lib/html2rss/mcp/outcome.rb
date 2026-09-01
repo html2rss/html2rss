@@ -204,7 +204,7 @@ module Html2rss
 
           kind = test_result.failure_kind
           return NextStep.validate if kind&.schema?
-          return NextStep.capture if kind&.execution? || kind&.min_items?
+          return NextStep.capture if kind&.execution? || kind&.min_items? || kind&.quality?
 
           NextStep.capture
         end

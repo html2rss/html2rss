@@ -143,6 +143,8 @@ module Html2rss
     desc 'test [CONFIG_INPUT] [feed_name]', 'Validate schema AND execute live extraction (fails on 0 items)'
     method_option :params, type: :hash, default: {}
     method_option :min_items, type: :numeric, default: 1, desc: 'Minimum required articles to pass'
+    method_option :strict_quality, type: :boolean, default: false,
+                                   desc: 'Fail when ship-quality audit thresholds are exceeded'
     method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
     method_option :json, type: :boolean, desc: 'Output test outcome as JSON', default: false
     method_option :xml, type: :boolean, desc: 'Dump RSS XML alongside summary', default: false
@@ -157,7 +159,8 @@ module Html2rss
         feed_name,
         min_items: options.fetch(:min_items, 1).to_i,
         params: options[:params] || {},
-        strategy: options[:strategy]
+        strategy: options[:strategy],
+        strict_quality: options.fetch(:strict_quality, false)
       )
 
       if options[:json]

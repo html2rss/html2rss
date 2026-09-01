@@ -235,6 +235,11 @@ RSpec.describe Html2rss::MCP::Outcome do
       result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:min_items))
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
+
+    it 'points at capture on quality failure' do
+      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:quality))
+      expect(described_class.test(result).next_step.name).to eq(:capture)
+    end
   end
 
   describe '.apply' do

@@ -390,6 +390,18 @@ RSpec.describe Html2rss::CLI do
           hash_including(min_items: 0)
         )
       end
+
+      it 'forwards --strict-quality to Html2rss.test' do
+        allow(Html2rss).to receive(:test).and_return(test_result_success)
+
+        cli.invoke(:test, ['config.yml'], { strict_quality: true })
+
+        expect(Html2rss).to have_received(:test).with(
+          'config.yml',
+          nil,
+          hash_including(strict_quality: true)
+        )
+      end
     end
 
     context 'when test fails' do

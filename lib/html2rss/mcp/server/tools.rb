@@ -94,11 +94,12 @@ module Html2rss
             description: 'Validate schema and execute live extraction (asserting >= min_items items). ' \
                          'Call after capture or validate; on success next_step is apply. ' \
                          'Returns test summary in payload with sample items, timing, failure_kind, ' \
-                         'and quality_report (warnings for duplicate URLs, junk titles, native feed).',
+                         'and quality_report (warnings for duplicate URLs, junk titles, native feed). ' \
+                         'Set strict_quality to fail on duplicate URLs, >50% junk titles, or short titles.',
             input_schema: Contract::TEST_INPUT_SCHEMA,
-            call: lambda { |config: nil, yaml: nil, min_items: 1, **kwargs|
+            call: lambda { |config: nil, yaml: nil, min_items: 1, strict_quality: false, **kwargs|
               feed_config = ConfigArgument.parse(config:, yaml:).config
-              test_args = { min_items: }
+              test_args = { min_items:, strict_quality: }
               test_args[:strategy] = Runtime.coerce_strategy(kwargs[:strategy]) if kwargs.key?(:strategy)
               test_result = Html2rss.test(feed_config, **test_args)
               Outcome.test(test_result)

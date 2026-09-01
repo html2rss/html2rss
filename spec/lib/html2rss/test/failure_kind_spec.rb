@@ -9,5 +9,6 @@ RSpec.describe Html2rss::Test::FailureKind do
     expect(described_class.coerce(:schema).schema?).to be(true)
     expect(described_class.coerce(:execution).execution?).to be(true)
     expect(described_class.coerce(:min_items).min_items?).to be(true)
+    expect(described_class.coerce(:quality).quality?).to be(true)
   end
 end

@@ -111,6 +111,70 @@ RSpec.describe Html2rss::Test do
         expect(result.rss).to be_nil
       end
 
+      it 'keeps warn-only quality_report when strict_quality is false despite duplicate URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        duplicate_items = [
+          instance_double(RSS::Rss::Channel::Item, title: 'Story One Title Here', link: 'https://example.com/same',
+                                                    pubDate: nil),
+          instance_double(RSS::Rss::Channel::Item, title: 'Story Two Title Here', link: 'https://example.com/same',
+                                                    pubDate: nil)
+        ]
+        allow(fake_rss).to receive(:items).and_return(duplicate_items)
+
+        result = described_class.call(valid_config, min_items: 1, strict_quality: false)
+
+        expect(result.success).to be(true)
+        expect(result.quality_report.warnings).to include(:duplicate_urls)
+        expect(result.failure_kind).to be_nil
+      end
+
+      it 'fails with :quality when strict_quality and duplicate URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        duplicate_items = [
+          instance_double(RSS::Rss::Channel::Item, title: 'Story One Title Here', link: 'https://example.com/same',
+                                                    pubDate: nil),
+          instance_double(RSS::Rss::Channel::Item, title: 'Story Two Title Here', link: 'https://example.com/same',
+                                                    pubDate: nil)
+        ]
+        allow(fake_rss).to receive(:items).and_return(duplicate_items)
+
+        result = described_class.call(valid_config, min_items: 1, strict_quality: true)
+
+        expect(result.success).to be(false)
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:quality))
+        expect(result.error_message).to include('duplicate_urls')
+        expect(result.rss).to be_nil
+        expect(result.quality_report.warnings).to include(:duplicate_urls)
+      end
+
+      it 'fails with :quality when strict_quality and more than half the titles are junk', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        junk_items = [
+          instance_double(RSS::Rss::Channel::Item, title: 'Read More', link: 'https://example.com/a', pubDate: nil),
+          instance_double(RSS::Rss::Channel::Item, title: 'Learn More', link: 'https://example.com/b', pubDate: nil),
+          instance_double(RSS::Rss::Channel::Item, title: 'Valid Article Title Here', link: 'https://example.com/c',
+                                                    pubDate: nil)
+        ]
+        allow(fake_rss).to receive(:items).and_return(junk_items)
+
+        result = described_class.call(valid_config, min_items: 1, strict_quality: true)
+
+        expect(result.success).to be(false)
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:quality))
+        expect(result.error_message).to include('generic_titles')
+      end
+
+      it 'prefers :min_items over :quality when both would fail', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        duplicate_items = [
+          instance_double(RSS::Rss::Channel::Item, title: 'Story One Title Here', link: 'https://example.com/same',
+                                                    pubDate: nil),
+          instance_double(RSS::Rss::Channel::Item, title: 'Story Two Title Here', link: 'https://example.com/same',
+                                                    pubDate: nil)
+        ]
+        allow(fake_rss).to receive(:items).and_return(duplicate_items)
+
+        result = described_class.call(valid_config, min_items: 5, strict_quality: true)
+
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:min_items))
+      end
+
       it 'handles file path input' do
         result = described_class.call('spec/fixtures/single.test.yml')
         expect(result.valid_schema?).to be(true)
