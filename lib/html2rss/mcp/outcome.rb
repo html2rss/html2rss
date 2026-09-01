@@ -210,9 +210,15 @@ module Html2rss
         end
 
         def test_guidance(test_result, next_step)
-          return next_step.guidance if test_result.success
+          base = if test_result.success
+                   next_step.guidance
+                 else
+                   test_result.error_message || next_step.guidance
+                 end
+          warnings = test_result.quality_report&.warnings
+          return base if warnings.nil? || warnings.empty?
 
-          test_result.error_message || next_step.guidance
+          "#{base} Review payload.quality_report warnings: #{warnings.join(', ')}."
         end
 
         def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists

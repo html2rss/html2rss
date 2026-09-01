@@ -295,6 +295,26 @@ RSpec.describe Html2rss::MCP::Server do
         expect(envelope[:payload]).to include(item_count: 2, channel_title: 'Example')
       end
 
+      it 'includes quality_report in payload when present', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        quality_report = Html2rss::Test::QualityReport.new(
+          warnings: [:duplicate_urls],
+          metrics: { item_count: 2, unique_url_count: 1, junk_title_count: 0, short_title_count: 0,
+                     low_word_count: 0 },
+          native_feed: nil,
+          defer_reason: nil
+        )
+        allow(Html2rss).to receive(:test).and_return(test_result(success: true, quality_report:))
+
+        result = call_tool.call('test', { config: valid_config, min_items: 1 })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(envelope[:payload][:quality_report]).to include(
+          warnings: ['duplicate_urls'],
+          metrics: hash_including(item_count: 2, unique_url_count: 1)
+        )
+        expect(envelope[:guidance]).to include('quality_report warnings: duplicate_urls')
+      end
+
       it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         config_with_strategy = valid_config.merge(strategy: :faraday)
         allow(Html2rss::Test).to receive(:call).and_return(test_result(success: true))
