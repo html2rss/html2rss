@@ -122,48 +122,50 @@ module Html2rss
         required: %w[url]
       }.freeze
 
-      # Input schema for +batch_scrape+.
-      BATCH_SCRAPE_INPUT_SCHEMA = {
-        type: 'object',
-        properties: {
-          urls: {
-            type: 'array',
-            items: URL_PROPERTY,
-            minItems: 1,
-            maxItems: 25,
-            description: 'List of page URLs to scrape (1..25)'
+      ##
+      # Shared JSON Schema for batch URL tools (+batch_scrape+, +batch_inspect+, +batch_recon+).
+      #
+      # @param urls_description [String] description for the +urls+ array property
+      # @param strategy_property [Hash] strategy JSON Schema property
+      # @param extra_properties [Hash] additional tool-specific properties (e.g. +limit+ on scrape)
+      # @return [Hash]
+      def self.batch_urls_input_schema(urls_description:, strategy_property:, extra_properties: {})
+        {
+          type: 'object',
+          properties: {
+            urls: {
+              type: 'array',
+              items: URL_PROPERTY,
+              minItems: 1,
+              maxItems: 25,
+              description: urls_description
+            }.freeze,
+            strategy: strategy_property,
+            concurrency: {
+              type: 'integer',
+              description: 'Max parallel worker threads (1..10, default: 5)',
+              default: 5
+            },
+            **extra_properties
           }.freeze,
-          strategy: STRATEGY_PROPERTY,
-          limit: { type: 'integer', description: 'Max articles per URL to keep (default 10)', default: 10 },
-          concurrency: {
-            type: 'integer',
-            description: 'Max parallel worker threads (1..10, default: 5)',
-            default: 5
-          }
-        }.freeze,
-        required: %w[urls]
-      }.freeze
+          required: %w[urls]
+        }
+      end
+
+      # Input schema for +batch_scrape+.
+      BATCH_SCRAPE_INPUT_SCHEMA = batch_urls_input_schema(
+        urls_description: 'List of page URLs to scrape (1..25)',
+        strategy_property: STRATEGY_PROPERTY,
+        extra_properties: {
+          limit: { type: 'integer', description: 'Max articles per URL to keep (default 10)', default: 10 }
+        }
+      ).freeze
 
       # Input schema for +batch_inspect+.
-      BATCH_INSPECT_INPUT_SCHEMA = {
-        type: 'object',
-        properties: {
-          urls: {
-            type: 'array',
-            items: URL_PROPERTY,
-            minItems: 1,
-            maxItems: 25,
-            description: 'List of page URLs to inspect (1..25)'
-          }.freeze,
-          strategy: INSPECT_STRATEGY_PROPERTY,
-          concurrency: {
-            type: 'integer',
-            description: 'Max parallel worker threads (1..10, default: 5)',
-            default: 5
-          }
-        }.freeze,
-        required: %w[urls]
-      }.freeze
+      BATCH_INSPECT_INPUT_SCHEMA = batch_urls_input_schema(
+        urls_description: 'List of page URLs to inspect (1..25)',
+        strategy_property: INSPECT_STRATEGY_PROPERTY
+      ).freeze
 
       # Input schema for +batch_recon+.
       BATCH_RECON_INPUT_SCHEMA = BATCH_INSPECT_INPUT_SCHEMA

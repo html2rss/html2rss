@@ -30,8 +30,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
 
   ##
   # Cheap diagnostics for a URL (final URL, status, alternates, surface).
-  #
-  # Golden path step 1 (optional). For verdict and native_feed preference, use {.recon}.
+  # Golden path step 1 (optional); use {.recon} for verdict and native_feed.
   #
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
@@ -41,53 +40,31 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   end
 
   ##
-  # Runs reconnaissance on a URL to discover redirect chains, native feeds, and surface classification.
-  #
-  # Golden path step 2 (optional). Adds curation verdict and native_feed preference beyond {.inspect}.
+  # Curation verdict and native_feed preference for a URL.
+  # Golden path step 2 (optional); adds verdict beyond {.inspect}.
   #
   # @param url [String, Html2rss::Url] source page URL
   # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
-  # @option options [Integer, nil] :max_redirects optional maximum redirects
-  # @option options [Integer, nil] :max_requests optional request budget
   # @return [Html2rss::Recon::Result]
   def self.recon(url, strategy: :auto, **)
     Recon.call(url, strategy:, **)
   end
 
   ##
-  # Analyzes a URL and produces a reusable YAML-ready feed config.
-  #
-  # Golden path step 3. Uses auto-source discovery to extract articles, then derives CSS selectors
-  # from the structural analysis.
+  # Derives a reusable YAML-ready feed config from a URL.
+  # Golden path step 3.
   #
   # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy (+:auto+, +:faraday+, +:botasaurus+)
-  # @option options [String, nil] :items_selector optional CSS selector hint for items
-  # @option options [Array<String>, nil] :topics optional directory topics override
-  # @option options [String, nil] :title optional title override
-  # @option options [String, nil] :summary optional summary override
-  # @option options [Boolean] :force whether to ignore native feed detection
-  # @option options [Boolean, nil] :enhance whether to force enhance: true
-  # @option options [Integer, nil] :max_redirects optional redirect limit override
-  # @option options [Integer, nil] :max_requests optional request budget override
-  # @option options [Integer, nil] :limit max articles to keep
-  # @option options [String, nil] :local_file_path optional local HTML file path
   # @return [Html2rss::Capture::CaptureResult]
-  # @note Breaking: returns {Capture::CaptureResult} instead of a bare config Hash.
-  #   Callers that previously did +File.write(..., Config.to_yaml(Html2rss.capture(url)))+
-  #   should use +result.yaml+ or +result.config+.
   def self.capture(url, strategy: :auto, **)
     Capture.build(url, strategy:, **)
   end
 
   ##
-  # Validates a configuration hash, YAML string, or YAML file path against the schema.
-  #
+  # Validates a config hash, YAML string, or file path against the schema.
   # Side door: schema-only check without live extraction.
   #
   # @param config_input [Hash, String]
-  # @param feed_name [String, nil]
-  # @param params [Hash]
   # @return [Dry::Validation::Result, Html2rss::Config::ValidationResult]
   def self.validate(config_input, feed_name = nil, params: {})
     _raw, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
@@ -95,15 +72,10 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   end
 
   ##
-  # Tests a configuration by validating schema and asserting live item extraction.
-  #
+  # Validates schema and asserts live item extraction.
   # Golden path step 4.
   #
   # @param config_input [Hash, String] config hash, YAML string, or file path
-  # @param feed_name [String, nil] optional feed name in multi-feed file
-  # @param min_items [Integer] minimum required items (default: 1)
-  # @param params [Hash] dynamic feed params
-  # @param strategy [Symbol, nil] optional strategy override
   # @return [Html2rss::Test::Result]
   def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil)
     Test.call(config_input, feed_name, min_items:, params:, strategy:)
@@ -111,7 +83,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
 
   ##
   # Ships RSS from a validated config (user-facing verb for {.feed_result}).
-  #
   # Golden path step 5.
   #
   # @param raw_config [Hash{Symbol => Object}] feed configuration
@@ -126,12 +97,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # One-shot auto-source scrape from a URL (user-facing verb for {.auto_feed_result}).
   #
   # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy to use
-  # @param items_selector [String, nil] optional selector hint for item extraction
-  # @param max_redirects [Integer, nil] optional redirect limit override
-  # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
-  # @param local_file_path [String, nil] optional local HTML file path
-  # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
   # @return [Html2rss::FeedResult]
   def self.scrape(url,
                   strategy: :auto,
