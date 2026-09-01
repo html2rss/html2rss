@@ -139,33 +139,24 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
     expect(retry_request_options.timeout).to be_within(0.001).of(17.6)
     expect(retry_request_options.open_timeout).to eq(5)
     expect(retry_request_options.read_timeout).to eq(10)
-    expect(retry_request_options.on_data).to be_a(Proc)
+    expect(retry_request_options.on_data).to be_nil
     expect(retry_request_options.context).to be_nil
     expect(result.body).to eq('<html>redirected body</html>')
     expect(result.url.to_s).to eq('https://example.com/final')
   end
 
-  it 'enforces streamed byte limits on the redirected fallback path' do # rubocop:disable RSpec/ExampleLength
-    allow(policy).to receive(:max_response_bytes).and_return(5)
+  it 'enforces body byte limits on the redirected fallback path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    allow(policy).to receive(:max_decompressed_bytes).and_return(5)
 
     call_count = 0
     allow(connection).to receive(:get) do |&block|
       call_count += 1
-      current_request = call_count == 1 ? request : retry_request
-      block.call(current_request)
-      current_options = current_request.options
-      streamed_env = Faraday::Env.from(
-        request: current_options,
-        response_headers: { 'content-type' => 'text/html' },
-        status: 200
-      )
-      current_options.on_data.call('123', 3, streamed_env)
-      current_options.on_data.call('456', 6, streamed_env) if call_count == 2
-
+      block&.call(call_count == 1 ? request : retry_request)
       call_count == 1 ? empty_redirected_response : recovered_response
     end
 
     expect { execute }.to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 5 bytes')
+    expect(retry_request_options.on_data).to be_nil
   end
 
   it 'raises blocked-surface classification when response body is an anti-bot interstitial' do
@@ -345,6 +336,39 @@ RSpec.describe Html2rss::RequestService::FaradayStrategy do # rubocop:disable RS
       expect(headers).not_to include('Host')
       expect(hop_hosts).to eq([nil, nil])
       expect(result.status).to eq(200)
+      expect(result.url.to_s).to eq('https://www.example/')
+    end
+
+    it 'recovers body when streaming loses redirect payload', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      attempts = 0
+      streaming_middleware = Class.new(Faraday::Middleware) do
+        define_method(:initialize) { |app| @app = app }
+        define_method(:call) do |env|
+          @app.call(env).tap do |response|
+            next unless response.env.url.to_s == 'https://www.example/'
+            next unless attempts.zero?
+
+            attempts += 1
+            response.env.body = ''
+          end
+        end
+      end
+      stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+        stub.get('https://apex.example/') { [301, { 'Location' => 'https://www.example/' }, ''] }
+        stub.get('https://www.example/') { [200, { 'Content-Type' => 'text/html' }, '<html>ok</html>'] }
+      end
+      connection = Faraday.new(url: 'https://apex.example/', headers:) do |faraday|
+        faraday.use streaming_middleware
+        faraday.use Faraday::FollowRedirects::Middleware, limit: policy.max_redirects
+        faraday.adapter :test, stubs
+      end
+      strategy = described_class.new(ctx)
+      strategy.instance_variable_set(:@client, connection)
+
+      result = VCR.turned_off { strategy.execute }
+
+      expect(result.status).to eq(200)
+      expect(result.body).to eq('<html>ok</html>')
       expect(result.url.to_s).to eq('https://www.example/')
     end
   end

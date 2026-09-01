@@ -104,7 +104,9 @@ module Html2rss
 
         client.get do |req|
           apply_timeouts(req, deadline:)
-          buffer = prepare_stream_buffer(req) if streaming_buffer
+          next unless streaming_buffer
+
+          buffer = prepare_stream_buffer(req)
           req.options.on_data = on_data_callback(response_guard, buffer)
         end
       end
