@@ -19,7 +19,7 @@ module Html2rss
     ValidationResult = Data.define(:success, :errors_hash)
 
     ##
-    # Duck-compatible with {Dry::Validation::Result} for resolve-time outcomes
+    # Duck-compatible with +Dry::Validation::Result+ for resolve-time outcomes
     # (+#success?+, +#errors#to_h+). Used for parse failures so callers never see a Struct snowflake.
     class ValidationResult
       ##

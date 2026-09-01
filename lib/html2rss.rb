@@ -206,10 +206,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   #
   # Uses auto-source discovery to extract articles, then derives CSS selectors
   # from the structural analysis.
-  #
-  # @note Breaking: returns {Capture::CaptureResult} instead of a bare config Hash.
-  #   Callers that previously did +File.write(..., Config.to_yaml(Html2rss.capture(url)))+
-  #   should use +result.yaml+ or +result.config+.
   # @param url [String] source page URL
   # @param strategy [Symbol] request strategy (+:auto+, +:faraday+, +:botasaurus+)
   # @param items_selector [String, nil] optional CSS selector hint for items
@@ -218,6 +214,9 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param limit [Integer, nil] max articles to keep
   # @param local_file_path [String, nil] optional local HTML file path
   # @return [Html2rss::Capture::CaptureResult]
+  # @note Breaking: returns {Capture::CaptureResult} instead of a bare config Hash.
+  #   Callers that previously did +File.write(..., Config.to_yaml(Html2rss.capture(url)))+
+  #   should use +result.yaml+ or +result.config+.
   def self.capture(url,
                    strategy: :auto,
                    items_selector: nil,
