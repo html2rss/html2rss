@@ -66,6 +66,9 @@ RSpec.describe Html2rss::MCP::Server do
         'scrape', 'inspect', 'recon', 'batch_scrape', 'batch_inspect', 'batch_recon',
         'capture', 'validate', 'test', 'apply'
       )
+      expect(protocol_server.tools.keys).to match_array(
+        Html2rss::MCP::Contract::TITLES.keys.map(&:to_s)
+      )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
       expect(protocol_server.instructions).to include('html2rss://runtime')

@@ -104,7 +104,7 @@ module Html2rss
       ##
       # Serializes a configuration hash to string-key YAML.
       #
-      # This is the single serializer for CLI capture and MCP +capture_config+.
+      # This is the single serializer for CLI capture and MCP +capture+.
       #
       # @param hash [Hash] configuration hash (symbol or string keys)
       # @return [String] YAML document without Ruby symbol-key prefixes
