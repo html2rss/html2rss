@@ -107,6 +107,49 @@ module Html2rss
         required: %w[url]
       }.freeze
 
+      # Input schema for +batch_scrape_urls+.
+      BATCH_SCRAPE_INPUT_SCHEMA = {
+        type: 'object',
+        properties: {
+          urls: {
+            type: 'array',
+            items: URL_PROPERTY,
+            minItems: 1,
+            maxItems: 25,
+            description: 'List of page URLs to scrape (1..25)'
+          }.freeze,
+          strategy: STRATEGY_PROPERTY,
+          limit: { type: 'integer', description: 'Max articles per URL to keep (default 10)', default: 10 },
+          concurrency: {
+            type: 'integer',
+            description: 'Max parallel worker threads (1..10, default: 5)',
+            default: 5
+          }
+        }.freeze,
+        required: %w[urls]
+      }.freeze
+
+      # Input schema for +batch_inspect_urls+.
+      BATCH_INSPECT_INPUT_SCHEMA = {
+        type: 'object',
+        properties: {
+          urls: {
+            type: 'array',
+            items: URL_PROPERTY,
+            minItems: 1,
+            maxItems: 25,
+            description: 'List of page URLs to inspect (1..25)'
+          }.freeze,
+          strategy: INSPECT_STRATEGY_PROPERTY,
+          concurrency: {
+            type: 'integer',
+            description: 'Max parallel worker threads (1..10, default: 5)',
+            default: 5
+          }
+        }.freeze,
+        required: %w[urls]
+      }.freeze
+
       # Tool annotations for open-world read-only tools.
       ANNOTATIONS_OPEN_WORLD = {
         read_only_hint: true,
@@ -122,6 +165,8 @@ module Html2rss
       TITLES = {
         scrape_url: 'Scrape URL',
         inspect_url: 'Inspect URL',
+        batch_scrape_urls: 'Batch scrape URLs',
+        batch_inspect_urls: 'Batch inspect URLs',
         capture_config: 'Capture feed config',
         validate_config: 'Validate feed config',
         apply_config: 'Apply feed config',

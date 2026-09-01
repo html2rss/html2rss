@@ -22,7 +22,7 @@ Composable curation seams for recon → capture → validate/test → apply:
 | Validate + live + min_items + RSS | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`) |
 | MCP next_step / guidance | `MCP::Outcome` (includes `:test_config`) |
 | Capture YAML product | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`) |
-| Batch concurrency | `Recon.batch` Thread pool (not Ractors); preserves input order |
+| Batch concurrency | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Html2rss.batch_auto_feed`, MCP) |
 
 `apply_config` zero-item ship gate stays distinct from `Test` min_items.
 

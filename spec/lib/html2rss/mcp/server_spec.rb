@@ -63,7 +63,8 @@ RSpec.describe Html2rss::MCP::Server do
       expect(protocol_server.title).to eq('html2rss')
       expect(protocol_server.configuration.validate_tool_call_results?).to be(true)
       expect(protocol_server.tools.keys).to contain_exactly(
-        'scrape_url', 'inspect_url', 'capture_config', 'validate_config', 'test_config', 'apply_config'
+        'scrape_url', 'inspect_url', 'batch_scrape_urls', 'batch_inspect_urls',
+        'capture_config', 'validate_config', 'test_config', 'apply_config'
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
@@ -147,6 +148,73 @@ RSpec.describe Html2rss::MCP::Server do
           expect(envelope[:next_step]).to eq('read_runtime')
         end
       end
+    end
+
+    describe 'batch_scrape_urls' do
+      let(:batch_result) do
+        Html2rss::Batch::BatchResult.new(
+          total: 2,
+          successful: 1,
+          results: [
+            { url: 'https://example.com/a', ok: true, items_count: 1, items: [{ title: 'A' }], channel_title: 'A' },
+            { url: 'https://example.com/b', ok: false, error: 'Boom' }
+          ]
+        )
+      end
+
+      before do
+        allow(Html2rss::Batch).to receive(:scrape_urls).and_return(batch_result)
+      end
+
+      # rubocop:disable RSpec/ExampleLength
+      it 'returns a batch scrape envelope', :aggregate_failures do
+        result = call_tool.call('batch_scrape_urls', { urls: ['https://example.com/a', 'https://example.com/b'] })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(Html2rss::Batch).to have_received(:scrape_urls).with(
+          urls: ['https://example.com/a', 'https://example.com/b'],
+          strategy: 'auto',
+          limit: 10,
+          concurrency: 5
+        )
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'done')
+        expect(envelope[:payload]).to include(total: 2, successful: 1)
+      end
+      # rubocop:enable RSpec/ExampleLength
+    end
+
+    describe 'batch_inspect_urls' do
+      let(:batch_result) do
+        Html2rss::Batch::BatchResult.new(
+          total: 2,
+          successful: 2,
+          results: [
+            { url: 'https://example.com/a', ok: true, status_code: 200, final_url: 'https://example.com/a' },
+            { url: 'https://example.com/b', ok: true, status_code: 200, final_url: 'https://example.com/b' }
+          ]
+        )
+      end
+
+      before do
+        allow(Html2rss::Batch).to receive(:inspect_urls).and_return(batch_result)
+      end
+
+      # rubocop:disable RSpec/ExampleLength
+      it 'returns a batch inspect envelope', :aggregate_failures do
+        result = call_tool.call('batch_inspect_urls', { urls: ['https://example.com/a', 'https://example.com/b'] })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(Html2rss::Batch).to have_received(:inspect_urls).with(
+          urls: ['https://example.com/a', 'https://example.com/b'],
+          strategy: 'auto',
+          concurrency: 5
+        )
+        expect(result.dig(:result, :isError)).to be(false)
+        expect(envelope).to include(ok: true, next_step: 'done')
+        expect(envelope[:payload]).to include(total: 2, successful: 2)
+      end
+      # rubocop:enable RSpec/ExampleLength
     end
 
     describe 'capture_config' do

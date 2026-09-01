@@ -174,32 +174,16 @@ module Html2rss
     # @option options [Integer, nil] :max_redirects optional maximum redirects
     # @option options [Integer, nil] :max_requests optional request budget
     # @return [Array<Html2rss::Recon::Result>]
-    def batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
+    def batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options)
       url_list = urls.map { |u| u.to_s.strip }.reject(&:empty?)
       return [] if url_list.empty?
 
       FileUtils.mkdir_p(cache_dir) if cache_dir
-      results = Array.new(url_list.size)
-      cache_mutex = Mutex.new
-      queue = Queue.new
-      url_list.each_with_index { |u, i| queue << [i, u] }
+      cache_mutex = Mutex.new if cache_dir
 
-      worker_count = [max_threads, url_list.size].min
-      threads = Array.new(worker_count) do
-        Thread.new do # rubocop:disable ThreadSafety/NewThread
-          loop do
-            index, target_url = begin
-              queue.pop(true)
-            rescue ThreadError
-              break
-            end
-
-            results[index] = call(target_url, strategy:, cache_dir:, cache_mutex:, **options)
-          end
-        end
+      Batch.map(url_list, concurrency: max_threads) do |target_url|
+        call(target_url, strategy:, cache_dir:, cache_mutex:, **options)
       end
-      threads.each(&:join)
-      results
     end
 
     ##

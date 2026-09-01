@@ -121,14 +121,16 @@ Read `html2rss://runtime` for a boolean `botasaurus_configured` (the URL is neve
 
 ### Tools
 
-| Name              | When to use                                                                 |
-| ----------------- | --------------------------------------------------------------------------- |
-| `scrape_url`      | One-shot articles now (`payload.items`; empty is still success)             |
-| `inspect_url`     | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)   |
-| `capture_config`  | YAML draft in `payload.yaml`; strive `enhance: true`                        |
-| `validate_config` | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)       |
-| `test_config`     | Combined schema validation and live item extraction assertion               |
-| `apply_config`    | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count` |
+| Name                 | When to use                                                                 |
+| -------------------- | --------------------------------------------------------------------------- |
+| `scrape_url`         | One-shot articles now (`payload.items`; empty is still success)             |
+| `batch_scrape_urls`  | Parallel one-shot scrape across multiple URLs (`urls`, `limit`, `concurrency`) |
+| `inspect_url`        | Weak scrape/capture or recon (final_url, status, scheme_downgrade, feeds)   |
+| `batch_inspect_urls` | Parallel recon across multiple URLs (`urls`, `strategy`, `concurrency`)    |
+| `capture_config`     | YAML draft in `payload.yaml`; strive `enhance: true`                        |
+| `validate_config`    | Schema-check a `config` hash XOR `yaml` string (`isError` on failure)       |
+| `test_config`        | Combined schema validation and live item extraction assertion               |
+| `apply_config`       | RSS in `payload.rss`; `isError` when zero items; confirm `payload.item_count` |
 
 ### Resources
 

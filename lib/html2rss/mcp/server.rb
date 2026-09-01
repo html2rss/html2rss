@@ -144,18 +144,18 @@ module Html2rss
           <<~TEXT.strip
             html2rss MCP — decide which tool to call:
 
-            1. Need articles now (no saved config)? → scrape_url (1 call)
+            1. Need articles now (no saved config)? → scrape_url (or batch_scrape_urls for multiple)
                - strategy "auto" runs Faraday → Botasaurus AutoFallback. Do not retry with explicit faraday after auto.
                - Empty scrape is still success (articles-now). Follow next_step / guidance (read_runtime if Botasaurus unset).
             2. Need a reusable feed YAML? → capture_config → test_config → apply_config
                - capture_config returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Strive enhance: true (false only when chrome leaks).
                - test_config runs schema + live extraction (min items). apply_config is the ship gate (isError on zero items). Confirm payload.item_count.
                - validate_config alone is for schema-only checks; on success next_step is test_config.
-            3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect_url only if weak or recon.
+            3. Weak scrape/capture or recon (final URL, status, https→http, rel=alternate feeds)? → inspect_url (or batch_inspect_urls).
             4. Have a config already? → validate_config (must succeed) → test_config → apply_config
             5. Schema / extractors / strategies / runtime → resources html2rss://schema|extractors|strategies|runtime
 
-            Prefer capture_config for durable config; scrape_url for one-shot extraction.
+            Prefer capture_config for durable config; scrape_url / batch_scrape_urls for one-shot extraction.
             Follow envelope next_step and guidance. Botasaurus needs BOTASAURUS_SCRAPER_URL in this process env (boolean at html2rss://runtime; the URL is never returned).
           TEXT
         end
@@ -195,6 +195,8 @@ module Html2rss
         def register_tools(server)
           register_scrape_url(server)
           register_inspect_url(server)
+          register_batch_scrape_urls(server)
+          register_batch_inspect_urls(server)
           register_capture_config(server)
           register_validate_config(server)
           register_test_config(server)
@@ -238,6 +240,38 @@ module Html2rss
           ) do |server_context:, url:, strategy: 'auto'| # rubocop:disable Lint/UnusedBlockArgument
             Outcome.inspect(payload: Inspect.call(url:, strategy:))
           end
+        end
+
+        def register_batch_scrape_urls(server)
+          define_envelope_tool(
+            server,
+            name: 'batch_scrape_urls',
+            description: 'Scrape multiple URLs in parallel with per-URL error isolation. ' \
+                         'Returns structured JSON Feed items and extraction counts.',
+            input_schema: Contract::BATCH_SCRAPE_INPUT_SCHEMA
+          ) do |server_context:, urls:, strategy: 'auto', limit: 10, concurrency: Batch::DEFAULT_CONCURRENCY| # rubocop:disable Lint/UnusedBlockArgument
+            batch_scrape_outcome(urls:, strategy:, limit:, concurrency:)
+          end
+        end
+
+        def batch_scrape_outcome(urls:, strategy:, limit:, concurrency:)
+          Outcome.batch_scrape(Batch.scrape_urls(urls:, strategy:, limit:, concurrency:))
+        end
+
+        def register_batch_inspect_urls(server)
+          define_envelope_tool(
+            server,
+            name: 'batch_inspect_urls',
+            description: 'Inspect multiple URLs in parallel with per-URL error isolation. ' \
+                         'Returns final redirected URLs, status codes, and rel="alternate" feeds.',
+            input_schema: Contract::BATCH_INSPECT_INPUT_SCHEMA
+          ) do |server_context:, urls:, strategy: 'auto', concurrency: Batch::DEFAULT_CONCURRENCY| # rubocop:disable Lint/UnusedBlockArgument
+            batch_inspect_outcome(urls:, strategy:, concurrency:)
+          end
+        end
+
+        def batch_inspect_outcome(urls:, strategy:, concurrency:)
+          Outcome.batch_inspect(Batch.inspect_urls(urls:, strategy:, concurrency:))
         end
 
         def register_capture_config(server) # rubocop:disable Metrics/MethodLength

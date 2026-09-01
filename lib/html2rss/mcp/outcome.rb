@@ -131,6 +131,22 @@ module Html2rss
         end
 
         ##
+        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @return [Outcome]
+        def batch_scrape(batch_result)
+          next_step = batch_result.successful.positive? ? NextStep.done : NextStep.scrape_url
+          new(ok: true, next_step:, guidance: next_step.guidance, payload: batch_result.to_h)
+        end
+
+        ##
+        # @param batch_result [Html2rss::Batch::BatchResult]
+        # @return [Outcome]
+        def batch_inspect(batch_result)
+          next_step = batch_result.successful.positive? ? NextStep.done : NextStep.inspect_url
+          new(ok: true, next_step:, guidance: next_step.guidance, payload: batch_result.to_h)
+        end
+
+        ##
         # @param rss [String]
         # @param item_count [Integer]
         # @param empty [Boolean] {FeedResult#empty?} (ship gate); defaults to zero items

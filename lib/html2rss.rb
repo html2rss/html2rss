@@ -190,6 +190,18 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   end
 
   ##
+  # Scrapes multiple URLs in parallel using auto-source article discovery.
+  #
+  # @param urls [Enumerable<String>] list of URLs to scrape
+  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param limit [Integer] max articles to keep per URL (default: 10)
+  # @param concurrency [Integer] max worker threads (default: 5)
+  # @return [Html2rss::Batch::BatchResult]
+  def self.batch_auto_feed(urls, strategy: :auto, limit: 10, concurrency: Batch::DEFAULT_CONCURRENCY)
+    Batch.scrape_urls(urls:, strategy:, limit:, concurrency:)
+  end
+
+  ##
   # Analyzes a URL and produces a reusable YAML-ready feed config.
   #
   # Uses auto-source discovery to extract articles, then derives CSS selectors
