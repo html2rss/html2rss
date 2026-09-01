@@ -150,7 +150,7 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 
 **Golden path:** optional **inspect → recon → capture → test → apply**. Side door: **validate**. One-shot: **scrape**.
 
-**inspect ≠ recon:** inspect is diagnostics-only; recon adds curation verdict and native feed preference. MCP/CLI route inspect → recon when alternates warrant it (Wave 2A playbook policy).
+**inspect ≠ recon:** inspect is diagnostics-only; recon adds curation verdict and native feed preference. MCP/CLI route inspect → recon when alternates warrant it (`Outcome::Playbook` policy).
 
 **Wire vs internal:** `Html2rss.feed` / `feed_result` and `auto_feed_result` stay pipeline internals — do not rename in `spec/examples/` or pipeline code. User-facing **`apply`** delegates to `feed_result`; **`scrape`** delegates to `auto_feed_result`.
 
@@ -169,6 +169,7 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 - Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
 - Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
-- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
+- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,mcp}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
+- When changing curation verbs (CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep`, gem facades), sync `CONTEXT.md` § Frozen contract, this § Curation CLI / MCP, `README.md`, `lib/html2rss/mcp/README.md`, and `CHANGELOG.md` Breaking in the same PR wave.
 - Wire those guides with `{include:file:lib/.../README.md}` on the owning class. Do not add them to `.yardopts --files`: YARD extra-file names are `File.basename` without extension, so extra `README.md` files all emit `file.README.html` and clobber the gem README.
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.

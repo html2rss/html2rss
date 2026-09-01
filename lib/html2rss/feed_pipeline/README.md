@@ -1,6 +1,6 @@
 # FeedPipeline — `auto` request strategy
 
-`:auto` is the default request plan for feed builds (`auto_source`, `auto_json_feed`, Capture, and MCP `scrape_url` / `capture_config`). `FeedPipeline::StrategyPlan` resolves it; `FeedPipeline::AutoFallback` executes `AutoFallback::CHAIN`.
+`:auto` is the default request plan for feed builds (`auto_source`, `auto_json_feed`, Capture, and MCP `scrape` / `capture`). `FeedPipeline::StrategyPlan` resolves it; `FeedPipeline::AutoFallback` executes `AutoFallback::CHAIN`.
 
 Use `:auto` when you want Faraday first and a browser-backed hop only if that fetch fails or yields zero items. Pin a concrete strategy (`faraday`, `botasaurus`, `local_file`) when you need a single transport.
 
@@ -19,8 +19,8 @@ There is no Browserless / Puppeteer-in-gem tier. Pin `botasaurus` when you want 
 
 | Surface | `:auto` behavior |
 |---------|------------------|
-| Gem / CLI feed build, MCP `scrape_url`, Capture | Full AutoFallback chain (`faraday` → `botasaurus`) |
-| MCP `inspect_url` | Cheap diagnostic: `StrategyPlan.concrete_for_diagnostic` maps `auto` to Faraday (pin `botasaurus` when you need browser rendering) |
+| Gem / CLI `apply`, MCP `scrape`, Capture | Full AutoFallback chain (`faraday` → `botasaurus`) |
+| MCP `inspect` | Cheap diagnostic: `StrategyPlan.concrete_for_diagnostic` maps `auto` to Faraday (pin `botasaurus` when you need browser rendering) |
 
 ## Fallback vs abort
 

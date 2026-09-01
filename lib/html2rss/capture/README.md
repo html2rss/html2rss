@@ -30,10 +30,12 @@ result = Html2rss.capture('https://example.com/articles')
 # }
 
 File.write('my-feed.yml', result.yaml)
-feed = Html2rss.feed(result.config)
+rss = Html2rss.apply(result.config)
 ```
 
 `Html2rss.capture` and `Capture.build` both return a `CaptureResult` with YAML (`#yaml`, includes the schema modeline) and quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`, `native_feed`).
+
+**Wire vs internal:** user-facing **`Html2rss.apply`** ships RSS from a config Hash. Pipeline internals **`Html2rss.feed` / `feed_result`** stay unchanged — use `apply` in CLI/MCP/docs examples, not `feed`.
 
 ### Options
 
@@ -44,7 +46,7 @@ Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: 
 Html2rss.capture('https://example.com', max_redirects: 8, max_requests: 4)
 ```
 
-`strategy: :auto` uses the same AutoFallback chain as scrape (`faraday` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.feed(config)` replays the same transport.
+`strategy: :auto` uses the same AutoFallback chain as scrape (`faraday` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.apply(config)` replays the same transport.
 
 ## CLI
 

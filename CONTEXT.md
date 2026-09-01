@@ -50,28 +50,23 @@ CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_res
 | `lib/html2rss/cli.rb`, `lib/html2rss.rb` (facades section) | Wave 2 Agent CLI |
 | `spec/lib/html2rss/cli_spec.rb`, `html2rss_spec.rb` | Wave 2 Agent CLI |
 | `spec/lib/html2rss/mcp/**` | Wave 2 Agent MCP |
-| `spec/lib/html2rss/page_recon/diagnostics_spec.rb` | Wave 1 create, Wave 2A may extend |
+| `spec/lib/html2rss/page_recon/diagnostics_spec.rb` | Wave 1 |
 | `AGENTS.md`, `README.md`, `CONTEXT.md`, `CHANGELOG.md`, `lib/html2rss/*/README.md`, `mcp.rb` YARD | Wave 2 Agent Docs |
 | `spec/integration/curation_golden_path_spec.rb` | Wave 3 Integrator |
 
-**Hot files (serialize or integrator-only):** `html2rss.rb` (Wave 2B), `CONTEXT.md` (Wave 0 draft → Docs finalize → Wave 3 sync).
+**Hot files (serialize or integrator-only):** `html2rss.rb`, `CONTEXT.md` when the curation contract changes.
 
-### Factory signatures (Wave 1/2 deliverables)
+### Factory signatures
 
 ```ruby
-# Wave 1
 PageRecon::Diagnostics.call(url:, strategy:) → Report
 PageRecon::Diagnostics.batch(urls:, ...) → [Report]
 Batch.batch_inspect / batch_recon / batch_scrape
-
-# Wave 2B
 Html2rss.inspect / .apply / .scrape / .batch_scrape / .batch_inspect / .batch_recon
-
-# Wave 2A
 Outcome::Playbook.instructions, Outcome factories typed, Contract::TITLES keys == verbs
 ```
 
-Instruction prose SSOT: `Outcome::Playbook` (Wave 2A). Module guide: `lib/html2rss/mcp/README.md`.
+Instruction prose SSOT: `Outcome::Playbook`. Module guide: `lib/html2rss/mcp/README.md`.
 
 ## Curation CLI / MCP
 
@@ -79,14 +74,14 @@ Composable curation seams for inspect → recon → capture → validate/test �
 
 | Fact | Owner |
 | --- | --- |
-| Diagnostic URL fetch + assess | `PageRecon::Diagnostics` (Wave 1+; today `PageRecon.probe` → `PageRecon::Probe`; `MCP::Inspect` relocates) |
+| Diagnostic URL fetch + assess | `PageRecon::Diagnostics` (uses `PageRecon.probe` → `PageRecon::Probe` for fetch; adds scraper/XHR diagnostics) |
 | Curation verdict | `Recon::Verdict` on `Recon::Result` (`:build` / `:defer` / `:drop`) |
 | Native feed URL (defer/gate) | `Syndication::Discovery.best_feed_url` only |
 | Config Hash/path/YAML → validated raw | `Config.resolve_and_validate` |
 | Validate + live + min_items + RSS | `Test` → `Test::Result` (+ `FailureKind`, success carries `rss`) |
-| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (Wave 2A: bare verb `next_step` names) |
+| MCP next_step / guidance / playbook prose | `MCP::Outcome` + `Outcome::Playbook` (bare verb `next_step` names) |
 | Capture YAML product | `Capture::CaptureResult#yaml` only (facade `Html2rss.capture` returns `CaptureResult`) |
-| Batch concurrency | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP — Wave 1+; today `Html2rss.batch_auto_feed`) |
+| Batch concurrency | `Batch.map` Thread pool (not Ractors); preserves input order (`Recon.batch`, `Batch.batch_*`, MCP) |
 
 `apply` zero-item ship gate stays distinct from `Test` min_items. **inspect ≠ recon:** inspect is cheap diagnostics; recon adds verdict and native_feed preference.
 
@@ -98,7 +93,7 @@ Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss:
 
 Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; tournament policy uses that typed `articles:` array — do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
 
-Diagnostic URL fetch for curation Recon and MCP Inspect is owned by `PageRecon.probe` → `PageRecon::Probe` (`session`, `response`, `result`, `strategy`). Do not reintroduce twin `fetch_initial` / `fetch_response` helpers in those callers.
+Diagnostic URL fetch for curation inspect and recon is owned by `PageRecon::Diagnostics` (via `PageRecon.probe` → `PageRecon::Probe`: `session`, `response`, `result`, `strategy`). Do not reintroduce twin `fetch_initial` / `fetch_response` helpers in those callers.
 
 ## Syndication candidate catalog
 
@@ -138,7 +133,7 @@ Shared wall-clock and HTTP request meters for one feed build. Constructed via `R
 
 ## HTML-ness
 
-Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and MCP Inspect all call that one predicate — do not reintroduce a parallel `html_document?`. Gzip/brotli inflate stays on `CompressedBody`, called only from the Faraday adapter; unlabeled octet-stream inflate must not grow onto Botasaurus or LocalFile.
+Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and curation inspect all call that one predicate — do not reintroduce a parallel `html_document?`. Gzip/brotli inflate stays on `CompressedBody`, called only from the Faraday adapter; unlabeled octet-stream inflate must not grow onto Botasaurus or LocalFile.
 
 ## Botasaurus scrape contract
 

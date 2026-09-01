@@ -3,6 +3,9 @@
 module Html2rss
   ##
   # MCP server for AI client consumption.
+  #
+  # {include:file:lib/html2rss/mcp/README.md}
+  #
   # Lazy-loads the mcp gem; no cost when the server is not started.
   module MCP
     class << self
