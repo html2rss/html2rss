@@ -56,8 +56,7 @@ module Html2rss
     end
 
     ##
-    # Immutable outcome of a configuration test. Success carries +rss+ XML from the
-    # first live extraction; failures carry a typed {FailureKind}.
+    # Ship-quality audit summary for a configuration test (warn-only).
     QualityReport = Data.define(:warnings, :metrics, :native_feed, :defer_reason) do
       ##
       # @return [Hash{Symbol => Object}]
@@ -84,6 +83,9 @@ module Html2rss
       end
     end
 
+    ##
+    # Immutable outcome of a configuration test. Success carries +rss+ XML from the
+    # first live extraction; failures carry a typed {FailureKind}.
     Result = Data.define(
       :success,
       :item_count,
@@ -98,6 +100,19 @@ module Html2rss
       :rss,
       :quality_report
     ) do
+      ##
+      # @param success [Boolean]
+      # @param item_count [Integer]
+      # @param sample_items [Array<Hash>]
+      # @param channel_title [String, nil]
+      # @param channel_url [String, nil]
+      # @param strategy_used [Symbol, nil]
+      # @param duration_seconds [Float]
+      # @param validation_errors [Hash, nil]
+      # @param error_message [String, nil]
+      # @param failure_kind [FailureKind, nil]
+      # @param rss [String, nil]
+      # @param quality_report [QualityReport, nil]
       def initialize(success:, item_count:, sample_items:, channel_title:, channel_url:, # rubocop:disable Metrics/ParameterLists
                      strategy_used:, duration_seconds:, validation_errors:, error_message:,
                      failure_kind:, rss:, quality_report: nil)
