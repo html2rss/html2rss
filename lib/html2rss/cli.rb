@@ -22,8 +22,6 @@ module Html2rss
 
     # CLI `--file` description for inspect/recon candidate lists.
     RECON_FILE_DESC = 'Candidate list file (one URL or slug\turl per line)'
-    # ANSI colors for recon verdict labels in text output.
-    VERDICT_COLORS = { build: "\e[32m", defer: "\e[33m" }.freeze
 
     ##
     # @return [Boolean] whether Thor should exit on command failure
@@ -63,7 +61,7 @@ module Html2rss
                   else
                     [Html2rss.inspect(urls.first, strategy: current_strategy).to_wire_h]
                   end
-        render_inspect_output(results, batch_mode)
+        Render.inspect_output(results, format: options[:format], batch_mode:)
       end
     end
 
@@ -75,7 +73,7 @@ module Html2rss
     method_option :format, type: :string, enum: %w[text json tsv], default: 'text'
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
-    def recon(target = nil) # rubocop:disable Metrics/MethodLength
+    def recon(target = nil) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       with_recon_targets(target) do |urls, batch_mode|
         results = Html2rss::Recon.batch(
           urls,
@@ -83,7 +81,12 @@ module Html2rss
           cache_dir: options[:cache_dir]
         )
         filtered = filter_recon_results(results, options[:verdict])
-        render_recon_output(filtered, batch_mode)
+        Render.recon_output(
+          filtered,
+          format: options[:format],
+          batch_mode:,
+          url_only: options[:url_only]
+        )
 
         return if batch_mode || filtered.empty?
 
@@ -167,7 +170,7 @@ module Html2rss
           $stderr.puts "Test failed: #{result.error_message}" # rubocop:disable Style/StderrPuts
         end
       else
-        render_test_card(result, input_source)
+        Render.test_card(result, input_source)
         puts result.rss if options[:xml] && result.success
       end
 
@@ -314,77 +317,6 @@ module Html2rss
       raise Thor::Error, error.message
     end
 
-    def render_inspect_output(results, batch_mode)
-      if options[:format] == 'json'
-        render_json(results, batch_mode)
-      else
-        results.each { |data| render_inspect_card(data) }
-      end
-    end
-
-    def render_inspect_card(data) # rubocop:disable Metrics/MethodLength
-      requested = wire_val(data, :requested_url)
-      puts requested
-      render_probe_lines(
-        final: wire_val(data, :final_url), requested:,
-        status: wire_val(data, :status), surface: wire_val(data, :surface_category),
-        articles_count: wire_val(data, :articles_count)
-      )
-      alternates = wire_val(data, :alternate_feeds)
-      puts "        Feeds:    #{alternates.map { |f| wire_val(f, :href) }.join(', ')}" if alternates&.any?
-      strategy = wire_val(data, :strategy)
-      puts "        Strategy: #{strategy}" if strategy
-      puts ''
-    end
-
-    def render_recon_output(results, batch_mode) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-      if options[:url_only]
-        results.each { |r| puts r.requested_url }
-      elsif options[:format] == 'json'
-        render_json(results.map(&:to_h), batch_mode)
-      elsif options[:format] == 'tsv'
-        puts %w[verdict status requested_url final_url native_feed notes].join("\t")
-        results.each do |r|
-          row = [
-            r.verdict.to_s.upcase,
-            r.status || '-',
-            r.requested_url,
-            r.final_url,
-            r.native_feed || '-',
-            r.notes.join('; ')
-          ]
-          puts row.join("\t")
-        end
-      else
-        results.each { |r| render_recon_card(r) }
-      end
-    end
-
-    def render_recon_card(result) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      color = VERDICT_COLORS.fetch(result.verdict.to_sym, "\e[31m")
-      puts "#{color}[#{result.verdict.to_s.upcase}]\e[0m #{result.requested_url}"
-      render_probe_lines(
-        final: result.final_url,
-        requested: result.requested_url,
-        status: result.status,
-        surface: result.surface_category,
-        articles_count: result.articles_count
-      )
-      puts "        Feed:     #{result.native_feed}" if result.native_feed
-      puts "        Notes:    #{result.notes.join(', ')}" if result.notes.any?
-      puts ''
-    end
-
-    def render_probe_lines(final:, requested:, status:, surface:, articles_count:)
-      puts "        Final:    #{final} (HTTP #{status || 'ERR'})" if final && final != requested
-      puts "        Surface:  #{surface} (#{articles_count} articles)"
-    end
-
-    def render_json(data, batch_mode)
-      payload = batch_mode ? data : data.first
-      puts JSON.pretty_generate(payload)
-    end
-
     def run_feed_command(&)
       feed_res = execute_feed(&)
       explain_json!(feed_res.status.to_h) if options[:explain]
@@ -394,10 +326,6 @@ module Html2rss
     def emit_feed_result(feed_res, format)
       payload = format == 'jsonfeed' ? JSON.pretty_generate(feed_res.to_json_feed) : feed_res.to_rss
       puts payload
-    end
-
-    def wire_val(data, key)
-      data[key] || data[key.to_s]
     end
 
     def handle_capture_output(result, url) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
@@ -423,26 +351,6 @@ module Html2rss
         [File.read(input), input]
       else
         [input, 'raw_string']
-      end
-    end
-
-    def render_test_card(result, source) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-      if result.success
-        puts "\e[32m✓ Schema valid\e[0m (#{source})"
-        dur = "#{result.duration_seconds}s"
-        puts "\e[32m✓ Extracted #{result.item_count} items in #{dur}\e[0m (strategy: #{result.strategy_used})"
-        puts "\nChannel: #{result.channel_title} (#{result.channel_url})"
-        if result.sample_items.any?
-          puts 'Sample items:'
-          result.sample_items.each_with_index do |item, i|
-            puts "  #{i + 1}. #{"#{item[:published_at]} | " if item[:published_at]}#{item[:title]}"
-            puts "     #{item[:url]}"
-          end
-        end
-      else
-        warn "\e[31m✗ Test failed\e[0m (#{source})"
-        warn "  Error: #{result.error_message}" if result.error_message
-        result.validation_errors&.each { |k, v| warn "  Schema error [#{k}]: #{Array(v).join(', ')}" }
       end
     end
 
