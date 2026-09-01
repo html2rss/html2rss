@@ -79,6 +79,51 @@ RSpec.describe Html2rss::MCP::Contract do
     end
   end
 
+  describe 'MCP_CONTRACT_VERSION' do
+    it 'is independent of the gem version constant', :aggregate_failures do
+      expect(described_class::MCP_CONTRACT_VERSION).to be_a(Integer)
+      expect(described_class::MCP_CONTRACT_VERSION).to eq(2)
+    end
+  end
+
+  describe '.catalog_tools' do
+    it 'lists canonical tool names in stable order' do
+      expect(described_class.catalog_tools).to eq(
+        %w[apply batch_inspect batch_recon batch_scrape capture inspect recon scrape test validate]
+      )
+    end
+  end
+
+  describe '.catalog_fingerprint' do
+    it 'is a stable 16-char hex digest for the published registry', :aggregate_failures do
+      fingerprint = described_class.catalog_fingerprint
+      expect(fingerprint).to match(/\A[0-9a-f]{16}\z/)
+      expect(described_class.catalog_fingerprint).to eq(fingerprint)
+    end
+
+    it 'changes when the published tool set changes' do
+      baseline = described_class.catalog_fingerprint
+      extra_tool = { name: 'future_tool', kind: :url, input_schema: { required: %w[url] } }
+      stub_const('Html2rss::MCP::Server::Tools::TOOLS', Html2rss::MCP::Server::Tools::TOOLS + [extra_tool])
+
+      expect(described_class.catalog_fingerprint).not_to eq(baseline)
+    end
+
+    it 'changes when a tool oneOf branch changes' do # rubocop:disable RSpec/ExampleLength -- mutation setup encodes fingerprint sensitivity
+      baseline = described_class.catalog_fingerprint
+      mutated = Html2rss::MCP::Server::Tools::TOOLS.map do |entry|
+        next entry unless entry.fetch(:name) == 'validate'
+
+        schema = Html2rss::HashUtil.deep_dup(entry.fetch(:input_schema))
+        schema[:oneOf] = [{ required: %w[config yaml] }]
+        entry.merge(input_schema: schema)
+      end
+      stub_const('Html2rss::MCP::Server::Tools::TOOLS', mutated)
+
+      expect(described_class.catalog_fingerprint).not_to eq(baseline)
+    end
+  end
+
   describe '.output_schema' do
     it 'validates an Outcome wire hash' do
       wire = Html2rss::MCP::Outcome.apply(rss: '<rss/>', item_count: 1).to_h

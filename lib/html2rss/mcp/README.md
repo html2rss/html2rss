@@ -45,6 +45,7 @@ Every tool result is one JSON object (text body and `structuredContent`):
 | Concern                                       | Owner                                            |
 | --------------------------------------------- | ------------------------------------------------ |
 | Tool schemas, titles, strategy enum           | `MCP::Contract`                                  |
+| Catalog fingerprint + `mcp_contract_version` | `MCP::Contract` (+ `Runtime.snapshot` wire)      |
 | Envelope factories, `next_step` routing       | `MCP::Outcome`                                   |
 | Runtime instructions, guidance, prompt bodies | `Outcome::Playbook` (SSOT — `Server` delegates)  |
 | Diagnostic fetch + assess                     | `PageRecon::Diagnostics`                         |
@@ -61,7 +62,7 @@ Do not duplicate playbook prose in `server.rb`.
 | `html2rss://schema`     | Full JSON Schema for feed configurations                   |
 | `html2rss://extractors` | Registered extractor names                                 |
 | `html2rss://strategies` | Published MCP strategies (`auto`, `faraday`, `botasaurus`) |
-| `html2rss://runtime`    | `botasaurus_configured` boolean (never the scraper URL)    |
+| `html2rss://runtime`    | `version`, `mcp_contract_version`, `catalog_fingerprint`, `tools`, `botasaurus_configured` (never the scraper URL). Fingerprint covers tool names, required keys, and `oneOf` branches; bump `mcp_contract_version` for envelope semantics. |
 
 ## Prompts
 

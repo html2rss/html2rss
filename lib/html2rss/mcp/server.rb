@@ -57,11 +57,11 @@ module Html2rss
         {
           uri: 'html2rss://runtime',
           name: 'Runtime capabilities',
-          description: 'Whether optional transports are configured in this MCP process (never leaks secrets)',
+          description: 'Gem version, MCP contract version, catalog fingerprint, tool names, and Botasaurus config',
           mime_type: 'application/json',
           body: lambda {
             [{ uri: 'html2rss://runtime', mimeType: 'application/json',
-               text: JSON.pretty_generate(botasaurus_configured: Runtime.botasaurus_configured?) }]
+               text: JSON.pretty_generate(Runtime.snapshot.to_h) }]
           }
         }
       ].freeze
