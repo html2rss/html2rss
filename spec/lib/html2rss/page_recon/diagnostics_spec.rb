@@ -30,7 +30,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
     allow(Html2rss::PageRecon).to receive(:probe).and_return(probe)
   end
 
-  it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do
+  it 'reports strategy, scrapers, and SST segment stats', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     report = described_class.call(url: 'https://example.com/blog', strategy: :auto)
     result = report.to_wire_h
 
@@ -88,7 +88,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
       HTML
     end
 
-    it 'maps FeedLink alternate feeds and does not guess /feed paths', :aggregate_failures do
+    it 'maps FeedLink alternate feeds and does not guess /feed paths', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       report = described_class.call(url: 'https://example.com/blog', strategy: :auto)
       result = report.to_wire_h
 
@@ -160,7 +160,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
   end
 
   describe '.batch' do
-    it 'returns Reports in input order with per-URL error isolation', :aggregate_failures do
+    it 'returns Reports in input order with per-URL error isolation', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(described_class).to receive(:call).with(url: 'https://example.com/ok', strategy: :auto)
                                               .and_return(described_class::Report.new(data: { status: 200 }))
       allow(described_class).to receive(:call).with(url: 'https://example.com/fail', strategy: :auto)
@@ -176,7 +176,8 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
 
   describe Html2rss::PageRecon::Diagnostics::Report do
     it 'exposes alternate_feeds? and articles_count predicates', :aggregate_failures do
-      report = described_class.new(data: { alternate_feeds: [{ href: 'https://example.com/feed.xml' }], articles_count: 3 })
+      report = described_class.new(data: { alternate_feeds: [{ href: 'https://example.com/feed.xml' }],
+                                           articles_count: 3 })
 
       expect(report.alternate_feeds?).to be(true)
       expect(report.articles_count).to eq(3)

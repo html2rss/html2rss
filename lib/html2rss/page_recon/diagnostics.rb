@@ -131,7 +131,7 @@ module Html2rss
       module_function :safe_parsed_body
       private_class_method :safe_parsed_body
 
-      def error_report(url, error)
+      def error_report(url, error) # rubocop:disable Metrics/MethodLength -- error hash mirrors success report shape
         Report.new(
           data: {
             requested_url: url.to_s,

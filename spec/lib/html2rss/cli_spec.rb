@@ -71,8 +71,7 @@ RSpec.describe Html2rss::CLI do
     end
 
     before do
-      allow(Html2rss).to receive(:inspect).and_return(report)
-      allow(Html2rss).to receive(:batch_inspect).and_return(batch_result)
+      allow(Html2rss).to receive_messages(inspect: report, batch_inspect: batch_result)
     end
 
     it 'prints diagnostics card to stdout' do
@@ -84,7 +83,7 @@ RSpec.describe Html2rss::CLI do
         .to output(/"articles_count": 5/).to_stdout
     end
 
-    it 'supports batch mode with --file' do
+    it 'supports batch mode with --file' do # rubocop:disable RSpec/ExampleLength
       Tempfile.create('urls') do |f|
         f.puts('https://example.com/news')
         f.flush
@@ -199,7 +198,7 @@ RSpec.describe Html2rss::CLI do
       end
     end
 
-    it 'raises Thor::Error for an unknown --verdict filter' do
+    it 'raises Thor::Error for an unknown --verdict filter' do # rubocop:disable RSpec/ExampleLength
       Tempfile.create('urls') do |f|
         f.puts('https://example.com/news')
         f.flush

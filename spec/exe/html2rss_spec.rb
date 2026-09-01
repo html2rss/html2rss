@@ -44,9 +44,9 @@ RSpec.describe 'exe/html2rss', :slow do
   end
 
   context 'with feed config: nuxt-releases' do
-    context 'with arguments: feed YAML_FILE' do
+    context 'with arguments: apply YAML_FILE' do
       subject(:output) do
-        capture_cli_output('feed', 'spec/fixtures/single.test.yml', cassette: 'nuxt-releases')
+        capture_cli_output('apply', 'spec/fixtures/single.test.yml', cassette: 'nuxt-releases')
       end
 
       it 'generates the RSS', :aggregate_failures do
@@ -57,9 +57,9 @@ RSpec.describe 'exe/html2rss', :slow do
       end
     end
 
-    context 'with arguments: feed YAML_FILE FEED_NAME' do
+    context 'with arguments: apply YAML_FILE FEED_NAME' do
       subject(:output) do
-        capture_cli_output('feed', 'spec/fixtures/feeds.test.yml', 'nuxt-releases', cassette: 'nuxt-releases')
+        capture_cli_output('apply', 'spec/fixtures/feeds.test.yml', 'nuxt-releases', cassette: 'nuxt-releases')
       end
 
       it 'generates the RSS', :aggregate_failures do
@@ -73,7 +73,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
   context 'with feed config: withparams' do
     subject(:output) do
-      capture_cli_output('feed', 'spec/fixtures/feeds.test.yml', 'withparams', '--params', 'sign:10', 'param:value',
+      capture_cli_output('apply', 'spec/fixtures/feeds.test.yml', 'withparams', '--params', 'sign:10', 'param:value',
                          cassette: 'notitle')
     end
 
@@ -84,9 +84,9 @@ RSpec.describe 'exe/html2rss', :slow do
     end
   end
 
-  context 'with argument: auto URL' do
+  context 'with argument: scrape URL' do
     it 'exists with error' do
-      `#{executable} auto file://etc/passwd`
+      `#{executable} scrape file://etc/passwd`
       expect($?.exitstatus).to eq(1) # rubocop:disable Style/SpecialGlobalVars
     end
   end
@@ -114,9 +114,9 @@ RSpec.describe 'exe/html2rss', :slow do
   end
 
   context 'with option: --input' do
-    context 'with command: feed' do
+    context 'with command: apply' do
       it 'generates RSS using the local HTML file', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        output = `#{executable} feed spec/fixtures/local_feed_test.yml --input spec/fixtures/local_feed_test.html`
+        output = `#{executable} apply spec/fixtures/local_feed_test.yml --input spec/fixtures/local_feed_test.html`
 
         expect(output).to include(
           '<title>Local Test Feed</title>',
@@ -128,9 +128,9 @@ RSpec.describe 'exe/html2rss', :slow do
       end
     end
 
-    context 'with command: auto' do
+    context 'with command: scrape' do
       it 'automatically sources RSS using the local HTML file and canonical base URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        output = `#{executable} auto --input spec/fixtures/local_feed_test.html`
+        output = `#{executable} scrape --input spec/fixtures/local_feed_test.html`
 
         expect(output).to include(
           '<channel>',

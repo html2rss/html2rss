@@ -58,7 +58,7 @@ CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_res
 
 ### Factory signatures
 
-```ruby
+```text
 PageRecon::Diagnostics.call(url:, strategy:) → Report
 PageRecon::Diagnostics.batch(urls:, ...) → [Report]
 Batch.batch_inspect / batch_recon / batch_scrape

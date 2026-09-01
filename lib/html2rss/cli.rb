@@ -29,7 +29,7 @@ module Html2rss
     method_option :format, type: :string, enum: %w[text json], default: 'text'
     # @param target [String, nil] URL, file, or '-' for stdin
     # @return [void]
-    def inspect(target = nil) # rubocop:disable Metrics/AbcSize
+    def inspect(target = nil)
       urls, batch_mode = resolve_recon_targets(target, options[:file])
       raise Thor::Error, 'A target URL, --file, or stdin (-) is required' if urls.empty?
 
@@ -312,7 +312,7 @@ module Html2rss
       raise Thor::Error, error.message
     end
 
-    def render_inspect_output(results, batch_mode) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity
+    def render_inspect_output(results, batch_mode)
       if options[:format] == 'json'
         data = batch_mode ? results : results.first
         puts JSON.pretty_generate(data)
@@ -321,7 +321,7 @@ module Html2rss
       end
     end
 
-    def render_inspect_card(data) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    def render_inspect_card(data) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       puts data[:requested_url] || data['requested_url']
       final = data[:final_url] || data['final_url']
       requested = data[:requested_url] || data['requested_url']

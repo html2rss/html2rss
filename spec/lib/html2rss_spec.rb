@@ -500,7 +500,7 @@ RSpec.describe Html2rss do
   end
 
   describe '.apply' do
-    it 'delegates to feed_result' do
+    it 'delegates to feed_result', :aggregate_failures do
       config = { channel: { url: 'https://example.com' } }
       feed_result = instance_double(Html2rss::FeedResult)
       allow(described_class).to receive(:feed_result).with(config).and_return(feed_result)
@@ -511,7 +511,7 @@ RSpec.describe Html2rss do
   end
 
   describe '.scrape' do
-    it 'delegates to auto_feed_result' do
+    it 'delegates to auto_feed_result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       feed_result = instance_double(Html2rss::FeedResult)
       allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
 
@@ -524,7 +524,7 @@ RSpec.describe Html2rss do
   end
 
   describe '.batch_scrape' do
-    it 'delegates to Batch.batch_scrape' do
+    it 'delegates to Batch.batch_scrape', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       batch_result = instance_double(Html2rss::Batch::BatchResult)
       allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
 
@@ -539,7 +539,7 @@ RSpec.describe Html2rss do
   end
 
   describe '.batch_inspect' do
-    it 'delegates to Batch.batch_inspect' do
+    it 'delegates to Batch.batch_inspect', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       batch_result = instance_double(Html2rss::Batch::BatchResult)
       allow(Html2rss::Batch).to receive(:batch_inspect).and_return(batch_result)
 
@@ -553,7 +553,7 @@ RSpec.describe Html2rss do
   end
 
   describe '.batch_recon' do
-    it 'delegates to Batch.batch_recon' do
+    it 'delegates to Batch.batch_recon', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       batch_result = instance_double(Html2rss::Batch::BatchResult)
       allow(Html2rss::Batch).to receive(:batch_recon).and_return(batch_result)
 

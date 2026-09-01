@@ -22,7 +22,7 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe Html2rss::MCP::Outcome::Playbook do
-    it 'owns server instructions with bare verb tool names' do
+    it 'owns server instructions with bare verb tool names', :aggregate_failures do
       expect(described_class.instructions).to include('→ scrape').and include('→ capture → test → apply')
       expect(described_class.instructions).not_to include('scrape_url')
     end
@@ -102,7 +102,7 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.recon' do
-    def recon_result(verdict:, **attrs)
+    def recon_result(verdict:, **attrs) # rubocop:disable Metrics/MethodLength -- fixture builder for recon Result
       Html2rss::Recon::Result.new(
         requested_url: 'https://example.com',
         final_url: 'https://example.com',
@@ -151,7 +151,7 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :test))
     end
 
-    it 'points at done when native_feed is detected' do
+    it 'points at done when native_feed is detected', :aggregate_failures do
       outcome = described_class.capture(**base, native_feed: 'https://example.com/feed.xml')
 
       expect(outcome).to have_attributes(ok: true, next_step: have_attributes(name: :done))

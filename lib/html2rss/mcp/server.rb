@@ -294,7 +294,7 @@ module Html2rss
                          'Draft only — catalog feeds still need directory.topics and title/url; ' \
                          'strive enhance: true. Full schema options live in resource html2rss://schema.',
             input_schema: Contract::CAPTURE_INPUT_SCHEMA
-          ) do |server_context:, url:, strategy: 'auto', items_selector: nil, force: false, # rubocop:disable Lint/UnusedBlockArgument
+          ) do |server_context:, url:, strategy: 'auto', items_selector: nil, force: false, # rubocop:disable Lint/UnusedBlockArgument, Metrics/ParameterLists
                                     topics: nil, title: nil, summary: nil, enhance: nil,
                                     limit: nil, max_redirects: nil, max_requests: nil|
             capture_outcome(
@@ -443,7 +443,8 @@ module Html2rss
           register_capture_feed_config_prompt(server)
         end
 
-        def register_scrape_webpage_prompt(server) # rubocop:disable Metrics/MethodLength -- SDK prompt types stay together
+        # -- SDK prompt types stay together
+        def register_scrape_webpage_prompt(server)
           to_result = method(:prompt_result)
           server.define_prompt(
             name: 'scrape-webpage',
@@ -456,7 +457,8 @@ module Html2rss
           end
         end
 
-        def register_capture_feed_config_prompt(server) # rubocop:disable Metrics/MethodLength -- SDK prompt types stay together
+        # -- SDK prompt types stay together
+        def register_capture_feed_config_prompt(server)
           to_result = method(:prompt_result)
           server.define_prompt(
             name: 'capture-feed-config',

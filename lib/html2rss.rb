@@ -54,8 +54,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
     Recon.call(url, strategy:, **)
   end
 
-  # rubocop:disable Metrics/ParameterLists
-
   ##
   # Analyzes a URL and produces a reusable YAML-ready feed config.
   #
@@ -81,8 +79,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   def self.capture(url, strategy: :auto, **)
     Capture.build(url, strategy:, **)
   end
-
-  # rubocop:enable Metrics/ParameterLists
 
   ##
   # Validates a configuration hash, YAML string, or YAML file path against the schema.
@@ -179,8 +175,8 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param concurrency [Integer] max worker threads (default: 5)
   # @option options [String, nil] :cache_dir optional HTML cache directory
   # @return [Html2rss::Batch::BatchResult]
-  def self.batch_recon(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY, **options)
-    Batch.batch_recon(urls:, strategy:, concurrency:, **options)
+  def self.batch_recon(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY, **)
+    Batch.batch_recon(urls:, strategy:, concurrency:, **)
   end
 
   # rubocop:enable Metrics/ParameterLists

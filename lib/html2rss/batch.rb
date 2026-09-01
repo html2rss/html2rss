@@ -86,8 +86,8 @@ module Html2rss
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @option options [String, nil] :cache_dir optional HTML cache directory
       # @return [BatchResult]
-      def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **options)
-        results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency, **options)
+      def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **)
+        results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency, **)
         successful = results.count { |r| r.status ? r.status < 400 : false }
         BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
       end
