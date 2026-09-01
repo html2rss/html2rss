@@ -21,11 +21,15 @@ module Html2rss
     # Minimum matched segment/article pairs required to emit an items selector.
     MIN_SELECTOR_MATCHES = 2
 
+    # Admission drops at or above this sum default enhance to false (chrome-heavy listing).
+    CHROME_DROP_THRESHOLD = 3
+    private_constant :CHROME_DROP_THRESHOLD
+
     ##
     # Result of a capture operation (config plus quality meta).
     CaptureResult = Data.define(
       :config, :yaml, :articles_count, :channel_title, :has_selectors, :segment_strategy,
-      :admission_drops, :selected_strategy, :inferred_topics, :native_feed
+      :admission_drops, :selected_strategy, :inferred_topics, :native_feed, :suggested_channel_url
     ) do
       # rubocop:disable Metrics/ParameterLists
       ##
@@ -39,8 +43,10 @@ module Html2rss
       # @param selected_strategy [Symbol, nil]
       # @param inferred_topics [Array<String>]
       # @param native_feed [String, nil]
+      # @param suggested_channel_url [String, nil]
       def initialize(config:, articles_count:, channel_title:, has_selectors:, segment_strategy:, # rubocop:disable Metrics/MethodLength
-                     yaml: nil, admission_drops: {}, selected_strategy: nil, inferred_topics: [], native_feed: nil)
+                     yaml: nil, admission_drops: {}, selected_strategy: nil, inferred_topics: [], native_feed: nil,
+                     suggested_channel_url: nil)
         super(
           config:,
           yaml: yaml || "#{SCHEMA_MODELINE}\n#{Config.to_yaml(config)}",
@@ -51,7 +57,8 @@ module Html2rss
           admission_drops:,
           selected_strategy:,
           inferred_topics:,
-          native_feed:
+          native_feed:,
+          suggested_channel_url:
         )
       end
       # rubocop:enable Metrics/ParameterLists
@@ -119,6 +126,7 @@ module Html2rss
     # @return [CaptureResult]
     def build # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       outcome = FeedPipeline.new(raw_config).to_outcome
+      @admission_drops = outcome.admission_drops
       selectors, segment_strategy = derive_selectors(outcome.response, outcome.articles)
       ch_title = @title || channel_title_from(outcome.response)
       topics = @topics || infer_topics("#{@url} #{ch_title}")
@@ -142,7 +150,8 @@ module Html2rss
         admission_drops: outcome.admission_drops,
         selected_strategy: outcome.selected_strategy,
         inferred_topics: topics,
-        native_feed:
+        native_feed:,
+        suggested_channel_url: suggested_channel_url(outcome)
       )
     end
 
@@ -260,13 +269,12 @@ module Html2rss
     end
 
     def hint_selectors
-      enhance = @enhance_option.nil? || @enhance_option
-      [{ items: { selector: @items_selector_hint, enhance: } }, :hint]
+      [{ items: { selector: @items_selector_hint, enhance: resolve_enhance } }, :hint]
     end
 
     def select_enhance_selectors(sst, articles) # rubocop:disable Metrics/MethodLength -- strategy loop + gate
       link_resolver = Scoring::LinkResolver.new(@url)
-      enhance = @enhance_option.nil? || @enhance_option
+      enhance = resolve_enhance
 
       SEGMENT_STRATEGIES.each do |strategy|
         segments = AutoSource::Segmenter.call(
@@ -427,6 +435,26 @@ module Html2rss
     def channel_title_from(response)
       Channel.from_response(response).title
     rescue StandardError
+      nil
+    end
+
+    def resolve_enhance
+      return @enhance_option unless @enhance_option.nil?
+
+      drops = (@admission_drops || {}).values.sum
+      drops < CHROME_DROP_THRESHOLD
+    end
+
+    def suggested_channel_url(outcome)
+      entry = outcome.scrape_target.entry_url.to_s
+      effective = outcome.scrape_target.effective_url.to_s
+      return effective unless Url.from_absolute(entry).same_document?(Url.from_absolute(effective))
+
+      final = outcome.response.url.to_s
+      return final unless Url.from_absolute(@url).same_document?(Url.from_absolute(final))
+
+      nil
+    rescue ArgumentError
       nil
     end
   end

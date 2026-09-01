@@ -19,8 +19,11 @@ module Html2rss
             tags = article_tag.css(HEADING_TAGS.join(','))
             if tags.any?
               select_best_heading(tags)
-            elsif fallback_anchorless && selected_anchor.nil?
-              fallback_heading(article_tag)
+            else
+              labeled = heading_from_aria_or_title(article_tag)
+              return labeled if labeled
+
+              fallback_heading(article_tag) if fallback_anchorless && selected_anchor.nil?
             end
           end
 
@@ -46,6 +49,20 @@ module Html2rss
               'strong, b, [class*="title"], [class*="font-bold"], [class*="font-semibold"]'
             )
             fallback_tags.find { |t| !Navigator::TextExtractor.call(t).to_s.strip.empty? }
+          end
+
+          def heading_from_aria_or_title(article_tag)
+            article_tag.css('[aria-label]').each do |node|
+              next if node['aria-label'].to_s.strip.empty?
+
+              return node
+            end
+            article_tag.css('[title]').each do |node|
+              next if node['title'].to_s.strip.empty?
+
+              return node
+            end
+            nil
           end
         end
       end

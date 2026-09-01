@@ -17,13 +17,15 @@ RSpec.describe Html2rss::Capture do
     )
   end
 
-  def stub_outcome(response, articles:, admission_drops: {}, selected_strategy: nil)
+  def stub_outcome(response, articles:, admission_drops: {}, selected_strategy: nil, scrape_target: nil) # rubocop:disable Metrics/MethodLength
+    target = scrape_target || Html2rss::ScrapeTarget.new(entry_url: url, effective_url: url)
     outcome = instance_double(
       Html2rss::FeedPipeline::PipelineOutcome,
       response:,
       articles:,
       admission_drops:,
-      selected_strategy:
+      selected_strategy:,
+      scrape_target: target
     )
     allow(Html2rss::FeedPipeline).to receive(:new)
       .and_return(instance_double(Html2rss::FeedPipeline, to_outcome: outcome))
@@ -316,6 +318,38 @@ RSpec.describe Html2rss::Capture do
       expect(result.segment_strategy).to eq(:cluster)
       expect(result.has_selectors).to be true
       expect(result.config.dig(:selectors, :items, :enhance)).to be true
+    end
+  end
+
+  context 'when admission drops indicate chrome-heavy listing' do
+    it 'defaults enhance to false', :aggregate_failures do
+      response = html_response(File.read('spec/fixtures/local_feed_test.html'))
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:, admission_drops: { junk: 2, credit: 1 })
+
+      result = described_class.new(url).build
+
+      expect(result.config.dig(:selectors, :items, :enhance)).to be(false)
+    end
+  end
+
+  context 'when FeedResolution rewrites the scrape URL' do
+    it 'surfaces suggested_channel_url without mutating channel.url', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      response = html_response(
+        File.read('spec/fixtures/local_feed_test.html'),
+        page_url: 'https://example.com/blog/list'
+      )
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      target = Html2rss::ScrapeTarget.new(
+        entry_url: url,
+        effective_url: 'https://example.com/blog/list'
+      )
+      stub_outcome(response, articles:, scrape_target: target)
+
+      result = described_class.new(url).build
+
+      expect(result.config.dig(:channel, :url)).to eq(url)
+      expect(result.suggested_channel_url).to eq('https://example.com/blog/list')
     end
   end
 end
