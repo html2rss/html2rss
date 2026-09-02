@@ -14,8 +14,6 @@ selectors:
     selector: "h3"
   description:
     selector: ".description"
-    post_process:
-      - name: "html_to_markdown"
   published_at:
     selector: ".date"
     post_process:

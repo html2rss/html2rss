@@ -81,7 +81,7 @@ RSpec.describe 'Media Enclosures Configuration', type: :example do
     ]
   end
 
-  it 'translates every episode into an RSS item with markdown summaries' do
+  it 'translates every episode into an RSS item with HTML summaries' do
     expect_feed_items(items, expected_items)
   end
 

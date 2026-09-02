@@ -553,9 +553,6 @@
                     "$ref": "#/$defs/post_processors/gsub"
                   },
                   {
-                    "$ref": "#/$defs/post_processors/html_to_markdown"
-                  },
-                  {
                     "$ref": "#/$defs/post_processors/markdown_to_html"
                   },
                   {
@@ -643,9 +640,6 @@
                 "oneOf": [
                   {
                     "$ref": "#/$defs/post_processors/gsub"
-                  },
-                  {
-                    "$ref": "#/$defs/post_processors/html_to_markdown"
                   },
                   {
                     "$ref": "#/$defs/post_processors/markdown_to_html"
@@ -878,26 +872,6 @@
           "name",
           "pattern",
           "replacement"
-        ],
-        "additionalProperties": true
-      },
-      "html_to_markdown": {
-        "type": "object",
-        "title": "html_to_markdown",
-        "description": "Sanitize HTML then convert it to Markdown (via ReverseMarkdown).",
-        "examples": [
-          {
-            "name": "html_to_markdown"
-          }
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "const": "html_to_markdown"
-          }
-        },
-        "required": [
-          "name"
         ],
         "additionalProperties": true
       },
