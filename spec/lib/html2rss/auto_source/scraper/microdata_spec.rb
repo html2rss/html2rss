@@ -25,6 +25,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
       it { is_expected.to be(true) }
     end
 
+    context 'with lowercase itemtype URL' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/newsarticle">
+            <h1 itemprop="headline">Lowercase type headline</h1>
+            <a itemprop="url" href="/stories/lowercase-type">Read more</a>
+          </article>
+        HTML
+      end
+
+      it { is_expected.to be(true) }
+    end
+
     context 'with supported items nested inside another item property' do
       let(:parsed_body) do
         Nokogiri::HTML(<<~HTML)

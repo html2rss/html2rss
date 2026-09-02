@@ -28,6 +28,16 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
       it { expect(described_class.articles?(parsed_body)).to be true }
     end
 
+    context 'when oEmbed link tag uses uppercase MIME type' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><head><link rel="alternate" type="APPLICATION/JSON+OEMBED" href="/oembed.json"></head></html>'
+        )
+      end
+
+      it { expect(described_class.articles?(parsed_body)).to be true }
+    end
+
     context 'when neither og:title nor oEmbed link tag is present' do
       let(:parsed_body) do
         Nokogiri::HTML('<html><head><title>Just Title</title></head></html>')

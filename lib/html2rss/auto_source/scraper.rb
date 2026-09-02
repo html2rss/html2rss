@@ -118,7 +118,7 @@ module Html2rss
       # @return [SST::Document, nil]
       def self.normalize_sst(parsed_body)
         SST::Normalizer.call(parsed_body)
-      rescue ArgumentError
+      rescue SST::Normalizer::EmptyTree
         nil
       end
 

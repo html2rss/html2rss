@@ -38,5 +38,23 @@ RSpec.describe Html2rss::Html::FeedLink do
     it 'keeps head RSS/Atom alternates and ignores oembed, body links, and /feed guesses' do
       expect(feed_links).to eq(expected)
     end
+
+    context 'with uppercase MIME types' do
+      let(:html) do
+        <<~HTML
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <link rel="alternate" type="APPLICATION/RSS+XML" href="https://example.com/feed.xml">
+            <link rel="alternate" type="Application/Atom+xml" href="/atom.xml">
+          </head>
+          </html>
+        HTML
+      end
+
+      it 'normalizes feed MIME types case-insensitively' do
+        expect(feed_links).to eq(expected)
+      end
+    end
   end
 end

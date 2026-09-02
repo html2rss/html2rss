@@ -64,7 +64,7 @@ module Html2rss
         def normalize_class(class_names)
           return '' if class_names.empty?
 
-          class_names.sort.join(' ')
+          class_names.map { ::Html2rss::Html::Probe.fold(_1) }.sort.join(' ')
         end
         module_function :normalize_class
         private_class_method :normalize_class

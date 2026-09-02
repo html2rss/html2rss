@@ -15,27 +15,33 @@ module Html2rss
       class Schema
         include Enumerable
 
-        # Selector for JSON-LD script tags containing Schema.org objects.
-        TAG_SELECTOR = 'script[type="application/ld+json"]'
+        # Matches a leading schema.org URL prefix on @type values (http or https).
+        SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
+
+        # Container types that must never be emitted as feed items (walk children only).
+        DENIED_CONTAINER_TYPES = Set[
+          'ItemList', 'Blog', 'BreadcrumbList', 'WebPage', 'CollectionPage'
+        ].freeze
+
+        # Canonical Schema.org type names keyed by folded wire forms (case-insensitive lookup).
+        CANONICAL_BY_DOWNCASE = begin
+          canonical_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES | DENIED_CONTAINER_TYPES | Set['Product']
+          canonical_types.to_h { |type| [::Html2rss::Html::Probe.fold(type), type] }.freeze
+        end.freeze
 
         # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
         # Allows preceding entries in a JSON @type array (e.g. ["WebPage","NewsArticle"]).
         SUPPORTED_TYPES_RE = begin
           types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
           type_re = Regexp.union(types.to_a)
-          %r{"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
+          %r{(?i)"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
         end.freeze
-
-        # Matches a leading schema.org URL prefix on @type values (http or https).
-        SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
 
         # Prefer these keys when recursively walking unsupported container objects.
         COLLECTION_KEYS = %i[itemListElement blogPost mainEntity hasPart].freeze
 
-        # Container types that must never be emitted as feed items (walk children only).
-        DENIED_CONTAINER_TYPES = Set[
-          'ItemList', 'Blog', 'BreadcrumbList', 'WebPage', 'CollectionPage'
-        ].freeze
+        # Shared empty type set for nil/unsupported wire forms (avoids per-call Set.new).
+        EMPTY_TYPES = Set.new.freeze
 
         # @return [Symbol] scraper config key
         def self.options_key = :schema
@@ -44,7 +50,8 @@ module Html2rss
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @return [Boolean] whether the page includes supported schema types
           def articles?(parsed_body)
-            parsed_body.css(TAG_SELECTOR).any? { |script| supported_schema_type?(script) }
+            ::Html2rss::Html::Probe.scripts(parsed_body, ::Html2rss::Html::Probe::APPLICATION_LD_JSON)
+                                   .any? { |script| supported_schema_type?(script) }
           end
 
           # @param script [Nokogiri::XML::Element] schema JSON-LD script tag
@@ -105,12 +112,24 @@ module Html2rss
             case object
             when Array
               object.each_with_object(Set.new) { |item, set| set.merge(normalize_types(item)) }
-            when String, Symbol
-              short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
-              short.empty? ? Set.new : Set[short]
             else
-              Set.new
+              name = canonicalize_type(object)
+              name ? Set[name] : EMPTY_TYPES
             end
+          end
+
+          # Canonical short Schema.org type name for a scalar wire form.
+          #
+          # @param object [String, Symbol, nil] raw `@type` / itemtype token
+          # @return [String, nil]
+          # @api private
+          def canonicalize_type(object)
+            return unless object.is_a?(String) || object.is_a?(Symbol)
+
+            short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
+            return if short.empty?
+
+            CANONICAL_BY_DOWNCASE.fetch(::Html2rss::Html::Probe.fold(short), short)
           end
 
           private
@@ -150,15 +169,15 @@ module Html2rss
         ##
         # @yield [Hash] Each scraped article_hash
         # @return [Array<Hash>] the scraped article_hashes
-        def each(&)
+        def each
           return enum_for(:each) unless block_given?
 
-          schema_objects.filter_map do |schema_object|
+          schema_objects.each do |schema_object|
             next unless (klass = self.class.scraper_for_schema_object(schema_object))
             next unless (results = klass.new(schema_object, url:).call)
 
             if results.is_a?(Array)
-              results.each { |result| yield(result) } # rubocop:disable Style/ExplicitBlockArgument
+              results.each { yield(_1) }
             else
               yield(results)
             end
@@ -168,9 +187,8 @@ module Html2rss
         private
 
         def schema_objects
-          @parsed_body.css(TAG_SELECTOR).flat_map do |tag|
-            Schema.from(tag)
-          end
+          ::Html2rss::Html::Probe.scripts(@parsed_body, ::Html2rss::Html::Probe::APPLICATION_LD_JSON)
+                                 .flat_map { |tag| Schema.from(tag) }
         end
 
         attr_reader :parsed_body, :url

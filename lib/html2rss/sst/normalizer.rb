@@ -8,6 +8,9 @@ module Html2rss
     # Sole Nokogiri consumer on the heuristic auto-source path. Builds an
     # immutable SST::Document with parent/depth/chrome indices.
     class Normalizer # rubocop:disable Metrics/ClassLength
+      # Raised when no SST nodes survive normalization for the chosen root.
+      class EmptyTree < ArgumentError; end
+
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
@@ -50,6 +53,12 @@ module Html2rss
         )
       /xi
 
+      # Typed Attrs fields excluded from the leftover raw hash.
+      TYPED_ATTR_NAMES = %w[href src id class datetime itemprop style srcset type].to_set.freeze
+
+      # String form of Tags::IGNORED_CONTAINER_NAMES for chrome checks without to_sym.
+      IGNORED_CONTAINER_TAGS = Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze
+
       class << self
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
@@ -89,9 +98,9 @@ module Html2rss
       ##
       # @return [Document]
       def call
-        root_nk = @parsed_body.respond_to?(:root) ? (@parsed_body.at_css('html') || @parsed_body.root) : @parsed_body
+        root_nk = resolve_root_nk
         root = normalize_element(root_nk, parent: nil, depth: 0, path: '', chrome: false)
-        raise ArgumentError, 'SST Normalizer produced an empty tree' unless root
+        raise EmptyTree, 'SST Normalizer produced an empty tree' unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
         Document.build(root:, index:, degraded: @degraded, node_count: @node_count)
@@ -99,14 +108,46 @@ module Html2rss
 
       private
 
+      # @return [Nokogiri::XML::Node]
+      # rubocop:disable Metrics/MethodLength -- explicit root discovery fallback chain
+      def resolve_root_nk
+        parsed = @parsed_body
+
+        if parsed.respond_to?(:at_css)
+          html = parsed.at_css('html')
+          return html if html
+
+          body = parsed.at_css('body')
+          if body
+            Html2rss::Log.warn('sst.normalizer root fallback: body')
+            return body
+          end
+        end
+
+        if parsed.respond_to?(:element_children)
+          first = parsed.element_children.find { |child| element_root?(child) }
+          if first
+            Html2rss::Log.warn('sst.normalizer root fallback: first element child')
+            return first
+          end
+        end
+
+        Html2rss::Log.warn('sst.normalizer root fallback: self')
+        parsed
+      end
+      # rubocop:enable Metrics/MethodLength
+
+      def element_root?(node)
+        node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
+      end
+
       # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def normalize_element(nk_node, parent:, depth:, path:, chrome:)
         return unless nk_node.respond_to?(:name)
-        return if nk_node.text? || nk_node.comment? || nk_node.cdata?
+        return unless nk_node.element?
 
-        tag = nk_node.name.to_s.downcase
+        tag = Html2rss::Html::Probe.tag(nk_node)
         return if STRIPPED_TAGS.include?(tag)
-        return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)
 
         if @node_count >= MAX_NODES && !@degraded
           @degraded = true
@@ -119,9 +160,9 @@ module Html2rss
         tag_path = path.empty? ? "/#{tag}" : "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
         own_text = direct_text(nk_node)
-        chrome_here = chrome || Tags::IGNORED_CONTAINER_NAMES.include?(tag.to_sym)
+        chrome_here = chrome || IGNORED_CONTAINER_TAGS.include?(tag)
 
-        children = nk_node.children.filter_map do |child|
+        children = nk_node.element_children.filter_map do |child|
           normalize_element(child, parent: :pending, depth: depth + 1, path: tag_path, chrome: chrome_here)
         end.freeze
 
@@ -153,10 +194,9 @@ module Html2rss
       end
 
       def raw_attrs(nk_node)
-        typed = %w[href src id class datetime itemprop style srcset type].to_set
         nk_node.attribute_nodes.each_with_object({}) do |attr, raw|
           name = attr.name.to_s
-          next if typed.include?(name)
+          next if TYPED_ATTR_NAMES.include?(name)
           next unless name.match?(RAW_ATTR_KEEP)
 
           raw[name] = attr.value.to_s

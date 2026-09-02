@@ -39,15 +39,17 @@ module Html2rss
           # @param node [Nokogiri::XML::Element] itemscope candidate node
           # @return [String, nil] supported schema type name when present
           def supported_type_name(node)
-            normalized_types(node['itemtype']).find { SUPPORTED_TYPES.include?(_1) }
+            itemtype_type_names(node['itemtype']).find { SUPPORTED_TYPES.include?(_1) }
           end
 
           # @param itemtype [String, nil] raw itemtype attribute value
-          # @return [Array<String>] normalized schema type names
-          def normalized_types(itemtype)
+          # @return [Array<String>] canonical schema type names
+          def itemtype_type_names(itemtype)
             itemtype.to_s.split.filter_map do |value|
-              type = value.split('/').last.to_s.split('#').last.to_s
-              type unless type.empty?
+              short = value.split('/').last.to_s.split('#').last.to_s
+              next if short.empty?
+
+              Schema.canonicalize_type(short)
             end
           end
 
@@ -189,7 +191,7 @@ module Html2rss
             item = call(node)
             itemtype = node['itemtype']
             itemid = node['itemid']
-            item[:@type] = Microdata.normalized_types(itemtype).first if itemtype
+            item[:@type] = Microdata.itemtype_type_names(itemtype).first if itemtype
             item[:@id] = itemid if present?(itemid)
             item
           end
