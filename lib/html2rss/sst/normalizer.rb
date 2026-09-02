@@ -8,6 +8,9 @@ module Html2rss
     # Sole Nokogiri consumer on the heuristic auto-source path. Builds an
     # immutable SST::Document with parent/depth/chrome indices.
     class Normalizer # rubocop:disable Metrics/ClassLength
+      # Raised when no SST nodes survive normalization for the chosen root.
+      class EmptyTree < ArgumentError; end
+
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
@@ -89,15 +92,48 @@ module Html2rss
       ##
       # @return [Document]
       def call
-        root_nk = @parsed_body.respond_to?(:root) ? (@parsed_body.at_css('html') || @parsed_body.root) : @parsed_body
+        root_nk = resolve_root_nk
         root = normalize_element(root_nk, parent: nil, depth: 0, path: '', chrome: false)
-        raise ArgumentError, 'SST Normalizer produced an empty tree' unless root
+        raise EmptyTree, 'SST Normalizer produced an empty tree' unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
         Document.build(root:, index:, degraded: @degraded, node_count: @node_count)
       end
 
       private
+
+      # @return [Nokogiri::XML::Node]
+      # rubocop:disable Metrics/MethodLength -- explicit root discovery fallback chain
+      def resolve_root_nk
+        parsed = @parsed_body
+
+        if parsed.respond_to?(:at_css)
+          html = parsed.at_css('html')
+          return html if html
+
+          body = parsed.at_css('body')
+          if body
+            Html2rss::Log.warn('sst.normalizer root fallback: body')
+            return body
+          end
+        end
+
+        if parsed.respond_to?(:element_children)
+          first = parsed.element_children.find { |child| element_root?(child) }
+          if first
+            Html2rss::Log.warn('sst.normalizer root fallback: first element child')
+            return first
+          end
+        end
+
+        Html2rss::Log.warn('sst.normalizer root fallback: self')
+        parsed
+      end
+      # rubocop:enable Metrics/MethodLength
+
+      def element_root?(node)
+        node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
+      end
 
       # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def normalize_element(nk_node, parent:, depth:, path:, chrome:)
