@@ -8,8 +8,6 @@ module Html2rss
       class JsonState
         # Scans DOM nodes for JSON payloads containing article data.
         module DocumentScanner # rubocop:disable Metrics/ModuleLength
-          # Selector for JSON-only script tags.
-          JSON_SCRIPT_SELECTOR = 'script[type="application/json"]'
           # Regex patterns for known global JavaScript state assignments.
           GLOBAL_ASSIGNMENT_PATTERNS = [
             /(?:window|self|globalThis)\.__NEXT_DATA__\s*=\s*/m,
@@ -44,7 +42,8 @@ module Html2rss
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @return [Array<Hash, Array>] JSON documents extracted from JSON script tags
           def script_documents(parsed_body)
-            parsed_body.css(JSON_SCRIPT_SELECTOR).filter_map { parse_json(_1.text) }
+            ::Html2rss::Html::Probe.scripts(parsed_body, ::Html2rss::Html::Probe::APPLICATION_JSON)
+                                   .filter_map { parse_json(_1.text) }
           end
 
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document

@@ -35,6 +35,27 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(described_class.call(node).root.find { |n| n.name == :article }).not_to be_nil
     end
 
+    it 'normalizes HTML fragments from the first element child', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      fragment = Nokogiri::HTML.fragment('<article><a href="/p">Post</a></article>')
+      allow(Html2rss::Log).to receive(:warn)
+
+      doc = described_class.call(fragment)
+
+      expect(doc.root.name).to eq(:article)
+      expect(doc.root.find { |n| n.name == :a }).not_to be_nil
+      expect(Html2rss::Log).to have_received(:warn).with(/first element child/)
+    end
+
+    it 'normalizes script-only body nodes from the body root', :aggregate_failures do
+      body = Nokogiri::HTML('<html><body><script>evil()</script></body></html>').at_css('body')
+      allow(Html2rss::Log).to receive(:warn)
+
+      doc = described_class.call(body)
+
+      expect(doc.root.name).to eq(:body)
+      expect(Html2rss::Log).to have_received(:warn).with(/root fallback: self/)
+    end
+
     it 'degrades when MAX_NODES is breached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       stub_const('Html2rss::SST::Normalizer::MAX_NODES', 3)
       allow(Html2rss::Log).to receive(:warn)

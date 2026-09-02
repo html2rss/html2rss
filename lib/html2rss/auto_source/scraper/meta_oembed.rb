@@ -13,9 +13,6 @@ module Html2rss
 
         # Selector for OpenGraph meta tags.
         OG_META_SELECTOR = 'meta[property^="og:"], meta[property^="article:"], meta[name^="twitter:"]'
-        # Selector for oEmbed JSON link tag.
-        OEMBED_LINK_SELECTOR = 'link[rel="alternate"][type="application/json+oembed"][href]'
-
         # Mapping of meta property names to article attribute keys.
         META_MAP = {
           'og:title' => :title,
@@ -40,7 +37,11 @@ module Html2rss
             return false unless parsed_body
 
             !parsed_body.at_css('meta[property="og:title"]').nil? ||
-              !parsed_body.at_css(OEMBED_LINK_SELECTOR).nil?
+              ::Html2rss::Html::Probe.alternate_links(
+                parsed_body,
+                rel: 'alternate',
+                mime: ::Html2rss::Html::Probe::APPLICATION_JSON_OEMBED
+              ).any?
           end
         end
 
@@ -109,7 +110,7 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] oEmbed fields hash
         def fetch_oembed_data
-          return {} unless request_session && (link_node = parsed_body.at_css(OEMBED_LINK_SELECTOR))
+          return {} unless request_session && (link_node = oembed_link_node)
           return {} unless (oembed_url = resolve_url(link_node['href']))
 
           response = request_session.follow_up(url: oembed_url, relation: :auto_source, origin_url: url)
@@ -117,6 +118,15 @@ module Html2rss
         rescue Html2rss::Error, RequestService::UnsupportedResponseContentType, JSON::ParserError => error
           Log.warn("#{self.class}: failed to fetch oEmbed payload (#{error.class}: #{error.message})")
           {}
+        end
+
+        # @return [Nokogiri::XML::Element, nil] oEmbed descriptor link node
+        def oembed_link_node
+          ::Html2rss::Html::Probe.alternate_links(
+            parsed_body,
+            rel: 'alternate',
+            mime: ::Html2rss::Html::Probe::APPLICATION_JSON_OEMBED
+          ).first
         end
 
         # @param response [Html2rss::RequestService::Response, nil] HTTP response

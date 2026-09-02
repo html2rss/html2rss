@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'dry-validation'
+require 'json'
+require 'nokogiri'
 
 module Html2rss
   ##
@@ -19,6 +21,14 @@ module Html2rss
   class AutoSource # rubocop:disable Metrics/ClassLength -- defaults + tiered extract stay on the contributor entry type
     # Default max articles to keep (also the short-circuit floor across scraper tiers).
     DEFAULT_LIMIT = 25
+
+    # Operational scraper failures quarantined within a tier; programmer errors propagate.
+    OPERATIONAL_ERRORS = [
+      Html2rss::Error,
+      ArgumentError,
+      ::JSON::ParserError,
+      ::Nokogiri::SyntaxError
+    ].freeze
 
     # Default auto-source configuration shipped for scraper and cleanup behavior.
     DEFAULT_CONFIG = {
@@ -211,15 +221,20 @@ module Html2rss
     end
 
     def run_scraper(instance)
-      instance.each.map do |item|
-        case item
-        when Article
-          item
-        when Hash
-          Article.new(**item, scraper: instance.class)
-        else
-          raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
-        end
+      instance.map { |item| article_from_scraper_item(item, instance) }
+    rescue *OPERATIONAL_ERRORS => error
+      Log.warn("#{self.class}: #{instance.class} quarantined #{error.class}: #{error.message}")
+      []
+    end
+
+    def article_from_scraper_item(item, instance)
+      case item
+      when Article
+        item
+      when Hash
+        Article.new(**item, scraper: instance.class)
+      else
+        raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
       end
     end
 

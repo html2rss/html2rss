@@ -416,6 +416,91 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when a scraper raises an operational error' do
+      let(:body) do
+        ld = {
+          '@context' => 'https://schema.org',
+          '@type' => 'NewsArticle',
+          'headline' => 'Schema Story Extra Words Here',
+          'url' => 'https://example.com/schema-1'
+        }
+        <<~HTML
+          <html><body>
+            <script type="application/ld+json">#{ld.to_json}</script>
+            <article>
+              <h2><a href="/story-one">Semantic Story One Extra Words</a></h2>
+              <p>Teaser content for the first semantic story.</p>
+            </article>
+          </body></html>
+        HTML
+      end
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(
+                                                              schema: { enabled: true },
+                                                              semantic_html: {
+                                                                enabled: true,
+                                                                fallback_anchorless: true
+                                                              }
+                                                            )
+        )
+      end
+
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance).and_wrap_original do |method, scraper_class, *args, **kwargs| # rubocop:disable Layout/LineLength
+          instance = method.call(scraper_class, *args, **kwargs)
+          next instance unless scraper_class == Html2rss::AutoSource::Scraper::Schema && instance
+
+          allow(instance).to receive(:each).and_raise(ArgumentError, 'bad structured payload')
+          instance
+        end
+      end
+
+      it 'quarantines ArgumentError and continues the tier', :aggregate_failures do
+        expect(articles.size).to eq(1)
+        expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::SemanticHtml)
+        expect(Html2rss::Log).to have_received(:warn).with(/quarantined ArgumentError/)
+      end
+    end
+
+    context 'when a scraper raises an unexpected error' do
+      let(:body) do
+        ld = {
+          '@context' => 'https://schema.org',
+          '@type' => 'NewsArticle',
+          'headline' => 'Schema Story Extra Words Here',
+          'url' => 'https://example.com/schema-1'
+        }
+        <<~HTML
+          <html><body>
+            <script type="application/ld+json">#{ld.to_json}</script>
+          </body></html>
+        HTML
+      end
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
+                                                            .merge(schema: { enabled: true })
+        )
+      end
+
+      before do
+        allow(Html2rss::AutoSource::Scraper).to receive(:build_instance).and_wrap_original do |method, scraper_class, *args, **kwargs| # rubocop:disable Layout/LineLength
+          instance = method.call(scraper_class, *args, **kwargs)
+          next instance unless scraper_class == Html2rss::AutoSource::Scraper::Schema && instance
+
+          allow(instance).to receive(:each).and_raise(StandardError, 'boom')
+          instance
+        end
+      end
+
+      it 'propagates StandardError instead of quarantining it' do
+        expect { articles }.to raise_error(StandardError, 'boom')
+      end
+    end
+
     context 'when the listing is wrapping a.card links (ISS Africa shape)' do
       let(:url) { Html2rss::Url.from_absolute('https://issafrica.org/iss-today') }
       let(:body) do

@@ -68,6 +68,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       it { is_expected.to be_truthy }
     end
 
+    context 'with uppercase JSON-LD MIME type' do
+      let(:parsed_body) do
+        Nokogiri::HTML("<script type=\"APPLICATION/LD+JSON\">#{news_article_schema_object.to_json}</script>")
+      end
+
+      it { is_expected.to be_truthy }
+    end
+
     context 'with an empty body' do
       let(:parsed_body) { Nokogiri::HTML.fragment('') }
 
@@ -101,6 +109,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     context 'with multi-type @type array where supported type is not first' do
       let(:parsed_body) do
         Nokogiri::HTML('<script type="application/ld+json">{"@type":["WebPage","NewsArticle"]}</script>')
+      end
+
+      it { is_expected.to be_truthy }
+    end
+
+    context 'with lowercase @type' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":"newsarticle"}</script>')
+      end
+
+      it { is_expected.to be_truthy }
+    end
+
+    context 'with mixed-case schema.org URL @type' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":"https://schema.org/NEWSARTICLE"}</script>')
       end
 
       it { is_expected.to be_truthy }
@@ -398,6 +422,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       end
     end
 
+    context 'with a lowercase Thing type' do
+      let(:object) { simple_article.call(type: 'article') }
+
+      it 'returns Thing class' do
+        expect(described_class.scraper_for_schema_object(object)).to eq(Html2rss::AutoSource::Scraper::Schema::Thing)
+      end
+    end
+
     context 'with an ItemList type' do
       let(:object) { simple_article.call(type: 'ItemList') }
 
@@ -450,6 +482,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     it 'flattens array @type values' do
       expect(described_class.normalize_types(['https://schema.org/Article', 'NewsArticle']))
         .to eq(Set['Article', 'NewsArticle'])
+    end
+
+    it 'canonicalizes case-insensitive wire forms to PascalCase', :aggregate_failures do
+      expect(described_class.normalize_types('newsarticle')).to eq(Set['NewsArticle'])
+      expect(described_class.normalize_types('NEWSARTICLE')).to eq(Set['NewsArticle'])
+      expect(described_class.normalize_types('https://schema.org/article')).to eq(Set['Article'])
     end
   end
 

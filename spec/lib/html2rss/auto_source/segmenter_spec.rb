@@ -119,5 +119,35 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       expect(segments.first.root_node.attrs.class_names).to include('card-item')
       expect(segments.map(&:strategy).uniq).to eq([:cluster])
     end
+
+    it 'groups mixed-case class tokens into one cluster', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <div class="PostCard p-4">
+            <span class="card-title font-bold">Release v1.0</span>
+            <p class="card-body">Description text for release one goes here.</p>
+          </div>
+          <div class="postcard p-4">
+            <span class="card-title font-bold">Release v2.0</span>
+            <p class="card-body">Description text for release two goes here.</p>
+          </div>
+          <div class="PostCard p-4">
+            <span class="card-title font-bold">Release v3.0</span>
+            <p class="card-body">Description text for release three goes here.</p>
+          </div>
+        </body></html>
+      HTML
+
+      segments = described_class.call(
+        document_for(html),
+        base_url: 'https://example.com',
+        strategy: :cluster,
+        minimum_selector_frequency: 3
+      )
+
+      expect(segments.size).to eq(3)
+      expect(segments.first.root_node.attrs.class_names).to include('PostCard').or include('postcard')
+      expect(segments.map(&:strategy).uniq).to eq([:cluster])
+    end
   end
 end

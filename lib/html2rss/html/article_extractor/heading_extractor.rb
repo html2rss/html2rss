@@ -30,18 +30,11 @@ module Html2rss
           private
 
           def select_best_heading(tags)
-            min_tag_name = tags.map(&:name).min
-            best_tag = nil
-            max_size = -1
-
-            tags.each do |tag|
-              next if tag.name != min_tag_name
-
-              size = Navigator::TextExtractor.call(tag)&.size.to_i
-              (best_tag = tag) && (max_size = size) if size > max_size
-            end
-
-            best_tag
+            tagged = tags.map { |tag| [Probe.tag(tag), tag] }
+            min_tag_name = tagged.map(&:first).min
+            tagged.select { |name, _tag| name == min_tag_name }
+                  .max_by { |_name, tag| Navigator::TextExtractor.call(tag)&.size.to_i }
+                  &.last
           end
 
           def fallback_heading(article_tag)
