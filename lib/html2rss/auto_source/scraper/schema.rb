@@ -15,24 +15,30 @@ module Html2rss
       class Schema
         include Enumerable
 
-        # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
-        # Allows preceding entries in a JSON @type array (e.g. ["WebPage","NewsArticle"]).
-        SUPPORTED_TYPES_RE = begin
-          types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
-          type_re = Regexp.union(types.to_a)
-          %r{"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
-        end.freeze
-
         # Matches a leading schema.org URL prefix on @type values (http or https).
         SCHEMA_ORG_PREFIX_RE = %r{\Ahttps?://schema\.org/}i
-
-        # Prefer these keys when recursively walking unsupported container objects.
-        COLLECTION_KEYS = %i[itemListElement blogPost mainEntity hasPart].freeze
 
         # Container types that must never be emitted as feed items (walk children only).
         DENIED_CONTAINER_TYPES = Set[
           'ItemList', 'Blog', 'BreadcrumbList', 'WebPage', 'CollectionPage'
         ].freeze
+
+        # Canonical Schema.org type names keyed by folded wire forms (case-insensitive lookup).
+        CANONICAL_BY_DOWNCASE = begin
+          canonical_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES | DENIED_CONTAINER_TYPES | Set['Product']
+          canonical_types.to_h { |type| [::Html2rss::Html::Probe.fold(type), type] }.freeze
+        end.freeze
+
+        # Pre-compiled regex for supported schema types (short name or schema.org URL; string or array @type).
+        # Allows preceding entries in a JSON @type array (e.g. ["WebPage","NewsArticle"]).
+        SUPPORTED_TYPES_RE = begin
+          types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES
+          type_re = Regexp.union(types.to_a)
+          %r{(?i)"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?"(?:https?://schema\.org/)?(?:#{type_re.source})"}
+        end.freeze
+
+        # Prefer these keys when recursively walking unsupported container objects.
+        COLLECTION_KEYS = %i[itemListElement blogPost mainEntity hasPart].freeze
 
         # @return [Symbol] scraper config key
         def self.options_key = :schema
@@ -105,7 +111,10 @@ module Html2rss
               object.each_with_object(Set.new) { |item, set| set.merge(normalize_types(item)) }
             when String, Symbol
               short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
-              short.empty? ? Set.new : Set[short]
+              return Set.new if short.empty?
+
+              canonical = CANONICAL_BY_DOWNCASE.fetch(::Html2rss::Html::Probe.fold(short), short)
+              Set[canonical]
             else
               Set.new
             end
