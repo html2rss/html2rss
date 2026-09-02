@@ -40,13 +40,13 @@ Each example consists of three files:
 
 - **Files**: `json_api_site_spec.rb`, `json_api_site.yml`, `json_api_site.json`
 - **Purpose**: Scrapes data from JSON APIs
-- **Features**: JSON parsing with nested selectors, HTML to Markdown conversion, media enclosure extraction
+- **Features**: JSON parsing with nested selectors, media enclosure extraction
 
 ### Media Enclosures
 
 - **Files**: `media_enclosures_spec.rb`, `media_enclosures_site.yml`, `media_enclosures_site.html`
 - **Purpose**: Handles podcast and video content with media enclosures
-- **Features**: Audio/video enclosures, duration extraction, HTML to Markdown
+- **Features**: Audio/video enclosures, duration extraction
 
 ### Multi-Language Site
 

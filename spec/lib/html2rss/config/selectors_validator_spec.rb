@@ -194,12 +194,14 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       it { is_expected.to be_success }
     end
 
-    context 'with html_to_markdown' do
+    context 'when post_process name was removed in chore/drop-reverse-markdown' do
+      let(:removed_html_to_md_name) { %w[html to markdown].join('_') }
+
       let(:config) do
-        { title: { post_process: [{ name: 'html_to_markdown' }] } }
+        { title: { post_process: [{ name: removed_html_to_md_name }] } }
       end
 
-      it { is_expected.to be_success }
+      it { expect(result).to be_failure }
     end
 
     context 'with markdown_to_html' do

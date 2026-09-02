@@ -4,6 +4,8 @@
 
 ### Breaking
 
+- Removed `html_to_markdown` post-processor and the `reverse_markdown` gem dependency. Configs using `post_process` name `html_to_markdown` now fail validation.
+
 Curation CLI, MCP, gem facades, and agent playbook unify on seven user-facing verbs. See `CONTEXT.md` § Frozen contract and `AGENTS.md` § Curation CLI / MCP.
 
 **MCP tool renames** (no deprecation shims):
