@@ -30,6 +30,7 @@ module Html2rss
       # @return [String] folded element name
       def tag(node)
         name = node.name
+        return fold(name) unless name.is_a?(String)
         return name if name.ascii_only? && !name.match?(/[A-Z]/)
 
         fold(name)

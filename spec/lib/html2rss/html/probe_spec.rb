@@ -15,6 +15,12 @@ RSpec.describe Html2rss::Html::Probe do
 
       expect(described_class.tag(node)).to eq('div')
     end
+
+    it 'folds Symbol names from SST nodes' do
+      node = Struct.new(:name).new(:Header)
+
+      expect(described_class.tag(node)).to eq('header')
+    end
   end
 
   describe '.mime_base' do
