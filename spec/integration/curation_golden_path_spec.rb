@@ -141,6 +141,23 @@ RSpec.describe 'curation golden path (MCP policy)' do
         )
       )
       allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+      outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+        response: Html2rss::RequestService::Response.new(
+          url:,
+          headers: { 'content-type' => 'text/html' },
+          body: '<html></html>'
+        ),
+        articles: [],
+        dedup_dropped: 0,
+        selected_strategy: :faraday,
+        attempt_count: 0,
+        strategy_attempts: [],
+        admission_drops: {},
+        scrape_target: nil,
+        entry_resolution: nil
+      )
+      pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, feed_result])
+      allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
       allow(Html2rss).to receive_messages(
         recon: Html2rss::Recon::Result.new(
           requested_url: url,
@@ -166,8 +183,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
           error_message: nil,
           failure_kind: nil,
           rss: '<rss/>'
-        ),
-        feed_result:
+        )
       )
       allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
     end
