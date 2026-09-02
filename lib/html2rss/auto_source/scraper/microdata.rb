@@ -45,11 +45,11 @@ module Html2rss
           # @param itemtype [String, nil] raw itemtype attribute value
           # @return [Array<String>] canonical schema type names
           def itemtype_type_names(itemtype)
-            itemtype.to_s.split.flat_map do |value|
+            itemtype.to_s.split.filter_map do |value|
               short = value.split('/').last.to_s.split('#').last.to_s
-              next [] if short.empty?
+              next if short.empty?
 
-              Schema.normalize_types(short).to_a
+              Schema.canonicalize_type(short)
             end
           end
 

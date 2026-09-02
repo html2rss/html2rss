@@ -40,6 +40,9 @@ module Html2rss
         # Prefer these keys when recursively walking unsupported container objects.
         COLLECTION_KEYS = %i[itemListElement blogPost mainEntity hasPart].freeze
 
+        # Shared empty type set for nil/unsupported wire forms (avoids per-call Set.new).
+        EMPTY_TYPES = Set.new.freeze
+
         # @return [Symbol] scraper config key
         def self.options_key = :schema
 
@@ -109,12 +112,24 @@ module Html2rss
             case object
             when Array
               object.each_with_object(Set.new) { |item, set| set.merge(normalize_types(item)) }
-            when String, Symbol
-              short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
-              short.empty? ? Set.new : Set[CANONICAL_BY_DOWNCASE.fetch(::Html2rss::Html::Probe.fold(short), short)]
             else
-              Set.new
+              name = canonicalize_type(object)
+              name ? Set[name] : EMPTY_TYPES
             end
+          end
+
+          # Canonical short Schema.org type name for a scalar wire form.
+          #
+          # @param object [String, Symbol, nil] raw `@type` / itemtype token
+          # @return [String, nil]
+          # @api private
+          def canonicalize_type(object)
+            return unless object.is_a?(String) || object.is_a?(Symbol)
+
+            short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
+            return if short.empty?
+
+            CANONICAL_BY_DOWNCASE.fetch(::Html2rss::Html::Probe.fold(short), short)
           end
 
           private
