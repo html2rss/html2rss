@@ -16,6 +16,7 @@ module Html2rss
       def node?(obj)
         return true if obj.is_a?(Document)
         return true if Backend::Nokogiri.node?(obj)
+        return true if Backend::Rust.node?(obj)
 
         Backend::Nokolexbor.node?(obj)
       rescue LoadError
@@ -27,6 +28,7 @@ module Html2rss
       # @return [Boolean]
       def node_set?(obj)
         return true if Backend::Nokogiri.node_set?(obj)
+        return true if Backend::Rust.node_set?(obj)
 
         Backend::Nokolexbor.node_set?(obj)
       rescue LoadError

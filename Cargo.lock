@@ -166,6 +166,7 @@ checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 name = "html2rss_parser"
 version = "0.1.0"
 dependencies = [
+ "ego-tree",
  "magnus",
  "scraper",
 ]

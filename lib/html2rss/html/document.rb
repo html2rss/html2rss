@@ -46,6 +46,7 @@ module Html2rss
         return true if obj.is_a?(self)
         return true if obj.respond_to?(:html_document?) && obj.html_document?
         return true if Backend::Nokogiri.html_document?(obj)
+        return true if Backend::Rust.html_document?(obj)
 
         Backend::Nokolexbor.html_document?(obj)
       rescue LoadError

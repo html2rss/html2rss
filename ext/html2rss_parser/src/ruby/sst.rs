@@ -37,6 +37,11 @@ fn semantic_degrade_tags(ruby: &Ruby) -> Result<RArray, Error> {
 }
 
 fn to_sst(ruby: &Ruby, html: String) -> Result<Value, Error> {
+    to_sst_html(ruby, html)
+}
+
+/// Build `SST::Document` from an HTML string (shared by `to_sst` and `Document#to_sst`).
+pub fn to_sst_html(ruby: &Ruby, html: String) -> Result<Value, Error> {
     let ir = normalize::normalize(&html).map_err(|msg| empty_tree_error(ruby, &msg))?;
     build_document(ruby, &ir)
 }
