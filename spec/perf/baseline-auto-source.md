@@ -1,6 +1,6 @@
 # Auto-source performance baseline
 
-Captured: 2026-09-02T20:13:02Z
+Captured: 2026-09-02T20:28:07Z
 Ruby: 4.0.0
 Fixtures: spec/fixtures/page_1.html, spec/fixtures/multi_link_block.html, spec/fixtures/local_feed_test.html
 Warmup runs: 1; measured runs: 5 (median reported)
@@ -10,18 +10,18 @@ Backends: nokogiri, nokolexbor, rust
 
 | Backend | wall_time_s | allocations | wall Δ% | alloc Δ% |
 | --- | --- | --- | --- | --- |
-| nokogiri | 0.190699 | 724247 | — | — |
-| nokolexbor | 0.166111 | 687590 | -12.9 | -5.1 |
-| rust | 0.175511 | 633531 | -8.0 | -12.5 |
+| nokogiri | 0.185460 | 724257 | — | — |
+| nokolexbor | 0.160261 | 687616 | -13.6 | -5.1 |
+| rust | 0.166509 | 699283 | -10.2 | -3.4 |
 
 ## Backend: nokogiri
 
 | Metric | Value |
 | --- | --- |
-| wall_time_s (median) | 0.190699 |
-| allocations (median) | 724247 |
-| wall_budget_1_1x | 0.209769 |
-| alloc_budget_1_15x | 832885 |
+| wall_time_s (median) | 0.185460 |
+| allocations (median) | 724257 |
+| wall_budget_1_1x | 0.204006 |
+| alloc_budget_1_15x | 832896 |
 
 Article counts per fixture (semantic, html | AutoSource#articles):
 - spec/fixtures/page_1.html: semantic=65, html=61, auto_source=13
@@ -32,10 +32,10 @@ Article counts per fixture (semantic, html | AutoSource#articles):
 
 | Metric | Value |
 | --- | --- |
-| wall_time_s (median) | 0.166111 |
-| allocations (median) | 687590 |
-| wall_budget_1_1x | 0.182722 |
-| alloc_budget_1_15x | 790729 |
+| wall_time_s (median) | 0.160261 |
+| allocations (median) | 687616 |
+| wall_budget_1_1x | 0.176287 |
+| alloc_budget_1_15x | 790759 |
 
 Article counts per fixture (semantic, html | AutoSource#articles):
 - spec/fixtures/page_1.html: semantic=69, html=71, auto_source=17
@@ -46,12 +46,12 @@ Article counts per fixture (semantic, html | AutoSource#articles):
 
 | Metric | Value |
 | --- | --- |
-| wall_time_s (median) | 0.175511 |
-| allocations (median) | 633531 |
-| wall_budget_1_1x | 0.193062 |
-| alloc_budget_1_15x | 728561 |
+| wall_time_s (median) | 0.166509 |
+| allocations (median) | 699283 |
+| wall_budget_1_1x | 0.183160 |
+| alloc_budget_1_15x | 804176 |
 
 Article counts per fixture (semantic, html | AutoSource#articles):
-- spec/fixtures/page_1.html: semantic=69, html=71, auto_source=17
+- spec/fixtures/page_1.html: semantic=65, html=61, auto_source=13
 - spec/fixtures/multi_link_block.html: semantic=3, html=3, auto_source=3
 - spec/fixtures/local_feed_test.html: semantic=3, html=3, auto_source=3

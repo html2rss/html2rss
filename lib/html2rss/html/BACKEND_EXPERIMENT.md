@@ -11,7 +11,7 @@
 * Modest suite/auto-source wall wins; article-count drift on `page_1.html` (Nokogiri 65/61/13 vs Lexbor 69/71/17).
 * FFI node wrapping reintroduces GC/dispatch cost; fidelity risk blocks promotion.
 
-### B. Rust (`html2rss_parser` + scraper) — **experiment OK; not ready to default**
+### B. Rust (`html2rss_parser` + scraper) — **experiment OK; nokogiri parity met; not ready to default**
 
 | Gate | Status |
 | --- | --- |
@@ -19,12 +19,12 @@
 | Suite green under `HTML2RSS_HTML_BACKEND=rust` | Met (1890 ex, 0 fail, 1 pending XPath pager) |
 | SST-first short-circuit + golden fixtures | Met |
 | One parse on Document Path A + direct Magnus SST | Met (nested Hash IR removed) |
-| Path A SST wall+alloc ≤ nokogiri on `page_1` | **Met** — see §4 microbench |
-| Strict admission fidelity vs nokogiri | **Not met** — same `page_1` drift as Lexbor (69/71/17) |
+| Path A SST wall+alloc ≤ nokogiri on `page_1` | **Met** — ~5.7 ms / 39k vs ~8.8 ms / 44k |
+| Strict admission fidelity vs nokogiri | **Met** — `page_1` **65 / 61 / 13** |
 | Significant auto-source win (>30% wall, >50% alloc) | **Not met** — out of scope for nokogiri-parity goal |
-| Checkpoint (≥15% auto-source wall + clear alloc drop) | **Partial** — wall ~−8%; alloc **−12.5%** (clear drop) |
+| Checkpoint (≥15% auto-source wall + clear alloc drop) | **Partial** — wall ~−10%; alloc ~−3% after fidelity mend |
 
-**Interpretation:** Direct Magnus materialization (cached `Attrs`/`Node`/`Index`/`Document`) cleared the nested Hash IR tax. Path A SST wall/alloc now beat nokogiri Normalizer on `page_1`. Auto-source alloc flipped from flat/+ to a clear drop; wall remains under the 15%/30% bars. Remaining blocker for default is admission fidelity (65/61/13), not materialization cost. SIMD / TypedData Segmenter stay parked.
+**Interpretation:** Direct Magnus materialization cleared the nested Hash IR tax (Path A SST ≤ nokogiri). Libxml-like list mending (`mend_lists`) fixed html5ever adoption-agency drift so admission matches nokogiri on `page_1`. Promotion bars (>30% / >50%) remain unmet and out of scope; default stays nokogiri. SIMD / TypedData Segmenter stay parked.
 
 ## 2. Suite status
 
@@ -47,8 +47,8 @@ Unset sandbox `BUNDLE_PATH` if it points at `cursor-sandbox-cache` (breaks nativ
 ```
 Raw HTML → Html::Document.parse → Backend::{Nokogiri|Nokolexbor|Rust}
 Rust Path A (heuristic SST):
-  scraper parse once → sst::normalize_from_html → Magnus Attrs/Node/Index/Document
-    (cached RClass at init; no nested Hash IR)
+  scraper parse once → sst::normalize_from_html → mend_lists (libxml nest parity)
+    → Magnus Attrs/Node/Index/Document (cached RClass; no nested Hash IR)
   SST::Hydrator remains for Hash IR unit/debug only
   thin NativeEngine::{Document,Node} remain CSS/attr ducks only
 Sitemap / XML → always Nokogiri (no general XPath in Rust)
@@ -58,10 +58,11 @@ Sitemap / XML → always Nokogiri (no general XPath in Rust)
 | --- | --- |
 | Extension | `ext/html2rss_parser/` (pure Rust `parse`/`sst`; magnus only under `ruby/`) |
 | Path A materialize | `ext/html2rss_parser/src/ruby/sst.rs` |
+| List nest mend | `ext/html2rss_parser/src/sst/mend_lists.rs` |
 | Hash Hydrator (unit/debug) | `lib/html2rss/sst/hydrator.rb` |
 | Lazy load | `Html2rss::Html::NativeEngine` |
 | Adapter | `lib/html2rss/html/backend/rust.rb` |
-| Perf | `make perf-baseline` / `make perf-suite` (`--backend all`; rust skip + note on LoadError) |
+| Perf | `make perf-baseline` / `make perf-suite` |
 | Microbench | `cargo bench --manifest-path ext/html2rss_parser/Cargo.toml --bench normalize --no-default-features` |
 
 Locked decisions honored: scraper only; SST-first; optional compile; no general XPath; `:rust` under `NativeEngine`; nokogiri default; commit `Cargo.lock`; ignore `target/` and compiled `.so`/`.bundle`.
@@ -73,44 +74,34 @@ See:
 * `spec/perf/baseline-auto-source.md`
 * `spec/perf/baseline-suite-wall.md`
 
-Refresh with `make perf-baseline` and `make perf-suite` after meaningful backend changes.
-
-### Before one-parse + hydrate (Phase 0)
-
-Auto-source rust (2026-09-02 earlier capture): **wall −0.3% / alloc −2.9%** vs nokogiri (`0.187904s`, `702936` allocs).
-
-### After one-parse + hydrate (pre–direct Magnus)
-
-Auto-source (`2026-09-02T19:48Z`): rust **−10.2% wall / +0.4% alloc** vs nokogiri.
-
-### After direct Magnus materialize (2026-09-02T20:13Z)
+### After direct Magnus + fidelity mend (2026-09-02T20:28Z remasure)
 
 Auto-source (`spec/perf/baseline-auto-source.md`):
 
 | Backend | wall_time_s | allocations | wall Δ% | alloc Δ% |
 | --- | --- | --- | --- | --- |
-| nokogiri | 0.190699 | 724247 | — | — |
-| rust | 0.175511 | 633531 | **−8.0** | **−12.5** |
+| nokogiri | 0.185460 | 724257 | — | — |
+| rust | 0.166509 | 699283 | **−10.2** | **−3.4** |
 
-Suite wall (`spec/perf/baseline-suite-wall.md`): last capture rust **−16.8%** vs nokogiri (not refreshed this wave).
+`page_1` article counts (rust): **semantic=65, html=61, auto_source=13** (matches nokogiri).
 
 Path A SST microbench on `page_1` (Document already parsed → `SST::Normalizer.call`, median of 15):
 
 | Backend | wall_ms | allocations |
 | --- | ---: | ---: |
-| nokogiri (Ruby Normalizer) | 11.2 | 44336 |
-| rust (direct Magnus) | **6.3** | **39168** |
+| nokogiri (Ruby Normalizer) | 8.8 | 44336 |
+| rust (direct Magnus + mend) | **5.7** | **38998** |
 
-**Gate honesty:** Path A SST wall+alloc ≤ nokogiri **met**. Auto-source alloc clear drop **met**; ≥15% / ≥30% wall bars still **not** met (parity goal does not require them).
+**Gate honesty:** nokogiri materialization + admission parity **met**. Auto-source >30% / >50% promotion bars **not** met (explicit non-goal).
 
 ## 5. Next leverage (parked)
 
-* Admission fidelity on `page_1` (65/61/13) — active for nokogiri-parity goal
 * Portable SIMD / NEON / `memchr` kernels — only after profile names compute bound
 * Removing nokolexbor
-* TypedData SST / Segmenter rewrite — only if Path A remasure regresses
-* Custom html5ever `TreeSink` for parse-shape drift (if normalize-rule diffs are insufficient)
+* TypedData SST / Segmenter rewrite
+* Custom html5ever `TreeSink` (mend_lists covers page_1; revisit if other fixtures drift)
 * `gemspec.extensions` / binary gems
+* Default cutover — blocked on promotion bars + packaging
 
 ## 6. Promotion criteria (unchanged bar)
 
