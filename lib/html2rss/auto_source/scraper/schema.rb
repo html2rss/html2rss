@@ -169,15 +169,15 @@ module Html2rss
         ##
         # @yield [Hash] Each scraped article_hash
         # @return [Array<Hash>] the scraped article_hashes
-        def each(&)
+        def each
           return enum_for(:each) unless block_given?
 
-          schema_objects.filter_map do |schema_object|
+          schema_objects.each do |schema_object|
             next unless (klass = self.class.scraper_for_schema_object(schema_object))
             next unless (results = klass.new(schema_object, url:).call)
 
             if results.is_a?(Array)
-              results.each { |result| yield(result) } # rubocop:disable Style/ExplicitBlockArgument
+              results.each { yield(_1) }
             else
               yield(results)
             end

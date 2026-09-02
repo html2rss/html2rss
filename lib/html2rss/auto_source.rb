@@ -221,7 +221,7 @@ module Html2rss
     end
 
     def run_scraper(instance)
-      instance.each.map { |item| article_from_scraper_item(item, instance) }
+      instance.map { |item| article_from_scraper_item(item, instance) }
     rescue *OPERATIONAL_ERRORS => error
       Log.warn("#{self.class}: #{instance.class} quarantined #{error.class}: #{error.message}")
       []
