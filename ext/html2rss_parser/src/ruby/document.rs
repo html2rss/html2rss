@@ -140,8 +140,8 @@ impl NativeDocument {
     }
 
     fn rb_to_sst(ruby: &Ruby, rb_self: &Self) -> Result<Value, Error> {
-        let html = rb_self.inner.borrow().html.html();
-        super::sst::to_sst_html(ruby, html)
+        let borrow = rb_self.inner.borrow();
+        super::sst::to_sst_from_html(ruby, &borrow.html)
     }
 
     fn rb_children(ruby: &Ruby, rb_self: &Self) -> Result<RArray, Error> {

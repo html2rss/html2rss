@@ -53,6 +53,16 @@ RSpec.describe 'Html2rss::Html::NativeEngine SST' do
       end
     end
 
+    it 'matches Document#to_sst with string to_sst (one-parse path)', :aggregate_failures do
+      fixtures.each do |name, html|
+        from_string = Html2rss::Html::NativeEngine.to_sst(html)
+        from_document = Html2rss::Html::NativeEngine::Document.parse(html).to_sst
+
+        expect(dump_sst(from_document)).to eq(dump_sst(from_string)),
+                                           "fixture #{name}: Document#to_sst drifted from string to_sst"
+      end
+    end
+
     it 'indexes parents the same way as the Ruby Normalizer' do
       html = fixtures.fetch('simple_card')
       rust_doc = Html2rss::Html::NativeEngine.to_sst(html)

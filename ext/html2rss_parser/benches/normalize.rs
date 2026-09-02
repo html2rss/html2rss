@@ -1,10 +1,8 @@
-//! Microbenches for SST normalize paths (Phase 0+).
+//! Microbenches for SST normalize paths.
 //!
 //! Run from repo root:
-//!   mise exec -- cargo bench --manifest-path ext/html2rss_parser/Cargo.toml --bench normalize
-//!
-//! After Phase 1, `normalize_from_html` lands; after Phase 2, IR nest build can be timed
-//! separately from Magnus hydrate (hydrate stays in Ruby).
+//!   mise exec -- cargo bench --manifest-path ext/html2rss_parser/Cargo.toml \
+//!     --bench normalize --no-default-features
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use html2rss_parser::sst::normalize;
@@ -42,15 +40,26 @@ fn bench_normalize_string(c: &mut Criterion) {
             b.iter(|| normalize::normalize(black_box(&page)).expect("normalize"))
         });
 
-        // Phase 1 target: walk an already-parsed Html without re-serializing.
-        // Until normalize_from_html exists, measure parse + string-normalize as the
-        // double-work upper bound Document#to_sst pays today.
+        // Legacy double-work Document#to_sst (serialize + reparse) for comparison.
         group.bench_function("parse_then_string_normalize_page_1", |b| {
             b.iter(|| {
                 let html = Html::parse_document(black_box(&page));
                 let serialized = html.html();
                 normalize::normalize(black_box(&serialized)).expect("normalize")
             })
+        });
+
+        // Phase 1 win: one parse, then walk the existing tree.
+        group.bench_function("parse_then_from_html_page_1", |b| {
+            b.iter(|| {
+                let html = Html::parse_document(black_box(&page));
+                normalize::normalize_from_html(black_box(&html)).expect("normalize")
+            })
+        });
+
+        let parsed = Html::parse_document(&page);
+        group.bench_function("from_html_only_page_1", |b| {
+            b.iter(|| normalize::normalize_from_html(black_box(&parsed)).expect("normalize"))
         });
     }
 

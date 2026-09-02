@@ -31,8 +31,20 @@ pub const IGNORED_CONTAINER_TAGS: &[&str] = &["nav", "footer", "header", "svg", 
 /// Returns an error string when no nodes survive normalization.
 pub fn normalize(html: &str) -> Result<IrDocument, String> {
     let parsed = Html::parse_document(html);
+    normalize_from_html(&parsed)
+}
+
+/// Build an IR SST document by walking an already-parsed scraper [`Html`] tree.
+///
+/// Same strip/degrade/chrome rules as [`normalize`]; avoids serialize+reparse when
+/// the caller already owns a parse (e.g. `NativeDocument#to_sst`).
+///
+/// # Errors
+///
+/// Returns an error string when no nodes survive normalization.
+pub fn normalize_from_html(parsed: &Html) -> Result<IrDocument, String> {
     let mut state = State::default();
-    let root_el = resolve_root(&parsed);
+    let root_el = resolve_root(parsed);
     let root = normalize_element(root_el, "", 0, false, &mut state)
         .ok_or_else(|| "SST Normalizer produced an empty tree".to_string())?;
 

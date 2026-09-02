@@ -3,6 +3,7 @@
 use magnus::{
     error::Error, function, kwargs, prelude::*, RArray, RClass, RHash, RModule, Ruby, Value,
 };
+use scraper::Html;
 
 use crate::sst::ir::{IrAttrs, IrDocument, IrNode};
 use crate::sst::normalize::{self, STRIPPED_TAGS};
@@ -40,9 +41,15 @@ fn to_sst(ruby: &Ruby, html: String) -> Result<Value, Error> {
     to_sst_html(ruby, html)
 }
 
-/// Build `SST::Document` from an HTML string (shared by `to_sst` and `Document#to_sst`).
+/// Build `SST::Document` from an HTML string (one parse).
 pub fn to_sst_html(ruby: &Ruby, html: String) -> Result<Value, Error> {
     let ir = normalize::normalize(&html).map_err(|msg| empty_tree_error(ruby, &msg))?;
+    build_document(ruby, &ir)
+}
+
+/// Build `SST::Document` from an already-parsed scraper tree (no serialize+reparse).
+pub fn to_sst_from_html(ruby: &Ruby, html: &Html) -> Result<Value, Error> {
+    let ir = normalize::normalize_from_html(html).map_err(|msg| empty_tree_error(ruby, &msg))?;
     build_document(ruby, &ir)
 }
 
