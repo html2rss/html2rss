@@ -3,7 +3,7 @@
 module Html2rss
   module Test
     ##
-    # Probes list-card +enhance+ value on cached HTML (no detail fetch).
+    # Probes list-card +enhance+ value on cached listing HTML.
     # Sole owner of enhance_gains metrics and enhance-specific warn-only warnings.
     module EnhanceAudit # rubocop:disable Metrics/ModuleLength -- probe + compare + heuristics stay co-located
       module_function

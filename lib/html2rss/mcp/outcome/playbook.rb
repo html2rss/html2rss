@@ -50,8 +50,6 @@ module Html2rss
 
               Prefer capture for durable config; scrape / batch_scrape for one-shot extraction.
               Follow envelope next_step and guidance. Botasaurus needs BOTASAURUS_SCRAPER_URL in this process env (read html2rss://runtime; the URL is never returned).
-
-              Future (not implemented): selectors.items.enhance_detail would fetch each item URL and run ArticleExtractor on detail HTML; default remains list-card enhance only.
             TEXT
           end
 

@@ -115,8 +115,7 @@ module Html2rss
           items_schema = Html2rss::Config::SelectorsValidator::Items.new.schema.json_schema(loose: true)
           items_schema[:properties][:enhance] = items_schema.fetch(:properties).fetch(:enhance).merge(
             description: 'List-card enrichment: run Html::ArticleExtractor on each matched item node ' \
-                         'to fill missing fields from the card HTML. Never fetches item detail pages. ' \
-                         'Future opt-in enhance_detail (per-item URL fetch) is not implemented.'
+                         'to fill missing fields from the card HTML.'
           )
           items_schema[:properties][:pagination] = {
             description: 'Pagination configuration or maximum page count integer.',
@@ -171,7 +170,7 @@ module Html2rss
               description: 'Selectors used to extract article attributes.',
               properties: {
                 items: items_schema.merge(
-                  description: 'Defines the items selector and list-card enhance settings (no detail-page fetch).'
+                  description: 'Defines the items selector and list-card enhance settings.'
                 ),
                 enclosure: enclosure_schema.merge(
                   description: 'Describes enclosure extraction settings.'
