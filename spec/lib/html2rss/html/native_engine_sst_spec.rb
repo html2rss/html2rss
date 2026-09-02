@@ -101,4 +101,22 @@ RSpec.describe 'Html2rss::Html::NativeEngine SST' do
       children: node.children.map { |child| dump_node(child) }
     }
   end
+
+  # Characterization lock for mend_lists libxml nest parity (BACKEND_EXPERIMENT §1).
+  # Drift here means rust Path A admission no longer matches nokogiri on page_1.
+  # rubocop:disable RSpec/ExampleLength -- count assertions plus backend restore
+  it 'admits the same semantic/html/auto_source counts as nokogiri on page_1',
+     :aggregate_failures do
+    html = File.read('spec/fixtures/page_1.html')
+    url = 'https://example.com/'
+
+    nok = Html2rss::SpecSupport::Page1Admission.counts(:nokogiri, html:, url:)
+    rust = Html2rss::SpecSupport::Page1Admission.counts(:rust, html:, url:)
+
+    expect(nok).to eq([65, 61, 13]), 'nokogiri page_1 baseline drifted'
+    expect(rust).to eq(nok)
+  ensure
+    Html2rss::Html::Backend.use(:nokogiri)
+  end
+  # rubocop:enable RSpec/ExampleLength
 end
