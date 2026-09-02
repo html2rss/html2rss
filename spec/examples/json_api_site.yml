@@ -15,8 +15,6 @@ selectors:
     selector: "title"
   description:
     selector: "content"
-    post_process:
-      - name: "html_to_markdown"
   author:
     selector: "author name"
   published_at:
