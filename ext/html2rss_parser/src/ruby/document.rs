@@ -33,6 +33,7 @@ pub fn register(ruby: &Ruby, native: RModule) -> Result<(), Error> {
     class.define_method("at_css", method!(NativeDocument::rb_at_css, 1))?;
     class.define_method("name", method!(NativeDocument::rb_name, 0))?;
     class.define_method("[]", method!(NativeDocument::rb_attr, 1))?;
+    class.define_method("attr", method!(NativeDocument::rb_attr, 1))?;
     class.define_method("text", method!(NativeDocument::rb_text, 0))?;
     class.define_method("to_html", method!(NativeDocument::rb_to_html, 0))?;
     class.define_method("to_sst", method!(NativeDocument::rb_to_sst, 0))?;
@@ -41,6 +42,7 @@ pub fn register(ruby: &Ruby, native: RModule) -> Result<(), Error> {
     class.define_method("element?", method!(NativeDocument::rb_element_p, 0))?;
     class.define_method("text?", method!(NativeDocument::rb_text_p, 0))?;
     class.define_method("comment?", method!(NativeDocument::rb_comment_p, 0))?;
+    class.define_method("document?", method!(NativeDocument::rb_document_p, 0))?;
     class.define_method("parent", method!(NativeDocument::rb_parent, 0))?;
     class.define_method("attribute_nodes", method!(NativeDocument::rb_attribute_nodes, 0))?;
     class.define_method("remove", method!(NativeDocument::rb_remove, 0))?;
@@ -160,6 +162,10 @@ impl NativeDocument {
 
     fn rb_comment_p(&self) -> bool {
         false
+    }
+
+    fn rb_document_p(&self) -> bool {
+        true
     }
 
     fn rb_parent(&self) -> Option<NativeNode> {

@@ -20,7 +20,8 @@ module Html2rss
       # @param backend [Module]
       # @return [String, nil]
       def normalize(selector, backend: Backend.current)
-        return selector if selector.nil? || backend.name != :nokolexbor
+        return selector if selector.nil?
+        return selector unless %i[nokolexbor rust].include?(backend.name)
 
         NOKOGIRI_PSEUDO_MAP.reduce(selector.to_s) do |current, (pattern, replacement)|
           current.gsub(pattern, replacement)

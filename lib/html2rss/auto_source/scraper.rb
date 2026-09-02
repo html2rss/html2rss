@@ -253,8 +253,7 @@ module Html2rss
         body = parsed_body.at_css('body')
         return 0 unless body
 
-        text_nodes = body.xpath('.//text()[not(ancestor::script or ancestor::style or ancestor::noscript)]')
-        text_nodes.map(&:text).join(' ').gsub(/\s+/, ' ').strip.length
+        Html2rss::Html::Node.visible_text_length(body)
       end
       private_class_method :visible_text_length
     end

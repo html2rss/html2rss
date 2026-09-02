@@ -77,7 +77,8 @@ module Html2rss
       # @param selector [String]
       # @return [Object]
       def css(selector, ...)
-        @native.css(Html2rss::Html::Css.normalize(selector, backend: @backend), ...)
+        result = @native.css(Html2rss::Html::Css.normalize(selector, backend: @backend), ...)
+        @backend.respond_to?(:wrap_nodeset) ? @backend.wrap_nodeset(result) : result
       end
 
       ##

@@ -118,7 +118,11 @@ RSpec.describe Html2rss::RequestService::Response do
       it { expect(parsed_body).to be_frozen }
 
       it 'parses the body and removes comments', :aggregate_failures do
-        expect(parsed_body.at_xpath('//comment()')).to be_nil
+        if parsed_body.respond_to?(:at_xpath)
+          expect(parsed_body.at_xpath('//comment()')).to be_nil
+        else
+          expect(parsed_body.to_html).not_to include('<!--')
+        end
         expect(parsed_body.at_css('div').text).to eq('Hello World')
       end
     end

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use ego_tree::NodeId;
-use magnus::{error::Error, method, prelude::*, RArray, RClass, RModule, Ruby, Value};
+use magnus::{error::Error, method, prelude::*, RArray, RHash, RModule, Ruby, TryConvert, Value};
 use scraper::{ElementRef, Node as DomNode, Selector};
 
 use super::document::{DocInner, NativeDocument};
@@ -35,10 +35,16 @@ pub fn register(ruby: &Ruby, native: RModule) -> Result<(), Error> {
     attr.define_method("value", method!(NativeAttr::rb_value, 0))?;
 
     let class = native.define_class("Node", ruby.class_object())?;
+    class.define_method("==", method!(NativeNode::rb_eq, 1))?;
+    class.define_method("eql?", method!(NativeNode::rb_eq, 1))?;
+    class.define_method("hash", method!(NativeNode::rb_hash, 0))?;
     class.define_method("css", method!(NativeNode::rb_css, 1))?;
     class.define_method("at_css", method!(NativeNode::rb_at_css, 1))?;
     class.define_method("name", method!(NativeNode::rb_name, 0))?;
-    class.define_method("[]", method!(NativeNode::rb_attr, 1))?;
+    class.define_method("[]", method!(NativeNode::rb_attr_get, 1))?;
+    class.define_method("attr", method!(NativeNode::rb_attr_get, 1))?;
+    class.define_method("attribute", method!(NativeNode::rb_attribute, 1))?;
+    class.define_method("attributes", method!(NativeNode::rb_attributes, 0))?;
     class.define_method("text", method!(NativeNode::rb_text, 0))?;
     class.define_method("to_html", method!(NativeNode::rb_to_html, 0))?;
     class.define_method("children", method!(NativeNode::rb_children, 0))?;
@@ -46,6 +52,7 @@ pub fn register(ruby: &Ruby, native: RModule) -> Result<(), Error> {
     class.define_method("element?", method!(NativeNode::rb_element_p, 0))?;
     class.define_method("text?", method!(NativeNode::rb_text_p, 0))?;
     class.define_method("comment?", method!(NativeNode::rb_comment_p, 0))?;
+    class.define_method("document?", method!(NativeNode::rb_document_p, 0))?;
     class.define_method("parent", method!(NativeNode::rb_parent, 0))?;
     class.define_method("attribute_nodes", method!(NativeNode::rb_attribute_nodes, 0))?;
     class.define_method("remove", method!(NativeNode::rb_remove, 0))?;
@@ -64,6 +71,25 @@ impl NativeAttr {
 }
 
 impl NativeNode {
+    fn rb_eq(ruby: &Ruby, rb_self: &Self, other: Value) -> bool {
+        let _ = ruby;
+        match <&NativeNode>::try_convert(other) {
+            Ok(node) => {
+                std::ptr::eq(rb_self.inner.as_ptr(), node.inner.as_ptr()) && rb_self.id == node.id
+            }
+            Err(_) => false,
+        }
+    }
+
+    fn rb_hash(&self) -> i64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        (self.inner.as_ptr() as usize).hash(&mut hasher);
+        format!("{:?}", self.id).hash(&mut hasher);
+        hasher.finish() as i64
+    }
+
     fn element<'a>(&self, borrow: &'a DocInner) -> Option<ElementRef<'a>> {
         if borrow.removed.contains(&self.id) {
             return None;
@@ -124,10 +150,38 @@ impl NativeNode {
         }
     }
 
-    fn rb_attr(&self, name: String) -> Option<String> {
+    fn rb_attr_get(&self, name: String) -> Option<String> {
         let borrow = self.inner.borrow();
         self.element(&borrow)
             .and_then(|el| el.value().attr(&name).map(str::to_string))
+    }
+
+    fn rb_attribute(&self, name: String) -> Option<NativeAttr> {
+        let borrow = self.inner.borrow();
+        self.element(&borrow).and_then(|el| {
+            el.value().attr(&name).map(|value| NativeAttr {
+                name: name.clone(),
+                value: value.to_string(),
+            })
+        })
+    }
+
+    fn rb_attributes(ruby: &Ruby, rb_self: &Self) -> Result<RHash, Error> {
+        let borrow = rb_self.inner.borrow();
+        let hash = ruby.hash_new();
+        let Some(el) = rb_self.element(&borrow) else {
+            return Ok(hash);
+        };
+        for (name, value) in el.value().attrs() {
+            hash.aset(
+                name,
+                NativeAttr {
+                    name: name.to_string(),
+                    value: value.to_string(),
+                },
+            )?;
+        }
+        Ok(hash)
     }
 
     fn rb_text(&self) -> String {
@@ -209,6 +263,14 @@ impl NativeNode {
         )
     }
 
+    fn rb_document_p(&self) -> bool {
+        let borrow = self.inner.borrow();
+        matches!(
+            borrow.html.tree.get(self.id).map(|n| n.value()),
+            Some(DomNode::Document) | Some(DomNode::Fragment)
+        )
+    }
+
     fn rb_parent(&self) -> Option<NativeNode> {
         let borrow = self.inner.borrow();
         borrow.html.tree.get(self.id).and_then(|n| {
@@ -259,9 +321,3 @@ impl NativeNode {
     }
 }
 
-/// Keep NativeDocument import used for type visibility in wrap class path.
-#[allow(dead_code)]
-fn _doc_class_anchor() -> Option<RClass> {
-    let _ = std::any::type_name::<NativeDocument>();
-    None
-}

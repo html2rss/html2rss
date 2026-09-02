@@ -35,7 +35,25 @@ module Html2rss
           return false unless parsed_body
 
           !parsed_body.at_css(SITEMAP_LINK_SELECTOR).nil? ||
-            !parsed_body.at_xpath('//*[local-name()="urlset" or local-name()="sitemapindex"]').nil?
+            sitemap_root?(nokogiri_document(parsed_body))
+        end
+
+        ##
+        # Sitemap / XML detection always uses Nokogiri (Rust CSS DOM is HTML-only).
+        #
+        # @param parsed_body [Object]
+        # @return [Nokogiri::XML::Node]
+        def self.nokogiri_document(parsed_body)
+          return parsed_body if parsed_body.is_a?(::Nokogiri::XML::Node)
+
+          ::Nokogiri::HTML(parsed_body.to_html)
+        end
+
+        ##
+        # @param document [Nokogiri::XML::Node]
+        # @return [Boolean]
+        def self.sitemap_root?(document)
+          !document.at_xpath('//*[local-name()="urlset" or local-name()="sitemapindex"]').nil?
         end
 
         ##
@@ -97,7 +115,9 @@ module Html2rss
 
         def parse_direct_sitemap
           return [] unless body
-          return [] unless parsed_body.at_xpath('//*[local-name()="urlset" or local-name()="sitemapindex"]')
+
+          doc = self.class.nokogiri_document(parsed_body)
+          return [] unless self.class.sitemap_root?(doc)
 
           Scraper::Sitemap::Parser.call(body, min_priority:, max_age_days:).entries
         end

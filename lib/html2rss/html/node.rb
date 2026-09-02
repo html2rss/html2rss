@@ -41,6 +41,59 @@ module Html2rss
       def unwrap(obj)
         obj.is_a?(Document) ? obj.native : obj
       end
+
+      ##
+      # Descendant text nodes without a general XPath engine.
+      #
+      # Prefers a backend named helper (+descendant_texts+); falls back to
+      # Nokogiri +xpath('.//text()')+ when present.
+      #
+      # @param node [Object]
+      # @return [Array<Object>]
+      def descendant_texts(node)
+        return [] unless node
+        return node.descendant_texts.to_a if node.respond_to?(:descendant_texts)
+        return node.xpath('.//text()').to_a if node.respond_to?(:xpath)
+
+        []
+      end
+
+      ##
+      # First non-blank descendant text content.
+      #
+      # @param node [Object]
+      # @return [String, nil]
+      def first_nonblank_text(node)
+        descendant_texts(node).lazy.map { |t| t.text.to_s.strip }.find { !_1.empty? }
+      end
+
+      ##
+      # Visible (non script/style/noscript) descendant text length.
+      #
+      # @param node [Object]
+      # @return [Integer]
+      def visible_text_length(node)
+        descendant_texts(node)
+          .reject { invisible_text_ancestor?(_1) }
+          .map(&:text)
+          .join(' ')
+          .gsub(/\s+/, ' ')
+          .strip
+          .length
+      end
+
+      ##
+      # @param text_node [Object]
+      # @return [Boolean]
+      def invisible_text_ancestor?(text_node)
+        curr = text_node.respond_to?(:parent) ? text_node.parent : nil
+        while curr
+          return true if %w[script style noscript].include?(Probe.tag(curr))
+
+          curr = curr.respond_to?(:parent) ? curr.parent : nil
+        end
+        false
+      end
     end
   end
 end

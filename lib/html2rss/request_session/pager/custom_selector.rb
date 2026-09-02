@@ -33,7 +33,7 @@ module Html2rss
           # Pure XPath like `descendant::a` fails LOOKS_LIKE_XPATH / at_css; fall back explicitly.
           xpath_at(parsed_body, selector)
         rescue StandardError => error
-          raise unless lexbor_selector_error?(error)
+          raise unless alternate_backend_selector_error?(error)
 
           xpath_at(parsed_body, selector)
         end
@@ -46,8 +46,11 @@ module Html2rss
           nil
         end
 
-        def lexbor_selector_error?(error)
-          error.class.name.start_with?('Nokolexbor::')
+        def alternate_backend_selector_error?(error)
+          return true if error.class.name.start_with?('Nokolexbor::')
+          return true if error.is_a?(ArgumentError) && error.message.include?('invalid CSS selector')
+
+          false
         end
       end
     end
