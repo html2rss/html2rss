@@ -138,6 +138,7 @@ module Html2rss
       # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def normalize_element(nk_node, parent:, depth:, path:, chrome:)
         return unless nk_node.respond_to?(:name)
+        return unless nk_node.element?
         return if nk_node.text? || nk_node.comment? || nk_node.cdata?
 
         tag = nk_node.name.to_s.downcase

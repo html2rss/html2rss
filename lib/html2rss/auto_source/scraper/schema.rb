@@ -111,10 +111,7 @@ module Html2rss
               object.each_with_object(Set.new) { |item, set| set.merge(normalize_types(item)) }
             when String, Symbol
               short = object.to_s.sub(SCHEMA_ORG_PREFIX_RE, '')
-              return Set.new if short.empty?
-
-              canonical = CANONICAL_BY_DOWNCASE.fetch(::Html2rss::Html::Probe.fold(short), short)
-              Set[canonical]
+              short.empty? ? Set.new : Set[CANONICAL_BY_DOWNCASE.fetch(::Html2rss::Html::Probe.fold(short), short)]
             else
               Set.new
             end

@@ -5,17 +5,16 @@ module Html2rss
     ##
     # Case-insensitive DOM wire matching for MIME types, tag names, and link relations.
     module Probe
+      # Canonical MIME type strings for script and alternate link matching.
       APPLICATION_LD_JSON = 'application/ld+json'
+      # @see #mime_match?
       APPLICATION_JSON = 'application/json'
+      # @see #mime_match?
       APPLICATION_JSON_OEMBED = 'application/json+oembed'
+      # @see #mime_match?
       APPLICATION_RSS_XML = 'application/rss+xml'
+      # @see #mime_match?
       APPLICATION_ATOM_XML = 'application/atom+xml'
-
-      FOLDED_APPLICATION_LD_JSON = APPLICATION_LD_JSON.freeze
-      FOLDED_APPLICATION_JSON = APPLICATION_JSON.freeze
-      FOLDED_APPLICATION_JSON_OEMBED = APPLICATION_JSON_OEMBED.freeze
-      FOLDED_APPLICATION_RSS_XML = APPLICATION_RSS_XML.freeze
-      FOLDED_APPLICATION_ATOM_XML = APPLICATION_ATOM_XML.freeze
 
       module_function
 
