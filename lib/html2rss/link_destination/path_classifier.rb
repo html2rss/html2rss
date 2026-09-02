@@ -71,27 +71,28 @@ module Html2rss
       # @param segments [Array<String>] normalized URL path segments
       def initialize(segments)
         @segments = segments
+        @lexicon = segments.map { ::Html2rss::Html::Probe.fold(_1) }.freeze
       end
 
       # @return [Boolean] true when the route has article-like path evidence
       def content_path?
         @content_path ||= !leading_high_confidence_junk? &&
-                          (SEGMENT_SETS[:content].intersect?(segments) || yearish_content_context?)
+                          (SEGMENT_SETS[:content].intersect?(@lexicon) || yearish_content_context?)
       end
 
       # @return [Boolean] true when the route includes utility/navigation evidence
       def utility_path?
-        @utility_path ||= SEGMENT_SETS[:utility].intersect?(segments)
+        @utility_path ||= SEGMENT_SETS[:utility].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when the route points at conversion or account chrome
       def vanity_path?
-        @vanity_path ||= SEGMENT_SETS[:vanity].intersect?(segments)
+        @vanity_path ||= SEGMENT_SETS[:vanity].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when the route points at taxonomy/listing chrome
       def taxonomy_path?
-        @taxonomy_path ||= SEGMENT_SETS[:taxonomy].intersect?(segments)
+        @taxonomy_path ||= SEGMENT_SETS[:taxonomy].intersect?(@lexicon)
       end
 
       # @return [Boolean] true when the route is too shallow to strongly indicate an article
@@ -118,7 +119,7 @@ module Html2rss
         vanity_segments = SEGMENT_SETS.fetch(:vanity)
 
         shallow? && segments.any? do |segment|
-          high_confidence_junk_segment?(segment) || vanity_segments.include?(segment)
+          high_confidence_junk_segment?(segment) || vanity_segments.include?(folded_segment(segment))
         end
       end
 
@@ -182,7 +183,8 @@ module Html2rss
       end
 
       def high_confidence_junk_segment?(segment)
-        SEGMENT_SETS.fetch(:high_confidence_junk).include?(segment) || host_shaped_segment?(segment)
+        SEGMENT_SETS.fetch(:high_confidence_junk).include?(folded_segment(segment)) ||
+          host_shaped_segment?(segment)
       end
 
       def host_shaped_segment?(segment)
@@ -198,9 +200,9 @@ module Html2rss
 
         (0...limit).any? do |i|
           segment = segments[i]
-          content_segments.include?(segment) ||
+          content_segments.include?(folded_segment(segment)) ||
             segment.match?(PathClassifier::YEARISH_SEGMENT) ||
-            context_segments.include?(segment)
+            context_segments.include?(folded_segment(segment))
         end
       end
 
@@ -210,12 +212,16 @@ module Html2rss
 
       def excluded_last_segment?
         last = segments.last
-        high_confidence_junk_segment?(last) || SEGMENT_SETS[:vanity].include?(last)
+        high_confidence_junk_segment?(last) || SEGMENT_SETS[:vanity].include?(folded_segment(last))
       end
 
       def slug_last_segment?
         last = segments.last
         last.match?(YEARISH_SEGMENT) || last.match?(POST_SLUG_SEGMENT)
+      end
+
+      def folded_segment(segment)
+        ::Html2rss::Html::Probe.fold(segment)
       end
     end
   end

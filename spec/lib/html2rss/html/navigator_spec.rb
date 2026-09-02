@@ -207,6 +207,13 @@ RSpec.describe Html2rss::Html::Navigator do
       expect(described_class.ignored_container_path?(document.at_css('#foot'))).to be(true)
     end
 
+    it 'treats uppercase NAV as ignored chrome', :aggregate_failures do
+      document = Nokogiri::HTML('<html><body><NAV><a id="nav-link" href="/home">Home</a></NAV></body></html>')
+
+      expect(described_class.ignored_container_path?(document.at_css('#nav-link'))).to be(true)
+      expect(described_class.usable_card_parent?(document.at_css('NAV'))).to be(false)
+    end
+
     it 'returns false for content nodes and memoizes via identity cache', :aggregate_failures do
       cache = {}.compare_by_identity
       node = document.at_css('#story')

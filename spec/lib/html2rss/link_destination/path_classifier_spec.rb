@@ -92,5 +92,13 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       expect(classifier.utility_path?).to be(false)
       expect(classifier.junk_path?).to be(false)
     end
+
+    it 'treats /News/ segments as content regardless of case', :aggregate_failures do
+      classifier = classifier_for('News', '2026', 'platform-launch-notes')
+
+      expect(classifier.content_path?).to be(true)
+      expect(classifier.utility_path?).to be(false)
+      expect(classifier.junk_path?).to be(false)
+    end
   end
 end

@@ -48,7 +48,7 @@ module Html2rss
         # @param article_tag [Nokogiri::XML::Node] article-like container to search within
         # @return [Nokogiri::XML::Node, nil] first eligible descendant anchor
         def main_anchor_for(article_tag)
-          return article_tag if article_tag.name == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
+          return article_tag if Probe.tag(article_tag) == 'a' && article_tag.matches?(MAIN_ANCHOR_SELECTOR)
 
           article_tag.at_css(MAIN_ANCHOR_SELECTOR)
         end
@@ -71,7 +71,7 @@ module Html2rss
               break
             end
 
-            if IGNORED_CONTAINER_TAGS.include?(curr.name)
+            if IGNORED_CONTAINER_TAGS.include?(Probe.tag(curr))
               is_ignored = true
               break
             end
@@ -93,7 +93,7 @@ module Html2rss
         # @param condition [Proc] The condition to be met.
         # @return [Nokogiri::XML::Node, nil] The first parent that satisfies the condition.
         def parent_until_condition(node, condition)
-          while node && !node.document? && node.name != 'html'
+          while node && !node.document? && Probe.tag(node) != 'html'
             return node if condition.call(node)
 
             node = node.parent
@@ -109,7 +109,7 @@ module Html2rss
           return false unless node
           return false if node.respond_to?(:document?) && node.document?
 
-          !CARD_WALK_STOP_TAGS.include?(node.name.to_s)
+          !CARD_WALK_STOP_TAGS.include?(Probe.tag(node))
         end
 
         ##
@@ -137,7 +137,7 @@ module Html2rss
         # @param tag_name [String] tag name to find in ancestors
         # @return [Nokogiri::XML::Node, nil] matching ancestor node
         def find_tag_in_ancestors(current_tag, tag_name)
-          return current_tag if current_tag.name == tag_name
+          return current_tag if Probe.tag(current_tag) == Probe.fold(tag_name)
 
           current_tag.ancestors(tag_name).first
         end

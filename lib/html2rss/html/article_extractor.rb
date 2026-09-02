@@ -130,11 +130,11 @@ module Html2rss
       end
 
       def heading_or_anchor_item?
-        heading_item? || article_tag.name.to_s == 'a'
+        heading_item? || Probe.tag(article_tag) == 'a'
       end
 
       def heading_item?
-        Navigator::HEADING_TAGS.include?(article_tag.name.to_s)
+        Navigator::HEADING_TAGS.include?(Probe.tag(article_tag))
       end
 
       def heading_or_anchor_miss?(title, lines, published_at)
