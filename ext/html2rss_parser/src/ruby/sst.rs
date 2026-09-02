@@ -1,17 +1,43 @@
-//! IR → nested Ruby Hash → `SST::Hydrator.call` (one FFI hydrate).
+//! IR → direct Magnus `SST::{Attrs,Node,Index,Document}` (no nested Hash IR).
 
 use magnus::{
-    error::Error, function, kwargs, prelude::*, RArray, RClass, RHash, RModule, Ruby, Value,
+    error::Error, exception::ExceptionClass, function, kwargs, prelude::*, value::Lazy, RArray,
+    RClass, RHash, RModule, Ruby, Value,
 };
 use scraper::Html;
 
 use crate::sst::ir::{IrAttrs, IrDocument, IrNode};
 use crate::sst::normalize::{self, STRIPPED_TAGS};
 
+static ATTRS: Lazy<RClass> = Lazy::new(|ruby| {
+    ruby.eval("Html2rss::SST::Attrs")
+        .expect("Html2rss::SST::Attrs must be loadable")
+});
+static NODE: Lazy<RClass> = Lazy::new(|ruby| {
+    ruby.eval("Html2rss::SST::Node")
+        .expect("Html2rss::SST::Node must be loadable")
+});
+static INDEX: Lazy<RClass> = Lazy::new(|ruby| {
+    ruby.eval("Html2rss::SST::Index")
+        .expect("Html2rss::SST::Index must be loadable")
+});
+static DOCUMENT: Lazy<RClass> = Lazy::new(|ruby| {
+    ruby.eval("Html2rss::SST::Document")
+        .expect("Html2rss::SST::Document must be loadable")
+});
+static EMPTY_TREE: Lazy<ExceptionClass> = Lazy::new(|ruby| {
+    ruby.eval("Html2rss::SST::Normalizer::EmptyTree")
+        .expect("Html2rss::SST::Normalizer::EmptyTree must be loadable")
+});
+
 /// Register SST helpers on `NativeEngine`.
 pub fn register(ruby: &Ruby, native: RModule) -> Result<(), Error> {
-    // Warm Hydrator so first `to_sst` does not pay a missing-constant path.
-    let _: RClass = ruby.eval("Html2rss::SST::Hydrator")?;
+    // Cache SST classes once at init — Path A must not `eval` per node.
+    Lazy::force(&ATTRS, ruby);
+    Lazy::force(&NODE, ruby);
+    Lazy::force(&INDEX, ruby);
+    Lazy::force(&DOCUMENT, ruby);
+    Lazy::force(&EMPTY_TREE, ruby);
 
     native.define_singleton_method("to_sst", function!(to_sst, 1))?;
     native.define_singleton_method("stripped_tags", function!(stripped_tags, 0))?;
@@ -44,59 +70,110 @@ fn to_sst(ruby: &Ruby, html: String) -> Result<Value, Error> {
     to_sst_html(ruby, html)
 }
 
-/// Build `SST::Document` from an HTML string (one parse + one hydrate).
+/// Build `SST::Document` from an HTML string (one parse + direct Magnus materialize).
 pub fn to_sst_html(ruby: &Ruby, html: String) -> Result<Value, Error> {
     let ir = normalize::normalize(&html).map_err(|msg| empty_tree_error(ruby, &msg))?;
-    hydrate_document(ruby, &ir)
+    materialize_document(ruby, &ir)
 }
 
 /// Build `SST::Document` from an already-parsed scraper tree (no serialize+reparse).
 pub fn to_sst_from_html(ruby: &Ruby, html: &Html) -> Result<Value, Error> {
     let ir = normalize::normalize_from_html(html).map_err(|msg| empty_tree_error(ruby, &msg))?;
-    hydrate_document(ruby, &ir)
+    materialize_document(ruby, &ir)
 }
 
 fn empty_tree_error(ruby: &Ruby, msg: &str) -> Error {
-    let owned = msg.to_owned();
-    match ruby.eval::<magnus::exception::ExceptionClass>("Html2rss::SST::Normalizer::EmptyTree") {
-        Ok(class) => Error::new(class, owned),
-        Err(_) => Error::new(ruby.exception_arg_error(), owned),
-    }
+    let class = ruby.get_inner(&EMPTY_TREE);
+    Error::new(class, msg.to_owned())
 }
 
-fn hydrate_document(ruby: &Ruby, ir: &IrDocument) -> Result<Value, Error> {
-    let root_ir = ir_node_to_hash(ruby, &ir.root)?;
-    let hydrator = ruby.eval::<RClass>("Html2rss::SST::Hydrator")?;
-    hydrator.funcall(
-        "call",
-        (
-            root_ir,
-            kwargs!(
-                "node_count" => ir.node_count as i64,
-                "degraded" => ir.degraded
-            ),
-        ),
+fn materialize_document(ruby: &Ruby, ir: &IrDocument) -> Result<Value, Error> {
+    let parents = identity_hash(ruby)?;
+    let depths = identity_hash(ruby)?;
+    let ignored_chrome = identity_hash(ruby)?;
+
+    let root = build_node(
+        ruby,
+        &ir.root,
+        ruby.qnil().as_value(),
+        &parents,
+        &depths,
+        &ignored_chrome,
+    )?;
+
+    let index: Value = ruby.get_inner(&INDEX).funcall(
+        "new",
+        (kwargs!(
+            "root" => root,
+            "parents" => parents,
+            "depths" => depths,
+            "ignored_chrome" => ignored_chrome
+        ),),
+    )?;
+
+    ruby.get_inner(&DOCUMENT).funcall(
+        "build",
+        (kwargs!(
+            "root" => root,
+            "index" => index,
+            "degraded" => ir.degraded,
+            "node_count" => ir.node_count as i64
+        ),),
     )
 }
 
-fn ir_node_to_hash(ruby: &Ruby, ir: &IrNode) -> Result<RHash, Error> {
-    let children = ruby.ary_new_capa(ir.children.len());
-    for child in &ir.children {
-        children.push(ir_node_to_hash(ruby, child)?)?;
-    }
-
+fn identity_hash(ruby: &Ruby) -> Result<RHash, Error> {
     let hash = ruby.hash_new();
-    hash.aset("name", ir.name.as_str())?;
-    hash.aset("attrs", ir_attrs_to_hash(ruby, &ir.attrs)?)?;
-    hash.aset("own_text", ir.own_text.as_str())?;
-    hash.aset("children", children)?;
-    hash.aset("tag_path", ir.tag_path.as_str())?;
-    hash.aset("depth", ir.depth as i64)?;
-    hash.aset("chrome", ir.chrome)?;
+    let _: Value = hash.funcall("compare_by_identity", ())?;
     Ok(hash)
 }
 
-fn ir_attrs_to_hash(ruby: &Ruby, attrs: &IrAttrs) -> Result<RHash, Error> {
+fn build_node(
+    ruby: &Ruby,
+    ir: &IrNode,
+    parent: Value,
+    parents: &RHash,
+    depths: &RHash,
+    ignored_chrome: &RHash,
+) -> Result<Value, Error> {
+    let nil = ruby.qnil().as_value();
+    let children = ruby.ary_new_capa(ir.children.len());
+    for child_ir in &ir.children {
+        // Parent filled after this node exists (mirrors Hydrator pending → fix-up).
+        let child = build_node(ruby, child_ir, nil, parents, depths, ignored_chrome)?;
+        children.push(child)?;
+    }
+
+    let attrs = build_attrs(ruby, &ir.attrs)?;
+    let node: Value = ruby.get_inner(&NODE).funcall(
+        "build",
+        (kwargs!(
+            "name" => ir.name.as_str(),
+            "attrs" => attrs,
+            "own_text" => ir.own_text.as_str(),
+            "children" => children,
+            "tag_path" => ir.tag_path.as_str()
+        ),),
+    )?;
+
+    parents.aset(node, parent)?;
+    depths.aset(node, ir.depth as i64)?;
+    ignored_chrome.aset(node, ir.chrome)?;
+
+    let len = children.len() as isize;
+    for i in 0..len {
+        let child: Value = children.entry(i)?;
+        parents.aset(child, node)?;
+    }
+
+    Ok(node)
+}
+
+fn build_attrs(ruby: &Ruby, attrs: &IrAttrs) -> Result<Value, Error> {
+    if attrs_blank(attrs) {
+        return ruby.get_inner(&ATTRS).funcall("empty", ());
+    }
+
     let class_names = ruby.ary_new_capa(attrs.class_names.len());
     for name in &attrs.class_names {
         class_names.push(name.as_str())?;
@@ -107,16 +184,32 @@ fn ir_attrs_to_hash(ruby: &Ruby, attrs: &IrAttrs) -> Result<RHash, Error> {
         raw.aset(k.as_str(), v.as_str())?;
     }
 
-    let hash = ruby.hash_new();
-    hash.aset("href", attrs.href.as_deref())?;
-    hash.aset("src", attrs.src.as_deref())?;
-    hash.aset("id", attrs.id.as_deref())?;
-    hash.aset("class_names", class_names)?;
-    hash.aset("datetime", attrs.datetime.as_deref())?;
-    hash.aset("itemprop", attrs.itemprop.as_deref())?;
-    hash.aset("style", attrs.style.as_deref())?;
-    hash.aset("srcset", attrs.srcset.as_deref())?;
-    hash.aset("type", attrs.r#type.as_deref())?;
-    hash.aset("raw", raw)?;
-    Ok(hash)
+    ruby.get_inner(&ATTRS).funcall(
+        "build",
+        (kwargs!(
+            "href" => attrs.href.as_deref(),
+            "src" => attrs.src.as_deref(),
+            "id" => attrs.id.as_deref(),
+            "class_names" => class_names,
+            "datetime" => attrs.datetime.as_deref(),
+            "itemprop" => attrs.itemprop.as_deref(),
+            "style" => attrs.style.as_deref(),
+            "srcset" => attrs.srcset.as_deref(),
+            "type" => attrs.r#type.as_deref(),
+            "raw" => raw
+        ),),
+    )
+}
+
+fn attrs_blank(attrs: &IrAttrs) -> bool {
+    attrs.href.is_none()
+        && attrs.src.is_none()
+        && attrs.id.is_none()
+        && attrs.class_names.is_empty()
+        && attrs.datetime.is_none()
+        && attrs.itemprop.is_none()
+        && attrs.style.is_none()
+        && attrs.srcset.is_none()
+        && attrs.r#type.is_none()
+        && attrs.raw.is_empty()
 }

@@ -76,8 +76,9 @@ module Html2rss
         private
 
         # Path A (HTML2RSS_HTML_BACKEND=rust): one scraper parse on Document input,
-        # then normalize_from_html + SST::Hydrator — no serialize/reparse and no
-        # Ruby Normalizer walk. String input still parses once inside NativeEngine.to_sst.
+        # then normalize_from_html + direct Magnus SST build — no nested Hash IR,
+        # no serialize/reparse, no Ruby Normalizer walk. String input still parses
+        # once inside NativeEngine.to_sst.
         #
         # @param input [Object]
         # @return [Document, nil]

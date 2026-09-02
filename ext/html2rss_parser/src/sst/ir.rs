@@ -1,4 +1,4 @@
-//! Intermediate SST representation built in Rust before Ruby hydrate.
+//! Intermediate SST representation built in Rust before direct Magnus materialize.
 
 use std::collections::HashMap;
 
@@ -29,7 +29,7 @@ pub struct IrNode {
     pub chrome: bool,
 }
 
-/// Normalized tree ready for nested Hash IR → `SST::Hydrator`.
+/// Normalized tree ready for Path A Magnus materialize (or Hash Hydrator in unit tests).
 #[derive(Debug, Clone)]
 pub struct IrDocument {
     pub root: IrNode,

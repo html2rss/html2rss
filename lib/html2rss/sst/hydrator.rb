@@ -3,8 +3,9 @@
 module Html2rss
   module SST
     ##
-    # Sole owner of +Data.define+ construction for native SST payloads.
-    # Rust emits one nested Hash IR; this module builds {Attrs}/{Node}/{Index}/{Document}.
+    # Hash-IR → {Attrs}/{Node}/{Index}/{Document} builder (unit/debug only).
+    # Path A (+HTML2RSS_HTML_BACKEND=rust+) materializes SST via Magnus directly;
+    # this class stays for Hash-based specs and ad-hoc IR dumps — not the hot path.
     class Hydrator
       class << self
         ##
