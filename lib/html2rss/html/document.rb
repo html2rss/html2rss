@@ -38,15 +38,18 @@ module Html2rss
       end
 
       ##
-      # Duck-typed HTML document predicate (facade or active-backend native).
+      # Duck-typed HTML document predicate (facade or either known backend native).
       #
       # @param obj [Object]
       # @return [Boolean]
       def self.html_document?(obj)
         return true if obj.is_a?(self)
         return true if obj.respond_to?(:html_document?) && obj.html_document?
+        return true if Backend::Nokogiri.html_document?(obj)
 
-        Backend.current.html_document?(obj)
+        Backend::Nokolexbor.html_document?(obj)
+      rescue LoadError
+        false
       end
 
       ##
@@ -68,6 +71,20 @@ module Html2rss
 
       # @return [Symbol]
       def backend_name = @backend.name
+
+      ##
+      # @param selector [String]
+      # @return [Object]
+      def css(selector, ...)
+        @native.css(Html2rss::Html::Css.normalize(selector, backend: @backend), ...)
+      end
+
+      ##
+      # @param selector [String]
+      # @return [Object, nil]
+      def at_css(selector, ...)
+        @native.at_css(Html2rss::Html::Css.normalize(selector, backend: @backend), ...)
+      end
 
       ##
       # @return [Document] frozen facade (native frozen when supported)

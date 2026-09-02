@@ -24,14 +24,30 @@ module Html2rss
           Html2rss::Url.from_relative(href.strip, page_response.url)
         end
 
-        # @param parsed_body [Nokogiri::HTML::Document]
+        # @param parsed_body [Html2rss::Html::Document, Object]
         # @param selector [String]
-        # @return [Nokogiri::XML::Node, nil]
+        # @return [Object, nil] matching node
         def extract_node(parsed_body, selector)
-          parsed_body.at_css(selector) || parsed_body.at_xpath(selector)
+          parsed_body.at_css(selector) || xpath_at(parsed_body, selector)
         rescue Nokogiri::CSS::SyntaxError, Nokogiri::XML::XPath::SyntaxError
           # Pure XPath like `descendant::a` fails LOOKS_LIKE_XPATH / at_css; fall back explicitly.
+          xpath_at(parsed_body, selector)
+        rescue StandardError => error
+          raise unless lexbor_selector_error?(error)
+
+          xpath_at(parsed_body, selector)
+        end
+
+        def xpath_at(parsed_body, selector)
+          return unless parsed_body.respond_to?(:at_xpath)
+
           parsed_body.at_xpath(selector)
+        rescue StandardError
+          nil
+        end
+
+        def lexbor_selector_error?(error)
+          error.class.name.start_with?('Nokolexbor::')
         end
       end
     end

@@ -28,6 +28,9 @@ group :development, :test do
   gem 'rspec-instafail', require: false
   gem 'vcr', require: false
 
+  # Experiment: Lexbor HTML backend (see Html::Backend::Nokolexbor)
+  gem 'nokolexbor', require: false
+
   # Development tools
   gem 'benchmark', require: false
   gem 'debug', require: false

@@ -34,7 +34,7 @@ module Html2rss
         # @param selector [String, nil]
         # @return [Nokogiri::XML::ElementSet] selected XML elements
         def element(xml, selector)
-          selector ? xml.css(selector) : xml
+          selector ? xml.css(Html2rss::Html::Css.normalize(selector)) : xml
         end
 
         # @param attribute_options [Hash{Symbol => Object}]
