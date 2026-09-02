@@ -22,8 +22,8 @@ help: ## Show available commands
 	@echo "  make schema  - Regenerate and verify the config schema"
 	@echo "  make validate-fixtures - Validate fixture configs"
 	@echo "  make docs    - Generate documentation"
-	@echo "  make perf-baseline - Record auto-source wall/alloc baseline (both HTML backends)"
-	@echo "  make perf-suite - Record full RSpec wall-clock under both HTML backends"
+	@echo "  make perf-baseline - Record auto-source wall/alloc baseline (all HTML backends)"
+	@echo "  make perf-suite - Record full RSpec wall-clock under all HTML backends"
 	@echo "  make ready   - Run the local PR readiness checks"
 	@echo "  make clean   - Clean build artifacts"
 
@@ -63,10 +63,10 @@ validate-fixtures: ## Validate fixture configs
 docs: ## Generate documentation
 	$(RUBY_RUNNER)bundle exec yard doc
 
-perf-baseline: ## Record auto-source wall/alloc baseline markdown (both HTML backends)
-	$(RUBY_RUNNER)bin/heuristic-perf-baseline --backend both --write spec/perf/baseline-auto-source.md
+perf-baseline: ## Record auto-source wall/alloc baseline markdown (all HTML backends)
+	$(RUBY_RUNNER)bin/heuristic-perf-baseline --backend all --write spec/perf/baseline-auto-source.md
 
-perf-suite: ## Record full RSpec wall-clock under both HTML backends
+perf-suite: ## Record full RSpec wall-clock under all HTML backends
 	bin/perf-suite --write spec/perf/baseline-suite-wall.md
 
 ready: ## Run the local PR readiness checks

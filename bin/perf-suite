@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Record full RSpec wall-clock under each HTML backend (same seed).
-# Usage: bin/perf-suite [--write PATH] [--seed N]
+# Usage: bin/perf-suite [--write PATH] [--seed N] [--backend all|nokogiri|nokolexbor|rust]
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ fi
 
 WRITE_PATH=""
 SEED="${SEED:-42}"
-BACKENDS=(nokogiri nokolexbor)
+BACKENDS=(nokogiri nokolexbor rust)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -25,6 +25,17 @@ while [[ $# -gt 0 ]]; do
       ;;
     --seed)
       SEED="$2"
+      shift 2
+      ;;
+    --backend)
+      case "$2" in
+        all) BACKENDS=(nokogiri nokolexbor rust) ;;
+        nokogiri|nokolexbor|rust) BACKENDS=("$2") ;;
+        *)
+          echo "Unknown --backend $2 (expected all|nokogiri|nokolexbor|rust)" >&2
+          exit 1
+          ;;
+      esac
       shift 2
       ;;
     *)
@@ -51,7 +62,18 @@ lines+=("| Backend | wall_time_s | examples | failures | exit |")
 lines+=("| --- | --- | --- | --- | --- |")
 
 nokogiri_wall=""
+deltas=()
+skip_notes=()
 for backend in "${BACKENDS[@]}"; do
+  if [[ "${backend}" == "rust" ]]; then
+    if ! "${RUBY_RUNNER[@]}" bundle exec ruby -e 'require "html2rss"; exit(Html2rss::Html::NativeEngine.available? ? 0 : 1)' >/dev/null 2>&1; then
+      echo "=== Skipping rust: html2rss_parser not compiled (bundle exec rake compile) ===" >&2
+      lines+=("| rust | skipped | — | — | skip |")
+      skip_notes+=("rust skipped: LoadError / extension not compiled")
+      continue
+    fi
+  fi
+
   echo "=== Suite under HTML2RSS_HTML_BACKEND=${backend} (seed=${SEED}) ===" >&2
   started=$("${RUBY_RUNNER[@]}" ruby -e 'print Process.clock_gettime(Process::CLOCK_MONOTONIC)')
   set +e
@@ -71,13 +93,19 @@ for backend in "${BACKENDS[@]}"; do
     nokogiri_wall="${wall}"
   elif [[ -n "${nokogiri_wall}" ]]; then
     delta=$("${RUBY_RUNNER[@]}" ruby -e "print format('%+.1f', ((${wall} / ${nokogiri_wall}.to_f) - 1) * 100)")
-    lines+=("")
-    lines+=("nokolexbor wall Δ vs nokogiri: ${delta}%")
+    deltas+=("${backend} wall Δ vs nokogiri: ${delta}%")
   fi
 
   printf '%s\n' "${summary}" >&2
   echo "wall_time_s=${wall} exit=${exit_code}" >&2
 done
+
+if ((${#deltas[@]})) || ((${#skip_notes[@]})); then
+  lines+=("")
+  for note in "${deltas[@]}" "${skip_notes[@]}"; do
+    lines+=("${note}")
+  done
+fi
 
 report="$(printf '%s\n' "${lines[@]}")"
 printf '%s\n' "${report}"

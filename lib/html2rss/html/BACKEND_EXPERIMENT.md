@@ -1,97 +1,75 @@
-# HTML parser backend experiment
+# HTML Parser Backend Experiment
 
 **Branch:** `experiment/html-backend-nokolexbor`  
-**Base tip:** `origin/master` @ `657a21c0`  
-**Captured:** 2026-09-02 (Ruby 4.0.0)  
-**Env switch:** `HTML2RSS_HTML_BACKEND=nokogiri|nokolexbor` (default `nokogiri`)
+**Status:** Rust backend landed as **opt-in experiment** (not production default). Nokolexbor remains no-go for default.  
+**Env switch:** `HTML2RSS_HTML_BACKEND=nokogiri|nokolexbor|rust` (default `nokogiri`)
 
-## Verdict: **no-go for production default** (keep experiment branch / facade)
+## 1. Verdicts
 
-Nokolexbor wins wall-clock on both the scrape/heuristic path and the full RSpec suite, and the suite is green under both backends after CSS compatibility shims. Do **not** flip the production default yet: Sanitize stays on Nokogiri, XML/XPath/sitemap stay off Lexbor, and auto-source article **counts diverge** on at least one fixture (fidelity risk).
+### A. Nokolexbor (Lexbor) — **NO-GO for production default**
 
-Promote only after a dedicated fidelity pass (same articles / same titles on a curated fixture matrix) and an explicit product decision.
+* Modest suite/auto-source wall wins; article-count drift on `page_1.html` (Nokogiri 65/61/13 vs Lexbor 69/71/17).
+* FFI node wrapping reintroduces GC/dispatch cost; fidelity risk blocks promotion.
 
-## Suite status
+### B. Rust (`html2rss_parser` + scraper) — **experiment OK; not ready to default**
 
-| Backend | Examples | Failures |
-| --- | --- | ---: |
-| nokogiri (default) | 1882 | 0 |
-| nokolexbor | 1882 | 0 |
+| Gate | Status |
+| --- | --- |
+| Optional compile (`rake compile`, no `gemspec.extensions`) | Met |
+| Suite green under `HTML2RSS_HTML_BACKEND=rust` | Met (1887 ex, 0 fail, 1 pending XPath pager) |
+| SST-first short-circuit + golden fixtures | Met |
+| Strict admission fidelity vs nokogiri | **Not met** — same `page_1` drift as Lexbor (69/71/17) |
+| Significant auto-source win (>30% wall, >50% alloc) | **Not met** — ~0% wall / ~−3% alloc vs nokogiri on thin-DOM path |
 
-Commands:
+**Interpretation:** Direct SST construction works; thin CSS DOM still pays Ruby wrapper cost, and html5ever tree shape still drifts admission. Next leverage is batch native extraction / tighter SST admission parity — not more node ducks.
+
+## 2. Suite status
+
+| Backend | Examples | Failures | Notes |
+| --- | --- | ---: | --- |
+| nokogiri (default) | 1887 | 0 | — |
+| nokolexbor | 1887 | 0 | admission drift |
+| rust | 1887 | 0 | 1 pending (XPath-only pager); requires `rake compile` |
 
 ```bash
+mise exec -- bundle exec rake compile   # once per machine / after ext changes
 mise exec -- bundle exec rspec --no-fail-fast
-HTML2RSS_HTML_BACKEND=nokolexbor mise exec -- bundle exec rspec --no-fail-fast
+HTML2RSS_HTML_BACKEND=rust mise exec -- bundle exec rspec --no-fail-fast
 ```
 
-## Performance numbers
+Unset sandbox `BUNDLE_PATH` if it points at `cursor-sandbox-cache` (breaks native gems).
 
-### Scrape / heuristic path (`make perf-baseline`)
+## 3. Architecture (landed)
 
-Source: [`spec/perf/baseline-auto-source.md`](../../../spec/perf/baseline-auto-source.md)
-
-| Backend | wall_time_s (median) | allocations (median) | wall Δ% | alloc Δ% |
-| --- | ---: | ---: | ---: | ---: |
-| nokogiri | 0.212662 | 723700 | — | — |
-| nokolexbor | 0.186589 | 687253 | **−12.3** | **−5.0** |
-
-Fixtures: `page_1.html`, `multi_link_block.html`, `local_feed_test.html` (warmup 1, runs 5, median).
-
-**Fidelity note:** on `page_1.html`, heuristic/auto-source article counts differ:
-
-| Fixture path | nokogiri (semantic / html / auto) | nokolexbor (semantic / html / auto) |
-| --- | --- | --- |
-| page_1.html | 65 / 61 / 13 | 69 / 71 / 17 |
-| multi_link_block.html | 3 / 3 / 3 | 3 / 3 / 3 |
-| local_feed_test.html | 3 / 3 / 3 | 3 / 3 / 3 |
-
-Faster + greener suite is not enough while admission counts move.
-
-### Full RSpec suite (`make perf-suite`)
-
-Source: [`spec/perf/baseline-suite-wall.md`](../../../spec/perf/baseline-suite-wall.md)
-
-| Backend | wall_time_s | examples | failures | exit |
-| --- | ---: | ---: | ---: | ---: |
-| nokogiri | 18.386 | 1882 | 0 | 0 |
-| nokolexbor | 14.415 | 1882 | 0 | 0 |
-
-nokolexbor wall Δ vs nokogiri: **−21.6%** (seed `42`, `--no-fail-fast`).
-
-## What landed
-
-1. **`Html::Document` / `Html::Node` / `Html::Backend`** — domain HTML parse + type checks go through the facade; `Response#parse_html_document` returns `Html::Document`.
-2. **`Backend::Nokogiri`** — production default; sole constructor of Nokogiri HTML docs (Sanitize transformers still use Nokogiri nodes).
-3. **`Backend::Nokolexbor`** — Lexbor via `nokolexbor` **dev dependency**; selected by env.
-4. **`Html::Css.normalize`** — Lexbor gaps: `:first` / `:last`, `:not(:first-child)` / `:not(:last-child)`.
-5. **Custom pager** — Lexbor CSS syntax errors fall back to XPath (unsupported pure-XPath still returns nil when XPath fails).
-6. **Perf harness** — `bin/heuristic-perf-baseline --backend both`, `make perf-baseline`, `bin/perf-suite` / `make perf-suite`.
-
-## Remaining blockers for “no direct nokogiri”
-
-| Item | Stance |
-| --- | --- |
-| **sanitize** (+ `WrapImgInA` Nokogiri nodes) | **Keep** — transitive Nokogiri OK |
-| Sitemap XML + XPath | Separate XML stack; not Lexbor |
-| Spec RSS asserts via `Nokogiri::XML` | Switch to REXML only when dropping direct dep |
-| Custom pager pure-XPath | Unsupported / best-effort under Lexbor |
-| CSS fidelity (`:has`, other Nokogiri extensions) | Shims cover known suite cases only |
-| Auto-source count drift (`page_1.html`) | **Blocker for promote** until explained/accepted |
-| Direct gemspec `nokogiri` | Removable only when Nokogiri backend + sanitize path are optional/gone |
-
-## Go / no-go
-
-| Option | Decision |
-| --- | --- |
-| Keep facade + default nokogiri | **GO** (ship-worthy experiment outcome) |
-| Default `HTML2RSS_HTML_BACKEND=nokolexbor` in production | **NO-GO** without fidelity memo + product sign-off |
-| Drop direct `nokogiri` gemspec dep | **NO-GO** (sanitize + XML) |
-| Archive experiment | Premature — facade is useful either way |
-
-## Reproduce
-
-```bash
-make perf-baseline   # writes spec/perf/baseline-auto-source.md
-make perf-suite      # writes spec/perf/baseline-suite-wall.md
 ```
+Raw HTML → Html::Document.parse → Backend::{Nokogiri|Nokolexbor|Rust}
+Rust path:
+  scraper parse → pure sst::normalize IR → Magnus SST::Document (short-circuit Normalizer)
+               → thin NativeEngine::{Document,Node} (CSS/attr ducks only)
+Sitemap / XML → always Nokogiri (no general XPath in Rust)
+```
+
+| Piece | Location |
+| --- | --- |
+| Extension | `ext/html2rss_parser/` (pure Rust `parse`/`sst`; magnus only under `ruby/`) |
+| Lazy load | `Html2rss::Html::NativeEngine` |
+| Adapter | `lib/html2rss/html/backend/rust.rb` |
+| Perf | `make perf-baseline` / `make perf-suite` (`--backend all`; rust skip + note on LoadError) |
+
+Locked decisions honored: scraper only; SST-first; optional compile; no general XPath; `:rust` under `NativeEngine`; nokogiri default; commit `Cargo.lock`; ignore `target/` and compiled `.so`/`.bundle`.
+
+## 4. Recorded baselines
+
+See:
+
+* `spec/perf/baseline-auto-source.md`
+* `spec/perf/baseline-suite-wall.md`
+
+Refresh with `make perf-baseline` and `make perf-suite` after meaningful backend changes.
+
+## 5. Promotion criteria (unchanged bar)
+
+1. Zero suite failures under rust (and no silent pending that hides HTML XPath debt).
+2. Zero article-count / title drift vs nokogiri on fixtures (especially `page_1.html`).
+3. >30% wall and >50% alloc reduction on auto-source vs nokogiri.
+4. Packaging story (`rake-compiler-dock` / precompiled gems) before flipping default — **out of scope for this wave**.

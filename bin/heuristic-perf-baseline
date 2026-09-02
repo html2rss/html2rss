@@ -3,7 +3,7 @@
 
 # Captures wall time + allocation baseline for auto-source paths.
 # Usage:
-#   mise exec -- bin/heuristic-perf-baseline [--write PATH] [--backend nokogiri|nokolexbor|both]
+#   mise exec -- bin/heuristic-perf-baseline [--write PATH] [--backend nokogiri|nokolexbor|rust|all]
 
 require 'bundler/setup'
 require 'fileutils'
@@ -19,7 +19,7 @@ FIXTURES = [
 WARMUP = 1
 RUNS = 5
 BASE_URL = 'https://example.com/'
-BACKENDS = %w[nokogiri nokolexbor].freeze
+BACKENDS = %w[nokogiri nokolexbor rust].freeze
 
 def run_heuristics(parsed_body) # rubocop:disable Metrics/MethodLength
   semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(
@@ -109,14 +109,14 @@ def format_result(result) # rubocop:disable Metrics/MethodLength
   lines
 end
 
-options = { write: nil, backend: 'both' }
+options = { write: nil, backend: 'all' }
 OptionParser.new do |opts|
   opts.on('--write PATH', 'Write markdown baseline to PATH') { |path| options[:write] = path }
-  opts.on('--backend NAME', 'nokogiri, nokolexbor, or both (default: both)') { |name| options[:backend] = name }
+  opts.on('--backend NAME', 'nokogiri, nokolexbor, rust, or all (default: all)') { |name| options[:backend] = name }
 end.parse!
 
 backends = case options[:backend]
-           when 'both' then BACKENDS
+           when 'all', 'both' then BACKENDS
            when *BACKENDS then [options[:backend]]
            else
              raise ArgumentError, "Unknown --backend #{options[:backend].inspect}"
@@ -144,18 +144,18 @@ lines << "Warmup runs: #{WARMUP}; measured runs: #{RUNS} (median reported)"
 lines << "Backends: #{results.map { _1[:backend] }.join(', ')}"
 lines << ''
 
-if results.size == 2
-  nokogiri, other = results
-  wall_delta = ((other[:wall_med] / nokogiri[:wall_med]) - 1) * 100
-  alloc_delta = ((other[:alloc_med].to_f / nokogiri[:alloc_med]) - 1) * 100
+if results.size >= 2
+  nokogiri = results.find { _1[:backend] == 'nokogiri' }
   lines << '## Comparison (vs nokogiri)'
   lines << ''
-  lines << "| Backend | wall_time_s | allocations | wall Δ% | alloc Δ% |"
+  lines << '| Backend | wall_time_s | allocations | wall Δ% | alloc Δ% |'
   lines << '| --- | --- | --- | --- | --- |'
   results.each do |result|
-    if result[:backend] == 'nokogiri'
+    if result[:backend] == 'nokogiri' || nokogiri.nil?
       lines << "| #{result[:backend]} | #{format('%.6f', result[:wall_med])} | #{result[:alloc_med]} | — | — |"
     else
+      wall_delta = ((result[:wall_med] / nokogiri[:wall_med]) - 1) * 100
+      alloc_delta = ((result[:alloc_med].to_f / nokogiri[:alloc_med]) - 1) * 100
       lines << "| #{result[:backend]} | #{format('%.6f', result[:wall_med])} | #{result[:alloc_med]} | " \
                "#{format('%+.1f', wall_delta)} | #{format('%+.1f', alloc_delta)} |"
     end
