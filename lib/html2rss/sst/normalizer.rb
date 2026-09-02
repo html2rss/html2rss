@@ -66,10 +66,38 @@ module Html2rss
         def call(input)
           raise ArgumentError, 'input is required' if input.nil?
 
+          if (sst = try_native_sst(input))
+            return sst
+          end
+
           new(coerce(input)).call
         end
 
         private
+
+        # Bypass the Ruby Normalizer walk when the Rust backend owns parse+SST.
+        #
+        # @param input [Object]
+        # @return [Document, nil]
+        def try_native_sst(input)
+          return unless Html2rss::Html::Backend.current.name == :rust
+
+          html = case input
+                 when String then input
+                 when Html2rss::Html::Document
+                   return input.native.to_sst if input.native.respond_to?(:to_sst)
+
+                   nil
+                 else
+                   return input.to_sst if input.respond_to?(:to_sst)
+
+                   nil
+                 end
+          return unless html
+
+          Html2rss::Html::NativeEngine.load!
+          Html2rss::Html::NativeEngine.to_sst(html)
+        end
 
         # @param input [String, Html2rss::Html::Document, Object]
         # @return [Object] backend-native node/document

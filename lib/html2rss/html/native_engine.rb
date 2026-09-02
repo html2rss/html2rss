@@ -37,6 +37,10 @@ module Html2rss
           false
         end
       end
+
+      # After {NativeEngine.load!}, the extension also defines:
+      # - {.to_sst} +html+ → {Html2rss::SST::Document}
+      # - {.stripped_tags} / {.max_nodes} / {.semantic_degrade_tags} for constants sync
     end
   end
 end
