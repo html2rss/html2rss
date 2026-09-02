@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Record full RSpec wall-clock under each HTML backend (same seed).
+# Usage: bin/perf-suite [--write PATH] [--seed N]
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+# Cursor sandbox may inject a BUNDLE_PATH without native gems (e.g. nokolexbor).
+if [[ "${BUNDLE_PATH:-}" == *cursor-sandbox-cache* ]]; then
+  unset BUNDLE_PATH
+  unset GEM_SPEC_CACHE
+fi
+
+WRITE_PATH=""
+SEED="${SEED:-42}"
+BACKENDS=(nokogiri nokolexbor)
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --write)
+      WRITE_PATH="$2"
+      shift 2
+      ;;
+    --seed)
+      SEED="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown arg: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+RUBY_RUNNER=()
+if command -v mise >/dev/null 2>&1; then
+  RUBY_RUNNER=(mise exec --)
+fi
+
+lines=()
+lines+=("# RSpec suite wall-clock by HTML backend")
+lines+=("")
+lines+=("Captured: $(date -u +"%Y-%m-%dT%H:%M:%SZ")")
+lines+=("Ruby: $("${RUBY_RUNNER[@]}" ruby -e 'print RUBY_VERSION')")
+lines+=("Seed: ${SEED}")
+lines+=("Command: bundle exec rspec --no-fail-fast --format progress --seed ${SEED}")
+lines+=("")
+lines+=("| Backend | wall_time_s | examples | failures | exit |")
+lines+=("| --- | --- | --- | --- | --- |")
+
+nokogiri_wall=""
+for backend in "${BACKENDS[@]}"; do
+  echo "=== Suite under HTML2RSS_HTML_BACKEND=${backend} (seed=${SEED}) ===" >&2
+  started=$("${RUBY_RUNNER[@]}" ruby -e 'print Process.clock_gettime(Process::CLOCK_MONOTONIC)')
+  set +e
+  out="$(HTML2RSS_HTML_BACKEND="${backend}" "${RUBY_RUNNER[@]}" bundle exec rspec --no-fail-fast --format progress --seed "${SEED}" 2>&1)"
+  exit_code=$?
+  set -e
+  ended=$("${RUBY_RUNNER[@]}" ruby -e 'print Process.clock_gettime(Process::CLOCK_MONOTONIC)')
+  wall=$("${RUBY_RUNNER[@]}" ruby -e "print format('%.3f', ${ended} - ${started})")
+
+  summary="$(printf '%s\n' "${out}" | grep -E '[0-9]+ examples?' | tail -1 || true)"
+  examples="$(printf '%s\n' "${summary}" | grep -oE '[0-9]+ examples?' | head -1 | grep -oE '[0-9]+' || echo '?')"
+  failures="$(printf '%s\n' "${summary}" | grep -oE '[0-9]+ failures?' | head -1 | grep -oE '[0-9]+' || echo '?')"
+
+  lines+=("| ${backend} | ${wall} | ${examples} | ${failures} | ${exit_code} |")
+
+  if [[ "${backend}" == "nokogiri" ]]; then
+    nokogiri_wall="${wall}"
+  elif [[ -n "${nokogiri_wall}" ]]; then
+    delta=$("${RUBY_RUNNER[@]}" ruby -e "print format('%+.1f', ((${wall} / ${nokogiri_wall}.to_f) - 1) * 100)")
+    lines+=("")
+    lines+=("nokolexbor wall Δ vs nokogiri: ${delta}%")
+  fi
+
+  printf '%s\n' "${summary}" >&2
+  echo "wall_time_s=${wall} exit=${exit_code}" >&2
+done
+
+report="$(printf '%s\n' "${lines[@]}")"
+printf '%s\n' "${report}"
+
+if [[ -n "${WRITE_PATH}" ]]; then
+  mkdir -p "$(dirname "${WRITE_PATH}")"
+  printf '%s\n' "${report}" >"${WRITE_PATH}"
+  echo "Wrote ${WRITE_PATH}" >&2
+fi
