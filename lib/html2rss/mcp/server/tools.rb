@@ -245,47 +245,30 @@ module Html2rss
             )
           end
 
-          def apply_outcome(url:, config: nil, yaml: nil) # rubocop:disable Metrics/MethodLength -- quality_report + RSS payload
+          def apply_outcome(url:, config: nil, yaml: nil)
             feed_config = HashUtil.deep_dup(ConfigArgument.parse(config:, yaml:).config)
             feed_config[:channel] ||= {}
             feed_config[:channel][:url] ||= url
-            feed_result, pipeline_outcome = extract_apply_feed(feed_config)
+            outcome, feed_result = FeedPipeline.new(feed_config).to_outcome_and_result
+            apply_feed_outcome(feed_config, feed_result, outcome)
+          end
+
+          def apply_feed_outcome(feed_config, feed_result, outcome) # rubocop:disable Metrics/MethodLength -- quality_report + RSS payload
             rss = feed_result.to_rss
-            quality_report = build_apply_quality_report(feed_config, feed_result, pipeline_outcome)
+            quality_report = Html2rss::Test.quality_report_for(
+              rss.items,
+              channel_url: feed_config.dig(:channel, :url).to_s,
+              raw_config: feed_config,
+              feed_result:,
+              pipeline_outcome: outcome,
+              probe_native_feed: false
+            )
             Outcome.apply(
               rss: rss.to_s,
               item_count: rss.items.size,
               empty: feed_result.empty?,
               quality_report: quality_report.to_h
             )
-          end
-
-          def build_apply_quality_report(feed_config, feed_result, pipeline_outcome)
-            rss = feed_result.to_rss
-            Html2rss::Test.quality_report_for(
-              rss.items,
-              channel_url: feed_config.dig(:channel, :url).to_s,
-              raw_config: feed_config,
-              feed_result:,
-              pipeline_outcome:,
-              probe_native_feed: false
-            )
-          end
-
-          def extract_apply_feed(feed_config)
-            if apply_enhance_audit_needed?(feed_config)
-              outcome, feed_result = FeedPipeline.new(feed_config).to_outcome_and_result
-              [feed_result, outcome]
-            else
-              [Html2rss.feed_result(feed_config), nil]
-            end
-          end
-
-          def apply_enhance_audit_needed?(feed_config)
-            config = Config.from_hash(feed_config)
-            return false unless config.selectors
-
-            !!config.selectors.dig(:items, :enhance)
           end
         end
       end

@@ -492,19 +492,35 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(feed_result)
+        outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: Html2rss::RequestService::Response.new(
+            url: 'https://example.com',
+            headers: { 'content-type' => 'text/html' },
+            body: '<html></html>'
+          ),
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       end
 
       # rubocop:disable RSpec/ExampleLength -- channel.url fill + RSS envelope
-      it 'returns RSS XML from Html2rss.feed_result', :aggregate_failures do
+      it 'returns RSS XML from FeedPipeline', :aggregate_failures do
         result = call_tool.call(
           'apply',
           { url: 'https://example.com', config: valid_config.except(:channel) }
         )
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss).to have_received(:feed_result).with(
+        expect(Html2rss::FeedPipeline).to have_received(:new).with(
           hash_including(channel: hash_including(url: 'https://example.com'))
         )
         expect(result.dig(:result, :isError)).to be(false)
@@ -604,7 +620,23 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(feed_result)
+        outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: Html2rss::RequestService::Response.new(
+            url: 'https://example.com',
+            headers: { 'content-type' => 'text/html' },
+            body: '<html></html>'
+          ),
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       end
 
@@ -698,7 +730,9 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks apply failures as isError' do
-        allow(Html2rss).to receive(:feed_result).and_raise(StandardError, 'feed boom')
+        pipeline = instance_double(Html2rss::FeedPipeline)
+        allow(pipeline).to receive(:to_outcome_and_result).and_raise(StandardError, 'feed boom')
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         result = call_tool.call('apply', { url: 'https://example.com', config: valid_config })
 
         expect(result.dig(:result, :isError)).to be(true)

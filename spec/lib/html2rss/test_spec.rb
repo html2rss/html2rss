@@ -72,7 +72,23 @@ RSpec.describe Html2rss::Test do
 
     context 'when schema is valid and items are extracted' do
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(fake_feed_result)
+        outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: Html2rss::RequestService::Response.new(
+            url: 'https://example.com/news',
+            headers: { 'content-type' => 'text/html' },
+            body: '<html></html>'
+          ),
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, fake_feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       end
 
@@ -211,7 +227,9 @@ RSpec.describe Html2rss::Test do
 
     context 'when live extraction raises an error' do
       before do
-        allow(Html2rss).to receive(:feed_result).and_raise(RuntimeError, 'network failure')
+        pipeline = instance_double(Html2rss::FeedPipeline)
+        allow(pipeline).to receive(:to_outcome_and_result).and_raise(RuntimeError, 'network failure')
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
       end
 
       it 'returns a failed Test::Result with error message', :aggregate_failures do
@@ -255,7 +273,6 @@ RSpec.describe Html2rss::Test do
       end
 
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(fake_feed_result)
         pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [pipeline_outcome, fake_feed_result])
         allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
@@ -304,7 +321,6 @@ RSpec.describe Html2rss::Test do
       end
 
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(fake_feed_result)
         pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [pipeline_outcome, fake_feed_result])
         allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)

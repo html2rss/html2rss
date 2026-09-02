@@ -179,14 +179,14 @@ module Html2rss
 
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       begin
-        feed_result, pipeline_outcome = extract_feed(raw_config, compare_enhance:)
+        feed_result, pipeline_outcome = extract_feed(raw_config)
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
 
         rss_doc = feed_result.to_rss
         rss_xml = rss_doc.to_s
         item_count = rss_doc.items.size
         sample_items = extract_samples(rss_doc.items)
-        quality_report = build_quality_report(
+        quality_report = quality_report_for(
           rss_doc.items,
           channel_url: raw_config.dig(:channel, :url).to_s,
           raw_config:,
@@ -245,35 +245,23 @@ module Html2rss
     # @param channel_url [String]
     # @param raw_config [Hash]
     # @param feed_result [Html2rss::FeedResult]
-    # @param pipeline_outcome [Html2rss::FeedPipeline::PipelineOutcome, nil]
+    # @param pipeline_outcome [Html2rss::FeedPipeline::PipelineOutcome]
     # @param probe_native_feed [Boolean] when false, skip syndication discovery (apply ship gate)
     # @return [QualityReport]
-    def quality_report_for(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil, # rubocop:disable Metrics/ParameterLists
+    def quality_report_for(items, channel_url:, raw_config:, feed_result:, pipeline_outcome:, # rubocop:disable Metrics/ParameterLists
                            probe_native_feed: true)
-      build_quality_report(
-        items,
-        channel_url:,
-        raw_config:,
-        feed_result:,
-        pipeline_outcome:,
-        probe_native_feed:
-      )
+      audit = AutoSource::Cleanup.audit_feed_items(items)
+      native_feed = probe_native_feed ? probe_native_feed_url(channel_url, raw_config)&.to_s : nil
+      report = QualityReport.from_audit(audit, native_feed:)
+      report = append_url_mismatch_warning(report, channel_url, feed_result)
+      merge_enhance_audit(report, raw_config, pipeline_outcome)
     end
 
-    def extract_feed(raw_config, compare_enhance:)
-      if enhance_audit_needed?(raw_config, compare_enhance:)
-        outcome, feed_result = FeedPipeline.new(raw_config).to_outcome_and_result
-        [feed_result, outcome]
-      else
-        [Html2rss.feed_result(raw_config), nil]
-      end
+    def extract_feed(raw_config)
+      outcome, feed_result = FeedPipeline.new(raw_config).to_outcome_and_result
+      [feed_result, outcome]
     end
     private_class_method :extract_feed
-
-    def enhance_audit_needed?(raw_config, compare_enhance:)
-      compare_enhance || enhance_enabled?(raw_config)
-    end
-    private_class_method :enhance_audit_needed?
 
     def enhance_enabled?(raw_config)
       config = Config.from_hash(raw_config)
@@ -296,16 +284,6 @@ module Html2rss
       )
     end
     private_class_method :build_enhance_compare
-
-    def build_quality_report(items, channel_url:, raw_config:, feed_result:, pipeline_outcome: nil, # rubocop:disable Metrics/ParameterLists
-                             probe_native_feed: true)
-      audit = AutoSource::Cleanup.audit_feed_items(items)
-      native_feed = probe_native_feed ? probe_native_feed_url(channel_url, raw_config)&.to_s : nil
-      report = QualityReport.from_audit(audit, native_feed:)
-      report = append_url_mismatch_warning(report, channel_url, feed_result)
-      merge_enhance_audit(report, raw_config, pipeline_outcome)
-    end
-    private_class_method :build_quality_report
 
     def merge_enhance_audit(report, raw_config, pipeline_outcome) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- warning merge + metrics
       return report unless pipeline_outcome && enhance_enabled?(raw_config)
