@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Test do
         time_zone: 'UTC'
       },
       selectors: {
-        items: { selector: 'article' },
+        items: { selector: 'article', enhance: false },
         title: { selector: 'h2' },
         url: { selector: 'a', extractor: 'href' }
       }
@@ -72,7 +72,23 @@ RSpec.describe Html2rss::Test do
 
     context 'when schema is valid and items are extracted' do
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(fake_feed_result)
+        outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: Html2rss::RequestService::Response.new(
+            url: 'https://example.com/news',
+            headers: { 'content-type' => 'text/html' },
+            body: '<html></html>'
+          ),
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, fake_feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       end
 
@@ -211,7 +227,9 @@ RSpec.describe Html2rss::Test do
 
     context 'when live extraction raises an error' do
       before do
-        allow(Html2rss).to receive(:feed_result).and_raise(RuntimeError, 'network failure')
+        pipeline = instance_double(Html2rss::FeedPipeline)
+        allow(pipeline).to receive(:to_outcome_and_result).and_raise(RuntimeError, 'network failure')
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
       end
 
       it 'returns a failed Test::Result with error message', :aggregate_failures do
@@ -219,6 +237,105 @@ RSpec.describe Html2rss::Test do
         expect(result.success).to be(false)
         expect(result.error_message).to include('network failure')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:execution))
+      end
+    end
+
+    context 'when enhance audit is enabled' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- fixture + pipeline outcome setup
+      let(:fixture_body) { File.read(File.expand_path('../../fixtures/enhance_audit/rich_card.html', __dir__)) }
+      let(:pipeline_response) do
+        Html2rss::RequestService::Response.new(
+          url: 'https://example.com/news',
+          headers: { 'content-type' => 'text/html' },
+          body: fixture_body
+        )
+      end
+      let(:enhance_config) do
+        valid_config.merge(
+          selectors: {
+            items: { selector: 'article.card', enhance: true },
+            title: { selector: 'h2' },
+            url: { selector: 'a', extractor: 'href' }
+          }
+        )
+      end
+      let(:pipeline_outcome) do
+        Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: pipeline_response,
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+      end
+
+      before do
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [pipeline_outcome, fake_feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+      end
+
+      it 'includes enhance_gains in quality_report metrics', :aggregate_failures do
+        result = described_class.call(enhance_config, min_items: 1)
+
+        expect(result.quality_report.metrics[:enhance_gains]).to include(
+          descriptions_added: be >= 1,
+          no_op: false
+        )
+      end
+    end
+
+    context 'when compare_enhance is enabled' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- fixture + pipeline outcome setup
+      let(:fixture_body) { File.read(File.expand_path('../../fixtures/enhance_audit/rich_card.html', __dir__)) }
+      let(:pipeline_response) do
+        Html2rss::RequestService::Response.new(
+          url: 'https://example.com/news',
+          headers: { 'content-type' => 'text/html' },
+          body: fixture_body
+        )
+      end
+      let(:compare_config) do
+        valid_config.merge(
+          selectors: {
+            items: { selector: 'article.card', enhance: false },
+            title: { selector: 'h2' },
+            url: { selector: 'a', extractor: 'href' }
+          }
+        )
+      end
+      let(:pipeline_outcome) do
+        Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: pipeline_response,
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+      end
+
+      before do
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [pipeline_outcome, fake_feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+      end
+
+      it 'includes enhance_compare on the result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        result = described_class.call(compare_config, min_items: 1, compare_enhance: true)
+
+        expect(result.enhance_compare).to include(
+          enhance_off: hash_including(item_count: 2),
+          enhance_on: hash_including(descriptions_filled: be >= 1),
+          delta: hash_including(descriptions_gained: be >= 1, no_op: false)
+        )
+        expect(result.quality_report.metrics).not_to have_key(:enhance_gains)
+        expect(result.to_h).to include(enhance_compare: result.enhance_compare)
       end
     end
   end

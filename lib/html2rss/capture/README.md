@@ -1,6 +1,6 @@
 # Capture
 
-`Html2rss.capture` (and CLI `html2rss capture`) analyzes a URL through the feed pipeline and produces a reusable config with **items selector + `enhance: true` only** — no title/url/description attribute-selector soup. At feed-build time, `enhance: true` fills missing article fields via `Html::ArticleExtractor` on each matched item.
+`Html2rss.capture` (and CLI `html2rss capture`) analyzes a URL through the feed pipeline and produces a reusable config with **items selector + `enhance: true` only** — no title/url/description attribute-selector soup. At feed-build time, `enhance: true` fills missing article fields via `Html::ArticleExtractor` on each **matched list-card item node**.
 
 ## API
 

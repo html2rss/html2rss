@@ -14,7 +14,7 @@ RSpec.describe Html2rss::MCP::Server do
     {
       channel: { url: 'https://example.com', title: 'Example', time_zone: 'UTC' },
       selectors: {
-        items: { selector: 'div.item' },
+        items: { selector: 'div.item', enhance: false },
         title: { selector: 'h2' },
         url: { selector: 'a', extractor: 'href' }
       }
@@ -287,9 +287,7 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss).to have_received(:test).with(
           valid_config,
-          min_items: 1,
-          strategy: :auto,
-          strict_quality: false
+          hash_including(min_items: 1, strategy: :auto, strict_quality: false, compare_enhance: false)
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(envelope).to include(ok: true, next_step: 'apply')
@@ -323,8 +321,48 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(Html2rss).to have_received(:test).with(
           valid_config,
-          min_items: 1,
-          strict_quality: true
+          hash_including(min_items: 1, strict_quality: true, compare_enhance: false)
+        )
+      end
+
+      it 'forwards compare_enhance to Html2rss.test', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss).to receive(:test).and_return(test_result(success: true))
+
+        call_tool.call('test', { config: valid_config, min_items: 1, compare_enhance: true })
+
+        expect(Html2rss).to have_received(:test).with(
+          valid_config,
+          hash_including(min_items: 1, compare_enhance: true)
+        )
+      end
+
+      it 'includes enhance_gains in quality_report when present', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        quality_report = Html2rss::Test::QualityReport.new(
+          warnings: [],
+          metrics: {
+            item_count: 2,
+            unique_url_count: 2,
+            junk_title_count: 0,
+            short_title_count: 0,
+            low_word_count: 0,
+            enhance_gains: {
+              items_probed: 2,
+              keys_added: { description: 2 },
+              descriptions_added: 2,
+              no_op: false
+            }
+          },
+          native_feed: nil,
+          defer_reason: nil
+        )
+        allow(Html2rss).to receive(:test).and_return(test_result(success: true, quality_report:))
+
+        result = call_tool.call('test', { config: valid_config, min_items: 1 })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(envelope[:payload][:quality_report][:metrics][:enhance_gains]).to include(
+          descriptions_added: 2,
+          no_op: false
         )
       end
 
@@ -427,34 +465,112 @@ RSpec.describe Html2rss::MCP::Server do
       end
     end
 
-    describe 'apply' do
+    describe 'apply' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- RSS item + feed_result doubles
+      let(:rss_items) do
+        [
+          instance_double(
+            RSS::Rss::Channel::Item,
+            title: 'Example Article Title',
+            link: 'https://example.com/a',
+            pubDate: nil
+          )
+        ]
+      end
       let(:feed_result) do
+        status = instance_double(
+          Html2rss::Status,
+          selected_strategy: :faraday,
+          entry_url: 'https://example.com',
+          scrape_url: 'https://example.com'
+        )
         instance_double(
           Html2rss::FeedResult,
           empty?: false,
-          to_rss: instance_double(RSS::Rss, to_s: '<rss/>', items: [Object.new])
+          to_rss: instance_double(RSS::Rss, to_s: '<rss/>', items: rss_items),
+          status:
         )
       end
 
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(feed_result)
+        outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: Html2rss::RequestService::Response.new(
+            url: 'https://example.com',
+            headers: { 'content-type' => 'text/html' },
+            body: '<html></html>'
+          ),
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       end
 
       # rubocop:disable RSpec/ExampleLength -- channel.url fill + RSS envelope
-      it 'returns RSS XML from Html2rss.feed_result', :aggregate_failures do
+      it 'returns RSS XML from FeedPipeline', :aggregate_failures do
         result = call_tool.call(
           'apply',
           { url: 'https://example.com', config: valid_config.except(:channel) }
         )
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
-        expect(Html2rss).to have_received(:feed_result).with(
+        expect(Html2rss::FeedPipeline).to have_received(:new).with(
           hash_including(channel: hash_including(url: 'https://example.com'))
         )
         expect(result.dig(:result, :isError)).to be(false)
         expect(result.dig(:result, :_meta)).to be_nil
         expect(envelope).to include(ok: true, next_step: 'done')
         expect(envelope[:payload]).to include(rss: '<rss/>', item_count: 1)
+      end
+
+      it 'includes quality_report when apply builds enhance audit', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        enhance_config = valid_config.merge(
+          selectors: valid_config[:selectors].merge(items: { selector: 'article.card', enhance: true })
+        )
+        enhance_feed_result = instance_double(
+          Html2rss::FeedResult,
+          empty?: false,
+          to_rss: instance_double(RSS::Rss, to_s: '<rss/>', items: rss_items),
+          status: feed_result.status
+        )
+        fixture_body = File.read(File.expand_path('../../../fixtures/enhance_audit/rich_card.html', __dir__))
+        pipeline_response = Html2rss::RequestService::Response.new(
+          url: 'https://example.com',
+          headers: { 'content-type' => 'text/html' },
+          body: fixture_body
+        )
+        pipeline_outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: pipeline_response,
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+        pipeline = instance_double(
+          Html2rss::FeedPipeline,
+          to_outcome_and_result: [pipeline_outcome, enhance_feed_result]
+        )
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url)
+
+        result = call_tool.call('apply', { url: 'https://example.com', config: enhance_config })
+        envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
+
+        expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
+        expect(envelope[:payload][:quality_report][:metrics][:enhance_gains]).to include(
+          descriptions_added: be >= 1,
+          no_op: false
+        )
       end
       # rubocop:enable RSpec/ExampleLength
     end
@@ -489,15 +605,39 @@ RSpec.describe Html2rss::MCP::Server do
 
     describe 'apply ship gate' do
       let(:feed_result) do
+        status = instance_double(
+          Html2rss::Status,
+          selected_strategy: :faraday,
+          entry_url: 'https://example.com',
+          scrape_url: 'https://example.com'
+        )
         instance_double(
           Html2rss::FeedResult,
           empty?: true,
-          to_rss: instance_double(RSS::Rss, to_s: '<rss/>', items: [])
+          to_rss: instance_double(RSS::Rss, to_s: '<rss/>', items: []),
+          status:
         )
       end
 
       before do
-        allow(Html2rss).to receive(:feed_result).and_return(feed_result)
+        outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
+          response: Html2rss::RequestService::Response.new(
+            url: 'https://example.com',
+            headers: { 'content-type' => 'text/html' },
+            body: '<html></html>'
+          ),
+          articles: [],
+          dedup_dropped: 0,
+          selected_strategy: :faraday,
+          attempt_count: 0,
+          strategy_attempts: [],
+          admission_drops: {},
+          scrape_target: nil,
+          entry_resolution: nil
+        )
+        pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, feed_result])
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
       end
 
       it 'marks apply as isError and reports item_count from rss.items.size', :aggregate_failures do
@@ -590,7 +730,9 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'marks apply failures as isError' do
-        allow(Html2rss).to receive(:feed_result).and_raise(StandardError, 'feed boom')
+        pipeline = instance_double(Html2rss::FeedPipeline)
+        allow(pipeline).to receive(:to_outcome_and_result).and_raise(StandardError, 'feed boom')
+        allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
         result = call_tool.call('apply', { url: 'https://example.com', config: valid_config })
 
         expect(result.dig(:result, :isError)).to be(true)

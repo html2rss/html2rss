@@ -83,6 +83,11 @@ module Html2rss
             description: 'Fail when ship-quality audit thresholds are exceeded (default: false)',
             default: false
           },
+          compare_enhance: {
+            type: 'boolean',
+            description: 'Diagnostic: compare extraction with enhance on vs off on cached HTML (default: false)',
+            default: false
+          },
           strategy: STRATEGY_PROPERTY
         }.freeze,
         oneOf: XOR_ONE_OF

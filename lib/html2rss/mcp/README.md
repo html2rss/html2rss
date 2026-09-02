@@ -21,7 +21,7 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 ## Decision tree
 
 1. **Articles now (no saved config)?** → `scrape` (or `batch_scrape` for multiple URLs). `strategy: "auto"` runs Faraday → Botasaurus; do not retry with explicit `faraday` after `auto`.
-2. **Reusable feed YAML?** → `capture` → `test` → `apply`. `capture` returns YAML in `payload.yaml`. Strive `enhance: true` (false only when chrome leaks). `test` runs schema + live extraction; `apply` is the ship gate (`isError` on zero items).
+2. **Reusable feed YAML?** → `capture` → `test` → `apply`. `capture` returns YAML in `payload.yaml`. Strive `enhance: true` (false only when chrome leaks). `test` runs schema + live extraction; optional `compare_enhance` compares enhance off vs on. `apply` is the ship gate (`isError` on zero items). Both `test` and `apply` may include `quality_report.enhance_gains` when `selectors.items.enhance` is true.
 3. **Weak scrape/capture or recon?** → `inspect` (or `batch_inspect`). When alternates warrant it, follow `next_step` to `recon`.
 4. **Config already in hand?** → `validate` (schema only) → `test` → `apply`.
 

@@ -147,6 +147,8 @@ module Html2rss
     method_option :min_items, type: :numeric, default: 1, desc: 'Minimum required articles to pass'
     method_option :strict_quality, type: :boolean, default: false,
                                    desc: 'Fail when ship-quality audit thresholds are exceeded'
+    method_option :compare_enhance, type: :boolean, default: false,
+                                    desc: 'Compare extraction with enhance on vs off (diagnostic only)'
     method_option :strategy, type: :string, desc: STRATEGY_OPTION_DESC, enum: STRATEGY_OPTION_ENUM
     method_option :json, type: :boolean, desc: 'Output test outcome as JSON', default: false
     method_option :xml, type: :boolean, desc: 'Dump RSS XML alongside summary', default: false
@@ -162,7 +164,8 @@ module Html2rss
         min_items: options.fetch(:min_items, 1).to_i,
         params: options[:params] || {},
         strategy: options[:strategy],
-        strict_quality: options.fetch(:strict_quality, false)
+        strict_quality: options.fetch(:strict_quality, false),
+        compare_enhance: options.fetch(:compare_enhance, false)
       )
 
       if options[:json]

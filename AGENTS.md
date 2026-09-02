@@ -154,6 +154,8 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 
 **Wire vs internal:** `Html2rss.feed` / `feed_result` and `auto_feed_result` stay pipeline internals — do not rename in `spec/examples/` or pipeline code. User-facing **`apply`** delegates to `feed_result`; **`scrape`** delegates to `auto_feed_result`.
 
+**Enhance audit:** `selectors.items.enhance` is list-card enrichment via `Html::ArticleExtractor` on matched item nodes. `Test::EnhanceAudit` owns `quality_report.metrics.enhance_gains` and warn-only enhance warnings; `compare_enhance` on test is diagnostic only. Auto-source-only configs (no selectors) skip enhance_gains.
+
 **Ownership:** diagnostics → `PageRecon::Diagnostics`; verdict → `Recon`; capture YAML → `Capture::CaptureResult#yaml`; validate/test/apply/scrape facades → `lib/html2rss.rb`; MCP wire + playbook → `lib/html2rss/mcp/**` (`Outcome::Playbook` is instruction SSOT). See `CONTEXT.md` file ownership matrix.
 
 **Sync rule:** when changing CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep` names, or facade method names, update `CONTEXT.md`, this section, `README.md`, and `lib/html2rss/mcp/README.md` in the same PR wave. Grep gate (Wave 3): zero stale tool names in `lib/`, `spec/lib/`, `README`, `AGENTS`, `CONTEXT`, module READMEs.

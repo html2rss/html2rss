@@ -100,9 +100,10 @@ module Html2rss
                          'and quality_report (warnings for duplicate URLs, junk titles, native feed). ' \
                          'Set strict_quality to fail on duplicate URLs, >50% junk titles, or short titles.',
             input_schema: Contract::TEST_INPUT_SCHEMA,
-            call: lambda { |config: nil, yaml: nil, min_items: 1, strict_quality: false, **kwargs|
+            call: lambda { |config: nil, yaml: nil, min_items: 1, strict_quality: false,
+                              compare_enhance: false, **kwargs|
               feed_config = ConfigArgument.parse(config:, yaml:).config
-              test_args = { min_items:, strict_quality: }
+              test_args = { min_items:, strict_quality:, compare_enhance: }
               test_args[:strategy] = Runtime.coerce_strategy(kwargs[:strategy]) if kwargs.key?(:strategy)
               test_result = Html2rss.test(feed_config, **test_args)
               Outcome.test(test_result)
@@ -248,9 +249,26 @@ module Html2rss
             feed_config = HashUtil.deep_dup(ConfigArgument.parse(config:, yaml:).config)
             feed_config[:channel] ||= {}
             feed_config[:channel][:url] ||= url
-            feed_result = Html2rss.feed_result(feed_config)
+            outcome, feed_result = FeedPipeline.new(feed_config).to_outcome_and_result
+            apply_feed_outcome(feed_config, feed_result, outcome)
+          end
+
+          def apply_feed_outcome(feed_config, feed_result, outcome) # rubocop:disable Metrics/MethodLength -- quality_report + RSS payload
             rss = feed_result.to_rss
-            Outcome.apply(rss: rss.to_s, item_count: rss.items.size, empty: feed_result.empty?)
+            quality_report = Html2rss::Test.quality_report_for(
+              rss.items,
+              channel_url: feed_config.dig(:channel, :url).to_s,
+              raw_config: feed_config,
+              feed_result:,
+              pipeline_outcome: outcome,
+              probe_native_feed: false
+            )
+            Outcome.apply(
+              rss: rss.to_s,
+              item_count: rss.items.size,
+              empty: feed_result.empty?,
+              quality_report: quality_report.to_h
+            )
           end
         end
       end

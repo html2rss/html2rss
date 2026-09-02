@@ -402,6 +402,18 @@ RSpec.describe Html2rss::CLI do
           hash_including(strict_quality: true)
         )
       end
+
+      it 'forwards --compare-enhance to Html2rss.test', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        allow(Html2rss).to receive(:test).and_return(test_result_success)
+
+        cli.invoke(:test, ['config.yml'], { compare_enhance: true })
+
+        expect(Html2rss).to have_received(:test).with(
+          'config.yml',
+          nil,
+          hash_including(compare_enhance: true)
+        )
+      end
     end
 
     context 'when test fails' do

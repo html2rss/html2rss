@@ -113,6 +113,10 @@ module Html2rss
         # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
         def overlay
           items_schema = Html2rss::Config::SelectorsValidator::Items.new.schema.json_schema(loose: true)
+          items_schema[:properties][:enhance] = items_schema.fetch(:properties).fetch(:enhance).merge(
+            description: 'List-card enrichment: run Html::ArticleExtractor on each matched item node ' \
+                         'to fill missing fields from the card HTML.'
+          )
           items_schema[:properties][:pagination] = {
             description: 'Pagination configuration or maximum page count integer.',
             oneOf: [
@@ -166,7 +170,7 @@ module Html2rss
               description: 'Selectors used to extract article attributes.',
               properties: {
                 items: items_schema.merge(
-                  description: 'Defines the items selector and optional enhancement settings.'
+                  description: 'Defines the items selector and list-card enhance settings.'
                 ),
                 enclosure: enclosure_schema.merge(
                   description: 'Describes enclosure extraction settings.'
