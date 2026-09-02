@@ -79,6 +79,12 @@ RSpec.describe Html2rss::Html::Navigator do
       expect(described_class.usable_card_parent?(document.at_css('nav'))).to be(false)
       expect(described_class.usable_card_parent?(document.at_css('body'))).to be(false)
     end
+
+    it 'treats uppercase NAV as a card-walk stop' do
+      document = Nokogiri::HTML('<html><body><NAV><a href="/home">Home</a></NAV></body></html>')
+
+      expect(described_class.usable_card_parent?(document.at_css('NAV'))).to be(false)
+    end
   end
 
   describe '.find_closest_selector_upwards' do
@@ -188,39 +194,6 @@ RSpec.describe Html2rss::Html::Navigator do
       child = document.at_css('#child')
       expect(described_class.descendant_of?(document.at_css('#parent'), child)).to be(false)
       expect(described_class.descendant_of?(document.at_css('#other'), child)).to be(false)
-    end
-  end
-
-  describe '.ignored_container_path?' do
-    let(:document) do
-      Nokogiri::HTML(<<~HTML)
-        <html><body>
-          <nav><a id="nav-link" href="/home">Home</a></nav>
-          <main><article><a id="story" href="/story">Story</a></article></main>
-          <footer><span id="foot">x</span></footer>
-        </body></html>
-      HTML
-    end
-
-    it 'returns true for nodes under nav/footer chrome', :aggregate_failures do
-      expect(described_class.ignored_container_path?(document.at_css('#nav-link'))).to be(true)
-      expect(described_class.ignored_container_path?(document.at_css('#foot'))).to be(true)
-    end
-
-    it 'treats uppercase NAV as ignored chrome', :aggregate_failures do
-      document = Nokogiri::HTML('<html><body><NAV><a id="nav-link" href="/home">Home</a></NAV></body></html>')
-
-      expect(described_class.ignored_container_path?(document.at_css('#nav-link'))).to be(true)
-      expect(described_class.usable_card_parent?(document.at_css('NAV'))).to be(false)
-    end
-
-    it 'returns false for content nodes and memoizes via identity cache', :aggregate_failures do
-      cache = {}.compare_by_identity
-      node = document.at_css('#story')
-
-      expect(described_class.ignored_container_path?(node, cache)).to be(false)
-      expect(described_class.ignored_container_path?(node, cache)).to be(false)
-      expect(cache).to include(node)
     end
   end
 end

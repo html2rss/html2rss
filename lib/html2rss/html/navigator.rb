@@ -11,9 +11,6 @@ module Html2rss
       # Element tags that indicate ignored DOM chrome when found in a container path.
       IGNORED_CONTAINER_TAGS = %w[nav footer header svg script style].to_set.freeze
 
-      # Layout roots and chrome tags excluded from class-clustering candidate nodes.
-      CLUSTER_EXCLUDED_TAGS = Set['html', 'body', 'nav', 'footer', 'header', 'svg', 'script', 'style'].freeze
-
       # Ancestor tags that usually indicate navigation/utility regions inside a content container.
       UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].to_set.freeze
 
@@ -52,38 +49,6 @@ module Html2rss
 
           article_tag.at_css(MAIN_ANCHOR_SELECTOR)
         end
-
-        ##
-        # @param node [Nokogiri::XML::Node]
-        # @param cache [Hash, nil] identity cache used to store results (must use compare_by_identity)
-        # @return [Boolean] true when the node belongs to ignored DOM chrome
-        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-        def ignored_container_path?(node, cache = nil)
-          return cache[node] if cache&.key?(node)
-
-          curr = node
-          visited = []
-          is_ignored = false
-
-          while curr.respond_to?(:parent) && curr
-            if cache&.key?(curr)
-              is_ignored = cache[curr]
-              break
-            end
-
-            if IGNORED_CONTAINER_TAGS.include?(Probe.tag(curr))
-              is_ignored = true
-              break
-            end
-
-            visited << curr
-            curr = curr.parent
-          end
-          visited.each { |n| cache[n] = is_ignored } if cache
-
-          is_ignored
-        end
-        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
         ##
         # Returns the first parent that satisfies the condition.
