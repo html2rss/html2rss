@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 module Html2rss
   ##
   # This scraper is designed to scrape articles from a given HTML page using CSS
@@ -188,7 +186,7 @@ module Html2rss
       @parsed_bodies ||= {}
       @parsed_bodies[page_response.url] ||= if page_response.json_response?
                                               fragment = ObjectToXmlConverter.new(page_response.parsed_body).call
-                                              Nokogiri::HTML5.fragment(fragment)
+                                              Html::Document.fragment(fragment)
                                             else
                                               page_response.parsed_body
                                             end
@@ -251,8 +249,7 @@ module Html2rss
     end
 
     def extract_category_text(category)
-      text = case category
-             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
+      text = if Html::Node.node?(category) || Html::Node.node_set?(category)
                Html2rss::Html::Navigator.extract_visible_text(category)
              else
                category&.to_s
@@ -263,7 +260,7 @@ module Html2rss
     end
 
     def node_set_with_multiple_elements?(nodes)
-      nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
+      Html::Node.node_set?(nodes) && nodes.length > 1
     end
 
     def category_node_options(selector_config, scope:)

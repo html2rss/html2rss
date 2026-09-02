@@ -26,7 +26,7 @@ module Html2rss
       end
 
       ##
-      # @param node [Nokogiri::XML::Node]
+      # @param node [Object] DOM node (#name)
       # @return [String] folded element name
       def tag(node)
         name = node.name
@@ -56,9 +56,9 @@ module Html2rss
       end
 
       ##
-      # @param doc [Nokogiri::XML::Node]
+      # @param doc [Object] document or node responding to +css+
       # @param mime_types [Array<String>] optional MIME filters (folded once per call)
-      # @return [Array<Nokogiri::XML::Element>]
+      # @return [Array] matching script nodes
       def scripts(doc, *mime_types)
         return doc.css('script') if mime_types.empty?
 
@@ -67,10 +67,10 @@ module Html2rss
       end
 
       ##
-      # @param doc [Nokogiri::XML::Node]
+      # @param doc [Object] document or node responding to +css+
       # @param rel [String] link rel token
       # @param mime [String, nil] optional MIME filter
-      # @return [Array<Nokogiri::XML::Element>]
+      # @return [Array] matching link nodes
       def alternate_links(doc, rel:, mime: nil)
         nodes = doc.css(%(link[rel~="#{rel}"][href]))
         return nodes if mime.nil?

@@ -99,6 +99,15 @@ module Html2rss
           end
         end
       end
+
+      ##
+      # @return [Array<Class>] operational errors including the active HTML backend's syntax class
+      def operational_errors
+        klass = Html::Backend.current.syntax_error_class
+        return OPERATIONAL_ERRORS if OPERATIONAL_ERRORS.include?(klass)
+
+        [*OPERATIONAL_ERRORS, klass].freeze
+      end
     end
 
     ##
@@ -222,7 +231,7 @@ module Html2rss
 
     def run_scraper(instance)
       instance.map { |item| article_from_scraper_item(item, instance) }
-    rescue *OPERATIONAL_ERRORS => error
+    rescue *self.class.operational_errors => error
       Log.warn("#{self.class}: #{instance.class} quarantined #{error.class}: #{error.message}")
       []
     end

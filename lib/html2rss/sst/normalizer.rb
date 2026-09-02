@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 module Html2rss
   module SST
     ##
-    # Sole Nokogiri consumer on the heuristic auto-source path. Builds an
+    # Sole HTML-tree consumer on the heuristic auto-source path. Builds an
     # immutable SST::Document with parent/depth/chrome indices.
     class Normalizer # rubocop:disable Metrics/ClassLength
       # Raised when no SST nodes survive normalization for the chosen root.
@@ -61,8 +59,8 @@ module Html2rss
 
       class << self
         ##
-        # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
-        #   HTML string or already-parsed node (String is parsed once here)
+        # @param input [String, Html2rss::Html::Document, Object]
+        #   HTML string, facade document, or already-parsed backend node
         # @return [Document]
         # @raise [ArgumentError] when input is nil or unsupported
         def call(input)
@@ -73,21 +71,25 @@ module Html2rss
 
         private
 
-        # @param input [String, Nokogiri::XML::Node]
-        # @return [Nokogiri::XML::Node]
+        # @param input [String, Html2rss::Html::Document, Object]
+        # @return [Object] backend-native node/document
         def coerce(input)
           case input
-          when String then Nokogiri::HTML(input)
-          when Nokogiri::XML::Node then input
+          when String then Html2rss::Html::Document.parse(input).native
+          when Html2rss::Html::Document then input.native
           else
-            raise ArgumentError, "expected String or Nokogiri::XML::Node, got #{input.class}"
+            unless Html2rss::Html::Node.node?(input)
+              raise ArgumentError, "expected String or HTML document/node, got #{input.class}"
+            end
+
+            Html2rss::Html::Node.unwrap(input)
           end
         end
       end
 
-      # @param parsed_body [Nokogiri::HTML::Document, Nokogiri::XML::Node]
+      # @param parsed_body [Html2rss::Html::Document, Object] facade or backend-native node
       def initialize(parsed_body)
-        @parsed_body = parsed_body
+        @parsed_body = Html2rss::Html::Node.unwrap(parsed_body)
         @node_count = 0
         @degraded = false
         @parents = {}.compare_by_identity

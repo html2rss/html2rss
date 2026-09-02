@@ -74,7 +74,7 @@ module Html2rss
         # @param value [String]
         # @return [Boolean]
         def html?(value)
-          Nokogiri::HTML.fragment(value).children.any?(&:element?)
+          Html::Document.fragment(value).children.any?(&:element?)
         end
 
         ##

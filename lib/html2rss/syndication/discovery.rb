@@ -148,7 +148,7 @@ module Html2rss
       private_class_method :alternate_feed_urls
 
       def feed_links_from_document(parsed_body, page)
-        return [] unless parsed_body.is_a?(Nokogiri::HTML::Document)
+        return [] unless Html::Document.html_document?(parsed_body)
 
         Html::FeedLink.from_document(parsed_body).filter_map do |link|
           absolute_url(page, link.href)

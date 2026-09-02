@@ -25,7 +25,7 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document, nil]
         # @return [Boolean]
         def self.articles?(parsed_body)
-          return false unless parsed_body.is_a?(Nokogiri::HTML::Document)
+          return false unless ::Html2rss::Html::Document.html_document?(parsed_body)
 
           return true if ::Html2rss::Html::FeedLink.from_document(parsed_body).any?
 

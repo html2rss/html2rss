@@ -3,7 +3,6 @@
 require 'addressable/uri'
 require 'cgi'
 require 'ipaddr'
-require 'nokogiri'
 
 module Html2rss
   ##
@@ -105,7 +104,7 @@ module Html2rss
     # @param html [String] raw HTML content
     # @return [Url, nil] the extracted absolute URL, or nil if none is found
     def self.extract_from_html(html)
-      doc = Nokogiri::HTML(html)
+      doc = Html::Document.parse(html)
       tags = { 'link[rel="canonical"]' => 'href', 'meta[property="og:url"]' => 'content',
                'meta[name="twitter:url"]' => 'content', 'base[href]' => 'href' }
       tags.each do |sel, attr|
