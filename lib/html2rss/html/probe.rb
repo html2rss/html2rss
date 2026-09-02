@@ -29,14 +29,20 @@ module Html2rss
       # @param node [Nokogiri::XML::Node]
       # @return [String] folded element name
       def tag(node)
-        fold(node.name)
+        name = node.name
+        return name if name.ascii_only? && !name.match?(/[A-Z]/)
+
+        fold(name)
       end
 
       ##
       # @param type [String, Symbol, #to_s, nil] MIME type attribute value
       # @return [String] media type without parameters, folded
       def mime_base(type)
-        fold(type.to_s.split(';', 2).first.to_s.strip)
+        raw = type.to_s
+        return fold(raw) unless raw.include?(';') || raw.match?(/\A\s|\s\z/)
+
+        fold(raw.split(';', 2).first.to_s.strip)
       end
 
       ##
@@ -45,7 +51,7 @@ module Html2rss
       # @return [Boolean]
       def mime_match?(actual, *expected)
         base = mime_base(actual)
-        expected.any? { |candidate| base == mime_base(candidate) }
+        expected.any? { |candidate| base == candidate || base == mime_base(candidate) }
       end
 
       ##
@@ -53,11 +59,10 @@ module Html2rss
       # @param mime_types [Array<String>] optional MIME filters (folded once per call)
       # @return [Array<Nokogiri::XML::Element>]
       def scripts(doc, *mime_types)
-        folded = mime_types.map { |mime| mime_base(mime) }.freeze unless mime_types.empty?
+        return doc.css('script') if mime_types.empty?
 
-        doc.css('script').reject do |script|
-          folded && !folded.include?(mime_base(script['type']))
-        end
+        allowed = mime_types.to_set { |mime| mime_base(mime) }
+        doc.css('script').select { |script| allowed.include?(mime_base(script['type'])) }
       end
 
       ##

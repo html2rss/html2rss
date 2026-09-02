@@ -99,7 +99,7 @@ module Html2rss
       def shallow?
         segment_count = segments.size
 
-        segment_count <= 1 || (segment_count == 2 && high_confidence_junk_segment?(segments.last))
+        segment_count <= 1 || (segment_count == 2 && high_confidence_junk_at?(segment_count - 1))
       end
 
       # @return [Boolean] true when the final path segment looks like a post slug
@@ -111,15 +111,15 @@ module Html2rss
 
       # @return [Boolean] true when every path segment is utility chrome
       def utility_only_route?
-        segments.all? { |segment| high_confidence_junk_segment?(segment) }
+        (0...segments.size).all? { |i| high_confidence_junk_at?(i) }
       end
 
       # @return [Boolean] true when the route is shallow and contains high-confidence noise
       def shallow_high_confidence_route?
         vanity_segments = SEGMENT_SETS.fetch(:vanity)
 
-        shallow? && segments.any? do |segment|
-          high_confidence_junk_segment?(segment) || vanity_segments.include?(folded_segment(segment))
+        shallow? && (0...segments.size).any? do |i|
+          high_confidence_junk_at?(i) || vanity_segments.include?(@lexicon[i])
         end
       end
 
@@ -149,11 +149,11 @@ module Html2rss
       private
 
       def leading_high_confidence_junk?
-        segments.any? && high_confidence_junk_segment?(segments.first)
+        segments.any? && high_confidence_junk_at?(0)
       end
 
       def any_high_confidence_junk_segment?
-        segments.any? { |segment| high_confidence_junk_segment?(segment) }
+        (0...segments.size).any? { |i| high_confidence_junk_at?(i) }
       end
 
       def yearish_content_context?
@@ -179,12 +179,12 @@ module Html2rss
       def all_junk?(limit)
         return false if limit <= 0
 
-        (0...limit).all? { |i| high_confidence_junk_segment?(segments[i]) }
+        (0...limit).all? { |i| high_confidence_junk_at?(i) }
       end
 
-      def high_confidence_junk_segment?(segment)
-        SEGMENT_SETS.fetch(:high_confidence_junk).include?(folded_segment(segment)) ||
-          host_shaped_segment?(segment)
+      def high_confidence_junk_at?(index)
+        SEGMENT_SETS.fetch(:high_confidence_junk).include?(@lexicon[index]) ||
+          host_shaped_segment?(segments[index])
       end
 
       def host_shaped_segment?(segment)
@@ -199,10 +199,9 @@ module Html2rss
         context_segments = SEGMENT_SETS.fetch(:deep_post_context)
 
         (0...limit).any? do |i|
-          segment = segments[i]
-          content_segments.include?(folded_segment(segment)) ||
-            segment.match?(PathClassifier::YEARISH_SEGMENT) ||
-            context_segments.include?(folded_segment(segment))
+          content_segments.include?(@lexicon[i]) ||
+            segments[i].match?(PathClassifier::YEARISH_SEGMENT) ||
+            context_segments.include?(@lexicon[i])
         end
       end
 
@@ -211,17 +210,13 @@ module Html2rss
       end
 
       def excluded_last_segment?
-        last = segments.last
-        high_confidence_junk_segment?(last) || SEGMENT_SETS[:vanity].include?(folded_segment(last))
+        last_i = segments.size - 1
+        high_confidence_junk_at?(last_i) || SEGMENT_SETS[:vanity].include?(@lexicon[last_i])
       end
 
       def slug_last_segment?
         last = segments.last
         last.match?(YEARISH_SEGMENT) || last.match?(POST_SLUG_SEGMENT)
-      end
-
-      def folded_segment(segment)
-        ::Html2rss::Html::Probe.fold(segment)
       end
     end
   end
