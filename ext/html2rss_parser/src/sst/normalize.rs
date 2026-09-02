@@ -45,12 +45,17 @@ pub fn normalize(html: &str) -> Result<IrDocument, String> {
 pub fn normalize_from_html(parsed: &Html) -> Result<IrDocument, String> {
     let mut state = State::default();
     let root_el = resolve_root(parsed);
-    let root = normalize_element(root_el, "", 0, false, &mut state)
+    let mut root = normalize_element(root_el, "", 0, false, &mut state)
         .ok_or_else(|| "SST Normalizer produced an empty tree".to_string())?;
+
+    // html5ever closes unclosed <a>/<li> into siblings; libxml nests them. Mend so
+    // Segmenter leaf-li admission matches Nokogiri on fixtures like page_1.
+    super::mend_lists::mend_unclosed_anchor_lists(&mut root);
+    let node_count = super::mend_lists::count_nodes(&root);
 
     Ok(IrDocument {
         root,
-        node_count: state.node_count,
+        node_count,
         degraded: state.degraded,
     })
 }
@@ -89,7 +94,7 @@ fn semantic(tag: &str) -> bool {
     SEMANTIC_DEGRADE_TAGS.iter().any(|t| *t == tag)
 }
 
-fn ignored_container(tag: &str) -> bool {
+pub(crate) fn ignored_container(tag: &str) -> bool {
     IGNORED_CONTAINER_TAGS.iter().any(|t| *t == tag)
 }
 
