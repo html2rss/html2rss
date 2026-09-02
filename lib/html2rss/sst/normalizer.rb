@@ -53,6 +53,12 @@ module Html2rss
         )
       /xi
 
+      # Typed Attrs fields excluded from the leftover raw hash.
+      TYPED_ATTR_NAMES = %w[href src id class datetime itemprop style srcset type].to_set.freeze
+
+      # String form of Tags::IGNORED_CONTAINER_NAMES for chrome checks without to_sym.
+      IGNORED_CONTAINER_TAGS = Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze
+
       class << self
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
@@ -139,11 +145,9 @@ module Html2rss
       def normalize_element(nk_node, parent:, depth:, path:, chrome:)
         return unless nk_node.respond_to?(:name)
         return unless nk_node.element?
-        return if nk_node.text? || nk_node.comment? || nk_node.cdata?
 
-        tag = nk_node.name.to_s.downcase
+        tag = Html2rss::Html::Probe.tag(nk_node)
         return if STRIPPED_TAGS.include?(tag)
-        return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)
 
         if @node_count >= MAX_NODES && !@degraded
           @degraded = true
@@ -156,9 +160,9 @@ module Html2rss
         tag_path = path.empty? ? "/#{tag}" : "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
         own_text = direct_text(nk_node)
-        chrome_here = chrome || Tags::IGNORED_CONTAINER_NAMES.include?(tag.to_sym)
+        chrome_here = chrome || IGNORED_CONTAINER_TAGS.include?(tag)
 
-        children = nk_node.children.filter_map do |child|
+        children = nk_node.element_children.filter_map do |child|
           normalize_element(child, parent: :pending, depth: depth + 1, path: tag_path, chrome: chrome_here)
         end.freeze
 
@@ -190,10 +194,9 @@ module Html2rss
       end
 
       def raw_attrs(nk_node)
-        typed = %w[href src id class datetime itemprop style srcset type].to_set
         nk_node.attribute_nodes.each_with_object({}) do |attr, raw|
           name = attr.name.to_s
-          next if typed.include?(name)
+          next if TYPED_ATTR_NAMES.include?(name)
           next unless name.match?(RAW_ATTR_KEEP)
 
           raw[name] = attr.value.to_s
