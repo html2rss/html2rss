@@ -75,7 +75,9 @@ module Html2rss
 
         private
 
-        # Bypass the Ruby Normalizer walk when the Rust backend owns parse+SST.
+        # Path A (HTML2RSS_HTML_BACKEND=rust): one scraper parse on Document input,
+        # then normalize_from_html + SST::Hydrator — no serialize/reparse and no
+        # Ruby Normalizer walk. String input still parses once inside NativeEngine.to_sst.
         #
         # @param input [Object]
         # @return [Document, nil]

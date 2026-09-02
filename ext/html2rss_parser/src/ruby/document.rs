@@ -130,13 +130,9 @@ impl NativeDocument {
     }
 
     fn rb_to_html(&self) -> String {
-        let borrow = self.inner.borrow();
-        let html = borrow.html.html();
-        if borrow.removed.is_empty() {
-            html
-        } else {
-            strip_html_comments(&html)
-        }
+        // Soft-deleted element ids are CSS-only; serialize reflects the live scraper tree.
+        // Comments are detached in remove_comments!, so they do not reappear here.
+        self.inner.borrow().html.html()
     }
 
     fn rb_to_sst(ruby: &Ruby, rb_self: &Self) -> Result<Value, Error> {
@@ -196,6 +192,7 @@ impl NativeDocument {
     }
 
     fn rb_remove_comments(&self) {
+        // Detach for real — soft-delete HashSet never affected serialize/SST.
         let mut borrow = self.inner.borrow_mut();
         let ids: Vec<NodeId> = borrow
             .html
@@ -206,7 +203,11 @@ impl NativeDocument {
                 _ => None,
             })
             .collect();
-        borrow.removed.extend(ids);
+        for id in ids {
+            if let Some(mut node) = borrow.html.tree.get_mut(id) {
+                node.detach();
+            }
+        }
     }
 
     fn rb_html_document_p(&self) -> bool {
@@ -225,21 +226,4 @@ fn parse_selector(ruby: &Ruby, selector: &str) -> Result<Selector, Error> {
             format!("invalid CSS selector: {e}"),
         )
     })
-}
-
-fn strip_html_comments(html: &str) -> String {
-    let mut out = String::with_capacity(html.len());
-    let bytes = html.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i..].starts_with(b"<!--") {
-            if let Some(rel) = html[i + 4..].find("-->") {
-                i += 4 + rel + 3;
-                continue;
-            }
-        }
-        out.push(bytes[i] as char);
-        i += 1;
-    }
-    out
 }

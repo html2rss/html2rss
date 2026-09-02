@@ -102,9 +102,17 @@ done
 
 if ((${#deltas[@]})) || ((${#skip_notes[@]})); then
   lines+=("")
-  for note in "${deltas[@]}" "${skip_notes[@]}"; do
-    lines+=("${note}")
-  done
+  # Under `set -u`, empty "${arr[@]}" expands unbound on some bash builds — guard each.
+  if ((${#deltas[@]})); then
+    for note in "${deltas[@]}"; do
+      lines+=("${note}")
+    done
+  fi
+  if ((${#skip_notes[@]})); then
+    for note in "${skip_notes[@]}"; do
+      lines+=("${note}")
+    done
+  fi
 fi
 
 report="$(printf '%s\n' "${lines[@]}")"
