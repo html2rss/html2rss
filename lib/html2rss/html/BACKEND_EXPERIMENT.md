@@ -67,6 +67,19 @@ See:
 
 Refresh with `make perf-baseline` and `make perf-suite` after meaningful backend changes.
 
+### Before one-parse + hydrate (Phase 0 snapshot)
+
+Auto-source rust row from `spec/perf/baseline-auto-source.md` (2026-09-02): **wall −0.3% / alloc −2.9%** vs nokogiri (`0.187904s`, `702936` allocs).
+
+Rust microbench (`cargo bench --manifest-path ext/html2rss_parser/Cargo.toml --bench normalize --no-default-features`):
+
+| Path | page_1 (approx) |
+| --- | --- |
+| `string_page_1` (one normalize) | ~3.3 ms |
+| `parse_then_string_normalize_page_1` (Document#to_sst today) | ~7.2 ms |
+
+Document path pays ~2× normalize work via serialize+reparse. After Phases 1–2, remeasure and update §1 / this table.
+
 ## 5. Promotion criteria (unchanged bar)
 
 1. Zero suite failures under rust (and no silent pending that hides HTML XPath debt).
