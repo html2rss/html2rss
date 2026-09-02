@@ -31,6 +31,10 @@ group :development, :test do
   # Experiment: Lexbor HTML backend (see Html::Backend::Nokolexbor)
   gem 'nokolexbor', require: false
 
+  # Experiment: optional Rust HTML parser (see Html::NativeEngine; rake compile)
+  gem 'rb_sys', '~> 0.9', require: false
+  gem 'rake-compiler', require: false
+
   # Development tools
   gem 'benchmark', require: false
   gem 'debug', require: false

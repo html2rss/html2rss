@@ -1,0 +1,12 @@
+[package]
+name = "html2rss_parser"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+magnus = { version = "0.8" }
+scraper = "0.23"
