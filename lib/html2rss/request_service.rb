@@ -73,13 +73,22 @@ module Html2rss
       end
     end
 
+    # Canonical strategy mappings for deprecated strategy names.
+    DEPRECATED_STRATEGIES = {
+      faraday: :default,
+      httpx: :default
+    }.freeze
+    private_constant :DEPRECATED_STRATEGIES
+
     def initialize
       @strategies = {
-        faraday: FaradayStrategy,
+        default: HttpxStrategy,
+        httpx: HttpxStrategy,
+        faraday: HttpxStrategy,
         botasaurus: BotasaurusStrategy,
         local_file: LocalFileStrategy
       }
-      @default_strategy_name = :faraday
+      @default_strategy_name = :default
     end
 
     # @return [Symbol] the default strategy name
@@ -93,6 +102,7 @@ module Html2rss
     def default_strategy_name=(strategy)
       raise UnknownStrategy unless strategy_registered?(strategy)
 
+      warn_deprecated_strategy(strategy)
       @default_strategy_name = strategy.to_sym
     end
 
@@ -141,12 +151,26 @@ module Html2rss
     # @raise [ArgumentError] if the context is nil.
     # @raise [UnknownStrategy] if the strategy is not registered.
     def execute(ctx, strategy: default_strategy_name)
-      strategy_class = @strategies.fetch(strategy.to_sym) do
+      strategy_sym = strategy.to_sym
+      strategy_class = @strategies.fetch(strategy_sym) do
         raise UnknownStrategy,
               "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
       end
 
+      warn_deprecated_strategy(strategy_sym)
       strategy_class.new(ctx).execute
+    end
+
+    private
+
+    def warn_deprecated_strategy(strategy)
+      canonical = DEPRECATED_STRATEGIES[strategy.to_sym]
+      return unless canonical
+
+      message = "RequestService: strategy ':#{strategy}' is deprecated and will be removed in a future release. " \
+                "Use ':#{canonical}' instead."
+      warn(message, category: :deprecated)
+      Log.warn(message)
     end
   end
 end

@@ -76,14 +76,15 @@ RSpec.describe Html2rss do
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 
       before do
-        allow(Faraday).to receive(:new).with(Hash).and_call_original
+        allow(Html2rss::RequestService).to receive(:execute).and_call_original
       end
 
       it 'returns a RSS::Rss instance & sets the request headers', :aggregate_failures do
         expect(feed_return).to be_a(RSS::Rss)
-        expect(Faraday).to have_received(:new).with(
-          hash_including(headers: hash_including(config[:headers].transform_keys(&:to_s)))
-        )
+        expect(Html2rss::RequestService).to have_received(:execute) do |ctx, strategy:|
+          expect(strategy).to eq(:default)
+          expect(ctx.headers).to include(config[:headers].transform_keys(&:to_s))
+        end
       end
 
       # Item XML shape (pubDate, category, enclosure attrs, description rel/target) is owned by

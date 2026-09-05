@@ -82,7 +82,7 @@ RSpec.describe Html2rss::MCP::Server do
       scrape_schema = protocol_server.tools['scrape'].input_schema.to_h
       inspect_schema = protocol_server.tools['inspect'].input_schema.to_h
       expect(scrape_schema.dig(:properties, :strategy, :description)).to include('fallback chain')
-      expect(inspect_schema.dig(:properties, :strategy, :description)).to include('Faraday')
+      expect(inspect_schema.dig(:properties, :strategy, :description)).to include('default')
     end
   end
 
@@ -766,7 +766,7 @@ RSpec.describe Html2rss::MCP::Server do
       result = read_resource.call('html2rss://strategies')
       names = JSON.parse(result.dig(:result, :contents, 0, :text))
 
-      expect(names).to eq(%w[auto faraday botasaurus])
+      expect(names).to eq(%w[auto default httpx botasaurus faraday])
       expect(names).not_to include('local_file')
     end
 

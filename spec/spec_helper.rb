@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'vcr'
+require 'webmock/rspec'
+require 'httpx/adapters/webmock'
 
 Warning[:performance] = true if defined?(Warning) && Warning.respond_to?(:[])
 
@@ -60,6 +62,6 @@ RSpec.configure do |config|
 
   VCR.configure do |vcr_config|
     vcr_config.cassette_library_dir = 'spec/fixtures/vcr_cassettes'
-    vcr_config.hook_into :faraday
+    vcr_config.hook_into :webmock
   end
 end

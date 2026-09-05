@@ -197,7 +197,8 @@ module Html2rss
 
         channel_title = feed_result.channel_title
         channel_url = raw_config.dig(:channel, :url).to_s
-        strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] || :faraday
+        strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
+                        RequestService.default_strategy_name
         min_items_passed = item_count >= min_items
         quality_failed = strict_quality && min_items_passed && quality_failure?(quality_report)
         passed = min_items_passed && !quality_failed

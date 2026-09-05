@@ -9,7 +9,7 @@ module Html2rss
     # annotations, and the single compact JSON envelope response.
     module Contract # rubocop:disable Metrics/ModuleLength -- published listing constants stay co-located
       # Published MCP request strategies (excludes +local_file+).
-      STRATEGIES = %w[auto faraday botasaurus].freeze
+      STRATEGIES = %w[auto default httpx botasaurus faraday].freeze
 
       # Bump when tool names, required inputs, or envelope semantics change (independent of gem +VERSION+).
       MCP_CONTRACT_VERSION = 2
@@ -30,12 +30,12 @@ module Html2rss
         type: 'string',
         enum: STRATEGIES,
         default: 'auto',
-        description: 'Request strategy (auto runs faraday → botasaurus fallback chain)'
+        description: 'Request strategy (auto runs default → botasaurus fallback chain)'
       }.freeze
 
-      # JSON Schema property for inspect +strategy+ (auto stays on Faraday).
+      # JSON Schema property for inspect +strategy+ (auto stays on default).
       INSPECT_STRATEGY_PROPERTY = STRATEGY_PROPERTY.merge(
-        description: 'Request strategy (auto uses Faraday for cheap diagnostics; pin botasaurus when needed)'
+        description: 'Request strategy (auto uses default for cheap diagnostics; pin botasaurus when needed)'
       ).freeze
 
       # JSON Schema +oneOf+ requiring exactly one of +config+ or +yaml+.

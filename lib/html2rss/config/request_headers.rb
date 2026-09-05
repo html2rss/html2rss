@@ -24,7 +24,6 @@ module Html2rss
       DEFAULT_HEADERS = {
         'Accept' => DEFAULT_ACCEPT,
         'Cache-Control' => 'max-age=0',
-        'Connection' => 'keep-alive',
         'Sec-Fetch-Dest' => 'document',
         'Sec-Fetch-Mode' => 'navigate',
         'Sec-Fetch-Site' => 'none',

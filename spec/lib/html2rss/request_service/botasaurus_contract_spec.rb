@@ -145,7 +145,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
   describe '#parse_response' do
     subject(:parsed) { described_class.new(url:).parse_response(transport_response) }
 
-    let(:transport_response) { instance_double(Faraday::Response, status:, body:) }
+    let(:transport_response) { instance_double(HTTPX::Response, status:, body:) }
     let(:status) { 200 }
     let(:body) do
       JSON.generate(

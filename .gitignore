@@ -12,6 +12,7 @@
 # YARD HTML only — regenerate with `make docs`; never write source here
 docs/
 /vendor/
+/target/
 
 # Local/Dev environment files
 .codex/

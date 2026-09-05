@@ -5,7 +5,7 @@ require 'climate_control'
 
 RSpec.describe Html2rss::Doctor::Botasaurus do
   describe '.call' do
-    it 'reports missing env without leaking secrets', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'reports missing env without leaking secrets', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- preflight check assertions
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: nil) do
         result = described_class.call
 
@@ -15,11 +15,9 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
       end
     end
 
-    it 'passes when health responds 200', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      conn = instance_double(Faraday::Connection)
-      response = instance_double(Faraday::Response, status: 200, body: '{"version":"1.2.3"}')
-      allow(Faraday).to receive(:new).and_return(conn)
-      allow(conn).to receive(:get).with('/health').and_return(response)
+    it 'passes when health responds 200', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- health check assertions
+      stub_request(:get, 'http://127.0.0.1:4010/health')
+        .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
         result = described_class.call
@@ -30,11 +28,9 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
       end
     end
 
-    it 'fails when health responds non-200', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      conn = instance_double(Faraday::Connection)
-      response = instance_double(Faraday::Response, status: 503, body: '{}')
-      allow(Faraday).to receive(:new).and_return(conn)
-      allow(conn).to receive(:get).with('/health').and_return(response)
+    it 'fails when health responds non-200', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- failure response assertions
+      stub_request(:get, 'http://127.0.0.1:4010/health')
+        .to_return(status: 503, body: '{}', headers: { 'Content-Type' => 'application/json' })
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
         result = described_class.call
@@ -45,22 +41,21 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
       end
     end
 
-    it 'fails when health request raises', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      allow(Faraday).to receive(:new).and_raise(Faraday::ConnectionFailed, 'connection refused')
+    it 'fails when health request raises', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- error handling assertions
+      stub_request(:get, 'http://127.0.0.1:4010/health')
+        .to_raise(HTTPX::ConnectionError.new('connection refused'))
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
         result = described_class.call
 
         expect(result.ok).to be(false)
-        expect(result.checks.find { |check| check.name == :health }.detail[:error]).to include('ConnectionFailed')
+        expect(result.checks.find { |check| check.name == :health }.detail[:error]).to include('ConnectionError')
       end
     end
 
-    it 'runs sample scrape when sample_url is given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      conn = instance_double(Faraday::Connection)
-      response = instance_double(Faraday::Response, status: 200, body: '{"version":"1.2.3"}')
-      allow(Faraday).to receive(:new).and_return(conn)
-      allow(conn).to receive(:get).with('/health').and_return(response)
+    it 'runs sample scrape when sample_url is given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- multi-step preflight assertions
+      stub_request(:get, 'http://127.0.0.1:4010/health')
+        .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
       report = instance_double(
         Html2rss::PageRecon::Diagnostics::Report,
         to_wire_h: { status: 200, articles_count: 2 }
@@ -78,11 +73,9 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
       end
     end
 
-    it 'fails when sample scrape returns a bad status', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      conn = instance_double(Faraday::Connection)
-      response = instance_double(Faraday::Response, status: 200, body: '{"version":"1.2.3"}')
-      allow(Faraday).to receive(:new).and_return(conn)
-      allow(conn).to receive(:get).with('/health').and_return(response)
+    it 'fails when sample scrape returns a bad status', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- bad status assertions
+      stub_request(:get, 'http://127.0.0.1:4010/health')
+        .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
       report = instance_double(
         Html2rss::PageRecon::Diagnostics::Report,
         to_wire_h: { status: 403, articles_count: 0 }
@@ -97,11 +90,9 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
       end
     end
 
-    it 'fails when sample scrape raises', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      conn = instance_double(Faraday::Connection)
-      response = instance_double(Faraday::Response, status: 200, body: '{"version":"1.2.3"}')
-      allow(Faraday).to receive(:new).and_return(conn)
-      allow(conn).to receive(:get).with('/health').and_return(response)
+    it 'fails when sample scrape raises', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- exception handling assertions
+      stub_request(:get, 'http://127.0.0.1:4010/health')
+        .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
       allow(Html2rss::PageRecon::Diagnostics).to receive(:call)
         .and_raise(StandardError, 'scrape timeout')
 

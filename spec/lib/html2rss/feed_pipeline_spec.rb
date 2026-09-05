@@ -18,7 +18,7 @@ RSpec.describe Html2rss::FeedPipeline do
     lambda do |response|
       allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
         ctx.budget.consume!
-        raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+        raise "Unexpected strategy #{strategy}" unless strategy == :default
 
         response
       end
@@ -143,7 +143,7 @@ RSpec.describe Html2rss::FeedPipeline do
       end
       let(:strategy_results) do
         {
-          faraday: empty_response,
+          default: empty_response,
           botasaurus: item_response
         }
       end
@@ -166,7 +166,7 @@ RSpec.describe Html2rss::FeedPipeline do
         rss = result.to_rss
 
         expect(rss.items.map(&:title)).to eq(['bota'])
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
@@ -174,7 +174,7 @@ RSpec.describe Html2rss::FeedPipeline do
         pipeline.to_result
 
         expect(Html2rss::Log).to have_received(:info).with(
-          /auto fallback faraday -> botasaurus after zero extracted items/
+          /auto fallback default -> botasaurus after zero extracted items/
         ).once
       end
 
@@ -191,7 +191,7 @@ RSpec.describe Html2rss::FeedPipeline do
 
         pipeline.to_result
 
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
       end
 
@@ -203,7 +203,7 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::Log).not_to have_received(:info)
       end
 
-      it 'raises when botasaurus is not configured after faraday failure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'raises when botasaurus is not configured after default failure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         strategy_results[:botasaurus] = Html2rss::RequestService::BotasaurusConfigurationError.new('missing url')
         hint = Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT
 
@@ -224,7 +224,7 @@ RSpec.describe Html2rss::FeedPipeline do
         end
         let(:strategy_results) do
           {
-            faraday: app_shell_response,
+            default: app_shell_response,
             botasaurus: app_shell_response
           }
         end
@@ -245,10 +245,10 @@ RSpec.describe Html2rss::FeedPipeline do
         end
       end
 
-      context 'when Faraday returns deterministic HTTP 404 Not Found' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+      context 'when default returns deterministic HTTP 404 Not Found' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:strategy_results) do
           {
-            faraday: Html2rss::RequestService::Response.new(
+            default: Html2rss::RequestService::Response.new(
               body: '<html><body><h1>404 Not Found</h1></body></html>',
               url: Html2rss::Url.from_absolute('https://example.com/news'),
               headers: { 'content-type' => 'text/html' },
@@ -262,32 +262,32 @@ RSpec.describe Html2rss::FeedPipeline do
         it 'aborts auto fallback immediately without attempting Botasaurus', :aggregate_failures do
           expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
             expect(error.attempts.size).to eq(1)
-            expect(error.attempts.first[:strategy]).to eq(:faraday)
+            expect(error.attempts.first[:strategy]).to eq(:default)
           end
-          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
           expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         end
       end
 
-      context 'when Faraday raises RequestService::RedirectLimitReached' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+      context 'when default raises RequestService::RedirectLimitReached' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:strategy_results) do
           {
-            faraday: Html2rss::RequestService::RedirectLimitReached.new('redirect limit reached'),
+            default: Html2rss::RequestService::RedirectLimitReached.new('redirect limit reached'),
             botasaurus: item_response
           }
         end
 
         it 'aborts immediately without attempting Botasaurus', :aggregate_failures do
           expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RedirectLimitReached)
-          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
           expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         end
       end
 
-      context 'when Faraday raises UnsupportedResponseContentType' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+      context 'when default raises UnsupportedResponseContentType' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:strategy_results) do
           {
-            faraday: Html2rss::RequestService::UnsupportedResponseContentType.new(
+            default: Html2rss::RequestService::UnsupportedResponseContentType.new(
               'Unsupported content type: application/octet-stream'
             ),
             botasaurus: item_response
@@ -298,15 +298,15 @@ RSpec.describe Html2rss::FeedPipeline do
           rss = pipeline.to_result.to_rss
 
           expect(rss.items.map(&:title)).to eq(['bota'])
-          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
           expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
         end
       end
 
-      context 'when Faraday returns HTML labeled as octet-stream' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+      context 'when default returns HTML labeled as octet-stream' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:strategy_results) do
           {
-            faraday: build_response.call(
+            default: build_response.call(
               body: '<html><body><article><h1>seznam</h1></article></body></html>',
               headers: { 'content-type' => 'application/octet-stream' }
             ),
@@ -314,19 +314,19 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
-        it 'extracts Faraday HTML without calling Botasaurus', :aggregate_failures do
+        it 'extracts default HTML without calling Botasaurus', :aggregate_failures do
           rss = pipeline.to_result.to_rss
 
           expect(rss.items.map(&:title)).to eq(['seznam'])
-          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+          expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
           expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         end
       end
 
-      context 'when Faraday returns non-HTML octet-stream' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+      context 'when default returns non-HTML octet-stream' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:strategy_results) do
           {
-            faraday: build_response.call(
+            default: build_response.call(
               body: "PK\x03\x04not-html",
               headers: { 'content-type' => 'application/octet-stream' }
             ),
@@ -334,7 +334,7 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
-        it 'records the Faraday error and uses Botasaurus', :aggregate_failures do
+        it 'records the default error and uses Botasaurus', :aggregate_failures do
           rss = pipeline.to_result.to_rss
 
           expect(rss.items.map(&:title)).to eq(['bota'])
@@ -345,7 +345,7 @@ RSpec.describe Html2rss::FeedPipeline do
       context 'when first strategy fails but fallback strategy succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups
         let(:strategy_results) do
           {
-            faraday: Html2rss::RequestService::RequestTimedOut.new('timed out'),
+            default: Html2rss::RequestService::RequestTimedOut.new('timed out'),
             botasaurus: item_response
           }
         end
@@ -354,13 +354,13 @@ RSpec.describe Html2rss::FeedPipeline do
 
         it 'logs timeout fallback at info with host and budget context' do
           expect(Html2rss::Log).to have_received(:info).with(
-            /auto fallback faraday -> botasaurus after timeout=Html2rss::RequestService::RequestTimedOut.*host=/
+            /auto fallback default -> botasaurus after timeout=Html2rss::RequestService::RequestTimedOut.*host=/
           ).once
         end
 
         it 'keeps full error details in debug logs' do
           expect(Html2rss::Log).to have_received(:debug).with(
-            /strategy=faraday error=Html2rss::RequestService::RequestTimedOut: timed out/
+            /strategy=default error=Html2rss::RequestService::RequestTimedOut: timed out/
           ).once
         end
       end
@@ -370,19 +370,19 @@ RSpec.describe Html2rss::FeedPipeline do
         t = 0.0
         allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC) { t }
         allow(Html2rss::RequestService).to receive(:execute).and_call_original
-        allow(Html2rss::RequestService).to receive(:execute).with(anything, strategy: :faraday) do
+        allow(Html2rss::RequestService).to receive(:execute).with(anything, strategy: :default) do
           t += 1.5 # advance time to exceed the 1s budget
           raise Html2rss::RequestService::RequestTimedOut, 'timed out'
         end
 
         pipeline = described_class.new(base_config.merge(strategy: :auto, request: { total_timeout_seconds: 1 }))
         expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
-          expect(error.attempts.map { |attempt| attempt[:strategy] }).to include(:faraday, :botasaurus)
+          expect(error.attempts.map { |attempt| attempt[:strategy] }).to include(:default, :botasaurus)
           expect(error.attempts).to include(
             hash_including(strategy: :botasaurus, error_class: 'Html2rss::RequestService::RequestTimedOut')
           )
         end
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
       end
     end
 
@@ -415,7 +415,7 @@ RSpec.describe Html2rss::FeedPipeline do
     # rubocop:disable-next RSpec/ExampleLength -- inline config + duplicate HTML fixture
     it 'reports dedup_dropped on status after pipeline deduplication', :aggregate_failures do
       config = base_config.merge(
-        strategy: :faraday,
+        strategy: :default,
         selectors: base_config[:selectors].merge(
           url: { selector: 'a', extractor: 'href' },
           id: { selector: 'a', extractor: 'href' }
@@ -455,7 +455,7 @@ RSpec.describe Html2rss::FeedPipeline do
         allow(Html2rss::Log).to receive(:debug)
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          strategy == :faraday ? empty_response : item_response
+          strategy == :default ? empty_response : item_response
         end
       end
 
@@ -466,7 +466,7 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(result.status.attempt_count).to eq(2)
         expect(result.status.strategy_attempts).to eq(
           [
-            { strategy: :faraday, items_count: 0, error_class: nil },
+            { strategy: :default, items_count: 0, error_class: nil },
             { strategy: :botasaurus, items_count: 1, error_class: nil }
           ]
         )
@@ -482,7 +482,7 @@ RSpec.describe Html2rss::FeedPipeline do
     context 'when the entry URL is a direct syndication feed' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         {
-          strategy: :faraday,
+          strategy: :default,
           channel: { url: 'https://example.com/feed.xml', title: 'Feed' },
           auto_source: {}
         }

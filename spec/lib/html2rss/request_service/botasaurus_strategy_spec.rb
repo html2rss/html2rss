@@ -12,6 +12,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     instance_double(
       Html2rss::RequestService::Policy,
       total_timeout_seconds: 30,
+      connect_timeout_seconds: 10,
+      read_timeout_seconds: 30,
       max_decompressed_bytes: 700_000,
       validate_request!: nil
     )
@@ -27,10 +29,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
   end
   let(:request_config) { {} }
   let(:ctx) { Html2rss::RequestService::Context.new(url: 'https://example.com', request: request_config, policy:, budget:) }
-  let(:connection) { instance_double(Faraday::Connection) }
   let(:response_status) { 200 }
   let(:response_payload) { base_payload }
-  let(:api_response) { instance_double(Faraday::Response, status: response_status, body: JSON.generate(response_payload)) }
+  let(:raw_response_body) { JSON.generate(response_payload) }
   let(:captured_post_args) { [] }
   let(:base_payload) do
     {
@@ -71,16 +72,21 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     }
   end
 
-  around do |example|
-    ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://localhost:4010') { example.run }
+  before do
+    stub_request(:post, 'http://localhost:4010/scrape')
+      .with do |req|
+        captured_post_args << ['/scrape', req.body, req.headers]
+        true
+      end
+      .to_return(
+        status: ->(_) { response_status },
+        body: ->(_) { raw_response_body },
+        headers: { 'Content-Type' => 'application/json' }
+      )
   end
 
-  before do
-    allow(Faraday).to receive(:new).and_return(connection)
-    allow(connection).to receive(:post) do |path, body, headers|
-      captured_post_args << [path, body, headers]
-      api_response
-    end
+  around do |example|
+    ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://localhost:4010') { example.run }
   end
 
   describe 'request contract' do
@@ -92,15 +98,6 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         url: ctx.url,
         origin_url: ctx.origin_url,
         relation: :initial
-      )
-      expect(Faraday).to have_received(:new).with(
-        url: 'http://localhost:4010/',
-        headers: {
-          'User-Agent' => Html2rss::Config::RequestHeaders::DEFAULT_USER_AGENT,
-          'Accept' => described_class::TRANSPORT_ACCEPT,
-          'Accept-Encoding' => described_class::TRANSPORT_ENCODING
-        },
-        request: { timeout: 30 }
       )
       path, body, headers = captured_post_args.first
       expect(path).to eq('/scrape')
@@ -180,19 +177,20 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
         allow(budget).to receive(:effective_timeout_seconds).and_return(60.0)
       end
 
-      it 'uses the scrape total plus transport buffer for Faraday timeout' do
+      it 'uses the scrape total plus transport buffer for HTTPX timeout' do
+        allow(HTTPX).to receive(:with).and_call_original
         execute
 
         cap = Html2rss::RequestService::BotasaurusContract::SCRAPE_TIMEOUT_SECONDS +
               Html2rss::RequestService::BotasaurusContract::TRANSPORT_BUFFER_SECONDS
-        expect(Faraday).to have_received(:new).with(
-          url: 'http://localhost:4010/',
-          headers: {
-            'User-Agent' => Html2rss::Config::RequestHeaders::DEFAULT_USER_AGENT,
-            'Accept' => described_class::TRANSPORT_ACCEPT,
-            'Accept-Encoding' => described_class::TRANSPORT_ENCODING
-          },
-          request: { timeout: cap }
+        expect(HTTPX).to have_received(:with).with(
+          hash_including(
+            timeout: hash_including(
+              operation_timeout: cap.to_f,
+              request_timeout: cap.to_f,
+              total_request_timeout: cap.to_f
+            )
+          )
         )
       end
     end
@@ -202,10 +200,11 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     let(:repo_root) { File.expand_path('../../../..', __dir__) }
     let(:openapi_fixture) { File.expand_path('spec/fixtures/botasaurus/openapi.yaml', repo_root) }
 
-    it 'sets client headers on Faraday.new', :aggregate_failures do
+    it 'sets client headers on HTTPX.with', :aggregate_failures do
+      allow(HTTPX).to receive(:with).and_call_original
       execute
 
-      expect(Faraday).to have_received(:new).with(
+      expect(HTTPX).to have_received(:with).with(
         hash_including(
           headers: {
             'User-Agent' => Html2rss::Config::RequestHeaders::DEFAULT_USER_AGENT,
@@ -222,7 +221,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       execute
 
       _, _, headers = captured_post_args.first
-      expect(headers).to eq(
+      expect(headers).to include(
         'Content-Type' => 'application/json',
         described_class::REQUEST_ID_HEADER => 'stubbed-request-id'
       )
@@ -503,7 +502,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     end
 
     context 'when upstream payload is invalid JSON' do
-      let(:api_response) { instance_double(Faraday::Response, status: 200, body: 'not-json') }
+      let(:raw_response_body) { 'not-json' }
 
       it 'raises BotasaurusServiceError' do
         expect { execute }
@@ -548,14 +547,16 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     end
 
     it 'maps timeout errors to RequestTimedOut' do
-      allow(connection).to receive(:post).and_raise(Faraday::TimeoutError, 'Timed out')
+      stub_request(:post, 'http://localhost:4010/scrape')
+        .to_raise(HTTPX::TimeoutError.new({ request_timeout: 5 }, 'Timed out'))
 
       expect { execute }
         .to raise_error(Html2rss::RequestService::RequestTimedOut, /Timed out/)
     end
 
     it 'leaves timeout_phase nil on transport-hop timeouts', :aggregate_failures do
-      allow(connection).to receive(:post).and_raise(Faraday::TimeoutError, 'Timed out')
+      stub_request(:post, 'http://localhost:4010/scrape')
+        .to_raise(HTTPX::TimeoutError.new({ request_timeout: 5 }, 'Timed out'))
 
       expect { execute }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
         expect(error.timeout_phase).to be_nil
@@ -563,7 +564,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     end
 
     it 'maps network errors to BotasaurusConnectionFailed' do
-      allow(connection).to receive(:post).and_raise(Faraday::ConnectionFailed, 'Connection refused')
+      stub_request(:post, 'http://localhost:4010/scrape')
+        .to_raise(HTTPX::ConnectionError.new('Connection refused'))
 
       expect { execute }
         .to raise_error(Html2rss::RequestService::BotasaurusConnectionFailed, /connection failed/i)

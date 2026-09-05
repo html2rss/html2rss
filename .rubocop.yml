@@ -14,6 +14,8 @@ AllCops:
   Exclude:
     - vendor/**/*
     - spec/fixtures/**/*.{yml,yaml}
+    - tmp/**/*
+    - target/**/*
 
 Metrics/BlockLength:
   Exclude:

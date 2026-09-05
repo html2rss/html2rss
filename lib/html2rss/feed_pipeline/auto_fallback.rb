@@ -8,7 +8,7 @@ module Html2rss
     # Hosted by the pipeline instance: session + extract call back into FeedPipeline.
     class AutoFallback # rubocop:disable Metrics/ClassLength -- attempt state + logging stay co-located
       # Ordered list of concrete request strategies attempted by the :auto plan.
-      CHAIN = %i[faraday botasaurus].freeze
+      CHAIN = %i[default botasaurus].freeze
 
       # Deterministic HTTP statuses that indicate permanent failure rather than anti-bot challenges.
       DETERMINISTIC_HTTP_STATUSES = Set[400, 404, 410, 422, 451].freeze

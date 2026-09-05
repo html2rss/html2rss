@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'httpx'
+
 module Html2rss
   class RequestService
     ##
@@ -97,11 +99,16 @@ module Html2rss
       # @param error [StandardError]
       # @return [void]
       # @raise [StandardError]
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- error translation dispatch
       def handle_error(error)
         if timeout_error?(error)
           log_timeout!(reason: 'transport')
           Log.debug("#{self.class}: transport timeout message=#{error.message}")
           raise RequestTimedOut, error.message
+        elsif ssrf_error?(error)
+          raise PrivateNetworkDenied, error.message
+        elsif response_too_large_error?(error)
+          raise ResponseTooLarge, "Response exceeded #{ctx.policy.max_response_bytes} bytes"
         elsif connection_error?(error)
           translate_connection_error(error)
         else
@@ -135,14 +142,29 @@ module Html2rss
       # @param error [StandardError]
       # @return [Boolean]
       def timeout_error?(error)
-        error.is_a?(Faraday::TimeoutError) ||
+        error.is_a?(HTTPX::TimeoutError) ||
           error.is_a?(Timeout::Error)
       end
 
       # @param error [StandardError]
       # @return [Boolean]
+      def ssrf_error?(error)
+        error.is_a?(HTTPX::ServerSideRequestForgeryError)
+      end
+
+      # @param error [StandardError]
+      # @return [Boolean]
+      def response_too_large_error?(error)
+        error.is_a?(HTTPX::Error) && error.message.include?('maximum response body size exceeded')
+      end
+
+      # @param error [StandardError]
+      # @return [Boolean]
       def connection_error?(error)
-        error.is_a?(Faraday::ConnectionFailed) || error.is_a?(Faraday::SSLError)
+        error.is_a?(HTTPX::ConnectionError) ||
+          error.is_a?(HTTPX::TLSError) ||
+          error.is_a?(SocketError) ||
+          error.is_a?(SystemCallError)
       end
     end
   end
