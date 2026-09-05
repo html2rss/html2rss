@@ -145,5 +145,39 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
 
       expect { execute }.to raise_error(Html2rss::RequestService::RedirectLimitReached)
     end
+
+    it 'retries the terminal redirect location once and succeeds', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- terminal redirect retry
+      stub_request(:get, 'https://example.com')
+        .to_return(status: 301, headers: { 'Location' => 'https://example.com/1' })
+      stub_request(:get, 'https://example.com/1')
+        .to_return(status: 301, headers: { 'Location' => 'https://example.com/2' })
+      stub_request(:get, 'https://example.com/2')
+        .to_return(status: 301, headers: { 'Location' => 'https://example.com/3' })
+      stub_request(:get, 'https://example.com/3')
+        .to_return(status: 301, headers: { 'Location' => 'https://example.com/terminal' })
+      stub_request(:get, 'https://example.com/terminal')
+        .to_return(status: 200, body: '<html>terminal-success</html>', headers: { 'Content-Type' => 'text/html' })
+
+      result = execute
+      expect(result.status).to eq(200)
+      expect(result.body).to eq('<html>terminal-success</html>')
+      expect(result.url.to_s).to eq('https://example.com/terminal')
+    end
+  end
+
+  describe 'error translation' do
+    it 'maps HTTPX::TimeoutError to RequestTimedOut' do
+      stub_request(:get, 'https://example.com')
+        .to_raise(HTTPX::TimeoutError.new({ request_timeout: 5 }, 'timed out'))
+
+      expect { execute }.to raise_error(Html2rss::RequestService::RequestTimedOut, /timed out/)
+    end
+
+    it 'maps HTTPX::ServerSideRequestForgeryError to PrivateNetworkDenied' do
+      stub_request(:get, 'https://example.com')
+        .to_raise(HTTPX::ServerSideRequestForgeryError.new('127.0.0.1 not allowed'))
+
+      expect { execute }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /127.0.0.1/)
+    end
   end
 end

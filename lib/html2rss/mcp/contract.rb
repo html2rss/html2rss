@@ -9,7 +9,7 @@ module Html2rss
     # annotations, and the single compact JSON envelope response.
     module Contract # rubocop:disable Metrics/ModuleLength -- published listing constants stay co-located
       # Published MCP request strategies (excludes +local_file+).
-      STRATEGIES = %w[auto default botasaurus faraday].freeze
+      STRATEGIES = %w[auto default httpx botasaurus faraday].freeze
 
       # Bump when tool names, required inputs, or envelope semantics change (independent of gem +VERSION+).
       MCP_CONTRACT_VERSION = 2

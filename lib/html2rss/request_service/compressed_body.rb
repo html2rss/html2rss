@@ -45,7 +45,10 @@ module Html2rss
 
       def inflate(raw, encoding)
         case encoding
-        when 'gzip' then uncompress_gzip(raw)
+        when 'gzip'
+          return raw unless raw.start_with?(GZIP_MAGIC)
+
+          uncompress_gzip(raw)
         when 'deflate' then inflate_deflate(raw)
         when 'br' then try_brotli(raw, require_html: false)
         end

@@ -13,6 +13,8 @@ module Html2rss
     # and redirect handling without monkey-patching.
     # rubocop:disable-next Metrics/ClassLength -- terminal redirect retry colocated with HTTPX transport
     class HttpxStrategy < Strategy
+      CONNECTION_HEADERS = %w[connection keep-alive proxy-connection transfer-encoding upgrade].freeze
+
       ##
       # @return [ResponseGuard]
       attr_reader :response_guard
@@ -45,11 +47,11 @@ module Html2rss
         raw_response = execute_http_request(response_guard, deadline:)
         return raw_response unless redirect_limit_reached?(raw_response)
 
-        unless terminal_redirect_retryable?
+        unless terminal_redirect_retryable?(raw_response)
           raise RedirectLimitReached, "Too many redirects (status #{raw_response.status})"
         end
 
-        retry_from_terminal_redirect!(response_guard, deadline:)
+        retry_from_terminal_redirect!(raw_response, response_guard, deadline:)
       end
 
       def redirect_limit_reached?(response)
@@ -58,23 +60,34 @@ module Html2rss
         (300..399).cover?(response.status)
       end
 
-      def terminal_redirect_retryable?
-        return false if @terminal_redirect_retried || @last_redirect_to.nil?
+      def terminal_redirect_url(raw_response)
+        location = raw_response.headers['location']
+        if location && !location.empty?
+          base = raw_response.uri || request_url
+          return normalize_url(URI.join(base.to_s, location))
+        end
 
-        @last_redirect_to.to_s != request_url.to_s
+        @last_redirect_to
       end
 
-      def retry_from_terminal_redirect!(response_guard, deadline:)
-        terminal_url = @last_redirect_to
+      def terminal_redirect_retryable?(raw_response)
+        return false if @terminal_redirect_retried
+
+        target = terminal_redirect_url(raw_response)
+        target && target.to_s != request_url.to_s
+      end
+
+      def retry_from_terminal_redirect!(raw_response, response_guard, deadline:)
+        terminal_url = terminal_redirect_url(raw_response)
         @terminal_redirect_retried = true
         Log.debug("#{self.class}: redirect limit reached; retrying once from #{terminal_url}")
         begin_terminal_url_request!(terminal_url)
-        raw_response = execute_http_request(response_guard, deadline:, consume_budget: false)
-        if redirect_limit_reached?(raw_response)
-          raise RedirectLimitReached, "Too many redirects (status #{raw_response.status})"
+        new_response = execute_http_request(response_guard, deadline:, consume_budget: false)
+        if redirect_limit_reached?(new_response)
+          raise RedirectLimitReached, "Too many redirects (status #{new_response.status})"
         end
 
-        raw_response
+        new_response
       end
 
       def begin_terminal_url_request!(terminal_url)
@@ -91,10 +104,14 @@ module Html2rss
       def execute_http_request(response_guard, deadline:, consume_budget: true)
         preflight!(consume_budget:)
         session = build_session(response_guard, deadline:)
-        response = session.get(request_url.to_s, headers: ctx.headers)
+        response = session.get(request_url.to_s, headers: sanitized_headers)
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
 
         response
+      end
+
+      def sanitized_headers
+        ctx.headers.reject { |k, _| CONNECTION_HEADERS.include?(k.to_s.downcase) }
       end
 
       def build_session(response_guard, deadline:)

@@ -19,6 +19,10 @@ RSpec.describe Html2rss::Config::RequestHeaders do
     it 'sets the default User-Agent to the gem version' do
       expect(described_class.browser_defaults['User-Agent']).to eq("html2rss/#{Html2rss::VERSION}")
     end
+
+    it 'does not include a connection-specific header' do
+      expect(described_class.browser_defaults).not_to have_key('Connection')
+    end
   end
 
   describe '#to_h' do

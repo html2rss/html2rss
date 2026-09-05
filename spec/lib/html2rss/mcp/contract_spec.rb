@@ -9,7 +9,7 @@ RSpec.describe Html2rss::MCP::Contract do
 
   describe 'STRATEGIES' do
     it 'is the published MCP set and excludes local_file' do
-      expect(described_class::STRATEGIES).to eq(%w[auto default botasaurus faraday])
+      expect(described_class::STRATEGIES).to eq(%w[auto default httpx botasaurus faraday])
     end
   end
 
@@ -19,6 +19,7 @@ RSpec.describe Html2rss::MCP::Contract do
     it 'allows omitting strategy and published names', :aggregate_failures do
       expect { described_class.assert_published_request!(base) }.not_to raise_error
       expect { described_class.assert_published_request!(base.merge(strategy: :default)) }.not_to raise_error
+      expect { described_class.assert_published_request!(base.merge(strategy: :httpx)) }.not_to raise_error
       expect { described_class.assert_published_request!(base.merge(strategy: :faraday)) }.not_to raise_error
       expect { described_class.assert_published_request!(base.merge(strategy: 'botasaurus')) }.not_to raise_error
     end

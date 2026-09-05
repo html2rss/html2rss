@@ -766,7 +766,7 @@ RSpec.describe Html2rss::MCP::Server do
       result = read_resource.call('html2rss://strategies')
       names = JSON.parse(result.dig(:result, :contents, 0, :text))
 
-      expect(names).to eq(%w[auto default botasaurus faraday])
+      expect(names).to eq(%w[auto default httpx botasaurus faraday])
       expect(names).not_to include('local_file')
     end
 
