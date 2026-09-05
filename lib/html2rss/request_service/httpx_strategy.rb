@@ -13,7 +13,9 @@ module Html2rss
     # and redirect handling without monkey-patching.
     # rubocop:disable-next Metrics/ClassLength -- terminal redirect retry colocated with HTTPX transport
     class HttpxStrategy < Strategy
+      # Hop-by-hop headers forbidden in HTTP/2 requests (RFC 7540 §8.1.2.2 / RFC 9113 §8.2.1).
       CONNECTION_HEADERS = %w[connection keep-alive proxy-connection transfer-encoding upgrade].freeze
+      private_constant :CONNECTION_HEADERS
 
       ##
       # @return [ResponseGuard]
