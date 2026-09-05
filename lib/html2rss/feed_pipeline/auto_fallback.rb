@@ -95,7 +95,7 @@ module Html2rss
         # @param admission_drops [Hash{String => Integer}] Cleanup drop tallies
         # @param scrape_target [Html2rss::ScrapeTarget]
         # @return [void]
-        # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- PipelineOutcome kwargs stay co-located
+        # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- PipelineOutcome kwargs stay co-located
         def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:,
                      scrape_target:, admission_drops: {})
           @result = PipelineOutcome.new(
@@ -110,7 +110,6 @@ module Html2rss
             entry_resolution:
           )
         end
-        # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
       end
 
       ##
@@ -174,7 +173,7 @@ module Html2rss
         nil
       end
 
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
+      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
       def process_response(response:, strategy:, next_strategy:, request_session:, state:)
         articles, dedup_dropped, admission_drops = articles_for(response:, request_session:)
         state.remember_response(response)
@@ -205,7 +204,6 @@ module Html2rss
 
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
       def deterministic_status?(response)
         DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
@@ -215,7 +213,7 @@ module Html2rss
         pipeline.deduplicated_articles(config:, response:, request_session:)
       end
 
-      # rubocop:disable Metrics/ParameterLists -- success kwargs match PipelineOutcome
+      # rubocop:disable-next Metrics/ParameterLists -- success kwargs match PipelineOutcome
       def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
         attempt_count = state.attempts.size
         state.succeed!(
@@ -229,7 +227,6 @@ module Html2rss
                  "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                  "budget_remaining=#{budget_remaining_label}")
       end
-      # rubocop:enable Metrics/ParameterLists
 
       def finalize_failure(attempts:, response:)
         surface_category = surface_category_for(response)
@@ -242,7 +239,7 @@ module Html2rss
         PageRecon.surface_category_for(response:, url: response.url)
       end
 
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
       def log_fallback_error(strategy:, next_strategy:, error:, request_session:)
         host = request_session.url.host
         detail = "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
@@ -256,7 +253,6 @@ module Html2rss
         end
         Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message} #{detail}")
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
       def log_info_fallback_zero_items(strategy:, next_strategy:, response:)
         Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items " \

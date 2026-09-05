@@ -19,11 +19,10 @@ module Html2rss
       # @option opts [Integer] :use_top_selectors list strategy selector budget
       # @option opts [Scoring::LinkResolver, nil] :link_resolver page-scoped destination facts cache
       # @return [Array<Segment>]
-      # rubocop:disable Style/ArgumentsForwarding -- keep named opts for YARD @option
+      # rubocop:disable-next Style/ArgumentsForwarding -- keep named opts for YARD @option
       def self.call(document, base_url:, strategy:, **opts)
         new(document, base_url:, strategy:, **opts).call
       end
-      # rubocop:enable Style/ArgumentsForwarding
 
       # @param document [SST::Document]
       # @param base_url [String, Html2rss::Url]

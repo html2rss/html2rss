@@ -115,7 +115,7 @@ module Html2rss
     # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
     # @param base_url [String, Html2rss::Url] base URL for normalization during enhancement
     # @return [Hash] The enhanced article hash.
-    # rubocop:disable Metrics/MethodLength
+    # rubocop:disable-next Metrics/MethodLength
     def enhance_article_hash(article_hash, article_tag, base_url = @url)
       selected_anchor = Html2rss::Html::Navigator.main_anchor_for(article_tag)
       extracted = Html2rss::Html::ArticleExtractor.call(
@@ -133,7 +133,6 @@ module Html2rss
         hash[key] = value
       end
     end
-    # rubocop:enable Metrics/MethodLength
 
     ##
     # Selects the value for a given attribute from an HTML element.

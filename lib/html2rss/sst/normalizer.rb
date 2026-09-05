@@ -109,7 +109,7 @@ module Html2rss
       private
 
       # @return [Nokogiri::XML::Node]
-      # rubocop:disable Metrics/MethodLength -- explicit root discovery fallback chain
+      # rubocop:disable-next Metrics/MethodLength -- explicit root discovery fallback chain
       def resolve_root_nk
         parsed = @parsed_body
 
@@ -135,13 +135,12 @@ module Html2rss
         Html2rss::Log.warn('sst.normalizer root fallback: self')
         parsed
       end
-      # rubocop:enable Metrics/MethodLength
 
       def element_root?(node)
         node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
       end
 
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+      # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def normalize_element(nk_node, parent:, depth:, path:, chrome:)
         return unless nk_node.respond_to?(:name)
         return unless nk_node.element?
@@ -176,7 +175,6 @@ module Html2rss
 
         node
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
         Attrs.build(

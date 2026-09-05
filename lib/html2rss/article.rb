@@ -8,7 +8,7 @@ module Html2rss
   # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
   #
   # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
-  # rubocop:disable Metrics/ClassLength -- value object retains Marshal + defensive freeze helpers
+  # rubocop:disable-next Metrics/ClassLength -- value object retains Marshal + defensive freeze helpers
   class Article
     include Enumerable
     include Comparable
@@ -209,5 +209,4 @@ module Html2rss
       value
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

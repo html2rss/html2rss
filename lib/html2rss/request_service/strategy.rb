@@ -111,7 +111,7 @@ module Html2rss
 
       # @param reason [String] timeout classification (budget_exhausted / transport)
       # @return [void]
-      # rubocop:disable Metrics/AbcSize -- structured timeout fields stay in one log line
+      # rubocop:disable-next Metrics/AbcSize -- structured timeout fields stay in one log line
       def log_timeout!(reason:)
         remaining = ctx.budget.remaining_timeout_seconds
         remaining_label = remaining.nil? ? 'untracked' : format('%.3f', remaining)
@@ -124,7 +124,6 @@ module Html2rss
         ]
         Log.info("#{self.class}: request timeout #{detail.join(' ')}")
       end
-      # rubocop:enable Metrics/AbcSize
 
       # @param error [StandardError]
       # @return [void]

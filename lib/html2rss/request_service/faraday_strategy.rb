@@ -10,7 +10,7 @@ module Html2rss
     ##
     # Strategy to use Faraday for the request.
     # @see https://rubygems.org/gems/faraday
-    # rubocop:disable Metrics/ClassLength -- terminal redirect retry colocated with Faraday transport
+    # rubocop:disable-next Metrics/ClassLength -- terminal redirect retry colocated with Faraday transport
     class FaradayStrategy < Strategy
       ##
       # Restores buffered streamed bytes so response middleware can process them.
@@ -152,7 +152,7 @@ module Html2rss
         end
       end
 
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable-next Metrics/AbcSize
       def client
         @client ||= Faraday.new(url: request_url.to_s, headers: ctx.headers) do |faraday|
           faraday.use Faraday::FollowRedirects::Middleware, limit: ctx.policy.max_redirects, callback: redirect_callback
@@ -163,7 +163,6 @@ module Html2rss
           end
         end
       end
-      # rubocop:enable Metrics/AbcSize
 
       def apply_timeouts(request, deadline:)
         remaining_timeout = remaining_timeout_seconds(deadline)
@@ -230,6 +229,5 @@ module Html2rss
         Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

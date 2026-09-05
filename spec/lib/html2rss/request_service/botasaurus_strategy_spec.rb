@@ -4,7 +4,7 @@ require 'spec_helper'
 require 'climate_control'
 require 'yaml'
 
-# rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
+# rubocop:disable-next RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
 RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
   subject(:execute) { described_class.new(ctx).execute }
 
@@ -587,4 +587,3 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     end
   end
 end
-# rubocop:enable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength

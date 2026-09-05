@@ -402,7 +402,7 @@ RSpec.describe Html2rss do
   end
 
   describe '.json_feed' do
-    # rubocop:disable RSpec/ExampleLength -- stub chain asserts contributor feed_url boundary
+    # rubocop:disable-next RSpec/ExampleLength -- stub chain asserts contributor feed_url boundary
     it 'rejects a relative feed_url at the contributor API boundary' do
       result = instance_double(Html2rss::FeedResult)
       allow(described_class).to receive(:feed_result).and_return(result)
@@ -413,7 +413,6 @@ RSpec.describe Html2rss do
       expect { described_class.json_feed({}, feed_url: '/relative.json') }
         .to raise_error(ArgumentError, /absolute/)
     end
-    # rubocop:enable RSpec/ExampleLength
 
     context 'with config being a Hash' do
       let(:config) do

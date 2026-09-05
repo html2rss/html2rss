@@ -33,10 +33,9 @@ module Html2rss
           def json_documents(parsed_body)
             # Use identity-based cache to avoid double-parsing of the same document.
             # WeakMap allows the Nokogiri Document (key) to be garbage collected.
-            # rubocop:disable ThreadSafety/ClassInstanceVariable
+            # rubocop:disable-next ThreadSafety/ClassInstanceVariable
             (@cache ||= ObjectSpace::WeakMap.new)[parsed_body] ||=
               script_documents(parsed_body) + assignment_documents(parsed_body)
-            # rubocop:enable ThreadSafety/ClassInstanceVariable
           end
 
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document

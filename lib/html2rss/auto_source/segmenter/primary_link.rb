@@ -37,7 +37,7 @@ module Html2rss
 
         private
 
-        # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
         def candidate_facts(anchor, container)
           destination = @link_resolver.destination_facts(anchor)
           return unless destination
@@ -63,7 +63,6 @@ module Html2rss
 
           { anchor:, destination: destination.destination, score: }
         end
-        # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
         def first_heading(container)
           (@headings ||= {}.compare_by_identity)[container] ||= container.find(&:heading?)

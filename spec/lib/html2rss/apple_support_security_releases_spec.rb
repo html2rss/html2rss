@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-# rubocop:disable RSpec/DescribeClass
+# rubocop:disable-next RSpec/DescribeClass
 RSpec.describe 'Apple support security releases regression', :aggregate_failures do
   let(:config) do
     {
@@ -37,4 +37,3 @@ RSpec.describe 'Apple support security releases regression', :aggregate_failures
     expect(feed.items.first.link).to match(%r{\Ahttps://support\.apple\.com/en-gb/})
   end
 end
-# rubocop:enable RSpec/DescribeClass

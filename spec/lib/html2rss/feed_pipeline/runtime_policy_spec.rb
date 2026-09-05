@@ -39,7 +39,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     context 'when max_requests is omitted' do
       let(:config) { Html2rss::Config.from_hash(raw_config) }
 
-      # rubocop:disable RSpec/ExampleLength -- composition pieces asserted together
+      # rubocop:disable-next RSpec/ExampleLength -- composition pieces asserted together
       it 'composes NativeFeed and entry_resolution slots then clamps to the ceiling', :aggregate_failures do
         baseline = described_class.send(:baseline_request_budget_for, config)
         native_slots = Html2rss::AutoSource::Scraper::NativeFeed.request_slots
@@ -53,7 +53,6 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
         expect(runtime_policy.max_requests).to eq(request_ceiling)
         expect(runtime_policy.max_redirects).to eq(8)
       end
-      # rubocop:enable RSpec/ExampleLength
     end
 
     context 'when strategy is auto and max_requests is omitted' do

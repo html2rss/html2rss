@@ -30,7 +30,7 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
       expect(described_class.rss_enclosure_for(article)).to be_nil
     end
 
-    # rubocop:disable RSpec/ExampleLength -- prefers non-image enclosure while preserving image field
+    # rubocop:disable-next RSpec/ExampleLength -- prefers non-image enclosure while preserving image field
     it 'prefers the first non-image enclosure over image enclosures', :aggregate_failures do
       article = Html2rss::Article.new(
         enclosures: [
@@ -45,6 +45,5 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
       expect(enclosure.type).to eq('audio/mpeg')
       expect(article.image).to eq(image_url)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 end

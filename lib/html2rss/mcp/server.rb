@@ -217,7 +217,7 @@ module Html2rss
           tool_error_response(error)
         end
 
-        # rubocop:disable Metrics/MethodLength -- listing fields stay together
+        # rubocop:disable-next Metrics/MethodLength -- listing fields stay together
         def define_envelope_tool(server, name:, description:, input_schema:,
                                  annotations: Contract::ANNOTATIONS_OPEN_WORLD)
           run = method(:handle_tool_call)
@@ -232,7 +232,6 @@ module Html2rss
             run.call { yield(**kwargs) }
           end
         end
-        # rubocop:enable Metrics/MethodLength
 
         def register_tools(server)
           Tools.register_all(server, registrar: method(:define_envelope_tool))

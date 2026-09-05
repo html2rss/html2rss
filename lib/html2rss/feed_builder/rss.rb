@@ -96,7 +96,7 @@ module Html2rss
         @stylesheets.map { |style| Stylesheet.new(**style) }
       end
 
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable-next Metrics/AbcSize
       def make_channel(maker)
         channel_maker = maker.channel
         %i[language title description ttl].each do |key|
@@ -111,7 +111,6 @@ module Html2rss
 
         make_image(maker.image) if channel.image
       end
-      # rubocop:enable Metrics/AbcSize
 
       def make_image(image_maker)
         image_maker.url = channel.image.to_s

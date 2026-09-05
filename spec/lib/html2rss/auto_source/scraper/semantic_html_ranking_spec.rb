@@ -779,7 +779,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       HTML
     end
 
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'only calls Html::SstArticleExtractor on the final winners', :aggregate_failures do
       article = Html2rss::Article.new(
         title: 'Story A',
@@ -800,7 +800,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(results.size).to eq(1)
       expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).once
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'CSS class and ID scoring' do

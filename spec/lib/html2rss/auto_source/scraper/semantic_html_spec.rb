@@ -41,12 +41,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     let(:article_ids) { articles.filter_map(&:id) }
 
     let(:grouped_expected_articles) do
-      # rubocop:disable Layout/LineLength
+      # rubocop:disable-next Layout/LineLength
       [
         { title: 'Brittney Griner: What I Endured in Russia', url: 'https://page.com/6972085/brittney-griner-book-coming-home/', image: 'https://api.page.com/wp-content/uploads/2024/04/brittney-griner-basketball-russia.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: "Chris Coduto—Getty Images\n17 MIN READ\n\"Prison is more than a place. It’s also a mindset,\" Brittney Griner writes in an excerpt from her book about surviving imprisonment in Russia.", id: '/6972085/brittney-griner-book-coming-home/' },
         { title: 'Driver Dies After Crashing Into White House Security Barrier', url: 'https://page.com/6974836/white-house-car-crash-driver-dies-security-barrier/', image: 'https://api.page.com/wp-content/uploads/2024/05/AP24126237101577.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: '1 MIN READ', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
       ].group_by { |article| article[:id] }
-      # rubocop:enable Layout/LineLength
     end
 
     it 'yields and includes all expected articles', :aggregate_failures, :slow do # rubocop:disable RSpec/ExampleLength

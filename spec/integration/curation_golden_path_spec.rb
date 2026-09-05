@@ -5,7 +5,7 @@ require 'json'
 require 'mcp'
 require 'rss'
 
-# rubocop:disable RSpec/DescribeClass -- integration policy spec; lives under spec/integration/
+# rubocop:disable-next RSpec/DescribeClass -- integration policy spec; lives under spec/integration/
 RSpec.describe 'curation golden path (MCP policy)' do
   subject(:protocol_server) { Html2rss::MCP::Server.build }
 
@@ -67,7 +67,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
       allow(Html2rss::Capture).to receive(:build)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- policy chain is one story
+    # rubocop:disable-next RSpec/ExampleLength -- policy chain is one story
     it 'routes inspect → recon → done without calling capture', :aggregate_failures do
       inspect_env = envelope_for.call('inspect', { url: })
       recon_env = envelope_for.call('recon', { url: })
@@ -83,7 +83,6 @@ RSpec.describe 'curation golden path (MCP policy)' do
       )
       expect(Html2rss::Capture).not_to have_received(:build)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'build verdict walks inspect → recon → capture → test → apply' do # rubocop:disable RSpec/MultipleMemoizedHelpers -- golden path stubs one chain
@@ -188,7 +187,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
       allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- golden path encodes policy, not just happy-path wiring
+    # rubocop:disable-next RSpec/ExampleLength -- golden path encodes policy, not just happy-path wiring
     it 'follows each next_step through the ship gate', :aggregate_failures do
       inspect_env = envelope_for.call('inspect', { url: })
       recon_env = envelope_for.call('recon', { url: })
@@ -207,7 +206,5 @@ RSpec.describe 'curation golden path (MCP policy)' do
         payload: hash_including(item_count: 2, rss: '<rss version="2.0"/>')
       )
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 end
-# rubocop:enable RSpec/DescribeClass

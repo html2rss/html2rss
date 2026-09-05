@@ -28,14 +28,13 @@ module Html2rss
       # @param extra_paths [Array<String>] additional path guesses
       # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
       # @return [Html2rss::Url, nil]
-      # rubocop:disable Metrics/ParameterLists -- discovery kwargs stay co-located
+      # rubocop:disable-next Metrics/ParameterLists -- discovery kwargs stay co-located
       def best_feed_url(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
                         max_probes: nil)
         best_feed_response(
           page_url:, request_session:, parsed_body:, html:, extra_paths:, max_probes:
         )&.url
       end
-      # rubocop:enable Metrics/ParameterLists
 
       ##
       # Like {#best_feed_url} but returns the validated syndication response for parsing.
@@ -47,7 +46,7 @@ module Html2rss
       # @param extra_paths [Array<String>]
       # @param max_probes [Integer, nil] max candidate GETs (nil = uncapped)
       # @return [Html2rss::RequestService::Response, nil]
-      # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- discovery kwargs stay co-located
+      # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- discovery kwargs stay co-located
       def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
                              max_probes: nil)
         page = Html2rss::Url.from_absolute(page_url)
@@ -64,7 +63,6 @@ module Html2rss
           Log.info("Syndication::Discovery: host=#{page.host} selected_feed_url=#{response.url}")
         end
       end
-      # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
       ##
       # Ordered candidate feed URLs (head alternates first, then path guesses).

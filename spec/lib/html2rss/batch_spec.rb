@@ -23,7 +23,7 @@ RSpec.describe Html2rss::Batch do
   end
 
   describe '.run' do
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'returns a BatchResult with total and successful counts', :aggregate_failures do
       result = described_class.run(['https://example.com/a', 'https://example.com/b'], concurrency: 2) do |url|
         if url.end_with?('b')
@@ -46,7 +46,6 @@ RSpec.describe Html2rss::Batch do
         ]
       )
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '.batch_scrape' do
@@ -65,7 +64,7 @@ RSpec.describe Html2rss::Batch do
                                                    .and_raise(StandardError, 'Scrape timed out')
     end
 
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'scrapes URLs in parallel and records structured items and errors', :aggregate_failures do
       result = described_class.batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: 2)
 
@@ -82,7 +81,6 @@ RSpec.describe Html2rss::Batch do
       expect(second[:ok]).to be(false)
       expect(second[:error]).to eq('Scrape timed out')
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '.batch_inspect' do
@@ -125,7 +123,7 @@ RSpec.describe Html2rss::Batch do
       end
     end
 
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'inspects URLs in parallel and isolates per-URL errors', :aggregate_failures do
       result = described_class.batch_inspect(urls:, strategy: :auto, concurrency: 2)
 
@@ -141,7 +139,6 @@ RSpec.describe Html2rss::Batch do
       expect(second[:status]).to be_nil
       expect(second[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '.batch_recon' do
@@ -178,7 +175,7 @@ RSpec.describe Html2rss::Batch do
       end
     end
 
-    # rubocop:disable RSpec/ExampleLength
+    # rubocop:disable-next RSpec/ExampleLength
     it 'recons URLs in parallel and isolates per-URL errors', :aggregate_failures do
       result = described_class.batch_recon(urls:, strategy: :auto, concurrency: 2)
 
@@ -196,6 +193,5 @@ RSpec.describe Html2rss::Batch do
       expect(second[:verdict]).to eq(:drop)
       expect(second[:notes]).to eq(['error: StandardError - Connection failed'])
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 end

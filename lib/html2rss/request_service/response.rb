@@ -31,7 +31,7 @@ module Html2rss
       # @param status [Integer, nil] the HTTP status code when available
       # @param transport_meta [Hash] allowlisted upstream telemetry (frozen when present)
       # @param captured_responses [Array<Hash>] JSON XHR/fetch bodies captured during browser scrapes
-      # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists -- transport + capture fields stay co-located
+      # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- transport + capture fields stay co-located
       def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META,
                      captured_responses: EMPTY_CAPTURED_RESPONSES)
         @body = body
@@ -50,7 +50,6 @@ module Html2rss
                                 captured_responses.freeze
                               end
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
       # @return [String] the raw body of the response
       attr_reader :body
@@ -160,12 +159,12 @@ module Html2rss
         return false if ct.empty? || ct.include?('html') || ct.include?('json')
 
         # Substring match against Content-Type (not Array#intersect? on a String).
-        FEED_CT_MARKERS.any? { |marker| ct.include?(marker) } # rubocop:disable Style/ArrayIntersect
+        FEED_CT_MARKERS.any? { |marker| ct.include?(marker) }
       end
 
       def feed_looking_body?
         snippet = body.to_s[0, 800].downcase
-        FEED_BODY_MARKERS.any? { |marker| snippet.include?(marker) } # rubocop:disable Style/ArrayIntersect
+        FEED_BODY_MARKERS.any? { |marker| snippet.include?(marker) }
       end
     end
   end

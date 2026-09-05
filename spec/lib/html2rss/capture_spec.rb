@@ -121,7 +121,7 @@ RSpec.describe Html2rss::Capture do
         'section'
       ]
     }.each do |label, (html, expected_items_selector)|
-      # rubocop:disable RSpec/ExampleLength -- AutoSource + stub + selector assert
+      # rubocop:disable-next RSpec/ExampleLength -- AutoSource + stub + selector assert
       it "trims items path: #{label}" do
         response = html_response(html)
         articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
@@ -131,7 +131,6 @@ RSpec.describe Html2rss::Capture do
           selector: expected_items_selector, enhance: true
         )
       end
-      # rubocop:enable RSpec/ExampleLength
     end
 
     it 'lifts heading-link item roots to the research card', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -273,7 +272,7 @@ RSpec.describe Html2rss::Capture do
       expect(described_class.new(url).build.config[:strategy]).to eq(:botasaurus)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- single-article quality gate
+    # rubocop:disable-next RSpec/ExampleLength -- single-article quality gate
     it 'reports has_selectors false when too few matches' do
       html = <<~HTML
         <html><body>
@@ -287,7 +286,6 @@ RSpec.describe Html2rss::Capture do
 
       expect(described_class.new(url).build.has_selectors).to be false
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'falls back to cluster when list yields too few matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response('<html><body><div id="root"></div></body></html>')

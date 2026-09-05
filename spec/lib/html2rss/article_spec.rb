@@ -31,7 +31,7 @@ RSpec.describe Html2rss::Article do
                                              type: 'audio/mpeg', bytes_length: 1 }] }
     end
 
-    # rubocop:disable RSpec/ExampleLength -- asserts restored scalars + frozen collections
+    # rubocop:disable-next RSpec/ExampleLength -- asserts restored scalars + frozen collections
     it 'restores attributes without NOT_SET sentinel leakage', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(instance))
 
@@ -41,7 +41,6 @@ RSpec.describe Html2rss::Article do
       expect(restored.categories).to be_frozen
       expect(restored.enclosures).to be_frozen
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'keeps marshal hooks off the public API' do
       expect(instance.public_methods(false)).not_to include(:marshal_dump, :marshal_load)

@@ -5,7 +5,7 @@ module Html2rss
     ##
     # ArticleExtractor is responsible for extracting details (headline, url, images, etc.)
     # from an article_tag DOM node. DOM chrome helpers live on {Navigator}.
-    # rubocop:disable Metrics/ClassLength -- leftover re-extract stays with field extractors
+    # rubocop:disable-next Metrics/ClassLength -- leftover re-extract stays with field extractors
     class ArticleExtractor
       class << self
         ##
@@ -79,7 +79,7 @@ module Html2rss
         Url.from_relative("##{id}", base_url) if id
       end
 
-      # rubocop:disable Metrics/CyclomaticComplexity
+      # rubocop:disable-next Metrics/CyclomaticComplexity
       def extract_title
         source = heading || selected_anchor
         title_text = source ? Navigator.extract_visible_text(source) : fallback_anchorless_title
@@ -88,7 +88,6 @@ module Html2rss
         kicker = kicker_node ? Navigator.extract_visible_text(kicker_node).to_s.strip : nil
         kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
       end
-      # rubocop:enable Metrics/CyclomaticComplexity
 
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?
@@ -204,6 +203,5 @@ module Html2rss
 
       def extract_enclosures = EnclosureExtractor.call(article_tag, base_url)
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

@@ -21,7 +21,7 @@ module Html2rss
       # @param heading_anchor [Boolean]
       # @param utility_landmark_ancestor [Boolean] pre-computed by Segmenter tree walk
       # @return [Boolean]
-      # rubocop:disable Metrics/CyclomaticComplexity, Metrics/ParameterLists, Metrics/PerceivedComplexity, Lint/UnusedMethodArgument
+      # rubocop:disable-next Metrics/CyclomaticComplexity, Metrics/ParameterLists, Metrics/PerceivedComplexity, Lint/UnusedMethodArgument
       def noise_anchor?(text:, destination_facts:, anchor: nil, container: nil,
                         heading_anchor: false, utility_landmark_ancestor: false)
         return true unless destination_facts
@@ -35,7 +35,6 @@ module Html2rss
           icon_only_anchor?(anchor, text) ||
           utility_landmark_ancestor
       end
-      # rubocop:enable Metrics/CyclomaticComplexity, Metrics/ParameterLists, Metrics/PerceivedComplexity, Lint/UnusedMethodArgument
 
       private
 

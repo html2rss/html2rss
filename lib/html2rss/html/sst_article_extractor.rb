@@ -7,7 +7,7 @@ module Html2rss
     ##
     # Builds an {Html2rss::Article} from an SST segment / ranked segment.
     # Port of Html::ArticleExtractor field logic onto SST::Node.
-    # rubocop:disable Metrics/ClassLength -- SST field extractors colocated for parity with ArticleExtractor
+    # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated for parity with ArticleExtractor
     class SstArticleExtractor
       # CSS class tokens that mark kicker / eyebrow text (excluded from titles).
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
@@ -390,6 +390,5 @@ module Html2rss
         end
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end
