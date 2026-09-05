@@ -75,11 +75,13 @@ module Html2rss
 
     def initialize
       @strategies = {
-        faraday: FaradayStrategy,
+        default: HttpxStrategy,
+        httpx: HttpxStrategy,
+        faraday: HttpxStrategy,
         botasaurus: BotasaurusStrategy,
         local_file: LocalFileStrategy
       }
-      @default_strategy_name = :faraday
+      @default_strategy_name = :default
     end
 
     # @return [Symbol] the default strategy name

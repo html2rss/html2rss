@@ -42,7 +42,7 @@ module Html2rss
         end
 
         ##
-        # Cheap single-request diagnostic default: +:auto+ → +:faraday+.
+        # Cheap single-request diagnostic default: +:auto+ → +:default+.
         # Does not run {AutoFallback}. Prefer {resolve} for scrape/capture feeds.
         #
         # @param name [Symbol, String, nil] plan name (+nil+ → +:auto+)

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'faraday'
+require 'httpx'
 require 'json'
 
 module Html2rss
@@ -68,14 +68,22 @@ module Html2rss
       # @param base_url [String]
       # @return [Hash{Symbol => Object}]
       def health_check(base_url)
-        uri = Url.for_channel(base_url)
-        client = Faraday.new(url: uri.to_s.chomp('/'), request: { timeout: 5 })
-        response = client.get('/health')
-        body = JSON.parse(response.body)
+        endpoint = "#{Url.for_channel(base_url).to_s.chomp('/')}/health"
+        response = health_session.get(endpoint)
+        raise response.error if response.is_a?(HTTPX::ErrorResponse)
+
+        body = JSON.parse(response.body.to_s)
         { ok: response.status == 200, status: response.status, version: body['version'] }
       rescue StandardError => error
         { ok: false, error: "#{error.class}: #{error.message}" }
       end
+
+      def health_session
+        HTTPX.with(timeout: { operation_timeout: 5, request_timeout: 5, total_request_timeout: 5 },
+                   resolver_class: :system)
+      end
+      module_function :health_session
+      private_class_method :health_session
 
       ##
       # @param url [String]

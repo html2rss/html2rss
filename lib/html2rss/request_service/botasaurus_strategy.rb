@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'faraday'
+require 'httpx'
 require 'json'
 require 'securerandom'
 
@@ -11,7 +11,7 @@ module Html2rss
     class BotasaurusStrategy < Strategy
       # Content-Type negotiation for the scrape API transport hop.
       TRANSPORT_ACCEPT = 'application/json'
-      # Disable compressed bodies so Faraday returns raw JSON without implicit decoding surprises.
+      # Disable compressed bodies so HTTPX returns raw JSON without implicit decoding surprises.
       TRANSPORT_ENCODING = 'identity'
       # Correlates each POST /scrape with botasaurus-scrape-api request logs.
       REQUEST_ID_HEADER = 'X-Request-Id'
@@ -28,9 +28,14 @@ module Html2rss
       def post_scrape_request
         request_id = SecureRandom.uuid
         Log.debug("#{self.class}: POST /scrape #{REQUEST_ID_HEADER}=#{request_id}")
-        transport_response = client.post('/scrape', JSON.generate(contract.request_payload), post_headers(request_id))
-        contract.parse_response(transport_response)
+        payload = JSON.generate(contract.request_payload)
+        response = client.post(scrape_endpoint, body: payload, headers: post_headers(request_id))
+        raise response.error if response.is_a?(HTTPX::ErrorResponse)
+
+        contract.parse_response(response)
       end
+
+      def scrape_endpoint = "#{scraper_base_url.to_s.chomp('/')}/scrape"
 
       def build_response(parsed_response)
         Response.new(
@@ -44,22 +49,14 @@ module Html2rss
       end
 
       def raise_from_error!(error)
-        raise_if_challenge_blocked!(error)
-        raise_if_timed_out!(error)
+        raise BlockedSurfaceDetected, "Blocked surface detected: #{error.challenge_message}" if error.challenge_block?
+
+        if error.timeout?
+          log_timeout!(reason: 'botasaurus_upstream')
+          raise RequestTimedOut.new(error.failure_message, timeout_phase: error.timeout_phase)
+        end
+
         raise BotasaurusServiceError, error.failure_message
-      end
-
-      def raise_if_challenge_blocked!(error)
-        return unless error.challenge_block?
-
-        raise BlockedSurfaceDetected, "Blocked surface detected: #{error.challenge_message}"
-      end
-
-      def raise_if_timed_out!(error)
-        return unless error.timeout?
-
-        log_timeout!(reason: 'botasaurus_upstream')
-        raise RequestTimedOut.new(error.failure_message, timeout_phase: error.timeout_phase)
       end
 
       def response_url(final_url)
@@ -79,8 +76,18 @@ module Html2rss
       end
 
       def client
-        # No :gzip middleware on this client — compression is for remote target fetches only.
-        @client ||= Faraday.new(url: scraper_base_url.to_s, headers: client_headers, request: request_options)
+        timeout = attempt_timeout_seconds.to_f
+        @client ||= HTTPX.with(headers: client_headers, timeout: client_timeouts(timeout), resolver_class: :system)
+      end
+
+      def client_timeouts(timeout)
+        {
+          operation_timeout: timeout,
+          connect_timeout: [ctx.policy.connect_timeout_seconds, timeout].min,
+          read_timeout: [ctx.policy.read_timeout_seconds, timeout].min,
+          request_timeout: timeout,
+          total_request_timeout: timeout
+        }
       end
 
       def client_headers
@@ -96,10 +103,6 @@ module Html2rss
           'Content-Type' => 'application/json',
           REQUEST_ID_HEADER => request_id
         }
-      end
-
-      def request_options
-        { timeout: attempt_timeout_seconds.to_i }
       end
 
       def attempt_timeout_seconds

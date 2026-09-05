@@ -38,7 +38,9 @@ RSpec.describe Html2rss::RequestService do
 
   describe '.default_strategy_name' do
     specify(:aggregate_failures) do
-      expect(described_class.default_strategy_name).to be :faraday
+      expect(described_class.default_strategy_name).to be :default
+      expect(described_class.strategy_registered?(:default)).to be true
+      expect(described_class.strategy_registered?(:httpx)).to be true
       expect(described_class.strategy_registered?(:faraday)).to be true
       expect(described_class.strategy_registered?(:botasaurus)).to be true
     end
@@ -47,10 +49,10 @@ RSpec.describe Html2rss::RequestService do
   describe '#execute' do
     subject(:execute) { described_class.execute(ctx, strategy:) }
 
-    let(:strategy) { :faraday }
+    let(:strategy) { :default }
     let(:ctx) { instance_double(Html2rss::RequestService::Context) }
 
-    let(:strategy_class) { described_class::FaradayStrategy }
+    let(:strategy_class) { described_class::HttpxStrategy }
     let(:strategy_instance) do
       instance_double strategy_class, execute: nil
     end
@@ -90,7 +92,7 @@ RSpec.describe Html2rss::RequestService do
   describe '.strategy_registered?' do
     context 'when the strategy is registered' do
       it 'returns true' do
-        expect(described_class.strategy_registered?(:faraday)).to be true
+        expect(described_class.strategy_registered?(:default)).to be true
       end
     end
 
@@ -102,7 +104,7 @@ RSpec.describe Html2rss::RequestService do
 
     context 'when the strategy name is a string' do
       it 'returns true for a registered strategy' do
-        expect(described_class.strategy_registered?('faraday')).to be true
+        expect(described_class.strategy_registered?('default')).to be true
       end
 
       it 'returns false for an unregistered strategy' do
@@ -113,7 +115,7 @@ RSpec.describe Html2rss::RequestService do
 
   describe '.default_strategy_name=' do
     after do
-      described_class.default_strategy_name = :faraday
+      described_class.default_strategy_name = :default
     end
 
     context 'when the strategy is registered' do
