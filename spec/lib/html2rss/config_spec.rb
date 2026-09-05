@@ -318,6 +318,15 @@ RSpec.describe Html2rss::Config do
     end
   end
 
+  describe '.validate_yaml' do
+    let(:file) { 'spec/fixtures/single.test.yml' }
+
+    it 'returns a validation result for a YAML file' do
+      validation = described_class.validate_yaml(file)
+      expect(validation).to be_success
+    end
+  end
+
   describe '.validate' do
     let(:config) do
       {

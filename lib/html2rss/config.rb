@@ -94,6 +94,18 @@ module Html2rss
       end
 
       ##
+      # Loads and validates a YAML configuration file.
+      #
+      # @param file [String] the YAML file to load
+      # @param feed_name [String, nil] optional feed name for multi-feed files
+      # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
+      # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
+      # @return [Dry::Validation::Result, Html2rss::Config::ValidationResult]
+      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
+        validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
+      end
+
+      ##
       # Returns the packaged JSON Schema file path.
       #
       # @return [String] absolute path to the packaged JSON Schema file
