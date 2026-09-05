@@ -2,10 +2,11 @@
 # frozen_string_literal: true
 
 # Captures wall time + allocation baseline for auto-source paths.
-# Usage: mise exec -- bin/heuristic-perf-baseline [--write PATH]
+# Usage:
+#   mise exec -- bin/heuristic-perf-baseline [--write PATH] [--backend nokogiri|nokolexbor|rust|all]
 
 require 'bundler/setup'
-require 'nokogiri'
+require 'fileutils'
 require 'optparse'
 require_relative '../lib/html2rss'
 
@@ -18,6 +19,7 @@ FIXTURES = [
 WARMUP = 1
 RUNS = 5
 BASE_URL = 'https://example.com/'
+BACKENDS = %w[nokogiri nokolexbor rust].freeze
 
 def run_heuristics(parsed_body) # rubocop:disable Metrics/MethodLength
   semantic = Html2rss::AutoSource::Scraper::SemanticHtml.new(
@@ -55,32 +57,82 @@ def measure(parsed_bodies, bodies)
   [wall, allocs, heuristic_counts, auto_counts]
 end
 
-options = { write: nil }
+def parse_bodies(bodies, backend_name)
+  Html2rss::Html::Backend.use(backend_name)
+  bodies.map { Html2rss::Html::Document.parse(_1) }
+end
+
+def median(arr) = arr.sort[arr.size / 2]
+
+def benchmark_backend(backend_name, bodies) # rubocop:disable Metrics/MethodLength
+  parsed_bodies = parse_bodies(bodies, backend_name)
+  WARMUP.times { measure(parsed_bodies, bodies) }
+
+  walls = []
+  allocs = []
+  heuristic_counts = nil
+  auto_counts = nil
+  RUNS.times do
+    wall, alloc, h_counts, a_counts = measure(parsed_bodies, bodies)
+    walls << wall
+    allocs << alloc
+    heuristic_counts = h_counts
+    auto_counts = a_counts
+  end
+
+  {
+    backend: backend_name,
+    wall_med: median(walls),
+    alloc_med: median(allocs),
+    heuristic_counts:,
+    auto_counts:
+  }
+end
+
+def format_result(result) # rubocop:disable Metrics/MethodLength
+  lines = []
+  lines << "## Backend: #{result[:backend]}"
+  lines << ''
+  lines << '| Metric | Value |'
+  lines << '| --- | --- |'
+  lines << "| wall_time_s (median) | #{format('%.6f', result[:wall_med])} |"
+  lines << "| allocations (median) | #{result[:alloc_med]} |"
+  lines << "| wall_budget_1_1x | #{format('%.6f', result[:wall_med] * 1.1)} |"
+  lines << "| alloc_budget_1_15x | #{(result[:alloc_med] * 1.15).ceil} |"
+  lines << ''
+  lines << 'Article counts per fixture (semantic, html | AutoSource#articles):'
+  FIXTURES.each_with_index do |fixture, idx|
+    semantic_n, html_n = result[:heuristic_counts][idx]
+    lines << "- #{fixture}: semantic=#{semantic_n}, html=#{html_n}, auto_source=#{result[:auto_counts][idx]}"
+  end
+  lines << ''
+  lines
+end
+
+options = { write: nil, backend: 'all' }
 OptionParser.new do |opts|
   opts.on('--write PATH', 'Write markdown baseline to PATH') { |path| options[:write] = path }
+  opts.on('--backend NAME', 'nokogiri, nokolexbor, rust, or all (default: all)') { |name| options[:backend] = name }
 end.parse!
+
+backends = case options[:backend]
+           when 'all', 'both' then BACKENDS
+           when *BACKENDS then [options[:backend]]
+           else
+             raise ArgumentError, "Unknown --backend #{options[:backend].inspect}"
+           end
 
 root = File.expand_path('..', __dir__)
 bodies = FIXTURES.map { |rel| File.read(File.join(root, rel)) }
-parsed_bodies = bodies.map { Nokogiri::HTML(_1) }
 
-WARMUP.times { measure(parsed_bodies, bodies) }
+results = backends.map do |backend_name|
+  benchmark_backend(backend_name, bodies)
+rescue LoadError => error
+  warn "Skipping #{backend_name}: #{error.message}"
+  nil
+end.compact
 
-walls = []
-allocs = []
-heuristic_counts = nil
-auto_counts = nil
-RUNS.times do
-  wall, alloc, h_counts, a_counts = measure(parsed_bodies, bodies)
-  walls << wall
-  allocs << alloc
-  heuristic_counts = h_counts
-  auto_counts = a_counts
-end
-
-median = ->(arr) { arr.sort[arr.size / 2] }
-wall_med = median.call(walls)
-alloc_med = median.call(allocs)
+Html2rss::Html::Backend.reset!
 
 lines = []
 lines << '# Auto-source performance baseline'
@@ -89,26 +141,36 @@ lines << "Captured: #{Time.now.utc.iso8601}"
 lines << "Ruby: #{RUBY_VERSION}"
 lines << "Fixtures: #{FIXTURES.join(', ')}"
 lines << "Warmup runs: #{WARMUP}; measured runs: #{RUNS} (median reported)"
+lines << "Backends: #{results.map { _1[:backend] }.join(', ')}"
 lines << ''
-lines << '| Metric | Value |'
-lines << '| --- | --- |'
-lines << "| wall_time_s (median) | #{format('%.6f', wall_med)} |"
-lines << "| allocations (median) | #{alloc_med} |"
-lines << "| wall_budget_1_1x | #{format('%.6f', wall_med * 1.1)} |"
-lines << "| alloc_budget_1_15x | #{(alloc_med * 1.15).ceil} |"
-lines << ''
-lines << 'Article counts per fixture (semantic, html | AutoSource#articles):'
-FIXTURES.each_with_index do |fixture, idx|
-  semantic_n, html_n = heuristic_counts[idx]
-  lines << "- #{fixture}: semantic=#{semantic_n}, html=#{html_n}, auto_source=#{auto_counts[idx]}"
+
+if results.size >= 2
+  nokogiri = results.find { _1[:backend] == 'nokogiri' }
+  lines << '## Comparison (vs nokogiri)'
+  lines << ''
+  lines << '| Backend | wall_time_s | allocations | wall Δ% | alloc Δ% |'
+  lines << '| --- | --- | --- | --- | --- |'
+  results.each do |result|
+    if result[:backend] == 'nokogiri' || nokogiri.nil?
+      lines << "| #{result[:backend]} | #{format('%.6f', result[:wall_med])} | #{result[:alloc_med]} | — | — |"
+    else
+      wall_delta = ((result[:wall_med] / nokogiri[:wall_med]) - 1) * 100
+      alloc_delta = ((result[:alloc_med].to_f / nokogiri[:alloc_med]) - 1) * 100
+      lines << "| #{result[:backend]} | #{format('%.6f', result[:wall_med])} | #{result[:alloc_med]} | " \
+               "#{format('%+.1f', wall_delta)} | #{format('%+.1f', alloc_delta)} |"
+    end
+  end
+  lines << ''
 end
-lines << ''
+
+results.each { |result| lines.concat(format_result(result)) }
 
 report = lines.join("\n")
 puts report
 
 if options[:write]
   path = File.expand_path(options[:write], root)
+  FileUtils.mkdir_p(File.dirname(path))
   File.write(path, report)
   warn "Wrote #{path}"
 end

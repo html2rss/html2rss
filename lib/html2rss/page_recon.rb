@@ -284,7 +284,7 @@ module Html2rss
     end
 
     def alternate_feeds_from(parsed)
-      return [] unless parsed.is_a?(Nokogiri::HTML::Document)
+      return [] unless Html::Document.html_document?(parsed)
 
       Html::FeedLink.from_document(parsed).map { |link| { href: link.href, mime_type: link.mime_type } }
     end

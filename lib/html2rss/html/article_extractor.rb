@@ -92,8 +92,8 @@ module Html2rss
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?
 
-        text_node = article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }
-        text_node&.text&.strip
+        text_node = Html2rss::Html::Node.first_nonblank_text(article_tag)
+        text_node
       end
 
       def heading

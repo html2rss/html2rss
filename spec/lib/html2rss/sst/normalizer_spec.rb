@@ -57,6 +57,7 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
 
     it 'degrades when MAX_NODES is breached', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      Html2rss::Html::Backend.use(:nokogiri)
       stub_const('Html2rss::SST::Normalizer::MAX_NODES', 3)
       allow(Html2rss::Log).to receive(:warn)
 

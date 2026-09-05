@@ -25,8 +25,10 @@ Gem::Specification.new do |spec|
           'public gem pushes.'
   end
 
+  # Include optional Rust extension sources. Do NOT set spec.extensions here —
+  # experiment wave compiles via `rake compile` only (lazy LoadError if missing).
   spec.files = `git ls-files -z`.split("\x0").select do |f|
-    f.match(%r{^(lib/|exe/|schema/|README.md|LICENSE|html2rss.gemspec)})
+    f.match(%r{^(lib/|exe/|schema/|ext/|Cargo\.(toml|lock)|README.md|LICENSE|html2rss.gemspec)})
   end
   spec.bindir        = 'exe'
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }

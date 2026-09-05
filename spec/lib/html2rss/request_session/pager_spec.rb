@@ -181,6 +181,10 @@ RSpec.describe Html2rss::RequestSession::Pager do
       let(:selector) { 'descendant::a' }
 
       it 'extracts next URL via XPath fallback' do
+        unless Html2rss::Html::Backend.current.name == :nokogiri
+          skip 'XPath pagination fallback requires Nokogiri (Lexbor/Rust omit at_xpath)'
+        end
+
         expect(pager.to_a).to eq([initial_response, follow_up_response])
       end
     end

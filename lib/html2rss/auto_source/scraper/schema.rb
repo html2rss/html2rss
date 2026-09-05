@@ -67,15 +67,16 @@ module Html2rss
           #
           # Prefers collection keys ({COLLECTION_KEYS}) when walking containers.
           #
-          # @param object [Hash, Array, Nokogiri::XML::Element]
+          # @param object [Hash, Array, Object]
           # @return [Array<Hash>] the schema_objects, or an empty array
           # :reek:DuplicateMethodCall
           def from(object)
             case object
-            when Nokogiri::XML::Element then from(parse_script_tag(object))
             when Hash then from_hash(object)
             when Array then object.flat_map { |item| from(item) }
-            else []
+            else
+              script = Html2rss::Html::Node.node?(object) && Html2rss::Html::Probe.tag(object) == 'script'
+              script ? from(parse_script_tag(object)) : []
             end
           end
 
