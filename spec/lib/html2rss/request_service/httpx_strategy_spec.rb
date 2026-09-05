@@ -163,6 +163,20 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect(result.body).to eq('<html>terminal-success</html>')
       expect(result.url.to_s).to eq('https://example.com/terminal')
     end
+
+    it 'returns the response without raising RedirectLimitReached for 304 Not Modified' do
+      stub_request(:get, 'https://example.com')
+        .to_return(status: 304, headers: {})
+
+      expect(execute.status).to eq(304)
+    end
+
+    it 'returns the response without raising RedirectLimitReached for 3xx responses without Location header' do
+      stub_request(:get, 'https://example.com')
+        .to_return(status: 300, body: '<html>choices</html>', headers: { 'Content-Type' => 'text/html' })
+
+      expect(execute.status).to eq(300)
+    end
   end
 
   describe 'error translation' do

@@ -14,8 +14,24 @@ module Html2rss
     # rubocop:disable-next Metrics/ClassLength -- terminal redirect retry colocated with HTTPX transport
     class HttpxStrategy < Strategy
       # Hop-by-hop headers forbidden in HTTP/2 requests (RFC 7540 §8.1.2.2 / RFC 9113 §8.2.1).
-      CONNECTION_HEADERS = %w[connection keep-alive proxy-connection transfer-encoding upgrade].freeze
+      CONNECTION_HEADERS = %w[connection keep-alive proxy-connection transfer-encoding upgrade].to_set.freeze
       private_constant :CONNECTION_HEADERS
+
+      class << self
+        # rubocop:disable ThreadSafety/ClassInstanceVariable
+        # @return [HTTPX::Session]
+        def base_session
+          @base_sessions ||= {}
+          @base_sessions[HTTPX::Session] ||= HTTPX.plugin(:follow_redirects).plugin(:callbacks)
+        end
+
+        # @return [HTTPX::Session]
+        def base_ssrf_session
+          @base_ssrf_sessions ||= {}
+          @base_ssrf_sessions[HTTPX::Session] ||= base_session.plugin(:ssrf_filter)
+        end
+        # rubocop:enable ThreadSafety/ClassInstanceVariable
+      end
 
       ##
       # @return [ResponseGuard]
@@ -58,8 +74,11 @@ module Html2rss
 
       def redirect_limit_reached?(response)
         return false unless response.is_a?(HTTPX::Response)
+        return false if response.status == 304
+        return false unless (300..399).cover?(response.status)
 
-        (300..399).cover?(response.status)
+        location = response.headers['location']
+        !location.nil? && !location.strip.empty?
       end
 
       def terminal_redirect_url(raw_response)
@@ -122,15 +141,14 @@ module Html2rss
         session = session.on_response_started do |_req, res|
           response_guard.inspect_chunk!(total_bytes: 0, headers: res.headers.to_h)
         end
-        session.on_response_body_chunk do |_req, res, chunk|
+        session.on_response_body_chunk do |_req, _res, chunk|
           streamed_bytes += chunk.bytesize
-          response_guard.inspect_chunk!(total_bytes: streamed_bytes, headers: res.headers.to_h)
+          response_guard.inspect_chunk!(total_bytes: streamed_bytes)
         end
       end
 
       def session_client(deadline)
-        session = HTTPX.plugin(:follow_redirects).plugin(:callbacks)
-        session = session.plugin(:ssrf_filter) unless ctx.policy.allow_private_networks?
+        session = ctx.policy.allow_private_networks? ? self.class.base_session : self.class.base_ssrf_session
         session.with(session_options(deadline))
       end
 

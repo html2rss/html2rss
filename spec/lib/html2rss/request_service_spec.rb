@@ -65,6 +65,20 @@ RSpec.describe Html2rss::RequestService do
       end
     end
 
+    context 'with a deprecated strategy alias' do
+      let(:strategy) { :faraday }
+
+      it 'logs a deprecation warning and delegates to HttpxStrategy', :aggregate_failures do
+        allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
+        allow(Html2rss::Log).to receive(:warn)
+
+        execute
+
+        expect(strategy_class).to have_received(:new).with(ctx)
+        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':faraday' is deprecated/)
+      end
+    end
+
     context 'with an unknown strategy' do
       let(:strategy) { :unknown }
 
@@ -122,6 +136,16 @@ RSpec.describe Html2rss::RequestService do
       it 'sets the default strategy' do
         described_class.default_strategy_name = :botasaurus
         expect(described_class.default_strategy_name).to be :botasaurus
+      end
+    end
+
+    context 'when setting a deprecated strategy alias' do
+      it 'logs a deprecation warning' do
+        allow(Html2rss::Log).to receive(:warn)
+
+        described_class.default_strategy_name = :faraday
+
+        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':faraday' is deprecated/)
       end
     end
 
