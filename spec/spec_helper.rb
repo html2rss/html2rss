@@ -35,6 +35,7 @@ end
 
 require 'html2rss'
 require_relative 'support/cli_helpers'
+require_relative 'support/page_1_admission'
 
 # Load custom matchers and helpers
 require_relative 'support/helpers/configuration_helpers'

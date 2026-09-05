@@ -18,3 +18,14 @@ docs/
 .codex/
 .tool-versions
 bin/rails
+
+# Optional Rust html2rss_parser extension (rake compile); Cargo.lock is committed
+/target/
+**/target/
+lib/html2rss/html2rss_parser.so
+lib/html2rss/html2rss_parser.bundle
+lib/html2rss/html2rss_parser.dylib
+ext/html2rss_parser/Makefile
+ext/html2rss_parser/*.o
+ext/html2rss_parser/mkmf.log
+tmp/arm64-*/

@@ -170,6 +170,7 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 - Catalog metadata on `directory` (`title`, `summary`, `topics`) is validated in `DirectoryConfig`. When changing those rules, regenerate the schema and coordinate `html2rss-configs` validation plus `Html2rss::Configs::Catalog`.
 - Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
 - Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
+- Optional Rust HTML backend (`HTML2RSS_HTML_BACKEND=rust`): compile with `mise exec -- bundle exec rake compile` (no `gemspec.extensions` this wave). Unset sandbox `BUNDLE_PATH` when it points at `cursor-sandbox-cache`. See `lib/html2rss/html/BACKEND_EXPERIMENT.md` and `make perf-baseline` / `make perf-suite`.
 - Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
 - Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,mcp}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
 - When changing curation verbs (CLI commands, MCP `Contract::TITLES`, `Outcome::NextStep`, gem facades), sync `CONTEXT.md` § Frozen contract, this § Curation CLI / MCP, `README.md`, and `lib/html2rss/mcp/README.md` in the same PR wave.

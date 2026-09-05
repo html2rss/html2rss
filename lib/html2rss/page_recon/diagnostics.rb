@@ -106,7 +106,7 @@ module Html2rss
       # @param parsed [Object] parsed response body
       # @return [Array<String>, Hash]
       def scraper_info(parsed)
-        return { error: 'Response is not HTML' } unless parsed.is_a?(Nokogiri::HTML::Document)
+        return { error: 'Response is not HTML' } unless Html::Document.html_document?(parsed)
 
         begin
           Html2rss::AutoSource::Scraper.from(parsed).map(&:name)

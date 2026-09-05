@@ -48,7 +48,7 @@ module Html2rss
           def fallback_text_node_content(article_tag, fallback_anchorless)
             return unless fallback_anchorless
 
-            article_tag.xpath('.//text()').find { |t| !t.text.strip.empty? }&.text&.strip
+            Html2rss::Html::Node.first_nonblank_text(article_tag)
           end
 
           def generate_slug(text)
