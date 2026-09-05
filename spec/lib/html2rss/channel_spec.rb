@@ -256,7 +256,7 @@ RSpec.describe Html2rss::Channel do
   end
 
   describe 'immutability' do
-    # rubocop:disable RSpec/ExampleLength -- freeze + Url normalize + caller isolation
+    # rubocop:disable-next RSpec/ExampleLength -- freeze + Url normalize + caller isolation
     it 'freezes retained strings and resists caller mutation of override image input', :aggregate_failures do
       image = +'https://example.com/override.jpg'
       channel = described_class.from_response(response, overrides: { title: +'Mutable', image: })
@@ -269,9 +269,8 @@ RSpec.describe Html2rss::Channel do
       image.replace('https://evil.example/x.jpg')
       expect(channel.image.to_s).to eq('https://example.com/override.jpg')
     end
-    # rubocop:enable RSpec/ExampleLength
 
-    # rubocop:disable RSpec/ExampleLength -- Marshal round-trip freeze contract
+    # rubocop:disable-next RSpec/ExampleLength -- Marshal round-trip freeze contract
     it 're-freezes nested state after Marshal.round-trip', :aggregate_failures do
       channel = described_class.from_response(response, overrides: { title: 'Cached' })
       restored = Marshal.load(Marshal.dump(channel))
@@ -281,7 +280,6 @@ RSpec.describe Html2rss::Channel do
       expect(restored.last_build_date).to be_a(Time)
       expect { restored.title << 'X' }.to raise_error(FrozenError)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

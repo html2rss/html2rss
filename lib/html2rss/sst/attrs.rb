@@ -29,7 +29,7 @@ module Html2rss
         # @param type [String, nil]
         # @param raw [Hash{String => String}, nil]
         # @return [Attrs]
-        # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+        # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists
         def build(href: nil, src: nil, id: nil, class_names: nil, datetime: nil, itemprop: nil,
                   style: nil, srcset: nil, type: nil, raw: nil)
           new(
@@ -45,7 +45,6 @@ module Html2rss
             raw: normalize_raw(raw)
           )
         end
-        # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
         ##
         # @return [Attrs]

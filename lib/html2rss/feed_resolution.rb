@@ -33,13 +33,12 @@ module Html2rss
     # @param articles [Array<Html2rss::Article>]
     # @param surface_category [Symbol, nil]
     # @return [Result]
-    # rubocop:disable Metrics/ParameterLists -- tournament kwargs stay co-located
+    # rubocop:disable-next Metrics/ParameterLists -- tournament kwargs stay co-located
     def self.call(entry_url:, response:, session:, config:, articles:, surface_category: nil)
       Runner.new(
         entry_url:, response:, session:, config:, articles:, surface_category:
       ).call
     end
-    # rubocop:enable Metrics/ParameterLists
 
     ##
     # Outcome of {FeedResolution.try_apply!} for the auto-fallback chain.
@@ -60,7 +59,7 @@ module Html2rss
     # @param budget [Html2rss::RequestService::Budget]
     # @return [ApplyOutcome, nil] `:succeeded` sticky scrape target when retry extract yielded items;
     #   `nil` when no winner or retry was empty (entry scrape target kept; Diag.applied may still be true)
-    # rubocop:disable Metrics/ParameterLists -- orchestration kwargs stay co-located
+    # rubocop:disable-next Metrics/ParameterLists -- orchestration kwargs stay co-located
     def self.try_apply!(pipeline:, config:, response:, session:, strategy:, resources:, articles:,
                         scrape_target:, state:, budget:)
       Orchestrator.new(
@@ -68,7 +67,6 @@ module Html2rss
         scrape_target:, state:, budget:
       ).call
     end
-    # rubocop:enable Metrics/ParameterLists
 
     # Tournament + optional retry orchestration for {FeedPipeline::AutoFallback}.
     class Orchestrator
@@ -89,7 +87,7 @@ module Html2rss
       # @param scrape_target [Html2rss::ScrapeTarget]
       # @param state [Html2rss::FeedPipeline::AutoFallback::AttemptState]
       # @param budget [Html2rss::RequestService::Budget]
-      # rubocop:disable Metrics/ParameterLists -- orchestration context stays co-located
+      # rubocop:disable-next Metrics/ParameterLists -- orchestration context stays co-located
       def initialize(pipeline:, config:, response:, session:, strategy:, resources:, articles:,
                      scrape_target:, state:, budget:)
         @pipeline = pipeline
@@ -103,11 +101,10 @@ module Html2rss
         @state = state
         @budget = budget
       end
-      # rubocop:enable Metrics/ParameterLists
 
       ##
       # @return [ApplyOutcome, nil]
-      # rubocop:disable Metrics/MethodLength -- eligibility + tournament + retry path
+      # rubocop:disable-next Metrics/MethodLength -- eligibility + tournament + retry path
       def call
         return unless eligible?
 
@@ -131,7 +128,6 @@ module Html2rss
         Log.warn("FeedResolution: entry resolution retry failed (#{error.class})")
         nil
       end
-      # rubocop:enable Metrics/MethodLength
 
       private
 
@@ -192,7 +188,7 @@ module Html2rss
       # @param config [Html2rss::Config]
       # @param articles [Array<Html2rss::Article>]
       # @param surface_category [Symbol, nil]
-      # rubocop:disable Metrics/ParameterLists -- tournament context stays co-located
+      # rubocop:disable-next Metrics/ParameterLists -- tournament context stays co-located
       def initialize(entry_url:, response:, session:, config:, articles:, surface_category: nil)
         raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
 
@@ -203,11 +199,10 @@ module Html2rss
         @articles = articles
         @surface_category = surface_category
       end
-      # rubocop:enable Metrics/ParameterLists
 
       ##
       # @return [Result]
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- policy → candidates → probe → select
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- policy → candidates → probe → select
       def call
         return skip(:policy_skip) unless Policy.resolve?(
           config:, articles:, surface_category:
@@ -226,7 +221,6 @@ module Html2rss
 
         apply(winner, probe_count: scored.size)
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
       private
 

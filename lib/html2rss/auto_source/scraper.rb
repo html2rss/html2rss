@@ -145,7 +145,7 @@ module Html2rss
       # @option opts [Hash] :html scraper toggle and configuration
       # @option opts [Hash] :sitemap scraper toggle and configuration
       # @return [Object, nil]
-      # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- construction context for structured and heuristic scrapers
+      # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- construction context for structured and heuristic scrapers
       def self.build_instance(scraper, parsed_body, opts:, url:, request_session: nil, body: nil, document: nil,
                               link_resolver: nil, captured_responses: [])
         return unless opts.dig(scraper.options_key, :enabled)
@@ -162,7 +162,6 @@ module Html2rss
         )
         scraper.new(parsed_body, url:, **kwargs, **scraper_opts)
       end
-      # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
       ##
       # @param instance [Object]

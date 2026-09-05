@@ -2,7 +2,7 @@
 
 require 'tmpdir'
 
-# rubocop:disable RSpec/MultipleMemoizedHelpers -- probe/response fixtures shared across verdict contexts
+# rubocop:disable-next RSpec/MultipleMemoizedHelpers -- probe/response fixtures shared across verdict contexts
 RSpec.describe Html2rss::Recon do
   let(:url) { 'https://example.com/news' }
   let(:html_body) do
@@ -224,4 +224,3 @@ RSpec.describe Html2rss::Recon do
     end
   end
 end
-# rubocop:enable RSpec/MultipleMemoizedHelpers

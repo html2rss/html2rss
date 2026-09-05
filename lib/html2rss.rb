@@ -299,7 +299,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
 
   # rubocop:enable Metrics/ParameterLists
 
-  # rubocop:disable ThreadSafety/ClassInstanceVariable
+  # rubocop:disable-next ThreadSafety/ClassInstanceVariable
   class << self
     ##
     # @return [Html2rss::Defaults] the global defaults instance
@@ -341,12 +341,11 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
       logger.level = defaults.log_level if logger.respond_to?(:level=)
     end
   end
-  # rubocop:enable ThreadSafety/ClassInstanceVariable
 
   class << self
     private
 
-    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
+    # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength
     def build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
                                  local_file_path: nil, limit: nil)
       config = Config.auto_source_config(
@@ -361,7 +360,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
       end
       config
     end
-    # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
   end
 
   logger.level = defaults.log_level if logger.respond_to?(:level=)

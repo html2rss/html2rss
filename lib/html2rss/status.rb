@@ -26,7 +26,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
       # @param scrape_url [String, nil] effective scrape URL after resolution
       # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil] resolution diagnostics
       # @return [Html2rss::Status]
-      # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- Status kwargs stay co-located
+      # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Status kwargs stay co-located
       def build(articles:, dedup_dropped: 0, selected_strategy: nil, attempt_count: 0,
                 strategy_attempts: [], admission_drops: {}, scrape_target: nil,
                 entry_url: nil, scrape_url: nil, entry_resolution: nil)
@@ -44,7 +44,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
           entry_resolution:
         )
       end
-      # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
       ##
       # @param klass [Class, #to_s] scraper class
@@ -65,7 +64,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
     # @param entry_url [String, nil]
     # @param scrape_url [String, nil]
     # @param entry_resolution [Hash, nil]
-    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength -- Status Data.define members
+    # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Status Data.define members
     def initialize(
       version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
       strategy_attempts: [], admission_drops: {}, entry_url: nil, scrape_url: nil, entry_resolution: nil
@@ -87,13 +86,12 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
         entry_resolution: freeze_entry_resolution(entry_resolution)
       )
     end
-    # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 
     ##
     # Observability hash for web (+scraper_status+). Omits empty/absent optional keys.
     #
     # @return [Hash{Symbol => Object}]
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity -- omit-empty optional keys stay explicit
+    # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity -- omit-empty optional keys stay explicit
     def to_h
       {
         version:,
@@ -108,7 +106,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
         **(entry_resolution ? { entry_resolution: } : {})
       }
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     ##
     # Formats the RSS +generator+ string and JSON Feed +user_comment+.

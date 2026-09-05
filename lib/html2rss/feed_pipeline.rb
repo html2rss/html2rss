@@ -132,7 +132,7 @@ module Html2rss
       [selector + auto, admission_drops]
     end
 
-    # rubocop:disable Metrics/MethodLength
+    # rubocop:disable-next Metrics/MethodLength
     def selector_articles(config:, response:, request_session:)
       return [] unless (selectors = config.selectors)
       return [] if response.feed_response?
@@ -151,7 +151,6 @@ module Html2rss
       end
       articles
     end
-    # rubocop:enable Metrics/MethodLength
 
     # @return [Array(Array<Html2rss::Article>, Hash{String => Integer})]
     def auto_source_articles(config:, response:, request_session:)

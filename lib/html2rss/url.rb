@@ -22,7 +22,7 @@ module Html2rss
   #   url = Url.from_relative('/foo-bar/baz.txt', 'https://example.com')
   #   url.titleized # => "Foo Bar Baz"
   #   url.channel_titleized # => "example.com: Foo Bar Baz"
-  # rubocop:disable Metrics/ClassLength -- value object owns resolve/sanitize/titleize/identity
+  # rubocop:disable-next Metrics/ClassLength -- value object owns resolve/sanitize/titleize/identity
   class Url
     include Comparable
 
@@ -324,5 +324,4 @@ module Html2rss
       false
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

@@ -74,7 +74,7 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   describe '#to_json_feed' do
-    # rubocop:disable RSpec/ExampleLength -- asserts feed_url, user_comment, and content_text routing together
+    # rubocop:disable-next RSpec/ExampleLength -- asserts feed_url, user_comment, and content_text routing together
     it 'wires feed_url and status user_comment into the JSON Feed hash', :aggregate_failures do
       payload = result.to_json_feed(feed_url: 'https://example.com/feed.json')
 
@@ -88,7 +88,6 @@ RSpec.describe Html2rss::FeedResult do
       expect(payload[:items].first[:content_text]).to eq('Body')
       expect(payload[:items].first).not_to have_key(:content_html)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#status' do
@@ -102,7 +101,7 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   describe 'immutability' do
-    # rubocop:disable RSpec/ExampleLength -- defensive copy of articles + stylesheet hashes
+    # rubocop:disable-next RSpec/ExampleLength -- defensive copy of articles + stylesheet hashes
     it 'defensively copies articles and stylesheets from the caller', :aggregate_failures do
       articles_input = articles.dup
       styles = [{ href: +'rss.xsl', type: +'text/xsl' }]
@@ -116,7 +115,6 @@ RSpec.describe Html2rss::FeedResult do
       expect(built.to_rss.to_s).to include('rss.xsl')
       expect(built.to_rss.to_s).not_to include('evil.xsl')
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'keeps channel_title immutable for callers', :aggregate_failures do
       expect(result.channel_title).to be_frozen
@@ -126,7 +124,7 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   describe 'Marshal contract' do
-    # rubocop:disable RSpec/ExampleLength -- round-trip identity + both render formats
+    # rubocop:disable-next RSpec/ExampleLength -- round-trip identity + both render formats
     it 'round-trips through Marshal and still renders both formats', :aggregate_failures do
       restored = Marshal.load(Marshal.dump(result))
 
@@ -139,6 +137,5 @@ RSpec.describe Html2rss::FeedResult do
       expect(restored.to_rss).to be_a(RSS::Rss)
       expect(restored.to_json_feed[:title]).to eq('Example')
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 end

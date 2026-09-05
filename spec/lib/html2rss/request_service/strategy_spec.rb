@@ -91,7 +91,7 @@ RSpec.describe Html2rss::RequestService::Strategy do
       allow(Html2rss::Log).to receive(:debug)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- structured info fields + debug message redaction
+    # rubocop:disable-next RSpec/ExampleLength -- structured info fields + debug message redaction
     it 'keeps transport details out of info logs', :aggregate_failures do
       expect { adapter.new(ctx).execute }.to raise_error(Html2rss::RequestService::RequestTimedOut)
 
@@ -106,6 +106,5 @@ RSpec.describe Html2rss::RequestService::Strategy do
         a_string_matching(/transport timeout message=.*token=abc/)
       )
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 end

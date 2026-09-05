@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-# rubocop:disable RSpec/MultipleMemoizedHelpers -- response/probe fixtures share across contexts
+# rubocop:disable-next RSpec/MultipleMemoizedHelpers -- response/probe fixtures share across contexts
 RSpec.describe Html2rss::PageRecon::Diagnostics do
   let(:html) { File.read('spec/fixtures/local_feed_test.html') }
   let(:response_url) { Html2rss::Url.from_absolute('https://example.com/blog') }
@@ -263,4 +263,3 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
     end
   end
 end
-# rubocop:enable RSpec/MultipleMemoizedHelpers

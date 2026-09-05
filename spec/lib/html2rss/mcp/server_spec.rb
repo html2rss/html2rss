@@ -58,7 +58,7 @@ RSpec.describe Html2rss::MCP::Server do
   end
 
   describe '.build' do
-    # rubocop:disable RSpec/ExampleLength -- registration contract is one assertion story
+    # rubocop:disable-next RSpec/ExampleLength -- registration contract is one assertion story
     it 'registers tools, resources, prompts, and decision-tree instructions', :aggregate_failures do
       expect(protocol_server.title).to eq('html2rss')
       expect(protocol_server.configuration.validate_tool_call_results?).to be(true)
@@ -84,7 +84,6 @@ RSpec.describe Html2rss::MCP::Server do
       expect(scrape_schema.dig(:properties, :strategy, :description)).to include('fallback chain')
       expect(inspect_schema.dig(:properties, :strategy, :description)).to include('Faraday')
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'tools/call contracts' do
@@ -99,7 +98,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss).to receive(:auto_feed_result).and_return(feed_result)
       end
 
-      # rubocop:disable RSpec/ExampleLength -- tools/call envelope contract
+      # rubocop:disable-next RSpec/ExampleLength -- tools/call envelope contract
       it 'returns an envelope with items in payload and no _meta', :aggregate_failures do
         result = call_tool.call('scrape', { url: 'https://example.com', strategy: 'auto' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
@@ -120,7 +119,6 @@ RSpec.describe Html2rss::MCP::Server do
           admission_drops: { credit: 1 }
         )
       end
-      # rubocop:enable RSpec/ExampleLength
 
       it 'does not mark an empty scrape as isError (articles-now is not a ship gate)' do # rubocop:disable RSpec/ExampleLength
         feed_result = instance_double(
@@ -169,7 +167,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
       end
 
-      # rubocop:disable RSpec/ExampleLength
+      # rubocop:disable-next RSpec/ExampleLength
       it 'returns a batch scrape envelope', :aggregate_failures do
         result = call_tool.call('batch_scrape', { urls: ['https://example.com/a', 'https://example.com/b'] })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
@@ -184,7 +182,6 @@ RSpec.describe Html2rss::MCP::Server do
         expect(envelope).to include(ok: true, next_step: 'done')
         expect(envelope[:payload]).to include(total: 2, successful: 1)
       end
-      # rubocop:enable RSpec/ExampleLength
     end
 
     describe 'batch_inspect' do
@@ -203,7 +200,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss::Batch).to receive(:batch_inspect).and_return(batch_result)
       end
 
-      # rubocop:disable RSpec/ExampleLength
+      # rubocop:disable-next RSpec/ExampleLength
       it 'returns a batch inspect envelope', :aggregate_failures do
         result = call_tool.call('batch_inspect', { urls: ['https://example.com/a', 'https://example.com/b'] })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
@@ -217,7 +214,6 @@ RSpec.describe Html2rss::MCP::Server do
         expect(envelope).to include(ok: true, next_step: 'done')
         expect(envelope[:payload]).to include(total: 2, successful: 2)
       end
-      # rubocop:enable RSpec/ExampleLength
     end
 
     describe 'capture' do
@@ -237,7 +233,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss::Capture).to receive(:build).and_return(capture_result)
       end
 
-      # rubocop:disable RSpec/ExampleLength -- tools/call envelope contract
+      # rubocop:disable-next RSpec/ExampleLength -- tools/call envelope contract
       it 'returns CaptureResult.yaml (with modeline) inside payload without _meta', :aggregate_failures do
         result = call_tool.call('capture', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
@@ -258,7 +254,6 @@ RSpec.describe Html2rss::MCP::Server do
         )
         expect(envelope.dig(:payload, :yaml)).to include('yaml-language-server')
       end
-      # rubocop:enable RSpec/ExampleLength
     end
 
     describe 'test' do
@@ -576,7 +571,7 @@ RSpec.describe Html2rss::MCP::Server do
     end
 
     describe 'apply unpublished local_file' do
-      # rubocop:disable RSpec/ExampleLength -- security: isError without File.read
+      # rubocop:disable-next RSpec/ExampleLength -- security: isError without File.read
       it 'isError and does not read the local file', :aggregate_failures do
         Dir.mktmpdir do |dir|
           path = File.join(dir, 'secret.html')
@@ -600,7 +595,6 @@ RSpec.describe Html2rss::MCP::Server do
           expect(read_paths).not_to include(path)
         end
       end
-      # rubocop:enable RSpec/ExampleLength
     end
 
     describe 'apply ship gate' do
@@ -659,7 +653,7 @@ RSpec.describe Html2rss::MCP::Server do
         )
       end
 
-      # rubocop:disable RSpec/ExampleLength -- tools/call diagnostic envelope
+      # rubocop:disable-next RSpec/ExampleLength -- tools/call diagnostic envelope
       it 'returns diagnostic JSON from Inspect', :aggregate_failures do
         result = call_tool.call('inspect', { url: 'https://example.com' })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
@@ -672,7 +666,6 @@ RSpec.describe Html2rss::MCP::Server do
         expect(result.dig(:result, :isError)).to be(false)
         expect(envelope[:payload]).to include(strategy: 'faraday')
       end
-      # rubocop:enable RSpec/ExampleLength
     end
 
     describe 'error paths' do
@@ -842,7 +835,7 @@ RSpec.describe Html2rss::MCP::Server do
   end
 
   describe 'foreground request logging' do
-    # rubocop:disable RSpec/ExampleLength -- start/done pair is one access-log story
+    # rubocop:disable-next RSpec/ExampleLength -- start/done pair is one access-log story
     it 'logs tools/call start and done without leaking arguments', :aggregate_failures do
       allow(Html2rss::Log).to receive(:info)
 
@@ -853,7 +846,6 @@ RSpec.describe Html2rss::MCP::Server do
         a_string_matching(%r{\Amcp done tools/call tool=validate \d+\.\d+s\z})
       )
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '.start' do
@@ -881,7 +873,7 @@ RSpec.describe Html2rss::MCP::Server do
       expect(MCP::Server::Transports::StdioTransport).to have_received(:new)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- stderr vs stdout split is the protocol contract
+    # rubocop:disable-next RSpec/ExampleLength -- stderr vs stdout split is the protocol contract
     it 'writes the start banner to stderr so stdio JSON-RPC stays on stdout', :aggregate_failures do
       allow(Html2rss::Log).to receive(:info).and_call_original
       banner = "html2rss MCP #{Html2rss::VERSION} starting transport=stdio"
@@ -892,7 +884,6 @@ RSpec.describe Html2rss::MCP::Server do
           .and output('').to_stdout
       end
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'defaults the daemon log level to info when LOG_LEVEL is unset' do
       ClimateControl.modify(LOG_LEVEL: nil) do
@@ -910,7 +901,7 @@ RSpec.describe Html2rss::MCP::Server do
       end
     end
 
-    # rubocop:disable RSpec/ExampleLength -- Host/Port bind contract
+    # rubocop:disable-next RSpec/ExampleLength -- Host/Port bind contract
     it 'binds HTTP to loopback via Rackup WEBrick', :aggregate_failures do
       require 'rackup/handler/webrick'
       allow(Rackup::Handler::WEBrick).to receive(:run)
@@ -922,13 +913,12 @@ RSpec.describe Html2rss::MCP::Server do
         hash_including(Host: '127.0.0.1', Port: 9090)
       )
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'rejects unknown transports' do
       expect { described_class.start(transport: :udp) }.to raise_error(ArgumentError, /Unknown transport/)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- LoadError messaging contract
+    # rubocop:disable-next RSpec/ExampleLength -- LoadError messaging contract
     it 'raises an actionable LoadError when HTTP deps are missing' do
       allow(described_class).to receive(:require).and_wrap_original do |original, name|
         raise LoadError, 'cannot load such file -- rackup' if name == 'rackup'
@@ -939,11 +929,10 @@ RSpec.describe Html2rss::MCP::Server do
       expect { described_class.start(transport: :http) }
         .to raise_error(LoadError, /HTTP transport requires the rackup and webrick gems/)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'mcp 1.2 invocation shape' do
-    # rubocop:disable RSpec/ExampleLength -- documents the SDK breakage we fixed
+    # rubocop:disable-next RSpec/ExampleLength -- documents the SDK breakage we fixed
     it 'rejects the broken positional |args, context| tool signature' do
       broken = MCP::Tool.define(
         name: 'broken',
@@ -955,7 +944,6 @@ RSpec.describe Html2rss::MCP::Server do
 
       expect { broken.call(url: 'https://example.com') }.to raise_error(ArgumentError)
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'accepts keyword args with server_context', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       tool = protocol_server.tools['validate']

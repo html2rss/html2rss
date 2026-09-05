@@ -99,7 +99,7 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
       let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
       let(:article) { articles.first }
 
-      # rubocop:disable RSpec/ExampleLength -- title/guid/description/link/pubDate contract
+      # rubocop:disable-next RSpec/ExampleLength -- title/guid/description/link/pubDate contract
       it 'has tags with correct values', :aggregate_failures do
         expect(item.css('title').text).to eq(article.title.to_s)
         expect(item.css('guid').text).to eq(article.guid.to_s)
@@ -109,7 +109,6 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
         expect(item.css('link').text).to eq(article.url.to_s), 'link'
         expect(item.css('pubDate').text).to eq(article.published_at.rfc822), 'pubDate'
       end
-      # rubocop:enable RSpec/ExampleLength
 
       it 'omits <enclosure> when the article only has an image' do
         expect(item.css('enclosure')).to be_empty

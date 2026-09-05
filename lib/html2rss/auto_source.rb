@@ -148,7 +148,7 @@ module Html2rss
 
     attr_reader :url, :parsed_body, :body, :request_session, :captured_responses
 
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+    # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
       articles = []
       matched = false
@@ -193,7 +193,6 @@ module Html2rss
       @admission_drops = result.drop_tallies
       result.articles.first(article_limit)
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     def enough_articles?(articles)
       return false if articles.size < article_limit

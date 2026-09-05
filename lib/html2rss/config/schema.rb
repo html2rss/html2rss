@@ -48,7 +48,7 @@ module Html2rss
       ##
       # Orchestrates schema assembly from runtime validator contracts plus
       # client-facing overlays.
-      # rubocop:disable Metrics/ClassLength -- overlay assembly stays in one builder
+      # rubocop:disable-next Metrics/ClassLength -- overlay assembly stays in one builder
       class Builder
         class << self
           # @return [Hash{String => Object}] fully assembled JSON schema hash
@@ -110,7 +110,7 @@ module Html2rss
           registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_doc] }
         end
 
-        # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
+        # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
         def overlay
           items_schema = Html2rss::Config::SelectorsValidator::Items.new.schema.json_schema(loose: true)
           items_schema[:properties][:enhance] = items_schema.fetch(:properties).fetch(:enhance).merge(
@@ -187,7 +187,6 @@ module Html2rss
             }
           }
         end
-        # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
 
         def reference_array(description)
           {
@@ -201,7 +200,6 @@ module Html2rss
           }
         end
       end
-      # rubocop:enable Metrics/ClassLength
 
       ##
       # Wires extractor / post_process to thin oneOf $refs into the registry catalog.

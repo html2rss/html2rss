@@ -46,7 +46,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
     end
   end
 
-  # rubocop:disable RSpec/ExampleLength
+  # rubocop:disable-next RSpec/ExampleLength
   [
     {
       description: 'preserves the query-style api root when requesting posts',
@@ -167,5 +167,4 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
       end
     end
   end
-  # rubocop:enable RSpec/ExampleLength
 end

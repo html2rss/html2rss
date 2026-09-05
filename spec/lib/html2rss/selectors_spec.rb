@@ -275,9 +275,8 @@ RSpec.describe Html2rss::Selectors do
           path: { selector: 'a', extractor: 'href' },
           title: {
             selector: 'h1',
-            # rubocop:disable Style/FormatStringToken -- template post-processor uses %{key}
+            # rubocop:disable-next Style/FormatStringToken -- template post-processor uses %{key}
             post_process: { name: 'template', string: '%{path}' }
-            # rubocop:enable Style/FormatStringToken
           }
         }
       end

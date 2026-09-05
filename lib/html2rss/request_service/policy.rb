@@ -84,11 +84,10 @@ module Html2rss
       # Returns the default request policy.
       #
       # @return [Policy] a default, frozen policy instance
-      # rubocop:disable Layout/ClassStructure
+      # rubocop:disable-next Layout/ClassStructure
       def self.default
         new
       end
-      # rubocop:enable Layout/ClassStructure
 
       ##
       # Validates whether a request target is permitted for the given context.

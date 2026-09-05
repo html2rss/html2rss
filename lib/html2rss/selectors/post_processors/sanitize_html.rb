@@ -105,7 +105,7 @@ module Html2rss
         # @param html [String]
         # @param url [String, Html2rss::Url]
         # @return [String, nil]
-        # rubocop:disable ThreadSafety/ClassInstanceVariable
+        # rubocop:disable-next ThreadSafety/ClassInstanceVariable
         def self.get(html, url)
           return nil if String(html).empty?
 
@@ -117,12 +117,11 @@ module Html2rss
           context = Selectors::Context.new(config: { channel: { url: } }, options: {})
           @fragment_cache[key] = new(html, context).get
         end
-        # rubocop:enable ThreadSafety/ClassInstanceVariable
 
         ##
         # @param channel_url [String, Html2rss::Url]
         # @return [Hash] the memoized sanitize configuration
-        # rubocop:disable Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
+        # rubocop:disable-next Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
         def self.sanitize_config(channel_url)
           @sanitize_configs ||= {}
           @sanitize_configs[channel_url] ||= begin
@@ -143,7 +142,6 @@ module Html2rss
             config.freeze
           end
         end
-        # rubocop:enable Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
 
         ##
         # @return [String, nil]

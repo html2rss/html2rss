@@ -24,7 +24,7 @@ RSpec.describe Html2rss::Status do
       expect(status.attempt_count).to eq(0)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- auto summary + to_h + generator non-bloat
+    # rubocop:disable-next RSpec/ExampleLength -- auto summary + to_h + generator non-bloat
     it 'accepts auto strategy summary without putting it in the generator string', :aggregate_failures do
       status = described_class.build(
         articles:,
@@ -45,11 +45,10 @@ RSpec.describe Html2rss::Status do
       expect(status.to_h[:strategy_attempts].last[:transport_meta]).to include('request_id' => 'abc')
       expect(status.to_generator_comment).not_to include('botasaurus')
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'telemetry invariants' do
-    # rubocop:disable RSpec/ExampleLength -- covers the closed invalid-telemetry matrix
+    # rubocop:disable-next RSpec/ExampleLength -- covers the closed invalid-telemetry matrix
     it 'rejects negative counters and inconsistent auto summary', :aggregate_failures do
       expect do
         described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: -1)
@@ -68,7 +67,6 @@ RSpec.describe Html2rss::Status do
                             selected_strategy: :faraday, attempt_count: 0)
       end.to raise_error(ArgumentError, /attempt_count must be >= 1/)
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'defensively copies tallies so callers cannot mutate telemetry', :aggregate_failures do
       tallies = { 'Selectors' => 1 }
@@ -79,7 +77,7 @@ RSpec.describe Html2rss::Status do
       expect { status.scraper_tallies['Selectors'] = 2 }.to raise_error(FrozenError)
     end
 
-    # rubocop:disable RSpec/ExampleLength -- Marshal freeze contract for tallies + attempts
+    # rubocop:disable-next RSpec/ExampleLength -- Marshal freeze contract for tallies + attempts
     it 're-freezes tallies and strategy_attempts after Marshal round-trip', :aggregate_failures do
       status = described_class.build(
         articles: [],
@@ -99,11 +97,10 @@ RSpec.describe Html2rss::Status do
       expect(restored.strategy_attempts).to eq([{ strategy: :faraday, items_count: 0, error_class: nil }])
       expect { restored.scraper_tallies['x'] = 1 }.to raise_error(FrozenError)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe '#to_h' do
-    # rubocop:disable RSpec/ExampleLength -- tallies present for both scraper homes
+    # rubocop:disable-next RSpec/ExampleLength -- tallies present for both scraper homes
     it 'includes scraper_tallies for selector and auto-source scrapers', :aggregate_failures do
       status = described_class.build(
         articles: [
@@ -122,9 +119,8 @@ RSpec.describe Html2rss::Status do
       )
       expect(status.to_h).not_to include(:selected_strategy, :attempt_count, :strategy_attempts)
     end
-    # rubocop:enable RSpec/ExampleLength
 
-    # rubocop:disable RSpec/ExampleLength -- member vs to_h omission contract
+    # rubocop:disable-next RSpec/ExampleLength -- member vs to_h omission contract
     it 'omits scraper_tallies when no article carries a scraper', :aggregate_failures do
       status = described_class.build(
         articles: [Html2rss::Article.new(id: '1', title: 'A', url: 'https://example.com/a')],
@@ -135,9 +131,8 @@ RSpec.describe Html2rss::Status do
       expect(status.to_h).to eq(version: Html2rss::VERSION, dedup_dropped: 0)
       expect(status.to_h).not_to have_key(:scraper_tallies)
     end
-    # rubocop:enable RSpec/ExampleLength
 
-    # rubocop:disable RSpec/ExampleLength -- member defaults + to_h omission
+    # rubocop:disable-next RSpec/ExampleLength -- member defaults + to_h omission
     it 'omits nil selected_strategy, zero attempt_count, and empty strategy_attempts', :aggregate_failures do
       status = described_class.build(articles: [], dedup_dropped: 3)
 
@@ -147,7 +142,6 @@ RSpec.describe Html2rss::Status do
       expect(status.admission_drops).to eq({})
       expect(status.to_h.keys).to contain_exactly(:version, :dedup_dropped)
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'includes admission_drops when Cleanup recorded reasons', :aggregate_failures do
       status = described_class.build(articles: [], dedup_dropped: 0, admission_drops: { 'credit' => 2 })
@@ -158,7 +152,7 @@ RSpec.describe Html2rss::Status do
   end
 
   describe '#to_generator_comment' do
-    # rubocop:disable RSpec/ExampleLength -- setup + exact generator string
+    # rubocop:disable-next RSpec/ExampleLength -- setup + exact generator string
     it 'formats the RSS generator / JSON Feed user_comment string' do
       comment = described_class.new(
         version: '9.9.9',
@@ -168,7 +162,6 @@ RSpec.describe Html2rss::Status do
 
       expect(comment).to eq('html2rss V. 9.9.9 (scrapers: Selectors (2), AutoSource::Html (1))')
     end
-    # rubocop:enable RSpec/ExampleLength
 
     it 'omits the scrapers clause when tallies are empty', :aggregate_failures do
       comment = described_class.new(version: '9.9.9', scraper_tallies: {}, dedup_dropped: 0)
@@ -180,7 +173,7 @@ RSpec.describe Html2rss::Status do
   end
 
   describe 'Marshal vs to_h' do
-    # rubocop:disable RSpec/ExampleLength -- round-trip keeps empty member tallies
+    # rubocop:disable-next RSpec/ExampleLength -- round-trip keeps empty member tallies
     it 'restores empty tallies on members even when to_h omitted them', :aggregate_failures do
       status = described_class.build(articles: [], dedup_dropped: 0)
       restored = Marshal.load(Marshal.dump(status))
@@ -190,6 +183,5 @@ RSpec.describe Html2rss::Status do
       expect(restored.attempt_count).to eq(0)
       expect(restored.selected_strategy).to be_nil
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 end

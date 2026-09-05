@@ -139,7 +139,7 @@ module Html2rss
       # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
       # @return [Hash{Symbol => Object}] the configuration hash.
       # @raise [ArgumentError] if the file doesn't exist or feed is not found.
-      # rubocop:disable Metrics/MethodLength
+      # rubocop:disable-next Metrics/MethodLength
       def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
         raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
         raise ArgumentError, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
@@ -159,7 +159,6 @@ module Html2rss
 
         MultipleFeedsConfig.to_single_feed(config, yaml, multiple_feeds_key:)
       end
-      # rubocop:enable Metrics/MethodLength
 
       ##
       # Processes the provided configuration hash, applying dynamic parameters if given,

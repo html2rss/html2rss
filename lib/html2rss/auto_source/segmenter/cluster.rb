@@ -122,7 +122,7 @@ module Html2rss
             groups.sort_by { |_key, nodes| -nodes.size }.first(MAX_GROUPS).to_h
           end
 
-          # rubocop:disable Metrics/MethodLength
+          # rubocop:disable-next Metrics/MethodLength
           def container_of?(nodes_a, nodes_b)
             return false unless @layout_tags.include?(nodes_b.first.name)
 
@@ -139,7 +139,6 @@ module Html2rss
               count > 1
             end
           end
-          # rubocop:enable Metrics/MethodLength
 
           def resolve_1_to_1_overlap(cls_a, cls_b, groups, discarded)
             nodes_a = groups[cls_a]

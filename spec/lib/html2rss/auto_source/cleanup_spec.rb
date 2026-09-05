@@ -37,7 +37,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     let(:cleaned) { result.articles }
     let(:keep_different_domain) { false }
 
-    # rubocop:disable RSpec/ExampleLength -- articles + multi-reason tallies
+    # rubocop:disable-next RSpec/ExampleLength -- articles + multi-reason tallies
     it 'removes invalid articles and tallies the drop', :aggregate_failures do
       expect(cleaned).not_to include(articles[2])
       expect(result.drop_tallies).to include(
@@ -47,7 +47,6 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         'bad_scheme' => 1
       )
     end
-    # rubocop:enable RSpec/ExampleLength
 
     context 'with duplicated articles' do
       let(:duplicated_url_article) do
@@ -232,7 +231,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
           expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
         end
 
-        # rubocop:disable RSpec/ExampleLength -- keep + reason tally contract
+        # rubocop:disable-next RSpec/ExampleLength -- keep + reason tally contract
         it "keeps=#{example[:reason].nil?} for #{example[:title].inspect}", :aggregate_failures do
           article = instance_double(Html2rss::Article, valid?: true, title: example[:title],
                                                        url: Html2rss::Url.from_absolute("http://example.com/t#{index}"))
@@ -242,7 +241,6 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
           expect(call_result.drop_tallies[example[:reason].to_s]).to eq(1)
         end
-        # rubocop:enable RSpec/ExampleLength
       end
     end
 

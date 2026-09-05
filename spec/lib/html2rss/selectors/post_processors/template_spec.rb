@@ -26,9 +26,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
   context 'when item_scope is missing' do
     it 'raises MissingOption' do
       expect do
-        # rubocop:disable Style/FormatStringToken -- template post-processor uses %{key}
+        # rubocop:disable-next Style/FormatStringToken -- template post-processor uses %{key}
         described_class.new('Hi', Html2rss::Selectors::Context.new(options: { string: '%{name}' }))
-        # rubocop:enable Style/FormatStringToken
       end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
                          'The post-processor context is missing `item_scope`.')
     end

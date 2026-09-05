@@ -258,7 +258,7 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
-        # rubocop:disable RSpec/ExampleLength
+        # rubocop:disable-next RSpec/ExampleLength
         it 'aborts auto fallback immediately without attempting Botasaurus', :aggregate_failures do
           expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
             expect(error.attempts.size).to eq(1)
@@ -267,7 +267,6 @@ RSpec.describe Html2rss::FeedPipeline do
           expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
           expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         end
-        # rubocop:enable RSpec/ExampleLength
       end
 
       context 'when Faraday raises RequestService::RedirectLimitReached' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
@@ -413,7 +412,7 @@ RSpec.describe Html2rss::FeedPipeline do
       # rubocop:enable RSpec/ExampleLength
     end
 
-    # rubocop:disable RSpec/ExampleLength -- inline config + duplicate HTML fixture
+    # rubocop:disable-next RSpec/ExampleLength -- inline config + duplicate HTML fixture
     it 'reports dedup_dropped on status after pipeline deduplication', :aggregate_failures do
       config = base_config.merge(
         strategy: :faraday,
@@ -440,7 +439,6 @@ RSpec.describe Html2rss::FeedPipeline do
       expect(result.status.attempt_count).to eq(0)
       expect(result.to_rss.items.size).to eq(1)
     end
-    # rubocop:enable RSpec/ExampleLength
 
     context 'when strategy is auto and fallback succeeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) { base_config.merge(strategy: :auto, request: { max_requests: 3 }) }

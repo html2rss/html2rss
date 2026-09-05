@@ -155,7 +155,7 @@ module Html2rss
     # @param last_build_date [Time, String]
     # @param image [Html2rss::Url, String, nil]
     # @param author [String, nil]
-    # rubocop:disable Metrics/ParameterLists -- Data.define members are the channel contract
+    # rubocop:disable-next Metrics/ParameterLists -- Data.define members are the channel contract
     def initialize(title:, url:, description:, language:, ttl:, last_build_date:, image:, author:)
       super(
         title: freeze_string(title),
@@ -168,7 +168,6 @@ module Html2rss
         author: author && freeze_string(author)
       )
     end
-    # rubocop:enable Metrics/ParameterLists
 
     private
 
