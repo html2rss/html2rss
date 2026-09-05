@@ -73,10 +73,12 @@ module Html2rss
       end
     end
 
+    # Canonical strategy mappings for deprecated strategy names.
     DEPRECATED_STRATEGIES = {
       faraday: :default,
       httpx: :default
     }.freeze
+    private_constant :DEPRECATED_STRATEGIES
 
     def initialize
       @strategies = {
