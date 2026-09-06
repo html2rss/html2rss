@@ -16,7 +16,7 @@ RSpec.describe Html2rss::Config do
           channel: { language: 'en', metadata: { site: 'global' } },
           headers: { 'User-Agent': 'Global Agent' },
           stylesheets: [{ href: '/global.css', type: 'text/css' }],
-          strategy: :faraday,
+          strategy: :default,
           feeds: {
             sample: {
               channel: { metadata: { section: 'local' } },
@@ -305,7 +305,7 @@ RSpec.describe Html2rss::Config do
       expect(validation).to be_success
       expect(raw).to eq(config)
       expect(raw).not_to equal(config)
-      raw[:strategy] = :faraday
+      raw[:strategy] = :default
       expect(config).not_to have_key(:strategy)
     end
 

@@ -8,7 +8,7 @@ RSpec.describe Html2rss::Test::Result do
       sample_items: [{ title: 'Item 1', url: 'https://example.com/1', published_at: nil }],
       channel_title: 'Example News',
       channel_url: 'https://example.com/news',
-      strategy_used: :faraday,
+      strategy_used: :default,
       duration_seconds: 0.25,
       validation_errors: nil,
       error_message: nil,
@@ -28,7 +28,7 @@ RSpec.describe Html2rss::Test::Result do
       success: true,
       item_count: 5,
       channel_title: 'Example News',
-      strategy_used: :faraday,
+      strategy_used: :default,
       rss: '<rss><channel/></rss>'
     )
   end

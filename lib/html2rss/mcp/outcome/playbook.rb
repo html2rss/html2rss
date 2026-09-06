@@ -36,7 +36,7 @@ module Html2rss
               html2rss MCP — decide which tool to call:
 
               1. Need articles now (no saved config)? → scrape (or batch_scrape for multiple)
-                 - strategy "auto" runs Faraday → Botasaurus AutoFallback. Do not retry with explicit faraday after auto.
+                 - strategy "auto" runs default (HTTPX) → Botasaurus AutoFallback. Do not retry with explicit default after auto.
                  - Empty scrape is still success (articles-now). Follow next_step / guidance (read_runtime if Botasaurus unset).
               2. Need a reusable feed YAML? → capture → test → apply
                  - capture returns YAML inside payload.yaml. Draft only: if destination is html2rss-configs, rewrite for directory.topics and explicit channel title/url. Default enhance follows capture evidence (false when admission_drops show chrome); override only when needed.
@@ -58,9 +58,9 @@ module Html2rss
           # @return [String]
           def scrape_webpage_prompt(url)
             <<~MSG.strip
-              Scrape #{url} with scrape (strategy auto). One call is enough — auto already runs Faraday then Botasaurus.
+              Scrape #{url} with scrape (strategy auto). One call is enough — auto already runs default then Botasaurus.
               Follow envelope next_step and guidance. Call inspect only if articles are empty/weak or you need diagnostics (final_url, status, scheme_downgrade, alternate_feeds). When inspect finds alternates, follow next_step to recon.
-              Do not retry scrape with explicit faraday after auto. Read html2rss://runtime if next_step is read_runtime.
+              Do not retry scrape with explicit default after auto. Read html2rss://runtime if next_step is read_runtime.
               Return payload.items (not a raw JSON array).
             MSG
           end
@@ -72,7 +72,7 @@ module Html2rss
             <<~MSG.strip
               Build a reusable html2rss feed config for #{url}:
               1) capture — YAML is payload.yaml. Check payload.articles_count, payload.has_selectors, and payload.suggested_channel_url. enhance defaults from admission evidence (false when chrome drops are high). When payload.native_feed is set, follow next_step (done — use the native feed).
-              2) Follow next_step. If weak or you need recon, inspect then recon when alternates warrant it. Auto already hops to Botasaurus; do not retry capture with botasaurus unless Faraday was blocked.
+              2) Follow next_step. If weak or you need recon, inspect then recon when alternates warrant it. Auto already hops to Botasaurus; do not retry capture with botasaurus unless default was blocked.
               3) test with yaml (or config hash) — schema + live extraction. On :schema failure, validate; on :execution/:min_items, recapture. Read payload.quality_report.enhance_gains when enhance is on; optional compare_enhance compares enhance off vs on without changing shipped RSS.
               4) apply — isError if zero items. Confirm payload.item_count and payload.quality_report (including enhance_gains) before shipping.
               If the destination is html2rss-configs, rewrite the draft for directory.topics and explicit channel title/url. Return YAML.
@@ -95,7 +95,7 @@ module Html2rss
             if data[:blocked_surface] || data[:surface_category].to_s == 'blocked_surface'
               return 'Blocked or anti-bot interstitial likely. Retry scrape with strategy botasaurus once ' \
                      '(or CLI inspect --deep when BOTASAURUS_SCRAPER_URL is set). ' \
-                     'Do not retry explicit faraday after auto.'
+                     'Do not retry explicit default after auto.'
             end
             if data[:likely_js_shell]
               return 'JS-rendered shell likely (html_present, zero articles). Use strategy auto or botasaurus; ' \

@@ -13,7 +13,7 @@ module Html2rss
             kind: :url,
             description: 'One-shot article extraction as JSON Feed items. ' \
                          'Use when you need articles now without a saved config. ' \
-                         'strategy "auto" triggers fallback chain (faraday → botasaurus) for JS-rendered sites.',
+                         'strategy "auto" triggers fallback chain (default → botasaurus) for JS-rendered sites.',
             input_schema: Contract::SCRAPE_INPUT_SCHEMA,
             handler: :scrape_outcome
           },

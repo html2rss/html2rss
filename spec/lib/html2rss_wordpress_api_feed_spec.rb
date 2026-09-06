@@ -8,7 +8,7 @@ RSpec.describe Html2rss do
 
     let(:config) do
       {
-        strategy: :faraday,
+        strategy: :default,
         channel: { url: 'https://example.com/blog', title: 'Example WordPress Blog' },
         selectors: {
           items: { selector: 'article.post' },

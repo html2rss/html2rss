@@ -6,7 +6,7 @@ RSpec.describe Html2rss::RequestSession do
   subject(:session) { described_class.new(context:, strategy:, logger:) }
 
   def strategy
-    :faraday
+    :default
   end
 
   def logger
@@ -141,7 +141,7 @@ RSpec.describe Html2rss::RequestSession do
       it 'executes with pagination context' do
         result
         expect(Html2rss::RequestService).to have_received(:execute).with(
-          satisfy { |c| pagination_context?(c) }, strategy: :faraday
+          satisfy { |c| pagination_context?(c) }, strategy: :default
         )
       end
 

@@ -131,7 +131,7 @@ RSpec.describe Html2rss::FeedResolution do
       allow(session).to receive(:follow_up).and_return(listing)
 
       outcome = described_class.try_apply!(
-        pipeline:, config:, response:, session:, strategy: :faraday, resources:,
+        pipeline:, config:, response:, session:, strategy: :default, resources:,
         articles: [], scrape_target:, state:, budget:
       )
 
@@ -159,7 +159,7 @@ RSpec.describe Html2rss::FeedResolution do
       allow(pipeline).to receive(:deduplicated_articles).and_return([[article], 0, {}])
 
       outcome = described_class.try_apply!(
-        pipeline:, config:, response:, session:, strategy: :faraday, resources:,
+        pipeline:, config:, response:, session:, strategy: :default, resources:,
         articles: [], scrape_target:, state:, budget:
       )
 

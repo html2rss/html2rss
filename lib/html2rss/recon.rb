@@ -111,7 +111,7 @@ module Html2rss
     # Runs reconnaissance on a single URL.
     #
     # @param url [String, Html2rss::Url] source page URL
-    # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+    # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
     # @param cache_dir [String, nil] optional directory to cache raw HTML bodies
     # @param cache_mutex [Mutex, nil] optional mutex serializing cache writes
     # @option options [Integer, nil] :max_redirects optional maximum redirects

@@ -10,7 +10,7 @@ RSpec.describe Html2rss::RequestSession::Pager do
       policy: Html2rss::RequestService::Policy.new(max_requests: 5),
       budget: Html2rss::RequestService::Budget.new(max_requests: 5)
     )
-    Html2rss::RequestSession.new(context:, strategy: :faraday, logger:)
+    Html2rss::RequestSession.new(context:, strategy: :default, logger:)
   end
 
   describe '.for' do
@@ -62,7 +62,7 @@ RSpec.describe Html2rss::RequestSession::Pager do
         policy: Html2rss::RequestService::Policy.new(max_requests: 3),
         budget: Html2rss::RequestService::Budget.new(max_requests: 3)
       )
-      Html2rss::RequestSession.new(context:, strategy: :faraday, logger:)
+      Html2rss::RequestSession.new(context:, strategy: :default, logger:)
     end
     let(:initial_response) do
       Html2rss::RequestService::Response.new(
@@ -95,7 +95,7 @@ RSpec.describe Html2rss::RequestSession::Pager do
           follow_up_context.origin_url.to_s == 'https://redirected.example.com/news' &&
             follow_up_context.url.to_s == 'https://redirected.example.com/news?page=2'
         end,
-        strategy: :faraday
+        strategy: :default
       )
     end
 

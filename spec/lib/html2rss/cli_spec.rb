@@ -62,7 +62,7 @@ RSpec.describe Html2rss::CLI do
         surface_category: 'article_list',
         articles_count: 5,
         alternate_feeds: [],
-        strategy: :faraday
+        strategy: :default
       }
     end
     let(:report) { instance_double(Html2rss::PageRecon::Diagnostics::Report, to_wire_h: inspect_data) }
@@ -237,7 +237,7 @@ RSpec.describe Html2rss::CLI do
         channel_title: 'Example',
         has_selectors: true,
         segment_strategy: :list,
-        selected_strategy: :faraday,
+        selected_strategy: :default,
         inferred_topics: ['tech'],
         native_feed: nil,
         admission_drops: {}
@@ -286,7 +286,7 @@ RSpec.describe Html2rss::CLI do
         channel_title: 'Example',
         has_selectors: true,
         segment_strategy: :list,
-        selected_strategy: :faraday,
+        selected_strategy: :default,
         inferred_topics: ['tech'],
         native_feed: 'https://example.com/feed.xml',
         admission_drops: {}
@@ -327,7 +327,7 @@ RSpec.describe Html2rss::CLI do
         sample_items: [{ title: 'Item 1', url: 'https://example.com/1', published_at: nil }],
         channel_title: 'Example',
         channel_url: 'https://example.com',
-        strategy_used: :faraday,
+        strategy_used: :default,
         duration_seconds: 0.12,
         validation_errors: nil,
         error_message: nil,
@@ -343,7 +343,7 @@ RSpec.describe Html2rss::CLI do
         sample_items: [],
         channel_title: 'Example',
         channel_url: 'https://example.com',
-        strategy_used: :faraday,
+        strategy_used: :default,
         duration_seconds: 0.12,
         validation_errors: nil,
         error_message: 'Extracted 0 items (minimum required: 1)',

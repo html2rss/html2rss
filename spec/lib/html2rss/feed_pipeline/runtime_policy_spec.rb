@@ -69,7 +69,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
     end
 
     context 'when strategy is non-auto and max_requests is omitted' do
-      let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :faraday)) }
+      let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :default)) }
 
       it 'keeps non-auto baselines under the same policy ceiling' do
         expect(runtime_policy.max_requests).to eq(request_ceiling)
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       let(:config) do
         Html2rss::Config.from_hash(
           raw_config.merge(
-            strategy: :faraday,
+            strategy: :default,
             selectors: raw_config[:selectors].merge(
               items: { selector: 'article', pagination: { strategy: 'url_template' } }
             )

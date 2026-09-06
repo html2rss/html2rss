@@ -93,8 +93,8 @@ RSpec.describe Html2rss::Defaults do
     subject(:config) { described_class.new }
 
     it 'accepts a registered concrete strategy' do
-      config.default_strategy = :faraday
-      expect(config.default_strategy).to eq(:faraday)
+      config.default_strategy = :httpx
+      expect(config.default_strategy).to eq(:httpx)
     end
 
     it 'accepts the feed-level :auto plan' do
@@ -103,8 +103,8 @@ RSpec.describe Html2rss::Defaults do
     end
 
     it 'accepts string and normalizes to symbol' do
-      config.default_strategy = 'faraday'
-      expect(config.default_strategy).to eq(:faraday)
+      config.default_strategy = 'httpx'
+      expect(config.default_strategy).to eq(:httpx)
     end
 
     it 'accepts nil' do
@@ -119,7 +119,7 @@ RSpec.describe Html2rss::Defaults do
     it 'raises ArgumentError for invalid types', :aggregate_failures do
       expect { config.default_strategy = 123 }
         .to raise_error(ArgumentError, /strategy must be a Symbol or String/)
-      expect { config.default_strategy = { strategy: :faraday } }
+      expect { config.default_strategy = { strategy: :httpx } }
         .to raise_error(ArgumentError, /strategy must be a Symbol or String/)
     end
   end
@@ -322,13 +322,13 @@ RSpec.describe Html2rss::Defaults do
     describe 'integration with ClassMethods' do
       before do
         Html2rss.configure do |config|
-          config.default_strategy = :faraday
+          config.default_strategy = :botasaurus
         end
       end
 
       it 'uses global default strategy when strategy in config is default_strategy_name', :aggregate_failures do
-        expect(Html2rss::Config.default_strategy_name).to eq(:faraday)
-        expect(Html2rss::Config.default_config[:strategy]).to eq(:faraday)
+        expect(Html2rss::Config.default_strategy_name).to eq(:botasaurus)
+        expect(Html2rss::Config.default_config[:strategy]).to eq(:botasaurus)
       end
 
       it 'allows configure to set the feed-level :auto plan', :aggregate_failures do

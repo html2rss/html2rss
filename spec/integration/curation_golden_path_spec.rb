@@ -118,7 +118,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
     let(:feed_result) do
       status = instance_double(
         Html2rss::Status,
-        selected_strategy: :faraday,
+        selected_strategy: :default,
         entry_url: url,
         scrape_url: url
       )
@@ -148,7 +148,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
         ),
         articles: [],
         dedup_dropped: 0,
-        selected_strategy: :faraday,
+        selected_strategy: :default,
         attempt_count: 0,
         strategy_attempts: [],
         admission_drops: {},
@@ -176,7 +176,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
           sample_items: [{ title: 'A', url: 'https://example.com/a' }],
           channel_title: 'Example News',
           channel_url: url,
-          strategy_used: :faraday,
+          strategy_used: :default,
           duration_seconds: 0.2,
           validation_errors: nil,
           error_message: nil,

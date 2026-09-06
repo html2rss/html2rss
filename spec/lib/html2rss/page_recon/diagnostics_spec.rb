@@ -16,7 +16,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
       status: response_status
     )
   end
-  let(:probe_strategy) { :faraday }
+  let(:probe_strategy) { :default }
   let(:probe) do
     Html2rss::PageRecon::Probe.new(
       session: instance_double(Html2rss::RequestSession),
@@ -35,7 +35,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
     result = report.to_wire_h
 
     expect(report).to be_a(described_class::Report)
-    expect(result[:strategy]).to eq(:faraday)
+    expect(result[:strategy]).to eq(:default)
     expect(result[:html_response]).to be(true)
     expect(result[:html_present]).to be(true)
     expect(result[:likely_js_shell]).to be(false)
@@ -184,7 +184,7 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
     session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
     allow(Html2rss::RequestSession).to receive(:build).and_return(session)
 
-    result = Html2rss::PageRecon.probe('https://example.com/blog', strategy: :faraday)
+    result = Html2rss::PageRecon.probe('https://example.com/blog', strategy: :default)
     expect(result.response).to eq(response)
     expect(Html2rss::RequestSession).to have_received(:build)
   end

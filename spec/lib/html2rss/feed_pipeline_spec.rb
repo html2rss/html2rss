@@ -37,16 +37,16 @@ RSpec.describe Html2rss::FeedPipeline do
 
   describe '#to_result' do
     context 'when strategy is non-auto' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:config) { base_config.merge(strategy: :faraday) }
+      let(:config) { base_config.merge(strategy: :default) }
       let(:pipeline) { described_class.new(config) }
       let(:response) do
-        build_response.call(body: '<html><body><article><h1>faraday</h1></article></body></html>')
+        build_response.call(body: '<html><body><article><h1>default</h1></article></body></html>')
       end
 
       before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+          raise "Unexpected strategy #{strategy}" unless strategy == :default
 
           response
         end
@@ -56,8 +56,8 @@ RSpec.describe Html2rss::FeedPipeline do
         result = pipeline.to_result
         rss = result.to_rss
 
-        expect(rss.items.map(&:title)).to eq(['faraday'])
-        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :faraday).once
+        expect(rss.items.map(&:title)).to eq(['default'])
+        expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
       end
     end
@@ -65,7 +65,7 @@ RSpec.describe Html2rss::FeedPipeline do
     context 'when strategy is non-auto with auto_source yielding zero articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         {
-          strategy: :faraday,
+          strategy: :default,
           channel: { url: 'https://example.com/news', title: 'Example News' },
           auto_source: {}
         }
@@ -79,7 +79,7 @@ RSpec.describe Html2rss::FeedPipeline do
 
       it 'raises NoFeedItemsExtracted at the pipeline boundary', :aggregate_failures do
         expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
-          expect(error.attempts).to eq([{ strategy: :faraday, items_count: 0, error_class: nil }])
+          expect(error.attempts).to eq([{ strategy: :default, items_count: 0, error_class: nil }])
           expect(error.surface_category).to eq(:unsupported_surface)
         end
       end
@@ -119,7 +119,7 @@ RSpec.describe Html2rss::FeedPipeline do
     end
 
     context 'when strategy is non-auto with selector-only yielding zero articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-      let(:config) { base_config.merge(strategy: :faraday) }
+      let(:config) { base_config.merge(strategy: :default) }
       let(:pipeline) { described_class.new(config) }
       let(:empty_response) { build_response.call(body: '<html><body><div>empty</div></body></html>') }
 
@@ -394,7 +394,7 @@ RSpec.describe Html2rss::FeedPipeline do
         responses = { 'https://example.com/news' => p1, 'https://example.com/news?page=2' => p2, 'https://example.com/news?page=3' => p3 }
 
         config = base_config.merge(
-          strategy: :faraday,
+          strategy: :default,
           selectors: base_config[:selectors].merge(
             items: { selector: 'article', pagination: { strategy: 'url_template', param: 'page', max_pages: 5 } }
           )

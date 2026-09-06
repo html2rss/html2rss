@@ -76,11 +76,11 @@ RSpec.describe Html2rss::PageRecon do
     session = instance_double(Html2rss::RequestSession, fetch_initial_response: response)
     allow(Html2rss::RequestSession).to receive(:build).and_return(session)
 
-    probe = described_class.probe('https://example.com/blog', strategy: :faraday)
+    probe = described_class.probe('https://example.com/blog', strategy: :default)
     expect(probe).to be_a(described_class::Probe)
     expect(probe.session).to eq(session)
     expect(probe.response).to eq(response)
-    expect(probe.strategy).to eq(:faraday)
+    expect(probe.strategy).to eq(:default)
     expect(probe.result).to be_a(described_class::Result)
   end
 end

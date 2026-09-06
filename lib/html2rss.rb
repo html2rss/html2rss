@@ -33,7 +33,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Golden path step 1 (optional); use {.recon} for verdict and native_feed.
   #
   # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param deep [Boolean] when true and strategy is :auto, one Botasaurus hop if configured
   # @return [Html2rss::PageRecon::Diagnostics::Report]
   def self.inspect(url, strategy: :auto, deep: false, **)
@@ -45,7 +45,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Golden path step 2 (optional); adds verdict beyond {.inspect}.
   #
   # @param url [String, Html2rss::Url] source page URL
-  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @return [Html2rss::Recon::Result]
   def self.recon(url, strategy: :auto, **)
     Recon.call(url, strategy:, **)
@@ -56,7 +56,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Golden path step 3.
   #
   # @param url [String] source page URL
-  # @param strategy [Symbol] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+  # @param strategy [Symbol] request strategy (+:auto+, +:default+, +:botasaurus+)
   # @option options [String, nil] :items_selector optional CSS selector hint for items
   # @option options [Array<String>, nil] :topics optional directory topics override
   # @option options [String, nil] :title optional title override
@@ -140,7 +140,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Scrapes multiple URLs in parallel using auto-source article discovery.
   #
   # @param urls [Enumerable<String>] list of URLs to scrape
-  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param limit [Integer] max articles to keep per URL (default: 10)
   # @param concurrency [Integer] max worker threads (default: 5)
   # @return [Html2rss::Batch::BatchResult]
@@ -152,7 +152,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Inspects multiple URLs in parallel with per-URL error isolation.
   #
   # @param urls [Enumerable<String>] list of URLs to inspect
-  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param concurrency [Integer] max worker threads (default: 5)
   # @return [Html2rss::Batch::BatchResult]
   def self.batch_inspect(urls, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY)
@@ -163,7 +163,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Runs recon across multiple URLs in parallel with per-URL error isolation.
   #
   # @param urls [Enumerable<String>] list of URLs to recon
-  # @param strategy [Symbol] request strategy (:auto, :faraday, :botasaurus)
+  # @param strategy [Symbol] request strategy (:auto, :default, :botasaurus)
   # @param concurrency [Integer] max worker threads (default: 5)
   # @option options [String, nil] :cache_dir optional HTML cache directory
   # @return [Html2rss::Batch::BatchResult]

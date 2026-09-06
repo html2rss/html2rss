@@ -30,7 +30,7 @@ RSpec.describe Html2rss do
     let(:config) do
       {
         channel: { url: 'https://example.com/news', title: 'Example News' },
-        strategy: :faraday,
+        strategy: :default,
         selectors: {
           items: { selector: 'article' },
           title: { selector: 'h1' }
@@ -49,7 +49,7 @@ RSpec.describe Html2rss do
     before do
       allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
         ctx.budget.consume!
-        raise "Unexpected strategy #{strategy}" unless strategy == :faraday
+        raise "Unexpected strategy #{strategy}" unless strategy == :default
 
         response
       end
@@ -174,7 +174,7 @@ RSpec.describe Html2rss do
 
       let(:config) do
         {
-          strategy: :faraday,
+          strategy: :default,
           channel: { url: 'https://example.com/news', title: 'Example News' },
           selectors: {
             items: { selector: 'article', pagination: { max_pages: 3 } },
@@ -216,7 +216,7 @@ RSpec.describe Html2rss do
       context 'when max_redirects is configured' do
         let(:config) do
           {
-            strategy: :faraday,
+            strategy: :default,
             request: { max_redirects: 8 },
             channel: { url: 'https://example.com/news', title: 'Example News' },
             selectors: {
@@ -234,7 +234,7 @@ RSpec.describe Html2rss do
               ctx.policy.max_redirects == 8 &&
                 ctx.url.to_s == 'https://example.com/news'
             end,
-            strategy: :faraday
+            strategy: :default
           )
         end
       end
@@ -242,7 +242,7 @@ RSpec.describe Html2rss do
       context 'when max_requests is configured' do
         let(:config) do
           {
-            strategy: :faraday,
+            strategy: :default,
             request: { max_requests: 8 },
             channel: { url: 'https://example.com/news', title: 'Example News' },
             selectors: {
@@ -260,7 +260,7 @@ RSpec.describe Html2rss do
               ctx.policy.max_requests == 8 &&
                 ctx.url.to_s == 'https://example.com/news'
             end,
-            strategy: :faraday
+            strategy: :default
           )
         end
       end
@@ -270,7 +270,7 @@ RSpec.describe Html2rss do
       context 'when max_pages exceeds the system pagination ceiling' do
         let(:config) do
           {
-            strategy: :faraday,
+            strategy: :default,
             channel: { url: 'https://example.com/news', title: 'Example News' },
             selectors: {
               items: { selector: 'article', pagination: { max_pages: 20 } },
@@ -353,7 +353,7 @@ RSpec.describe Html2rss do
       before do
         allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
           ctx.budget.consume!
-          body = if strategy == :faraday
+          body = if strategy == :default
                    '<html><body><div>empty</div></body></html>'
                  else
                    '<html><body><article><h1>bota</h1></article></body></html>'
@@ -376,7 +376,7 @@ RSpec.describe Html2rss do
 
       let(:config) do
         {
-          strategy: :faraday,
+          strategy: :default,
           channel: { url: 'https://example.com/news', title: 'Example News' },
           selectors: {
             items: { selector: 'article' },
@@ -523,10 +523,10 @@ RSpec.describe Html2rss do
       feed_result = instance_double(Html2rss::FeedResult)
       allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
 
-      expect(described_class.scrape('https://example.com', strategy: :faraday)).to eq(feed_result)
+      expect(described_class.scrape('https://example.com', strategy: :default)).to eq(feed_result)
       expect(described_class).to have_received(:auto_feed_result).with(
         'https://example.com',
-        hash_including(strategy: :faraday)
+        hash_including(strategy: :default)
       )
     end
   end

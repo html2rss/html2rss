@@ -9,10 +9,10 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
     end
 
     it 'resolves a registered strategy to Concrete', :aggregate_failures do
-      plan = described_class.resolve(:faraday)
+      plan = described_class.resolve(:default)
 
       expect(plan).to be_a(described_class::Concrete)
-      expect(plan.strategy).to eq(:faraday)
+      expect(plan.strategy).to eq(:default)
     end
 
     it 'accepts string names' do
@@ -38,6 +38,7 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
   describe '.valid?' do
     it 'accepts :auto and registered strategies', :aggregate_failures do
       expect(described_class.valid?(:auto)).to be true
+      expect(described_class.valid?(:default)).to be true
       expect(described_class.valid?(:faraday)).to be true
       expect(described_class.valid?('botasaurus')).to be true
     end
@@ -63,7 +64,7 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
     end
 
     it 'returns 0 for Concrete' do
-      expect(described_class::Concrete.new(strategy: :faraday).request_slots).to eq(0)
+      expect(described_class::Concrete.new(strategy: :default).request_slots).to eq(0)
     end
   end
 end

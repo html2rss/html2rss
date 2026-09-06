@@ -43,7 +43,7 @@ RSpec.describe Html2rss::Recon do
       session: fake_session,
       response: fake_response,
       result: page_recon_result,
-      strategy: :faraday
+      strategy: :default
     )
   end
   let(:discovered_feed) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }

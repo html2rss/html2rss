@@ -32,7 +32,7 @@ RSpec.describe Html2rss::Status do
         selected_strategy: :botasaurus,
         attempt_count: 2,
         strategy_attempts: [
-          { strategy: :faraday, items_count: 0, error_class: nil },
+          { strategy: :default, items_count: 0, error_class: nil },
           { strategy: :botasaurus, items_count: 1, error_class: nil,
             transport_meta: { 'request_id' => 'abc', 'render_ms' => 12 } }
         ]
@@ -59,12 +59,12 @@ RSpec.describe Html2rss::Status do
       end.to raise_error(ArgumentError, /attempt_count/)
 
       expect do
-        described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: 0, selected_strategy: 'faraday')
+        described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: 0, selected_strategy: 'default')
       end.to raise_error(ArgumentError, /selected_strategy/)
 
       expect do
         described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: 0,
-                            selected_strategy: :faraday, attempt_count: 0)
+                            selected_strategy: :default, attempt_count: 0)
       end.to raise_error(ArgumentError, /attempt_count must be >= 1/)
     end
 
@@ -82,7 +82,7 @@ RSpec.describe Html2rss::Status do
       status = described_class.build(
         articles: [],
         dedup_dropped: 1,
-        strategy_attempts: [{ strategy: :faraday, items_count: 0, error_class: nil }],
+        strategy_attempts: [{ strategy: :default, items_count: 0, error_class: nil }],
         admission_drops: { 'self_link' => 1 }
       )
       restored = Marshal.load(Marshal.dump(status))
@@ -94,7 +94,7 @@ RSpec.describe Html2rss::Status do
       expect(restored.admission_drops).to be_frozen
       expect(restored.dedup_dropped).to eq(1)
       expect(restored.admission_drops).to eq('self_link' => 1)
-      expect(restored.strategy_attempts).to eq([{ strategy: :faraday, items_count: 0, error_class: nil }])
+      expect(restored.strategy_attempts).to eq([{ strategy: :default, items_count: 0, error_class: nil }])
       expect { restored.scraper_tallies['x'] = 1 }.to raise_error(FrozenError)
     end
   end

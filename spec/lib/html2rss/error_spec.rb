@@ -6,7 +6,7 @@ RSpec.describe Html2rss::Error do
   it { expect(described_class).to be < StandardError }
 
   describe Html2rss::NoFeedItemsExtracted do
-    let(:attempts) { [{ strategy: :faraday, items_count: 0, error_class: nil }] }
+    let(:attempts) { [{ strategy: :default, items_count: 0, error_class: nil }] }
     let(:botasaurus_hint) { Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT }
 
     it 'keeps the base empty-feed message without a surface hint', :aggregate_failures do
@@ -38,7 +38,7 @@ RSpec.describe Html2rss::Error do
     context 'when a BotasaurusConfigurationError attempt is present' do
       let(:attempts) do
         [
-          { strategy: :faraday, items_count: 0, error_class: nil },
+          { strategy: :default, items_count: 0, error_class: nil },
           {
             strategy: :botasaurus,
             items_count: nil,
