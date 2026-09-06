@@ -48,7 +48,7 @@ RSpec.describe Html2rss::Test do
   let(:fake_feed_result) do
     status = instance_double(
       Html2rss::Status,
-      selected_strategy: :faraday,
+      selected_strategy: :default,
       entry_url: 'https://example.com/news',
       scrape_url: 'https://example.com/news'
     )
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::Test do
           ),
           articles: [],
           dedup_dropped: 0,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
           admission_drops: {},
@@ -263,7 +263,7 @@ RSpec.describe Html2rss::Test do
           response: pipeline_response,
           articles: [],
           dedup_dropped: 0,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
           admission_drops: {},
@@ -311,7 +311,7 @@ RSpec.describe Html2rss::Test do
           response: pipeline_response,
           articles: [],
           dedup_dropped: 0,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
           admission_drops: {},

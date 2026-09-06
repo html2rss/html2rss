@@ -12,7 +12,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'cannot be built with an unknown name' do
-      expect { described_class.new(name: :retry_faraday) }
+      expect { described_class.new(name: :retry_invalid) }
         .to raise_error(ArgumentError, /unknown next_step/)
     end
 
@@ -268,7 +268,7 @@ RSpec.describe Html2rss::MCP::Outcome do
         sample_items: [],
         channel_title: 'Example',
         channel_url: 'https://example.com',
-        strategy_used: :faraday,
+        strategy_used: :default,
         duration_seconds: 0.1,
         validation_errors: nil,
         error_message: success ? nil : 'failed',

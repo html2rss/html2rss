@@ -42,8 +42,8 @@ RSpec.describe Html2rss::HashUtil do
 
   describe '.deep_stringify_keys' do
     it 'converts nested symbol keys and symbol values to strings' do
-      input = { channel: { url: 'https://example.com' }, strategy: :faraday }
-      expected = { 'channel' => { 'url' => 'https://example.com' }, 'strategy' => 'faraday' }
+      input = { channel: { url: 'https://example.com' }, strategy: :default }
+      expected = { 'channel' => { 'url' => 'https://example.com' }, 'strategy' => 'default' }
 
       expect(described_class.deep_stringify_keys(input)).to eq(expected)
     end

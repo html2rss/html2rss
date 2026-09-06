@@ -75,7 +75,7 @@ module Html2rss
       # Analyzes a URL and builds a reusable feed config.
       #
       # @param url [String] source page URL
-      # @param strategy [Symbol] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+      # @param strategy [Symbol] request strategy (+:auto+, +:default+, +:botasaurus+)
       # @option options [String, nil] :items_selector optional selector hint
       # @option options [Array<String>, nil] :topics optional directory topics override
       # @option options [String, nil] :title optional title override

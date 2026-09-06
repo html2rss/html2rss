@@ -40,7 +40,7 @@ Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: 
 Html2rss.capture('https://example.com', max_redirects: 8, max_requests: 4)
 ```
 
-`strategy: :auto` uses the same AutoFallback chain as scrape (`faraday` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.apply(config)` replays the same transport.
+`strategy: :auto` uses the same AutoFallback chain as scrape (`default` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.apply(config)` replays the same transport.
 
 ## CLI
 

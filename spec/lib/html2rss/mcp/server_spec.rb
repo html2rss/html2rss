@@ -70,13 +70,13 @@ RSpec.describe Html2rss::MCP::Server do
         Html2rss::MCP::Contract::TITLES.keys.map(&:to_s)
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
-      expect(protocol_server.instructions).to include('Faraday → Botasaurus AutoFallback')
+      expect(protocol_server.instructions).to include('default (HTTPX) → Botasaurus AutoFallback')
       expect(protocol_server.instructions).to include('html2rss://runtime', 'catalog_fingerprint')
       expect(protocol_server.instructions).to include('Default enhance follows capture evidence')
       expect(protocol_server.instructions).to include('payload.item_count')
       expect(protocol_server.instructions).to include('test')
       expect(protocol_server.instructions).not_to include('_meta')
-      expect(protocol_server.instructions).not_to include('try explicit "faraday"')
+      expect(protocol_server.instructions).not_to include('try explicit "default"')
       expect(protocol_server.tools['validate'].description).to include('html2rss://schema')
       expect(protocol_server.tools['capture'].description).to include('html2rss://schema')
       scrape_schema = protocol_server.tools['scrape'].input_schema.to_h
@@ -264,7 +264,7 @@ RSpec.describe Html2rss::MCP::Server do
           sample_items: success ? [{ title: 'A', url: 'https://example.com/a' }] : [],
           channel_title: 'Example',
           channel_url: 'https://example.com',
-          strategy_used: :faraday,
+          strategy_used: :default,
           duration_seconds: 0.1,
           validation_errors: success ? nil : { channel: ['is missing'] },
           error_message: success ? nil : 'Configuration schema validation failed',
@@ -388,13 +388,13 @@ RSpec.describe Html2rss::MCP::Server do
       end
 
       it 'preserves config strategy when MCP omits strategy argument', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        config_with_strategy = valid_config.merge(strategy: :faraday)
+        config_with_strategy = valid_config.merge(strategy: :default)
         allow(Html2rss::Test).to receive(:call).and_return(test_result(success: true))
 
         call_tool.call('test', { config: config_with_strategy, min_items: 1 })
 
         expect(Html2rss::Test).to have_received(:call).with(
-          hash_including(strategy: 'faraday'),
+          hash_including(strategy: 'default'),
           nil,
           hash_including(min_items: 1, strategy: nil)
         )
@@ -474,7 +474,7 @@ RSpec.describe Html2rss::MCP::Server do
       let(:feed_result) do
         status = instance_double(
           Html2rss::Status,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           entry_url: 'https://example.com',
           scrape_url: 'https://example.com'
         )
@@ -495,7 +495,7 @@ RSpec.describe Html2rss::MCP::Server do
           ),
           articles: [],
           dedup_dropped: 0,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
           admission_drops: {},
@@ -544,7 +544,7 @@ RSpec.describe Html2rss::MCP::Server do
           response: pipeline_response,
           articles: [],
           dedup_dropped: 0,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
           admission_drops: {},
@@ -601,7 +601,7 @@ RSpec.describe Html2rss::MCP::Server do
       let(:feed_result) do
         status = instance_double(
           Html2rss::Status,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           entry_url: 'https://example.com',
           scrape_url: 'https://example.com'
         )
@@ -622,7 +622,7 @@ RSpec.describe Html2rss::MCP::Server do
           ),
           articles: [],
           dedup_dropped: 0,
-          selected_strategy: :faraday,
+          selected_strategy: :default,
           attempt_count: 0,
           strategy_attempts: [],
           admission_drops: {},
@@ -648,7 +648,7 @@ RSpec.describe Html2rss::MCP::Server do
       before do
         allow(Html2rss::PageRecon::Diagnostics).to receive(:call).and_return(
           Html2rss::PageRecon::Diagnostics::Report.new(
-            data: { requested_url: 'https://example.com', strategy: :faraday, html_response: true }
+            data: { requested_url: 'https://example.com', strategy: :default, html_response: true }
           )
         )
       end
@@ -664,7 +664,7 @@ RSpec.describe Html2rss::MCP::Server do
           deep: false
         )
         expect(result.dig(:result, :isError)).to be(false)
-        expect(envelope[:payload]).to include(strategy: 'faraday')
+        expect(envelope[:payload]).to include(strategy: 'default')
       end
     end
 
@@ -766,7 +766,7 @@ RSpec.describe Html2rss::MCP::Server do
       result = read_resource.call('html2rss://strategies')
       names = JSON.parse(result.dig(:result, :contents, 0, :text))
 
-      expect(names).to eq(%w[auto default httpx botasaurus faraday])
+      expect(names).to eq(%w[auto default httpx botasaurus])
       expect(names).not_to include('local_file')
     end
 
@@ -805,12 +805,12 @@ RSpec.describe Html2rss::MCP::Server do
   end
 
   describe 'prompts' do
-    it 'embeds AutoFallback scrape guidance without an extra faraday hop', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'embeds AutoFallback scrape guidance without an extra hop', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       prompt = protocol_server.prompts['scrape-webpage']
       result = prompt.template({ url: 'https://example.com' }, server_context: nil)
       text = result.to_h.dig(:messages, 0, :content, :text)
 
-      expect(text).to include('One call is enough').and include('Do not retry scrape with explicit faraday')
+      expect(text).to include('One call is enough').and include('Do not retry scrape with explicit default')
       expect(text).to include('next_step').and include('payload.items')
       expect(text).not_to include('_meta')
     end

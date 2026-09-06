@@ -77,7 +77,7 @@ module Html2rss
       # Scrapes multiple URLs in parallel with per-URL error isolation.
       #
       # @param urls [Enumerable<String>] list of URLs to scrape
-      # @param strategy [Symbol, String] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+      # @param strategy [Symbol, String] request strategy (+:auto+, +:default+, +:botasaurus+)
       # @param limit [Integer] max articles to extract per URL
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
@@ -89,7 +89,7 @@ module Html2rss
       # Inspects multiple URLs in parallel with per-URL error isolation.
       #
       # @param urls [Enumerable<String>] list of URLs to inspect
-      # @param strategy [Symbol, String] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+      # @param strategy [Symbol, String] request strategy (+:auto+, +:default+, +:botasaurus+)
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
       def batch_inspect(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
@@ -104,7 +104,7 @@ module Html2rss
       # Runs recon across multiple URLs in parallel with per-URL error isolation.
       #
       # @param urls [Enumerable<String>] list of URLs to recon
-      # @param strategy [Symbol, String] request strategy (+:auto+, +:faraday+, +:botasaurus+)
+      # @param strategy [Symbol, String] request strategy (+:auto+, +:default+, +:botasaurus+)
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @option options [String, nil] :cache_dir optional HTML cache directory
       # @return [BatchResult]

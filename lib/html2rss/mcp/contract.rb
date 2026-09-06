@@ -9,7 +9,11 @@ module Html2rss
     # annotations, and the single compact JSON envelope response.
     module Contract # rubocop:disable Metrics/ModuleLength -- published listing constants stay co-located
       # Published MCP request strategies (excludes +local_file+).
-      STRATEGIES = %w[auto default httpx botasaurus faraday].freeze
+      STRATEGIES = %w[auto default httpx botasaurus].freeze
+      # Accepted migration strategies retained for backwards compatibility.
+      MIGRATION_STRATEGIES = %w[faraday].freeze
+      # Complete set of strategies accepted by {.assert_published_request!}.
+      ALL_ACCEPTED_STRATEGIES = (STRATEGIES + MIGRATION_STRATEGIES).freeze
 
       # Bump when tool names, required inputs, or envelope semantics change (independent of gem +VERSION+).
       MCP_CONTRACT_VERSION = 2
@@ -281,7 +285,7 @@ module Html2rss
         #   or +request.local_file_path+ is present
         def assert_published_request!(config)
           strategy = config[:strategy]
-          unless strategy.nil? || STRATEGIES.include?(strategy.to_s)
+          unless strategy.nil? || ALL_ACCEPTED_STRATEGIES.include?(strategy.to_s)
             raise UnpublishedRequestError,
                   "MCP does not accept strategy #{strategy} (published: #{STRATEGIES.join(', ')})"
           end

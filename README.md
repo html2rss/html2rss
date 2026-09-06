@@ -13,7 +13,7 @@ Most people looking for a first working feed should start with `html2rss-web`, r
 Detailed usage guides, reference docs, and the feed directory live on the project website:
 
 - [Ruby gem documentation](https://html2rss.github.io/ruby-gem)
-- [Request strategies](https://html2rss.github.io/ruby-gem/reference/strategy) (`auto` = `faraday` → `botasaurus`; or pin concrete strategies)
+- [Request strategies](https://html2rss.github.io/ruby-gem/reference/strategy) (`auto` = `default` → `botasaurus`; or pin concrete strategies)
 - [Selectors & pagination](https://html2rss.github.io/ruby-gem/reference/selectors#paginated-feeds)
 - [Web application](https://html2rss.github.io/web-application)
 - [Feed directory](https://html2rss.github.io/feed-directory)
@@ -26,7 +26,7 @@ Cloud development: [Open in GitHub Codespaces](https://github.com/codespaces/new
 ## Architecture
 
 1. **Config** — loads and validates configuration (YAML/hash); schema via `html2rss schema` / `schema/html2rss-config.schema.json`
-2. **RequestService** — fetches pages (`faraday`, `botasaurus`, or `local_file`)
+2. **RequestService** — fetches pages (`default` (HTTPX), `botasaurus`, or `local_file`)
 3. **Selectors** — extracts content via CSS selectors with extractors/post-processors
 4. **AutoSource** — auto-detects content (Schema.org, JSON state, semantic HTML, structural patterns)
 5. **FeedBuilder** — assembles Article objects and renders feeds (RSS 2.0 / JSON Feed 1.1)
@@ -157,7 +157,7 @@ Module guide: [`lib/html2rss/mcp/README.md`](lib/html2rss/mcp/README.md).
 | ----------------------- | --------------------------------------------------------------- |
 | `html2rss://schema`     | Full JSON Schema for feed configurations                        |
 | `html2rss://extractors` | Registered extractor **names** (options live in schema `$defs`) |
-| `html2rss://strategies` | Published MCP strategies (`auto`, `faraday`, `botasaurus`)      |
+| `html2rss://strategies` | Published MCP strategies (`auto`, `default`, `httpx`, `botasaurus`)      |
 | `html2rss://runtime`    | `version`, `mcp_contract_version`, `catalog_fingerprint`, `tools`, `botasaurus_configured` (never the scraper URL) |
 
 ### Prompts
@@ -183,11 +183,11 @@ Set `BOTASAURUS_SCRAPER_URL` to `http://127.0.0.1:4010` and use strategy `botasa
 
 | Strategy     | Description                                                                 |
 | ------------ | --------------------------------------------------------------------------- |
-| `auto`       | Tries `faraday`, falls back to `botasaurus` (default in gem/CLI/MCP scrape) |
-| `faraday`    | Plain HTTP requests via Faraday                                             |
+| `auto`       | Tries `default`, falls back to `botasaurus` (default in gem/CLI/MCP scrape) |
+| `default`    | Plain HTTP requests via HTTPX (alias: `httpx`; legacy: `faraday`)           |
 | `botasaurus` | Puppeteer-backed scraping for JavaScript pages                              |
 
-`inspect` keeps Faraday when `auto` for cheap diagnostics. Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `request.strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
+`inspect` keeps `default` when `auto` for cheap diagnostics. Elsewhere, strategy can be set via CLI (`--strategy`), gem API keyword argument, or feed config `strategy`. See the [request strategies docs](https://html2rss.github.io/ruby-gem/reference/strategy) for more details.
 
 ## License
 

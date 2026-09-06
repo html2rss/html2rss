@@ -10,7 +10,7 @@ module Html2rss
     # This module maps MCP kwargs to those APIs, then {Outcome} + {Contract} shape the envelope.
     #
     # Strategy note: MCP +auto+ passes through to FeedPipeline AutoFallback
-    # (faraday → botasaurus). Concrete strategies are used as-is.
+    # (default → botasaurus). Concrete strategies are used as-is.
     # Botasaurus requires +BOTASAURUS_SCRAPER_URL+.
     module Server # rubocop:disable Metrics/ModuleLength
       # MCP server display name.

@@ -16,7 +16,7 @@ RSpec.describe Html2rss::Config::RequestControls do
 
     it 'raises when top-level keys are not symbols' do
       expect do
-        described_class.from_config('strategy' => :faraday)
+        described_class.from_config('strategy' => :botasaurus)
       end.to raise_error(ArgumentError, /config must use symbol keys/)
     end
 
@@ -42,9 +42,9 @@ RSpec.describe Html2rss::Config::RequestControls do
 
   describe '.from_cli_options' do
     it 'marks strategy explicit when the CLI option is present', :aggregate_failures do
-      controls = described_class.from_cli_options(strategy: 'faraday', max_requests: nil)
+      controls = described_class.from_cli_options(strategy: 'botasaurus', max_requests: nil)
 
-      expect(controls.strategy).to eq(:faraday)
+      expect(controls.strategy).to eq(:botasaurus)
       expect(controls.explicit?(:strategy)).to be(true)
       expect(controls.explicit?(:max_requests)).to be(false)
     end

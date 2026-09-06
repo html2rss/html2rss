@@ -8,8 +8,9 @@ RSpec.describe Html2rss::MCP::Contract do
   let(:config_yaml) { Html2rss::Config.to_yaml(config_hash) }
 
   describe 'STRATEGIES' do
-    it 'is the published MCP set and excludes local_file' do
-      expect(described_class::STRATEGIES).to eq(%w[auto default httpx botasaurus faraday])
+    it 'is the published MCP set and excludes local_file', :aggregate_failures do
+      expect(described_class::STRATEGIES).to eq(%w[auto default httpx botasaurus])
+      expect(described_class::ALL_ACCEPTED_STRATEGIES).to eq(%w[auto default httpx botasaurus faraday])
     end
   end
 
@@ -34,7 +35,7 @@ RSpec.describe Html2rss::MCP::Contract do
     it 'rejects request.local_file_path even with a published strategy' do
       expect do
         described_class.assert_published_request!(
-          base.merge(strategy: :faraday, request: { local_file_path: '/tmp/page.html' })
+          base.merge(strategy: :default, request: { local_file_path: '/tmp/page.html' })
         )
       end.to raise_error(described_class::UnpublishedRequestError, /local_file_path/)
     end
