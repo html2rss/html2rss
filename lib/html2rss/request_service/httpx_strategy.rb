@@ -20,35 +20,28 @@ module Html2rss
         # rubocop:disable ThreadSafety/ClassInstanceVariable
         # @return [HTTPX::Session]
         def base_session
-          @base_sessions ||= {}
-          @base_sessions[HTTPX::Session] ||= HTTPX
-                                             .plugin(:follow_redirects)
-                                             .plugin(:callbacks)
-                                             .plugin(:brotli)
-                                             .plugin(:fiber_concurrency)
-                                             .plugin(:retries)
+          @base_session ||= HTTPX
+                            .plugin(:follow_redirects)
+                            .plugin(:callbacks)
+                            .plugin(:brotli)
+                            .plugin(:fiber_concurrency)
+                            .plugin(:retries)
         end
 
         # @return [HTTPX::Session]
         def base_ssrf_session
-          @base_ssrf_sessions ||= {}
-          @base_ssrf_sessions[HTTPX::Session] ||= base_session.plugin(:ssrf_filter)
+          @base_ssrf_session ||= base_session.plugin(:ssrf_filter)
         end
         # rubocop:enable ThreadSafety/ClassInstanceVariable
       end
-
-      ##
-      # @return [ResponseGuard]
-      attr_reader :response_guard
 
       # Executes the request with runtime policy enforcement, returning the normalized response.
       #
       # @return [Response] normalized response
       def perform_execute
         deadline = request_deadline
-        @response_guard = ResponseGuard.new(policy: ctx.policy)
         reset_redirect_tracking!
-        raw_response = request_with_terminal_redirect_retry(response_guard, deadline:)
+        raw_response = request_with_terminal_redirect_retry(deadline:)
         build_response(raw_response)
       end
 
@@ -65,15 +58,15 @@ module Html2rss
         @current_url = request_url
       end
 
-      def request_with_terminal_redirect_retry(response_guard, deadline:)
-        raw_response = execute_http_request(response_guard, deadline:)
+      def request_with_terminal_redirect_retry(deadline:)
+        raw_response = execute_http_request(deadline:)
         return raw_response unless redirect_limit_reached?(raw_response)
 
         unless terminal_redirect_retryable?(raw_response)
           raise RedirectLimitReached, "Too many redirects (status #{raw_response.status})"
         end
 
-        retry_from_terminal_redirect!(raw_response, response_guard, deadline:)
+        retry_from_terminal_redirect!(raw_response, deadline:)
       end
 
       def redirect_limit_reached?(response)
@@ -82,7 +75,7 @@ module Html2rss
         return false unless (300..399).cover?(response.status)
 
         location = response.headers['location']
-        !location.nil? && !location.strip.empty?
+        !location.to_s.strip.empty?
       end
 
       def terminal_redirect_url(raw_response)
@@ -102,12 +95,12 @@ module Html2rss
         target && target.to_s != request_url.to_s
       end
 
-      def retry_from_terminal_redirect!(raw_response, response_guard, deadline:)
+      def retry_from_terminal_redirect!(raw_response, deadline:)
         terminal_url = terminal_redirect_url(raw_response)
         @terminal_redirect_retried = true
         Log.debug("#{self.class}: redirect limit reached; retrying once from #{terminal_url}")
         begin_terminal_url_request!(terminal_url)
-        new_response = execute_http_request(response_guard, deadline:, consume_budget: false)
+        new_response = execute_http_request(deadline:, consume_budget: false)
         if redirect_limit_reached?(new_response)
           raise RedirectLimitReached, "Too many redirects (status #{new_response.status})"
         end
@@ -126,17 +119,13 @@ module Html2rss
         @request_url_override || ctx.url
       end
 
-      def execute_http_request(response_guard, deadline:, consume_budget: true)
+      def execute_http_request(deadline:, consume_budget: true)
         preflight!(consume_budget:)
-        session = build_session(response_guard, deadline:)
+        session = session_client(deadline)
         response = session.get(request_url.to_s, headers: ctx.headers)
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
 
         response
-      end
-
-      def build_session(_response_guard, deadline:)
-        session_client(deadline)
       end
 
       def session_client(deadline)

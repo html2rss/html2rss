@@ -22,7 +22,7 @@ module Html2rss
       def execute
         check_timeout!
         response = perform_execute
-        postflight!(response, response_guard:)
+        postflight!(response)
         response
       rescue StandardError => error
         handle_error(error)
@@ -67,13 +67,11 @@ module Html2rss
       # Enforces response-size and blocked-surface checks after transport work.
       #
       # @param response [Response, nil] adapter response
-      # @param response_guard [ResponseGuard, nil] existing guard to reuse (e.g. streaming)
       # @return [void]
-      def postflight!(response, response_guard: nil)
+      def postflight!(response)
         return if skip_postflight? || response.nil?
 
-        guard = response_guard || ResponseGuard.new(policy: ctx.policy)
-        guard.inspect_body!(response.body)
+        ResponseGuard.new(policy: ctx.policy).inspect_body!(response.body)
       end
 
       ##
@@ -90,9 +88,6 @@ module Html2rss
         log_timeout!(reason: 'budget_exhausted')
         raise
       end
-
-      # @return [ResponseGuard, nil]
-      def response_guard = nil
 
       # @param error [StandardError]
       # @return [void]

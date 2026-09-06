@@ -15,6 +15,9 @@ module Html2rss
 
     # Allowed article attributes accepted by the value object constructor.
     PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
+    # Fast set lookup for valid article attribute keys.
+    PROVIDED_KEYS_SET = PROVIDED_KEYS.to_set.freeze
+    private_constant :PROVIDED_KEYS_SET
     # Separator used to build deterministic deduplication fingerprints.
     DEDUP_FINGERPRINT_SEPARATOR = '#!/'
     # Sentinel object used to pre-initialize instance variables in the constructor.
@@ -36,12 +39,13 @@ module Html2rss
     # @option options [Array<String>] :categories category labels
     # @option options [Class] :scraper scraper class that produced the article
     def initialize(**options)
-      @to_h = options.each_with_object({}) { |(key, value), hash| hash[key] = freeze_option(value) }.freeze
+      @to_h = options.transform_values { freeze_option(_1) }.freeze
 
       @url = @image = @guid = @enclosures = @categories = @published_at = NOT_SET
 
-      return unless (unknown_keys = options.keys - PROVIDED_KEYS).any?
+      return unless options.each_key.any? { !PROVIDED_KEYS_SET.include?(_1) }
 
+      unknown_keys = options.keys - PROVIDED_KEYS
       Log.warn "Article: unknown keys found: #{unknown_keys.join(', ')}"
     end
 

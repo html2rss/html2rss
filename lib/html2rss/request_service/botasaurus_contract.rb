@@ -25,7 +25,7 @@ module Html2rss
       # OpenAPI WindowSize required keys (positive integers).
       WINDOW_SIZE_PROPERTIES = %i[width height].freeze
 
-      # Faraday POST /scrape cap mirroring botasaurus-scrape-api total scrape wall (`SCRAPE_TIMEOUT_SECONDS`).
+      # HTTPX POST /scrape cap mirroring botasaurus-scrape-api total scrape wall (`SCRAPE_TIMEOUT_SECONDS`).
       SCRAPE_TIMEOUT_SECONDS = Integer(ENV.fetch('BOTASAURUS_SCRAPE_TIMEOUT_SECONDS', 45))
       # Post-boot navigate/wait budget mirrored from scrape-api (`SCRAPE_WORK_TIMEOUT_SECONDS`).
       SCRAPE_WORK_TIMEOUT_SECONDS = Integer(ENV.fetch('BOTASAURUS_SCRAPE_WORK_TIMEOUT_SECONDS', 30))
@@ -72,10 +72,7 @@ module Html2rss
 
         # @return [Hash{String => String}] normalized response headers (null → {})
         def headers
-          raw_headers = payload['headers']
-          return {} unless raw_headers.is_a?(Hash) && raw_headers.any?
-
-          raw_headers.to_h { |key, value| [key.to_s, value.to_s] }
+          stringify_headers(payload['headers'])
         end
 
         # @return [Integer, nil] document status_code when present
@@ -147,10 +144,12 @@ module Html2rss
           entry[key.to_s] || entry[key]
         end
 
-        def xhr_headers(raw)
-          return {} unless raw.is_a?(Hash)
+        def xhr_headers(raw) = stringify_headers(raw)
 
-          raw.to_h { |key, value| [key.to_s, value.to_s] }
+        def stringify_headers(raw)
+          return {} unless raw.is_a?(Hash) && raw.any?
+
+          raw.transform_keys(&:to_s).transform_values(&:to_s)
         end
 
         def xhr_status_code(value)
@@ -286,7 +285,7 @@ module Html2rss
         payload
       end
 
-      # @param transport_response [Faraday::Response] upstream HTTP response
+      # @param transport_response [HTTPX::Response] upstream HTTP response
       # @return [Success, Error]
       # @raise [BotasaurusServiceError] when payload is not a scrape envelope
       def parse_response(transport_response)

@@ -82,7 +82,7 @@ Historic CLI aliases: `feed` → `apply`, `auto` → `scrape`.
 
 Inspect follows redirects and reports the landing URL in `final_url`. CLI text shows a `Final:` line **only when** the landing URL differs from what you typed — that line means the redirect succeeded, not that inspect stopped early.
 
-Cross-host redirects (e.g. `https://apex.example/` → `https://www.example/`) set `Host` per hop via Faraday/Net::HTTP; html2rss does not pin the entry hostname. When `final_url` differs and status is 4xx, retry on `final_url` or pass the site's canonical hostname. Details: [`lib/html2rss/page_recon/README.md`](lib/html2rss/page_recon/README.md).
+Cross-host redirects (e.g. `https://apex.example/` → `https://www.example/`) set `Host` per hop via HTTPX; html2rss does not pin the entry hostname. When `final_url` differs and status is 4xx, retry on `final_url` or pass the site's canonical hostname. Details: [`lib/html2rss/page_recon/README.md`](lib/html2rss/page_recon/README.md).
 
 ## Capture API
 
@@ -112,7 +112,7 @@ stdio uses stdout for JSON-RPC, so the daemon logs to **stderr**. It defaults to
 
 HTTP transport needs `rack`, `rackup`, and `webrick` (declared gem dependencies). It listens on `127.0.0.1` only; do not expose it on a public interface without your own auth and Host/Origin controls.
 
-**Strategy note:** MCP `scrape` / `capture` with `strategy: "auto"` run Faraday → Botasaurus AutoFallback. `inspect` uses Faraday when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect.
+**Strategy note:** MCP `scrape` / `capture` with `strategy: "auto"` run default (HTTPX) → Botasaurus AutoFallback. `inspect` uses default (HTTPX) when `auto` (cheap diagnostic); pin `botasaurus` when you need browser rendering for inspect.
 
 **Tool-call budget:** `scrape` is 1 call (auto already hops). Durable config is `capture` → `test` → `apply` (or `validate` → `test` → `apply` when you already have YAML). Call `inspect` only when scrape/capture is weak or you need recon (final URL, status, https→http, native RSS/Atom).
 

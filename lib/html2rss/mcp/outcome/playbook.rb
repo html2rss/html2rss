@@ -16,7 +16,7 @@ module Html2rss
           recon: 'Call recon next. Read payload for verdict and native_feed preference.',
           validate: 'Call validate with payload.yaml or a config hash (XOR, not both).',
           apply: 'Call apply next. Confirm payload.item_count before shipping.',
-          scrape: 'Call scrape for articles now. strategy auto already runs Faraday then Botasaurus ' \
+          scrape: 'Call scrape for articles now. strategy auto already runs default (HTTPX) then Botasaurus ' \
                   'and promotes native RSS/Atom when present.',
           capture: 'Call capture for a reusable YAML draft, then follow next_step.',
           read_runtime: 'Read html2rss://runtime. Compare mcp_contract_version and catalog_fingerprint ' \

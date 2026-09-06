@@ -34,18 +34,15 @@ module Html2rss
         private
 
         def add_item_string_values(article, item_maker)
-          {
-            title: article.title,
-            description: ItemPresentation.description_for(article),
-            author: article.author
-          }.each do |attr, value|
-            next if value.nil? || value.empty?
-
-            item_maker.public_send(:"#{attr}=", value)
-          end
-
+          assign_text(item_maker, :title=, article.title)
+          assign_text(item_maker, :description=, ItemPresentation.description_for(article))
+          assign_text(item_maker, :author=, article.author)
           item_maker.link = article.url.to_s if article.url
           item_maker.pubDate = article.published_at&.rfc2822
+        end
+
+        def assign_text(item_maker, setter, value)
+          item_maker.public_send(setter, value) if value && !value.empty?
         end
 
         def add_item_categories(article, item_maker)
