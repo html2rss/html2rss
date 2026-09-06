@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'httpx'
-
 module Html2rss
   class RequestService
     ##
@@ -142,29 +140,25 @@ module Html2rss
       # @param error [StandardError]
       # @return [Boolean]
       def timeout_error?(error)
-        error.is_a?(HTTPX::TimeoutError) ||
-          error.is_a?(Timeout::Error)
+        error.is_a?(Timeout::Error)
       end
 
-      # @param error [StandardError]
+      # @param _error [StandardError]
       # @return [Boolean]
-      def ssrf_error?(error)
-        error.is_a?(HTTPX::ServerSideRequestForgeryError)
+      def ssrf_error?(_error)
+        false
       end
 
-      # @param error [StandardError]
+      # @param _error [StandardError]
       # @return [Boolean]
-      def response_too_large_error?(error)
-        error.is_a?(HTTPX::Error) && error.message.include?('maximum response body size exceeded')
+      def response_too_large_error?(_error)
+        false
       end
 
       # @param error [StandardError]
       # @return [Boolean]
       def connection_error?(error)
-        error.is_a?(HTTPX::ConnectionError) ||
-          error.is_a?(HTTPX::TLSError) ||
-          error.is_a?(SocketError) ||
-          error.is_a?(SystemCallError)
+        error.is_a?(SocketError) || error.is_a?(SystemCallError)
       end
     end
   end

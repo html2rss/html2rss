@@ -179,6 +179,23 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     end
   end
 
+  context 'when upstream returns Content-Encoding br' do
+    let(:html) { '<!DOCTYPE html><html><body><div>brotli decoded</div></body></html>' }
+
+    before do
+      stub_request(:get, 'https://example.com')
+        .to_return(
+          status: 200,
+          body: Brotli.deflate(html),
+          headers: { 'Content-Type' => 'text/html', 'Content-Encoding' => 'br' }
+        )
+    end
+
+    it 'natively decompresses the brotli response body' do
+      expect(execute.body).to eq(html)
+    end
+  end
+
   describe 'error translation' do
     it 'maps HTTPX::TimeoutError to RequestTimedOut' do
       stub_request(:get, 'https://example.com')

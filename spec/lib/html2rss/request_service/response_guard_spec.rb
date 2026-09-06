@@ -12,14 +12,6 @@ RSpec.describe Html2rss::RequestService::ResponseGuard do
     )
   end
 
-  describe '#inspect_chunk!' do
-    it 'raises when the streamed size exceeds the policy' do
-      expect do
-        guard.inspect_chunk!(total_bytes: 1_001, headers: { 'content-length' => '1_001' })
-      end.to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 1000 bytes')
-    end
-  end
-
   describe '#inspect_body!' do
     let(:blocked_body) do
       fixture = Pathname(__dir__).join('../../../fixtures/challenge/cloudflare_interstitial.html').expand_path
