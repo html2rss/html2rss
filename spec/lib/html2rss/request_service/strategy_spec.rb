@@ -81,7 +81,7 @@ RSpec.describe Html2rss::RequestService::Strategy do
         private
 
         def fetch
-          raise HTTPX::TimeoutError.new({ request_timeout: 5 }, 'execution expired for https://secret.example/path?token=abc')
+          raise Timeout::Error, 'execution expired for https://secret.example/path?token=abc'
         end
       end
     end

@@ -99,10 +99,7 @@ module Html2rss
       end
 
       def post_headers(request_id)
-        {
-          'Content-Type' => 'application/json',
-          REQUEST_ID_HEADER => request_id
-        }
+        { 'Content-Type' => 'application/json', REQUEST_ID_HEADER => request_id }
       end
 
       def attempt_timeout_seconds
@@ -126,6 +123,10 @@ module Html2rss
       def translate_connection_error(error)
         raise BotasaurusConnectionFailed, "Botasaurus connection failed: #{error.message}"
       end
+
+      def timeout_error?(error) = error.is_a?(HTTPX::TimeoutError) || super
+
+      def connection_error?(error) = error.is_a?(HTTPX::ConnectionError) || error.is_a?(HTTPX::TLSError) || super
     end
   end
 end

@@ -23,55 +23,22 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
-  context 'when Content-Encoding is gzip' do
-    let(:headers) { { 'Content-Encoding' => 'gzip' } }
+  context 'when body has unlabeled gzip magic bytes' do
     let(:body) do
       StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
     end
 
-    it 'inflates the labeled gzip body' do
+    it 'inflates the unlabeled gzip body' do
       expect(decoded).to eq(html)
     end
   end
 
-  context 'when Content-Encoding is zlib deflate' do
-    let(:headers) { { 'content-encoding' => 'deflate' } }
-    let(:body) { Zlib::Deflate.deflate(html) }
-
-    it 'inflates the labeled deflate body' do
-      expect(decoded).to eq(html)
-    end
-  end
-
-  context 'when Content-Encoding is raw deflate' do
-    let(:headers) { { 'content-encoding' => 'deflate' } }
-    let(:body) do
-      inflater = Zlib::Deflate.new(Zlib::BEST_COMPRESSION, -Zlib::MAX_WBITS)
-      inflater.deflate(html, Zlib::FINISH)
-    ensure
-      inflater.close
-    end
-
-    it 'inflates the Microsoft-style raw deflate body' do
-      expect(decoded).to eq(html)
-    end
-  end
-
-  context 'when Content-Encoding is br' do
-    let(:headers) { { 'content-encoding' => 'br' } }
+  context 'when body has unlabeled octet-stream brotli HTML' do
+    let(:headers) { { 'content-type' => 'application/octet-stream' } }
     let(:body) { Brotli.deflate(html) }
 
-    it 'inflates the labeled brotli body' do
+    it 'inflates the unlabeled brotli HTML body' do
       expect(decoded).to eq(html)
-    end
-  end
-
-  context 'when Content-Encoding is gzip but the body is not gzip' do
-    let(:headers) { { 'content-encoding' => 'gzip', 'content-type' => 'application/octet-stream' } }
-    let(:body) { 'not-gzip' }
-
-    it 'returns the original body' do
-      expect(decoded).to eq('not-gzip')
     end
   end
 
@@ -90,6 +57,68 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
 
     it 'leaves the body unchanged' do
       expect(decoded).to eq(body)
+    end
+  end
+
+  context 'when body is nil' do
+    let(:body) { nil }
+
+    it 'returns nil' do
+      expect(decoded).to be_nil
+    end
+  end
+
+  context 'when body has labeled content-encoding' do
+    context 'with valid gzip encoding' do
+      let(:headers) { { 'content-encoding' => 'gzip' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'inflates the labeled gzip body' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with corrupted gzip encoding' do
+      let(:headers) { { 'content-encoding' => 'gzip' } }
+      let(:body) { 'not gzip' }
+
+      it 'returns original body' do
+        expect(decoded).to eq('not gzip')
+      end
+    end
+
+    context 'with br encoding' do
+      let(:headers) { { 'content-encoding' => 'br' } }
+      let(:body) { Brotli.deflate('any content') }
+
+      it 'inflates labeled brotli body without requiring html sniff' do
+        expect(decoded).to eq('any content')
+      end
+    end
+
+    context 'with deflate encoding (zlib wrapped)' do
+      let(:headers) { { 'content-encoding' => 'deflate' } }
+      let(:body) { Zlib::Deflate.deflate(html) }
+
+      it 'inflates the deflate body' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with deflate encoding (raw deflate without header)' do
+      let(:headers) { { 'content-encoding' => 'deflate' } }
+      let(:body) do
+        deflater = Zlib::Deflate.new(Zlib::DEFAULT_COMPRESSION, -Zlib::MAX_WBITS)
+        data = deflater.deflate(html, Zlib::FINISH)
+        deflater.close
+        data
+      end
+
+      it 'inflates the raw deflate body' do
+        expect(decoded).to eq(html)
+      end
     end
   end
 end

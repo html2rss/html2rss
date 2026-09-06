@@ -32,6 +32,9 @@ module Html2rss
         'User-Agent' => DEFAULT_USER_AGENT
       }.freeze
 
+      # Hop-by-hop headers forbidden in HTTP/2 requests (RFC 7540 §8.1.2.2 / RFC 9113 §8.2.1).
+      FORBIDDEN_H2_HEADERS = %w[connection keep-alive proxy-connection transfer-encoding upgrade].to_set.freeze
+
       class << self
         ##
         # :reek:ManualDispatch
@@ -74,7 +77,7 @@ module Html2rss
       ##
       # @return [Hash{String => String}] normalized HTTP headers
       def to_h
-        defaults = DEFAULT_HEADERS.dup
+        defaults = self.class.browser_defaults
         normalized = normalize_custom_headers(headers)
 
         accept_override = normalized.delete('Accept')
@@ -83,6 +86,7 @@ module Html2rss
         defaults['Accept'] = normalize_accept(accept_override)
         defaults['Accept-Language'] = build_accept_language
 
+        defaults.reject! { |key, _| FORBIDDEN_H2_HEADERS.include?(key.downcase) }
         defaults.compact
       end
 

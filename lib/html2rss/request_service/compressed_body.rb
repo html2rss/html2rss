@@ -49,20 +49,14 @@ module Html2rss
           return raw unless raw.start_with?(GZIP_MAGIC)
 
           uncompress_gzip(raw)
-        when 'deflate' then inflate_deflate(raw)
         when 'br' then try_brotli(raw, require_html: false)
+        when 'deflate' then inflate_deflate(raw)
         end
       rescue Zlib::Error, Brotli::Error, ArgumentError
         nil
       end
       module_function :inflate
       private_class_method :inflate
-
-      def uncompress_gzip(raw)
-        Zlib::GzipReader.wrap(StringIO.new(raw), encoding: 'ASCII-8BIT', &:read)
-      end
-      module_function :uncompress_gzip
-      private_class_method :uncompress_gzip
 
       def inflate_deflate(raw)
         inflater = nil
@@ -75,6 +69,14 @@ module Html2rss
       end
       module_function :inflate_deflate
       private_class_method :inflate_deflate
+
+      def uncompress_gzip(raw)
+        Zlib::GzipReader.wrap(StringIO.new(raw), encoding: 'ASCII-8BIT', &:read)
+      rescue Zlib::Error
+        nil
+      end
+      module_function :uncompress_gzip
+      private_class_method :uncompress_gzip
 
       def try_brotli(raw, require_html: true)
         inflated = Brotli.inflate(raw)

@@ -9,22 +9,6 @@ module Html2rss
       # @param policy [Policy] request policy that defines byte ceilings
       def initialize(policy:)
         @policy = policy
-        @streamed_bytes = 0
-      end
-
-      ##
-      # Validates response headers and streamed byte count.
-      #
-      # @param total_bytes [Integer] cumulative byte count received so far
-      # @param headers [Hash, nil] response headers if known
-      # @return [void]
-      # @raise [ResponseTooLarge] if the response exceeds configured limits
-      def inspect_chunk!(total_bytes:, headers: nil)
-        header_length = headers&.fetch('content-length', headers&.fetch('Content-Length', nil))
-        raise_if_too_large!(header_length.to_i, policy.max_response_bytes) if header_length
-
-        @streamed_bytes = total_bytes
-        raise_if_too_large!(@streamed_bytes, policy.max_response_bytes)
       end
 
       ##

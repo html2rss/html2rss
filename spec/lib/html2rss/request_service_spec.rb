@@ -65,10 +65,24 @@ RSpec.describe Html2rss::RequestService do
       end
     end
 
-    context 'with a deprecated strategy alias' do
+    context 'with a silent strategy alias' do
+      let(:strategy) { :httpx }
+
+      it 'delegates to HttpxStrategy without warnings', :aggregate_failures do
+        allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
+        allow(Html2rss::Log).to receive(:warn)
+
+        execute
+
+        expect(strategy_class).to have_received(:new).with(ctx)
+        expect(Html2rss::Log).not_to have_received(:warn)
+      end
+    end
+
+    context 'with a deprecated migration strategy alias' do
       let(:strategy) { :faraday }
 
-      it 'logs a deprecation warning and delegates to HttpxStrategy', :aggregate_failures do
+      it 'logs a migration warning and delegates to HttpxStrategy', :aggregate_failures do
         allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
         allow(Html2rss::Log).to receive(:warn)
 
@@ -85,21 +99,6 @@ RSpec.describe Html2rss::RequestService do
       it do
         expect { execute }.to raise_error(Html2rss::RequestService::UnknownStrategy)
       end
-    end
-  end
-
-  describe '.register_strategy' do
-    let(:new_strategy) { Class.new }
-    let(:strategy_name) { :new_strategy }
-
-    it 'registers a new strategy' do
-      expect do
-        described_class.register_strategy(strategy_name, new_strategy)
-      end.to change { described_class.strategy_registered?(strategy_name) }.from(false).to(true)
-    end
-
-    it 'raises an error if the strategy class is not a class' do
-      expect { described_class.register_strategy(strategy_name, 'not a class') }.to raise_error(ArgumentError)
     end
   end
 
@@ -123,67 +122,6 @@ RSpec.describe Html2rss::RequestService do
 
       it 'returns false for an unregistered strategy' do
         expect(described_class.strategy_registered?('unknown')).to be false
-      end
-    end
-  end
-
-  describe '.default_strategy_name=' do
-    after do
-      described_class.default_strategy_name = :default
-    end
-
-    context 'when the strategy is registered' do
-      it 'sets the default strategy' do
-        described_class.default_strategy_name = :botasaurus
-        expect(described_class.default_strategy_name).to be :botasaurus
-      end
-    end
-
-    context 'when setting a deprecated strategy alias' do
-      it 'logs a deprecation warning' do
-        allow(Html2rss::Log).to receive(:warn)
-
-        described_class.default_strategy_name = :faraday
-
-        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':faraday' is deprecated/)
-      end
-    end
-
-    context 'when the strategy is not registered' do
-      it 'raises an UnknownStrategy error' do
-        expect do
-          described_class.default_strategy_name = :unknown
-        end.to raise_error(Html2rss::RequestService::UnknownStrategy)
-      end
-    end
-  end
-
-  describe '.unregister_strategy' do
-    context 'when the strategy is registered' do
-      before { described_class.register_strategy(:foobar, Class) }
-
-      let(:strategy_name) { :foobar }
-
-      it 'unregisters the strategy' do
-        expect do
-          described_class.unregister_strategy(strategy_name)
-        end.to change { described_class.strategy_registered?(strategy_name) }.from(true).to(false)
-      end
-    end
-
-    context 'when the strategy is not registered' do
-      let(:strategy_name) { :unknown }
-
-      it 'returns false' do
-        expect(described_class.unregister_strategy(strategy_name)).to be false
-      end
-    end
-
-    context 'when trying to unregister the default strategy' do
-      it 'raises an ArgumentError' do
-        expect do
-          described_class.unregister_strategy(described_class.default_strategy_name)
-        end.to raise_error(ArgumentError, 'Cannot unregister the default strategy.')
       end
     end
   end

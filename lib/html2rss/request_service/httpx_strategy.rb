@@ -4,6 +4,9 @@ require 'httpx'
 require 'httpx/plugins/follow_redirects'
 require 'httpx/plugins/callbacks'
 require 'httpx/plugins/ssrf_filter'
+require 'httpx/plugins/brotli'
+require 'httpx/plugins/fiber_concurrency'
+require 'httpx/plugins/retries'
 
 module Html2rss
   class RequestService
@@ -13,16 +16,17 @@ module Html2rss
     # and redirect handling without monkey-patching.
     # rubocop:disable-next Metrics/ClassLength -- terminal redirect retry colocated with HTTPX transport
     class HttpxStrategy < Strategy
-      # Hop-by-hop headers forbidden in HTTP/2 requests (RFC 7540 §8.1.2.2 / RFC 9113 §8.2.1).
-      CONNECTION_HEADERS = %w[connection keep-alive proxy-connection transfer-encoding upgrade].to_set.freeze
-      private_constant :CONNECTION_HEADERS
-
       class << self
         # rubocop:disable ThreadSafety/ClassInstanceVariable
         # @return [HTTPX::Session]
         def base_session
           @base_sessions ||= {}
-          @base_sessions[HTTPX::Session] ||= HTTPX.plugin(:follow_redirects).plugin(:callbacks)
+          @base_sessions[HTTPX::Session] ||= HTTPX
+                                             .plugin(:follow_redirects)
+                                             .plugin(:callbacks)
+                                             .plugin(:brotli)
+                                             .plugin(:fiber_concurrency)
+                                             .plugin(:retries)
         end
 
         # @return [HTTPX::Session]
@@ -125,26 +129,14 @@ module Html2rss
       def execute_http_request(response_guard, deadline:, consume_budget: true)
         preflight!(consume_budget:)
         session = build_session(response_guard, deadline:)
-        response = session.get(request_url.to_s, headers: sanitized_headers)
+        response = session.get(request_url.to_s, headers: ctx.headers)
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
 
         response
       end
 
-      def sanitized_headers
-        ctx.headers.reject { |k, _| CONNECTION_HEADERS.include?(k.to_s.downcase) }
-      end
-
-      def build_session(response_guard, deadline:)
-        session = session_client(deadline)
-        streamed_bytes = 0
-        session = session.on_response_started do |_req, res|
-          response_guard.inspect_chunk!(total_bytes: 0, headers: res.headers.to_h)
-        end
-        session.on_response_body_chunk do |_req, _res, chunk|
-          streamed_bytes += chunk.bytesize
-          response_guard.inspect_chunk!(total_bytes: streamed_bytes)
-        end
+      def build_session(_response_guard, deadline:)
+        session_client(deadline)
       end
 
       def session_client(deadline)
@@ -214,6 +206,22 @@ module Html2rss
 
       def monotonic_now
         Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      end
+
+      def timeout_error?(error)
+        error.is_a?(HTTPX::TimeoutError) || super
+      end
+
+      def ssrf_error?(error)
+        error.is_a?(HTTPX::ServerSideRequestForgeryError) || super
+      end
+
+      def response_too_large_error?(error)
+        (error.is_a?(HTTPX::Error) && error.message.include?('maximum response body size exceeded')) || super
+      end
+
+      def connection_error?(error)
+        error.is_a?(HTTPX::ConnectionError) || error.is_a?(HTTPX::TLSError) || super
       end
     end
   end

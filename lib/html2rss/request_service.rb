@@ -1,18 +1,13 @@
 # frozen_string_literal: true
 
-require 'singleton'
-require 'forwardable'
-
 module Html2rss
   ##
   # Requests website URLs to retrieve their HTML for further processing.
-  # Provides concrete transport strategies (e.g. Faraday, Botasaurus).
+  # Provides concrete transport strategies (e.g. HttpxStrategy, BotasaurusStrategy).
   #
   # Feed-level +:auto+ is not registered here — {FeedPipeline::StrategyPlan} resolves
   # it to a concrete strategy (or {FeedPipeline::AutoFallback} chain) before execute.
   class RequestService
-    include Singleton
-
     # Raised when an unknown request strategy is requested.
     class UnknownStrategy < Html2rss::Error; end
     # Raised when a URL cannot be parsed or validated.
@@ -59,118 +54,60 @@ module Html2rss
     # Raised when Botasaurus responds but the scrape fails (upstream error, bad payload).
     class BotasaurusServiceError < Html2rss::Error; end
 
-    class << self
-      extend Forwardable
-
-      %i[default_strategy_name
-         default_strategy_name=
-         strategy_names
-         register_strategy
-         unregister_strategy
-         strategy_registered?
-         execute].each do |method|
-        def_delegator :instance, method
-      end
-    end
-
-    # Canonical strategy mappings for deprecated strategy names.
-    DEPRECATED_STRATEGIES = {
-      faraday: :default,
-      httpx: :default
+    # Map of supported strategy names to their implementation classes.
+    # @return [Hash{Symbol => Class<Strategy>}]
+    STRATEGIES = {
+      default: HttpxStrategy,
+      httpx: HttpxStrategy,
+      faraday: HttpxStrategy,
+      botasaurus: BotasaurusStrategy,
+      local_file: LocalFileStrategy
     }.freeze
-    private_constant :DEPRECATED_STRATEGIES
 
-    def initialize
-      @strategies = {
-        default: HttpxStrategy,
-        httpx: HttpxStrategy,
-        faraday: HttpxStrategy,
-        botasaurus: BotasaurusStrategy,
-        local_file: LocalFileStrategy
-      }
-      @default_strategy_name = :default
-    end
+    # Canonical default strategy symbol.
+    # @return [Symbol]
+    DEFAULT_STRATEGY_NAME = :default
 
-    # @return [Symbol] the default strategy name
-    attr_reader :default_strategy_name
+    class << self
+      # @return [Symbol] the default strategy name
+      def default_strategy_name = DEFAULT_STRATEGY_NAME
 
-    ##
-    # Sets the default strategy.
-    # @param strategy [Symbol] the name of the strategy
-    # @return [Symbol] the selected default strategy name
-    # @raise [UnknownStrategy] if the strategy is not registered
-    def default_strategy_name=(strategy)
-      raise UnknownStrategy unless strategy_registered?(strategy)
+      # @return [Array<String>] the names of the registered strategies
+      def strategy_names = STRATEGIES.keys.map(&:to_s)
 
-      warn_deprecated_strategy(strategy)
-      @default_strategy_name = strategy.to_sym
-    end
-
-    # @return [Array<String>] the names of the registered strategies
-    def strategy_names = @strategies.keys.map(&:to_s)
-
-    ##
-    # Registers a new strategy.
-    # @param name [Symbol] the name of the strategy
-    # @param strategy_class [Class] the class implementing the strategy
-    # @return [Class] the registered strategy class
-    # @raise [ArgumentError] if strategy_class is not a Class
-    def register_strategy(name, strategy_class)
-      unless strategy_class.is_a?(Class)
-        raise ArgumentError, "Expected a Class for strategy, got #{strategy_class.class}"
+      ##
+      # Checks if a strategy is registered.
+      # @param name [Symbol, String] the name of the strategy
+      # @return [Boolean] true if the strategy is registered, false otherwise.
+      def strategy_registered?(name)
+        STRATEGIES.key?(name.to_sym)
       end
 
-      @strategies[name.to_sym] = strategy_class
-    end
+      ##
+      # Executes the request using the specified strategy.
+      # @param ctx [Context] the context for the request.
+      # @param strategy [Symbol, String] the strategy to use (defaults to the default strategy).
+      # @return [Response] the response from the executed strategy.
+      # @raise [UnknownStrategy] if the strategy is not registered.
+      def execute(ctx, strategy: default_strategy_name)
+        strategy_sym = strategy.to_sym
+        strategy_class = STRATEGIES.fetch(strategy_sym) do
+          raise UnknownStrategy,
+                "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
+        end
 
-    ##
-    # Checks if a strategy is registered.
-    # @param name [Symbol] the name of the strategy
-    # @return [Boolean] true if the strategy is registered, false otherwise.
-    def strategy_registered?(name)
-      @strategies.key?(name.to_sym)
-    end
-
-    ##
-    # Unregisters a strategy.
-    # @param name [Symbol] the name of the strategy
-    # @return [Boolean] true if the strategy was unregistered, false otherwise.
-    # @raise [ArgumentError] if attempting to unregister the default strategy.
-    def unregister_strategy(name) # rubocop:disable Naming/PredicateMethod
-      name_sym = name.to_sym
-      raise ArgumentError, 'Cannot unregister the default strategy.' if name_sym == @default_strategy_name
-
-      !!@strategies.delete(name_sym)
-    end
-
-    ##
-    # Executes the request using the specified strategy.
-    # @param ctx [Context] the context for the request.
-    # @param strategy [Symbol] the strategy to use (defaults to the default strategy).
-    # @return [Response] the response from the executed strategy.
-    # @raise [ArgumentError] if the context is nil.
-    # @raise [UnknownStrategy] if the strategy is not registered.
-    def execute(ctx, strategy: default_strategy_name)
-      strategy_sym = strategy.to_sym
-      strategy_class = @strategies.fetch(strategy_sym) do
-        raise UnknownStrategy,
-              "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
+        warn_migration_strategy(strategy_sym) if strategy_sym == :faraday
+        strategy_class.new(ctx).execute
       end
 
-      warn_deprecated_strategy(strategy_sym)
-      strategy_class.new(ctx).execute
-    end
+      private
 
-    private
-
-    def warn_deprecated_strategy(strategy)
-      canonical = DEPRECATED_STRATEGIES[strategy.to_sym]
-      return unless canonical
-
-      message = "RequestService: strategy ':#{strategy}' is deprecated and will be removed in a future release. " \
-                "Use ':#{canonical}' instead."
-      warn(message, category: :deprecated)
-      Log.warn(message)
+      def warn_migration_strategy(strategy)
+        message = "RequestService: strategy ':#{strategy}' is deprecated for migration and will be removed " \
+                  "in a future release. Use ':default' instead."
+        warn(message, category: :deprecated)
+        Log.warn(message)
+      end
     end
   end
 end
