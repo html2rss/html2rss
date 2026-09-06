@@ -13,7 +13,7 @@
 | `alternate_feeds`  | `rel=alternate` RSS/Atom links found in HTML                                |
 | `surface_category` | AutoSource surface class (`high_entropy_surface`, `unsupported_surface`, …) |
 | `articles_count`   | Cheap AutoSource extract (limit 10) — diagnostic only, not ship quality     |
-| `strategy`         | Concrete transport used (`inspect` maps `auto` → Faraday)                   |
+| `strategy`         | Concrete transport used (`inspect` maps `auto` → default (HTTPX))           |
 
 CLI text output omits `requested_url`; it prints the requested URL as the card title. The `Final:` line appears **only when** `final_url` differs from `requested_url`:
 
@@ -39,16 +39,16 @@ bin/html2rss inspect https://www.example
 # high_entropy_surface, articles (no Final: line — requested equals final)
 ```
 
-Cross-host redirects (e.g. `apex.example` → `www.example`) no longer pin a stale `Host` header from the entry URL. `Config::RequestHeaders` omits `Host` by default; Faraday/Net::HTTP sets it per hop from the current request URL.
+Cross-host redirects (e.g. `apex.example` → `www.example`) no longer pin a stale `Host` header from the entry URL. `Config::RequestHeaders` omits `Host` by default; HTTPX sets it per hop from the current request URL.
 
-When the first streamed fetch loses the redirect payload (empty body at the final URL), `FaradayStrategy` retries once without streaming so inspect/recon see the same HTML as a direct canonical URL fetch.
+When the first streamed fetch loses the redirect payload (empty body at the final URL), `HttpxStrategy` retries once without streaming so inspect/recon see the same HTML as a direct canonical URL fetch.
 
 ### What to do
 
 1. **Prefer the canonical URL** — if you know the site lives on `www`, pass that URL to inspect, recon, capture, and scrape.
 2. **Read the `Final:` line** — when `final_url` differs from what you typed and status is 4xx, retry inspect on `final_url` before assuming the site is unreachable.
 3. **Do not treat apex 403 as “redirect skipped”** — check JSON output (`--format json`) for `requested_url` vs `final_url` when text output is ambiguous.
-4. **Blocked surfaces** — if the canonical URL still fails, try `strategy: botasaurus` on inspect (MCP) or escalate to recon/capture with browser strategy; Faraday-only inspect is intentionally cheap.
+4. **Blocked surfaces** — if the canonical URL still fails, try `strategy: botasaurus` on inspect (MCP) or escalate to recon/capture with browser strategy; default (HTTPX)-only inspect is intentionally cheap.
 
 ## inspect ≠ recon
 
@@ -65,5 +65,5 @@ Follow golden-path `next_step` from MCP envelopes; do not call recon when inspec
 | ----------------------------------- | -------------------------------------------------------------------- |
 | Diagnostic fetch + assess           | `PageRecon::Diagnostics` → `PageRecon.probe`                         |
 | Surface class + cheap article count | `PageRecon::Assessment`                                              |
-| Redirect follow + terminal retry    | `RequestService::FaradayStrategy`                                    |
+| Redirect follow + terminal retry    | `RequestService::HttpxStrategy`                                      |
 | Outbound header normalization       | `Config::RequestHeaders` (no default `Host`; explicit override only) |

@@ -40,9 +40,9 @@ module Html2rss
       attr_reader :articles
 
       def deduplication_fingerprint_for(article)
-        return unless article.respond_to?(:deduplication_fingerprint)
-
         article.deduplication_fingerprint
+      rescue NoMethodError
+        nil
       end
     end
   end

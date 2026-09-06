@@ -36,8 +36,7 @@ module Html2rss
                      captured_responses: EMPTY_CAPTURED_RESPONSES)
         @body = body
 
-        headers = headers.dup
-        headers.transform_keys!(&:to_s)
+        headers = (headers || {}).transform_keys(&:to_s)
         HashUtil.assert_string_keys!(headers, context: 'response headers', deep: false)
 
         @headers = headers

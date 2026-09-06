@@ -91,7 +91,10 @@ module Html2rss
       private_class_method :try_brotli
 
       def content_encodings(headers)
-        header(headers, 'content-encoding').to_s.split(',').map { |value| value.strip.downcase }.reject(&:empty?)
+        header(headers, 'content-encoding')
+          .to_s
+          .split(',')
+          .filter_map { |val| (s = val.strip.downcase).empty? ? nil : s }
       end
       module_function :content_encodings
       private_class_method :content_encodings

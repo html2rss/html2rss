@@ -9,7 +9,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         .to include(Html2rss::RequestService::RedirectLimitReached)
     end
 
-    it 'does not abort auto when Faraday reports an unsupported content type' do
+    it 'does not abort auto when default strategy reports an unsupported content type' do
       expect(described_class::NON_FALLBACK_ERRORS)
         .not_to include(Html2rss::RequestService::UnsupportedResponseContentType)
     end
