@@ -110,7 +110,7 @@ module Html2rss
       # @param tier [Array<Class>]
       # @return [Boolean]
       def self.heuristic_tier?(tier)
-        tier.intersect?(HEURISTIC_SCRAPERS)
+        HEURISTIC_SCRAPERS.intersect?(tier)
       end
 
       ##

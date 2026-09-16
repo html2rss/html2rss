@@ -63,7 +63,9 @@ module Html2rss
       def memo_word_count(node)
         return @word_count[node] if @word_count.key?(node)
 
-        @word_count[node] = memo_visible_text(node).to_s.scan(/\p{Alnum}+/).size
+        count = 0
+        memo_visible_text(node).to_s.scan(/\p{Alnum}+/) { count += 1 }
+        @word_count[node] = count
       end
 
       ##

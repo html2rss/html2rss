@@ -70,7 +70,9 @@ module Html2rss
       end
 
       def word_count(text)
-        text.to_s.scan(/\p{Alnum}+/).size
+        count = 0
+        text.to_s.scan(/\p{Alnum}+/) { count += 1 }
+        count
       end
     end
   end
