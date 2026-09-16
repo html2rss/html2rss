@@ -115,97 +115,85 @@ module Html2rss
         end
       end
 
-      def build_data(probe, recon, response)
-        data = recon.to_h.merge(
-          strategy: probe.strategy,
-          scraper_eligibility: scraper_info(safe_parsed_body(response)),
-          html_present: html_present?(recon, response),
-          likely_js_shell: likely_js_shell?(recon, response),
-          redirect_summary: redirect_summary(recon)
-        )
-        data[:xhr_capture] = xhr_capture_info(response) if probe.strategy == :botasaurus
-        log_js_shell(data, response.body&.bytesize.to_i) if data[:likely_js_shell]
-        data
-      end
-      module_function :build_data
-      private_class_method :build_data
+      class << self
+        private
 
-      def resolve_inspect_strategy(strategy, deep:)
-        name = (strategy || :auto).to_sym
-        return :botasaurus if deep && name == :auto && MCP::Runtime.botasaurus_configured?
+        def build_data(probe, recon, response)
+          data = recon.to_h.merge(
+            strategy: probe.strategy,
+            scraper_eligibility: scraper_info(safe_parsed_body(response)),
+            html_present: html_present?(recon, response),
+            likely_js_shell: likely_js_shell?(recon, response),
+            redirect_summary: redirect_summary(recon)
+          )
+          data[:xhr_capture] = xhr_capture_info(response) if probe.strategy == :botasaurus
+          log_js_shell(data, response.body&.bytesize.to_i) if data[:likely_js_shell]
+          data
+        end
 
-        name
-      end
-      module_function :resolve_inspect_strategy
-      private_class_method :resolve_inspect_strategy
+        def resolve_inspect_strategy(strategy, deep:)
+          name = (strategy || :auto).to_sym
+          return :botasaurus if deep && name == :auto && MCP::Runtime.botasaurus_configured?
 
-      def html_present?(recon, response)
-        recon.html_response && !response.body.to_s.empty?
-      end
-      module_function :html_present?
-      private_class_method :html_present?
+          name
+        end
 
-      def likely_js_shell?(recon, response)
-        return false unless html_present?(recon, response)
-        return false if recon.articles_count.positive?
-        return false if recon.blocked_surface || recon.surface_category == :blocked_surface
+        def html_present?(recon, response)
+          recon.html_response && !response.body.to_s.empty?
+        end
 
-        return true if recon.surface_category == :app_shell
+        def likely_js_shell?(recon, response)
+          return false unless html_present?(recon, response)
+          return false if recon.articles_count.positive?
+          return false if recon.blocked_surface || recon.surface_category == :blocked_surface
 
-        response.body.bytesize >= JS_SHELL_MIN_BODY_BYTES &&
-          SurfaceCategory.coerce(recon.surface_category).weak?
-      end
-      module_function :likely_js_shell?
-      private_class_method :likely_js_shell?
+          return true if recon.surface_category == :app_shell
 
-      def redirect_summary(recon)
-        {
-          requested_url: recon.requested_url,
-          final_url: recon.final_url,
-          status: recon.status,
-          scheme_downgrade: recon.scheme_downgrade
-        }
-      end
-      module_function :redirect_summary
-      private_class_method :redirect_summary
+          response.body.bytesize >= JS_SHELL_MIN_BODY_BYTES &&
+            SurfaceCategory.coerce(recon.surface_category).weak?
+        end
 
-      def log_js_shell(data, body_bytesize)
-        Log.debug(
-          "Diagnostics js_shell: bytesize=#{body_bytesize} surface_category=#{data[:surface_category]}"
-        )
-      end
-      module_function :log_js_shell
-      private_class_method :log_js_shell
-
-      def safe_parsed_body(response)
-        return unless response.html_response?
-
-        response.parsed_body
-      rescue RequestService::UnsupportedResponseContentType
-        nil
-      end
-      module_function :safe_parsed_body
-      private_class_method :safe_parsed_body
-
-      def error_report(url, error) # rubocop:disable Metrics/MethodLength -- error hash mirrors success report shape
-        Report.new(
-          data: {
-            requested_url: url.to_s,
-            final_url: url.to_s,
-            status: nil,
-            scheme_downgrade: false,
-            alternate_feeds: [],
-            surface_category: :unsupported_surface,
-            articles_count: 0,
-            html_response: false,
-            content_type: nil,
-            strategy: nil,
-            scraper_eligibility: { error: "#{error.class} - #{error.message}" }
+        def redirect_summary(recon)
+          {
+            requested_url: recon.requested_url,
+            final_url: recon.final_url,
+            status: recon.status,
+            scheme_downgrade: recon.scheme_downgrade
           }
-        )
+        end
+
+        def log_js_shell(data, body_bytesize)
+          Log.debug(
+            "Diagnostics js_shell: bytesize=#{body_bytesize} surface_category=#{data[:surface_category]}"
+          )
+        end
+
+        def safe_parsed_body(response)
+          return unless response.html_response?
+
+          response.parsed_body
+        rescue RequestService::UnsupportedResponseContentType
+          nil
+        end
+
+        def error_report(url, error) # rubocop:disable Metrics/MethodLength -- error hash mirrors success report shape
+          Report.new(
+            data: {
+              requested_url: url.to_s,
+              final_url: url.to_s,
+              status: nil,
+              scheme_downgrade: false,
+              alternate_feeds: [],
+              surface_category: :unsupported_surface,
+              articles_count: 0,
+              html_response: false,
+              content_type: nil,
+              strategy: nil,
+              scraper_eligibility: { error: "#{error.class} - #{error.message}" }
+            }
+          )
+        end
       end
-      module_function :error_report
-      private_class_method :error_report
     end
   end
 end
