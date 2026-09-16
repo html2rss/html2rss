@@ -40,6 +40,20 @@ module Html2rss
       def [](key)
         public_send(key)
       end
+
+      ##
+      # Preserves backward compatibility with hash/struct dig access.
+      #
+      # @param keys [Array<Symbol, String>]
+      # @return [Object, nil]
+      def dig(*keys)
+        return nil if keys.empty?
+
+        val = public_send(keys.first)
+        return val if keys.size == 1
+
+        val.respond_to?(:dig) ? val.dig(*keys[1..]) : nil
+      end
     end
 
     # Default selectors options merged into user configuration.
