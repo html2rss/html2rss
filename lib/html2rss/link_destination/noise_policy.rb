@@ -42,7 +42,16 @@ module Html2rss
         destination_facts.utility_path &&
           !destination_facts.content_path &&
           !destination_facts.strong_post_suffix &&
-          text.to_s.scan(/\p{Alnum}+/).size <= 3
+          word_count_at_most?(text, 3)
+      end
+
+      def word_count_at_most?(text, max)
+        count = 0
+        text.to_s.scan(/\p{Alnum}+/) do
+          count += 1
+          return false if count > max
+        end
+        true
       end
 
       def recommended_chrome?(text, destination_facts, heading_anchor:)

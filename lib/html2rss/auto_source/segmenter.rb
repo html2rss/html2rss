@@ -68,11 +68,11 @@ module Html2rss
       # @param container [SST::Node]
       # @return [Boolean]
       def landmark_ancestor?(anchor, container)
-        cache = (@landmark_cache ||= {})
-        key = [anchor.object_id, container.object_id]
-        return cache[key] if cache.key?(key)
+        cache = (@landmark_cache ||= {}.compare_by_identity)
+        anchor_cache = (cache[anchor] ||= {}.compare_by_identity)
+        return anchor_cache[container] if anchor_cache.key?(container)
 
-        cache[key] = compute_landmark_ancestor?(anchor:, container:)
+        anchor_cache[container] = compute_landmark_ancestor?(anchor:, container:)
       end
 
       private

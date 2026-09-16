@@ -77,12 +77,15 @@ module Html2rss
         module_function :relevant_anchor?
         private_class_method :relevant_anchor?
 
+        BOUNDARY_TAGS = Set[:body, :html].freeze
+        private_constant :BOUNDARY_TAGS
+
         def parent_until_boundary(segmenter, node)
           index = segmenter.index
           link_counts = Hash.new { |hash, curr| hash[curr] = count_links(curr) }
 
           index.parent_until(node, lambda { |curr|
-            return true if %i[body html].include?(curr.name)
+            return true if BOUNDARY_TAGS.include?(curr.name)
             return false if index.ignored_chrome?(curr)
 
             parent = index.parent_of(curr)
@@ -93,7 +96,7 @@ module Html2rss
         private_class_method :parent_until_boundary
 
         def count_links(node)
-          node.link? ? 1 : node.descendants.count(&:link?)
+          node.link? ? 1 : node.count_descendants(&:link?)
         end
         module_function :count_links
         private_class_method :count_links

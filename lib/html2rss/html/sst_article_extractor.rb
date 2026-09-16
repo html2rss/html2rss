@@ -175,10 +175,13 @@ module Html2rss
       end
 
       def descendant_of?(child, ancestor)
-        # Walk via root children since Extractor may not hold Index; use tag walk on tree.
         return true if child.equal?(ancestor)
 
-        ancestor.descendants.any? { |d| d.equal?(child) }
+        if (index = SST::Index.for_node(child))
+          return index.descendant_of?(child, ancestor)
+        end
+
+        !ancestor.find { |d| d.equal?(child) }.nil?
       end
 
       def leftover_lines

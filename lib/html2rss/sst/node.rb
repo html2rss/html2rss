@@ -94,6 +94,21 @@ module Html2rss
       end
 
       ##
+      # Non-allocating traversal that counts descendants matching the block.
+      # When no block is given, counts all descendants.
+      #
+      # @yieldparam node [Node]
+      # @return [Integer]
+      def count_descendants(&block)
+        total = 0
+        children.each do |child|
+          total += 1 if block.nil? || yield(child)
+          total += child.count_descendants(&block)
+        end
+        total
+      end
+
+      ##
       # @return [Array<Node>] all descendants excluding self
       def descendants
         children.flat_map { |child| [child, *child.descendants] }
@@ -132,14 +147,16 @@ module Html2rss
           return index.memo_word_count(self)
         end
 
-        visible_text.to_s.scan(/\p{Alnum}+/).size
+        count = 0
+        visible_text.to_s.scan(/\p{Alnum}+/) { count += 1 }
+        count
       end
 
       ##
       # @return [Float] words per descendant link
       def text_density
         words = word_count
-        links = descendants.count(&:link?)
+        links = count_descendants(&:link?)
         links.zero? ? words.to_f : words.to_f / links
       end
     end

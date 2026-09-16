@@ -28,6 +28,8 @@ RSpec.describe Html2rss::SST::Node do
       expect(parent_div.word_count).to be >= 1
       expect(parent_div.text_density).to be_a(Float)
       expect(parent_div.descendants).to include(link)
+      expect(parent_div.count_descendants).to eq(2)
+      expect(parent_div.count_descendants(&:link?)).to eq(1)
       expect(parent_div.find(&:link?)).to eq(link)
     end
 
