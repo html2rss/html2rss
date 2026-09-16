@@ -3,9 +3,8 @@
 RSpec.describe Html2rss::Selectors::PostProcessors::Template do
   subject { described_class.new('Hi', context).get }
 
-  let(:item) { Object.new }
   let(:item_scope) { instance_double(Html2rss::Selectors::ItemScope) }
-  let(:context) { Html2rss::Selectors::Context.new(options:, item:, item_scope:) }
+  let(:context) { Html2rss::Selectors::Context.new(options:, item_scope:) }
 
   before do
     allow(item_scope).to receive(:select).with(:name).and_return('My name')
@@ -18,7 +17,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
   context 'when the string is empty' do
     it 'raises an error' do
       expect do
-        described_class.new('', Html2rss::Selectors::Context.new(options: {}, item_scope:))
+        described_class.new('', Html2rss::Selectors::Context.new(options: { string: '' }, item_scope:))
       end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, 'The `string` template is absent.')
     end
   end

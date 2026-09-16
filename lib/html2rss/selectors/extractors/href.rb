@@ -6,7 +6,7 @@ module Html2rss
       ##
       # Returns the value of the +href+ attribute.
       # It always returns absolute URLs. If the extracted +href+ value is a
-      # relative URL, it prepends the channel's URL.
+      # relative URL, it prepends the page base URL.
       #
       # Imagine this +a+ HTML element with a +href+ attribute:
       #
@@ -24,12 +24,16 @@ module Html2rss
       # Would return:
       #    'http://blog-without-a-feed.example.com/posts/latest-findings'
       class Href
-        # The available options for the href (attribute) extractor.
-        Options = Struct.new('HrefOptions', :selector, :channel, keyword_init: true)
+        # Runtime options for the href extractor.
+        Options = Data.define(:selector, :base_url) do
+          # @param selector [String, nil] CSS selector for the link element
+          # @param base_url [String, Html2rss::Url, nil] page base for relative hrefs
+          def initialize(selector: nil, base_url: nil) = super
+        end
 
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Return the absolute URL from the selected element\'s `href` attribute ' \
-                      '(relative hrefs are resolved against the channel URL).'
+                      '(relative hrefs are resolved against the page base URL).'
 
         # Example extractor name values for JSON Schema +examples+.
         EXAMPLES = [
@@ -45,7 +49,7 @@ module Html2rss
         # @param xml [Nokogiri::XML::Element]
         # @param options [Options]
         # @option options [String] :selector CSS selector used to find the link element
-        # @option options [Hash{Symbol => Object}] :channel channel configuration, including :url
+        # @option options [String, Html2rss::Url] :base_url page base URL for relative hrefs
         def initialize(xml, options)
           @options = options
           @element = Extractors.element(xml, options.selector)
@@ -59,7 +63,7 @@ module Html2rss
         def get
           return nil unless @href
 
-          Url.from_relative(@href, @options.channel[:url])
+          Url.from_relative(@href, @options.base_url)
         end
       end
     end

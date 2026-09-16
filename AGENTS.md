@@ -87,7 +87,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 
 ## Coding Standards
 
-- Target Ruby 3.2 or newer.
+- Target Ruby 3.3 or newer.
 - Use plain Ruby—never pull in ActiveSupport.
 - Add `# frozen_string_literal: true` to every Ruby file.
 - Prefer keyword arguments.

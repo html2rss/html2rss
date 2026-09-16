@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Html2rss::Selectors::ObjectToXmlConverter do
+RSpec.describe Html2rss::ObjectToXmlConverter do
   describe '.call' do
     before do
       allow(Html2rss::Log).to receive(:debug)

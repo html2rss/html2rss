@@ -43,7 +43,7 @@ module Html2rss
         # @return [void]
         def self.validate_args!(value, context)
           assert_type(value, String, :value, context:)
-          time_zone_value = time_zone(context)
+          time_zone_value = context.time_zone
 
           if time_zone_value.nil? || time_zone_value.empty?
             raise ArgumentError, 'time_zone cannot be nil or empty', [], cause: nil
@@ -52,24 +52,16 @@ module Html2rss
           assert_type(time_zone_value, String, :time_zone, context:)
         end
 
-        # @param context [Selectors::Context] post-processor context
-        # @return [String, nil] configured channel time zone
-        def self.time_zone(context) = context.dig(:config, :channel, :time_zone)
-
         ##
         # Converts the provided time string to RFC822 format, taking into account the time_zone.
         #
         # @return [String] RFC822 formatted time
         # @raise [TZInfo::InvalidTimezoneIdentifier] if the configured time zone is invalid
         def get
-          with_timezone(time_zone) { Time.parse(value).rfc822 }
+          with_timezone(context.time_zone) { Time.parse(value).rfc822 }
         end
 
         private
-
-        def time_zone
-          self.class.time_zone(context)
-        end
 
         def with_timezone(time_zone)
           return yield if time_zone.nil? || time_zone.empty?

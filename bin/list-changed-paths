@@ -6,6 +6,12 @@ if [ "$#" -eq 0 ]; then
   exit 1
 fi
 
-git diff --name-only --cached -z -- "$@"
-git diff --name-only -z -- "$@"
-git ls-files -o --exclude-standard -z -- "$@"
+# Emit only paths that still exist on disk. Deleted files appear in
+# `git diff --name-only` and would break RuboCop / RSpec when xargs'd.
+{
+  git diff --name-only --cached -z -- "$@"
+  git diff --name-only -z -- "$@"
+  git ls-files -o --exclude-standard -z -- "$@"
+} | while IFS= read -r -d '' path; do
+  [ -f "$path" ] && printf '%s\0' "$path"
+done

@@ -23,8 +23,11 @@ module Html2rss
       # Always ensure to sanitize the HTML during post-processing with
       # {PostProcessors::SanitizeHtml}.
       class Html
-        # The available options for the html extractor.
-        Options = Struct.new('HtmlOptions', :selector, keyword_init: true)
+        # Runtime options for the html extractor.
+        Options = Data.define(:selector) do
+          # @param selector [String, nil] CSS selector for the element
+          def initialize(selector: nil) = super
+        end
 
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Return the outer HTML of the selected element. ' \

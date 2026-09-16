@@ -24,11 +24,17 @@ module Html2rss
       # In case you're extracting a date or a time, consider parsing it
       # during post processing with {PostProcessors::ParseTime}.
       class Attribute
-        # Config-facing option types (excluding shared selector fields supplied at runtime).
-        OPTION_TYPES = { attribute: String }.freeze
+        # Config-facing options contract (validator introspection; +selector+ is runtime-only).
+        OPTIONS = [
+          Option.new(name: :attribute, type: String)
+        ].freeze
 
-        # The available options for the attribute extractor.
-        Options = Struct.new('AttributeOptions', :selector, :attribute, keyword_init: true)
+        # Runtime options for the attribute extractor.
+        Options = Data.define(:selector, :attribute) do
+          # @param selector [String, nil] CSS selector for the element
+          # @param attribute [String, nil] HTML attribute name to read
+          def initialize(selector: nil, attribute: nil) = super
+        end
 
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Return the value of an HTML attribute on the selected element. ' \

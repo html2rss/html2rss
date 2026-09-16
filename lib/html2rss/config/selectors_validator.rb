@@ -75,9 +75,6 @@ module Html2rss
       ##
       # Validates the configuration of a single selector.
       class Selector < Dry::Validation::Contract
-        # Extractor Options members supplied at runtime, not from feed YAML.
-        RUNTIME_EXTRACTOR_FIELDS = %i[selector channel].to_set.freeze
-
         params do
           optional(:selector)
           optional(:extractor).filled(:string)
@@ -96,11 +93,11 @@ module Html2rss
           klass = Selectors::Extractors::NAME_TO_CLASS[value.to_sym]
           next key(:extractor).failure("unknown extractor: #{value}") unless klass
 
-          klass::Options.members.each do |field|
-            next if RUNTIME_EXTRACTOR_FIELDS.include?(field)
-            next if values[field]
+          Selectors::SchemaDoc.options_for(klass).each do |spec|
+            next unless spec.required
+            next if values[spec.name]
 
-            key(field).failure("`#{field}` is required for extractor `#{value}`")
+            key(spec.name).failure("`#{spec.name}` is required for extractor `#{value}`")
           end
         end
 
@@ -110,7 +107,6 @@ module Html2rss
 
           klass = Selectors::PostProcessors::NAME_TO_CLASS[name.to_sym]
           next key(:post_process).failure("Unknown post_processor `name`: #{name}") unless klass
-          next unless klass.const_defined?(:Options)
 
           post_process_option_type_errors(klass, value).each do |field, message|
             key(field).failure(message)
@@ -120,39 +116,45 @@ module Html2rss
         private
 
         def post_process_option_type_errors(klass, value)
-          required_option_type_errors(klass, value) + optional_option_type_errors(klass, value)
-        end
-
-        def required_option_type_errors(klass, value)
-          option_types = klass.const_defined?(:OPTION_TYPES) ? klass::OPTION_TYPES : {}
-
-          klass::Options.members.filter_map do |field|
-            expected = option_types.fetch(field, String)
-            next if value[field].is_a?(expected)
-
-            [field, option_type_failure(field, expected)]
+          Selectors::SchemaDoc.options_for(klass).filter_map do |spec|
+            option_spec_error(spec, value[spec.name])
           end
         end
 
-        def optional_option_type_errors(klass, value)
-          return [] unless klass.const_defined?(:OPTIONAL_OPTION_TYPES)
+        def option_spec_error(spec, actual)
+          if actual.nil?
+            return unless spec.required
 
-          klass::OPTIONAL_OPTION_TYPES.filter_map do |field, expected|
-            actual = value[field]
-            next if actual.nil? || actual.is_a?(expected)
+            [spec.name, option_type_failure(spec.name, spec.type)]
+          elsif !type_match?(actual, spec.type)
+            [spec.name, option_type_failure(spec.name, spec.type, optional: !spec.required)]
+          end
+        end
 
-            [field, option_type_failure(field, expected, optional: true)]
+        def type_match?(actual, expected)
+          case expected
+          when Array then expected.any? { |type| actual.is_a?(type) }
+          else actual.is_a?(expected)
           end
         end
 
         def option_type_failure(field, expected, optional: false)
-          label = {
-            Integer => 'an integer',
-            String => 'a string',
-            Hash => 'a hash'
-          }.fetch(expected) { "a #{expected}" }
+          label = type_failure_label(expected)
           suffix = optional ? ' or omitted' : ''
           "`#{field}` must be #{label}#{suffix}"
+        end
+
+        def type_failure_label(expected)
+          case expected
+          when Array
+            expected.map { |type| type_failure_label(type) }.join(' or ')
+          else
+            {
+              Integer => 'an integer',
+              String => 'a string',
+              Hash => 'a hash'
+            }.fetch(expected) { "a #{expected}" }
+          end
         end
       end
 

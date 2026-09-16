@@ -29,11 +29,11 @@ module Html2rss
       #
       # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
       class Gsub < Base
-        # Required config field types (validator introspection via +Options+).
-        OPTION_TYPES = { pattern: String, replacement: String }.freeze
-
-        # Config fields required by this post-processor (validator / schema introspection).
-        Options = Struct.new(*OPTION_TYPES.keys, keyword_init: true)
+        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        OPTIONS = [
+          Option.new(name: :pattern, type: String),
+          Option.new(name: :replacement, type: [String, Hash])
+        ].freeze
 
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Replace matches of `pattern` in the extracted string with `replacement` ' \
@@ -52,8 +52,6 @@ module Html2rss
         # @return [void]
         def self.validate_args!(value, context)
           assert_type value, String, :value, context:
-          expect_options(%i[replacement pattern], context)
-          assert_type context.dig(:options, :replacement), [String, Hash], :replacement, context:
         end
 
         ##
@@ -62,7 +60,7 @@ module Html2rss
         def initialize(value, context)
           super
 
-          options = context[:options]
+          options = context.options
 
           @replacement = options[:replacement]
           @pattern = options[:pattern]

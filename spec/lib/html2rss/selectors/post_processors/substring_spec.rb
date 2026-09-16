@@ -54,7 +54,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
       it 'raises an error' do
         expect do
           subject.range
-        end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /but is: NilClass in:/)
+        end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, /The `start` option is missing/)
       end
     end
   end
