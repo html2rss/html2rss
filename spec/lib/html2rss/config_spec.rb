@@ -300,8 +300,9 @@ RSpec.describe Html2rss::Config do
       }
     end
 
-    it 'returns a deep-copied hash and dry validation result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'returns a deep-copied hash and ValidationReport', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       raw, validation = described_class.resolve_and_validate(config)
+      expect(validation).to be_a(described_class::ValidationReport)
       expect(validation).to be_success
       expect(raw).to eq(config)
       expect(raw).not_to equal(config)
@@ -309,12 +310,12 @@ RSpec.describe Html2rss::Config do
       expect(config).not_to have_key(:strategy)
     end
 
-    it 'returns ValidationResult (not Struct) on parse failure', :aggregate_failures do
+    it 'returns ValidationReport on parse failure', :aggregate_failures do
       raw, validation = described_class.resolve_and_validate("- items\n")
       expect(raw).to eq({})
-      expect(validation).to be_a(described_class::ValidationResult)
+      expect(validation).to be_a(described_class::ValidationReport)
       expect(validation).not_to be_success
-      expect(validation.errors.to_h).to have_key(:parse)
+      expect(validation.issues.map(&:code)).to include(:parse)
     end
   end
 
@@ -344,9 +345,8 @@ RSpec.describe Html2rss::Config do
     end
 
     it 'applies runtime defaults before validation' do
-      result = described_class.validate(config)
-
-      expect(result.to_h.dig(:channel, :time_zone)).to eq('UTC')
+      expect(described_class.validate(config)).to be_success
+      expect(described_class.from_hash(config).time_zone).to eq('UTC')
     end
 
     it 'accepts configs when strategy is omitted' do
@@ -374,13 +374,8 @@ RSpec.describe Html2rss::Config do
         }
       end
 
-      it 'accepts the directory metadata contract', :aggregate_failures do
-        result = described_class.validate(config)
-
-        expect(result).to be_success
-        expect(result.to_h.dig(:directory, :title)).to eq('Example — News')
-        expect(result.to_h.dig(:directory, :summary)).to eq('Latest headlines from Example.')
-        expect(result.to_h.dig(:directory, :topics)).to eq(%w[sports news])
+      it 'accepts the directory metadata contract' do
+        expect(described_class.validate(config)).to be_success
       end
 
       it 'accepts newly added topics such as health, culture, education, rights, and transport' do
@@ -499,11 +494,8 @@ RSpec.describe Html2rss::Config do
         }
       end
 
-      it 'accepts the botasaurus config contract', :aggregate_failures do
-        result = described_class.validate(config)
-
-        expect(result).to be_success
-        expect(result.to_h.dig(:request, :botasaurus, :navigation_mode)).to eq('google_get_bypass')
+      it 'accepts the botasaurus config contract' do
+        expect(described_class.validate(config)).to be_success
       end
     end
 
@@ -646,19 +638,19 @@ RSpec.describe Html2rss::Config do
       end
 
       it 'validates the effective config after applying parameter defaults', :aggregate_failures do
-        result = described_class.validate(config)
+        expect(described_class.validate(config)).to be_success
 
-        expect(result).to be_success
-        expect(result.to_h.dig(:channel, :url)).to eq('https://example.com/search?q=ruby&locale=en')
-        expect(result.to_h.dig(:headers, :'X-Query')).to eq('ruby')
+        runtime_config = described_class.from_hash(config)
+        expect(runtime_config.url).to eq('https://example.com/search?q=ruby&locale=en')
+        expect(runtime_config.headers.fetch('X-Query')).to eq('ruby')
       end
 
       it 'resolves the same url and headers as runtime config building', :aggregate_failures do
-        result = described_class.validate(config)
-        runtime_config = described_class.from_hash(config)
+        expect(described_class.validate(config)).to be_success
 
-        expect(result.to_h.dig(:channel, :url)).to eq(runtime_config.url)
-        expect(result.to_h.dig(:headers, :'X-Query')).to eq(runtime_config.headers.fetch('X-Query'))
+        runtime_config = described_class.from_hash(config)
+        expect(runtime_config.url).to eq('https://example.com/search?q=ruby&locale=en')
+        expect(runtime_config.headers.fetch('X-Query')).to eq('ruby')
       end
     end
 
@@ -681,7 +673,9 @@ RSpec.describe Html2rss::Config do
         result = described_class.validate(config)
 
         expect(result).to be_failure
-        expect(result.errors.to_h.fetch(nil)).to include('Missing parameter for formatting: key<query> not found')
+        expect(result.issues.map(&:message)).to include(
+          a_string_including('Missing parameter for formatting: key<query> not found')
+        )
       end
     end
   end

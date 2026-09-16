@@ -79,7 +79,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param config_input [Hash, String]
   # @param feed_name [String, nil]
   # @param params [Hash]
-  # @return [Dry::Validation::Result, Html2rss::Config::ValidationResult]
+  # @return [Html2rss::Config::ValidationReport]
   def self.validate(config_input, feed_name = nil, params: {})
     _raw, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
     validation

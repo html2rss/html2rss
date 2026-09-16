@@ -16,32 +16,6 @@ module Html2rss
     # Sentinel to differentiate omitted params from explicit `nil`.
     UNSET = Object.new.freeze
 
-    ValidationResult = Data.define(:success, :errors_hash)
-
-    ##
-    # Duck-compatible with +Dry::Validation::Result+ for resolve-time outcomes
-    # (+#success?+, +#errors#to_h+). Used for parse failures so callers never see a Struct snowflake.
-    class ValidationResult
-      ##
-      # @param message [String]
-      # @return [Html2rss::Config::ValidationResult]
-      def self.parse_failure(message)
-        new(success: false, errors_hash: { parse: [message] })
-      end
-
-      ##
-      # @return [Boolean]
-      def success? = success
-
-      ##
-      # @return [self]
-      def errors = self
-
-      ##
-      # @return [Hash]
-      def to_h = errors_hash
-    end
-
     class << self
       ##
       # Returns the exported JSON Schema for html2rss configuration.
@@ -67,13 +41,13 @@ module Html2rss
       # @param config_input [Hash, String] config hash, YAML string, or file path
       # @param feed_name [String, nil] optional feed name for multi-feed files
       # @param params [Hash] dynamic feed params
-      # @return [Array(Hash, Dry::Validation::Result, Html2rss::Config::ValidationResult)]
+      # @return [Array(Hash, Html2rss::Config::ValidationReport)]
       def resolve_and_validate(config_input, feed_name: nil, params: {})
         param_arg = params.empty? ? UNSET : params
         working = HashUtil.deep_dup(resolve_raw_hash(config_input, feed_name))
         [working, validate(working, params: param_arg)]
       rescue StandardError => error
-        [{}, ValidationResult.parse_failure(error.message)]
+        [{}, IssueMapper.parse_failure(error.message)]
       end
 
       ##
@@ -81,16 +55,15 @@ module Html2rss
       #
       # @param config [Hash{Symbol => Object}] the configuration hash
       # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Dry::Validation::Result] validation result after defaults are applied
+      # @return [Html2rss::Config::ValidationReport]
       def validate(config, params: UNSET)
         prepared_config = prepare_for_validation(resolve_effective_config(config, params:))
-
-        Validator.new.call(prepared_config)
+        IssueMapper.from(Validator.new.call(prepared_config), values: prepared_config)
       rescue DynamicParams::ParamsMissing => error
         prepared_config = prepare_for_validation(HashUtil.deep_symbolize_keys(config, context: 'config'))
         prepared_config[:dynamic_params_error] = error.message
 
-        Validator.new.call(prepared_config)
+        IssueMapper.from(Validator.new.call(prepared_config), values: prepared_config)
       end
 
       ##
@@ -100,7 +73,7 @@ module Html2rss
       # @param feed_name [String, nil] optional feed name for multi-feed files
       # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
       # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Dry::Validation::Result, Html2rss::Config::ValidationResult]
+      # @return [Html2rss::Config::ValidationReport]
       def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
         validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
       end
@@ -371,11 +344,14 @@ module Html2rss
     end
 
     def validated_config_for(config)
-      validator = Validator.new.call(config)
+      dry = Validator.new.call(config)
 
-      raise InvalidConfig, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
+      unless dry.success?
+        report = IssueMapper.from(dry, values: config)
+        raise InvalidConfig, "Invalid configuration: #{report.issues.map(&:to_h)}"
+      end
 
-      normalized_headers(validator.to_h)
+      normalized_headers(dry.to_h)
     end
 
     def normalized_headers(validated_config)
