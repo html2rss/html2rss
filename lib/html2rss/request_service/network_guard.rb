@@ -13,7 +13,7 @@ module Html2rss
     # {Policy} so SSRF/origin rules stay single-homed on the public façade.
     class NetworkGuard
       # Hostnames treated as local/private surfaces.
-      LOCAL_HOSTS = %w[localhost localhost.localdomain metadata.google.internal].to_set.freeze
+      LOCAL_HOSTS = Set['localhost', 'localhost.localdomain', 'metadata.google.internal'].freeze
       # IP ranges blocked when private networks are disabled.
       BLOCKED_IP_RANGES = [
         IPAddr.new('0.0.0.0/8'),

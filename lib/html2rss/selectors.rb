@@ -55,7 +55,7 @@ module Html2rss
     # +:enclosure+ stays singular in YAML; Article stores +:enclosures+.
     SELECTOR_TO_ARTICLE_KEY = { enclosure: :enclosures }.freeze
     # Selector keys that may be copied onto an Article (PROVIDED_KEYS + mapped aliases).
-    SELECTABLE_SELECTOR_KEYS = (Html2rss::Article::PROVIDED_KEYS + SELECTOR_TO_ARTICLE_KEY.keys).to_set.freeze
+    SELECTABLE_SELECTOR_KEYS = Set[*(Html2rss::Article::PROVIDED_KEYS + SELECTOR_TO_ARTICLE_KEY.keys)].freeze
 
     ##
     # Initializes a new Selectors instance.

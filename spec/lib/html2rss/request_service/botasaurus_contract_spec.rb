@@ -26,9 +26,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
 
     it 'locks execution, navigation, and error closed sets', :aggregate_failures do
-      expect(described_class::EXECUTION_MODES).to eq(schemas.fetch('ExecutionMode').fetch('enum'))
-      expect(described_class::NAVIGATION_MODES).to eq(schemas.fetch('NavigationMode').fetch('enum'))
-      expect(described_class::ERROR_CATEGORIES).to eq(schemas.fetch('ErrorCategory').fetch('enum'))
+      expect(described_class::EXECUTION_MODES).to eq(Set[*schemas.fetch('ExecutionMode').fetch('enum')])
+      expect(described_class::NAVIGATION_MODES).to eq(Set[*schemas.fetch('NavigationMode').fetch('enum')])
+      expect(described_class::ERROR_CATEGORIES).to eq(Set[*schemas.fetch('ErrorCategory').fetch('enum')])
     end
 
     it 'locks window_size to required width and height' do

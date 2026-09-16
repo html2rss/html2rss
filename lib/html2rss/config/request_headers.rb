@@ -33,7 +33,7 @@ module Html2rss
       }.freeze
 
       # Hop-by-hop headers forbidden in HTTP/2 requests (RFC 7540 §8.1.2.2 / RFC 9113 §8.2.1).
-      FORBIDDEN_H2_HEADERS = %w[connection keep-alive proxy-connection transfer-encoding upgrade].to_set.freeze
+      FORBIDDEN_H2_HEADERS = Set['connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade'].freeze
 
       class << self
         ##

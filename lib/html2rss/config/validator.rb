@@ -16,10 +16,10 @@ module Html2rss
       # Baseline strategy-plan enum (:auto plus concrete RequestService strategies).
       BASE_STRATEGY_OPTIONS = Html2rss::FeedPipeline::StrategyPlan.accepted_names.freeze
       # Controlled vocabulary for catalog-only `directory.topics` (not RSS channel fields).
-      DIRECTORY_TOPICS = %w[
-        sports energy tech science news entertainment jobs finance
-        security travel environment consumer civic product research
-        health culture education rights transport
+      DIRECTORY_TOPICS = Set[
+        'sports', 'energy', 'tech', 'science', 'news', 'entertainment', 'jobs', 'finance',
+        'security', 'travel', 'environment', 'consumer', 'civic', 'product', 'research',
+        'health', 'culture', 'education', 'rights', 'transport'
       ].freeze
 
       # Contract for the top-level `channel` section.

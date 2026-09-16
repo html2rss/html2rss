@@ -36,11 +36,11 @@ module Html2rss
       SCRAPERS = SCRAPER_TIERS.flatten.freeze
 
       # Heuristic scrapers that share one memoized SST::Document per page.
-      HEURISTIC_SCRAPERS = [SemanticHtml, Html].freeze
+      HEURISTIC_SCRAPERS = Set[SemanticHtml, Html].freeze
       # Scrapers that accept a shared follow-up +request_session+.
-      REQUEST_SESSION_SCRAPERS = [NativeFeed, WordpressApi, Sitemap, MetaOembed].freeze
+      REQUEST_SESSION_SCRAPERS = Set[NativeFeed, WordpressApi, Sitemap, MetaOembed].freeze
       # Scrapers that consume browser-captured XHR/fetch JSON bodies.
-      CAPTURED_RESPONSE_SCRAPERS = [XhrArticles].freeze
+      CAPTURED_RESPONSE_SCRAPERS = Set[XhrArticles].freeze
 
       ##
       # Error raised when no suitable scraper is found.

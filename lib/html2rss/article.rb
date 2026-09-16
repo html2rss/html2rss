@@ -16,7 +16,7 @@ module Html2rss
     # Allowed article attributes accepted by the value object constructor.
     PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
     # Fast set lookup for valid article attribute keys.
-    PROVIDED_KEYS_SET = PROVIDED_KEYS.to_set.freeze
+    PROVIDED_KEYS_SET = Set[*PROVIDED_KEYS].freeze
     private_constant :PROVIDED_KEYS_SET
     # Separator used to build deterministic deduplication fingerprints.
     DEDUP_FINGERPRINT_SEPARATOR = '#!/'

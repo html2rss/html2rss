@@ -17,7 +17,7 @@ module Html2rss
       MIN_WORDS = 3
 
       # Allowed URL schemes for article filtering.
-      VALID_SCHEMES = %w[http https].to_set.freeze
+      VALID_SCHEMES = Set['http', 'https'].freeze
 
       # Photo-credit agencies (single list → junk title regexes).
       CREDIT_AGENCIES = [
