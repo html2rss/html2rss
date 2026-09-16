@@ -5,7 +5,7 @@ module Html2rss
   # Global defaults for the Html2rss gem.
   class Defaults
     # The valid symbol log levels.
-    VALID_LOG_LEVELS = %i[debug info warn error fatal unknown].freeze
+    VALID_LOG_LEVELS = Set[:debug, :info, :warn, :error, :fatal, :unknown].freeze
 
     # @return [Object] the logger
     attr_reader :logger

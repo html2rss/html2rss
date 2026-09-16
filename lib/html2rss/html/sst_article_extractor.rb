@@ -12,9 +12,9 @@ module Html2rss
       # CSS class tokens that mark kicker / eyebrow text (excluded from titles).
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
       # Inline emphasis tags used as title fallbacks when no heading exists.
-      FALLBACK_HEADING_NAMES = %i[strong b].freeze
+      FALLBACK_HEADING_NAMES = Set[:strong, :b].freeze
       # Nested blocks that mean a category node is actually a content container.
-      CATEGORY_CONTAINER_NAMES = %i[p article section].to_set.freeze
+      CATEGORY_CONTAINER_NAMES = Set[:p, :article, :section].freeze
 
       class << self
         ##

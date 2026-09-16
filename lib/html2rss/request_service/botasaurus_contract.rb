@@ -9,11 +9,11 @@ module Html2rss
     # +ScrapeRequest+ / +ScrapeSuccess+ / +ScrapeError+ (sibling +openapi.yaml+).
     class BotasaurusContract
       # Closed set from OpenAPI ExecutionMode.
-      EXECUTION_MODES = %w[auto request browser].freeze
+      EXECUTION_MODES = Set['auto', 'request', 'browser'].freeze
       # Closed set from OpenAPI NavigationMode.
-      NAVIGATION_MODES = %w[auto get google_get google_get_bypass organic_get].freeze
+      NAVIGATION_MODES = Set['auto', 'get', 'google_get', 'google_get_bypass', 'organic_get'].freeze
       # Closed set from OpenAPI ErrorCategory.
-      ERROR_CATEGORIES = %w[timeout challenge_block navigation_error metadata_error validation].freeze
+      ERROR_CATEGORIES = Set['timeout', 'challenge_block', 'navigation_error', 'metadata_error', 'validation'].freeze
 
       # ScrapeRequest properties except +url+ (html2rss supplies the target URL).
       REQUEST_OPTION_KEYS = %i[

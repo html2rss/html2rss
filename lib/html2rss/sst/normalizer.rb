@@ -54,7 +54,7 @@ module Html2rss
       /xi
 
       # Typed Attrs fields excluded from the leftover raw hash.
-      TYPED_ATTR_NAMES = %w[href src id class datetime itemprop style srcset type].to_set.freeze
+      TYPED_ATTR_NAMES = Set['href', 'src', 'id', 'class', 'datetime', 'itemprop', 'style', 'srcset', 'type'].freeze
 
       # String form of Tags::IGNORED_CONTAINER_NAMES for chrome checks without to_sym.
       IGNORED_CONTAINER_TAGS = Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze

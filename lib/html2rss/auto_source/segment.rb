@@ -24,6 +24,6 @@ module Html2rss
       end
     end
     # Allowed Segmenter strategies.
-    Segment::STRATEGIES = %i[semantic list cluster].to_set.freeze
+    Segment::STRATEGIES = Set[:semantic, :list, :cluster].freeze
   end
 end

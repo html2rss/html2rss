@@ -6,16 +6,16 @@ module Html2rss
     # Navigator owns DOM chrome recognition and node traversal helpers.
     class Navigator
       # Heading tags used to prioritize title extraction and container assessment.
-      HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6].freeze
+      HEADING_TAGS = Set['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].freeze
 
       # Element tags that indicate ignored DOM chrome when found in a container path.
-      IGNORED_CONTAINER_TAGS = %w[nav footer header svg script style].to_set.freeze
+      IGNORED_CONTAINER_TAGS = Set['nav', 'footer', 'header', 'svg', 'script', 'style'].freeze
 
       # Ancestor tags that usually indicate navigation/utility regions inside a content container.
-      UTILITY_LANDMARK_TAGS = %w[nav aside footer menu].to_set.freeze
+      UTILITY_LANDMARK_TAGS = Set['nav', 'aside', 'footer', 'menu'].freeze
 
       # Immediate parent walk stops here — not a usable article card.
-      CARD_WALK_STOP_TAGS = (UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | %w[html body]).freeze
+      CARD_WALK_STOP_TAGS = (UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | Set['html', 'body']).freeze
 
       # Inner tags that mean a wrapping <a> is a card, not a span-styled list link.
       WRAPPING_ANCHOR_CHILD_TAGS = (HEADING_TAGS + %w[p]).freeze
