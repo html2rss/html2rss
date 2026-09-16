@@ -4,8 +4,6 @@ require 'httpx'
 require 'json'
 
 module Html2rss
-  ##
-  # CLI runtime health checks for optional scrape dependencies.
   module Doctor
     ##
     # Preflight checks for Botasaurus scrape-api connectivity.

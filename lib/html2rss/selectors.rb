@@ -20,7 +20,27 @@ module Html2rss
     # A context instance passed to item extractors and post-processors.
     # When built via {ItemScope#context_for}, +item_scope+ carries the per-item
     # extraction base_url for nested selects (e.g. Template).
-    Context = Struct.new('Context', :options, :item, :config, :scraper, :item_scope, keyword_init: true)
+    Context = Data.define(:options, :item, :config, :scraper, :item_scope) do
+      ##
+      # @param options [Hash, nil] post-processor options
+      # @param item [Object, nil]
+      # @param config [Hash, nil]
+      # @param scraper [Object, nil]
+      # @param item_scope [Object, nil]
+      # @option options [String] :name post-processor name
+      def initialize(options: nil, item: nil, config: nil, scraper: nil, item_scope: nil)
+        super
+      end
+
+      ##
+      # Preserves backward compatibility with hash-style / struct subscript access.
+      #
+      # @param key [Symbol]
+      # @return [Object, nil]
+      def [](key)
+        public_send(key)
+      end
+    end
 
     # Default selectors options merged into user configuration.
     DEFAULT_CONFIG = { items: { enhance: true } }.freeze

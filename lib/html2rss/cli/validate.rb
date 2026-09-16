@@ -57,35 +57,33 @@ module Html2rss
         resolved.uniq
       end
 
-      def run_named_feed(file, feed_name, params:, quiet:)
-        result = Html2rss.validate(file, feed_name, params:)
-        raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
+      class << self
+        private
 
-        puts 'Configuration is valid' unless quiet
-      end
-      module_function :run_named_feed
-      private_class_method :run_named_feed
+        def run_named_feed(file, feed_name, params:, quiet:)
+          result = Html2rss.validate(file, feed_name, params:)
+          raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
 
-      def validate_file(file, params:)
-        if file == '-'
-          Html2rss.validate($stdin.read, params:)
-        else
-          Html2rss.validate(file, params:)
+          puts 'Configuration is valid' unless quiet
+        end
+
+        def validate_file(file, params:)
+          if file == '-'
+            Html2rss.validate($stdin.read, params:)
+          else
+            Html2rss.validate(file, params:)
+          end
+        end
+
+        def path_like_config?(arg)
+          path = arg.to_s
+          return true if path.start_with?('-')
+          return true if path.end_with?('.yml', '.yaml')
+          return true if path.include?('/') || path.include?('*')
+
+          false
         end
       end
-      module_function :validate_file
-      private_class_method :validate_file
-
-      def path_like_config?(arg)
-        path = arg.to_s
-        return true if path.start_with?('-')
-        return true if path.end_with?('.yml', '.yaml')
-        return true if path.include?('/') || path.include?('*')
-
-        false
-      end
-      module_function :path_like_config?
-      private_class_method :path_like_config?
     end
   end
 end
