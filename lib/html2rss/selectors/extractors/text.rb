@@ -21,8 +21,11 @@ module Html2rss
       # Would return:
       #    'Lorem ipsum dolor ...'
       class Text
-        # The available options for the text extractor.
-        Options = Struct.new('TextOptions', :selector, keyword_init: true)
+        # Runtime options for the text extractor.
+        Options = Data.define(:selector) do
+          # @param selector [String, nil] CSS selector for the element
+          def initialize(selector: nil) = super
+        end
 
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Return collapsed visible text of the selected element (default extractor).'

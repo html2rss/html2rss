@@ -12,7 +12,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
       'Europe/Berlin' => 'Mon, 01 Jul 2019 12:00:00 +0200'
     }.each_pair do |time_zone, expected|
       it "parses in time_zone #{time_zone}" do
-        ctx = Html2rss::Selectors::Context.new(config: { channel: { time_zone: } })
+        ctx = Html2rss::Selectors::Context.new(channel: { time_zone: })
 
         expect(described_class.new('2019-07-01 12:00', ctx).get).to eq expected
       end
@@ -21,7 +21,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
 
   context 'with unknown time_zone' do
     it 'raises TZInfo::InvalidTimezoneIdentifier' do
-      ctx = Html2rss::Selectors::Context.new(config: { channel: { time_zone: 'Foobar/Baz' } })
+      ctx = Html2rss::Selectors::Context.new(channel: { time_zone: 'Foobar/Baz' })
 
       expect { described_class.new('2019-07-01 12:00', ctx).get }.to raise_error(TZInfo::InvalidTimezoneIdentifier)
     end
@@ -29,7 +29,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
 
   context 'with nil time_zone' do
     it 'raises ArgumentError' do
-      ctx = Html2rss::Selectors::Context.new(config: { channel: { time_zone: nil } })
+      ctx = Html2rss::Selectors::Context.new(channel: { time_zone: nil })
 
       expect { described_class.new('2019-07-01 12:00', ctx).get }
         .to raise_error(ArgumentError, 'time_zone cannot be nil or empty')
@@ -38,7 +38,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
 
   context 'with empty time_zone' do
     it 'raises ArgumentError' do
-      ctx = Html2rss::Selectors::Context.new(config: { channel: { time_zone: '' } })
+      ctx = Html2rss::Selectors::Context.new(channel: { time_zone: '' })
 
       expect { described_class.new('2019-07-01 12:00', ctx).get }
         .to raise_error(ArgumentError, 'time_zone cannot be nil or empty')

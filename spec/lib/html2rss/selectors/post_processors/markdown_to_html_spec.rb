@@ -20,11 +20,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::MarkdownToHtml do
       `puts 'hello world'`
     MD
   end
-  let(:config) do
-    { channel: { title: 'Example: questions', url: 'https://example.com/questions' },
-      selectors: { items: {} } }
-  end
-  let(:context) { Html2rss::Selectors::Context.new(config:, options: {}) }
+  let(:channel) { { title: 'Example: questions', url: 'https://example.com/questions' } }
+  let(:context) { Html2rss::Selectors::Context.new(channel:, options: {}) }
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 

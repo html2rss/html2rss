@@ -6,17 +6,10 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
   describe '#get' do
     subject { described_class.new(html, context).get }
 
-    let(:config) do
-      {
-        channel: { title: 'Example: questions', url: 'https://example.com/questions' },
-        selectors: {
-          items: { selector: '#questions > ul > li' },
-          title: { selector: 'a' },
-          link: { selector: 'a', extractor: 'href' }
-        }
-      }
+    let(:channel) do
+      { title: 'Example: questions', url: 'https://example.com/questions' }
     end
-    let(:context) { Html2rss::Selectors::Context.new(config:, options: {}) }
+    let(:context) { Html2rss::Selectors::Context.new(channel:, options: {}) }
 
     let(:sanitized_html) do
       <<~HTML

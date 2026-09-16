@@ -43,7 +43,9 @@ module Html2rss
         # @return [Object] instance of the specified item extractor class
         def get(attribute_options, xml)
           extractor_class = NAME_TO_CLASS[attribute_options[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
-          options = ITEM_OPTION_CLASSES[extractor_class].new(attribute_options.slice(*extractor_class::Options.members))
+          options = ITEM_OPTION_CLASSES[extractor_class].new(
+            **attribute_options.slice(*extractor_class::Options.members)
+          )
 
           extractor_class.new(xml, options).get
         end

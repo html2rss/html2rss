@@ -16,11 +16,16 @@ module Html2rss
       # Would return:
       #    'Foobar'
       class Static
-        # Config-facing option types (excluding shared selector fields supplied at runtime).
-        OPTION_TYPES = { static: String }.freeze
+        # Config-facing options contract (validator introspection).
+        OPTIONS = [
+          Option.new(name: :static, type: String)
+        ].freeze
 
-        # The available option for the static extractor.
-        Options = Struct.new('StaticOptions', :static, keyword_init: true)
+        # Runtime options for the static extractor.
+        Options = Data.define(:static) do
+          # @param static [String, nil] fixed value to return
+          def initialize(static: nil) = super
+        end
 
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Return a fixed value from sibling selector option `static` (no DOM read).'

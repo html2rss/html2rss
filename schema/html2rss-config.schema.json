@@ -865,7 +865,10 @@
             "type": "string"
           },
           "replacement": {
-            "type": "string"
+            "type": [
+              "string",
+              "object"
+            ]
           }
         },
         "required": [
@@ -1024,7 +1027,7 @@
         "type": "string",
         "const": "href",
         "title": "href",
-        "description": "Return the absolute URL from the selected element's `href` attribute (relative hrefs are resolved against the channel URL).",
+        "description": "Return the absolute URL from the selected element's `href` attribute (relative hrefs are resolved against the page base URL).",
         "examples": [
           "href"
         ]

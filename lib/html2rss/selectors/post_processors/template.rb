@@ -34,11 +34,10 @@ module Html2rss
       # Would return:
       #    'Product (23,42€)'
       class Template < Base
-        # Required config field types (validator introspection via +Options+).
-        OPTION_TYPES = { string: String }.freeze
-
-        # Config fields required by this post-processor (validator / schema introspection).
-        Options = Struct.new(*OPTION_TYPES.keys, keyword_init: true)
+        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        OPTIONS = [
+          Option.new(name: :string, type: String)
+        ].freeze
 
         # JSON Schema description exported via +schema_doc+.
         # rubocop:disable Style/FormatStringToken -- documents Kernel#format `%{key}` placeholders
@@ -60,7 +59,7 @@ module Html2rss
         def self.validate_args!(value, context)
           assert_type value, String, :value, context:
 
-          string = context[:options]&.dig(:string).to_s
+          string = context.options&.dig(:string).to_s
           raise InvalidType, 'The `string` template is absent.' if string.empty?
 
           return if context.item_scope
@@ -74,7 +73,7 @@ module Html2rss
         def initialize(value, context)
           super
 
-          @options = context[:options] || {}
+          @options = context.options || {}
           @string = @options[:string].to_s
           @getter = ->(key) { item_value(key) }
         end

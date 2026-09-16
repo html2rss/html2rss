@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
-
 module Html2rss
   ##
   # This scraper is designed to scrape articles from a given HTML page using CSS
@@ -12,49 +10,11 @@ module Html2rss
   #
   # Additionally, it uniquely offers the capability to convert JSON into XML,
   # extending its versatility for diverse data processing workflows.
-  class Selectors # rubocop:disable Metrics/ClassLength
+  class Selectors
+    # Raised when a selector key is missing or not allowed for extraction.
     class InvalidSelectorName < Html2rss::Error; end
 
     include Enumerable
-
-    # A context instance passed to item extractors and post-processors.
-    # When built via {ItemScope#context_for}, +item_scope+ carries the per-item
-    # extraction base_url for nested selects (e.g. Template).
-    Context = Data.define(:options, :item, :config, :scraper, :item_scope) do
-      ##
-      # @param options [Hash, nil] post-processor options
-      # @param item [Object, nil]
-      # @param config [Hash, nil]
-      # @param scraper [Object, nil]
-      # @param item_scope [Object, nil]
-      # @option options [String] :name post-processor name
-      def initialize(options: nil, item: nil, config: nil, scraper: nil, item_scope: nil)
-        super
-      end
-
-      ##
-      # Preserves backward compatibility with hash-style / struct subscript access.
-      #
-      # @param key [Symbol]
-      # @return [Object, nil]
-      def [](key)
-        public_send(key)
-      end
-
-      ##
-      # Preserves backward compatibility with hash/struct dig access.
-      #
-      # @param keys [Array<Symbol, String>]
-      # @return [Object, nil]
-      def dig(*keys)
-        return nil if keys.empty?
-
-        val = public_send(keys.first)
-        return val if keys.size == 1
-
-        val.respond_to?(:dig) ? val.dig(*keys[1..]) : nil
-      end
-    end
 
     # Default selectors options merged into user configuration.
     DEFAULT_CONFIG = { items: { enhance: true } }.freeze
@@ -82,7 +42,8 @@ module Html2rss
       @url = response.url
       @selectors = selectors
       @time_zone = time_zone
-      @rss_item_attributes = @selectors.keys.select { |key| SELECTABLE_SELECTOR_KEYS.include?(key) }
+      @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
+      wire_collaborators
     end
 
     ##
@@ -104,7 +65,7 @@ module Html2rss
 
       enhance = enhance?
 
-      parsed_body.css(items_selector).each do |item|
+      @body_parser.parsed_body_for(response).css(items_selector).each do |item|
         article_hash = extract_article(item, response)
 
         enhance_article_hash(article_hash, item, response.url) if enhance
@@ -128,16 +89,17 @@ module Html2rss
     # @param page_response [RequestService::Response] response used for selector extraction context
     # @return [Hash] Hash of attributes for the article.
     def extract_article(item, page_response = response)
+      attrs = @attribute_selector
       scope = item_scope_for(item, page_response.url)
       hash = @rss_item_attributes.each_with_object({}) do |selector_key, h|
         value = scope.select(selector_key)
         next if value.nil?
 
         article_key = SELECTOR_TO_ARTICLE_KEY.fetch(selector_key, selector_key)
-        h[article_key] = article_key == :enclosures ? wrap_enclosure_value(value) : value
+        h[article_key] = article_key == :enclosures ? attrs.wrap_enclosure_value(value) : value
       end
 
-      hash[:url] ||= default_item_url(item, page_response.url) if anchor_element?(item)
+      hash[:url] ||= attrs.default_item_url(item, page_response.url) if attrs.anchor_element?(item)
       hash
     end
 
@@ -190,19 +152,31 @@ module Html2rss
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
     def select_in_scope(name, scope)
       name = name.to_sym
-
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
 
+      attrs = @attribute_selector
       selector_key, config = selector_config_for(name, allow_nil: name == :url)
-      return default_item_url(scope.item, scope.base_url) if fallback_url_selector?(selector_key, config, scope.item)
+      if attrs.fallback_url_selector?(selector_key, config, scope.item)
+        return attrs.default_item_url(scope.item, scope.base_url)
+      end
       raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined." if config.nil?
 
-      dispatch_select(selector_key, scope:, config:)
+      attrs.dispatch_select(selector_key, scope:, config:)
     end
 
     private
 
     attr_reader :response
+
+    def wire_collaborators
+      @body_parser = BodyParser.new
+      @attribute_selector = AttributeSelector.new
+      @categories_extractor = CategoriesExtractor.new(
+        config_lookup: method(:selector_config_for),
+        attribute_selector: @attribute_selector
+      )
+      @attribute_selector.categories_extractor = @categories_extractor
+    end
 
     def item_scope_for(item, base_url)
       ItemScope.new(
@@ -211,107 +185,6 @@ module Html2rss
         scraper: self,
         channel: channel_context(base_url)
       )
-    end
-
-    def parsed_body
-      parsed_body_for(response)
-    end
-
-    def parsed_body_for(page_response)
-      @parsed_bodies ||= {}
-      @parsed_bodies[page_response.url] ||= if page_response.json_response?
-                                              fragment = ObjectToXmlConverter.new(page_response.parsed_body).call
-                                              Nokogiri::HTML5.fragment(fragment)
-                                            else
-                                              page_response.parsed_body
-                                            end
-    end
-
-    def select_special(name, scope:, config:)
-      case name
-      when :enclosure
-        enclosure(scope:, config:)
-      when :guid
-        Array(config).map { |selector_name| scope.select(selector_name) }
-      when :categories
-        select_categories(category_selectors: config, scope:)
-      end
-    end
-
-    def select_regular(_name, scope:, config:)
-      @merged_configs ||= {}
-      merged_config = @merged_configs[[config.object_id, scope.base_url]] ||=
-        config.merge(channel: scope.channel).freeze
-      value = Extractors.get(merged_config, scope.item)
-
-      if value && (post_process_steps = config[:post_process])
-        steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-        value = post_process(scope, value, steps)
-      end
-
-      value
-    end
-
-    def post_process(scope, value, post_process_steps)
-      post_process_steps.each do |options|
-        value = PostProcessors.get(options[:name], value, scope.context_for(options:))
-      end
-
-      value
-    end
-
-    def select_categories(category_selectors:, scope:)
-      Array(category_selectors).flat_map do |selector_name|
-        extract_category_values(selector_name, scope:)
-      end
-    end
-
-    def extract_category_values(selector_name, scope:)
-      selector_key, config = selector_config_for(selector_name, allow_nil: true)
-      return [] unless config
-
-      nodes = extract_nodes(item: scope.item, config:)
-      return Array(select_regular(selector_key, scope:, config:)) unless node_set_with_multiple_elements?(nodes)
-
-      Array(nodes).flat_map { |node| extract_categories_from_node(node, scope:, config:) }
-    end
-
-    def extract_categories_from_node(node, scope:, config:)
-      values = Extractors.get(category_node_options(config, scope:), node)
-      values = apply_post_process_steps(scope:, value: values, post_process_steps: config[:post_process])
-
-      Array(values).filter_map { |category| extract_category_text(category) }
-    end
-
-    def extract_category_text(category)
-      text = case category
-             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
-               Html2rss::Html::Navigator.extract_visible_text(category)
-             else
-               category&.to_s
-             end
-
-      stripped = text&.strip
-      stripped unless stripped.nil? || stripped.empty?
-    end
-
-    def node_set_with_multiple_elements?(nodes)
-      nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
-    end
-
-    def category_node_options(selector_config, scope:)
-      @category_node_configs ||= {}
-      @category_node_configs[[selector_config.object_id, scope.base_url]] ||= selector_config.merge(
-        channel: scope.channel,
-        selector: nil
-      ).freeze
-    end
-
-    def apply_post_process_steps(scope:, value:, post_process_steps:)
-      return value unless value && post_process_steps
-
-      steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
-      post_process(scope, value, steps)
     end
 
     def selector_config_for(name, allow_nil: false)
@@ -323,56 +196,8 @@ module Html2rss
       raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
     end
 
-    def extract_nodes(item:, config:)
-      return unless config.respond_to?(:[]) && config[:selector]
-
-      Extractors.element(item, config[:selector])
-    end
-
     def channel_context(base_url)
-      @channel_contexts ||= {}
-      @channel_contexts[base_url] ||= { url: base_url, time_zone: @time_zone }.freeze
-    end
-
-    # Keep a single enclosure Hash as one list entry; +Array(hash)+ would split pairs.
-    #
-    # @param value [Hash, Array] enclosure hash or list of hashes
-    # @return [Array]
-    def wrap_enclosure_value(value)
-      value.is_a?(Array) ? value : [value]
-    end
-
-    # @return [Hash, nil] enclosure details, or nil when the selector yields nothing.
-    def enclosure(scope:, config:)
-      selected = select_regular(:enclosure, scope:, config:)
-      return if selected.nil? || selected.to_s.strip.empty?
-
-      url = Url.from_relative(selected, scope.base_url)
-
-      { url:, type: config[:content_type] }
-    end
-
-    def anchor_element?(item)
-      item.respond_to?(:name) && item.name.to_s.casecmp('a').zero?
-    end
-
-    def fallback_url_selector?(selector_key, config, item)
-      selector_key == :url && config.nil? && anchor_element?(item)
-    end
-
-    def dispatch_select(selector_key, scope:, config:)
-      if SPECIAL_ATTRIBUTES.member?(selector_key)
-        select_special(selector_key, scope:, config:)
-      else
-        select_regular(selector_key, scope:, config:)
-      end
-    end
-
-    def default_item_url(item, base_url)
-      href = item['href'].to_s.strip
-      return if href.empty?
-
-      Url.from_relative(href, base_url)
+      (@channel_contexts ||= {})[base_url] ||= { url: base_url, time_zone: @time_zone }.freeze
     end
   end
 end

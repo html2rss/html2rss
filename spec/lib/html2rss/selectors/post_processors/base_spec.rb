@@ -5,18 +5,34 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
 
   let(:value) { 'test' }
 
-  describe '.expect_options' do
-    let(:context) { Html2rss::Selectors::Context.new(options: { key1: 'value1', key2: 'value2' }) }
-
-    it 'does not raise an error if all keys are present' do
-      expect { described_class.send(:expect_options, %i[key1 key2], context) }.not_to raise_error
+  describe '.validate_options!' do
+    let(:processor) do
+      Class.new(described_class) do
+        const_set(:OPTIONS, [
+          Html2rss::Selectors::Option.new(name: :key1, type: String),
+          Html2rss::Selectors::Option.new(name: :key2, type: String, required: false)
+        ].freeze)
+      end
     end
 
-    it 'raises an error if a key is missing' do
+    it 'does not raise when required options are present and typed' do
+      context = Html2rss::Selectors::Context.new(options: { key1: 'value1' })
+      expect { processor.validate_options!(context) }.not_to raise_error
+    end
+
+    it 'raises when a required option is missing' do
+      context = Html2rss::Selectors::Context.new(options: {})
       expect do
-        described_class.send(:expect_options, %i[key1 key3], context)
+        processor.validate_options!(context)
       end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
-                         /The `key3` option is missing in:/)
+                         /The `key1` option is missing in:/)
+    end
+
+    it 'raises when an optional option has the wrong type' do
+      context = Html2rss::Selectors::Context.new(options: { key1: 'ok', key2: 1 })
+      expect do
+        processor.validate_options!(context)
+      end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /type of `key2`/)
     end
   end
 
@@ -43,10 +59,10 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
   end
 
   describe '.validate_args!' do
-    it 'raises NotImplementedError' do
+    it 'is a no-op by default' do
       expect do
-        described_class.send(:validate_args!, '', Html2rss::Selectors::Context.new(options: {}))
-      end.to raise_error(NotImplementedError, 'You must implement the `validate_args!` method in the post processor')
+        described_class.validate_args!('', Html2rss::Selectors::Context.new(options: {}))
+      end.not_to raise_error
     end
   end
 
@@ -70,7 +86,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
 
   describe '#get' do
     before do
-      allow(described_class).to receive_messages(assert_type: nil, validate_args!: nil)
+      allow(described_class).to receive_messages(assert_type: nil, validate_options!: nil, validate_args!: nil)
     end
 
     it 'raises NotImplementedError' do

@@ -178,6 +178,22 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       it { is_expected.to be_success }
     end
 
+    context 'with gsub Hash replacement' do
+      let(:config) do
+        { title: { post_process: [{ name: 'gsub', pattern: '/[eo]/', replacement: { 'e' => '3' } }] } }
+      end
+
+      it { is_expected.to be_success }
+    end
+
+    context 'with substring without end' do
+      let(:config) do
+        { title: { post_process: [{ name: 'substring', start: 0 }] } }
+      end
+
+      it { is_expected.to be_success }
+    end
+
     context 'with substring' do
       let(:config) do
         { title: { post_process: [{ name: 'substring', start: 0, end: 1 }] } }
@@ -366,7 +382,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       it { expect(result).to be_failure }
     end
 
-    it 'requires Options members from the extractor registry', :aggregate_failures do
+    it 'requires OPTIONS members from the extractor registry', :aggregate_failures do
       attribute = described_class.call(title: { selector: 'a', extractor: 'attribute' })
       static = described_class.call(title: { extractor: 'static' })
 

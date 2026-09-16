@@ -44,9 +44,7 @@ module Html2rss
         ##
         # @return [String]
         def get
-          config_url = context.dig(:config, :channel, :url)
-
-          Url.from_relative(value, config_url).to_s
+          Url.from_relative(value, context.channel_url).to_s
         end
       end
     end

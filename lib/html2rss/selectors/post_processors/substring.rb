@@ -30,14 +30,11 @@ module Html2rss
       # Would return:
       #    'bar'
       class Substring < Base
-        # Required config field types (validator introspection via +Options+).
-        OPTION_TYPES = { start: Integer }.freeze
-
-        # Optional config field types (validated when the key is present and non-nil).
-        OPTIONAL_OPTION_TYPES = { end: Integer }.freeze
-
-        # Config fields required by this post-processor (validator / schema introspection).
-        Options = Struct.new(*OPTION_TYPES.keys, keyword_init: true)
+        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        OPTIONS = [
+          Option.new(name: :start, type: Integer),
+          Option.new(name: :end, type: Integer, required: false)
+        ].freeze
 
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Return a slice of the extracted string using Integer `start` and optional `end` ' \
@@ -56,10 +53,6 @@ module Html2rss
         # @return [void]
         def self.validate_args!(value, context)
           assert_type(value, String, :value, context:)
-
-          options = context[:options]
-          assert_type(options[:start], Integer, :start, context:)
-          assert_type(options[:end], Integer, :end, context:) if options.key?(:end)
         end
 
         ##
@@ -75,7 +68,7 @@ module Html2rss
         #
         # @return [Range] The range object representing the start and end/Infinity (integers).
         def range
-          options = context[:options]
+          options = context.options
           start = options[:start]
 
           return (start..) unless options.key?(:end)
