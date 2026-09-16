@@ -266,7 +266,9 @@ RSpec.describe Html2rss::MCP::Server do
           channel_url: 'https://example.com',
           strategy_used: :default,
           duration_seconds: 0.1,
-          validation_errors: success ? nil : { channel: ['is missing'] },
+          validation_issues: success ? nil : [
+            { path: %i[channel], code: :missing_key, message: 'is missing', expected: nil, actual: nil }
+          ],
           error_message: success ? nil : 'Configuration schema validation failed',
           failure_kind:,
           rss: success ? '<rss/>' : nil,
@@ -410,9 +412,9 @@ RSpec.describe Html2rss::MCP::Server do
 
         expect(result.dig(:result, :isError)).to be(true)
         expect(envelope).to include(ok: false, next_step: 'validate')
-        expect(envelope[:payload]).to include(
-          failure_kind: 'schema',
-          validation_errors: { channel: ['is missing'] }
+        expect(envelope[:payload]).to include(failure_kind: 'schema')
+        expect(envelope[:payload][:validation_issues]).to contain_exactly(
+          hash_including(path: ['channel'], code: 'missing_key', message: 'is missing')
         )
       end
     end
@@ -450,13 +452,14 @@ RSpec.describe Html2rss::MCP::Server do
         expect(envelope.dig(:payload, :class)).to eq('Html2rss::MCP::Contract::UnpublishedRequestError')
       end
 
-      it 'marks invalid configs as isError with json error details', :aggregate_failures do
+      it 'marks invalid configs as isError with structured issues', :aggregate_failures do
         result = call_tool.call('validate', { config: { bad: true } })
         envelope = JSON.parse(result.dig(:result, :content, 0, :text), symbolize_names: true)
 
         expect(result.dig(:result, :isError)).to be(true)
         expect(envelope).to include(ok: false, next_step: 'validate')
-        expect(envelope[:payload][:errors]).to be_a(Hash)
+        expect(envelope[:payload][:issues]).to be_an(Array)
+        expect(envelope[:payload][:issues].first).to include(:path, :code, :message)
       end
     end
 

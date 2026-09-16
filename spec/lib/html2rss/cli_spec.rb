@@ -329,7 +329,7 @@ RSpec.describe Html2rss::CLI do
         channel_url: 'https://example.com',
         strategy_used: :default,
         duration_seconds: 0.12,
-        validation_errors: nil,
+        validation_issues: nil,
         error_message: nil,
         failure_kind: nil,
         rss: '<rss/>'
@@ -345,7 +345,7 @@ RSpec.describe Html2rss::CLI do
         channel_url: 'https://example.com',
         strategy_used: :default,
         duration_seconds: 0.12,
-        validation_errors: nil,
+        validation_issues: nil,
         error_message: 'Extracted 0 items (minimum required: 1)',
         failure_kind: Html2rss::Test::FailureKind.coerce(:min_items),
         rss: nil
@@ -453,8 +453,18 @@ RSpec.describe Html2rss::CLI do
   end
 
   describe '#validate' do
-    let(:result_success) { instance_double(Dry::Validation::Result, success?: true, errors: {}) }
-    let(:result_failure) { instance_double(Dry::Validation::Result, success?: false, errors: { selectors: ['bad config'] }) }
+    let(:result_success) { Html2rss::Config::ValidationReport.ok }
+    let(:result_failure) do
+      Html2rss::Config::ValidationReport.failure(
+        [
+          Html2rss::Config::ValidationIssue.new(
+            path: %i[selectors],
+            code: :invalid_value,
+            message: 'bad config'
+          )
+        ]
+      )
+    end
 
     context 'when the config is valid' do
       before do

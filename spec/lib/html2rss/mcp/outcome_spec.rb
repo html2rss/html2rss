@@ -244,19 +244,20 @@ RSpec.describe Html2rss::MCP::Outcome do
 
   describe '.validate' do
     it 'points at test with an empty payload on schema success', :aggregate_failures do
-      outcome = described_class.validate(errors: nil)
+      outcome = described_class.validate(issues: nil)
 
       expect(outcome.ok).to be(true)
       expect(outcome.next_step.name).to eq(:test)
       expect(outcome.payload).to eq({})
     end
 
-    it 'stays on validate when schema errors are present', :aggregate_failures do
-      outcome = described_class.validate(errors: { channel: ['is missing'] })
+    it 'stays on validate when schema issues are present', :aggregate_failures do
+      issues = [{ path: %i[channel], code: :missing_key, message: 'is missing', expected: nil, actual: nil }]
+      outcome = described_class.validate(issues:)
 
       expect(outcome.ok).to be(false)
       expect(outcome.next_step.name).to eq(:validate)
-      expect(outcome.payload).to eq(errors: { channel: ['is missing'] })
+      expect(outcome.payload).to eq(issues:)
     end
   end
 
@@ -270,7 +271,7 @@ RSpec.describe Html2rss::MCP::Outcome do
         channel_url: 'https://example.com',
         strategy_used: :default,
         duration_seconds: 0.1,
-        validation_errors: nil,
+        validation_issues: nil,
         error_message: success ? nil : 'failed',
         failure_kind:,
         rss: success ? '<rss/>' : nil,
@@ -285,7 +286,9 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'points at validate on schema failure' do # rubocop:disable RSpec/ExampleLength
       result = test_result(
         failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
-        validation_errors: { channel: ['missing'] },
+        validation_issues: [
+          { path: %i[channel], code: :missing_key, message: 'missing', expected: nil, actual: nil }
+        ],
         error_message: 'Configuration schema validation failed'
       )
       expect(described_class.test(result).next_step.name).to eq(:validate)

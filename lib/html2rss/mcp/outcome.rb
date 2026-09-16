@@ -107,12 +107,13 @@ module Html2rss
         end
 
         ##
-        # @param errors [Hash, nil] schema errors; +nil+ means success
+        # @param issues [Array<Hash>, nil] wire-shaped {ValidationIssue#to_h} list; +nil+/empty means success
         # @return [Outcome]
-        def validate(errors:)
-          ok = errors.nil?
+        def validate(issues:)
+          list = Array(issues)
+          ok = list.empty?
           next_step = ok ? NextStep.test : NextStep.validate
-          new(ok:, next_step:, guidance: next_step.guidance, payload: ok ? {} : { errors: })
+          new(ok:, next_step:, guidance: next_step.guidance, payload: ok ? {} : { issues: list })
         end
 
         ##

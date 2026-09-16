@@ -95,7 +95,13 @@ module Html2rss
         else
           warn "\e[31m✗ Test failed\e[0m (#{source})"
           warn "  Error: #{result.error_message}" if result.error_message
-          result.validation_errors&.each { |k, v| warn "  Schema error [#{k}]: #{Array(v).join(', ')}" }
+          result.validation_issues&.each do |issue|
+            path = Array(issue[:path] || issue['path']).join('.')
+            path = '(root)' if path.empty?
+            code = issue[:code] || issue['code']
+            message = issue[:message] || issue['message']
+            warn "  Schema error #{path} [#{code}]: #{message}"
+          end
         end
       end
 

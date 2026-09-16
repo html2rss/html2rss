@@ -221,7 +221,7 @@ RSpec.describe Html2rss::Test do
       it 'returns a schema failure without raising', :aggregate_failures do
         result = described_class.call("- items\n")
         expect(result.success).to be(false)
-        expect(result.validation_errors).to have_key(:parse)
+        expect(result.validation_issues).to include(hash_including(code: :parse))
       end
     end
 

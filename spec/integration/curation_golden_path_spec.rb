@@ -178,7 +178,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
           channel_url: url,
           strategy_used: :default,
           duration_seconds: 0.2,
-          validation_errors: nil,
+          validation_issues: nil,
           error_message: nil,
           failure_kind: nil,
           rss: '<rss/>'

@@ -29,11 +29,10 @@ module Html2rss
           if result.success?
             puts(target_files.size == 1 ? 'Configuration is valid' : "ok   #{file}") unless quiet
           else
-            error_details = result.errors.to_h
-            raise Thor::Error, "Invalid configuration: #{error_details}" if target_files.size == 1
+            raise Thor::Error, format_failure(result) if target_files.size == 1
 
             warn "FAIL #{file}"
-            error_details.each { |key, msg| warn "       #{key}: #{Array(msg).join(', ')}" }
+            result.issues.each { |issue| warn "       #{format_issue(issue)}" }
             failed << file
           end
         end
@@ -62,7 +61,7 @@ module Html2rss
 
         def run_named_feed(file, feed_name, params:, quiet:)
           result = Html2rss.validate(file, feed_name, params:)
-          raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
+          raise Thor::Error, format_failure(result) unless result.success?
 
           puts 'Configuration is valid' unless quiet
         end
@@ -73,6 +72,16 @@ module Html2rss
           else
             Html2rss.validate(file, params:)
           end
+        end
+
+        def format_failure(report)
+          "Invalid configuration: #{report.to_h}"
+        end
+
+        def format_issue(issue)
+          path = Array(issue.path).join('.')
+          path = '(root)' if path.empty?
+          "#{path} [#{issue.code}] #{issue.message}"
         end
 
         def path_like_config?(arg)

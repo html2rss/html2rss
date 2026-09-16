@@ -98,7 +98,7 @@ module Html2rss
       :channel_url,
       :strategy_used,
       :duration_seconds,
-      :validation_errors,
+      :validation_issues,
       :error_message,
       :failure_kind,
       :rss,
@@ -113,14 +113,14 @@ module Html2rss
       # @param channel_url [String, nil]
       # @param strategy_used [Symbol, nil]
       # @param duration_seconds [Float]
-      # @param validation_errors [Hash, nil]
+      # @param validation_issues [Array<Hash>, nil] wire-shaped ValidationIssue hashes
       # @param error_message [String, nil]
       # @param failure_kind [FailureKind, nil]
       # @param rss [String, nil]
       # @param quality_report [QualityReport, nil]
       # @param enhance_compare [Hash, nil]
       def initialize(success:, item_count:, sample_items:, channel_title:, channel_url:, # rubocop:disable Metrics/ParameterLists
-                     strategy_used:, duration_seconds:, validation_errors:, error_message:,
+                     strategy_used:, duration_seconds:, validation_issues:, error_message:,
                      failure_kind:, rss:, quality_report: nil, enhance_compare: nil)
         super
       end
@@ -128,7 +128,7 @@ module Html2rss
       ##
       # @return [Boolean] whether the schema validation succeeded
       def valid_schema?
-        validation_errors.nil? || validation_errors.empty?
+        validation_issues.nil? || validation_issues.empty?
       end
 
       ##
@@ -148,7 +148,7 @@ module Html2rss
           channel_url:,
           strategy_used:,
           duration_seconds:,
-          validation_errors:,
+          validation_issues:,
           error_message:,
           failure_kind: failure_kind&.to_sym,
           rss:,
@@ -172,7 +172,7 @@ module Html2rss
     def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
              strict_quality: false, compare_enhance: false)
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
-      return validation_failure_result(validation.errors.to_h, raw_config) unless validation.success?
+      return validation_failure_result(validation, raw_config) unless validation.success?
 
       raw_config[:strategy] = strategy.to_sym if strategy
       raw_config[:params] = params if params&.any?
@@ -215,7 +215,7 @@ module Html2rss
           channel_url:,
           strategy_used:,
           duration_seconds: duration.round(3),
-          validation_errors: nil,
+          validation_issues: nil,
           error_message:,
           failure_kind:,
           rss: passed ? rss_xml : nil,
@@ -420,7 +420,7 @@ module Html2rss
     end
     private_class_method :probe_native_feed_url
 
-    def validation_failure_result(errors, raw_config) # rubocop:disable Metrics/MethodLength
+    def validation_failure_result(report, raw_config) # rubocop:disable Metrics/MethodLength
       Result.new(
         success: false,
         item_count: 0,
@@ -429,7 +429,7 @@ module Html2rss
         channel_url: raw_config.dig(:channel, :url),
         strategy_used: raw_config[:strategy],
         duration_seconds: 0.0,
-        validation_errors: errors,
+        validation_issues: report.issues.map(&:to_h),
         error_message: 'Configuration schema validation failed',
         failure_kind: FailureKind.coerce(:schema),
         rss: nil,
@@ -447,7 +447,7 @@ module Html2rss
         channel_url: raw_config.dig(:channel, :url),
         strategy_used: raw_config[:strategy],
         duration_seconds: duration.round(3),
-        validation_errors: nil,
+        validation_issues: nil,
         error_message: "#{error.class}: #{error.message}",
         failure_kind: FailureKind.coerce(:execution),
         rss: nil,

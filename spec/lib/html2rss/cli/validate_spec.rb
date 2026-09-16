@@ -16,10 +16,17 @@ RSpec.describe Html2rss::CLI::Validate do
   end
 
   describe '.run' do
-    let(:success) { instance_double(Dry::Validation::Result, success?: true, errors: {}) }
+    let(:success) { Html2rss::Config::ValidationReport.ok }
     let(:failure) do
-      errors = instance_double(Dry::Schema::MessageSet, to_h: { selectors: ['bad selector'] })
-      instance_double(Dry::Validation::Result, success?: false, errors:)
+      Html2rss::Config::ValidationReport.failure(
+        [
+          Html2rss::Config::ValidationIssue.new(
+            path: %i[selectors],
+            code: :invalid_value,
+            message: 'bad selector'
+          )
+        ]
+      )
     end
 
     it 'reports ok lines for multiple valid files' do
