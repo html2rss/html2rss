@@ -345,9 +345,11 @@ RSpec.describe Html2rss::CLI do
         channel_url: 'https://example.com',
         strategy_used: :default,
         duration_seconds: 0.12,
-        validation_issues: nil,
-        error_message: 'Extracted 0 items (minimum required: 1)',
-        failure_kind: Html2rss::Test::FailureKind.coerce(:min_items),
+        validation_issues: [
+          { path: %i[channel url], code: :missing_key, message: 'is missing', expected: nil, actual: nil }
+        ],
+        error_message: 'Configuration schema validation failed',
+        failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
         rss: nil
       )
     end
@@ -421,14 +423,32 @@ RSpec.describe Html2rss::CLI do
         allow(Html2rss).to receive(:test).and_return(test_result_failure)
       end
 
+      it 'prints structured validation issues via Render.test_card' do
+        expect do
+          Html2rss::CLI::Render.test_card(test_result_failure, 'config.yml')
+        end.to output(/Schema error channel\.url \[missing_key\]: is missing/).to_stderr
+      end
+
+      it 'prints (root) when a validation issue has an empty path' do # rubocop:disable RSpec/ExampleLength
+        root_issue = test_result_failure.with(
+          validation_issues: [
+            { path: [], code: :invalid_value, message: 'bad', expected: nil, actual: nil }
+          ]
+        )
+
+        expect do
+          Html2rss::CLI::Render.test_card(root_issue, 'config.yml')
+        end.to output(/Schema error \(root\) \[invalid_value\]: bad/).to_stderr
+      end
+
       it 'raises a Thor::Error on failure' do
         expect { cli.test('config.yml') }
-          .to raise_error(Thor::Error, /Extracted 0 items/)
+          .to raise_error(Thor::Error, /Configuration schema validation failed/)
       end
 
       it 'supports --quiet when test fails' do
         expect { cli.invoke(:test, ['config.yml'], { quiet: true }) }
-          .to output(/Extracted 0 items/).to_stderr
+          .to output(/Configuration schema validation failed/).to_stderr
           .and raise_error(Thor::Error)
       end
     end

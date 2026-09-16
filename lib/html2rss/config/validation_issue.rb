@@ -9,6 +9,7 @@ module Html2rss
     # +expected+ / +actual+ are JSON-ish or +nil+ (never invented).
     ValidationIssue = Data.define(:path, :code, :message, :expected, :actual) do
       # Closed set of issue codes (mapper owns Dry predicate → code).
+      # rubocop:disable-next Lint/ConstantDefinitionInBlock -- Data.define type constant
       CODES = Set[
         :missing_key,
         :type_mismatch,

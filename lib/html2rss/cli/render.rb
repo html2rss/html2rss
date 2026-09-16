@@ -93,14 +93,12 @@ module Html2rss
             end
           end
         else
-          warn "\e[31m✗ Test failed\e[0m (#{source})"
-          warn "  Error: #{result.error_message}" if result.error_message
+          $stderr.puts "\e[31m✗ Test failed\e[0m (#{source})" # rubocop:disable Style/StderrPuts
+          $stderr.puts "  Error: #{result.error_message}" if result.error_message # rubocop:disable Style/StderrPuts
           result.validation_issues&.each do |issue|
-            path = Array(issue[:path] || issue['path']).join('.')
+            path = Array(issue[:path]).join('.')
             path = '(root)' if path.empty?
-            code = issue[:code] || issue['code']
-            message = issue[:message] || issue['message']
-            warn "  Schema error #{path} [#{code}]: #{message}"
+            $stderr.puts "  Schema error #{path} [#{issue[:code]}]: #{issue[:message]}" # rubocop:disable Style/StderrPuts
           end
         end
       end

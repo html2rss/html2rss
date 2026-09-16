@@ -27,7 +27,7 @@ RSpec.describe Html2rss::Config::ValidationReport do
       )
     end
 
-    it 'serializes issues only', :aggregate_failures do
+    it 'serializes issues only', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       expect(report).to be_failure
       expect(report.to_h).to eq(
         success: false,

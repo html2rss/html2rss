@@ -344,7 +344,7 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(config)).to be_success
     end
 
-    it 'applies runtime defaults before validation' do
+    it 'applies runtime defaults before validation', :aggregate_failures do
       expect(described_class.validate(config)).to be_success
       expect(described_class.from_hash(config).time_zone).to eq('UTC')
     end
@@ -638,14 +638,6 @@ RSpec.describe Html2rss::Config do
       end
 
       it 'validates the effective config after applying parameter defaults', :aggregate_failures do
-        expect(described_class.validate(config)).to be_success
-
-        runtime_config = described_class.from_hash(config)
-        expect(runtime_config.url).to eq('https://example.com/search?q=ruby&locale=en')
-        expect(runtime_config.headers.fetch('X-Query')).to eq('ruby')
-      end
-
-      it 'resolves the same url and headers as runtime config building', :aggregate_failures do
         expect(described_class.validate(config)).to be_success
 
         runtime_config = described_class.from_hash(config)

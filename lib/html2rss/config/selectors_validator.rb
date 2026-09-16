@@ -170,6 +170,7 @@ module Html2rss
         required(NESTING_KEY).hash
       end
 
+      # rubocop:disable-next Metrics/BlockLength -- nested Dry bubble keeps leaf paths in one rule
       rule(NESTING_KEY) do
         value.each_pair do |selector_key, selector|
           case selector_key.to_sym
