@@ -174,9 +174,13 @@ module Html2rss
         value.each_pair do |selector_key, selector|
           case selector_key.to_sym
           when Selectors::ITEMS_SELECTOR_KEY
-            Items.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
+            Items.new.call(selector).errors.each do |error|
+              key([selector_key, *error.path]).failure(error.text)
+            end
           when :enclosure
-            Enclosure.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
+            Enclosure.new.call(selector).errors.each do |error|
+              key([selector_key, *error.path]).failure(error.text)
+            end
           when :guid, :categories
             unless selector.is_a?(Array)
               key(selector_key).failure("`#{selector_key}` must be an array")
@@ -192,7 +196,9 @@ module Html2rss
             end
           else
             # From here on, the selector is found under its "dynamic" selector_key
-            Selector.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
+            Selector.new.call(selector).errors.each do |error|
+              key([selector_key, *error.path]).failure(error.text)
+            end
           end
         end
       end

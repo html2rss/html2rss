@@ -45,8 +45,9 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
         { items: { selector: '.article', pagination: { strategy: 'invalid_strategy' } } }
       end
 
-      it 'fails validation', :aggregate_failures do
+      it 'fails with nested path under items', :aggregate_failures do
         expect(result).to be_failure
+        expect(result.errors.map(&:path)).to include(%i[items pagination])
         expect(result.errors.to_h.to_s).to include('`strategy` must be one of')
       end
     end
@@ -379,7 +380,10 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
         { title: { selector: 'h1', extractor: 'nope' } }
       end
 
-      it { expect(result).to be_failure }
+      it 'fails with nested path under the selector key', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.map(&:path)).to include(%i[title extractor])
+      end
     end
 
     it 'requires OPTIONS members from the extractor registry', :aggregate_failures do
@@ -415,7 +419,10 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
         { enclosure: { selector: 'enclosure', content_type: 'audio' } }
       end
 
-      it { expect(result).to be_failure }
+      it 'fails with nested path under enclosure', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.map(&:path)).to include(%i[enclosure content_type])
+      end
     end
   end
 end
