@@ -257,7 +257,7 @@ module Html2rss
             quality_report = Html2rss::Test.quality_report_for(
               rss.items,
               channel_url: feed_config.dig(:channel, :url).to_s,
-              raw_config: feed_config,
+              config: Html2rss::Config.from_hash(feed_config),
               feed_result:,
               pipeline_outcome: outcome,
               probe_native_feed: false
