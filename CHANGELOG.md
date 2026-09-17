@@ -14,7 +14,9 @@
   - Extractor runtime args are `Args` / `SelectorArgs` (distinct from config-facing `OPTIONS`).
   - `Selectors::Context` is `Data.define(:options, :channel_url, :time_zone, :item_scope)` — no channel Hash.
   - `gsub` `replacement` accepts `String` or `Hash` (Ruby `String#gsub` hash form); schema / validator follow `Selectors::PostProcessors::Gsub::OPTIONS`.
-  - Extractor / post-processor config-facing options are owned as each strategy’s `OPTIONS` Array of `Selectors::Option` (SoT for validator, SchemaDoc, and `Base.validate_options!`). Do not reintroduce parallel `OPTION_TYPES` maps.
+  - Extractor / post-processor config-facing options are owned as each strategy’s `OPTIONS` Array of `Selectors::Option` (SoT for validator, SchemaDoc, `OptionContract`, and `Base.validate_options!`). Do not reintroduce parallel `OPTION_TYPES` maps.
+  - Post-processors that require a fixed extracted Ruby type declare `VALUE_TYPE`; `Base` asserts it (callers no longer introspect).
+  - Selector nesting key `:items` is owned once as `Selectors::NESTING_KEY` (validator + scraper).
 - Removed `html_to_markdown` post-processor and the `reverse_markdown` gem dependency. Configs using `post_process` name `html_to_markdown` now fail validation.
 
 Curation CLI, MCP, gem facades, and agent playbook unify on seven user-facing verbs. See `CONTEXT.md` § Frozen contract and `AGENTS.md` § Curation CLI / MCP.

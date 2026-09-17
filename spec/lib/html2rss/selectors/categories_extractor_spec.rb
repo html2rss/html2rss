@@ -44,5 +44,24 @@ RSpec.describe Html2rss::Selectors::CategoriesExtractor do
     it 'returns an empty list when a referenced selector is missing' do
       expect(described_class.select_categories(category_selectors: %i[missing], scope:)).to eq([])
     end
+
+    # rubocop:disable-next RSpec/ExampleLength
+    it 'applies post_process steps on multi-node category extracts', :aggregate_failures do
+      selectors_config[:tags] = {
+        selector: '.tags a',
+        extractor: 'text',
+        post_process: { name: 'gsub', pattern: 'R', replacement: 'r' }
+      }
+      scraper = Html2rss::Selectors.new(response, selectors: selectors_config, time_zone: 'UTC')
+      processed_scope = Html2rss::Selectors::ItemScope.new(
+        item: response.parsed_body.at_css('article'),
+        base_url: response.url,
+        scraper:,
+        time_zone: 'UTC'
+      )
+
+      expect(described_class.select_categories(category_selectors: %i[tags], scope: processed_scope))
+        .to eq(%w[ruby rSS])
+    end
   end
 end

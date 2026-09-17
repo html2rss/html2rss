@@ -2,6 +2,55 @@
 
 require 'spec_helper'
 
+# Invalid configs that together exercise Dry predicates from Validator / SelectorsValidator.
+ISSUE_MAPPER_PREDICATE_COVERAGE_VALUES = [
+  { channel: {}, selectors: { items: { selector: '.a' } } },
+  { channel: { url: '' }, selectors: { items: { selector: '.a' } } },
+  { channel: { url: 'https://example.com', ttl: 'x' }, selectors: { items: { selector: '.a' } } },
+  { channel: { url: 'https://example.com', ttl: -1 }, selectors: { items: { selector: '.a' } } },
+  { channel: { url: 'https://example.com', language: 'ENGLISH' }, selectors: { items: { selector: '.a' } } },
+  {
+    channel: { url: 'https://example.com' },
+    selectors: { items: { selector: '.a', enhance: 'yes' } }
+  },
+  {
+    channel: { url: 'https://example.com' },
+    directory: { title: 'T', topics: ['not-a-topic'] },
+    selectors: { items: { selector: '.a' } }
+  },
+  {
+    channel: { url: 'https://example.com' },
+    directory: { title: 'T', topics: [] },
+    selectors: { items: { selector: '.a' } }
+  },
+  {
+    channel: { url: 'https://example.com' },
+    directory: { title: 'T', summary: 'x' * 161 },
+    selectors: { items: { selector: '.a' } }
+  },
+  {
+    channel: { url: 'https://example.com' },
+    request: { max_redirects: -1 },
+    selectors: { items: { selector: '.a' } }
+  },
+  {
+    channel: { url: 'https://example.com' },
+    request: {
+      botasaurus: { max_retries: Html2rss::RequestService::BotasaurusContract::MAX_RETRIES + 1 }
+    },
+    selectors: { items: { selector: '.a' } }
+  },
+  {
+    channel: { url: 'https://example.com' },
+    stylesheets: [{ href: '/x.css', type: 'text/unknown' }],
+    selectors: { items: { selector: '.a' } }
+  },
+  {
+    channel: { url: 'https://example.com' },
+    selectors: { items: { selector: '.a' }, enclosure: { selector: 'a', content_type: 'audio' } }
+  }
+].freeze
+
 RSpec.describe Html2rss::Config::IssueMapper do
   describe '.from' do
     it 'returns ok for a successful Dry result' do
@@ -77,59 +126,11 @@ RSpec.describe Html2rss::Config::IssueMapper do
   end
 
   describe 'PREDICATE_CODES coverage' do
-    # Invalid configs that together exercise Dry predicates from Validator / SelectorsValidator.
-    COVERAGE_VALUES = [
-      { channel: {}, selectors: { items: { selector: '.a' } } },
-      { channel: { url: '' }, selectors: { items: { selector: '.a' } } },
-      { channel: { url: 'https://example.com', ttl: 'x' }, selectors: { items: { selector: '.a' } } },
-      { channel: { url: 'https://example.com', ttl: -1 }, selectors: { items: { selector: '.a' } } },
-      { channel: { url: 'https://example.com', language: 'ENGLISH' }, selectors: { items: { selector: '.a' } } },
-      {
-        channel: { url: 'https://example.com' },
-        selectors: { items: { selector: '.a', enhance: 'yes' } }
-      },
-      {
-        channel: { url: 'https://example.com' },
-        directory: { title: 'T', topics: ['not-a-topic'] },
-        selectors: { items: { selector: '.a' } }
-      },
-      {
-        channel: { url: 'https://example.com' },
-        directory: { title: 'T', topics: [] },
-        selectors: { items: { selector: '.a' } }
-      },
-      {
-        channel: { url: 'https://example.com' },
-        directory: { title: 'T', summary: 'x' * 161 },
-        selectors: { items: { selector: '.a' } }
-      },
-      {
-        channel: { url: 'https://example.com' },
-        request: { max_redirects: -1 },
-        selectors: { items: { selector: '.a' } }
-      },
-      {
-        channel: { url: 'https://example.com' },
-        request: {
-          botasaurus: { max_retries: Html2rss::RequestService::BotasaurusContract::MAX_RETRIES + 1 }
-        },
-        selectors: { items: { selector: '.a' } }
-      },
-      {
-        channel: { url: 'https://example.com' },
-        stylesheets: [{ href: '/x.css', type: 'text/unknown' }],
-        selectors: { items: { selector: '.a' } }
-      },
-      {
-        channel: { url: 'https://example.com' },
-        selectors: { items: { selector: '.a' }, enclosure: { selector: 'a', content_type: 'audio' } }
-      }
-    ].freeze
-
+    # rubocop:disable-next RSpec/ExampleLength
     it 'maps every Dry predicate emitted by Validator / SelectorsValidator', :aggregate_failures do
       seen = Set.new
 
-      COVERAGE_VALUES.each do |values|
+      ISSUE_MAPPER_PREDICATE_COVERAGE_VALUES.each do |values|
         dry = Html2rss::Config::Validator.new.call(values)
         next if dry.success?
 
@@ -147,6 +148,7 @@ RSpec.describe Html2rss::Config::IssueMapper do
       expect(seen).not_to be_empty
     end
 
+    # rubocop:disable-next RSpec/ExampleLength
     it 'rejects unknown predicates loudly' do
       message = instance_double(
         Dry::Schema::Message,

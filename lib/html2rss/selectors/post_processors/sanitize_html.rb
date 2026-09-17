@@ -38,6 +38,7 @@ module Html2rss
       # Would return:
       #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
       class SanitizeHtml < Base
+        # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
         # JSON Schema description exported via +schema_doc+.
@@ -95,7 +96,6 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :sanitize_html, klass: self)
-
 
         ##
         # @param html [String]

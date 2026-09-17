@@ -46,7 +46,7 @@ module Html2rss
       def to_s
         return 'valid' if success?
 
-        issues.map(&:to_s).join('; ')
+        issues.join('; ')
       end
     end
   end

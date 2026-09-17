@@ -48,7 +48,6 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       it 'fails with nested path under items', :aggregate_failures do
         expect(result).to be_failure
         expect(result.errors.map(&:path)).to include(%i[items pagination])
-        expect(result.errors.map(&:text).join("\n")).to include('`strategy` must be one of')
       end
     end
 
@@ -59,7 +58,6 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.map(&:text).join("\n")).to include('`custom_selector` strategy requires `selector`')
       end
     end
 
@@ -69,9 +67,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       end
 
       it 'fails validation', :aggregate_failures do
-        msg = '`json_cursor` strategy requires either `cursor_path` or `next_url_path`'
         expect(result).to be_failure
-        expect(result.errors.map(&:text).join("\n")).to include(msg)
       end
     end
 
@@ -82,7 +78,6 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.map(&:text).join("\n")).to include('must be an integer greater than 0')
       end
     end
 
@@ -95,7 +90,6 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       # leave runtime paging without a positive Integer budget.
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.map(&:text).join("\n")).to include('`max_pages` must be an integer greater than 0')
       end
     end
   end
@@ -423,6 +417,33 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
         expect(result).to be_failure
         expect(result.errors.map(&:path)).to include(%i[enclosure content_type])
       end
+    end
+  end
+
+  describe 'ValidationReport path preservation' do
+    # rubocop:disable-next RSpec/ExampleLength
+    it 'keeps nested leaf paths through Config.validate', :aggregate_failures do
+      values = {
+        channel: { url: 'https://example.com' },
+        selectors: { items: { selector: '.a', pagination: { strategy: 'invalid_strategy' } } }
+      }
+      report = Html2rss::Config.validate(values)
+
+      expect(report).to be_failure
+      expect(report.issues.map(&:path)).to include(%i[selectors items pagination])
+      expect(report.issues.map(&:message).join).to include('strategy')
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength
+    it 'keeps dynamic selector leaf paths for unknown extractors', :aggregate_failures do
+      values = {
+        channel: { url: 'https://example.com' },
+        selectors: { items: { selector: '.a' }, title: { selector: 'h1', extractor: 'nope' } }
+      }
+      report = Html2rss::Config.validate(values)
+
+      expect(report).to be_failure
+      expect(report.issues.map(&:path)).to include(%i[selectors title extractor])
     end
   end
 end

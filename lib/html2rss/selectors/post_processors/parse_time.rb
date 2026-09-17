@@ -27,6 +27,7 @@ module Html2rss
       #
       # It uses `Time.parse`.
       class ParseTime < Base
+        # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
         # JSON Schema description exported via +schema_doc+.
@@ -40,7 +41,14 @@ module Html2rss
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :parse_time, klass: self)
 
-        def self.validate_args!(value, context)
+        ##
+        # Ensures +context.time_zone+ is a non-empty String before parsing.
+        #
+        # @param _value [String] extracted time string (unused; type-checked via VALUE_TYPE)
+        # @param context [Selectors::Context] must carry a usable +time_zone+
+        # @return [void]
+        # @raise [ArgumentError] when time_zone is nil or empty
+        def self.validate_args!(_value, context)
           time_zone_value = context.time_zone
 
           if time_zone_value.nil? || time_zone_value.empty?

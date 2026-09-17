@@ -12,7 +12,7 @@ module Html2rss
   #
   # Additionally, it uniquely offers the capability to convert JSON into XML,
   # extending its versatility for diverse data processing workflows.
-  class Selectors
+  class Selectors # rubocop:disable Metrics/ClassLength -- public API + private extraction loop
     # Raised when a selector key is missing or not allowed for extraction.
     class InvalidSelectorName < Html2rss::Error; end
 
@@ -173,7 +173,7 @@ module Html2rss
       hash
     end
 
-    def enhance_article_hash(article_hash, article_tag)
+    def enhance_article_hash(article_hash, article_tag) # rubocop:disable Metrics/MethodLength -- merge extracted keys
       selected_anchor = Html2rss::Html::Navigator.main_anchor_for(article_tag)
       extracted = Html2rss::Html::ArticleExtractor.call(
         article_tag,

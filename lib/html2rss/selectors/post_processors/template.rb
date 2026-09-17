@@ -34,6 +34,7 @@ module Html2rss
       # Would return:
       #    'Product (23,42€)'
       class Template < Base
+        # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
         # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
@@ -55,7 +56,15 @@ module Html2rss
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :template, klass: self)
 
-        def self.validate_args!(value, context)
+        ##
+        # Ensures a non-empty template +string+ option and an +item_scope+ for sibling lookup.
+        #
+        # @param _value [String] current selector value (unused here)
+        # @param context [Selectors::Context] must include options[:string] and item_scope
+        # @return [void]
+        # @raise [InvalidType] when the template string is blank
+        # @raise [MissingOption] when item_scope is missing
+        def self.validate_args!(_value, context)
           string = context.options&.dig(:string).to_s
           raise InvalidType, 'The `string` template is absent.' if string.empty?
 

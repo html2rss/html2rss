@@ -177,7 +177,7 @@ Feed channel metadata (title, description, ttl, language, author, image, last_bu
 
 ## ItemScope post-process config
 
-Per-item extraction scope carries `channel` (url/time_zone). Post-processor `Context` holds `channel` (same hash) via `ItemScope#context_for` — there is no nested `config: { channel: }` bag.
+Per-item extraction scope carries `base_url` and `time_zone` (no channel Hash). Post-processor `Context` is `Data.define(:options, :channel_url, :time_zone, :item_scope)` built via `ItemScope#context_for`.
 
 ## Pagination strategy registry
 
@@ -185,4 +185,4 @@ Supported pagination strategy names and factory classes live in `RequestSession:
 
 ## Extractor / post-processor registry
 
-Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::Option` (name, type, required). `Config::SelectorsValidator::Selector` and `Selectors::SchemaDoc` consume that contract; post-processor `Base.validate_options!` enforces it at runtime. Extractor runtime `Options` Data (e.g. injected `selector` / `base_url`) stays separate from YAML option keys. Do not reintroduce parallel `OPTION_TYPES` maps or hardcode per-name type soups in the validator or schema.
+Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::Option` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::OptionContract`, and `Selectors::SchemaDoc` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractor runtime args are `Args` / `SelectorArgs` (e.g. injected `selector` / `base_url`) — distinct from YAML `OPTIONS` keys. Do not reintroduce parallel `OPTION_TYPES` maps or hardcode per-name type soups in the validator or schema.

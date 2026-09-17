@@ -33,6 +33,7 @@ module Html2rss
       #
       #    <p>Price: 12.34</p>
       class MarkdownToHtml < Base
+        # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
         # JSON Schema description exported via +schema_doc+.
@@ -46,7 +47,6 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :markdown_to_html, klass: self)
-
 
         ##
         # Converts Markdown to sanitized HTML.

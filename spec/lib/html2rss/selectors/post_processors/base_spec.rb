@@ -77,10 +77,13 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
       expect(described_class).to have_received(:validate_args!).with(value, context)
     end
 
-    it 'rejects legacy hash context' do
+    it 'rejects legacy hash context' do # rubocop:disable RSpec/ExampleLength
       expect do
         described_class.new(value, { options: { key1: 'value1' } })
-      end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /type of `context` must be Html2rss::Selectors::Context/)
+      end.to raise_error(
+        Html2rss::Selectors::PostProcessors::InvalidType,
+        /type of `context` must be Html2rss::Selectors::Context/
+      )
     end
   end
 

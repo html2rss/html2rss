@@ -30,6 +30,7 @@ module Html2rss
       # Would return:
       #    'bar'
       class Substring < Base
+        # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
         # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
@@ -49,7 +50,6 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :substring, klass: self)
-
 
         ##
         # Extracts the substring from the original string based on the provided start and end indices.

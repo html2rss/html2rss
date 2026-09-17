@@ -77,7 +77,7 @@ module Html2rss
         # @param value [Object] the value to be processed
         # @param context [Selectors::Context] runtime selector context and options
         # @raise [InvalidType] if +context+ is not a {Selectors::Context} or +VALUE_TYPE+ mismatches
-        def initialize(value, context)
+        def initialize(value, context) # rubocop:disable Metrics/MethodLength -- type guard + VALUE_TYPE + validate_args
           unless context.is_a?(Selectors::Context)
             raise InvalidType,
                   "The type of `context` must be #{Selectors::Context}, but is: #{context.class}",
@@ -86,9 +86,7 @@ module Html2rss
 
           klass = self.class
           klass.validate_options!(context)
-          if klass.const_defined?(:VALUE_TYPE, false)
-            klass.assert_type(value, klass::VALUE_TYPE, :value, context:)
-          end
+          klass.assert_type(value, klass::VALUE_TYPE, :value, context:) if klass.const_defined?(:VALUE_TYPE, false)
           klass.validate_args!(value, context)
 
           @value = value

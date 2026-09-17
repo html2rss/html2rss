@@ -11,6 +11,7 @@ module Html2rss
     # Closed failure classification for a failed test run.
     FailureKind = Data.define(:name) do
       # Closed set of test failure wire names.
+      # rubocop:disable-next Lint/ConstantDefinitionInBlock -- Data.define type constant
       NAMES = Set[:schema, :execution, :min_items, :quality].freeze
 
       class << self
@@ -137,7 +138,7 @@ module Html2rss
 
       ##
       # @return [Hash{Symbol => Object}] hash representation (wire shape at the serialize seam)
-      def to_h # rubocop:disable Metrics/MethodLength
+      def to_h # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- wire serialization of all Result fields
         {
           success:,
           item_count:,

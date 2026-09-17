@@ -41,6 +41,7 @@ RSpec.describe Html2rss::Selectors::AttributeSelector do
       expect(value[:type]).to eq('audio/mpeg')
     end
 
+    # rubocop:disable-next RSpec/ExampleLength
     it 'extracts categories via CategoriesExtractor', :aggregate_failures do
       scraper = Html2rss::Selectors.new(
         response,
@@ -61,6 +62,7 @@ RSpec.describe Html2rss::Selectors::AttributeSelector do
       expect(attribute_selector.call(:categories, scope: cat_scope, config: %i[tag])).to eq(%w[episode])
     end
 
+    # rubocop:disable-next RSpec/ExampleLength
     it 'falls back to the anchor href when url selector is omitted', :aggregate_failures do
       anchor = Nokogiri::HTML('<a class="card" href="/posts/first">First</a>').at_css('a')
       scraper = Html2rss::Selectors.new(

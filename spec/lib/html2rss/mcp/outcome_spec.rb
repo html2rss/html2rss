@@ -251,6 +251,7 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.payload).to eq({})
     end
 
+    # rubocop:disable-next RSpec/ExampleLength
     it 'stays on validate when schema issues are present', :aggregate_failures do
       issue = Html2rss::Config::ValidationIssue.new(
         path: %i[channel], code: :missing_key, message: 'is missing'

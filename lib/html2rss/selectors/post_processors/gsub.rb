@@ -29,6 +29,7 @@ module Html2rss
       #
       # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
       class Gsub < Base
+        # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
         # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
@@ -48,7 +49,6 @@ module Html2rss
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :gsub, klass: self)
-
 
         ##
         # @param value [String]

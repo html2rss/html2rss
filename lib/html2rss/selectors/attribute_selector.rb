@@ -12,9 +12,7 @@ module Html2rss
       # @param config [Hash, Array, nil]
       # @return [Object, Array<Object>, nil]
       def call(selector_key, scope:, config:)
-        if fallback_url_selector?(selector_key, config, scope.item)
-          return default_item_url(scope.item, scope.base_url)
-        end
+        return default_item_url(scope.item, scope.base_url) if fallback_url_selector?(selector_key, config, scope.item)
         raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined." if config.nil?
 
         if SPECIAL_ATTRIBUTES.member?(selector_key)
