@@ -346,7 +346,7 @@ RSpec.describe Html2rss::CLI do
         strategy_used: :default,
         duration_seconds: 0.12,
         validation_issues: [
-          { path: %i[channel url], code: :missing_key, message: 'is missing', expected: nil, actual: nil }
+          Html2rss::Config::ValidationIssue.new(path: %i[channel url], code: :missing_key, message: 'is missing')
         ],
         error_message: 'Configuration schema validation failed',
         failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
@@ -426,19 +426,19 @@ RSpec.describe Html2rss::CLI do
       it 'prints structured validation issues via Render.test_card' do
         expect do
           Html2rss::CLI::Render.test_card(test_result_failure, 'config.yml')
-        end.to output(/Schema error channel\.url \[missing_key\]: is missing/).to_stderr
+        end.to output(/Schema error channel\.url \[missing_key\] is missing/).to_stderr
       end
 
       it 'prints (root) when a validation issue has an empty path' do # rubocop:disable RSpec/ExampleLength
         root_issue = test_result_failure.with(
           validation_issues: [
-            { path: [], code: :invalid_value, message: 'bad', expected: nil, actual: nil }
+            Html2rss::Config::ValidationIssue.new(path: [], code: :invalid_value, message: 'bad')
           ]
         )
 
         expect do
           Html2rss::CLI::Render.test_card(root_issue, 'config.yml')
-        end.to output(/Schema error \(root\) \[invalid_value\]: bad/).to_stderr
+        end.to output(/Schema error \(root\) \[invalid_value\] bad/).to_stderr
       end
 
       it 'raises a Thor::Error on failure' do

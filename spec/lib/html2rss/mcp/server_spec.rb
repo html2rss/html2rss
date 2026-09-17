@@ -262,7 +262,7 @@ RSpec.describe Html2rss::MCP::Server do
           if success
             nil
           else
-            [{ path: %i[channel], code: :missing_key, message: 'is missing', expected: nil, actual: nil }]
+            [Html2rss::Config::ValidationIssue.new(path: %i[channel], code: :missing_key, message: 'is missing')]
           end
 
         Html2rss::Test::Result.new(

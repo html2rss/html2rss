@@ -113,7 +113,7 @@ module Html2rss
       # @param channel_url [String, nil]
       # @param strategy_used [Symbol, nil]
       # @param duration_seconds [Float]
-      # @param validation_issues [Array<Hash>, nil] wire-shaped ValidationIssue hashes
+      # @param validation_issues [Array<Html2rss::Config::ValidationIssue>, nil]
       # @param error_message [String, nil]
       # @param failure_kind [FailureKind, nil]
       # @param rss [String, nil]
@@ -138,7 +138,7 @@ module Html2rss
       end
 
       ##
-      # @return [Hash{Symbol => Object}] hash representation
+      # @return [Hash{Symbol => Object}] hash representation (wire shape at the serialize seam)
       def to_h # rubocop:disable Metrics/MethodLength
         {
           success:,
@@ -148,7 +148,7 @@ module Html2rss
           channel_url:,
           strategy_used:,
           duration_seconds:,
-          validation_issues:,
+          validation_issues: validation_issues&.map(&:to_h),
           error_message:,
           failure_kind: failure_kind&.to_sym,
           rss:,
@@ -429,7 +429,7 @@ module Html2rss
         channel_url: raw_config.dig(:channel, :url),
         strategy_used: raw_config[:strategy],
         duration_seconds: 0.0,
-        validation_issues: report.issues.map(&:to_h),
+        validation_issues: report.issues,
         error_message: 'Configuration schema validation failed',
         failure_kind: FailureKind.coerce(:schema),
         rss: nil,

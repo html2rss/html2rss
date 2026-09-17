@@ -244,7 +244,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
   describe '.validate' do
     it 'points at test with an empty payload on schema success', :aggregate_failures do
-      outcome = described_class.validate(issues: nil)
+      outcome = described_class.validate(report: Html2rss::Config::ValidationReport.ok)
 
       expect(outcome.ok).to be(true)
       expect(outcome.next_step.name).to eq(:test)
@@ -252,12 +252,15 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'stays on validate when schema issues are present', :aggregate_failures do
-      issues = [{ path: %i[channel], code: :missing_key, message: 'is missing', expected: nil, actual: nil }]
-      outcome = described_class.validate(issues:)
+      issue = Html2rss::Config::ValidationIssue.new(
+        path: %i[channel], code: :missing_key, message: 'is missing'
+      )
+      report = Html2rss::Config::ValidationReport.failure([issue])
+      outcome = described_class.validate(report:)
 
       expect(outcome.ok).to be(false)
       expect(outcome.next_step.name).to eq(:validate)
-      expect(outcome.payload).to eq(issues:)
+      expect(outcome.payload).to eq(issues: [issue.to_h])
     end
   end
 
@@ -287,7 +290,7 @@ RSpec.describe Html2rss::MCP::Outcome do
       result = test_result(
         failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
         validation_issues: [
-          { path: %i[channel], code: :missing_key, message: 'missing', expected: nil, actual: nil }
+          Html2rss::Config::ValidationIssue.new(path: %i[channel], code: :missing_key, message: 'missing')
         ],
         error_message: 'Configuration schema validation failed'
       )

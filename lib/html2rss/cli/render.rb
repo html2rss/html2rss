@@ -96,9 +96,7 @@ module Html2rss
           $stderr.puts "\e[31m✗ Test failed\e[0m (#{source})" # rubocop:disable Style/StderrPuts
           $stderr.puts "  Error: #{result.error_message}" if result.error_message # rubocop:disable Style/StderrPuts
           result.validation_issues&.each do |issue|
-            path = Array(issue[:path]).join('.')
-            path = '(root)' if path.empty?
-            $stderr.puts "  Schema error #{path} [#{issue[:code]}]: #{issue[:message]}" # rubocop:disable Style/StderrPuts
+            $stderr.puts "  Schema error #{issue}" # rubocop:disable Style/StderrPuts
           end
         end
       end

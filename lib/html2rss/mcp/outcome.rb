@@ -107,13 +107,13 @@ module Html2rss
         end
 
         ##
-        # @param issues [Array<Hash>, nil] wire-shaped {ValidationIssue#to_h} list; +nil+/empty means success
+        # @param report [Html2rss::Config::ValidationReport]
         # @return [Outcome]
-        def validate(issues:)
-          list = Array(issues)
-          ok = list.empty?
+        def validate(report:)
+          ok = report.success?
           next_step = ok ? NextStep.test : NextStep.validate
-          new(ok:, next_step:, guidance: next_step.guidance, payload: ok ? {} : { issues: list })
+          payload = ok ? {} : { issues: report.issues.map(&:to_h) }
+          new(ok:, next_step:, guidance: next_step.guidance, payload:)
         end
 
         ##

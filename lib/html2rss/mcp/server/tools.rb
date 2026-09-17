@@ -87,8 +87,7 @@ module Html2rss
             input_schema: Contract::CONFIG_XOR_SCHEMA,
             annotations: Contract::ANNOTATIONS_VALIDATE,
             call: lambda { |config: nil, yaml: nil, **|
-              validation = Html2rss::Config.validate(ConfigArgument.parse(config:, yaml:).config)
-              Outcome.validate(issues: validation.success? ? nil : validation.issues.map(&:to_h))
+              Outcome.validate(report: Html2rss::Config.validate(ConfigArgument.parse(config:, yaml:).config))
             }
           },
           {
