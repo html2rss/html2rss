@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     let(:channel) do
       { title: 'Example: questions', url: 'https://example.com/questions' }
     end
-    let(:context) { Html2rss::Selectors::Context.new(channel:, options: {}) }
+    let(:context) { Html2rss::Selectors::Context.new(channel_url: channel[:url], options: {}) }
 
     let(:sanitized_html) do
       <<~HTML

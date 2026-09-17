@@ -183,7 +183,7 @@ module Html2rss
         item:,
         base_url:,
         scraper: self,
-        channel: channel_context(base_url)
+        time_zone: @time_zone
       )
     end
 
@@ -194,10 +194,6 @@ module Html2rss
       return [selector_key, nil] if allow_nil
 
       raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
-    end
-
-    def channel_context(base_url)
-      (@channel_contexts ||= {})[base_url] ||= { url: base_url, time_zone: @time_zone }.freeze
     end
   end
 end

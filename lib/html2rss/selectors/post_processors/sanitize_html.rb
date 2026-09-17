@@ -114,18 +114,8 @@ module Html2rss
           return @fragment_cache[key] if @fragment_cache.key?(key)
 
           @fragment_cache.clear if @fragment_cache.size > 256
-          @fragment_cache[key] = new(html, context_for_url(url)).get
+          @fragment_cache[key] = new(html, Selectors::Context.new(channel_url: url, options: {})).get
         end
-
-        ##
-        # Shared Context construction for URL-only callers (class + instance path).
-        #
-        # @param url [String, Html2rss::Url]
-        # @return [Selectors::Context]
-        def self.context_for_url(url)
-          Selectors::Context.new(channel: { url: }, options: {})
-        end
-        private_class_method :context_for_url
 
         ##
         # @param channel_url [String, Html2rss::Url]

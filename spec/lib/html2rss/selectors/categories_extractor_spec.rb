@@ -44,7 +44,7 @@ RSpec.describe Html2rss::Selectors::CategoriesExtractor do
       item: response.parsed_body.at_css('article'),
       base_url: response.url,
       scraper:,
-      channel: { url: response.url, time_zone: 'UTC' }
+      time_zone: 'UTC'
     )
   end
 

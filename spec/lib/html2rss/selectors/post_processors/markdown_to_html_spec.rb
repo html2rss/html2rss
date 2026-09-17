@@ -21,7 +21,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::MarkdownToHtml do
     MD
   end
   let(:channel) { { title: 'Example: questions', url: 'https://example.com/questions' } }
-  let(:context) { Html2rss::Selectors::Context.new(channel:, options: {}) }
+  let(:context) { Html2rss::Selectors::Context.new(channel_url: channel[:url], options: {}) }
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 

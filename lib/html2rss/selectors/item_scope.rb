@@ -3,12 +3,11 @@
 module Html2rss
   class Selectors
     ##
-    # Per-item extraction scope: owns the article node and page +base_url+ for one
-    # extraction pass. Channel hashes are injected (and cached) by {Selectors}.
+    # Per-item extraction scope: owns the article node, page +base_url+, and
+    # +time_zone+ for one extraction pass.
     #
     # Distinct from {Context}, which is the post-processor invocation bag (+options+).
-    # {Context#channel} is this scope's {#channel} — not a nested +config+ bag.
-    ItemScope = Data.define(:item, :base_url, :scraper, :channel) do
+    ItemScope = Data.define(:item, :base_url, :scraper, :time_zone) do
       ##
       # Selects an attribute using this scope's item and base_url.
       #
@@ -23,7 +22,7 @@ module Html2rss
       # @option options [String] :name post-processor name
       # @return [Context]
       def context_for(options:)
-        Context.new(options:, channel:, item_scope: self)
+        Context.new(options:, channel_url: base_url, time_zone:, item_scope: self)
       end
     end
   end
