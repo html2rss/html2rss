@@ -9,6 +9,9 @@
   - Each issue is `{ path:, code:, message:, expected:, actual: }` (`ValidationIssue`); closed codes: `missing_key`, `type_mismatch`, `unknown_value`, `invalid_value`, `constraint`, `parse`.
   - MCP `validate` payload uses `issues` only (removed nested `errors:`). `Test::Result` uses `validation_issues` (removed `validation_errors` nest). Bump `mcp_contract_version` to **3** — refresh `tools/list`.
   - Nested selector failures keep leaf paths (e.g. `selectors.items.pagination`) instead of flattening prose under `:selectors`.
+- **JSON Schema facades relocated** to `Config::Schema` (no thin delegates on `Config`):
+  - `Config.json_schema` / `Config.json_schema_json` / `Config.schema_path` → `Config::Schema.json_schema` / `Config::Schema.json_schema_json` / `Config::Schema.path`.
+  - `Html2rss.schema_json` updated to call `Config::Schema`.
 - **Selectors modernization** (Ruby API / schema contract):
   - Selectors internals: `AttributeSelector` (single `#call` entry), `CategoriesExtractor`, `ItemScope`; `ObjectToXmlConverter` lives under `Html2rss::Selectors::ObjectToXmlConverter`.
   - Extractor runtime args are `Args` / `SelectorArgs` (distinct from config-facing `OPTIONS`).

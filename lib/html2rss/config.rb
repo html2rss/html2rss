@@ -24,10 +24,12 @@ module Html2rss
       # @param params [Hash] dynamic feed params
       # @return [Array(Hash, Html2rss::Config::ValidationReport)]
       def resolve_and_validate(config_input, feed_name: nil, params: {})
-        working = HashUtil.deep_dup(resolve_raw_hash(config_input, feed_name))
-        [working, validate(working, params:)]
-      rescue StandardError => error
+        raw = resolve_raw_hash(config_input, feed_name)
+      rescue Psych::Exception, ArgumentError => error
         [{}, IssueMapper.parse_failure(error.message)]
+      else
+        working = HashUtil.deep_dup(raw)
+        [working, validate(working, params:)]
       end
 
       ##

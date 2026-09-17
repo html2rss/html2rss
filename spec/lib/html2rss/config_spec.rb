@@ -317,6 +317,24 @@ RSpec.describe Html2rss::Config do
       expect(validation).not_to be_success
       expect(validation.issues.map(&:code)).to include(:parse)
     end
+
+    it 'does not swallow IssueMapper ArgumentError as a soft :parse issue' do
+      allow(described_class::IssueMapper).to receive(:from).and_raise(
+        ArgumentError, 'unmapped Dry validation predicate: :boom?'
+      )
+
+      expect { described_class.resolve_and_validate(config) }
+        .to raise_error(ArgumentError, /unmapped Dry validation predicate/)
+    end
+
+    it 'surfaces IssueMapper ArgumentError through Html2rss.validate' do
+      allow(described_class::IssueMapper).to receive(:from).and_raise(
+        ArgumentError, 'unmapped Dry validation predicate: :boom?'
+      )
+
+      expect { Html2rss.validate(config) }
+        .to raise_error(ArgumentError, /unmapped Dry validation predicate/)
+    end
   end
 
   describe '.validate_yaml' do
