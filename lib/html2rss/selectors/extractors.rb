@@ -17,15 +17,8 @@ module Html2rss
         text: Text
       }.freeze
 
-      ##
-      # Maps the extractor class to its corresponding options class.
-      ITEM_OPTION_CLASSES = Hash.new do |hash, klass|
-        hash[klass] = klass.const_get(:Options)
-      end
-
       # Extractor used when none is explicitly configured.
       DEFAULT_EXTRACTOR = :text
-
       class << self
         ##
         # Retrieves an element from Nokogiri XML based on the selector.
@@ -43,11 +36,11 @@ module Html2rss
         # @return [Object] instance of the specified item extractor class
         def get(attribute_options, xml)
           extractor_class = NAME_TO_CLASS[attribute_options[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
-          options = ITEM_OPTION_CLASSES[extractor_class].new(
-            **attribute_options.slice(*extractor_class::Options.members)
+          args = extractor_class::Args.new(
+            **attribute_options.slice(*extractor_class::Args.members)
           )
 
-          extractor_class.new(xml, options).get
+          extractor_class.new(xml, args).get
         end
       end
     end

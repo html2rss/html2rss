@@ -24,8 +24,8 @@ module Html2rss
       # Would return:
       #    'http://blog-without-a-feed.example.com/posts/latest-findings'
       class Href
-        # Runtime options for the href extractor.
-        Options = Data.define(:selector, :base_url) do
+        # Runtime args for the href extractor.
+        Args = Data.define(:selector, :base_url) do
           # @param selector [String, nil] CSS selector for the link element
           # @param base_url [String, Html2rss::Url, nil] page base for relative hrefs
           def initialize(selector: nil, base_url: nil) = super
@@ -47,12 +47,12 @@ module Html2rss
         # Initializes the Href extractor.
         #
         # @param xml [Nokogiri::XML::Element]
-        # @param options [Options]
-        # @option options [String] :selector CSS selector used to find the link element
-        # @option options [String, Html2rss::Url] :base_url page base URL for relative hrefs
-        def initialize(xml, options)
-          @options = options
-          @element = Extractors.element(xml, options.selector)
+        # @param args [Args]
+        # @option args [String] :selector CSS selector used to find the link element
+        # @option args [String, Html2rss::Url] :base_url page base URL for relative hrefs
+        def initialize(xml, args)
+          @args = args
+          @element = Extractors.element(xml, args.selector)
           @href = @element.attr('href').to_s
         end
 
@@ -63,7 +63,7 @@ module Html2rss
         def get
           return nil unless @href
 
-          Url.from_relative(@href, @options.base_url)
+          Url.from_relative(@href, @args.base_url)
         end
       end
     end

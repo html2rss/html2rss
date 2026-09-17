@@ -21,8 +21,8 @@ module Html2rss
           Option.new(name: :static, type: String)
         ].freeze
 
-        # Runtime options for the static extractor.
-        Options = Data.define(:static) do
+        # Runtime args for the static extractor.
+        Args = Data.define(:static) do
           # @param static [String, nil] fixed value to return
           def initialize(static: nil) = super
         end
@@ -42,18 +42,18 @@ module Html2rss
         # Initializes the Static extractor.
         #
         # @param _xml [nil, Nokogiri::XML::Element] Unused parameter for compatibility with other extractors.
-        # @param options [Options] Options containing the static value.
-        # @option options [String, Symbol] :static static value returned by this extractor
-        def initialize(_xml, options)
-          @options = options
+        # @param args [Args] Args containing the static value.
+        # @option args [String, Symbol] :static static value returned by this extractor
+        def initialize(_xml, args)
+          @args = args
         end
 
         ##
         # Retrieves and returns the static value.
         #
-        # @return [String, Symbol] The static value provided in options.
+        # @return [String, Symbol] The static value provided in args.
         def get
-          @options.static
+          @args.static
         end
       end
     end

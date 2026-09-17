@@ -4,7 +4,7 @@ RSpec.describe Html2rss::Selectors::Extractors::Html do
   subject { described_class.new(xml, options).get }
 
   let(:xml) { Nokogiri.HTML('<p>Lorem <b>ipsum</b> dolor ...</p>') }
-  let(:options) { described_class::Options.new(selector: 'p') }
+  let(:options) { described_class::Args.new(selector: 'p') }
 
   it { is_expected.to eq '<p>Lorem <b>ipsum</b> dolor ...</p>' }
 end

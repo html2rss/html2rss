@@ -61,7 +61,6 @@ module Html2rss
         end
         properties
       end
-      module_function :post_processor_properties
 
       ##
       # @param klass [Class]
@@ -70,7 +69,6 @@ module Html2rss
         required = ['name']
         required + options_for(klass).select(&:required).map { |spec| spec.name.to_s }
       end
-      module_function :post_processor_required
 
       ##
       # @param klass [Class]
@@ -78,7 +76,6 @@ module Html2rss
       def options_for(klass)
         klass.const_defined?(:OPTIONS) ? klass::OPTIONS : []
       end
-      module_function :options_for
 
       ##
       # @param ruby_type [Class, Array<Class>]
@@ -86,7 +83,6 @@ module Html2rss
       def property_schema_for(ruby_type)
         { type: json_type_for(ruby_type) }
       end
-      module_function :property_schema_for
 
       ##
       # @param ruby_type [Class, Array<Class>]
@@ -101,7 +97,6 @@ module Html2rss
           end
         end
       end
-      module_function :json_type_for
     end
   end
 end

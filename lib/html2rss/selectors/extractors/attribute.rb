@@ -29,8 +29,8 @@ module Html2rss
           Option.new(name: :attribute, type: String)
         ].freeze
 
-        # Runtime options for the attribute extractor.
-        Options = Data.define(:selector, :attribute) do
+        # Runtime args for the attribute extractor.
+        Args = Data.define(:selector, :attribute) do
           # @param selector [String, nil] CSS selector for the element
           # @param attribute [String, nil] HTML attribute name to read
           def initialize(selector: nil, attribute: nil) = super
@@ -52,12 +52,12 @@ module Html2rss
         # Initializes the Attribute extractor.
         #
         # @param xml [Nokogiri::XML::Element]
-        # @param options [Options]
-        # @option options [String] :selector CSS selector used to find the element
-        # @option options [String] :attribute attribute name to extract from the selected element
-        def initialize(xml, options)
-          @options = options
-          @element = Extractors.element(xml, options.selector)
+        # @param args [Args]
+        # @option args [String] :selector CSS selector used to find the element
+        # @option args [String] :attribute attribute name to extract from the selected element
+        def initialize(xml, args)
+          @args = args
+          @element = Extractors.element(xml, args.selector)
         end
 
         ##
@@ -65,7 +65,7 @@ module Html2rss
         #
         # @return [String] The value of the attribute.
         def get
-          @element.attr(@options.attribute).to_s
+          @element.attr(@args.attribute).to_s
         end
       end
     end
