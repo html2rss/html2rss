@@ -138,9 +138,7 @@ module Html2rss
         next if result.success?
 
         result.errors.each do |error|
-          path = error.path
-          path = path.drop(1) if path.first == Config::SelectorsValidator::NESTING_KEY
-          key([:selectors, *path]).failure(error.text)
+          key([:selectors, *error.path]).failure(error.text)
         end
       end
 

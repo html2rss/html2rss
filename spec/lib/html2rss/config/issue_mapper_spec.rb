@@ -75,4 +75,90 @@ RSpec.describe Html2rss::Config::IssueMapper do
       )
     end
   end
+
+  describe 'PREDICATE_CODES coverage' do
+    # Invalid configs that together exercise Dry predicates from Validator / SelectorsValidator.
+    COVERAGE_VALUES = [
+      { channel: {}, selectors: { items: { selector: '.a' } } },
+      { channel: { url: '' }, selectors: { items: { selector: '.a' } } },
+      { channel: { url: 'https://example.com', ttl: 'x' }, selectors: { items: { selector: '.a' } } },
+      { channel: { url: 'https://example.com', ttl: -1 }, selectors: { items: { selector: '.a' } } },
+      { channel: { url: 'https://example.com', language: 'ENGLISH' }, selectors: { items: { selector: '.a' } } },
+      {
+        channel: { url: 'https://example.com' },
+        selectors: { items: { selector: '.a', enhance: 'yes' } }
+      },
+      {
+        channel: { url: 'https://example.com' },
+        directory: { title: 'T', topics: ['not-a-topic'] },
+        selectors: { items: { selector: '.a' } }
+      },
+      {
+        channel: { url: 'https://example.com' },
+        directory: { title: 'T', topics: [] },
+        selectors: { items: { selector: '.a' } }
+      },
+      {
+        channel: { url: 'https://example.com' },
+        directory: { title: 'T', summary: 'x' * 161 },
+        selectors: { items: { selector: '.a' } }
+      },
+      {
+        channel: { url: 'https://example.com' },
+        request: { max_redirects: -1 },
+        selectors: { items: { selector: '.a' } }
+      },
+      {
+        channel: { url: 'https://example.com' },
+        request: {
+          botasaurus: { max_retries: Html2rss::RequestService::BotasaurusContract::MAX_RETRIES + 1 }
+        },
+        selectors: { items: { selector: '.a' } }
+      },
+      {
+        channel: { url: 'https://example.com' },
+        stylesheets: [{ href: '/x.css', type: 'text/unknown' }],
+        selectors: { items: { selector: '.a' } }
+      },
+      {
+        channel: { url: 'https://example.com' },
+        selectors: { items: { selector: '.a' }, enclosure: { selector: 'a', content_type: 'audio' } }
+      }
+    ].freeze
+
+    it 'maps every Dry predicate emitted by Validator / SelectorsValidator', :aggregate_failures do
+      seen = Set.new
+
+      COVERAGE_VALUES.each do |values|
+        dry = Html2rss::Config::Validator.new.call(values)
+        next if dry.success?
+
+        dry.errors.each do |message|
+          predicate = message.predicate
+          next if predicate.nil?
+
+          expect(described_class::PREDICATE_CODES).to have_key(predicate),
+                                                      "unmapped predicate #{predicate.inspect} path=#{message.path}"
+          seen << predicate
+          described_class.from(dry, values:) # raises if unmapped
+        end
+      end
+
+      expect(seen).not_to be_empty
+    end
+
+    it 'rejects unknown predicates loudly' do
+      message = instance_double(
+        Dry::Schema::Message,
+        path: %i[channel url],
+        predicate: :never_heard_of?,
+        text: 'weird',
+        input: nil
+      )
+      dry = instance_double(Dry::Validation::Result, success?: false, errors: [message])
+
+      expect { described_class.from(dry, values: {}) }
+        .to raise_error(ArgumentError, /unmapped Dry validation predicate: :never_heard_of\?/)
+    end
+  end
 end

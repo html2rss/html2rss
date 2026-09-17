@@ -54,11 +54,19 @@ module Html2rss
           path = Array(message.path).compact
           ValidationIssue.new(
             path:,
-            code: PREDICATE_CODES.fetch(message.predicate, :invalid_value),
+            code: code_for(message.predicate),
             message: message.text,
             expected: expected_for(path, values),
             actual: actual_for(path, values, message)
           )
+        end
+
+        def code_for(predicate)
+          return :invalid_value if predicate.nil?
+
+          PREDICATE_CODES.fetch(predicate) do
+            raise ArgumentError, "unmapped Dry validation predicate: #{predicate.inspect}"
+          end
         end
 
         def actual_for(path, values, message)
@@ -76,28 +84,7 @@ module Html2rss
           parent = dig_path(values, path[0...-1])
           return unless parent.is_a?(Hash)
 
-          option = option_for(parent, path.last)
-          return unless option
-
-          { type: Selectors::SchemaDoc.json_type_for(option.type), required: option.required }
-        end
-
-        def option_for(parent, leaf)
-          if (name = parent[:extractor] || parent['extractor'])
-            klass = Selectors::Extractors::NAME_TO_CLASS[name.to_sym]
-            return find_option(klass, leaf) if klass
-          end
-
-          if (name = parent[:name] || parent['name'])
-            klass = Selectors::PostProcessors::NAME_TO_CLASS[name.to_sym]
-            return find_option(klass, leaf) if klass
-          end
-
-          nil
-        end
-
-        def find_option(klass, leaf)
-          Selectors::SchemaDoc.options_for(klass).find { |spec| spec.name == leaf }
+          Selectors::OptionContract.expectation_for(parent:, leaf: path.last)
         end
 
         def dig_path(values, path)

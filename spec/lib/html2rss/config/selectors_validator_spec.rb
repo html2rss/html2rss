@@ -48,7 +48,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       it 'fails with nested path under items', :aggregate_failures do
         expect(result).to be_failure
         expect(result.errors.map(&:path)).to include(%i[items pagination])
-        expect(result.errors.to_h.to_s).to include('`strategy` must be one of')
+        expect(result.errors.map(&:text).join("\n")).to include('`strategy` must be one of')
       end
     end
 
@@ -59,7 +59,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('`custom_selector` strategy requires `selector`')
+        expect(result.errors.map(&:text).join("\n")).to include('`custom_selector` strategy requires `selector`')
       end
     end
 
@@ -71,7 +71,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       it 'fails validation', :aggregate_failures do
         msg = '`json_cursor` strategy requires either `cursor_path` or `next_url_path`'
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include(msg)
+        expect(result.errors.map(&:text).join("\n")).to include(msg)
       end
     end
 
@@ -82,7 +82,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('must be an integer greater than 0')
+        expect(result.errors.map(&:text).join("\n")).to include('must be an integer greater than 0')
       end
     end
 
@@ -95,7 +95,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       # leave runtime paging without a positive Integer budget.
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('`max_pages` must be an integer greater than 0')
+        expect(result.errors.map(&:text).join("\n")).to include('`max_pages` must be an integer greater than 0')
       end
     end
   end

@@ -170,18 +170,19 @@ module Html2rss
         required(NESTING_KEY).hash
       end
 
-      # rubocop:disable-next Metrics/BlockLength -- nested Dry bubble keeps leaf paths in one rule
       rule(NESTING_KEY) do
+        bubble = lambda do |contract, selector, selector_key|
+          contract.new.call(selector).errors.each do |error|
+            key([selector_key, *error.path]).failure(error.text)
+          end
+        end
+
         value.each_pair do |selector_key, selector|
           case selector_key.to_sym
           when Selectors::ITEMS_SELECTOR_KEY
-            Items.new.call(selector).errors.each do |error|
-              key([selector_key, *error.path]).failure(error.text)
-            end
+            bubble.call(Items, selector, selector_key)
           when :enclosure
-            Enclosure.new.call(selector).errors.each do |error|
-              key([selector_key, *error.path]).failure(error.text)
-            end
+            bubble.call(Enclosure, selector, selector_key)
           when :guid, :categories
             unless selector.is_a?(Array)
               key(selector_key).failure("`#{selector_key}` must be an array")
@@ -196,24 +197,43 @@ module Html2rss
               key(selector_key).failure("`#{selector_key}` references unspecified `#{name}`")
             end
           else
-            # From here on, the selector is found under its "dynamic" selector_key
-            Selector.new.call(selector).errors.each do |error|
-              key([selector_key, *error.path]).failure(error.text)
-            end
+            bubble.call(Selector, selector, selector_key)
           end
         end
       end
 
       ##
+      # Selector validation errors with the internal +NESTING_KEY+ already stripped.
+      StrippedResult = Data.define(:errors) do
+        # @return [Boolean]
+        def success? = errors.empty?
+
+        # @return [Boolean]
+        def failure? = !success?
+      end
+
+      ##
+      # One bubbled selector error (path relative to the selectors hash).
+      StrippedError = Data.define(:path, :text)
+
+      ##
       # Shortcut to validate the config.
       # @param config [Hash] the configuration hash to validate
-      # @return [Dry::Validation::Result] the result of the validation
+      # @return [StrippedResult] success or failures with nesting key removed
       def self.call(config)
         # dry-validation/schema does not support "Dynamic Keys" yet: https://github.com/dry-rb/dry-schema/issues/37
         # But :selectors contains mostly "dynamic" keys, as the user defines them to extract article attributes.
         # --> Validate the dynamic keys manually.
         # To be able to specify a `rule`, nest the config under NESTING_KEY and mark that as `required`.
-        new.call(NESTING_KEY => config)
+        result = new.call(NESTING_KEY => config)
+        return StrippedResult.new(errors: []) if result.success?
+
+        errors = result.errors.map do |error|
+          path = Array(error.path)
+          path = path.drop(1) if path.first == NESTING_KEY
+          StrippedError.new(path:, text: error.text)
+        end
+        StrippedResult.new(errors:)
       end
     end
   end
