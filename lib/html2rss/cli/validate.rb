@@ -32,7 +32,7 @@ module Html2rss
             raise Thor::Error, format_failure(result) if target_files.size == 1
 
             warn "FAIL #{file}"
-            result.issues.each { |issue| warn "       #{format_issue(issue)}" }
+            result.issues.each { |issue| warn "       #{issue}" }
             failed << file
           end
         end
@@ -75,13 +75,7 @@ module Html2rss
         end
 
         def format_failure(report)
-          "Invalid configuration: #{report.to_h}"
-        end
-
-        def format_issue(issue)
-          path = Array(issue.path).join('.')
-          path = '(root)' if path.empty?
-          "#{path} [#{issue.code}] #{issue.message}"
+          "Invalid configuration: #{report}"
         end
 
         def path_like_config?(arg)

@@ -179,7 +179,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param pretty [Boolean] whether to pretty-print JSON
   # @return [String]
   def self.schema_json(pretty: true)
-    Config.json_schema_json(pretty:)
+    Config::Schema.json_schema_json(pretty:)
   end
 
   ##

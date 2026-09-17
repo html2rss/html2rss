@@ -11,6 +11,7 @@ RSpec.describe Html2rss::Config::ValidationReport do
       expect(report).not_to be_failure
       expect(report.issues).to eq([])
       expect(report.to_h).to eq(success: true, issues: [])
+      expect(report.to_s).to eq('valid')
     end
   end
 
@@ -41,6 +42,7 @@ RSpec.describe Html2rss::Config::ValidationReport do
           }
         ]
       )
+      expect(report.to_s).to eq('channel.url [missing_key] is missing')
     end
   end
 end

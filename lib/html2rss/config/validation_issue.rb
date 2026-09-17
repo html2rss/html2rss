@@ -44,6 +44,16 @@ module Html2rss
       def to_h
         { path:, code:, message:, expected:, actual: }
       end
+
+      ##
+      # Single renderer for CLI / exceptions (path [code] message).
+      #
+      # @return [String]
+      def to_s
+        path_s = path.join('.')
+        path_s = '(root)' if path_s.empty?
+        "#{path_s} [#{code}] #{message}"
+      end
     end
   end
 end

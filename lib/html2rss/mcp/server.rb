@@ -29,7 +29,7 @@ module Html2rss
           mime_type: 'application/json',
           body: lambda {
             [{ uri: 'html2rss://schema', mimeType: 'application/json',
-               text: Html2rss::Config.json_schema_json(pretty: true) }]
+               text: Html2rss::Config::Schema.json_schema_json(pretty: true) }]
           }
         },
         {
