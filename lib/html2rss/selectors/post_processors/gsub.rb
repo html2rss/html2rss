@@ -29,6 +29,8 @@ module Html2rss
       #
       # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
       class Gsub < Base
+        VALUE_TYPE = String
+
         # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
         OPTIONS = [
           Option.new(name: :pattern, type: String),
@@ -47,12 +49,6 @@ module Html2rss
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :gsub, klass: self)
 
-        # @param value [String] extracted selector value
-        # @param context [Selectors::Context] post-processor context
-        # @return [void]
-        def self.validate_args!(value, context)
-          assert_type value, String, :value, context:
-        end
 
         ##
         # @param value [String]

@@ -30,6 +30,8 @@ module Html2rss
       # Would return:
       #    'bar'
       class Substring < Base
+        VALUE_TYPE = String
+
         # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
         OPTIONS = [
           Option.new(name: :start, type: Integer),
@@ -48,12 +50,6 @@ module Html2rss
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :substring, klass: self)
 
-        # @param value [String] extracted selector value
-        # @param context [Selectors::Context] post-processor context
-        # @return [void]
-        def self.validate_args!(value, context)
-          assert_type(value, String, :value, context:)
-        end
 
         ##
         # Extracts the substring from the original string based on the provided start and end indices.

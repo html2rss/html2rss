@@ -78,18 +78,16 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     end
   end
 
-  describe '.validate_args!' do
-    let(:context) { { foo: :bar } }
+  describe 'VALUE_TYPE' do
+    let(:context) { Html2rss::Selectors::Context.new(channel_url: 'http://example.com', options: {}) }
 
     it 'does not raise when value is a String' do
-      expect do
-        described_class.validate_args!('some html', context)
-      end.not_to raise_error
+      expect { described_class.new('some html', context) }.not_to raise_error
     end
 
     it 'raises when value is not a String' do
       expect do
-        described_class.validate_args!(123, context)
+        described_class.new(123, context)
       end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType)
     end
   end

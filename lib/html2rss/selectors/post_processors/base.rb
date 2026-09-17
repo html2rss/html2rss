@@ -4,7 +4,9 @@ module Html2rss
   class Selectors
     module PostProcessors
       ##
-      # All post processors must inherit from this base class and implement `self.validate_args!` and `#get`.
+      # All post processors must inherit from this base class and implement `#get`.
+      # Declare +VALUE_TYPE+ when the extracted value must be a fixed Ruby type;
+      # override +validate_args!+ only for semantic checks beyond that.
       class Base
         # Asserts that the value is of the expected type(s)
         #
@@ -17,13 +19,8 @@ module Html2rss
         def self.assert_type(value, types, name, context:)
           return if Array(types).any? { |type| value.is_a?(type) }
 
-          options = if context.respond_to?(:options)
-                      context.options
-                    else
-                      { file: File.basename(caller(1, 1).first.split(':').first) }
-                    end
           message = "The type of `#{name}` must be #{Array(types).join(' or ')}, " \
-                    "but is: #{value.class} in: #{options.inspect}"
+                    "but is: #{value.class} in: #{context.options.inspect}"
           raise InvalidType, message, [], cause: nil
         end
 
@@ -65,23 +62,33 @@ module Html2rss
         end
 
         ##
-        # Semantic / value checks beyond the +OPTIONS+ type contract. Override in subclasses.
+        # Semantic / value checks beyond +VALUE_TYPE+ and the +OPTIONS+ contract.
+        # Override in subclasses that need non-type checks (non-empty, item_scope, …).
         #
         # @param _value [Object] extracted selector value
         # @param _context [Selectors::Context] post-processor execution context
         # @return [void]
         def self.validate_args!(_value, _context)
-          # no-op default; subclasses add semantic checks (non-empty, item_scope, …)
+          # no-op default
         end
 
         # Initializes the post processor
         #
         # @param value [Object] the value to be processed
         # @param context [Selectors::Context] runtime selector context and options
+        # @raise [InvalidType] if +context+ is not a {Selectors::Context} or +VALUE_TYPE+ mismatches
         def initialize(value, context)
+          unless context.is_a?(Selectors::Context)
+            raise InvalidType,
+                  "The type of `context` must be #{Selectors::Context}, but is: #{context.class}",
+                  [], cause: nil
+          end
+
           klass = self.class
-          klass.assert_type(context, Selectors::Context, 'context', context:)
           klass.validate_options!(context)
+          if klass.const_defined?(:VALUE_TYPE, false)
+            klass.assert_type(value, klass::VALUE_TYPE, :value, context:)
+          end
           klass.validate_args!(value, context)
 
           @value = value

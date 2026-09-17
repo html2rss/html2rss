@@ -38,6 +38,8 @@ module Html2rss
       # Would return:
       #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
       class SanitizeHtml < Base
+        VALUE_TYPE = String
+
         # JSON Schema description exported via +schema_doc+.
         DESCRIPTION = 'Sanitize HTML (sanitize gem RELAXED plus html2rss defaults: absolute URLs, ' \
                       'safe link/img attributes, wrap lone images in anchors).'
@@ -94,12 +96,6 @@ module Html2rss
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_doc = SchemaDoc.for_post_processor(name: :sanitize_html, klass: self)
 
-        # @param value [String] extracted selector value
-        # @param context [Selectors::Context] post-processor context
-        # @return [void]
-        def self.validate_args!(value, context)
-          assert_type value, String, :value, context:
-        end
 
         ##
         # @param html [String]
