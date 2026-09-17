@@ -60,15 +60,12 @@ RSpec.describe Html2rss::Selectors do
     end
   end
 
-  describe '#extract_article(item)' do
-    subject(:article) { instance.extract_article(item) }
-
-    let(:item) { Nokogiri::HTML(body).at('html') }
-
+  describe 'article extraction' do
     context 'when title is static and description the html of <body>' do
       # Issue was reported at: https://github.com/html2rss/html2rss/issues/157
       let(:selectors) do
         {
+          items: { selector: 'html' },
           title: { extractor: 'static', static: 'Test string' },
           description: { extractor: 'html', selector: 'body' }
         }
@@ -86,7 +83,7 @@ RSpec.describe Html2rss::Selectors do
       end
 
       it 'yields the articles with the static title and the <body> as description' do
-        expect(instance.extract_article(item)).to a_hash_including(
+        expect(instance.articles.first).to have_attributes(
           title: 'Test string',
           description: "<body>\n  <main>\n    <h1>article1</h1>\n    <script>alert('');</script>\n  </main>\n</body>"
         )
@@ -169,26 +166,27 @@ RSpec.describe Html2rss::Selectors do
     end
   end
 
-  describe '#enhance_article_hash(article_hash, item)' do
-    subject(:enhanced_article) do
-      item = Nokogiri::HTML(body).at('article:first')
-
-      instance.enhance_article_hash(article_hash, item)
-    end
-
+  describe '#each_enhance_pair' do
     before { selectors[:items][:enhance] = true }
 
-    let(:article_hash) { {} }
+    it 'enhances empty baselines with semantic extraction', :aggregate_failures do
+      baseline, enhanced, = instance.each_enhance_pair.first
 
-    it 'enhances the article_hash' do
-      expect(enhanced_article).to be(article_hash) & include(:title, :url)
+      expect(baseline).to include(:title)
+      expect(enhanced).to include(:title, :url)
     end
 
-    context 'when selector/key is already present in article_hash' do
-      let(:article_hash) { { title: 'Selected Article1 Headline' } }
+    context 'when selector/key is already present in the baseline' do
+      let(:selectors) do
+        {
+          items: { selector: 'article', enhance: true },
+          title: { extractor: 'static', static: 'Selected Article1 Headline' }
+        }
+      end
 
       it 'does not override the existing value' do
-        expect(enhanced_article[:title]).to eq(article_hash[:title])
+        _baseline, enhanced, = instance.each_enhance_pair.first
+        expect(enhanced[:title]).to eq('Selected Article1 Headline')
       end
     end
 
@@ -197,8 +195,9 @@ RSpec.describe Html2rss::Selectors do
         allow(Html2rss::Html::ArticleExtractor).to receive(:call).and_return(nil)
       end
 
-      it 'returns article_hash' do
-        expect(enhanced_article).to be(article_hash)
+      it 'returns the baseline unchanged' do
+        baseline, enhanced, = instance.each_enhance_pair.first
+        expect(enhanced).to eq(baseline)
       end
     end
 
@@ -210,8 +209,9 @@ RSpec.describe Html2rss::Selectors do
       end
 
       it 'enhances the article_hash anchorlessly', :aggregate_failures do
-        expect(enhanced_article[:title]).to eq('No Link Article')
-        expect(enhanced_article[:url].to_s).to eq('http://example.com/#no-link-article')
+        _baseline, enhanced, = instance.each_enhance_pair.first
+        expect(enhanced[:title]).to eq('No Link Article')
+        expect(enhanced[:url].to_s).to eq('http://example.com/#no-link-article')
       end
     end
 
@@ -230,8 +230,9 @@ RSpec.describe Html2rss::Selectors do
       end
 
       it 'localizes leftover dates with the channel time_zone', :aggregate_failures do
-        expect(enhanced_article[:published_at]).to be_a(DateTime)
-        expect(enhanced_article[:published_at].zone).to eq('+01:00')
+        _baseline, enhanced, = instance.each_enhance_pair.first
+        expect(enhanced[:published_at]).to be_a(DateTime)
+        expect(enhanced[:published_at].zone).to eq('+01:00')
       end
     end
   end

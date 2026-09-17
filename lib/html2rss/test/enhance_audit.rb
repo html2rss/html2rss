@@ -40,9 +40,7 @@ module Html2rss
         }
         warnings = []
 
-        response.parsed_body.css(selector_engine.items_selector).each do |item|
-          baseline = selector_engine.extract_article(item, response)
-          enhanced = selector_engine.enhance_article_hash(baseline.dup, item, response.url)
+        selector_engine.each_enhance_pair do |baseline, enhanced, item|
           item_keys = keys_added(baseline, enhanced)
           merge_keys_added!(gains, item_keys)
           append_item_warnings!(warnings, item:, enhanced:, item_keys:)

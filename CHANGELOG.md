@@ -10,10 +10,10 @@
   - MCP `validate` payload uses `issues` only (removed nested `errors:`). `Test::Result` uses `validation_issues` (removed `validation_errors` nest). Bump `mcp_contract_version` to **3** — refresh `tools/list`.
   - Nested selector failures keep leaf paths (e.g. `selectors.items.pagination`) instead of flattening prose under `:selectors`.
 - **Selectors modernization** (Ruby API / schema contract):
-  - `Selectors::Context` is now `Data.define(:options, :channel, :item_scope)` — Hash-style `[]` / `dig` and the old nested `config: { channel: }` bag are gone. Callers use member readers (`context.options`, `context.channel`, `context.item_scope`; helpers `channel_url` / `time_zone`).
+  - Selectors internals: `AttributeSelector` (single `#call` entry), `CategoriesExtractor`, `ItemScope`; `ObjectToXmlConverter` lives under `Html2rss::Selectors::ObjectToXmlConverter`.
+  - Extractor runtime args are `Args` / `SelectorArgs` (distinct from config-facing `OPTIONS`).
+  - `Selectors::Context` is `Data.define(:options, :channel_url, :time_zone, :item_scope)` — no channel Hash.
   - `gsub` `replacement` accepts `String` or `Hash` (Ruby `String#gsub` hash form); schema / validator follow `Selectors::PostProcessors::Gsub::OPTIONS`.
-  - `Href` runtime options use `base_url` (not a channel object) for relative URL resolution.
-  - Selectors internals split into focused collaborators (`AttributeSelector`, `BodyParser`, `CategoriesExtractor`, `ItemScope`, …); `ObjectToXmlConverter` moved to `Html2rss::ObjectToXmlConverter` (`lib/html2rss/object_to_xml_converter.rb`).
   - Extractor / post-processor config-facing options are owned as each strategy’s `OPTIONS` Array of `Selectors::Option` (SoT for validator, SchemaDoc, and `Base.validate_options!`). Do not reintroduce parallel `OPTION_TYPES` maps.
 - Removed `html_to_markdown` post-processor and the `reverse_markdown` gem dependency. Configs using `post_process` name `html_to_markdown` now fail validation.
 
