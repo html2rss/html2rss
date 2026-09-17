@@ -22,7 +22,7 @@ RSpec.describe Html2rss::Selectors::OptionContract do
       expect(described_class.expectation_for(parent: { selector: '.x' }, leaf: :attribute)).to be_nil
     end
 
-    it 'returns nil for unknown registry names' do
+    it 'returns nil for unknown registry names', :aggregate_failures do
       expect(described_class.expectation_for(parent: { extractor: 'nope' }, leaf: :attribute)).to be_nil
       expect(described_class.expectation_for(parent: { name: 'nope' }, leaf: :pattern)).to be_nil
     end
