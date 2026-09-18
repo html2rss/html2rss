@@ -86,11 +86,11 @@ module Html2rss
       #
       # @yieldparam node [Node]
       # @return [Enumerator, Array<Node>]
-      def each_node(&block)
-        return enum_for(:each_node) unless block
+      def each_node(&)
+        return enum_for(:each_node) unless block_given?
 
         yield self
-        children.each { |child| child.each_node(&block) }
+        children.each { |child| child.each_node(&) }
       end
 
       ##
@@ -99,11 +99,11 @@ module Html2rss
       #
       # @yieldparam node [Node]
       # @return [Integer]
-      def count_descendants(&block)
+      def count_descendants(&)
         total = 0
         children.each do |child|
-          total += 1 if block.nil? || yield(child)
-          total += child.count_descendants(&block)
+          total += 1 if !block_given? || yield(child)
+          total += child.count_descendants(&)
         end
         total
       end
