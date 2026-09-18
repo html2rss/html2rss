@@ -14,7 +14,7 @@ Branch tip: `feat/config-validation-report`
 | 04 ItemEnv/StepEnv/base_url | `9674220` | exit 0 |
 | 05 OptionSpec/SchemaExport/JsonXml/ExtractorArgs | `f2baeb7` + `b1c44ec` | exit 0 |
 | 06 Strategy `#get` → `#call` | `a7b67af` | exit 0 |
-| 07 README / CONTEXT / CHANGELOG / make ready | (this phase) | pending |
+| 07 README / CONTEXT / CHANGELOG / make ready | `e7736f4` | `make ready` exit 0 |
 
 ## Classification & craft (locked)
 
