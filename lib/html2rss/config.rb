@@ -49,18 +49,6 @@ module Html2rss
       end
 
       ##
-      # Loads and validates a YAML configuration file.
-      #
-      # @param file [String] the YAML file to load
-      # @param feed_name [String, nil] optional feed name for multi-feed files
-      # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
-      # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Html2rss::Config::ValidationReport]
-      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: {})
-        validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
-      end
-
-      ##
       # Serializes a configuration hash to string-key YAML.
       #
       # This is the single serializer for CLI capture and MCP +capture+.
@@ -173,6 +161,20 @@ module Html2rss
         Html2rss.defaults.default_strategy || :auto
       end
 
+      ##
+      # Normalizes raw config input with defaults.
+      #
+      # @param config [Hash{Symbol => Object}] raw config input
+      # @return [Hash{Symbol => Object}] config with defaults applied
+      def prepare_defaults(config)
+        config = HashUtil.deep_merge(default_config, config)
+        config = HashUtil.deep_merge({ selectors: Selectors::DEFAULT_CONFIG }, config) if config[:selectors]
+        if config[:auto_source]
+          config = HashUtil.deep_merge({ auto_source: Html2rss::AutoSource::DEFAULT_CONFIG }, config)
+        end
+        config
+      end
+
       private
 
       def default_request_config
@@ -202,7 +204,7 @@ module Html2rss
       end
 
       def prepare_for_validation(config)
-        Config::Preparer.new.call(HashUtil.deep_dup(config))
+        prepare_defaults(HashUtil.deep_dup(config))
       end
 
       # @param config_input [Hash, String]
@@ -229,7 +231,7 @@ module Html2rss
     # @raise [InvalidConfig] if the configuration fails validation.
     def initialize(config)
       @request_controls = RequestControls.from_config(config)
-      prepared_config = Preparer.new.call(config)
+      prepared_config = self.class.prepare_defaults(config.dup)
       validated_config = validated_config_for(prepared_config)
 
       @config = validated_config.freeze
@@ -286,36 +288,6 @@ module Html2rss
     private
 
     attr_reader :config
-
-    # Normalizes raw config input before validation.
-    class Preparer
-      ##
-      # @param config [Hash{Symbol => Object}] raw config input
-      # @return [Hash{Symbol => Object}] config with defaults applied
-      def call(config)
-        config = config.dup if config.frozen?
-
-        config = apply_default_config(config)
-        config = apply_default_selectors_config(config) if config[:selectors]
-        config = apply_default_auto_source_config(config) if config[:auto_source]
-
-        config
-      end
-
-      private
-
-      def apply_default_config(config)
-        HashUtil.deep_merge(Config.default_config, config)
-      end
-
-      def apply_default_selectors_config(config)
-        HashUtil.deep_merge({ selectors: Selectors::DEFAULT_CONFIG }, config)
-      end
-
-      def apply_default_auto_source_config(config)
-        HashUtil.deep_merge({ auto_source: Html2rss::AutoSource::DEFAULT_CONFIG }, config)
-      end
-    end
 
     def validated_config_for(config)
       dry = Validator.new.call(config)
