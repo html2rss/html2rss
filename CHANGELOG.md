@@ -20,6 +20,12 @@
   - Modernized `SanitizeHtml`: extracted pure `SanitizeHtml.sanitize(html, base_url)` method; `SanitizeHtml.call(html, url)` no longer allocates a fake `StepEnv` hull object.
   - Added `JsonXml.call(object)` class-level convenience converter method.
   - Clarified `#call` ownership taxonomy: registry dispatchers (`Extractors.call`/`PostProcessors.call`), strategy execution (`#call`), and helpers (`JsonXml.call`/`SanitizeHtml.call`).
+- **Codebase quality loop & modern Ruby idioms**:
+  - Eliminated all private `send` calls in specs; promoted `reset_defaults!` and `baseline_request_budget_for` to typed, documented public APIs.
+  - Removed all top-level helper method definitions from spec files; centralized reusable fixtures and builders in `spec/support/helpers/`.
+  - Decomposed bloated `Test#call` into focused private helpers (`execute_timed_pipeline`, `evaluate_outcome`, `build_test_result`), resolving Reek `TooManyStatements` and eliminating RuboCop complexity overrides.
+  - Frozen transport set `MCP::Server::TRANSPORTS` allocated once at load time.
+  - Adopted Ruby 3.3 block-forwarding (`&`) in `SST::Node#each_node` and `#count_descendants`.
 - **Selectors vocabulary cutover** (Breaking Ruby API; YAML / MCP wire unchanged — `selectors`, `extractor`, `post_process`):
   - Folded `CategoriesExtractor` and `AttributeSelector` into private field dispatch on `Selectors` (no `FieldSelect`).
   - Renamed `ItemScope` → `ItemEnv`, `Context` → `StepEnv` with member `base_url` (not `channel_url` on StepEnv).

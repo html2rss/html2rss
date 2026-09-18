@@ -59,6 +59,10 @@ module Html2rss
     end
 
     ##
+    # Internal options for pipeline execution and outcome evaluation.
+    PipelineOptions = Data.define(:min_items, :strict_quality, :compare_enhance)
+
+    ##
     # Ship-quality audit summary for a configuration test (warn-only).
     QualityReport = Data.define(:warnings, :metrics, :native_feed, :defer_reason) do
       ##
@@ -173,16 +177,21 @@ module Html2rss
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation, raw_config) unless validation.success?
 
-      raw_config[:strategy] = strategy.to_sym if strategy
-      raw_config[:params] = params if params&.any?
-      config = Config.from_hash(raw_config)
-
+      config = build_test_config(raw_config, strategy, params)
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      execute_timed_pipeline(raw_config, config, started, { min_items:, strict_quality:, compare_enhance: })
+      pipeline_options = PipelineOptions.new(min_items:, strict_quality:, compare_enhance:)
+      execute_timed_pipeline(raw_config, config, started, pipeline_options)
     rescue StandardError => error
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       execution_failure_result(error, raw_config, duration)
     end
+
+    def build_test_config(raw_config, strategy, params)
+      raw_config[:strategy] = strategy.to_sym if strategy
+      raw_config[:params] = params if params&.any?
+      Config.from_hash(raw_config)
+    end
+    private_class_method :build_test_config
 
     def compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
       quality_report_for(
@@ -195,13 +204,13 @@ module Html2rss
     end
     private_class_method :compile_quality_report
 
-    def execute_timed_pipeline(raw_config, config, started, options)
+    def execute_timed_pipeline(raw_config, config, started, pipeline_options)
       feed_result, pipeline_outcome = extract_feed(raw_config)
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       quality_report = compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
-      enhance_compare = build_enhance_compare(config, pipeline_outcome) if options[:compare_enhance]
+      enhance_compare = build_enhance_compare(config, pipeline_outcome) if pipeline_options.compare_enhance
 
-      build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, options)
+      build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, pipeline_options)
     end
     private_class_method :execute_timed_pipeline
 
@@ -217,10 +226,10 @@ module Html2rss
     end
     private_class_method :evaluate_outcome
 
-    def build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, options) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+    def build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, pipeline_options) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
       rss_doc = feed_result.to_rss
       passed, failure_kind, error_message = evaluate_outcome(
-        rss_doc.items.size, options[:min_items], options[:strict_quality], quality_report
+        rss_doc.items.size, pipeline_options.min_items, pipeline_options.strict_quality, quality_report
       )
       strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
                       RequestService.default_strategy_name
