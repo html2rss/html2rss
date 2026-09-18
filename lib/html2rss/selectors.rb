@@ -233,8 +233,8 @@ module Html2rss
     end
 
     def post_process(scope, value, post_process_steps)
-      post_process_steps.each do |options|
-        value = PostProcessors.call(options[:name], value, scope.context_for(options:))
+      post_process_steps.each do |step_config|
+        value = PostProcessors.call(step_config[:name], value, scope.context_for(step_config:))
       end
 
       value

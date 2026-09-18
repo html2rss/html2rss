@@ -56,7 +56,7 @@ module Html2rss
       # @return [Hash{Symbol => Hash}]
       def post_processor_properties(name, klass)
         properties = { name: { type: 'string', const: name } }
-        options_for(klass).each do |spec|
+        OptionSpec.for(klass).each do |spec|
           properties[spec.name] = property_schema_for(spec.type)
         end
         properties
@@ -67,14 +67,7 @@ module Html2rss
       # @return [Array<String>]
       def post_processor_required(klass)
         required = ['name']
-        required + options_for(klass).select(&:required).map { |spec| spec.name.to_s }
-      end
-
-      ##
-      # @param klass [Class]
-      # @return [Array<OptionSpec>]
-      def options_for(klass)
-        OptionSpec.for(klass)
+        required + OptionSpec.for(klass).select(&:required).map { |spec| spec.name.to_s }
       end
 
       ##

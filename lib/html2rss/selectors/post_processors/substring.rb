@@ -64,12 +64,12 @@ module Html2rss
         #
         # @return [Range] The range object representing the start and end/Infinity (integers).
         def range
-          options = context.options
-          start = options[:start]
+          step_config = context.step_config
+          start = step_config[:start]
 
-          return (start..) unless options.key?(:end)
+          return (start..) unless step_config.key?(:end)
 
-          finish = options[:end]
+          finish = step_config[:end]
           raise ArgumentError, 'The `start` value must be unequal to the `end` value.' if start == finish
 
           (start..finish)

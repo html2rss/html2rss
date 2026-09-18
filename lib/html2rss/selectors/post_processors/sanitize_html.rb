@@ -110,7 +110,29 @@ module Html2rss
           return @fragment_cache[key] if @fragment_cache.key?(key)
 
           @fragment_cache.clear if @fragment_cache.size > 256
-          @fragment_cache[key] = new(html, Selectors::StepEnv.new(base_url: url, options: {})).call
+          @fragment_cache[key] = sanitize(html, url)
+        end
+
+        ##
+        # Pure HTML sanitization with preserved newlines and absolute URL resolution.
+        #
+        # @param html [String]
+        # @param base_url [String, Html2rss::Url]
+        # @return [String, nil]
+        def self.sanitize(html, base_url)
+          return nil if String(html).empty?
+
+          # Temporarily replace newlines with a placeholder to preserve them during space collapsing
+          temp_value = html.to_s.gsub("\n", ' __NEWLINE_PLACEHOLDER__ ')
+          sanitized_html = Sanitize.fragment(temp_value, sanitize_config(base_url)).to_s
+          sanitized_html.gsub!(/\s+/, ' ')
+
+          # Restore newlines and clean up surrounding whitespace
+          sanitized_html.gsub!(/[ \t\r]*__NEWLINE_PLACEHOLDER__[ \t\r]*/, "\n")
+          sanitized_html.gsub!(/\n{3,}/, "\n\n")
+
+          sanitized_html.strip!
+          sanitized_html.empty? ? nil : sanitized_html
         end
 
         ##
@@ -141,17 +163,7 @@ module Html2rss
         ##
         # @return [String, nil]
         def call
-          # Temporarily replace newlines with a placeholder to preserve them during space collapsing
-          temp_value = value.to_s.gsub("\n", ' __NEWLINE_PLACEHOLDER__ ')
-          sanitized_html = Sanitize.fragment(temp_value, self.class.sanitize_config(base_url)).to_s
-          sanitized_html.gsub!(/\s+/, ' ')
-
-          # Restore newlines and clean up surrounding whitespace
-          sanitized_html.gsub!(/[ \t\r]*__NEWLINE_PLACEHOLDER__[ \t\r]*/, "\n")
-          sanitized_html.gsub!(/\n{3,}/, "\n\n")
-
-          sanitized_html.strip!
-          sanitized_html.empty? ? nil : sanitized_html
+          self.class.sanitize(value, base_url)
         end
 
         private

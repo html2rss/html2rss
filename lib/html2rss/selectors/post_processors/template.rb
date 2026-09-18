@@ -60,12 +60,12 @@ module Html2rss
         # Ensures a non-empty template +string+ option and an +item_env+ for sibling lookup.
         #
         # @param _value [String] current selector value (unused here)
-        # @param context [Selectors::StepEnv] must include options[:string] and item_env
+        # @param context [Selectors::StepEnv] must include step_config[:string] and item_env
         # @return [void]
         # @raise [InvalidType] when the template string is blank
         # @raise [MissingOption] when item_env is missing
         def self.validate_args!(_value, context)
-          string = context.options&.dig(:string).to_s
+          string = context.step_config[:string].to_s
           raise InvalidType, 'The `string` template is absent.' if string.empty?
 
           return if context.item_env
@@ -79,8 +79,7 @@ module Html2rss
         def initialize(value, context)
           super
 
-          @options = context.options || {}
-          @string = @options[:string].to_s
+          @string = context.step_config[:string].to_s
           @getter = ->(key) { item_value(key) }
         end
 

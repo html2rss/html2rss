@@ -56,10 +56,10 @@ module Html2rss
         def initialize(value, context)
           super
 
-          options = context.options
+          step_config = context.step_config
 
-          @replacement = options[:replacement]
-          @pattern = options[:pattern]
+          @replacement = step_config[:replacement]
+          @pattern = step_config[:pattern]
         end
 
         ##

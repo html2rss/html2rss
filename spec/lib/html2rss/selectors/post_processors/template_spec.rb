@@ -4,7 +4,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
   subject { described_class.new('Hi', context).call }
 
   let(:item_env) { instance_double(Html2rss::Selectors::ItemEnv) }
-  let(:context) { Html2rss::Selectors::StepEnv.new(options:, item_env:) }
+  let(:context) { Html2rss::Selectors::StepEnv.new(step_config:, item_env:) }
 
   before do
     allow(item_env).to receive(:select).with(:name).and_return('My name')
@@ -17,7 +17,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
   context 'when the string is empty' do
     it 'raises an error' do
       expect do
-        described_class.new('', Html2rss::Selectors::StepEnv.new(options: { string: '' }, item_env:))
+        described_class.new('', Html2rss::Selectors::StepEnv.new(step_config: { string: '' }, item_env:))
       end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, 'The `string` template is absent.')
     end
   end
@@ -26,20 +26,20 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
     it 'raises MissingOption' do
       expect do
         # rubocop:disable-next Style/FormatStringToken -- template post-processor uses %{key}
-        described_class.new('Hi', Html2rss::Selectors::StepEnv.new(options: { string: '%{name}' }))
+        described_class.new('Hi', Html2rss::Selectors::StepEnv.new(step_config: { string: '%{name}' }))
       end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
                          'The post-processor context is missing `item_env`.')
     end
   end
 
   context 'with mixed complex formatting notation' do
-    let(:options) { { string: '%{self}! %<name>s is %{author}! %{returns_nil}' } } # rubocop:disable Style/FormatStringToken
+    let(:step_config) { { string: '%{self}! %<name>s is %{author}! %{returns_nil}' } } # rubocop:disable Style/FormatStringToken
 
     it { is_expected.to eq 'Hi! My name is Slim Shady! ' }
   end
 
   context 'when routing nested selects through ItemEnv' do
-    let(:options) { { string: '%{name}' } } # rubocop:disable Style/FormatStringToken
+    let(:step_config) { { string: '%{name}' } } # rubocop:disable Style/FormatStringToken
 
     it 'renders via scope.select', :aggregate_failures do
       expect(subject).to eq('My name')

@@ -20,7 +20,7 @@ module Html2rss
           return if Array(types).any? { |type| value.is_a?(type) }
 
           message = "The type of `#{name}` must be #{Array(types).join(' or ')}, " \
-                    "but is: #{value.class} in: #{context.options.inspect}"
+                    "but is: #{value.class} in: #{context.step_config.inspect}"
           raise InvalidType, message, [], cause: nil
         end
 
@@ -32,33 +32,26 @@ module Html2rss
         # @raise [MissingOption] if a required option key is absent
         # @raise [InvalidType] if a present option has the wrong type
         def self.validate_options!(context)
-          option_values = context.options || {}
-          strategy_options.each { |spec| validate_option_spec!(spec, option_values, context) }
+          OptionSpec.for(self).each { |spec| validate_option_spec!(spec, context.step_config, context) }
         end
 
         ##
         # @param spec [Selectors::OptionSpec]
-        # @param option_values [Hash] post-processor YAML option keys
+        # @param step_config [Hash] post-processor YAML step configuration
         # @param context [Selectors::StepEnv]
         # @return [void]
-        def self.validate_option_spec!(spec, option_values, context)
-          unless option_values.key?(spec.name)
+        def self.validate_option_spec!(spec, step_config, context)
+          unless step_config.key?(spec.name)
             return unless spec.required
 
-            raise MissingOption, "The `#{spec.name}` option is missing in: #{option_values.inspect}", [],
+            raise MissingOption, "The `#{spec.name}` option is missing in: #{step_config.inspect}", [],
                   cause: nil
           end
 
-          value = option_values[spec.name]
+          value = step_config[spec.name]
           return if value.nil? && !spec.required
 
           assert_type(value, spec.type, spec.name, context:)
-        end
-
-        ##
-        # @return [Array<Selectors::OptionSpec>]
-        def self.strategy_options
-          const_defined?(:OPTIONS, false) ? const_get(:OPTIONS) : [].freeze
         end
 
         ##
