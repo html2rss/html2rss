@@ -6,9 +6,20 @@ module Html2rss
   class Config
     ##
     # Validates the configuration hash for :selectors.
-    class SelectorsValidator < Dry::Validation::Contract
-      # Required wrapper key used to validate dynamic selector names.
-      NESTING_KEY = :dynamic_keys_workaround
+    module SelectorsValidator
+      ##
+      # One selector validation error.
+      Error = Data.define(:path, :text)
+
+      ##
+      # Validation result containing collected selector errors.
+      Result = Data.define(:errors) do
+        # @return [Boolean]
+        def success? = errors.empty?
+
+        # @return [Boolean]
+        def failure? = !success?
+      end
 
       ##
       # Validates the configuration of the :items selector
@@ -135,74 +146,64 @@ module Html2rss
         end
       end
 
-      params do
-        required(NESTING_KEY).hash
-      end
+      class << self
+        ##
+        # Shortcut to validate the config.
+        # @param config [Hash] the configuration hash to validate
+        # @return [Result]
+        def call(config)
+          errors = []
+          return Result.new(errors:) unless config.is_a?(Hash)
 
-      rule(NESTING_KEY) do
-        bubble = lambda do |contract, selector, selector_key|
-          contract.new.call(selector).errors.each do |error|
-            key([selector_key, *error.path]).failure(error.text)
+          config.each_pair do |selector_key, selector|
+            validate_entry(selector_key, selector, config, errors)
           end
+
+          Result.new(errors:)
         end
 
-        value.each_pair do |selector_key, selector|
+        private
+
+        def validate_entry(selector_key, selector, config, errors)
           case selector_key.to_sym
           when Selectors::ITEMS_SELECTOR_KEY
-            bubble.call(Items, selector, selector_key)
+            collect_contract_errors(Items, selector, selector_key, errors)
           when :enclosure
-            bubble.call(Enclosure, selector, selector_key)
+            collect_contract_errors(Enclosure, selector, selector_key, errors)
           when :guid, :categories
-            unless selector.is_a?(Array)
-              key(selector_key).failure("`#{selector_key}` must be an array")
-              next
-            end
-
-            key(selector_key).failure("`#{selector_key}` must contain at least one element") if selector.empty?
-
-            selector.each do |name|
-              next if values[NESTING_KEY].key?(name.to_sym)
-
-              key(selector_key).failure("`#{selector_key}` references unspecified `#{name}`")
-            end
+            validate_array_selector(selector_key, selector, config, errors)
           else
-            bubble.call(Selector, selector, selector_key)
+            collect_contract_errors(Selector, selector, selector_key, errors)
           end
         end
-      end
 
-      ##
-      # Selector validation errors with the internal +NESTING_KEY+ already stripped.
-      StrippedResult = Data.define(:errors) do
-        # @return [Boolean]
-        def success? = errors.empty?
-
-        # @return [Boolean]
-        def failure? = !success?
-      end
-
-      ##
-      # One bubbled selector error (path relative to the selectors hash).
-      StrippedError = Data.define(:path, :text)
-
-      ##
-      # Shortcut to validate the config.
-      # @param config [Hash] the configuration hash to validate
-      # @return [StrippedResult] success or failures with nesting key removed
-      def self.call(config)
-        # dry-validation/schema does not support "Dynamic Keys" yet: https://github.com/dry-rb/dry-schema/issues/37
-        # But :selectors contains mostly "dynamic" keys, as the user defines them to extract article attributes.
-        # --> Validate the dynamic keys manually.
-        # To be able to specify a `rule`, nest the config under NESTING_KEY and mark that as `required`.
-        result = new.call(NESTING_KEY => config)
-        return StrippedResult.new(errors: []) if result.success?
-
-        errors = result.errors.map do |error|
-          path = Array(error.path)
-          path = path.drop(1) if path.first == NESTING_KEY
-          StrippedError.new(path:, text: error.text)
+        def collect_contract_errors(contract_class, selector, selector_key, errors)
+          contract_class.new.call(selector).errors.each do |error|
+            errors << Error.new(path: [selector_key, *error.path], text: error.text)
+          end
         end
-        StrippedResult.new(errors:)
+
+        def validate_array_selector(selector_key, selector, config, errors)
+          msg = array_selector_shape_error(selector_key, selector)
+          return errors << Error.new(path: [selector_key], text: msg) if msg
+
+          check_unspecified_references(selector_key, selector, config, errors)
+        end
+
+        def array_selector_shape_error(key, selector)
+          return "`#{key}` must be an array" unless selector.is_a?(Array)
+          return "`#{key}` must contain at least one element" if selector.empty?
+
+          nil
+        end
+
+        def check_unspecified_references(selector_key, selector, config, errors)
+          selector.each do |name|
+            next if config.key?(name.to_sym) || config.key?(name.to_s)
+
+            errors << Error.new(path: [selector_key], text: "`#{selector_key}` references unspecified `#{name}`")
+          end
+        end
       end
     end
   end
