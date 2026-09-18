@@ -31,7 +31,7 @@ module Html2rss
         when :guid
           Array(config).map { |selector_name| scope.select(selector_name) }
         when :categories
-          CategoriesExtractor.select_categories(category_selectors: config, scope:)
+          select_categories(category_selectors: config, scope:)
         end
       end
 
@@ -55,6 +55,58 @@ module Html2rss
         end
 
         value
+      end
+
+      # Flattens configured category selector names into discrete category strings.
+      # When a selector matches multiple nodes, each node is extracted independently
+      # (with optional post-processors) so multi-tag UIs become multiple categories.
+      #
+      # @param category_selectors [Array, String, Symbol]
+      # @param scope [ItemScope]
+      # @return [Array<String>]
+      def select_categories(category_selectors:, scope:)
+        Array(category_selectors).flat_map do |selector_name|
+          extract_category_values(selector_name, scope:)
+        end
+      end
+
+      def extract_category_values(selector_name, scope:)
+        _selector_key, config = scope.scraper.selector_config_for(selector_name, allow_nil: true)
+        return [] unless config
+
+        nodes = extract_nodes(item: scope.item, config:)
+        return Array(scope.select(selector_name)) unless node_set_with_multiple_elements?(nodes)
+
+        Array(nodes).flat_map { |node| extract_categories_from_node(node, scope:, config:) }
+      end
+
+      def extract_categories_from_node(node, scope:, config:)
+        values = Extractors.get(config.merge(base_url: scope.base_url, selector: nil), node)
+        values = apply_post_process_steps(scope:, value: values, post_process_steps: config[:post_process])
+
+        Array(values).filter_map { |category| extract_category_text(category) }
+      end
+
+      def extract_category_text(category)
+        text = case category
+               when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
+                 Html2rss::Html::Navigator.extract_visible_text(category)
+               else
+                 category&.to_s
+               end
+
+        stripped = text&.strip
+        stripped unless stripped.nil? || stripped.empty?
+      end
+
+      def node_set_with_multiple_elements?(nodes)
+        nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
+      end
+
+      def extract_nodes(item:, config:)
+        return unless config.respond_to?(:[]) && config[:selector]
+
+        Extractors.element(item, config[:selector])
       end
 
       # @return [Hash, nil] enclosure details, or nil when the selector yields nothing.

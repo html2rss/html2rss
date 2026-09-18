@@ -12,7 +12,12 @@ RSpec.describe Html2rss::Selectors::AttributeSelector do
         headers: { 'content-type' => 'text/html' },
         body: <<~HTML
           <html><body>
-            <article><h1>episode</h1><audio src="/media/episode.mp3"></audio></article>
+            <article>
+              <h1>episode</h1>
+              <span class="category">News</span>
+              <div class="tags"><a href="/t/ruby">Ruby</a><a href="/t/rss">RSS</a></div>
+              <audio src="/media/episode.mp3"></audio>
+            </article>
           </body></html>
         HTML
       )
@@ -42,13 +47,14 @@ RSpec.describe Html2rss::Selectors::AttributeSelector do
     end
 
     # rubocop:disable-next RSpec/ExampleLength
-    it 'extracts categories via CategoriesExtractor', :aggregate_failures do
+    it 'flattens single- and multi-node category selectors into discrete strings', :aggregate_failures do
       scraper = Html2rss::Selectors.new(
         response,
         selectors: {
           items: { selector: 'article', enhance: false },
-          tag: { selector: 'h1' },
-          categories: %i[tag]
+          category: { selector: '.category' },
+          tags: { selector: '.tags a', extractor: 'text' },
+          categories: %i[category tags]
         },
         time_zone: 'UTC'
       )
@@ -59,7 +65,47 @@ RSpec.describe Html2rss::Selectors::AttributeSelector do
         time_zone: 'UTC'
       )
 
-      expect(attribute_selector.call(:categories, scope: cat_scope, config: %i[tag])).to eq(%w[episode])
+      expect(attribute_selector.call(:categories, scope: cat_scope, config: %i[category tags]))
+        .to eq(%w[News Ruby RSS])
+    end
+
+    it 'returns an empty list when a referenced category selector is missing' do
+      scraper = Html2rss::Selectors.new(
+        response,
+        selectors: { items: { selector: 'article', enhance: false }, categories: %i[missing] },
+        time_zone: 'UTC'
+      )
+      cat_scope = Html2rss::Selectors::ItemScope.new(
+        item: response.parsed_body.at_css('article'),
+        base_url: response.url,
+        scraper:,
+        time_zone: 'UTC'
+      )
+
+      expect(attribute_selector.call(:categories, scope: cat_scope, config: %i[missing])).to eq([])
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength
+    it 'applies post_process steps on multi-node category extracts', :aggregate_failures do
+      selectors_config = {
+        items: { selector: 'article', enhance: false },
+        tags: {
+          selector: '.tags a',
+          extractor: 'text',
+          post_process: { name: 'gsub', pattern: 'R', replacement: 'r' }
+        },
+        categories: %i[tags]
+      }
+      scraper = Html2rss::Selectors.new(response, selectors: selectors_config, time_zone: 'UTC')
+      processed_scope = Html2rss::Selectors::ItemScope.new(
+        item: response.parsed_body.at_css('article'),
+        base_url: response.url,
+        scraper:,
+        time_zone: 'UTC'
+      )
+
+      expect(attribute_selector.call(:categories, scope: processed_scope, config: %i[tags]))
+        .to eq(%w[ruby rSS])
     end
 
     # rubocop:disable-next RSpec/ExampleLength

@@ -124,7 +124,7 @@ module Html2rss
     end
 
     ##
-    # Resolves a selector name to +[key, config]+. Used by {CategoriesExtractor}.
+    # Resolves a selector name to +[key, config]+. Used by category field dispatch.
     #
     # @param name [Symbol, String]
     # @param allow_nil [Boolean]
