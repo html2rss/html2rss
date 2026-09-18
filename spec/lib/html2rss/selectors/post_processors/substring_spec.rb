@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
   def context_for(options)
-    Html2rss::Selectors::Context.new(options:)
+    Html2rss::Selectors::StepEnv.new(options:)
   end
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }

@@ -52,7 +52,7 @@ module Html2rss
 
         ##
         # @param value [String]
-        # @param context [Selectors::Context]
+        # @param context [Selectors::StepEnv]
         def initialize(value, context)
           super
 

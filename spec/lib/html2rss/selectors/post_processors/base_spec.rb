@@ -16,12 +16,12 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     end
 
     it 'does not raise when required options are present and typed' do
-      context = Html2rss::Selectors::Context.new(options: { key1: 'value1' })
+      context = Html2rss::Selectors::StepEnv.new(options: { key1: 'value1' })
       expect { processor.validate_options!(context) }.not_to raise_error
     end
 
     it 'raises when a required option is missing' do
-      context = Html2rss::Selectors::Context.new(options: {})
+      context = Html2rss::Selectors::StepEnv.new(options: {})
       expect do
         processor.validate_options!(context)
       end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
@@ -29,7 +29,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     end
 
     it 'raises when an optional option has the wrong type' do
-      context = Html2rss::Selectors::Context.new(options: { key1: 'ok', key2: 1 })
+      context = Html2rss::Selectors::StepEnv.new(options: { key1: 'ok', key2: 1 })
       expect do
         processor.validate_options!(context)
       end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /type of `key2`/)
@@ -37,7 +37,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
   end
 
   describe '.assert_type' do
-    let(:context) { Html2rss::Selectors::Context.new(options: { name: 'gsub' }) }
+    let(:context) { Html2rss::Selectors::StepEnv.new(options: { name: 'gsub' }) }
 
     it 'does not raise an error if value is of the correct type' do
       expect { described_class.assert_type('string', String, 'test', context:) }.not_to raise_error
@@ -61,7 +61,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
   describe '.validate_args!' do
     it 'is a no-op by default' do
       expect do
-        described_class.validate_args!('', Html2rss::Selectors::Context.new(options: {}))
+        described_class.validate_args!('', Html2rss::Selectors::StepEnv.new(options: {}))
       end.not_to raise_error
     end
   end
@@ -70,7 +70,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     before { allow(described_class).to receive(:validate_args!).with(value, context) }
 
     let(:value) { 'test' }
-    let(:context) { Html2rss::Selectors::Context.new(options: { key1: 'value1' }) }
+    let(:context) { Html2rss::Selectors::StepEnv.new(options: { key1: 'value1' }) }
 
     it 'calls validate_args! with value and context' do
       described_class.new(value, context)
@@ -82,7 +82,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
         described_class.new(value, { options: { key1: 'value1' } })
       end.to raise_error(
         Html2rss::Selectors::PostProcessors::InvalidType,
-        /type of `context` must be Html2rss::Selectors::Context/
+        /type of `context` must be Html2rss::Selectors::StepEnv/
       )
     end
   end
@@ -95,7 +95,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     it 'raises NotImplementedError' do
       expect do
         described_class.new('value',
-                            Html2rss::Selectors::Context.new(options: {})).get
+                            Html2rss::Selectors::StepEnv.new(options: {})).get
       end.to raise_error(NotImplementedError, 'You must implement the `get` method in the post processor')
     end
   end

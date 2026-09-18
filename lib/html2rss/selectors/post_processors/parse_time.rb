@@ -45,7 +45,7 @@ module Html2rss
         # Ensures +context.time_zone+ is a non-empty String before parsing.
         #
         # @param _value [String] extracted time string (unused; type-checked via VALUE_TYPE)
-        # @param context [Selectors::Context] must carry a usable +time_zone+
+        # @param context [Selectors::StepEnv] must carry a usable +time_zone+
         # @return [void]
         # @raise [ArgumentError] when time_zone is nil or empty
         def self.validate_args!(_value, context)

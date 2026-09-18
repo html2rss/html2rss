@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     let(:channel) do
       { title: 'Example: questions', url: 'https://example.com/questions' }
     end
-    let(:context) { Html2rss::Selectors::Context.new(channel_url: channel[:url], options: {}) }
+    let(:context) { Html2rss::Selectors::StepEnv.new(base_url: channel[:url], options: {}) }
 
     let(:sanitized_html) do
       <<~HTML
@@ -79,7 +79,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
   end
 
   describe 'VALUE_TYPE' do
-    let(:context) { Html2rss::Selectors::Context.new(channel_url: 'http://example.com', options: {}) }
+    let(:context) { Html2rss::Selectors::StepEnv.new(base_url: 'http://example.com', options: {}) }
 
     it 'does not raise when value is a String' do
       expect { described_class.new('some html', context) }.not_to raise_error

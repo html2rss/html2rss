@@ -175,9 +175,9 @@ Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:clust
 
 Feed channel metadata (title, description, ttl, language, author, image, last_build_date) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article — they do not own channel extraction.
 
-## ItemScope post-process config
+## ItemEnv / StepEnv
 
-Per-item extraction scope carries `base_url` and `time_zone` (no channel Hash). Post-processor `Context` is `Data.define(:options, :channel_url, :time_zone, :item_scope)` built via `ItemScope#context_for`.
+Per-item extraction scope carries `base_url` and `time_zone` (no channel Hash). Post-processor `StepEnv` is `Data.define(:options, :base_url, :time_zone, :item_env)` built via `ItemEnv#context_for`.
 
 ## Pagination strategy registry
 
@@ -185,4 +185,4 @@ Supported pagination strategy names and factory classes live in `RequestSession:
 
 ## Extractor / post-processor registry
 
-Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::Option` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::OptionContract`, and `Selectors::SchemaDoc` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractor runtime args are `Args` / `SelectorArgs` (e.g. injected `selector` / `base_url`) — distinct from YAML `OPTIONS` keys. Do not reintroduce parallel `OPTION_TYPES` maps or hardcode per-name type soups in the validator or schema.
+Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::Option` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::Option.for` / `expectation_for`, and `Selectors::SchemaDoc` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractor runtime args are `Args` / `SelectorArgs` (e.g. injected `selector` / `base_url`) — distinct from YAML `OPTIONS` keys. Do not reintroduce parallel `OPTION_TYPES` maps or hardcode per-name type soups in the validator or schema.

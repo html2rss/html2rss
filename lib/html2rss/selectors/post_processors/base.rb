@@ -13,7 +13,7 @@ module Html2rss
         # @param value [Object] the value to check
         # @param types [Array<Class>, Class] the expected type(s)
         # @param name [String] the name of the option being checked
-        # @param context [Selectors::Context] call-site context used for richer validation errors
+        # @param context [Selectors::StepEnv] call-site context used for richer validation errors
         # @return [void]
         # @raise [InvalidType] if the value is not of the expected type(s)
         def self.assert_type(value, types, name, context:)
@@ -27,7 +27,7 @@ module Html2rss
         ##
         # Validates presence and types from the strategy's +OPTIONS+ contract.
         #
-        # @param context [Selectors::Context]
+        # @param context [Selectors::StepEnv]
         # @return [void]
         # @raise [MissingOption] if a required option key is absent
         # @raise [InvalidType] if a present option has the wrong type
@@ -39,7 +39,7 @@ module Html2rss
         ##
         # @param spec [Selectors::Option]
         # @param option_values [Hash] post-processor YAML option keys
-        # @param context [Selectors::Context]
+        # @param context [Selectors::StepEnv]
         # @return [void]
         def self.validate_option_spec!(spec, option_values, context)
           unless option_values.key?(spec.name)
@@ -63,10 +63,10 @@ module Html2rss
 
         ##
         # Semantic / value checks beyond +VALUE_TYPE+ and the +OPTIONS+ contract.
-        # Override in subclasses that need non-type checks (non-empty, item_scope, …).
+        # Override in subclasses that need non-type checks (non-empty, item_env, …).
         #
         # @param _value [Object] extracted selector value
-        # @param _context [Selectors::Context] post-processor execution context
+        # @param _context [Selectors::StepEnv] post-processor execution context
         # @return [void]
         def self.validate_args!(_value, _context)
           # no-op default
@@ -75,12 +75,12 @@ module Html2rss
         # Initializes the post processor
         #
         # @param value [Object] the value to be processed
-        # @param context [Selectors::Context] runtime selector context and options
-        # @raise [InvalidType] if +context+ is not a {Selectors::Context} or +VALUE_TYPE+ mismatches
+        # @param context [Selectors::StepEnv] runtime selector context and options
+        # @raise [InvalidType] if +context+ is not a {Selectors::StepEnv} or +VALUE_TYPE+ mismatches
         def initialize(value, context) # rubocop:disable Metrics/MethodLength -- type guard + VALUE_TYPE + validate_args
-          unless context.is_a?(Selectors::Context)
+          unless context.is_a?(Selectors::StepEnv)
             raise InvalidType,
-                  "The type of `context` must be #{Selectors::Context}, but is: #{context.class}",
+                  "The type of `context` must be #{Selectors::StepEnv}, but is: #{context.class}",
                   [], cause: nil
           end
 

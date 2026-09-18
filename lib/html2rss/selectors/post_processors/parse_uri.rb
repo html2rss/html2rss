@@ -35,7 +35,7 @@ module Html2rss
         def self.schema_doc = SchemaDoc.for_post_processor(name: :parse_uri, klass: self)
 
         # @param value [String] extracted selector value
-        # @param _context [Selectors::Context] post-processor context
+        # @param _context [Selectors::StepEnv] post-processor context
         # @return [void]
         def self.validate_args!(value, _context)
           raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
@@ -44,7 +44,7 @@ module Html2rss
         ##
         # @return [String]
         def get
-          Url.from_relative(value, context.channel_url).to_s
+          Url.from_relative(value, context.base_url).to_s
         end
       end
     end

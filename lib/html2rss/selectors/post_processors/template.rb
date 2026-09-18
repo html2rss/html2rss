@@ -57,25 +57,25 @@ module Html2rss
         def self.schema_doc = SchemaDoc.for_post_processor(name: :template, klass: self)
 
         ##
-        # Ensures a non-empty template +string+ option and an +item_scope+ for sibling lookup.
+        # Ensures a non-empty template +string+ option and an +item_env+ for sibling lookup.
         #
         # @param _value [String] current selector value (unused here)
-        # @param context [Selectors::Context] must include options[:string] and item_scope
+        # @param context [Selectors::StepEnv] must include options[:string] and item_env
         # @return [void]
         # @raise [InvalidType] when the template string is blank
-        # @raise [MissingOption] when item_scope is missing
+        # @raise [MissingOption] when item_env is missing
         def self.validate_args!(_value, context)
           string = context.options&.dig(:string).to_s
           raise InvalidType, 'The `string` template is absent.' if string.empty?
 
-          return if context.item_scope
+          return if context.item_env
 
-          raise MissingOption, 'The post-processor context is missing `item_scope`.', [], cause: nil
+          raise MissingOption, 'The post-processor context is missing `item_env`.', [], cause: nil
         end
 
         ##
         # @param value [String]
-        # @param context [Selectors::Context]
+        # @param context [Selectors::StepEnv]
         def initialize(value, context)
           super
 
@@ -98,7 +98,7 @@ module Html2rss
           key = key.to_sym
           return value if key == :self
 
-          @context.item_scope.select(key)
+          @context.item_env.select(key)
         end
       end
     end

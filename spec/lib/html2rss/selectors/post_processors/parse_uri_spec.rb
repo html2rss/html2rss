@@ -6,8 +6,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
   end
 
   let(:context) do
-    Html2rss::Selectors::Context.new(
-      channel_url: 'http://example.com'
+    Html2rss::Selectors::StepEnv.new(
+      base_url: 'http://example.com'
     )
   end
 

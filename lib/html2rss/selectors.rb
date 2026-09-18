@@ -103,15 +103,15 @@ module Html2rss
     # @return [Object, Array<Object>] The selected value(s).
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
     def select(name, item, base_url: @url)
-      select_in_scope(name, item_scope_for(item, base_url))
+      select_in_scope(name, item_env_for(item, base_url))
     end
 
     ##
-    # Selects the value for a given attribute within an existing {ItemScope}.
-    # Used by {ItemScope#select} so nested selects reuse one scope per extraction pass.
+    # Selects the value for a given attribute within an existing {ItemEnv}.
+    # Used by {ItemEnv#select} so nested selects reuse one env per extraction pass.
     #
     # @param name [Symbol, String] Name of the attribute.
-    # @param scope [ItemScope] Per-item extraction scope.
+    # @param scope [ItemEnv] Per-item extraction scope.
     # @return [Object, Array<Object>] The selected value(s).
     # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
     def select_in_scope(name, scope)
@@ -159,7 +159,7 @@ module Html2rss
     end
 
     def extract_article(item)
-      scope = item_scope_for(item, @url)
+      scope = item_env_for(item, @url)
       hash = @rss_item_attributes.each_with_object({}) do |selector_key, h|
         value = scope.select(selector_key)
         next if value.nil?
@@ -243,7 +243,7 @@ module Html2rss
     # (with optional post-processors) so multi-tag UIs become multiple categories.
     #
     # @param category_selectors [Array, String, Symbol]
-    # @param scope [ItemScope]
+    # @param scope [ItemEnv]
     # @return [Array<String>]
     def select_categories(category_selectors:, scope:)
       Array(category_selectors).flat_map do |selector_name|
@@ -315,8 +315,8 @@ module Html2rss
       Url.from_relative(href, base_url)
     end
 
-    def item_scope_for(item, base_url)
-      ItemScope.new(
+    def item_env_for(item, base_url)
+      ItemEnv.new(
         item:,
         base_url:,
         scraper: self,

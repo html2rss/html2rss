@@ -17,9 +17,9 @@ module Html2rss
             'video' => :src # Video player is visible
           }.freeze
 
-          # @param channel_url [String, Html2rss::Url] base URL used to resolve relative links
-          def initialize(channel_url)
-            @channel_url = channel_url
+          # @param base_url [String, Html2rss::Url] base URL used to resolve relative links
+          def initialize(base_url)
+            @base_url = base_url
           end
 
           ##
@@ -35,7 +35,7 @@ module Html2rss
 
             url_attribute = URL_ELEMENTS_WITH_URL_ATTRIBUTE[node_name]
             url = node[url_attribute]
-            node[url_attribute] = Url.from_relative(url, @channel_url).to_s
+            node[url_attribute] = Url.from_relative(url, @base_url).to_s
           end
         end
       end

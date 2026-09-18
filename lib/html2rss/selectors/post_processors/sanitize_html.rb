@@ -110,23 +110,23 @@ module Html2rss
           return @fragment_cache[key] if @fragment_cache.key?(key)
 
           @fragment_cache.clear if @fragment_cache.size > 256
-          @fragment_cache[key] = new(html, Selectors::Context.new(channel_url: url, options: {})).get
+          @fragment_cache[key] = new(html, Selectors::StepEnv.new(base_url: url, options: {})).get
         end
 
         ##
-        # @param channel_url [String, Html2rss::Url]
+        # @param base_url [String, Html2rss::Url]
         # @return [Hash] the memoized sanitize configuration
         # rubocop:disable-next Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
-        def self.sanitize_config(channel_url)
+        def self.sanitize_config(base_url)
           @sanitize_configs ||= {}
-          @sanitize_configs[channel_url] ||= begin
+          @sanitize_configs[base_url] ||= begin
             config = Sanitize::Config.merge(
               Sanitize::Config::RELAXED,
               attributes: { all: %w[dir lang alt title translate] },
               add_attributes: TAG_ATTRIBUTES,
               transformers: [
                 lambda { |env|
-                  HtmlTransformers::TransformUrlsToAbsoluteOnes.new(channel_url).call(**env)
+                  HtmlTransformers::TransformUrlsToAbsoluteOnes.new(base_url).call(**env)
                 },
                 ->(env) { HtmlTransformers::WrapImgInA.new.call(**env) }
               ]
@@ -143,7 +143,7 @@ module Html2rss
         def get
           # Temporarily replace newlines with a placeholder to preserve them during space collapsing
           temp_value = value.to_s.gsub("\n", ' __NEWLINE_PLACEHOLDER__ ')
-          sanitized_html = Sanitize.fragment(temp_value, self.class.sanitize_config(channel_url)).to_s
+          sanitized_html = Sanitize.fragment(temp_value, self.class.sanitize_config(base_url)).to_s
           sanitized_html.gsub!(/\s+/, ' ')
 
           # Restore newlines and clean up surrounding whitespace
@@ -156,7 +156,7 @@ module Html2rss
 
         private
 
-        def channel_url = context.channel_url
+        def base_url = context.base_url
       end
     end
   end
