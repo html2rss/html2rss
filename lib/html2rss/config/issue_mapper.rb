@@ -84,7 +84,13 @@ module Html2rss
           parent = dig_path(values, path[0...-1])
           return unless parent.is_a?(Hash)
 
-          Selectors::OptionContract.expectation_for(parent:, leaf: path.last)
+          expectation = Selectors::Option.expectation_for(parent:, leaf: path.last)
+          return unless expectation
+
+          {
+            type: Selectors::SchemaDoc.json_type_for(expectation[:type]),
+            required: expectation[:required]
+          }
         end
 
         def dig_path(values, path)

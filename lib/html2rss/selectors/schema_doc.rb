@@ -74,7 +74,7 @@ module Html2rss
       # @param klass [Class]
       # @return [Array<Option>]
       def options_for(klass)
-        klass.const_defined?(:OPTIONS) ? klass::OPTIONS : []
+        Option.for(klass)
       end
 
       ##

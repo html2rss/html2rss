@@ -93,7 +93,7 @@ module Html2rss
           klass = Selectors::Extractors::NAME_TO_CLASS[value.to_sym]
           next key(:extractor).failure("unknown extractor: #{value}") unless klass
 
-          Selectors::SchemaDoc.options_for(klass).each do |spec|
+          Selectors::Option.for(klass).each do |spec|
             next unless spec.required
             next if values[spec.name]
 
@@ -116,7 +116,7 @@ module Html2rss
         private
 
         def post_process_option_type_errors(klass, value)
-          Selectors::SchemaDoc.options_for(klass).filter_map do |spec|
+          Selectors::Option.for(klass).filter_map do |spec|
             option_spec_error(spec, value[spec.name])
           end
         end
