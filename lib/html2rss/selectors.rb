@@ -12,6 +12,8 @@ module Html2rss
   #
   # Additionally, it uniquely offers the capability to convert JSON into XML,
   # extending its versatility for diverse data processing workflows.
+  #
+  # {include:file:lib/html2rss/selectors/README.md}
   class Selectors # rubocop:disable Metrics/ClassLength -- public API + private field dispatch
     # Raised when a selector key is missing or not allowed for extraction.
     class InvalidSelectorName < Html2rss::Error; end

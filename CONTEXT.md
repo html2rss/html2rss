@@ -175,9 +175,23 @@ Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:clust
 
 Feed channel metadata (title, description, ttl, language, author, image, last_build_date) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article — they do not own channel extraction.
 
-## ItemEnv / StepEnv
+## ItemEnv / StepEnv / selectors vocabulary
 
-Per-item extraction scope carries `base_url` and `time_zone` (no channel Hash). Post-processor `StepEnv` is `Data.define(:options, :base_url, :time_zone, :item_env)` built via `ItemEnv#context_for`.
+Locked Ruby vocabulary for the selectors orchestrator (YAML/MCP wire unchanged):
+
+```text
+Selectors (orchestrator; keep class name)
+  └─ ItemEnv
+       └─ field dispatch private on Selectors
+            ├─ Extractors::*#call + ExtractorArgs + OPTIONS: [OptionSpec]
+            └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, options:, item_env:)
+OptionSpec.for / .expectation_for   (Ruby-typed SoT)
+SchemaExport                        (JSON adapter only; owns json_type_for)
+JsonXml                             (JSON → HTML fragment for CSS)
+ValidationReport / ValidationIssue  (unchanged)
+```
+
+`ItemEnv` carries `base_url` and `time_zone` (no channel Hash). `StepEnv` is built via `ItemEnv#context_for`. Module guide: `lib/html2rss/selectors/README.md`.
 
 ## Pagination strategy registry
 

@@ -305,6 +305,7 @@ RSpec.describe Html2rss::Selectors do
         HTML
       end
 
+      # rubocop:disable-next RSpec/ExampleLength
       it 'flattens single- and multi-node category selectors into discrete strings' do
         selectors.merge!(
           category: { selector: '.category' },
@@ -321,6 +322,7 @@ RSpec.describe Html2rss::Selectors do
         expect(instance.select(:categories, item)).to eq([])
       end
 
+      # rubocop:disable-next RSpec/ExampleLength
       it 'applies post_process steps on multi-node category extracts' do
         selectors.merge!(
           tags: {

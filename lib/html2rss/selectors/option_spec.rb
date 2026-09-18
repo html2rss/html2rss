@@ -23,7 +23,7 @@ module Html2rss
         def for(klass)
           klass.const_defined?(:OPTIONS) ? klass::OPTIONS : []
         end
-        alias options_for for
+        alias_method :options_for, :for
 
         ##
         # Ruby-typed expectation for a leaf under a selector / post-process parent.

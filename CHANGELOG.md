@@ -12,14 +12,17 @@
 - **JSON Schema facades relocated** to `Config::Schema` (no thin delegates on `Config`):
   - `Config.json_schema` / `Config.json_schema_json` / `Config.schema_path` → `Config::Schema.json_schema` / `Config::Schema.json_schema_json` / `Config::Schema.path`.
   - `Html2rss.schema_json` updated to call `Config::Schema`.
-- **Selectors modernization** (Ruby API / schema contract):
-  - Selectors internals: `AttributeSelector` (single `#call` entry), `CategoriesExtractor`, `ItemScope`; `ObjectToXmlConverter` lives under `Html2rss::Selectors::ObjectToXmlConverter`.
-  - Extractor runtime args are `Args` / `SelectorArgs` (distinct from config-facing `OPTIONS`).
-  - `Selectors::Context` is `Data.define(:options, :channel_url, :time_zone, :item_scope)` — no channel Hash.
+- **Selectors vocabulary cutover** (Breaking Ruby API; YAML / MCP wire unchanged — `selectors`, `extractor`, `post_process`):
+  - Folded `CategoriesExtractor` and `AttributeSelector` into private field dispatch on `Selectors` (no `FieldSelect`).
+  - Renamed `ItemScope` → `ItemEnv`, `Context` → `StepEnv` with member `base_url` (not `channel_url` on StepEnv).
+  - Renamed `Option` → `OptionSpec` (introspection SoT: `for` / `expectation_for` Ruby-typed); `SchemaDoc` → `SchemaExport` (JSON adapter only); `ObjectToXmlConverter` → `JsonXml`; shared `SelectorArgs` → `ExtractorArgs`.
+  - Strategy registries and instances use `#call` / `.call` (no `#get` aliases), including `SanitizeHtml.call(html, url)`.
+  - Module guide: `lib/html2rss/selectors/README.md`.
+- **Selectors modernization** (Ruby API / schema contract; earlier wave, superseded where names conflict):
   - `gsub` `replacement` accepts `String` or `Hash` (Ruby `String#gsub` hash form); schema / validator follow `Selectors::PostProcessors::Gsub::OPTIONS`.
-  - Extractor / post-processor config-facing options are owned as each strategy’s `OPTIONS` Array of `Selectors::Option` (SoT for validator, SchemaDoc, `OptionContract`, and `Base.validate_options!`). Do not reintroduce parallel `OPTION_TYPES` maps.
+  - Extractor / post-processor config-facing options are owned as each strategy’s `OPTIONS` Array of `Selectors::OptionSpec` (SoT for validator, `OptionSpec`, `SchemaExport`, and `Base.validate_options!`). Do not reintroduce parallel `OPTION_TYPES` maps.
   - Post-processors that require a fixed extracted Ruby type declare `VALUE_TYPE`; `Base` asserts it (callers no longer introspect).
-  - Selector nesting key `:items` is owned once as `Selectors::NESTING_KEY` (validator + scraper).
+  - Selector nesting key `:items` is owned once as `Selectors::ITEMS_SELECTOR_KEY` (validator + scraper).
 - Removed `html_to_markdown` post-processor and the `reverse_markdown` gem dependency. Configs using `post_process` name `html_to_markdown` now fail validation.
 
 Curation CLI, MCP, gem facades, and agent playbook unify on seven user-facing verbs. See `CONTEXT.md` § Frozen contract and `AGENTS.md` § Curation CLI / MCP.
