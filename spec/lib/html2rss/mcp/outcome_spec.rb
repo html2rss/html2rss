@@ -40,12 +40,6 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     describe '.inspect_guidance' do
-      def report(**data)
-        Html2rss::PageRecon::Diagnostics::Report.new(
-          data: { articles_count: 0, alternate_feeds: [], **data }
-        )
-      end
-
       it 'returns default inspect guidance when articles are present' do
         populated = Html2rss::PageRecon::Diagnostics::Report.new(
           data: { articles_count: 3, alternate_feeds: [] }
@@ -139,12 +133,6 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.inspect' do
-    def report(**data)
-      Html2rss::PageRecon::Diagnostics::Report.new(
-        data: { articles_count: 0, alternate_feeds: [], **data }
-      )
-    end
-
     it 'points at recon when alternates are present' do
       outcome = described_class.inspect(
         report: report(alternate_feeds: [{ href: 'https://example.com/feed.xml' }])
@@ -167,22 +155,6 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.recon' do
-    def recon_result(verdict:, **attrs) # rubocop:disable Metrics/MethodLength -- fixture builder for recon Result
-      Html2rss::Recon::Result.new(
-        requested_url: 'https://example.com',
-        final_url: 'https://example.com',
-        status: 200,
-        verdict: Html2rss::Recon::Verdict.coerce(verdict),
-        native_feed: nil,
-        surface_category: :article_listing,
-        articles_count: 3,
-        scheme_downgrade: false,
-        notes: [],
-        html_bytesize: 1000,
-        **attrs
-      )
-    end
-
     it 'points at done when verdict is defer (native feed)' do
       outcome = described_class.recon(
         result: recon_result(verdict: :defer, native_feed: 'https://example.com/feed.xml')
@@ -266,23 +238,6 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.test' do
-    def test_result(failure_kind: nil, success: false, **) # rubocop:disable Metrics/MethodLength
-      Html2rss::Test::Result.new(
-        success:,
-        item_count: success ? 2 : 0,
-        sample_items: [],
-        channel_title: 'Example',
-        channel_url: 'https://example.com',
-        strategy_used: :default,
-        duration_seconds: 0.1,
-        validation_issues: nil,
-        error_message: success ? nil : 'failed',
-        failure_kind:,
-        rss: success ? '<rss/>' : nil,
-        **
-      )
-    end
-
     it 'points at apply on success' do
       expect(described_class.test(test_result(success: true)).next_step.name).to eq(:apply)
     end

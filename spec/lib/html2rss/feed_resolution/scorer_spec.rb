@@ -5,23 +5,6 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::FeedResolution::Scorer do
-  def assessment(surface_category:, articles_count:, admission_drops: {})
-    Html2rss::PageRecon::Assessment.new(
-      surface_category:,
-      articles_count:,
-      admission_drops:,
-      html_response: true
-    )
-  end
-
-  def scored(url:, score:, articles_count:)
-    Html2rss::FeedResolution::Probe::Scored.new(
-      url: Html2rss::Url.from_absolute(url),
-      score:,
-      articles_count:
-    )
-  end
-
   it 'scores feed item counts linearly' do
     expect(described_class.score_feed(articles_count: 4)).to eq(40)
   end

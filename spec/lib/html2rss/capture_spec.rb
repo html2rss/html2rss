@@ -9,29 +9,6 @@ RSpec.describe Html2rss::Capture do
     allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
   end
 
-  def html_response(body, page_url: url, content_type: 'text/html')
-    Html2rss::RequestService::Response.new(
-      body:,
-      url: Html2rss::Url.from_absolute(page_url),
-      headers: { 'content-type' => content_type }
-    )
-  end
-
-  def stub_outcome(response, articles:, admission_drops: {}, selected_strategy: nil, scrape_target: nil) # rubocop:disable Metrics/MethodLength
-    target = scrape_target || Html2rss::ScrapeTarget.new(entry_url: url, effective_url: url)
-    outcome = instance_double(
-      Html2rss::FeedPipeline::PipelineOutcome,
-      response:,
-      articles:,
-      admission_drops:,
-      selected_strategy:,
-      scrape_target: target
-    )
-    allow(Html2rss::FeedPipeline).to receive(:new)
-      .and_return(instance_double(Html2rss::FeedPipeline, to_outcome: outcome))
-    outcome
-  end
-
   describe '#build' do
     it 'asks Syndication::Discovery for native feed preference with a session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response(File.read('spec/fixtures/local_feed_test.html'))

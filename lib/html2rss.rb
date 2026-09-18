@@ -330,8 +330,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
       configure { |config| config.logger = logger }
     end
 
-    private
-
     ##
     # Resets the global defaults (mainly for testing).
     #

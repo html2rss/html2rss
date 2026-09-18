@@ -45,6 +45,20 @@ module Html2rss
       # @return [Html2rss::RequestService::Budget] shared budget for the feed build
       def self.budget_for(config) = resources_for(config).budget
 
+      ##
+      # Reserve enough HTTP request slots for the initial request plus predictable
+      # follow-ups.
+      #
+      # @param config [Html2rss::Config] validated feed config
+      # @return [Integer] number of reserved baseline request slots
+      def self.baseline_request_budget_for(config)
+        1 +
+          RequestSession::Pager.request_slots_for(config.selectors&.dig(:items, :pagination)) +
+          AutoSource.request_slots_for(config.auto_source) +
+          FeedResolution.request_slots_for(config.auto_source) +
+          StrategyPlan.resolve(config.strategy).request_slots
+      end
+
       class << self
         private
 
@@ -52,16 +66,6 @@ module Html2rss
           return config.max_requests if config.explicit_max_requests?
 
           [baseline_request_budget_for(config), config.max_requests].max
-        end
-
-        # Reserve enough HTTP request slots for the initial request plus predictable
-        # follow-ups.
-        def baseline_request_budget_for(config)
-          1 +
-            RequestSession::Pager.request_slots_for(config.selectors&.dig(:items, :pagination)) +
-            AutoSource.request_slots_for(config.auto_source) +
-            FeedResolution.request_slots_for(config.auto_source) +
-            StrategyPlan.resolve(config.strategy).request_slots
         end
       end
     end

@@ -41,7 +41,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
 
       # rubocop:disable-next RSpec/ExampleLength -- composition pieces asserted together
       it 'composes NativeFeed and entry_resolution slots then clamps to the ceiling', :aggregate_failures do
-        baseline = described_class.send(:baseline_request_budget_for, config)
+        baseline = described_class.baseline_request_budget_for(config)
         native_slots = Html2rss::AutoSource::Scraper::NativeFeed.request_slots
         fr_opts = Html2rss::FeedResolution::Options.from_auto_source(config.auto_source)
         fr_slots = Html2rss::FeedResolution.request_slots_for(config.auto_source)
@@ -59,7 +59,7 @@ RSpec.describe Html2rss::FeedPipeline::RuntimePolicy do
       let(:config) { Html2rss::Config.from_hash(raw_config.merge(strategy: :auto)) }
 
       it 'includes auto fallback retry slots but still clamps to the policy ceiling', :aggregate_failures do
-        baseline = described_class.send(:baseline_request_budget_for, config)
+        baseline = described_class.baseline_request_budget_for(config)
         expected_retry_budget = Html2rss::FeedPipeline::AutoFallback::CHAIN.size - 1
 
         expect(baseline).to be >= (1 + expected_retry_budget)

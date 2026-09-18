@@ -39,6 +39,10 @@ require_relative 'support/cli_helpers'
 # Load custom matchers and helpers
 require_relative 'support/helpers/configuration_helpers'
 require_relative 'support/helpers/example_helpers'
+require_relative 'support/helpers/fixture_helpers'
+require_relative 'support/helpers/sst_test_helpers'
+require_relative 'support/helpers/mcp_test_helpers'
+require_relative 'support/helpers/feed_test_helpers'
 
 # Load shared examples
 Dir.glob('**/*.rb', base: File.join(__dir__, 'support/shared_examples')).each do |f|
@@ -55,6 +59,10 @@ RSpec.configure do |config|
   config.disable_monkey_patching!
 
   config.include CliHelpers
+  config.include FixtureHelpers
+  config.include SstTestHelpers
+  config.include McpTestHelpers
+  config.include FeedTestHelpers
 
   config.expect_with :rspec do |c|
     c.syntax = :expect

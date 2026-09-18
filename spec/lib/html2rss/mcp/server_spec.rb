@@ -257,30 +257,6 @@ RSpec.describe Html2rss::MCP::Server do
     end
 
     describe 'test' do
-      def test_result(success:, failure_kind: nil, **) # rubocop:disable Metrics/MethodLength
-        issues =
-          if success
-            nil
-          else
-            [Html2rss::Config::ValidationIssue.new(path: %i[channel], code: :missing_key, message: 'is missing')]
-          end
-
-        Html2rss::Test::Result.new(
-          success:,
-          item_count: success ? 2 : 0,
-          sample_items: success ? [{ title: 'A', url: 'https://example.com/a' }] : [],
-          channel_title: 'Example',
-          channel_url: 'https://example.com',
-          strategy_used: :default,
-          duration_seconds: 0.1,
-          validation_issues: issues,
-          error_message: success ? nil : 'Configuration schema validation failed',
-          failure_kind:,
-          rss: success ? '<rss/>' : nil,
-          **
-        )
-      end
-
       it 'returns apply next_step on successful tools/call', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
         allow(Html2rss).to receive(:test).and_return(test_result(success: true))
 

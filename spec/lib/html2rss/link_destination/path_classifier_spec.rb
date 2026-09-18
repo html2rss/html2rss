@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::LinkDestination::PathClassifier do
-  def classifier_for(*segments)
-    described_class.new(segments)
-  end
-
   describe 'commerce / affiliate utility segments' do
     %w[
       dating jobs job career careers deals deal shopping shop trading broker

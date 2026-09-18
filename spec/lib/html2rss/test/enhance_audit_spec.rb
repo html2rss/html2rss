@@ -1,21 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Test::EnhanceAudit do
-  let(:fixture_dir) { File.expand_path('../../../fixtures/enhance_audit', __dir__) }
   let(:time_zone) { 'UTC' }
-
-  def response_for(fixture_name)
-    body = File.read(File.join(fixture_dir, fixture_name))
-    Html2rss::RequestService::Response.new(
-      url: 'https://example.com/list',
-      headers: { 'content-type' => 'text/html' },
-      body:
-    )
-  end
-
-  def probe(fixture_name, selectors)
-    described_class.probe(response: response_for(fixture_name), selectors:, time_zone:)
-  end
 
   describe '.probe' do
     context 'with rich_card.html' do
@@ -28,7 +14,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       end
 
       it 'counts description gains without junk warnings', :aggregate_failures do
-        slice = probe('rich_card.html', selectors)
+        slice = probe_audit('rich_card.html', selectors)
 
         expect(slice.enhance_gains.descriptions_added).to be >= 1
         expect(slice.enhance_gains.no_op).to be(false)
@@ -47,7 +33,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       end
 
       it 'warns when enhance adds category or image-only descriptions', :aggregate_failures do
-        slice = probe('anchor_item.html', selectors)
+        slice = probe_audit('anchor_item.html', selectors)
 
         expect(slice.enhance_gains.descriptions_added).to be_positive
         expect(slice.warnings).to include(:enhance_category_only_description, :enhance_image_only_description)
@@ -65,7 +51,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       end
 
       it 'reports enhance_no_op when selectors already fill all fields', :aggregate_failures do
-        slice = probe('no_op.html', selectors)
+        slice = probe_audit('no_op.html', selectors)
 
         expect(slice.enhance_gains.no_op).to be(true)
         expect(slice.warnings).to include(:enhance_no_op)
@@ -82,7 +68,7 @@ RSpec.describe Html2rss::Test::EnhanceAudit do
       end
 
       it 'omits enhance_no_op when any item gains curator fields', :aggregate_failures do
-        slice = probe('mixed_listing.html', selectors)
+        slice = probe_audit('mixed_listing.html', selectors)
 
         expect(slice.enhance_gains.no_op).to be(false)
         expect(slice.enhance_gains.descriptions_added).to be >= 1
