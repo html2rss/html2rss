@@ -291,5 +291,48 @@ RSpec.describe Html2rss::Selectors do
         expect(value).to eq('https://other.example/item')
       end
     end
+
+    context 'when selecting categories' do
+      let(:item) { Nokogiri::HTML(body).at('article') }
+      let(:body) do
+        <<~HTML
+          <html><body>
+            <article>
+              <span class="category">News</span>
+              <div class="tags"><a href="/t/ruby">Ruby</a><a href="/t/rss">RSS</a></div>
+            </article>
+          </body></html>
+        HTML
+      end
+
+      it 'flattens single- and multi-node category selectors into discrete strings' do
+        selectors.merge!(
+          category: { selector: '.category' },
+          tags: { selector: '.tags a', extractor: 'text' },
+          categories: %i[category tags]
+        )
+
+        expect(instance.select(:categories, item)).to eq(%w[News Ruby RSS])
+      end
+
+      it 'returns an empty list when a referenced category selector is missing' do
+        selectors[:categories] = %i[missing]
+
+        expect(instance.select(:categories, item)).to eq([])
+      end
+
+      it 'applies post_process steps on multi-node category extracts' do
+        selectors.merge!(
+          tags: {
+            selector: '.tags a',
+            extractor: 'text',
+            post_process: { name: 'gsub', pattern: 'R', replacement: 'r' }
+          },
+          categories: %i[tags]
+        )
+
+        expect(instance.select(:categories, item)).to eq(%w[ruby rSS])
+      end
+    end
   end
 end
