@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::PostProcessors::MarkdownToHtml do
-  subject { described_class.new(markdown, context).get }
+  subject { described_class.new(markdown, context).call }
 
   let(:html) do
     "<h1>Section</h1>\n\n<p>Price: 12.34</p>\n\n" \

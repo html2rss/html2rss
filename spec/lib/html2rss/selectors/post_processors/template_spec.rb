@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::PostProcessors::Template do
-  subject { described_class.new('Hi', context).get }
+  subject { described_class.new('Hi', context).call }
 
   let(:item_env) { instance_double(Html2rss::Selectors::ItemEnv) }
   let(:context) { Html2rss::Selectors::StepEnv.new(options:, item_env:) }

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::Extractors::Static do
-  subject { described_class.new(nil, options).get }
+  subject { described_class.new(nil, options).call }
 
   let(:options) { described_class::Args.new(static: 'Foobar') }
 

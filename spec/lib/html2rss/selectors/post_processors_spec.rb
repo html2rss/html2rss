@@ -10,10 +10,10 @@ RSpec.describe Html2rss::Selectors::PostProcessors do
     end
   end
 
-  describe '.get' do
+  describe '.call' do
     context 'with unknown post processor name' do
       it do
-        expect { described_class.get('inexistent', nil, nil) }
+        expect { described_class.call('inexistent', nil, nil) }
           .to raise_error described_class::UnknownPostProcessorName
       end
     end
@@ -21,7 +21,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors do
     context 'with known post processor name' do
       it do
         context = Html2rss::Selectors::StepEnv.new(base_url: '', options: {})
-        expect(described_class.get('parse_uri', 'http://example.com/',
+        expect(described_class.call('parse_uri', 'http://example.com/',
                                    context)).to be_a(String)
       end
     end

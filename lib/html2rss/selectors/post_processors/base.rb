@@ -4,7 +4,7 @@ module Html2rss
   class Selectors
     module PostProcessors
       ##
-      # All post processors must inherit from this base class and implement `#get`.
+      # All post processors must inherit from this base class and implement `#call`.
       # Declare +VALUE_TYPE+ when the extracted value must be a fixed Ruby type;
       # override +validate_args!+ only for semantic checks beyond that.
       class Base
@@ -99,8 +99,8 @@ module Html2rss
         #
         # @return [Object] transformed value
         # @raise [NotImplementedError] if not implemented in subclass
-        def get
-          raise NotImplementedError, 'You must implement the `get` method in the post processor'
+        def call
+          raise NotImplementedError, 'You must implement the `call` method in the post processor'
         end
       end
     end

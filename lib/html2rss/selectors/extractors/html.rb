@@ -52,7 +52,7 @@ module Html2rss
         # Retrieves and returns the HTML content of the element.
         #
         # @return [String] The HTML content.
-        def get
+        def call
           @element.to_s
         end
       end

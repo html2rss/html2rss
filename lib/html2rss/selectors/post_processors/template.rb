@@ -86,7 +86,7 @@ module Html2rss
 
         ##
         # @return [String]
-        def get
+        def call
           Html2rss::Config::DynamicParams.call(@string, {}, getter: @getter, replace_missing_with: '')
         end
 

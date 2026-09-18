@@ -24,12 +24,12 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       let(:url) { 'http://example.com' }
 
       before do
-        allow(Html2rss::Selectors::PostProcessors::SanitizeHtml).to receive(:get).with(base, url).and_call_original
+        allow(Html2rss::Selectors::PostProcessors::SanitizeHtml).to receive(:call).with(base, url).and_call_original
       end
 
       it 'sanitizes the HTML', :aggregate_failures do
         expect(description).to eq('<b>Some bold text</b>')
-        expect(Html2rss::Selectors::PostProcessors::SanitizeHtml).to have_received(:get).with(base, url)
+        expect(Html2rss::Selectors::PostProcessors::SanitizeHtml).to have_received(:call).with(base, url)
       end
     end
 

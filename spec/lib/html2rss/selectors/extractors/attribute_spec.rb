@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::Extractors::Attribute do
-  subject { described_class.new(xml, options).get }
+  subject { described_class.new(xml, options).call }
 
   let(:xml) { Nokogiri.HTML('<div><time datetime="2019-07-01">...</time></div>') }
   let(:options) { described_class::Args.new(selector: 'time', attribute: 'datetime') }

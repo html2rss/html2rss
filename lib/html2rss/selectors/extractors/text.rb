@@ -49,7 +49,7 @@ module Html2rss
         # Retrieves and returns the text content of the element.
         #
         # @return [String] The text content.
-        def get
+        def call
           @element.text.to_s.strip.gsub(/\s+/, ' ')
         end
       end

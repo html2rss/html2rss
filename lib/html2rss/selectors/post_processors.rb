@@ -32,15 +32,15 @@ module Html2rss
       }.freeze
 
       ##
-      # Shorthand method to instantiate the post processor and call `#get` on it
+      # Shorthand method to instantiate the post processor and call `#call` on it
       #
       # @param name [String, Symbol] post-processor name from selector config
       # @param value [Object] extracted selector value
       # @param context [Selectors::StepEnv] post-processor context
       # @return [Object] transformed selector value
-      def self.get(name, value, context)
+      def self.call(name, value, context)
         klass = NAME_TO_CLASS[name.to_sym] || raise(UnknownPostProcessorName, "Unknown name '#{name}'")
-        klass.new(value, context).get
+        klass.new(value, context).call
       end
     end
   end

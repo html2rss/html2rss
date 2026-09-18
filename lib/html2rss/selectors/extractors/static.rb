@@ -52,7 +52,7 @@ module Html2rss
         # Retrieves and returns the static value.
         #
         # @return [String, Symbol] The static value provided in args.
-        def get
+        def call
           @args.static
         end
       end

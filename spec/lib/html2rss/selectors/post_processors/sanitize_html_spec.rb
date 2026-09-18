@@ -3,8 +3,8 @@
 RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
-  describe '#get' do
-    subject { described_class.new(html, context).get }
+  describe '#call' do
+    subject { described_class.new(html, context).call }
 
     let(:channel) do
       { title: 'Example: questions', url: 'https://example.com/questions' }
@@ -47,8 +47,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     end
   end
 
-  describe '.get' do
-    subject { described_class.get(html, 'http://example.com') }
+  describe '.call' do
+    subject { described_class.call(html, 'http://example.com') }
 
     let(:html) { '<p>Hi <a href="/world">World!</a><script></script></p>' }
     let(:sanitized_html) do
@@ -61,12 +61,12 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
 
     it 'strips style tags and their CSS contents completely' do
       dirty = "<p>Before</p>\n<style>body { display: none; } p { color: red; }</style>\n<p>After</p>"
-      expect(described_class.get(dirty, 'http://example.com')).to eq("<p>Before</p>\n\n<p>After</p>")
+      expect(described_class.call(dirty, 'http://example.com')).to eq("<p>Before</p>\n\n<p>After</p>")
     end
 
     it 'strips inline style attributes' do
       dirty = '<p style="color: red; font-size: 20px;">Styled text</p>'
-      expect(described_class.get(dirty, 'http://example.com')).to eq('<p>Styled text</p>')
+      expect(described_class.call(dirty, 'http://example.com')).to eq('<p>Styled text</p>')
     end
 
     context 'with html being nil' do

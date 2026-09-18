@@ -63,7 +63,7 @@ module Html2rss
         #
         # @return [String] RFC822 formatted time
         # @raise [TZInfo::InvalidTimezoneIdentifier] if the configured time zone is invalid
-        def get
+        def call
           with_timezone(context.time_zone) { Time.parse(value).rfc822 }
         end
 

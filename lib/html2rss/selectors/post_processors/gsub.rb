@@ -64,7 +64,7 @@ module Html2rss
 
         ##
         # @return [String]
-        def get
+        def call
           value.to_s.gsub(pattern, replacement)
         end
 

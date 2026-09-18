@@ -64,7 +64,7 @@ module Html2rss
         # Retrieves and returns the attribute's value as a string.
         #
         # @return [String] The value of the attribute.
-        def get
+        def call
           @element.attr(@args.attribute).to_s
         end
       end

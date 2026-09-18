@@ -3,7 +3,7 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss::Selectors::Extractors::Href do
-  subject { described_class.new(xml, options).get }
+  subject { described_class.new(xml, options).call }
 
   let(:options) { described_class::Args.new(selector: 'a', base_url: 'https://example.com') }
 

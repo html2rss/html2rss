@@ -55,7 +55,7 @@ module Html2rss
         # Extracts the substring from the original string based on the provided start and end indices.
         #
         # @return [String, nil] The extracted substring.
-        def get
+        def call
           value[range]
         end
 

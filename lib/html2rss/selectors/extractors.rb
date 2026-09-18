@@ -34,13 +34,13 @@ module Html2rss
         #   Should contain at least `:extractor` (the name) and required options for that extractor.
         # @param xml [Nokogiri::XML::Document]
         # @return [Object] instance of the specified item extractor class
-        def get(attribute_options, xml)
+        def call(attribute_options, xml)
           extractor_class = NAME_TO_CLASS[attribute_options[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
           args = extractor_class::Args.new(
             **attribute_options.slice(*extractor_class::Args.members)
           )
 
-          extractor_class.new(xml, args).get
+          extractor_class.new(xml, args).call
         end
       end
     end

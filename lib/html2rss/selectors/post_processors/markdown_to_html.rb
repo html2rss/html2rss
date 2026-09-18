@@ -52,9 +52,9 @@ module Html2rss
         # Converts Markdown to sanitized HTML.
         #
         # @return [String] Sanitized HTML content
-        def get
+        def call
           html_content = Kramdown::Document.new(value).to_html
-          SanitizeHtml.new(html_content, context).get
+          SanitizeHtml.new(html_content, context).call
         end
       end
     end

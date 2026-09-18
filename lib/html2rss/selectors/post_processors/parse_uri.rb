@@ -43,7 +43,7 @@ module Html2rss
 
         ##
         # @return [String]
-        def get
+        def call
           Url.from_relative(value, context.base_url).to_s
         end
       end

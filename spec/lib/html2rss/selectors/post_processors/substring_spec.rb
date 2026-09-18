@@ -8,13 +8,13 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with end' do
-    subject { described_class.new('Foo bar and baz', context_for(start: 4, end: 6)).get }
+    subject { described_class.new('Foo bar and baz', context_for(start: 4, end: 6)).call }
 
     it { is_expected.to eq 'bar' }
   end
 
   context 'without end' do
-    subject { described_class.new('foobarbaz', context_for(start: 3)).get }
+    subject { described_class.new('foobarbaz', context_for(start: 3)).call }
 
     it { is_expected.to eq 'barbaz' }
   end

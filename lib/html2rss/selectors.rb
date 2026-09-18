@@ -218,7 +218,7 @@ module Html2rss
 
     def select_regular(_name, scope:, config:)
       merged_config = config.merge(base_url: scope.base_url)
-      value = Extractors.get(merged_config, scope.item)
+      value = Extractors.call(merged_config, scope.item)
 
       apply_post_process_steps(scope:, value:, post_process_steps: config[:post_process])
     end
@@ -232,7 +232,7 @@ module Html2rss
 
     def post_process(scope, value, post_process_steps)
       post_process_steps.each do |options|
-        value = PostProcessors.get(options[:name], value, scope.context_for(options:))
+        value = PostProcessors.call(options[:name], value, scope.context_for(options:))
       end
 
       value
@@ -262,7 +262,7 @@ module Html2rss
     end
 
     def extract_categories_from_node(node, scope:, config:)
-      values = Extractors.get(config.merge(base_url: scope.base_url, selector: nil), node)
+      values = Extractors.call(config.merge(base_url: scope.base_url, selector: nil), node)
       values = apply_post_process_steps(scope:, value: values, post_process_steps: config[:post_process])
 
       Array(values).filter_map { |category| extract_category_text(category) }

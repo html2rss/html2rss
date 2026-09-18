@@ -7,7 +7,7 @@ module Html2rss
       # Shared runtime args for extractors that only need a CSS selector (+Text+, +Html+).
       #
       # Field dispatch merges +base_url:+ into every config hash, but only
-      # +Href::Args+ declares that member — +Extractors.get+ slices by +Args.members+,
+      # +Href::Args+ declares that member — +Extractors.call+ slices by +Args.members+,
       # so +base_url+ is silently dropped for every other extractor.
       ExtractorArgs = Data.define(:selector) do
         # @param selector [String, nil] CSS selector for the element

@@ -81,7 +81,7 @@ module Html2rss
 
         def processed_base_description
           text = self.class.remove_pattern_from_start(@base, @title)
-          Html2rss::Selectors::PostProcessors::SanitizeHtml.get(text, @url)
+          Html2rss::Selectors::PostProcessors::SanitizeHtml.call(text, @url)
         end
       end
     end

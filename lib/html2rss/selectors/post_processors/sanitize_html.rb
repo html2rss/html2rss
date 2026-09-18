@@ -102,7 +102,7 @@ module Html2rss
         # @param url [String, Html2rss::Url]
         # @return [String, nil]
         # rubocop:disable-next ThreadSafety/ClassInstanceVariable
-        def self.get(html, url)
+        def self.call(html, url)
           return nil if String(html).empty?
 
           @fragment_cache ||= {}
@@ -110,7 +110,7 @@ module Html2rss
           return @fragment_cache[key] if @fragment_cache.key?(key)
 
           @fragment_cache.clear if @fragment_cache.size > 256
-          @fragment_cache[key] = new(html, Selectors::StepEnv.new(base_url: url, options: {})).get
+          @fragment_cache[key] = new(html, Selectors::StepEnv.new(base_url: url, options: {})).call
         end
 
         ##
@@ -140,7 +140,7 @@ module Html2rss
 
         ##
         # @return [String, nil]
-        def get
+        def call
           # Temporarily replace newlines with a placeholder to preserve them during space collapsing
           temp_value = value.to_s.gsub("\n", ' __NEWLINE_PLACEHOLDER__ ')
           sanitized_html = Sanitize.fragment(temp_value, self.class.sanitize_config(base_url)).to_s

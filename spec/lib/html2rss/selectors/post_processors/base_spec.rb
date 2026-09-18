@@ -87,7 +87,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     end
   end
 
-  describe '#get' do
+  describe '#call' do
     before do
       allow(described_class).to receive_messages(assert_type: nil, validate_options!: nil, validate_args!: nil)
     end
@@ -95,8 +95,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     it 'raises NotImplementedError' do
       expect do
         described_class.new('value',
-                            Html2rss::Selectors::StepEnv.new(options: {})).get
-      end.to raise_error(NotImplementedError, 'You must implement the `get` method in the post processor')
+                            Html2rss::Selectors::StepEnv.new(options: {})).call
+      end.to raise_error(NotImplementedError, 'You must implement the `call` method in the post processor')
     end
   end
 end
