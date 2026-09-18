@@ -17,7 +17,7 @@ module Html2rss
         # @return [void]
         # @raise [InvalidType] if the value is not of the expected type(s)
         def self.assert_type(value, types, name, context:)
-          return if Array(types).any? { |type| value.is_a?(type) }
+          return if Selectors::OptionSpec.valid_type?(value, types)
 
           message = "The type of `#{name}` must be #{Array(types).join(' or ')}, " \
                     "but is: #{value.class} in: #{context.step_config.inspect}"

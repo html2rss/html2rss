@@ -28,6 +28,40 @@ RSpec.describe Html2rss::Selectors::OptionSpec do
     end
   end
 
+  describe '.option_for' do
+    it 'resolves OptionSpec directly', :aggregate_failures do
+      spec = described_class.option_for({ extractor: 'attribute' }, :attribute)
+      expect(spec).to be_a(described_class)
+      expect(spec.name).to eq(:attribute)
+      expect(spec.json_type).to eq('string')
+    end
+  end
+
+  describe '#valid_type?' do
+    it 'validates single type options', :aggregate_failures do
+      spec = described_class.new(name: :test, type: String)
+      expect(spec.valid_type?('ok')).to be true
+      expect(spec.valid_type?(123)).to be false
+    end
+
+    it 'validates multiple type options', :aggregate_failures do
+      spec = described_class.new(name: :test, type: [String, Integer])
+      expect(spec.valid_type?('ok')).to be true
+      expect(spec.valid_type?(123)).to be true
+      expect(spec.valid_type?(:symbol)).to be false
+    end
+  end
+
+  describe '#error_message' do
+    it 'formats type error messages with optional suffix', :aggregate_failures do
+      required = described_class.new(name: :test, type: String, required: true)
+      expect(required.error_message).to eq('`test` must be a string')
+
+      optional = described_class.new(name: :test, type: Integer, required: false)
+      expect(optional.error_message).to eq('`test` must be an integer or omitted')
+    end
+  end
+
   describe '.for' do
     it 'reads OPTIONS from the strategy class' do
       expect(described_class.for(Html2rss::Selectors::Extractors::Attribute).map(&:name))

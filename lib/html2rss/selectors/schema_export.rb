@@ -8,14 +8,6 @@ module Html2rss
     # Each registry class owns +DESCRIPTION+, +EXAMPLES+, and optional +OPTIONS+;
     # this module is the export adapter only.
     module SchemaExport
-      # Maps Ruby option types to JSON Schema +type+ strings.
-      RUBY_TO_JSON_TYPE = {
-        String => 'string',
-        Integer => 'integer',
-        Hash => 'object',
-        Array => 'array'
-      }.freeze
-
       module_function
 
       ##
@@ -81,14 +73,7 @@ module Html2rss
       # @param ruby_type [Class, Array<Class>]
       # @return [String, Array<String>]
       def json_type_for(ruby_type)
-        case ruby_type
-        when Array
-          ruby_type.map { |type| json_type_for(type) }
-        else
-          RUBY_TO_JSON_TYPE.fetch(ruby_type) do
-            raise ArgumentError, "unsupported OPTIONS type mapping for #{ruby_type}"
-          end
-        end
+        OptionSpec.json_type_for(ruby_type)
       end
     end
   end

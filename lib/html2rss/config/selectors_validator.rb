@@ -117,43 +117,12 @@ module Html2rss
 
         def post_process_option_type_errors(klass, value)
           Selectors::OptionSpec.for(klass).filter_map do |spec|
-            option_spec_error(spec, value[spec.name])
-          end
-        end
-
-        def option_spec_error(spec, actual)
-          if actual.nil?
-            return unless spec.required
-
-            [spec.name, option_type_failure(spec.name, spec.type)]
-          elsif !type_match?(actual, spec.type)
-            [spec.name, option_type_failure(spec.name, spec.type, optional: !spec.required)]
-          end
-        end
-
-        def type_match?(actual, expected)
-          case expected
-          when Array then expected.any? { |type| actual.is_a?(type) }
-          else actual.is_a?(expected)
-          end
-        end
-
-        def option_type_failure(field, expected, optional: false)
-          label = type_failure_label(expected)
-          suffix = optional ? ' or omitted' : ''
-          "`#{field}` must be #{label}#{suffix}"
-        end
-
-        def type_failure_label(expected)
-          case expected
-          when Array
-            expected.map { |type| type_failure_label(type) }.join(' or ')
-          else
-            {
-              Integer => 'an integer',
-              String => 'a string',
-              Hash => 'a hash'
-            }.fetch(expected) { "a #{expected}" }
+            actual = value[spec.name]
+            if actual.nil?
+              [spec.name, spec.error_message(optional: false)] if spec.required
+            elsif !spec.valid_type?(actual)
+              [spec.name, spec.error_message(optional: !spec.required)]
+            end
           end
         end
       end
