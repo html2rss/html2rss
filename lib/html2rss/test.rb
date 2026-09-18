@@ -59,10 +59,6 @@ module Html2rss
     end
 
     ##
-    # Internal options for pipeline execution and outcome evaluation.
-    PipelineOptions = Data.define(:min_items, :strict_quality, :compare_enhance)
-
-    ##
     # Ship-quality audit summary for a configuration test (warn-only).
     QualityReport = Data.define(:warnings, :metrics, :native_feed, :defer_reason) do
       ##
@@ -179,8 +175,7 @@ module Html2rss
 
       config = build_test_config(raw_config, strategy, params)
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      pipeline_options = PipelineOptions.new(min_items:, strict_quality:, compare_enhance:)
-      execute_timed_pipeline(raw_config, config, started, pipeline_options)
+      execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, compare_enhance:)
     rescue StandardError => error
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       execution_failure_result(error, raw_config, duration)
@@ -204,38 +199,27 @@ module Html2rss
     end
     private_class_method :compile_quality_report
 
-    def execute_timed_pipeline(raw_config, config, started, pipeline_options)
+    def execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, # rubocop:disable Metrics/ParameterLists
+                               compare_enhance:)
       feed_result, pipeline_outcome = extract_feed(raw_config)
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       quality_report = compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
-      enhance_compare = build_enhance_compare(config, pipeline_outcome) if pipeline_options.compare_enhance
+      enhance_compare = build_enhance_compare(config, pipeline_outcome) if compare_enhance
 
-      build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, pipeline_options)
+      build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare,
+                        min_items:, strict_quality:)
     end
     private_class_method :execute_timed_pipeline
 
-    def evaluate_outcome(item_count, min_items, strict_quality, quality_report)
-      min_items_passed = item_count >= min_items
-      quality_failed = strict_quality && min_items_passed && Policy.quality_failure?(quality_report)
-      passed = min_items_passed && !quality_failed
-      failure_kind, error_message = Policy.outcome_failure(
-        min_items_passed:, quality_failed:, item_count:, min_items:, quality_report:
-      )
-      log_strict_quality_failure(failure_kind, item_count) if quality_failed
-      [passed, failure_kind, error_message]
-    end
-    private_class_method :evaluate_outcome
-
-    def build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, pipeline_options) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+    def build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+                          min_items:, strict_quality:)
       rss_doc = feed_result.to_rss
-      passed, failure_kind, error_message = evaluate_outcome(
-        rss_doc.items.size, pipeline_options.min_items, pipeline_options.strict_quality, quality_report
-      )
+      outcome = Policy.evaluate(item_count: rss_doc.items.size, min_items:, strict_quality:, quality_report:)
       strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
                       RequestService.default_strategy_name
 
       Result.new(
-        success: passed,
+        success: outcome.passed,
         item_count: rss_doc.items.size,
         sample_items: extract_samples(rss_doc.items),
         channel_title: feed_result.channel_title,
@@ -243,9 +227,9 @@ module Html2rss
         strategy_used:,
         duration_seconds: duration.round(3),
         validation_issues: nil,
-        error_message:,
-        failure_kind:,
-        rss: passed ? rss_doc.to_s : nil,
+        error_message: outcome.error_message,
+        failure_kind: outcome.failure_kind,
+        rss: outcome.passed ? rss_doc.to_s : nil,
         quality_report:,
         enhance_compare:
       )
@@ -368,11 +352,6 @@ module Html2rss
       false
     end
     private_class_method :url_mismatch?
-
-    def log_strict_quality_failure(failure_kind, item_count)
-      Log.info("Test strict quality: failure_kind=#{failure_kind.to_sym} item_count=#{item_count}")
-    end
-    private_class_method :log_strict_quality_failure
 
     def probe_native_feed_url(channel_url, config)
       return nil if channel_url.to_s.empty?

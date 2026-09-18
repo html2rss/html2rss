@@ -9,6 +9,40 @@ module Html2rss
       module_function
 
       ##
+      # Outcome of evaluating test thresholds.
+      Outcome = Data.define(:passed, :failure_kind, :error_message) do
+        # @return [Boolean]
+        def success? = passed
+
+        # @return [Boolean]
+        def failure? = !passed
+      end
+
+      ##
+      # Evaluates whether the test passed thresholds and determines any failure kind and error message.
+      #
+      # @param item_count [Integer]
+      # @param min_items [Integer]
+      # @param strict_quality [Boolean]
+      # @param quality_report [QualityReport]
+      # @return [Outcome]
+      def evaluate(item_count:, min_items:, strict_quality:, quality_report:)
+        min_items_passed = item_count >= min_items
+        quality_failed = strict_quality && min_items_passed && quality_failure?(quality_report)
+        passed = min_items_passed && !quality_failed
+        failure_kind, error_message = outcome_failure(
+          min_items_passed:, quality_failed:, item_count:, min_items:, quality_report:
+        )
+        log_strict_quality_failure(failure_kind, item_count) if quality_failed
+        Outcome.new(passed:, failure_kind:, error_message:)
+      end
+
+      def log_strict_quality_failure(failure_kind, item_count)
+        Log.info("Test strict quality: failure_kind=#{failure_kind.to_sym} item_count=#{item_count}")
+      end
+      private_class_method :log_strict_quality_failure
+
+      ##
       # @param quality_report [QualityReport]
       # @return [Boolean]
       def quality_failure?(quality_report)
