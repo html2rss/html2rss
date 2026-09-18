@@ -13,7 +13,7 @@ RSpec.describe Html2rss::Selectors::JsonXml do
       end
 
       it 'converts the hash to xml and logs the conversion', :aggregate_failures do
-        expect(described_class.new(object).call).to eq xml
+        expect(described_class.call(object)).to eq xml
         expect(Html2rss::Log).to have_received(:debug)
           .with(match(/#{Regexp.escape(described_class.to_s)}: converted object to XML \(\d+ bytes\)/))
       end
@@ -26,7 +26,7 @@ RSpec.describe Html2rss::Selectors::JsonXml do
       end
 
       it 'converts the hash to xml' do
-        expect(described_class.new(object).call).to eq xml
+        expect(described_class.call(object)).to eq xml
       end
     end
   end

@@ -13,6 +13,8 @@ module Html2rss
       # @param item_env [ItemEnv, nil]
       # @option step_config [String] :name post-processor name
       def initialize(step_config: {}.freeze, base_url: nil, time_zone: nil, item_env: nil)
+        base_url ||= item_env&.base_url
+        time_zone ||= item_env&.time_zone
         super
       end
     end

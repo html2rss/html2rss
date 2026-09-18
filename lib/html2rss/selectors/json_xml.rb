@@ -7,37 +7,25 @@ module Html2rss
     ##
     # Internal data converter helper: converts a Ruby object (e.g. parsed JSON response)
     # to an XML format string so Nokogiri HTML5 CSS selectors can run on a fragment.
-    class JsonXml
+    module JsonXml
       # Wrapper tags used for top-level collection conversion.
       OBJECT_TO_XML_TAGS = {
         hash: ['<object>', '</object>'],
         array: ['<array>', '</array>']
       }.freeze
 
+      module_function
+
       ##
       # Converts the object to XML format.
       #
       # @param object [Object] any Ruby object (Hash, Array, String, Symbol, etc.)
       # @return [String] representing the object in XML
-      def self.call(object) = new(object).call
-
-      ##
-      # @param object [Object] any Ruby object (Hash, Array, String, Symbol, etc.)
-      def initialize(object)
-        @object = object
-      end
-
-      ##
-      # Converts the object to XML format.
-      #
-      # @return [String] representing the object in XML
-      def call
-        object_to_xml(@object).tap do |converted|
-          Html2rss::Log.debug("#{self.class}: converted object to XML (#{converted.bytesize} bytes)")
+      def call(object)
+        object_to_xml(object).tap do |converted|
+          Html2rss::Log.debug("#{self}: converted object to XML (#{converted.bytesize} bytes)")
         end
       end
-
-      private
 
       def object_to_xml(object)
         case object

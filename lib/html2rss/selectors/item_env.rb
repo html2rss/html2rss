@@ -22,7 +22,7 @@ module Html2rss
       # @option step_config [String] :name post-processor name
       # @return [StepEnv]
       def context_for(step_config:)
-        StepEnv.new(step_config:, base_url:, time_zone:, item_env: self)
+        StepEnv.new(step_config:, item_env: self)
       end
     end
   end

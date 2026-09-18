@@ -7,7 +7,11 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
   let(:context) { Html2rss::Selectors::StepEnv.new(step_config:, item_env:) }
 
   before do
-    allow(item_env).to receive(:select).with(:name).and_return('My name')
+    allow(item_env).to receive_messages(
+      base_url: nil,
+      time_zone: nil,
+      select: 'My name'
+    )
     allow(item_env).to receive(:select).with(:author).and_return('Slim Shady')
     allow(item_env).to receive(:select).with(:returns_nil).and_return(nil)
   end
