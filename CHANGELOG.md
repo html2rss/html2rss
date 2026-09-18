@@ -12,6 +12,14 @@
 - **JSON Schema facades relocated** to `Config::Schema` (no thin delegates on `Config`):
   - `Config.json_schema` / `Config.json_schema_json` / `Config.schema_path` → `Config::Schema.json_schema` / `Config::Schema.json_schema_json` / `Config::Schema.path`.
   - `Html2rss.schema_json` updated to call `Config::Schema`.
+- **Selectors vocabulary clarity & hull cleanup** (Breaking Ruby API; YAML / MCP wire unchanged — `selectors`, `extractor`, `post_process`):
+  - Renamed `StepEnv#options` to `StepEnv#step_config` (and `ItemEnv#context_for(step_config:)`), eliminating collision with `OptionSpec` strategy introspection. No backward compatibility shims.
+  - Purged duplicate hull method `PostProcessors::Base.strategy_options` in favor of direct `OptionSpec.for(self)`.
+  - Purged wrapper hull method `SchemaExport.options_for` in favor of direct `OptionSpec.for(klass)`.
+  - Modernized `Extractors.call(config, xml)` parameter from legacy `attribute_options` to `config`.
+  - Modernized `SanitizeHtml`: extracted pure `SanitizeHtml.sanitize(html, base_url)` method; `SanitizeHtml.call(html, url)` no longer allocates a fake `StepEnv` hull object.
+  - Added `JsonXml.call(object)` class-level convenience converter method.
+  - Clarified `#call` ownership taxonomy: registry dispatchers (`Extractors.call`/`PostProcessors.call`), strategy execution (`#call`), and helpers (`JsonXml.call`/`SanitizeHtml.call`).
 - **Selectors vocabulary cutover** (Breaking Ruby API; YAML / MCP wire unchanged — `selectors`, `extractor`, `post_process`):
   - Folded `CategoriesExtractor` and `AttributeSelector` into private field dispatch on `Selectors` (no `FieldSelect`).
   - Renamed `ItemScope` → `ItemEnv`, `Context` → `StepEnv` with member `base_url` (not `channel_url` on StepEnv).
