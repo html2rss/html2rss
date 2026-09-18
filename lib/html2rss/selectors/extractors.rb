@@ -32,7 +32,7 @@ module Html2rss
 
         ##
         # Registry dispatcher: resolves the extractor strategy for +config+,
-        # instantiates it with typed +Args+, and executes its +#call+.
+        # instantiates it with options, and executes its +#call+.
         #
         # @param config [Hash{Symbol => Object}]
         #   Should contain at least `:extractor` (the name) and options for that extractor.
@@ -40,11 +40,7 @@ module Html2rss
         # @return [Object] extracted value from the strategy instance
         def call(config, xml)
           extractor_class = NAME_TO_CLASS[config[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
-          args = extractor_class::Args.new(
-            **config.slice(*extractor_class::Args.members)
-          )
-
-          extractor_class.new(xml, args).call
+          extractor_class.new(xml, **config).call
         end
       end
     end

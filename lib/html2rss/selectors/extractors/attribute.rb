@@ -29,13 +29,6 @@ module Html2rss
           OptionSpec.new(name: :attribute, type: String)
         ].freeze
 
-        # Runtime args for the attribute extractor.
-        Args = Data.define(:selector, :attribute) do
-          # @param selector [String, nil] CSS selector for the element
-          # @param attribute [String, nil] HTML attribute name to read
-          def initialize(selector: nil, attribute: nil) = super
-        end
-
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return the value of an HTML attribute on the selected element. ' \
                       'Requires sibling selector option `attribute` (attribute name).'
@@ -52,12 +45,11 @@ module Html2rss
         # Initializes the Attribute extractor.
         #
         # @param xml [Nokogiri::XML::Element]
-        # @param args [Args]
-        # @option args [String] :selector CSS selector used to find the element
-        # @option args [String] :attribute attribute name to extract from the selected element
-        def initialize(xml, args)
-          @args = args
-          @element = Extractors.element(xml, args.selector)
+        # @param attribute [String, nil] attribute name to extract from the selected element
+        # @param selector [String, nil] CSS selector used to find the element
+        def initialize(xml, attribute: nil, selector: nil, **)
+          @attribute = attribute
+          @element = Extractors.element(xml, selector)
         end
 
         ##
@@ -65,7 +57,7 @@ module Html2rss
         #
         # @return [String] The value of the attribute.
         def call
-          @element.attr(@args.attribute).to_s
+          @element.attr(@attribute).to_s
         end
       end
     end

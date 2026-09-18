@@ -24,13 +24,6 @@ module Html2rss
       # Would return:
       #    'http://blog-without-a-feed.example.com/posts/latest-findings'
       class Href
-        # Runtime args for the href extractor.
-        Args = Data.define(:selector, :base_url) do
-          # @param selector [String, nil] CSS selector for the link element
-          # @param base_url [String, Html2rss::Url, nil] page base for relative hrefs
-          def initialize(selector: nil, base_url: nil) = super
-        end
-
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return the absolute URL from the selected element\'s `href` attribute ' \
                       '(relative hrefs are resolved against the page base URL).'
@@ -47,23 +40,22 @@ module Html2rss
         # Initializes the Href extractor.
         #
         # @param xml [Nokogiri::XML::Element]
-        # @param args [Args]
-        # @option args [String] :selector CSS selector used to find the link element
-        # @option args [String, Html2rss::Url] :base_url page base URL for relative hrefs
-        def initialize(xml, args)
-          @args = args
-          @element = Extractors.element(xml, args.selector)
+        # @param base_url [String, Html2rss::Url, nil] page base URL for relative hrefs
+        # @param selector [String, nil] CSS selector used to find the link element
+        def initialize(xml, base_url: nil, selector: nil, **)
+          @base_url = base_url
+          @element = Extractors.element(xml, selector)
           @href = @element.attr('href').to_s
         end
 
         ##
         # Retrieves and returns the normalized absolute URL.
         #
-        # @return [String] The absolute URL.
+        # @return [Html2rss::Url, nil] The absolute URL.
         def call
           return nil unless @href
 
-          Url.from_relative(@href, @args.base_url)
+          Url.from_relative(@href, @base_url)
         end
       end
     end

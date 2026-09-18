@@ -21,9 +21,6 @@ module Html2rss
       # Would return:
       #    'Lorem ipsum dolor ...'
       class Text
-        # Runtime args for the text extractor (selector only).
-        Args = ExtractorArgs
-
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return collapsed visible text of the selected element (default extractor).'
 
@@ -39,10 +36,9 @@ module Html2rss
         # Initializes the Text extractor.
         #
         # @param xml [Nokogiri::XML::Element]
-        # @param args [ExtractorArgs]
-        # @option args [String] :selector CSS selector used to find the element
-        def initialize(xml, args)
-          @element = Extractors.element(xml, args.selector)
+        # @param selector [String, nil] CSS selector used to find the element
+        def initialize(xml, selector: nil, **)
+          @element = Extractors.element(xml, selector)
         end
 
         ##

@@ -21,12 +21,6 @@ module Html2rss
           OptionSpec.new(name: :static, type: String)
         ].freeze
 
-        # Runtime args for the static extractor.
-        Args = Data.define(:static) do
-          # @param static [String, nil] fixed value to return
-          def initialize(static: nil) = super
-        end
-
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return a fixed value from sibling selector option `static` (no DOM read).'
 
@@ -42,18 +36,17 @@ module Html2rss
         # Initializes the Static extractor.
         #
         # @param _xml [nil, Nokogiri::XML::Element] Unused parameter for compatibility with other extractors.
-        # @param args [Args] Args containing the static value.
-        # @option args [String, Symbol] :static static value returned by this extractor
-        def initialize(_xml, args)
-          @args = args
+        # @param static [String, Symbol, nil] static value returned by this extractor
+        def initialize(_xml = nil, static: nil, **)
+          @static = static
         end
 
         ##
         # Retrieves and returns the static value.
         #
-        # @return [String, Symbol] The static value provided in args.
+        # @return [String, Symbol, nil] The static value.
         def call
-          @args.static
+          @static
         end
       end
     end
