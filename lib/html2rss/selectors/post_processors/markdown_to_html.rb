@@ -36,7 +36,7 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Convert Markdown to HTML (Kramdown) and sanitize the result. ' \
                       'Often chained after `template`.'
 
@@ -46,7 +46,7 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :markdown_to_html, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :markdown_to_html, klass: self)
 
         ##
         # Converts Markdown to sanitized HTML.

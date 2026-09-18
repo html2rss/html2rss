@@ -37,7 +37,7 @@ module Html2rss
         end
 
         ##
-        # @param spec [Selectors::Option]
+        # @param spec [Selectors::OptionSpec]
         # @param option_values [Hash] post-processor YAML option keys
         # @param context [Selectors::StepEnv]
         # @return [void]
@@ -56,7 +56,7 @@ module Html2rss
         end
 
         ##
-        # @return [Array<Selectors::Option>]
+        # @return [Array<Selectors::OptionSpec>]
         def self.strategy_options
           const_defined?(:OPTIONS, false) ? const_get(:OPTIONS) : [].freeze
         end

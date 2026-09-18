@@ -30,7 +30,7 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Parse a time string with Time.parse and return RFC822, using the channel `time_zone`.'
 
         # Example post-process objects for JSON Schema +examples+.
@@ -39,7 +39,7 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :parse_time, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :parse_time, klass: self)
 
         ##
         # Ensures +context.time_zone+ is a non-empty String before parsing.

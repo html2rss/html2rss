@@ -9,8 +9,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
     let(:processor) do
       Class.new(described_class) do
         const_set(:OPTIONS, [
-          Html2rss::Selectors::Option.new(name: :key1, type: String),
-          Html2rss::Selectors::Option.new(name: :key2, type: String, required: false)
+          Html2rss::Selectors::OptionSpec.new(name: :key1, type: String),
+          Html2rss::Selectors::OptionSpec.new(name: :key2, type: String, required: false)
         ].freeze)
       end
     end

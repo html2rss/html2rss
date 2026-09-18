@@ -118,7 +118,7 @@ module Html2rss
         # @param registry [Hash{Symbol => Class}]
         # @return [Hash{String => Hash}]
         def catalog_from_registry(registry)
-          registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_doc] }
+          registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_export] }
         end
 
         # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength

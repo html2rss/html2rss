@@ -32,13 +32,13 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
-        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        # Config-facing options contract (validator / SchemaExport / Base.validate_options!).
         OPTIONS = [
-          Option.new(name: :pattern, type: String),
-          Option.new(name: :replacement, type: [String, Hash])
+          OptionSpec.new(name: :pattern, type: String),
+          OptionSpec.new(name: :replacement, type: [String, Hash])
         ].freeze
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Replace matches of `pattern` in the extracted string with `replacement` ' \
                       '(Ruby String#gsub; pattern may be a regexp-like string).'
 
@@ -48,7 +48,7 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :gsub, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :gsub, klass: self)
 
         ##
         # @param value [String]

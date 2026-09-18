@@ -18,7 +18,7 @@ module Html2rss
       class Static
         # Config-facing options contract (validator introspection).
         OPTIONS = [
-          Option.new(name: :static, type: String)
+          OptionSpec.new(name: :static, type: String)
         ].freeze
 
         # Runtime args for the static extractor.
@@ -27,7 +27,7 @@ module Html2rss
           def initialize(static: nil) = super
         end
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return a fixed value from sibling selector option `static` (no DOM read).'
 
         # Example extractor name values for JSON Schema +examples+.
@@ -36,7 +36,7 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_doc = SchemaDoc.for_extractor(name: :static, klass: self)
+        def self.schema_export = SchemaExport.for_extractor(name: :static, klass: self)
 
         ##
         # Initializes the Static extractor.

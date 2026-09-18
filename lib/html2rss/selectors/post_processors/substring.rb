@@ -33,13 +33,13 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
-        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        # Config-facing options contract (validator / SchemaExport / Base.validate_options!).
         OPTIONS = [
-          Option.new(name: :start, type: Integer),
-          Option.new(name: :end, type: Integer, required: false)
+          OptionSpec.new(name: :start, type: Integer),
+          OptionSpec.new(name: :end, type: Integer, required: false)
         ].freeze
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return a slice of the extracted string using Integer `start` and optional `end` ' \
                       '(Ruby String#[] range semantics; end may be omitted).'
 
@@ -49,7 +49,7 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :substring, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :substring, klass: self)
 
         ##
         # Extracts the substring from the original string based on the provided start and end indices.

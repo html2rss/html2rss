@@ -6,9 +6,9 @@ module Html2rss
     # One config-facing option on an extractor or post-processor strategy.
     #
     # Strategies own an +OPTIONS+ Array of these. This type is also the
-    # introspection SoT (+for+ / +expectation_for+); {SchemaDoc} maps Ruby
+    # introspection SoT (+for+ / +expectation_for+); {SchemaExport} maps Ruby
     # types to JSON Schema only.
-    Option = Data.define(:name, :type, :required) do
+    OptionSpec = Data.define(:name, :type, :required) do
       # @param name [Symbol, String]
       # @param type [Class, Array<Class>]
       # @param required [Boolean]
@@ -19,7 +19,7 @@ module Html2rss
       class << self
         ##
         # @param klass [Class] extractor or post-processor class
-        # @return [Array<Option>]
+        # @return [Array<OptionSpec>]
         def for(klass)
           klass.const_defined?(:OPTIONS) ? klass::OPTIONS : []
         end

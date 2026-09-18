@@ -41,7 +41,7 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Sanitize HTML (sanitize gem RELAXED plus html2rss defaults: absolute URLs, ' \
                       'safe link/img attributes, wrap lone images in anchors).'
 
@@ -95,7 +95,7 @@ module Html2rss
         }.freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :sanitize_html, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :sanitize_html, klass: self)
 
         ##
         # @param html [String]

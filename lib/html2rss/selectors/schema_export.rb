@@ -7,7 +7,7 @@ module Html2rss
     #
     # Each registry class owns +DESCRIPTION+, +EXAMPLES+, and optional +OPTIONS+;
     # this module is the export adapter only.
-    module SchemaDoc
+    module SchemaExport
       # Maps Ruby option types to JSON Schema +type+ strings.
       RUBY_TO_JSON_TYPE = {
         String => 'string',
@@ -72,9 +72,9 @@ module Html2rss
 
       ##
       # @param klass [Class]
-      # @return [Array<Option>]
+      # @return [Array<OptionSpec>]
       def options_for(klass)
-        Option.for(klass)
+        OptionSpec.for(klass)
       end
 
       ##

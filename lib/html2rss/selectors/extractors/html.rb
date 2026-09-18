@@ -24,9 +24,9 @@ module Html2rss
       # {PostProcessors::SanitizeHtml}.
       class Html
         # Runtime args for the html extractor (selector only).
-        Args = SelectorArgs
+        Args = ExtractorArgs
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return the outer HTML of the selected element. ' \
                       'Sanitize during post-processing (e.g. `sanitize_html`).'
 
@@ -36,13 +36,13 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_doc = SchemaDoc.for_extractor(name: :html, klass: self)
+        def self.schema_export = SchemaExport.for_extractor(name: :html, klass: self)
 
         ##
         # Initializes the Html extractor.
         #
         # @param xml [Nokogiri::XML::Element]
-        # @param args [SelectorArgs]
+        # @param args [ExtractorArgs]
         # @option args [String] :selector CSS selector used to find the element
         def initialize(xml, args)
           @element = Extractors.element(xml, args.selector)

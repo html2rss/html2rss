@@ -26,7 +26,7 @@ module Html2rss
       class Attribute
         # Config-facing options contract (validator introspection; +selector+ is runtime-only).
         OPTIONS = [
-          Option.new(name: :attribute, type: String)
+          OptionSpec.new(name: :attribute, type: String)
         ].freeze
 
         # Runtime args for the attribute extractor.
@@ -36,7 +36,7 @@ module Html2rss
           def initialize(selector: nil, attribute: nil) = super
         end
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return the value of an HTML attribute on the selected element. ' \
                       'Requires sibling selector option `attribute` (attribute name).'
 
@@ -46,7 +46,7 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_doc = SchemaDoc.for_extractor(name: :attribute, klass: self)
+        def self.schema_export = SchemaExport.for_extractor(name: :attribute, klass: self)
 
         ##
         # Initializes the Attribute extractor.

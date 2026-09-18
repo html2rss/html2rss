@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::Selectors::Option do
+RSpec.describe Html2rss::Selectors::OptionSpec do
   describe '.expectation_for' do
     it 'resolves extractor OPTIONS as Ruby-typed expectations', :aggregate_failures do
       expect(described_class.expectation_for(parent: { extractor: 'attribute' }, leaf: :attribute))

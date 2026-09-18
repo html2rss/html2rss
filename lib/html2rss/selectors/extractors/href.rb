@@ -31,7 +31,7 @@ module Html2rss
           def initialize(selector: nil, base_url: nil) = super
         end
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return the absolute URL from the selected element\'s `href` attribute ' \
                       '(relative hrefs are resolved against the page base URL).'
 
@@ -41,7 +41,7 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_doc = SchemaDoc.for_extractor(name: :href, klass: self)
+        def self.schema_export = SchemaExport.for_extractor(name: :href, klass: self)
 
         ##
         # Initializes the Href extractor.

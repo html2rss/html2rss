@@ -37,12 +37,12 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
-        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        # Config-facing options contract (validator / SchemaExport / Base.validate_options!).
         OPTIONS = [
-          Option.new(name: :string, type: String)
+          OptionSpec.new(name: :string, type: String)
         ].freeze
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         # rubocop:disable Style/FormatStringToken -- documents Kernel#format `%{key}` placeholders
         DESCRIPTION = 'Format a string with Kernel#format-style placeholders (`%{key}` / `%<key>s`). ' \
                       '`%{self}` is the current selector value; other keys resolve sibling selectors.'
@@ -54,7 +54,7 @@ module Html2rss
         # rubocop:enable Style/FormatStringToken
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :template, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :template, klass: self)
 
         ##
         # Ensures a non-empty template +string+ option and an +item_env+ for sibling lookup.
