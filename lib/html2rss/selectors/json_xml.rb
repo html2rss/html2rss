@@ -37,6 +37,7 @@ module Html2rss
           CGI.escapeHTML(object.to_s)
         end
       end
+      private_class_method :object_to_xml
 
       def hash_to_xml(object)
         prefix, suffix = OBJECT_TO_XML_TAGS[:hash]
@@ -46,6 +47,7 @@ module Html2rss
 
         "#{prefix}#{inner_xml}#{suffix}"
       end
+      private_class_method :hash_to_xml
 
       def array_to_xml(object)
         prefix, suffix = OBJECT_TO_XML_TAGS[:array]
@@ -53,6 +55,7 @@ module Html2rss
 
         "#{prefix}#{inner_xml}#{suffix}"
       end
+      private_class_method :array_to_xml
     end
   end
 end

@@ -21,9 +21,14 @@
   - Added `JsonXml.call(object)` class-level convenience converter method.
   - Clarified `#call` ownership taxonomy: registry dispatchers (`Extractors.call`/`PostProcessors.call`), strategy execution (`#call`), and helpers (`JsonXml.call`/`SanitizeHtml.call`).
 - **Codebase quality loop & modern Ruby idioms**:
+  - Deepened `Selectors::OptionSpec` to own option type validation, human error formatting, and JSON Schema type mapping, eliminating duplicated type checks across `SelectorsValidator` and `PostProcessors::Base`.
+  - Streamlined `Extractors` by passing keyword arguments directly to `#call(**config, xml:)`, deleting `ExtractorArgs` and inner `Args` data classes.
+  - Converted `SelectorsValidator` to a direct module validator with typed `Result`/`Error` value objects, eliminating Dry-Validation contract nesting and `StrippedResult` wrappers.
+  - Inlined configuration defaults normalization into `Config.prepare_defaults`, deleting single-use `Config::Preparer` class, and purged dead `Config.validate_yaml`.
+  - Deepened `Test::Policy.evaluate` to own test threshold outcomes and failure logging, eliminating `PipelineOptions` parameter bag and `Test.evaluate_outcome`.
+  - Converted `JsonXml` to a functional module using `module_function :call`, and simplified `StepEnv` defaulting for `base_url` and `time_zone`.
   - Eliminated all private `send` calls in specs; promoted `reset_defaults!` and `baseline_request_budget_for` to typed, documented public APIs.
   - Removed all top-level helper method definitions from spec files; centralized reusable fixtures and builders in `spec/support/helpers/`.
-  - Decomposed bloated `Test#call` into focused private helpers (`execute_timed_pipeline`, `evaluate_outcome`, `build_test_result`), resolving Reek `TooManyStatements` and eliminating RuboCop complexity overrides.
   - Frozen transport set `MCP::Server::TRANSPORTS` allocated once at load time.
   - Adopted Ruby 3.3 block-forwarding (`&`) in `SST::Node#each_node` and `#count_descendants`.
 - **Selectors vocabulary cutover** (Breaking Ruby API; YAML / MCP wire unchanged — `selectors`, `extractor`, `post_process`):

@@ -21,7 +21,7 @@ YAML / MCP wire vocabulary is unchanged (`selectors`, `extractor`, `post_process
 Selectors (orchestrator)
   └─ ItemEnv
        └─ field dispatch (private)
-            ├─ Extractors::*#call + ExtractorArgs + OPTIONS: [OptionSpec]
+            ├─ Extractors::*#call(**config, xml:) + OPTIONS: [OptionSpec]
             └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, step_config:, item_env:)
 ```
 
@@ -54,10 +54,8 @@ Do not reintroduce `channel_url` on `StepEnv`. Channel domain / Test / MCP `chan
 
 ## OptionSpec vs SchemaExport
 
-- **`OptionSpec`** — introspection SoT (`for(klass)`, `expectation_for`) with **Ruby-typed** `type:` / `required:`. Strategies own `OPTIONS: [OptionSpec, …]`.
-- **`SchemaExport`** — JSON Schema adapter only (`json_type_for`, `for_extractor`, `for_post_processor`). `Config::IssueMapper` maps Ruby expectations → JSON via `SchemaExport.json_type_for` so ValidationIssue `expected` wire shape stays stable.
-
-Runtime extractor args (`ExtractorArgs`, Href `Args`) are distinct from YAML `OPTIONS` keys.
+- **`OptionSpec`** — introspection & validation SoT (`for(klass)`, `expectation_for`, `valid_type?`, `error_message`, `json_type`) with **Ruby-typed** `type:` / `required:`. Strategies own `OPTIONS: [OptionSpec, …]`.
+- **`SchemaExport`** — JSON Schema adapter only (`for_extractor`, `for_post_processor`), consuming `OptionSpec#json_type`. `Config::IssueMapper` maps Ruby expectations → JSON via `OptionSpec.json_type_for` so ValidationIssue `expected` wire shape stays stable.
 
 ## Constraints
 
