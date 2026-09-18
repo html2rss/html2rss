@@ -168,7 +168,7 @@ module Html2rss
     # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
     # @param compare_enhance [Boolean] diagnostic enhance off vs on comparison on cached HTML
     # @return [Html2rss::Test::Result]
-    def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize, Metrics/PerceivedComplexity, Metrics/CyclomaticComplexity
+    def call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists
              strict_quality: false, compare_enhance: false)
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation, raw_config) unless validation.success?
@@ -178,55 +178,70 @@ module Html2rss
       config = Config.from_hash(raw_config)
 
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      begin
-        feed_result, pipeline_outcome = extract_feed(raw_config)
-        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-
-        rss_doc = feed_result.to_rss
-        rss_xml = rss_doc.to_s
-        item_count = rss_doc.items.size
-        sample_items = extract_samples(rss_doc.items)
-        quality_report = quality_report_for(
-          rss_doc.items,
-          channel_url: raw_config.dig(:channel, :url).to_s,
-          config:,
-          feed_result:,
-          pipeline_outcome:
-        )
-        enhance_compare = build_enhance_compare(config, pipeline_outcome) if compare_enhance
-
-        channel_title = feed_result.channel_title
-        channel_url = raw_config.dig(:channel, :url).to_s
-        strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
-                        RequestService.default_strategy_name
-        min_items_passed = item_count >= min_items
-        quality_failed = strict_quality && min_items_passed && Policy.quality_failure?(quality_report)
-        passed = min_items_passed && !quality_failed
-        failure_kind, error_message = Policy.outcome_failure(min_items_passed:, quality_failed:, item_count:,
-                                                             min_items:, quality_report:)
-
-        log_strict_quality_failure(failure_kind, item_count) if quality_failed
-
-        Result.new(
-          success: passed,
-          item_count:,
-          sample_items:,
-          channel_title:,
-          channel_url:,
-          strategy_used:,
-          duration_seconds: duration.round(3),
-          validation_issues: nil,
-          error_message:,
-          failure_kind:,
-          rss: passed ? rss_xml : nil,
-          quality_report:,
-          enhance_compare:
-        )
-      rescue StandardError => error
-        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-        execution_failure_result(error, raw_config, duration)
-      end
+      execute_timed_pipeline(raw_config, config, started, { min_items:, strict_quality:, compare_enhance: })
+    rescue StandardError => error
+      duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+      execution_failure_result(error, raw_config, duration)
     end
+
+    def compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
+      quality_report_for(
+        feed_result.to_rss.items,
+        channel_url: raw_config.dig(:channel, :url).to_s,
+        config:,
+        feed_result:,
+        pipeline_outcome:
+      )
+    end
+    private_class_method :compile_quality_report
+
+    def execute_timed_pipeline(raw_config, config, started, options)
+      feed_result, pipeline_outcome = extract_feed(raw_config)
+      duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+      quality_report = compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
+      enhance_compare = build_enhance_compare(config, pipeline_outcome) if options[:compare_enhance]
+
+      build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, options)
+    end
+    private_class_method :execute_timed_pipeline
+
+    def evaluate_outcome(item_count, min_items, strict_quality, quality_report)
+      min_items_passed = item_count >= min_items
+      quality_failed = strict_quality && min_items_passed && Policy.quality_failure?(quality_report)
+      passed = min_items_passed && !quality_failed
+      failure_kind, error_message = Policy.outcome_failure(
+        min_items_passed:, quality_failed:, item_count:, min_items:, quality_report:
+      )
+      log_strict_quality_failure(failure_kind, item_count) if quality_failed
+      [passed, failure_kind, error_message]
+    end
+    private_class_method :evaluate_outcome
+
+    def build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, options) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+      rss_doc = feed_result.to_rss
+      passed, failure_kind, error_message = evaluate_outcome(
+        rss_doc.items.size, options[:min_items], options[:strict_quality], quality_report
+      )
+      strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
+                      RequestService.default_strategy_name
+
+      Result.new(
+        success: passed,
+        item_count: rss_doc.items.size,
+        sample_items: extract_samples(rss_doc.items),
+        channel_title: feed_result.channel_title,
+        channel_url: raw_config.dig(:channel, :url).to_s,
+        strategy_used:,
+        duration_seconds: duration.round(3),
+        validation_issues: nil,
+        error_message:,
+        failure_kind:,
+        rss: passed ? rss_doc.to_s : nil,
+        quality_report:,
+        enhance_compare:
+      )
+    end
+    private_class_method :build_test_result
 
     def extract_samples(items, limit: 3)
       items.first(limit).map do |item|
