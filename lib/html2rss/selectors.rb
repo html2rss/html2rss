@@ -153,7 +153,7 @@ module Html2rss
 
     def build_parsed_body(page_response)
       if page_response.json_response?
-        fragment = JsonXml.new(page_response.parsed_body).call
+        fragment = JsonXml.call(page_response.parsed_body)
         Nokogiri::HTML5.fragment(fragment)
       else
         page_response.parsed_body

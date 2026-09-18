@@ -184,14 +184,14 @@ Selectors (orchestrator; keep class name)
   └─ ItemEnv
        └─ field dispatch private on Selectors
             ├─ Extractors::*#call + ExtractorArgs + OPTIONS: [OptionSpec]
-            └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, options:, item_env:)
+            └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, step_config:, item_env:)
 OptionSpec.for / .expectation_for   (Ruby-typed SoT)
 SchemaExport                        (JSON adapter only; owns json_type_for)
-JsonXml                             (JSON → HTML fragment for CSS)
+JsonXml                             (JSON → HTML fragment for CSS; JsonXml.call)
 ValidationReport / ValidationIssue  (unchanged)
 ```
 
-`ItemEnv` carries `base_url` and `time_zone` (no channel Hash). `StepEnv` is built via `ItemEnv#context_for`. Module guide: `lib/html2rss/selectors/README.md`.
+`ItemEnv` carries `base_url` and `time_zone` (no channel Hash). `StepEnv` carries `step_config` (no `options` alias) and is built via `ItemEnv#context_for(step_config:)`. Call taxonomy: `Extractors.call`/`PostProcessors.call` (registry dispatchers), strategy `#call` (instance execution), `JsonXml.call`/`SanitizeHtml.call` (helpers). Module guide: `lib/html2rss/selectors/README.md`.
 
 ## Pagination strategy registry
 

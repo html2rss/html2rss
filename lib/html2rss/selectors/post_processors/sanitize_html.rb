@@ -98,9 +98,13 @@ module Html2rss
         def self.schema_export = SchemaExport.for_post_processor(name: :sanitize_html, klass: self)
 
         ##
-        # @param html [String]
-        # @param url [String, Html2rss::Url]
-        # @return [String, nil]
+        # Cached standalone helper: sanitizes an HTML string with a memoized fragment cache.
+        # Used outside the selector pipeline (e.g. by DescriptionBuilder).
+        # Distinct from {#call}, which executes as a post-processor strategy instance.
+        #
+        # @param html [String] raw HTML text to sanitize
+        # @param url [String, Html2rss::Url] base URL for relative link/image resolution
+        # @return [String, nil] sanitized HTML string or nil if empty
         # rubocop:disable-next ThreadSafety/ClassInstanceVariable
         def self.call(html, url)
           return nil if String(html).empty?

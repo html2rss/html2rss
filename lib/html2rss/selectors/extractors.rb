@@ -31,10 +31,13 @@ module Html2rss
         end
 
         ##
+        # Registry dispatcher: resolves the extractor strategy for +config+,
+        # instantiates it with typed +Args+, and executes its +#call+.
+        #
         # @param config [Hash{Symbol => Object}]
-        #   Should contain at least `:extractor` (the name) and required options for that extractor.
-        # @param xml [Nokogiri::XML::Document]
-        # @return [Object] result of the specified item extractor
+        #   Should contain at least `:extractor` (the name) and options for that extractor.
+        # @param xml [Nokogiri::XML::Node, Nokogiri::XML::NodeSet]
+        # @return [Object] extracted value from the strategy instance
         def call(config, xml)
           extractor_class = NAME_TO_CLASS[config[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
           args = extractor_class::Args.new(

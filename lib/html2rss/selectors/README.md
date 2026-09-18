@@ -22,8 +22,19 @@ Selectors (orchestrator)
   └─ ItemEnv
        └─ field dispatch (private)
             ├─ Extractors::*#call + ExtractorArgs + OPTIONS: [OptionSpec]
-            └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, options:, item_env:)
+            └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, step_config:, item_env:)
 ```
+
+## The Three Layers of #call
+
+| Layer | Entrypoint | Role | Inputs / Outputs |
+| --- | --- | --- | --- |
+| **Registry dispatcher** | `Extractors.call(config, xml)` | Resolves strategy from `NAME_TO_CLASS`, builds `Args`, executes `#call` | `(config Hash, xml Node)` → extracted value |
+| **Registry dispatcher** | `PostProcessors.call(name, value, context)` | Resolves strategy from `NAME_TO_CLASS`, passes `StepEnv`, executes `#call` | `(name, value, StepEnv)` → transformed value |
+| **Strategy execution** | `Extractors::*#call` | Polymorphic instance execution on extractor strategies | Reads `@args`, returns extracted Object |
+| **Strategy execution** | `PostProcessors::*#call` | Polymorphic instance execution on post-processor strategies | Reads `@value` and `@context`, returns transformed Object |
+| **Data converter** | `JsonXml.call(object)` | Internal helper converting JSON object to XML string fragment | `(Hash / Array)` → `String` XML fragment |
+| **Standalone sanitizer** | `SanitizeHtml.call(html, url)` | Cached helper for description/standalone sanitization | `(html, url)` → sanitized HTML String |
 
 ## Extractor vs PostProcessor
 
@@ -37,7 +48,7 @@ Selectors (orchestrator)
 ## ItemEnv and StepEnv
 
 - **`ItemEnv`** — per-item extraction environment: node, `base_url`, scraper, `time_zone`. Nested selects reuse one env via `#select`.
-- **`StepEnv`** — post-processor invocation bag: `options`, `base_url`, `time_zone`, `item_env`. Built by `ItemEnv#context_for`.
+- **`StepEnv`** — post-processor invocation bag: `step_config` (Hash), `base_url`, `time_zone`, `item_env`. Built by `ItemEnv#context_for(step_config:)`. Distinct from `OptionSpec` (static strategy introspection).
 
 Do not reintroduce `channel_url` on `StepEnv`. Channel domain / Test / MCP `channel_url` stay separate product surfaces.
 

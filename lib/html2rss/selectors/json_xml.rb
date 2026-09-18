@@ -5,14 +5,21 @@ require 'cgi'
 module Html2rss
   class Selectors
     ##
-    # A naive implementation of "Object to XML": converts a Ruby object to XML format.
-    # Used by {Selectors} when the page response is JSON so CSS selectors can run on a fragment.
+    # Internal data converter helper: converts a Ruby object (e.g. parsed JSON response)
+    # to an XML format string so Nokogiri HTML5 CSS selectors can run on a fragment.
     class JsonXml
       # Wrapper tags used for top-level collection conversion.
       OBJECT_TO_XML_TAGS = {
         hash: ['<object>', '</object>'],
         array: ['<array>', '</array>']
       }.freeze
+
+      ##
+      # Converts the object to XML format.
+      #
+      # @param object [Object] any Ruby object (Hash, Array, String, Symbol, etc.)
+      # @return [String] representing the object in XML
+      def self.call(object) = new(object).call
 
       ##
       # @param object [Object] any Ruby object (Hash, Array, String, Symbol, etc.)
