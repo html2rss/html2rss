@@ -3,11 +3,6 @@
 RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
   let(:base_url) { Html2rss::Url.from_absolute('https://example.com') }
 
-  def load_fixture(name)
-    file = File.join(__dir__, '../../../..', 'fixtures/auto_source/json_state', name)
-    File.read(file)
-  end
-
   describe '.articles?' do
     it 'detects Next.js JSON state' do
       parsed_body = Nokogiri::HTML(load_fixture('next.html'))

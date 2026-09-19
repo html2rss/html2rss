@@ -17,15 +17,8 @@ module Html2rss
         text: Text
       }.freeze
 
-      ##
-      # Maps the extractor class to its corresponding options class.
-      ITEM_OPTION_CLASSES = Hash.new do |hash, klass|
-        hash[klass] = klass.const_get(:Options)
-      end
-
       # Extractor used when none is explicitly configured.
       DEFAULT_EXTRACTOR = :text
-
       class << self
         ##
         # Retrieves an element from Nokogiri XML based on the selector.
@@ -37,17 +30,17 @@ module Html2rss
           selector ? xml.css(selector) : xml
         end
 
-        # @param attribute_options [Hash{Symbol => Object}]
-        #   Should contain at least `:extractor` (the name) and required options for that extractor.
-        # @param xml [Nokogiri::XML::Document]
-        # @return [Object] instance of the specified item extractor class
-        def get(attribute_options, xml)
-          extractor_class = NAME_TO_CLASS[attribute_options[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
-          options = ITEM_OPTION_CLASSES[extractor_class].new(
-            **attribute_options.slice(*extractor_class::Options.members)
-          )
-
-          extractor_class.new(xml, options).get
+        ##
+        # Registry dispatcher: resolves the extractor strategy for +config+,
+        # instantiates it with options, and executes its +#call+.
+        #
+        # @param config [Hash{Symbol => Object}]
+        #   Should contain at least `:extractor` (the name) and options for that extractor.
+        # @param xml [Nokogiri::XML::Node, Nokogiri::XML::NodeSet]
+        # @return [Object] extracted value from the strategy instance
+        def call(config, xml)
+          extractor_class = NAME_TO_CLASS[config[:extractor]&.to_sym || DEFAULT_EXTRACTOR]
+          extractor_class.new(xml, **config).call
         end
       end
     end

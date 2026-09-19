@@ -1,0 +1,61 @@
+# frozen_string_literal: true
+
+require 'cgi'
+
+module Html2rss
+  class Selectors
+    ##
+    # Internal data converter helper: converts a Ruby object (e.g. parsed JSON response)
+    # to an XML format string so Nokogiri HTML5 CSS selectors can run on a fragment.
+    module JsonXml
+      # Wrapper tags used for top-level collection conversion.
+      OBJECT_TO_XML_TAGS = {
+        hash: ['<object>', '</object>'],
+        array: ['<array>', '</array>']
+      }.freeze
+
+      module_function
+
+      ##
+      # Converts the object to XML format.
+      #
+      # @param object [Object] any Ruby object (Hash, Array, String, Symbol, etc.)
+      # @return [String] representing the object in XML
+      def call(object)
+        object_to_xml(object).tap do |converted|
+          Html2rss::Log.debug("#{self}: converted object to XML (#{converted.bytesize} bytes)")
+        end
+      end
+
+      def object_to_xml(object)
+        case object
+        when Hash
+          hash_to_xml(object)
+        when Array
+          array_to_xml(object)
+        else
+          CGI.escapeHTML(object.to_s)
+        end
+      end
+      private_class_method :object_to_xml
+
+      def hash_to_xml(object)
+        prefix, suffix = OBJECT_TO_XML_TAGS[:hash]
+        inner_xml = object.each_with_object(+'') do |(key, value), str|
+          str << "<#{key}>#{object_to_xml(value)}</#{key}>"
+        end
+
+        "#{prefix}#{inner_xml}#{suffix}"
+      end
+      private_class_method :hash_to_xml
+
+      def array_to_xml(object)
+        prefix, suffix = OBJECT_TO_XML_TAGS[:array]
+        inner_xml = object.each_with_object(+'') { |value, str| str << object_to_xml(value) }
+
+        "#{prefix}#{inner_xml}#{suffix}"
+      end
+      private_class_method :array_to_xml
+    end
+  end
+end

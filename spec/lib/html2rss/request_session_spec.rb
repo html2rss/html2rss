@@ -3,38 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestSession do
-  subject(:session) { described_class.new(context:, strategy:, logger:) }
-
-  def strategy
-    :default
-  end
-
-  def logger
-    @logger ||= instance_double(Logger, warn: nil, debug: nil)
-  end
-
-  def policy
-    @policy ||= Html2rss::RequestService::Policy.new(max_requests: 3)
-  end
-
-  def budget
-    @budget ||= Html2rss::RequestService::Budget.new(max_requests: 3)
-  end
-
-  def context
-    @context ||= Html2rss::RequestService::Context.new(
-      url: 'https://example.com/news',
-      headers: { 'User-Agent' => 'RSpec' },
-      policy:,
-      budget:
-    )
-  end
-
-  def pagination_context?(ctx)
-    ctx.origin_url.to_s == 'https://redirected.example.com/news' &&
-      ctx.url.to_s == 'https://redirected.example.com/news?page=2' &&
-      ctx.headers == context.headers
-  end
+  let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
 
   describe '.build' do
     let(:config) do
@@ -91,6 +60,8 @@ RSpec.describe Html2rss::RequestSession do
   end
 
   describe '#fetch_initial_response' do
+    let(:context) { request_session_context }
+    let(:session) { described_class.new(context:, strategy: :default, logger:) }
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
@@ -101,7 +72,7 @@ RSpec.describe Html2rss::RequestSession do
     end
 
     before do
-      allow(Html2rss::RequestService).to receive(:execute).with(context, strategy:).and_return(response)
+      allow(Html2rss::RequestService).to receive(:execute).with(context, strategy: :default).and_return(response)
     end
 
     it 'requests the initial page, tracks its url, and logs the response summary', :aggregate_failures do
@@ -114,6 +85,16 @@ RSpec.describe Html2rss::RequestSession do
   end
 
   describe '#follow_up' do
+    subject(:result) do
+      session.follow_up(
+        url: 'https://redirected.example.com/news?page=2',
+        relation: :pagination,
+        origin_url: 'https://redirected.example.com/news'
+      )
+    end
+
+    let(:context) { request_session_context }
+    let(:session) { described_class.new(context:, strategy: :default, logger:) }
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
@@ -127,36 +108,31 @@ RSpec.describe Html2rss::RequestSession do
       allow(Html2rss::RequestService).to receive(:execute).and_return(response)
     end
 
-    context 'with pagination follow-up' do
-      subject(:result) do
-        session.follow_up(
-          url: 'https://redirected.example.com/news?page=2',
-          relation: :pagination,
-          origin_url: 'https://redirected.example.com/news'
-        )
-      end
+    it { is_expected.to eq(response) }
 
-      it { is_expected.to eq(response) }
+    it 'executes with pagination context', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      result
+      expect(Html2rss::RequestService).to have_received(:execute).with(
+        satisfy do |c|
+          c.origin_url.to_s == 'https://redirected.example.com/news' &&
+            c.url.to_s == 'https://redirected.example.com/news?page=2' &&
+            c.headers == context.headers
+        end,
+        strategy: :default
+      )
+    end
 
-      it 'executes with pagination context' do
-        result
-        expect(Html2rss::RequestService).to have_received(:execute).with(
-          satisfy { |c| pagination_context?(c) }, strategy: :default
-        )
-      end
-
-      it 'logs the follow-up request' do
-        result
-        expect(logger).to have_received(:debug).with(
-          %r{relation=pagination.*request_url=https://redirected\.example\.com/news\?page=2}
-        )
-      end
+    it 'logs the follow-up request' do
+      result
+      expect(logger).to have_received(:debug).with(
+        %r{relation=pagination.*request_url=https://redirected\.example\.com/news\?page=2}
+      )
     end
   end
 
   describe '#effective_page_budget' do
-    let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 20) }
-    let(:budget) { Html2rss::RequestService::Budget.new(max_requests: policy.max_requests) }
+    let(:context) { request_session_context(max_requests: 20) }
+    let(:session) { described_class.new(context:, strategy: :default, logger:) }
 
     it 'returns the requested budget when it fits the policy ceiling' do
       expect(session.effective_page_budget(3)).to eq(3)
@@ -169,6 +145,8 @@ RSpec.describe Html2rss::RequestSession do
   end
 
   describe '#page_responses' do
+    let(:context) { request_session_context }
+    let(:session) { described_class.new(context:, strategy: :default, logger:) }
     let(:initial_response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
@@ -177,26 +155,19 @@ RSpec.describe Html2rss::RequestSession do
         status: 200
       )
     end
+    let(:pagination_config) { { max_pages: 2 } }
 
-    context 'without pagination config' do
-      it 'returns array with initial response only' do
-        expect(session.page_responses(initial_response)).to eq([initial_response])
-      end
+    it 'returns array with initial response only when pagination config is absent' do
+      expect(session.page_responses(initial_response)).to eq([initial_response])
     end
 
-    context 'with pagination config' do
-      let(:pagination_config) { { max_pages: 2 } }
+    it 'delegates to Pager.for with self as session when pagination config is present', :aggregate_failures do
+      allow(Html2rss::RequestSession::Pager).to receive(:for).and_return([initial_response])
 
-      before do
-        allow(Html2rss::RequestSession::Pager).to receive(:for).and_return([initial_response])
-      end
-
-      it 'delegates to Pager.for with self as session', :aggregate_failures do
-        expect(session.page_responses(initial_response, pagination_config:)).to eq([initial_response])
-        expect(Html2rss::RequestSession::Pager).to have_received(:for).with(
-          pagination_config, session:, initial_response:
-        )
-      end
+      expect(session.page_responses(initial_response, pagination_config:)).to eq([initial_response])
+      expect(Html2rss::RequestSession::Pager).to have_received(:for).with(
+        pagination_config, session:, initial_response:
+      )
     end
   end
 end

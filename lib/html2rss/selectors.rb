@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'nokogiri'
+
 module Html2rss
   ##
   # This scraper is designed to scrape articles from a given HTML page using CSS
@@ -10,7 +12,9 @@ module Html2rss
   #
   # Additionally, it uniquely offers the capability to convert JSON into XML,
   # extending its versatility for diverse data processing workflows.
-  class Selectors
+  #
+  # {include:file:lib/html2rss/selectors/README.md}
+  class Selectors # rubocop:disable Metrics/ClassLength -- public API + private field dispatch
     # Raised when a selector key is missing or not allowed for extraction.
     class InvalidSelectorName < Html2rss::Error; end
 
@@ -43,7 +47,7 @@ module Html2rss
       @selectors = selectors
       @time_zone = time_zone
       @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
-      wire_collaborators
+      @parsed_body = nil
     end
 
     ##
@@ -65,58 +69,116 @@ module Html2rss
 
       enhance = enhance?
 
-      @body_parser.parsed_body_for(response).css(items_selector).each do |item|
-        article_hash = extract_article(item, response)
+      parsed_body.css(items_selector).each do |item|
+        article_hash = extract_article(item)
 
-        enhance_article_hash(article_hash, item, response.url) if enhance
+        enhance_article_hash(article_hash, item) if enhance
 
         yield Html2rss::Article.new(**article_hash, scraper: self.class)
       end
     end
 
     ##
-    # Returns the CSS selector for the items.
-    # @return [String] the CSS selector for the items
-    def items_selector = @selectors.dig(ITEMS_SELECTOR_KEY, :selector)
+    # Yields +baseline+, +enhanced+, and the item node per list entry for enhance diagnostics.
+    # Consumed by {Test::EnhanceAudit} so the extraction loop has one owner.
+    #
+    # @yieldparam baseline [Hash]
+    # @yieldparam enhanced [Hash]
+    # @yieldparam item [Nokogiri::XML::Element]
+    # @return [Enumerator] if no block is given
+    def each_enhance_pair
+      return enum_for(:each_enhance_pair) unless block_given?
 
-    ## @return [Boolean] whether to enhance the article hash with auto_source's semantic HTML extraction.
-    def enhance? = !!@selectors.dig(ITEMS_SELECTOR_KEY, :enhance)
+      parsed_body.css(items_selector).each do |item|
+        baseline = extract_article(item)
+        enhanced = enhance_article_hash(baseline.dup, item)
+        yield baseline, enhanced, item
+      end
+    end
 
     ##
-    # Extracts an article hash for a given item element.
+    # Selects the value for a given attribute from an HTML element.
     #
-    # @param item [Nokogiri::XML::Element] The element to extract from.
-    # @param page_response [RequestService::Response] response used for selector extraction context
-    # @return [Hash] Hash of attributes for the article.
-    def extract_article(item, page_response = response)
-      attrs = @attribute_selector
-      scope = item_scope_for(item, page_response.url)
+    # @param name [Symbol, String] Name of the attribute.
+    # @param item [Nokogiri::XML::Element] The HTML element to process.
+    # @param base_url [String, Html2rss::Url] base URL for relative extraction values
+    # @return [Object, Array<Object>] The selected value(s).
+    # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
+    def select(name, item, base_url: @url)
+      select_in_scope(name, item_env_for(item, base_url))
+    end
+
+    ##
+    # Selects the value for a given attribute within an existing {ItemEnv}.
+    # Used by {ItemEnv#select} so nested selects reuse one env per extraction pass.
+    #
+    # @param name [Symbol, String] Name of the attribute.
+    # @param scope [ItemEnv] Per-item extraction scope.
+    # @return [Object, Array<Object>] The selected value(s).
+    # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
+    def select_in_scope(name, scope)
+      name = name.to_sym
+      raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
+
+      selector_key, config = selector_config_for(name, allow_nil: name == :url)
+      select_field(selector_key, scope:, config:)
+    end
+
+    ##
+    # Resolves a selector name to +[key, config]+. Used by category field dispatch.
+    #
+    # @param name [Symbol, String]
+    # @param allow_nil [Boolean]
+    # @return [Array(Symbol, Hash, nil)]
+    def selector_config_for(name, allow_nil: false)
+      selector_key = name.to_sym
+
+      return [selector_key, @selectors[selector_key]] if @selectors.key?(selector_key)
+      return [selector_key, nil] if allow_nil
+
+      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
+    end
+
+    private
+
+    attr_reader :response
+
+    def items_selector = @selectors.dig(ITEMS_SELECTOR_KEY, :selector)
+
+    def enhance? = !!@selectors.dig(ITEMS_SELECTOR_KEY, :enhance)
+
+    def parsed_body
+      @parsed_body ||= build_parsed_body(response)
+    end
+
+    def build_parsed_body(page_response)
+      if page_response.json_response?
+        fragment = JsonXml.call(page_response.parsed_body)
+        Nokogiri::HTML5.fragment(fragment)
+      else
+        page_response.parsed_body
+      end
+    end
+
+    def extract_article(item)
+      scope = item_env_for(item, @url)
       hash = @rss_item_attributes.each_with_object({}) do |selector_key, h|
         value = scope.select(selector_key)
         next if value.nil?
 
         article_key = SELECTOR_TO_ARTICLE_KEY.fetch(selector_key, selector_key)
-        h[article_key] = article_key == :enclosures ? attrs.wrap_enclosure_value(value) : value
+        h[article_key] = article_key == :enclosures ? wrap_enclosure_value(value) : value
       end
 
-      hash[:url] ||= attrs.default_item_url(item, page_response.url) if attrs.anchor_element?(item)
+      hash[:url] ||= default_item_url(item) if anchor_element?(item)
       hash
     end
 
-    ##
-    # Enhances the article hash using semantic HTML extraction.
-    # Only adds keys that are missing from the original hash.
-    #
-    # @param article_hash [Hash] The original article hash.
-    # @param article_tag [Nokogiri::XML::Element] HTML element to extract additional info from.
-    # @param base_url [String, Html2rss::Url] base URL for normalization during enhancement
-    # @return [Hash] The enhanced article hash.
-    # rubocop:disable-next Metrics/MethodLength
-    def enhance_article_hash(article_hash, article_tag, base_url = @url)
+    def enhance_article_hash(article_hash, article_tag) # rubocop:disable Metrics/MethodLength -- merge extracted keys
       selected_anchor = Html2rss::Html::Navigator.main_anchor_for(article_tag)
       extracted = Html2rss::Html::ArticleExtractor.call(
         article_tag,
-        base_url:,
+        base_url: @url,
         selected_anchor:,
         fallback_anchorless: true,
         time_zone: @time_zone
@@ -130,74 +192,138 @@ module Html2rss
       end
     end
 
-    ##
-    # Selects the value for a given attribute from an HTML element.
-    #
-    # @param name [Symbol, String] Name of the attribute.
-    # @param item [Nokogiri::XML::Element] The HTML element to process.
-    # @param base_url [String, Html2rss::Url] base URL for relative extraction values
-    # @return [Object, Array<Object>] The selected value(s).
-    # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
-    def select(name, item, base_url: @url)
-      select_in_scope(name, item_scope_for(item, base_url))
+    def wrap_enclosure_value(value)
+      value.is_a?(Array) ? value : [value]
     end
 
-    ##
-    # Selects the value for a given attribute within an existing {ItemScope}.
-    # Used by {ItemScope#select} so nested selects reuse one scope per extraction pass.
-    #
-    # @param name [Symbol, String] Name of the attribute.
-    # @param scope [ItemScope] Per-item extraction scope.
-    # @return [Object, Array<Object>] The selected value(s).
-    # @raise [InvalidSelectorName] If the attribute name is invalid or not defined.
-    def select_in_scope(name, scope)
-      name = name.to_sym
-      raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
-
-      attrs = @attribute_selector
-      selector_key, config = selector_config_for(name, allow_nil: name == :url)
-      if attrs.fallback_url_selector?(selector_key, config, scope.item)
-        return attrs.default_item_url(scope.item, scope.base_url)
-      end
+    def select_field(selector_key, scope:, config:)
+      return default_item_url(scope.item, scope.base_url) if fallback_url_selector?(selector_key, config, scope.item)
       raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined." if config.nil?
 
-      attrs.dispatch_select(selector_key, scope:, config:)
+      if SPECIAL_ATTRIBUTES.member?(selector_key)
+        select_special(selector_key, scope:, config:)
+      else
+        select_regular(selector_key, scope:, config:)
+      end
     end
 
-    private
-
-    attr_reader :response
-
-    def wire_collaborators
-      @body_parser = BodyParser.new
-      @attribute_selector = AttributeSelector.new
-      @categories_extractor = CategoriesExtractor.new(
-        config_lookup: method(:selector_config_for),
-        attribute_selector: @attribute_selector
-      )
-      @attribute_selector.categories_extractor = @categories_extractor
+    def select_special(name, scope:, config:)
+      case name
+      when :enclosure
+        enclosure(scope:, config:)
+      when :guid
+        Array(config).map { |selector_name| scope.select(selector_name) }
+      when :categories
+        select_categories(category_selectors: config, scope:)
+      end
     end
 
-    def item_scope_for(item, base_url)
-      ItemScope.new(
+    def select_regular(_name, scope:, config:)
+      merged_config = config.merge(base_url: scope.base_url)
+      value = Extractors.call(merged_config, scope.item)
+
+      apply_post_process_steps(scope:, value:, post_process_steps: config[:post_process])
+    end
+
+    def apply_post_process_steps(scope:, value:, post_process_steps:)
+      return value unless value && post_process_steps
+
+      steps = post_process_steps.is_a?(Array) ? post_process_steps : [post_process_steps]
+      post_process(scope, value, steps)
+    end
+
+    def post_process(scope, value, post_process_steps)
+      post_process_steps.each do |step_config|
+        value = PostProcessors.call(step_config[:name], value, scope.context_for(step_config:))
+      end
+
+      value
+    end
+
+    # Flattens configured category selector names into discrete category strings.
+    # When a selector matches multiple nodes, each node is extracted independently
+    # (with optional post-processors) so multi-tag UIs become multiple categories.
+    #
+    # @param category_selectors [Array, String, Symbol]
+    # @param scope [ItemEnv]
+    # @return [Array<String>]
+    def select_categories(category_selectors:, scope:)
+      Array(category_selectors).flat_map do |selector_name|
+        extract_category_values(selector_name, scope:)
+      end
+    end
+
+    def extract_category_values(selector_name, scope:)
+      _selector_key, config = selector_config_for(selector_name, allow_nil: true)
+      return [] unless config
+
+      nodes = extract_nodes(item: scope.item, config:)
+      return Array(scope.select(selector_name)) unless node_set_with_multiple_elements?(nodes)
+
+      Array(nodes).flat_map { |node| extract_categories_from_node(node, scope:, config:) }
+    end
+
+    def extract_categories_from_node(node, scope:, config:)
+      values = Extractors.call(config.merge(base_url: scope.base_url, selector: nil), node)
+      values = apply_post_process_steps(scope:, value: values, post_process_steps: config[:post_process])
+
+      Array(values).filter_map { |category| extract_category_text(category) }
+    end
+
+    def extract_category_text(category)
+      text = case category
+             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
+               Html2rss::Html::Navigator.extract_visible_text(category)
+             else
+               category&.to_s
+             end
+
+      stripped = text&.strip
+      stripped unless stripped.nil? || stripped.empty?
+    end
+
+    def node_set_with_multiple_elements?(nodes)
+      nodes.is_a?(Nokogiri::XML::NodeSet) && nodes.length > 1
+    end
+
+    def extract_nodes(item:, config:)
+      return unless config.respond_to?(:[]) && config[:selector]
+
+      Extractors.element(item, config[:selector])
+    end
+
+    # @return [Hash, nil] enclosure details, or nil when the selector yields nothing.
+    def enclosure(scope:, config:)
+      selected = select_regular(:enclosure, scope:, config:)
+      return if selected.nil? || selected.to_s.strip.empty?
+
+      url = Url.from_relative(selected, scope.base_url)
+
+      { url:, type: config[:content_type] }
+    end
+
+    def fallback_url_selector?(selector_key, config, item)
+      selector_key == :url && config.nil? && anchor_element?(item)
+    end
+
+    def anchor_element?(item)
+      item.respond_to?(:name) && item.name.to_s.casecmp('a').zero?
+    end
+
+    def default_item_url(item, base_url = @url)
+      href = item['href'].to_s.strip
+      return if href.empty?
+
+      Url.from_relative(href, base_url)
+    end
+
+    def item_env_for(item, base_url)
+      ItemEnv.new(
         item:,
         base_url:,
         scraper: self,
-        channel: channel_context(base_url)
+        time_zone: @time_zone
       )
-    end
-
-    def selector_config_for(name, allow_nil: false)
-      selector_key = name.to_sym
-
-      return [selector_key, @selectors[selector_key]] if @selectors.key?(selector_key)
-      return [selector_key, nil] if allow_nil
-
-      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
-    end
-
-    def channel_context(base_url)
-      (@channel_contexts ||= {})[base_url] ||= { url: base_url, time_zone: @time_zone }.freeze
     end
   end
 end

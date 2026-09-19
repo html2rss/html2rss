@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Segmenter do
-  def document_for(html)
-    Html2rss::SST::Normalizer.call(html)
-  end
-
   describe '.call with :semantic' do
     let(:html) do
       <<~HTML

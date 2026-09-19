@@ -23,7 +23,7 @@ module Html2rss
       # Would return:
       #    'http://why-not-use-a-link.uh'
       class ParseUri < Base
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Normalize a URL string; resolve relative URLs against the channel URL.'
 
         # Example post-process objects for JSON Schema +examples+.
@@ -32,10 +32,10 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :parse_uri, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :parse_uri, klass: self)
 
         # @param value [String] extracted selector value
-        # @param _context [Selectors::Context] post-processor context
+        # @param _context [Selectors::StepEnv] post-processor context
         # @return [void]
         def self.validate_args!(value, _context)
           raise ArgumentError, 'The `value` option is missing or empty.' if value.to_s.empty?
@@ -43,8 +43,8 @@ module Html2rss
 
         ##
         # @return [String]
-        def get
-          Url.from_relative(value, context.channel_url).to_s
+        def call
+          Url.from_relative(value, context.base_url).to_s
         end
       end
     end

@@ -24,6 +24,8 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 2. **Reusable feed YAML?** → `capture` → `test` → `apply`. `capture` returns YAML in `payload.yaml`. Strive `enhance: true` (false only when chrome leaks). `test` runs schema + live extraction; optional `compare_enhance` compares enhance off vs on. `apply` is the ship gate (`isError` on zero items). Both `test` and `apply` may include `quality_report.enhance_gains` when `selectors.items.enhance` is true.
 3. **Weak scrape/capture or recon?** → `inspect` (or `batch_inspect`). When alternates warrant it, follow `next_step` to `recon`.
 4. **Config already in hand?** → `validate` (schema only) → `test` → `apply`.
+   - `validate` failures return `payload.issues` (array of `{ path, code, message, expected, actual }`) — not a nested `errors` hash.
+   - `test` schema failures surface the same shape under `payload.validation_issues`.
 
 Prefer `capture` for durable configs; `scrape` / `batch_scrape` for one-shot extraction. Follow envelope `next_step` and `guidance`; do not parse scrape text as a raw item array.
 

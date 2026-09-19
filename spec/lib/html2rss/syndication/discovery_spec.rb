@@ -43,28 +43,21 @@ RSpec.describe Html2rss::Syndication::Discovery do
   end
 
   describe '.feedish?' do
-    def response(body:, content_type:, status: 200)
-      Html2rss::RequestService::Response.new(
-        body:,
-        headers: { 'content-type' => content_type },
-        url: Html2rss::Url.from_absolute('https://example.com/feed'),
-        status:
-      )
-    end
-
     it 'accepts RSS content types' do
-      expect(described_class.feedish?(response(body: '<rss', content_type: 'application/rss+xml'))).to be true
+      expect(described_class.feedish?(feed_response(body: '<rss', content_type: 'application/rss+xml'))).to be true
     end
 
     it 'accepts body sniff when content type is plain' do
       expect(
-        described_class.feedish?(response(body: '<?xml version="1.0"?><rss version="2.0">', content_type: 'text/plain'))
+        described_class.feedish?(
+          feed_response(body: '<?xml version="1.0"?><rss version="2.0">', content_type: 'text/plain')
+        )
       ).to be true
     end
 
     it 'rejects non-success status' do
       expect(
-        described_class.feedish?(response(body: '<rss', content_type: 'application/rss+xml', status: 404))
+        described_class.feedish?(feed_response(body: '<rss', content_type: 'application/rss+xml', status: 404))
       ).to be false
     end
   end

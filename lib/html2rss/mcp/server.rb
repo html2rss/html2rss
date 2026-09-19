@@ -20,6 +20,9 @@ module Html2rss
       # Loopback bind for HTTP transport (local use only).
       HTTP_BIND_HOST = '127.0.0.1'
 
+      # Supported transport names.
+      TRANSPORTS = Set[:stdio, :http].freeze
+
       # Declarative MCP resource registrations consumed by {register_resources}.
       RESOURCES = [
         {
@@ -29,7 +32,7 @@ module Html2rss
           mime_type: 'application/json',
           body: lambda {
             [{ uri: 'html2rss://schema', mimeType: 'application/json',
-               text: Html2rss::Config.json_schema_json(pretty: true) }]
+               text: Html2rss::Config::Schema.json_schema_json(pretty: true) }]
           }
         },
         {
@@ -93,7 +96,7 @@ module Html2rss
         # @param transport [Symbol] +:stdio+ or +:http+
         # @param port [Integer] port for HTTP transport
         def start(transport: :stdio, port: 8080)
-          raise ArgumentError, "Unknown transport: #{transport.inspect}" unless %i[stdio http].include?(transport)
+          raise ArgumentError, "Unknown transport: #{transport.inspect}" unless TRANSPORTS.include?(transport)
 
           configure_daemon_logging!
           app = build

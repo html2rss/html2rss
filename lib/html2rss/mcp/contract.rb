@@ -16,7 +16,7 @@ module Html2rss
       ALL_ACCEPTED_STRATEGIES = (STRATEGIES + MIGRATION_STRATEGIES).freeze
 
       # Bump when tool names, required inputs, or envelope semantics change (independent of gem +VERSION+).
-      MCP_CONTRACT_VERSION = 2
+      MCP_CONTRACT_VERSION = 3
       public_constant :MCP_CONTRACT_VERSION
 
       # Raised when apply/validate config uses an unpublished MCP request adapter.

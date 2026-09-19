@@ -15,6 +15,7 @@ docs/
 /target/
 
 # Local/Dev environment files
+.agents/
 .codex/
 .tool-versions
 bin/rails

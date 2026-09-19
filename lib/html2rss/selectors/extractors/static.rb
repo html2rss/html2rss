@@ -18,16 +18,10 @@ module Html2rss
       class Static
         # Config-facing options contract (validator introspection).
         OPTIONS = [
-          Option.new(name: :static, type: String)
+          OptionSpec.new(name: :static, type: String)
         ].freeze
 
-        # Runtime options for the static extractor.
-        Options = Data.define(:static) do
-          # @param static [String, nil] fixed value to return
-          def initialize(static: nil) = super
-        end
-
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return a fixed value from sibling selector option `static` (no DOM read).'
 
         # Example extractor name values for JSON Schema +examples+.
@@ -36,24 +30,23 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this extractor name
-        def self.schema_doc = SchemaDoc.for_extractor(name: :static, klass: self)
+        def self.schema_export = SchemaExport.for_extractor(name: :static, klass: self)
 
         ##
         # Initializes the Static extractor.
         #
         # @param _xml [nil, Nokogiri::XML::Element] Unused parameter for compatibility with other extractors.
-        # @param options [Options] Options containing the static value.
-        # @option options [String, Symbol] :static static value returned by this extractor
-        def initialize(_xml, options)
-          @options = options
+        # @param static [String, Symbol, nil] static value returned by this extractor
+        def initialize(_xml = nil, static: nil, **)
+          @static = static
         end
 
         ##
         # Retrieves and returns the static value.
         #
-        # @return [String, Symbol] The static value provided in options.
-        def get
-          @options.static
+        # @return [String, Symbol, nil] The static value.
+        def call
+          @static
         end
       end
     end

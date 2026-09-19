@@ -273,10 +273,6 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
   end
 
   describe '.audit_feed_items' do
-    def rss_item(title:, url:)
-      instance_double(RSS::Rss::Channel::Item, title:, link: url)
-    end
-
     it 'returns no warnings for a clean multi-item feed', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       items = [
         rss_item(title: 'First Article Title Here', url: 'https://example.com/a'),

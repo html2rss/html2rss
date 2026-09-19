@@ -134,8 +134,12 @@ module Html2rss
       rule(:selectors) do
         next unless value
 
-        errors = Config::SelectorsValidator.call(value).errors
-        errors.each { |error| key(:selectors).failure(error.text) } unless errors.empty?
+        result = Config::SelectorsValidator.call(value)
+        next if result.success?
+
+        result.errors.each do |error|
+          key([:selectors, *error.path]).failure(error.text)
+        end
       end
 
       rule(request: :botasaurus) do

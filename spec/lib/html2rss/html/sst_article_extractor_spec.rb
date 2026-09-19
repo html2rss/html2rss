@@ -1,13 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Html::SstArticleExtractor do
-  def segment_for(html, href: '/news/story') # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-    doc = Html2rss::SST::Normalizer.call(html)
-    root = doc.root.find { |n| n.name == :article } || doc.root.find { |n| n.name == :div }
-    link = root.find { |n| n.link? && n.attrs.href == href } || root.find(&:link?)
-    Html2rss::AutoSource::Segment.build(root_node: root, primary_link: link, strategy: :semantic, position: 0)
-  end
-
   describe 'leftover hygiene' do
     let(:extractor_time_zone) { 'UTC' }
     let(:leftover_fields) do

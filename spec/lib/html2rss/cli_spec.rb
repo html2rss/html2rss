@@ -329,7 +329,7 @@ RSpec.describe Html2rss::CLI do
         channel_url: 'https://example.com',
         strategy_used: :default,
         duration_seconds: 0.12,
-        validation_errors: nil,
+        validation_issues: nil,
         error_message: nil,
         failure_kind: nil,
         rss: '<rss/>'
@@ -345,9 +345,11 @@ RSpec.describe Html2rss::CLI do
         channel_url: 'https://example.com',
         strategy_used: :default,
         duration_seconds: 0.12,
-        validation_errors: nil,
-        error_message: 'Extracted 0 items (minimum required: 1)',
-        failure_kind: Html2rss::Test::FailureKind.coerce(:min_items),
+        validation_issues: [
+          Html2rss::Config::ValidationIssue.new(path: %i[channel url], code: :missing_key, message: 'is missing')
+        ],
+        error_message: 'Configuration schema validation failed',
+        failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
         rss: nil
       )
     end
@@ -421,14 +423,32 @@ RSpec.describe Html2rss::CLI do
         allow(Html2rss).to receive(:test).and_return(test_result_failure)
       end
 
+      it 'prints structured validation issues via Render.test_card' do
+        expect do
+          Html2rss::CLI::Render.test_card(test_result_failure, 'config.yml')
+        end.to output(/Schema error channel\.url \[missing_key\] is missing/).to_stderr
+      end
+
+      it 'prints (root) when a validation issue has an empty path' do # rubocop:disable RSpec/ExampleLength
+        root_issue = test_result_failure.with(
+          validation_issues: [
+            Html2rss::Config::ValidationIssue.new(path: [], code: :invalid_value, message: 'bad')
+          ]
+        )
+
+        expect do
+          Html2rss::CLI::Render.test_card(root_issue, 'config.yml')
+        end.to output(/Schema error \(root\) \[invalid_value\] bad/).to_stderr
+      end
+
       it 'raises a Thor::Error on failure' do
         expect { cli.test('config.yml') }
-          .to raise_error(Thor::Error, /Extracted 0 items/)
+          .to raise_error(Thor::Error, /Configuration schema validation failed/)
       end
 
       it 'supports --quiet when test fails' do
         expect { cli.invoke(:test, ['config.yml'], { quiet: true }) }
-          .to output(/Extracted 0 items/).to_stderr
+          .to output(/Configuration schema validation failed/).to_stderr
           .and raise_error(Thor::Error)
       end
     end
@@ -453,8 +473,18 @@ RSpec.describe Html2rss::CLI do
   end
 
   describe '#validate' do
-    let(:result_success) { instance_double(Dry::Validation::Result, success?: true, errors: {}) }
-    let(:result_failure) { instance_double(Dry::Validation::Result, success?: false, errors: { selectors: ['bad config'] }) }
+    let(:result_success) { Html2rss::Config::ValidationReport.ok }
+    let(:result_failure) do
+      Html2rss::Config::ValidationReport.failure(
+        [
+          Html2rss::Config::ValidationIssue.new(
+            path: %i[selectors],
+            code: :invalid_value,
+            message: 'bad config'
+          )
+        ]
+      )
+    end
 
     context 'when the config is valid' do
       before do

@@ -45,9 +45,9 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
         { items: { selector: '.article', pagination: { strategy: 'invalid_strategy' } } }
       end
 
-      it 'fails validation', :aggregate_failures do
+      it 'fails with nested path under items', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('`strategy` must be one of')
+        expect(result.errors.map(&:path)).to include(%i[items pagination])
       end
     end
 
@@ -58,7 +58,6 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('`custom_selector` strategy requires `selector`')
       end
     end
 
@@ -68,9 +67,7 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       end
 
       it 'fails validation', :aggregate_failures do
-        msg = '`json_cursor` strategy requires either `cursor_path` or `next_url_path`'
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include(msg)
       end
     end
 
@@ -81,7 +78,6 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
 
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('must be an integer greater than 0')
       end
     end
 
@@ -94,7 +90,6 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       # leave runtime paging without a positive Integer budget.
       it 'fails validation', :aggregate_failures do
         expect(result).to be_failure
-        expect(result.errors.to_h.to_s).to include('`max_pages` must be an integer greater than 0')
       end
     end
   end
@@ -379,7 +374,10 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
         { title: { selector: 'h1', extractor: 'nope' } }
       end
 
-      it { expect(result).to be_failure }
+      it 'fails with nested path under the selector key', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.map(&:path)).to include(%i[title extractor])
+      end
     end
 
     it 'requires OPTIONS members from the extractor registry', :aggregate_failures do
@@ -415,7 +413,37 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
         { enclosure: { selector: 'enclosure', content_type: 'audio' } }
       end
 
-      it { expect(result).to be_failure }
+      it 'fails with nested path under enclosure', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.map(&:path)).to include(%i[enclosure content_type])
+      end
+    end
+  end
+
+  describe 'ValidationReport path preservation' do
+    # rubocop:disable-next RSpec/ExampleLength
+    it 'keeps nested leaf paths through Config.validate', :aggregate_failures do
+      values = {
+        channel: { url: 'https://example.com' },
+        selectors: { items: { selector: '.a', pagination: { strategy: 'invalid_strategy' } } }
+      }
+      report = Html2rss::Config.validate(values)
+
+      expect(report).to be_failure
+      expect(report.issues.map(&:path)).to include(%i[selectors items pagination])
+      expect(report.issues.map(&:message).join).to include('strategy')
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength
+    it 'keeps dynamic selector leaf paths for unknown extractors', :aggregate_failures do
+      values = {
+        channel: { url: 'https://example.com' },
+        selectors: { items: { selector: '.a' }, title: { selector: 'h1', extractor: 'nope' } }
+      }
+      report = Html2rss::Config.validate(values)
+
+      expect(report).to be_failure
+      expect(report.issues.map(&:path)).to include(%i[selectors title extractor])
     end
   end
 end

@@ -107,12 +107,13 @@ module Html2rss
         end
 
         ##
-        # @param errors [Hash, nil] schema errors; +nil+ means success
+        # @param report [Html2rss::Config::ValidationReport]
         # @return [Outcome]
-        def validate(errors:)
-          ok = errors.nil?
+        def validate(report:)
+          ok = report.success?
           next_step = ok ? NextStep.test : NextStep.validate
-          new(ok:, next_step:, guidance: next_step.guidance, payload: ok ? {} : { errors: })
+          payload = ok ? {} : { issues: report.issues.map(&:to_h) }
+          new(ok:, next_step:, guidance: next_step.guidance, payload:)
         end
 
         ##

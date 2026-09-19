@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module Html2rss
   class Config
     ##
@@ -17,6 +19,15 @@ module Html2rss
       def json_schema
         load_json_schema_extension!
         Builder.call
+      end
+
+      ##
+      # Returns the exported JSON Schema as JSON.
+      #
+      # @param pretty [Boolean] whether to pretty-print the JSON output
+      # @return [String] serialized JSON Schema
+      def json_schema_json(pretty: true)
+        pretty ? JSON.pretty_generate(json_schema) : JSON.generate(json_schema)
       end
 
       ##
@@ -107,7 +118,7 @@ module Html2rss
         # @param registry [Hash{Symbol => Class}]
         # @return [Hash{String => Hash}]
         def catalog_from_registry(registry)
-          registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_doc] }
+          registry.keys.sort.to_h { |name| [name.to_s, registry.fetch(name).schema_export] }
         end
 
         # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength

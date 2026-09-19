@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::PostProcessors::MarkdownToHtml do
-  subject { described_class.new(markdown, context).get }
+  subject { described_class.new(markdown, context).call }
 
   let(:html) do
     "<h1>Section</h1>\n\n<p>Price: 12.34</p>\n\n" \
@@ -21,7 +21,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::MarkdownToHtml do
     MD
   end
   let(:channel) { { title: 'Example: questions', url: 'https://example.com/questions' } }
-  let(:context) { Html2rss::Selectors::Context.new(channel:, options: {}) }
+  let(:context) { Html2rss::Selectors::StepEnv.new(base_url: channel[:url], step_config: {}) }
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 

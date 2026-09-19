@@ -13,5 +13,5 @@ fi
   git diff --name-only -z -- "$@"
   git ls-files -o --exclude-standard -z -- "$@"
 } | while IFS= read -r -d '' path; do
-  [ -f "$path" ] && printf '%s\0' "$path"
+  if [ -f "$path" ]; then printf '%s\0' "$path"; fi
 done

@@ -13,53 +13,8 @@ module Html2rss
   class Config # rubocop:disable Metrics/ClassLength
     # Raised when a configuration hash fails runtime validation.
     class InvalidConfig < Html2rss::Error; end
-    # Sentinel to differentiate omitted params from explicit `nil`.
-    UNSET = Object.new.freeze
-
-    ValidationResult = Data.define(:success, :errors_hash)
-
-    ##
-    # Duck-compatible with +Dry::Validation::Result+ for resolve-time outcomes
-    # (+#success?+, +#errors#to_h+). Used for parse failures so callers never see a Struct snowflake.
-    class ValidationResult
-      ##
-      # @param message [String]
-      # @return [Html2rss::Config::ValidationResult]
-      def self.parse_failure(message)
-        new(success: false, errors_hash: { parse: [message] })
-      end
-
-      ##
-      # @return [Boolean]
-      def success? = success
-
-      ##
-      # @return [self]
-      def errors = self
-
-      ##
-      # @return [Hash]
-      def to_h = errors_hash
-    end
 
     class << self
-      ##
-      # Returns the exported JSON Schema for html2rss configuration.
-      #
-      # @return [Hash{String => Object}] JSON Schema represented as a Ruby hash
-      def json_schema
-        Schema.json_schema
-      end
-
-      ##
-      # Returns the exported JSON Schema as JSON.
-      #
-      # @param pretty [Boolean] whether to pretty-print the JSON output
-      # @return [String] serialized JSON Schema
-      def json_schema_json(pretty: true)
-        pretty ? JSON.pretty_generate(json_schema) : JSON.generate(json_schema)
-      end
-
       ##
       # Resolves a Hash, YAML file path, or YAML string to a working config Hash and validates it.
       # The returned Hash is a deep copy — callers may stamp strategy/params without mutating input.
@@ -67,13 +22,14 @@ module Html2rss
       # @param config_input [Hash, String] config hash, YAML string, or file path
       # @param feed_name [String, nil] optional feed name for multi-feed files
       # @param params [Hash] dynamic feed params
-      # @return [Array(Hash, Dry::Validation::Result, Html2rss::Config::ValidationResult)]
+      # @return [Array(Hash, Html2rss::Config::ValidationReport)]
       def resolve_and_validate(config_input, feed_name: nil, params: {})
-        param_arg = params.empty? ? UNSET : params
-        working = HashUtil.deep_dup(resolve_raw_hash(config_input, feed_name))
-        [working, validate(working, params: param_arg)]
-      rescue StandardError => error
-        [{}, ValidationResult.parse_failure(error.message)]
+        raw = resolve_raw_hash(config_input, feed_name)
+      rescue Psych::Exception, ArgumentError => error
+        [{}, IssueMapper.parse_failure(error.message)]
+      else
+        working = HashUtil.deep_dup(raw)
+        [working, validate(working, params:)]
       end
 
       ##
@@ -81,36 +37,15 @@ module Html2rss
       #
       # @param config [Hash{Symbol => Object}] the configuration hash
       # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Dry::Validation::Result] validation result after defaults are applied
-      def validate(config, params: UNSET)
+      # @return [Html2rss::Config::ValidationReport]
+      def validate(config, params: {})
         prepared_config = prepare_for_validation(resolve_effective_config(config, params:))
-
-        Validator.new.call(prepared_config)
+        IssueMapper.from(Validator.new.call(prepared_config), values: prepared_config)
       rescue DynamicParams::ParamsMissing => error
         prepared_config = prepare_for_validation(HashUtil.deep_symbolize_keys(config, context: 'config'))
         prepared_config[:dynamic_params_error] = error.message
 
-        Validator.new.call(prepared_config)
-      end
-
-      ##
-      # Loads and validates a YAML configuration file.
-      #
-      # @param file [String] the YAML file to load
-      # @param feed_name [String, nil] optional feed name for multi-feed files
-      # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
-      # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
-      # @return [Dry::Validation::Result, Html2rss::Config::ValidationResult]
-      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
-        validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
-      end
-
-      ##
-      # Returns the packaged JSON Schema file path.
-      #
-      # @return [String] absolute path to the packaged JSON Schema file
-      def schema_path
-        Schema.path
+        IssueMapper.from(Validator.new.call(prepared_config), values: prepared_config)
       end
 
       ##
@@ -179,7 +114,7 @@ module Html2rss
       # @param config [Hash{Symbol => Object}] the configuration hash.
       # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting.
       # @return [Html2rss::Config] the configuration object.
-      def from_hash(config, params: UNSET)
+      def from_hash(config, params: {})
         new(resolve_effective_config(config, params:))
       end
 
@@ -226,6 +161,20 @@ module Html2rss
         Html2rss.defaults.default_strategy || :auto
       end
 
+      ##
+      # Normalizes raw config input with defaults.
+      #
+      # @param config [Hash{Symbol => Object}] raw config input
+      # @return [Hash{Symbol => Object}] config with defaults applied
+      def prepare_defaults(config)
+        config = HashUtil.deep_merge(default_config, config)
+        config = HashUtil.deep_merge({ selectors: Selectors::DEFAULT_CONFIG }, config) if config[:selectors]
+        if config[:auto_source]
+          config = HashUtil.deep_merge({ auto_source: Html2rss::AutoSource::DEFAULT_CONFIG }, config)
+        end
+        config
+      end
+
       private
 
       def default_request_config
@@ -239,7 +188,7 @@ module Html2rss
       def resolve_effective_config(config, params:)
         cfg = HashUtil.deep_symbolize_keys(config, context: 'config')
         p = parameter_defaults(cfg)
-        p.merge!(HashUtil.deep_symbolize_keys(params, context: 'params')) unless params.equal?(UNSET) || params.nil?
+        p.merge!(HashUtil.deep_symbolize_keys(params, context: 'params')) unless params.nil?
 
         cfg[:headers] = DynamicParams.call(cfg[:headers], p) if cfg[:headers]
         cfg[:channel] = DynamicParams.call(cfg[:channel], p) if cfg[:channel]
@@ -255,7 +204,7 @@ module Html2rss
       end
 
       def prepare_for_validation(config)
-        Config::Preparer.new.call(HashUtil.deep_dup(config))
+        prepare_defaults(HashUtil.deep_dup(config))
       end
 
       # @param config_input [Hash, String]
@@ -282,7 +231,7 @@ module Html2rss
     # @raise [InvalidConfig] if the configuration fails validation.
     def initialize(config)
       @request_controls = RequestControls.from_config(config)
-      prepared_config = Preparer.new.call(config)
+      prepared_config = self.class.prepare_defaults(config.dup)
       validated_config = validated_config_for(prepared_config)
 
       @config = validated_config.freeze
@@ -340,42 +289,15 @@ module Html2rss
 
     attr_reader :config
 
-    # Normalizes raw config input before validation.
-    class Preparer
-      ##
-      # @param config [Hash{Symbol => Object}] raw config input
-      # @return [Hash{Symbol => Object}] config with defaults applied
-      def call(config)
-        config = config.dup if config.frozen?
-
-        config = apply_default_config(config)
-        config = apply_default_selectors_config(config) if config[:selectors]
-        config = apply_default_auto_source_config(config) if config[:auto_source]
-
-        config
-      end
-
-      private
-
-      def apply_default_config(config)
-        HashUtil.deep_merge(Config.default_config, config)
-      end
-
-      def apply_default_selectors_config(config)
-        HashUtil.deep_merge({ selectors: Selectors::DEFAULT_CONFIG }, config)
-      end
-
-      def apply_default_auto_source_config(config)
-        HashUtil.deep_merge({ auto_source: Html2rss::AutoSource::DEFAULT_CONFIG }, config)
-      end
-    end
-
     def validated_config_for(config)
-      validator = Validator.new.call(config)
+      dry = Validator.new.call(config)
 
-      raise InvalidConfig, "Invalid configuration: #{validator.errors.to_h}" unless validator.success?
+      unless dry.success?
+        report = IssueMapper.from(dry, values: config)
+        raise InvalidConfig, "Invalid configuration: #{report}"
+      end
 
-      normalized_headers(validator.to_h)
+      normalized_headers(dry.to_h)
     end
 
     def normalized_headers(validated_config)

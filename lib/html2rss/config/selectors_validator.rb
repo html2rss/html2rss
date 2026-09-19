@@ -6,9 +6,20 @@ module Html2rss
   class Config
     ##
     # Validates the configuration hash for :selectors.
-    class SelectorsValidator < Dry::Validation::Contract
-      # Required wrapper key used to validate dynamic selector names.
-      NESTING_KEY = :dynamic_keys_workaround
+    module SelectorsValidator
+      ##
+      # One selector validation error.
+      Error = Data.define(:path, :text)
+
+      ##
+      # Validation result containing collected selector errors.
+      Result = Data.define(:errors) do
+        # @return [Boolean]
+        def success? = errors.empty?
+
+        # @return [Boolean]
+        def failure? = !success?
+      end
 
       ##
       # Validates the configuration of the :items selector
@@ -93,7 +104,7 @@ module Html2rss
           klass = Selectors::Extractors::NAME_TO_CLASS[value.to_sym]
           next key(:extractor).failure("unknown extractor: #{value}") unless klass
 
-          Selectors::SchemaDoc.options_for(klass).each do |spec|
+          Selectors::OptionSpec.for(klass).each do |spec|
             next unless spec.required
             next if values[spec.name]
 
@@ -116,44 +127,13 @@ module Html2rss
         private
 
         def post_process_option_type_errors(klass, value)
-          Selectors::SchemaDoc.options_for(klass).filter_map do |spec|
-            option_spec_error(spec, value[spec.name])
-          end
-        end
-
-        def option_spec_error(spec, actual)
-          if actual.nil?
-            return unless spec.required
-
-            [spec.name, option_type_failure(spec.name, spec.type)]
-          elsif !type_match?(actual, spec.type)
-            [spec.name, option_type_failure(spec.name, spec.type, optional: !spec.required)]
-          end
-        end
-
-        def type_match?(actual, expected)
-          case expected
-          when Array then expected.any? { |type| actual.is_a?(type) }
-          else actual.is_a?(expected)
-          end
-        end
-
-        def option_type_failure(field, expected, optional: false)
-          label = type_failure_label(expected)
-          suffix = optional ? ' or omitted' : ''
-          "`#{field}` must be #{label}#{suffix}"
-        end
-
-        def type_failure_label(expected)
-          case expected
-          when Array
-            expected.map { |type| type_failure_label(type) }.join(' or ')
-          else
-            {
-              Integer => 'an integer',
-              String => 'a string',
-              Hash => 'a hash'
-            }.fetch(expected) { "a #{expected}" }
+          Selectors::OptionSpec.for(klass).filter_map do |spec|
+            actual = value[spec.name]
+            if actual.nil?
+              [spec.name, spec.error_message(optional: false)] if spec.required
+            elsif !spec.valid_type?(actual)
+              [spec.name, spec.error_message(optional: !spec.required)]
+            end
           end
         end
       end
@@ -166,47 +146,64 @@ module Html2rss
         end
       end
 
-      params do
-        required(NESTING_KEY).hash
-      end
+      class << self
+        ##
+        # Shortcut to validate the config.
+        # @param config [Hash] the configuration hash to validate
+        # @return [Result]
+        def call(config)
+          errors = []
+          return Result.new(errors:) unless config.is_a?(Hash)
 
-      rule(NESTING_KEY) do
-        value.each_pair do |selector_key, selector|
+          config.each_pair do |selector_key, selector|
+            validate_entry(selector_key, selector, config, errors)
+          end
+
+          Result.new(errors:)
+        end
+
+        private
+
+        def validate_entry(selector_key, selector, config, errors)
           case selector_key.to_sym
           when Selectors::ITEMS_SELECTOR_KEY
-            Items.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
+            collect_contract_errors(Items, selector, selector_key, errors)
           when :enclosure
-            Enclosure.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
+            collect_contract_errors(Enclosure, selector, selector_key, errors)
           when :guid, :categories
-            unless selector.is_a?(Array)
-              key(selector_key).failure("`#{selector_key}` must be an array")
-              next
-            end
-
-            key(selector_key).failure("`#{selector_key}` must contain at least one element") if selector.empty?
-
-            selector.each do |name|
-              next if values[NESTING_KEY].key?(name.to_sym)
-
-              key(selector_key).failure("`#{selector_key}` references unspecified `#{name}`")
-            end
+            validate_array_selector(selector_key, selector, config, errors)
           else
-            # From here on, the selector is found under its "dynamic" selector_key
-            Selector.new.call(selector).errors.each { |error| key(selector_key).failure(error.text) }
+            collect_contract_errors(Selector, selector, selector_key, errors)
           end
         end
-      end
 
-      ##
-      # Shortcut to validate the config.
-      # @param config [Hash] the configuration hash to validate
-      # @return [Dry::Validation::Result] the result of the validation
-      def self.call(config)
-        # dry-validation/schema does not support "Dynamic Keys" yet: https://github.com/dry-rb/dry-schema/issues/37
-        # But :selectors contains mostly "dynamic" keys, as the user defines them to extract article attributes.
-        # --> Validate the dynamic keys manually.
-        # To be able to specify a `rule`, nest the config under NESTING_KEY and mark that as `required`.
-        new.call(NESTING_KEY => config)
+        def collect_contract_errors(contract_class, selector, selector_key, errors)
+          contract_class.new.call(selector).errors.each do |error|
+            errors << Error.new(path: [selector_key, *error.path], text: error.text)
+          end
+        end
+
+        def validate_array_selector(selector_key, selector, config, errors)
+          msg = array_selector_shape_error(selector_key, selector)
+          return errors << Error.new(path: [selector_key], text: msg) if msg
+
+          check_unspecified_references(selector_key, selector, config, errors)
+        end
+
+        def array_selector_shape_error(key, selector)
+          return "`#{key}` must be an array" unless selector.is_a?(Array)
+          return "`#{key}` must contain at least one element" if selector.empty?
+
+          nil
+        end
+
+        def check_unspecified_references(selector_key, selector, config, errors)
+          selector.each do |name|
+            next if config.key?(name.to_sym) || config.key?(name.to_s)
+
+            errors << Error.new(path: [selector_key], text: "`#{selector_key}` references unspecified `#{name}`")
+          end
+        end
       end
     end
   end

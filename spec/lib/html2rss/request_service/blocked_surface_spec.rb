@@ -3,14 +3,6 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestService::BlockedSurface do
-  # Vendored copy of botasaurus-scrape-api challenge corpus (see spec/fixtures/challenge/README.md).
-  def challenge_fixture(name)
-    path = Pathname(__dir__).join('../../../fixtures/challenge', name).expand_path
-    raise "challenge fixture missing at #{path}" unless path.file?
-
-    path.read
-  end
-
   describe '.interstitial? against shared challenge corpus' do
     it 'returns true for cloudflare_interstitial.html' do
       expect(described_class.interstitial?(challenge_fixture('cloudflare_interstitial.html'))).to be(true)

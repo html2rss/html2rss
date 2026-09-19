@@ -82,13 +82,12 @@ module Html2rss
             name: 'validate',
             kind: :config_xor,
             description: 'Validate a feed config hash XOR yaml string against the html2rss JSON schema. ' \
-                         'Call before test. Failures return isError with payload.errors. ' \
+                         'Call before test. Failures return isError with payload.issues. ' \
                          'Full schema lives in resource html2rss://schema.',
             input_schema: Contract::CONFIG_XOR_SCHEMA,
             annotations: Contract::ANNOTATIONS_VALIDATE,
             call: lambda { |config: nil, yaml: nil, **|
-              validation = Html2rss::Config.validate(ConfigArgument.parse(config:, yaml:).config)
-              Outcome.validate(errors: validation.success? ? nil : validation.errors.to_h)
+              Outcome.validate(report: Html2rss::Config.validate(ConfigArgument.parse(config:, yaml:).config))
             }
           },
           {
@@ -258,7 +257,7 @@ module Html2rss
             quality_report = Html2rss::Test.quality_report_for(
               rss.items,
               channel_url: feed_config.dig(:channel, :url).to_s,
-              raw_config: feed_config,
+              config: Html2rss::Config.from_hash(feed_config),
               feed_result:,
               pipeline_outcome: outcome,
               probe_native_feed: false

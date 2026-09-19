@@ -38,7 +38,10 @@ module Html2rss
       # Would return:
       #    '<p>Lorem <b>ipsum</b> dolor ...</p>'
       class SanitizeHtml < Base
-        # JSON Schema description exported via +schema_doc+.
+        # Expected Ruby class for the extracted value before this post-processor runs.
+        VALUE_TYPE = String
+
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Sanitize HTML (sanitize gem RELAXED plus html2rss defaults: absolute URLs, ' \
                       'safe link/img attributes, wrap lone images in anchors).'
 
@@ -92,21 +95,18 @@ module Html2rss
         }.freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :sanitize_html, klass: self)
-
-        # @param value [String] extracted selector value
-        # @param context [Selectors::Context] post-processor context
-        # @return [void]
-        def self.validate_args!(value, context)
-          assert_type value, String, :value, context:
-        end
+        def self.schema_export = SchemaExport.for_post_processor(name: :sanitize_html, klass: self)
 
         ##
-        # @param html [String]
-        # @param url [String, Html2rss::Url]
-        # @return [String, nil]
+        # Cached standalone helper: sanitizes an HTML string with a memoized fragment cache.
+        # Used outside the selector pipeline (e.g. by DescriptionBuilder).
+        # Distinct from {#call}, which executes as a post-processor strategy instance.
+        #
+        # @param html [String] raw HTML text to sanitize
+        # @param url [String, Html2rss::Url] base URL for relative link/image resolution
+        # @return [String, nil] sanitized HTML string or nil if empty
         # rubocop:disable-next ThreadSafety/ClassInstanceVariable
-        def self.get(html, url)
+        def self.call(html, url)
           return nil if String(html).empty?
 
           @fragment_cache ||= {}
@@ -114,33 +114,45 @@ module Html2rss
           return @fragment_cache[key] if @fragment_cache.key?(key)
 
           @fragment_cache.clear if @fragment_cache.size > 256
-          @fragment_cache[key] = new(html, context_for_url(url)).get
+          @fragment_cache[key] = sanitize(html, url)
         end
 
         ##
-        # Shared Context construction for URL-only callers (class + instance path).
+        # Pure HTML sanitization with preserved newlines and absolute URL resolution.
         #
-        # @param url [String, Html2rss::Url]
-        # @return [Selectors::Context]
-        def self.context_for_url(url)
-          Selectors::Context.new(channel: { url: }, options: {})
+        # @param html [String]
+        # @param base_url [String, Html2rss::Url]
+        # @return [String, nil]
+        def self.sanitize(html, base_url)
+          return nil if String(html).empty?
+
+          # Temporarily replace newlines with a placeholder to preserve them during space collapsing
+          temp_value = html.to_s.gsub("\n", ' __NEWLINE_PLACEHOLDER__ ')
+          sanitized_html = Sanitize.fragment(temp_value, sanitize_config(base_url)).to_s
+          sanitized_html.gsub!(/\s+/, ' ')
+
+          # Restore newlines and clean up surrounding whitespace
+          sanitized_html.gsub!(/[ \t\r]*__NEWLINE_PLACEHOLDER__[ \t\r]*/, "\n")
+          sanitized_html.gsub!(/\n{3,}/, "\n\n")
+
+          sanitized_html.strip!
+          sanitized_html.empty? ? nil : sanitized_html
         end
-        private_class_method :context_for_url
 
         ##
-        # @param channel_url [String, Html2rss::Url]
+        # @param base_url [String, Html2rss::Url]
         # @return [Hash] the memoized sanitize configuration
         # rubocop:disable-next Metrics/MethodLength, ThreadSafety/ClassInstanceVariable
-        def self.sanitize_config(channel_url)
+        def self.sanitize_config(base_url)
           @sanitize_configs ||= {}
-          @sanitize_configs[channel_url] ||= begin
+          @sanitize_configs[base_url] ||= begin
             config = Sanitize::Config.merge(
               Sanitize::Config::RELAXED,
               attributes: { all: %w[dir lang alt title translate] },
               add_attributes: TAG_ATTRIBUTES,
               transformers: [
                 lambda { |env|
-                  HtmlTransformers::TransformUrlsToAbsoluteOnes.new(channel_url).call(**env)
+                  HtmlTransformers::TransformUrlsToAbsoluteOnes.new(base_url).call(**env)
                 },
                 ->(env) { HtmlTransformers::WrapImgInA.new.call(**env) }
               ]
@@ -154,23 +166,13 @@ module Html2rss
 
         ##
         # @return [String, nil]
-        def get
-          # Temporarily replace newlines with a placeholder to preserve them during space collapsing
-          temp_value = value.to_s.gsub("\n", ' __NEWLINE_PLACEHOLDER__ ')
-          sanitized_html = Sanitize.fragment(temp_value, self.class.sanitize_config(channel_url)).to_s
-          sanitized_html.gsub!(/\s+/, ' ')
-
-          # Restore newlines and clean up surrounding whitespace
-          sanitized_html.gsub!(/[ \t\r]*__NEWLINE_PLACEHOLDER__[ \t\r]*/, "\n")
-          sanitized_html.gsub!(/\n{3,}/, "\n\n")
-
-          sanitized_html.strip!
-          sanitized_html.empty? ? nil : sanitized_html
+        def call
+          self.class.sanitize(value, base_url)
         end
 
         private
 
-        def channel_url = context.channel_url
+        def base_url = context.base_url
       end
     end
   end

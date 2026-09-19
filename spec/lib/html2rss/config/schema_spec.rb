@@ -171,25 +171,17 @@ RSpec.describe Html2rss::Config::Schema do
     end
   end
 
-  describe Html2rss::Config do
-    describe '.json_schema_json' do
-      it 'serializes the generated schema' do
-        expect(JSON.parse(described_class.json_schema_json)).to eq(described_class.json_schema)
-      end
+  describe '.json_schema_json' do
+    it 'serializes the generated schema' do
+      expect(JSON.parse(described_class.json_schema_json)).to eq(described_class.json_schema)
     end
+  end
 
-    describe '.schema_path' do
-      it 'matches the schema module path' do
-        expect(described_class.schema_path).to eq(Html2rss::Config::Schema.path)
-      end
-    end
+  describe 'packaged schema artifact' do
+    it 'matches the generated schema exactly' do
+      packaged_schema = JSON.parse(File.read(described_class.path))
 
-    describe 'packaged schema artifact' do
-      it 'matches the generated schema exactly' do
-        packaged_schema = JSON.parse(File.read(described_class.schema_path))
-
-        expect(packaged_schema).to eq(described_class.json_schema)
-      end
+      expect(packaged_schema).to eq(described_class.json_schema)
     end
   end
 end

@@ -7,15 +7,7 @@ module Html2rss
     #
     # Each registry class owns +DESCRIPTION+, +EXAMPLES+, and optional +OPTIONS+;
     # this module is the export adapter only.
-    module SchemaDoc
-      # Maps Ruby option types to JSON Schema +type+ strings.
-      RUBY_TO_JSON_TYPE = {
-        String => 'string',
-        Integer => 'integer',
-        Hash => 'object',
-        Array => 'array'
-      }.freeze
-
+    module SchemaExport
       module_function
 
       ##
@@ -56,29 +48,19 @@ module Html2rss
       # @return [Hash{Symbol => Hash}]
       def post_processor_properties(name, klass)
         properties = { name: { type: 'string', const: name } }
-        options_for(klass).each do |spec|
+        OptionSpec.for(klass).each do |spec|
           properties[spec.name] = property_schema_for(spec.type)
         end
         properties
       end
-      module_function :post_processor_properties
 
       ##
       # @param klass [Class]
       # @return [Array<String>]
       def post_processor_required(klass)
         required = ['name']
-        required + options_for(klass).select(&:required).map { |spec| spec.name.to_s }
+        required + OptionSpec.for(klass).select(&:required).map { |spec| spec.name.to_s }
       end
-      module_function :post_processor_required
-
-      ##
-      # @param klass [Class]
-      # @return [Array<Option>]
-      def options_for(klass)
-        klass.const_defined?(:OPTIONS) ? klass::OPTIONS : []
-      end
-      module_function :options_for
 
       ##
       # @param ruby_type [Class, Array<Class>]
@@ -86,22 +68,13 @@ module Html2rss
       def property_schema_for(ruby_type)
         { type: json_type_for(ruby_type) }
       end
-      module_function :property_schema_for
 
       ##
       # @param ruby_type [Class, Array<Class>]
       # @return [String, Array<String>]
       def json_type_for(ruby_type)
-        case ruby_type
-        when Array
-          ruby_type.map { |type| json_type_for(type) }
-        else
-          RUBY_TO_JSON_TYPE.fetch(ruby_type) do
-            raise ArgumentError, "unsupported OPTIONS type mapping for #{ruby_type}"
-          end
-        end
+        OptionSpec.json_type_for(ruby_type)
       end
-      module_function :json_type_for
     end
   end
 end

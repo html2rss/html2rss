@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Defaults do
-  after { Html2rss.send(:reset_defaults!) }
+  after { Html2rss.reset_defaults! }
 
   describe 'defaults' do
     subject(:config) { described_class.new }

@@ -2,12 +2,12 @@
 
 RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
   subject do
-    described_class.new(url, context).get
+    described_class.new(url, context).call
   end
 
   let(:context) do
-    Html2rss::Selectors::Context.new(
-      channel: { url: 'http://example.com' }
+    Html2rss::Selectors::StepEnv.new(
+      base_url: 'http://example.com'
     )
   end
 

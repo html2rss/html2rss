@@ -40,12 +40,6 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     describe '.inspect_guidance' do
-      def report(**data)
-        Html2rss::PageRecon::Diagnostics::Report.new(
-          data: { articles_count: 0, alternate_feeds: [], **data }
-        )
-      end
-
       it 'returns default inspect guidance when articles are present' do
         populated = Html2rss::PageRecon::Diagnostics::Report.new(
           data: { articles_count: 3, alternate_feeds: [] }
@@ -139,12 +133,6 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.inspect' do
-    def report(**data)
-      Html2rss::PageRecon::Diagnostics::Report.new(
-        data: { articles_count: 0, alternate_feeds: [], **data }
-      )
-    end
-
     it 'points at recon when alternates are present' do
       outcome = described_class.inspect(
         report: report(alternate_feeds: [{ href: 'https://example.com/feed.xml' }])
@@ -167,22 +155,6 @@ RSpec.describe Html2rss::MCP::Outcome do
   end
 
   describe '.recon' do
-    def recon_result(verdict:, **attrs) # rubocop:disable Metrics/MethodLength -- fixture builder for recon Result
-      Html2rss::Recon::Result.new(
-        requested_url: 'https://example.com',
-        final_url: 'https://example.com',
-        status: 200,
-        verdict: Html2rss::Recon::Verdict.coerce(verdict),
-        native_feed: nil,
-        surface_category: :article_listing,
-        articles_count: 3,
-        scheme_downgrade: false,
-        notes: [],
-        html_bytesize: 1000,
-        **attrs
-      )
-    end
-
     it 'points at done when verdict is defer (native feed)' do
       outcome = described_class.recon(
         result: recon_result(verdict: :defer, native_feed: 'https://example.com/feed.xml')
@@ -244,40 +216,28 @@ RSpec.describe Html2rss::MCP::Outcome do
 
   describe '.validate' do
     it 'points at test with an empty payload on schema success', :aggregate_failures do
-      outcome = described_class.validate(errors: nil)
+      outcome = described_class.validate(report: Html2rss::Config::ValidationReport.ok)
 
       expect(outcome.ok).to be(true)
       expect(outcome.next_step.name).to eq(:test)
       expect(outcome.payload).to eq({})
     end
 
-    it 'stays on validate when schema errors are present', :aggregate_failures do
-      outcome = described_class.validate(errors: { channel: ['is missing'] })
+    # rubocop:disable-next RSpec/ExampleLength
+    it 'stays on validate when schema issues are present', :aggregate_failures do
+      issue = Html2rss::Config::ValidationIssue.new(
+        path: %i[channel], code: :missing_key, message: 'is missing'
+      )
+      report = Html2rss::Config::ValidationReport.failure([issue])
+      outcome = described_class.validate(report:)
 
       expect(outcome.ok).to be(false)
       expect(outcome.next_step.name).to eq(:validate)
-      expect(outcome.payload).to eq(errors: { channel: ['is missing'] })
+      expect(outcome.payload).to eq(issues: [issue.to_h])
     end
   end
 
   describe '.test' do
-    def test_result(failure_kind: nil, success: false, **) # rubocop:disable Metrics/MethodLength
-      Html2rss::Test::Result.new(
-        success:,
-        item_count: success ? 2 : 0,
-        sample_items: [],
-        channel_title: 'Example',
-        channel_url: 'https://example.com',
-        strategy_used: :default,
-        duration_seconds: 0.1,
-        validation_errors: nil,
-        error_message: success ? nil : 'failed',
-        failure_kind:,
-        rss: success ? '<rss/>' : nil,
-        **
-      )
-    end
-
     it 'points at apply on success' do
       expect(described_class.test(test_result(success: true)).next_step.name).to eq(:apply)
     end
@@ -285,7 +245,9 @@ RSpec.describe Html2rss::MCP::Outcome do
     it 'points at validate on schema failure' do # rubocop:disable RSpec/ExampleLength
       result = test_result(
         failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
-        validation_errors: { channel: ['missing'] },
+        validation_issues: [
+          Html2rss::Config::ValidationIssue.new(path: %i[channel], code: :missing_key, message: 'missing')
+        ],
         error_message: 'Configuration schema validation failed'
       )
       expect(described_class.test(result).next_step.name).to eq(:validate)

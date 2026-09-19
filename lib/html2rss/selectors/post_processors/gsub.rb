@@ -29,13 +29,16 @@ module Html2rss
       #
       # See the doc on [String#gsub](https://ruby-doc.org/core/String.html#method-i-gsub) for more info.
       class Gsub < Base
-        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        # Expected Ruby class for the extracted value before this post-processor runs.
+        VALUE_TYPE = String
+
+        # Config-facing options contract (validator / SchemaExport / Base.validate_options!).
         OPTIONS = [
-          Option.new(name: :pattern, type: String),
-          Option.new(name: :replacement, type: [String, Hash])
+          OptionSpec.new(name: :pattern, type: String),
+          OptionSpec.new(name: :replacement, type: [String, Hash])
         ].freeze
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Replace matches of `pattern` in the extracted string with `replacement` ' \
                       '(Ruby String#gsub; pattern may be a regexp-like string).'
 
@@ -45,30 +48,23 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :gsub, klass: self)
-
-        # @param value [String] extracted selector value
-        # @param context [Selectors::Context] post-processor context
-        # @return [void]
-        def self.validate_args!(value, context)
-          assert_type value, String, :value, context:
-        end
+        def self.schema_export = SchemaExport.for_post_processor(name: :gsub, klass: self)
 
         ##
         # @param value [String]
-        # @param context [Selectors::Context]
+        # @param context [Selectors::StepEnv]
         def initialize(value, context)
           super
 
-          options = context.options
+          step_config = context.step_config
 
-          @replacement = options[:replacement]
-          @pattern = options[:pattern]
+          @replacement = step_config[:replacement]
+          @pattern = step_config[:pattern]
         end
 
         ##
         # @return [String]
-        def get
+        def call
           value.to_s.gsub(pattern, replacement)
         end
 

@@ -10,7 +10,7 @@ RSpec.describe Html2rss::Test::Result do
       channel_url: 'https://example.com/news',
       strategy_used: :default,
       duration_seconds: 0.25,
-      validation_errors: nil,
+      validation_issues: nil,
       error_message: nil,
       failure_kind: nil,
       rss: '<rss><channel/></rss>'

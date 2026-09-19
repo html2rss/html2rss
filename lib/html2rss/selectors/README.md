@@ -1,0 +1,63 @@
+# Selectors
+
+How html2rss extracts feed item fields from a page when a config declares CSS `selectors:`.
+
+## What and when
+
+`Html2rss::Selectors` is the **orchestrator** for the traditional selector path: match item nodes, dispatch each configured field through extractors and optional post-processors, then build `Article` hashes. Prefer this when you know the list markup. Prefer `auto_source:` when you want article guessing without hand-written selectors (see {file:lib/html2rss/auto_source/README.md}).
+
+YAML / MCP wire vocabulary is unchanged (`selectors`, `extractor`, `post_process`). Ruby type names below are the internal API.
+
+## Live flow
+
+1. **Parse** — HTML stays on `Response#parsed_body`. JSON responses are converted once via `JsonXml` into an HTML5 fragment so CSS selectors still run.
+2. **Items** — `items.selector` finds each card/node. Optional `enhance: true` fills missing fields via `Html::ArticleExtractor` (list-card enrichment).
+3. **Field dispatch** (private on `Selectors`) — for each selectable key (`title`, `url`, `enclosure`, `categories`, …):
+   - Regular fields → `Extractors.call` → optional `PostProcessors.call` chain
+   - Special keys → enclosure wrap, guid fan-out, multi-node categories
+4. **Article** — values land on `Html2rss::Article` (`enclosure` YAML → `enclosures` on the Article).
+
+```text
+Selectors (orchestrator)
+  └─ ItemEnv
+       └─ field dispatch (private)
+            ├─ Extractors::*#call(**config, xml:) + OPTIONS: [OptionSpec]
+            └─ PostProcessors::*#call + StepEnv(base_url:, time_zone:, step_config:, item_env:)
+```
+
+## The Three Layers of #call
+
+| Layer | Entrypoint | Role | Inputs / Outputs |
+| --- | --- | --- | --- |
+| **Registry dispatcher** | `Extractors.call(config, xml)` | Resolves strategy from `NAME_TO_CLASS`, instantiates with `**config`, executes `#call` | `(config Hash, xml Node)` → extracted value |
+| **Registry dispatcher** | `PostProcessors.call(name, value, context)` | Resolves strategy from `NAME_TO_CLASS`, passes `StepEnv`, executes `#call` | `(name, value, StepEnv)` → transformed value |
+| **Strategy execution** | `Extractors::*#call` | Polymorphic instance execution on extractor strategies | Keyword config on `initialize`, returns extracted Object |
+| **Strategy execution** | `PostProcessors::*#call` | Polymorphic instance execution on post-processor strategies | Reads `@value` and `@context`, returns transformed Object |
+| **Data converter** | `JsonXml.call(object)` | Internal helper converting JSON object to XML string fragment | `(Hash / Array)` → `String` XML fragment |
+| **Standalone sanitizer** | `SanitizeHtml.call(html, url)` | Cached helper for description/standalone sanitization | `(html, url)` → sanitized HTML String |
+
+## Extractor vs PostProcessor
+
+| Role | Registry | Verb | Config |
+| --- | --- | --- | --- |
+| Extractor | `Extractors::NAME_TO_CLASS` | `#call` / `Extractors.call` | YAML `extractor:` + strategy `OPTIONS` |
+| Post-processor | `PostProcessors::NAME_TO_CLASS` | `#call` / `PostProcessors.call` | YAML `post_process:` steps with `name:` + `OPTIONS` |
+
+`Extractors::Attribute` is the HTML-attribute strategy — not the field-dispatch layer (that is private on `Selectors`).
+
+## ItemEnv and StepEnv
+
+- **`ItemEnv`** — per-item extraction environment: node, `base_url`, scraper, `time_zone`. Nested selects reuse one env via `#select`.
+- **`StepEnv`** — post-processor invocation bag: `step_config` (Hash), `base_url`, `time_zone`, `item_env`. Built by `ItemEnv#context_for(step_config:)`. Distinct from `OptionSpec` (static strategy introspection). Channel URL on Test / MCP is a different field.
+
+## OptionSpec vs SchemaExport
+
+- **`OptionSpec`** — introspection & validation SoT (`for(klass)`, `expectation_for`, `valid_type?`, `error_message`, `json_type`) with **Ruby-typed** `type:` / `required:`. Strategies own `OPTIONS: [OptionSpec, …]`.
+- **`SchemaExport`** — JSON Schema adapter only (`for_extractor`, `for_post_processor`), consuming `OptionSpec#json_type`. `Config::IssueMapper` maps Ruby expectations → JSON via `OptionSpec.json_type_for` so ValidationIssue `expected` wire shape stays stable.
+
+## Constraints
+
+- Class / YAML name stays `Selectors`.
+- Strategy verb is `#call`.
+
+See also {file:CONTEXT CONTEXT.md} for registry ownership and {Html2rss::Config::SelectorsValidator} for Dry validation of the selectors hash.

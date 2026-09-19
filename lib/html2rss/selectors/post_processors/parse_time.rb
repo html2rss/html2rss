@@ -27,7 +27,10 @@ module Html2rss
       #
       # It uses `Time.parse`.
       class ParseTime < Base
-        # JSON Schema description exported via +schema_doc+.
+        # Expected Ruby class for the extracted value before this post-processor runs.
+        VALUE_TYPE = String
+
+        # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Parse a time string with Time.parse and return RFC822, using the channel `time_zone`.'
 
         # Example post-process objects for JSON Schema +examples+.
@@ -36,13 +39,16 @@ module Html2rss
         ].freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :parse_time, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :parse_time, klass: self)
 
-        # @param value [String] extracted selector value
-        # @param context [Selectors::Context] post-processor context
+        ##
+        # Ensures +context.time_zone+ is a non-empty String before parsing.
+        #
+        # @param _value [String] extracted time string (unused; type-checked via VALUE_TYPE)
+        # @param context [Selectors::StepEnv] must carry a usable +time_zone+
         # @return [void]
-        def self.validate_args!(value, context)
-          assert_type(value, String, :value, context:)
+        # @raise [ArgumentError] when time_zone is nil or empty
+        def self.validate_args!(_value, context)
           time_zone_value = context.time_zone
 
           if time_zone_value.nil? || time_zone_value.empty?
@@ -57,7 +63,7 @@ module Html2rss
         #
         # @return [String] RFC822 formatted time
         # @raise [TZInfo::InvalidTimezoneIdentifier] if the configured time zone is invalid
-        def get
+        def call
           with_timezone(context.time_zone) { Time.parse(value).rfc822 }
         end
 

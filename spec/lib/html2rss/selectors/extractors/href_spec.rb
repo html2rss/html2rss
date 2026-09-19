@@ -3,9 +3,9 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss::Selectors::Extractors::Href do
-  subject { described_class.new(xml, options).get }
+  subject { described_class.new(xml, **options).call }
 
-  let(:options) { described_class::Options.new(selector: 'a', base_url: 'https://example.com') }
+  let(:options) { { selector: 'a', base_url: 'https://example.com' } }
 
   context 'with relative href url' do
     let(:xml) { Nokogiri.HTML('<div><a href="/posts/latest-findings">...</a></div>') }

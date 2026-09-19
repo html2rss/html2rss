@@ -1,60 +1,55 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Selectors::PostProcessors::Substring do
-  def context_for(options)
-    Html2rss::Selectors::Context.new(options:)
-  end
+  let(:context) { Html2rss::Selectors::StepEnv.new(step_config:) }
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
   context 'with end' do
-    subject { described_class.new('Foo bar and baz', context_for(start: 4, end: 6)).get }
+    let(:step_config) { { start: 4, end: 6 } }
 
-    it { is_expected.to eq 'bar' }
+    it 'extracts the substring' do
+      expect(described_class.new('Foo bar and baz', context).call).to eq 'bar'
+    end
   end
 
   context 'without end' do
-    subject { described_class.new('foobarbaz', context_for(start: 3)).get }
+    let(:step_config) { { start: 3 } }
 
-    it { is_expected.to eq 'barbaz' }
+    it 'extracts from start to the end of string' do
+      expect(described_class.new('foobarbaz', context).call).to eq 'barbaz'
+    end
   end
 
   describe '#range' do
-    subject { described_class.new('value', context_for(options)) }
+    subject { described_class.new('value', context).range }
 
     context 'when start and end options are provided' do
-      let(:options) { { start: 2, end: 4 } }
+      let(:step_config) { { start: 2, end: 4 } }
 
-      it 'returns the correct range' do
-        expect(subject.range).to eq(2..4)
-      end
+      it { is_expected.to eq(2..4) }
     end
 
     context 'when only start option is provided' do
-      let(:options) { { start: 3 } }
+      let(:step_config) { { start: 3 } }
 
-      it 'returns the range from start index to the end of the string' do
-        expect(subject.range).to eq(3..)
-      end
+      it { is_expected.to eq(3..) }
     end
 
     context 'when start and end options are equal' do
-      let(:options) { { start: 2, end: 2 } }
+      let(:step_config) { { start: 2, end: 2 } }
 
       it 'raises an ArgumentError' do
-        expect do
-          subject.range
-        end.to raise_error(ArgumentError, 'The `start` value must be unequal to the `end` value.')
+        expect { subject }.to raise_error(ArgumentError, 'The `start` value must be unequal to the `end` value.')
       end
     end
 
     context 'when start option is missing' do
-      let(:options) { { end: 4 } }
+      let(:step_config) { { end: 4 } }
 
       it 'raises an error' do
-        expect do
-          subject.range
-        end.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption, /The `start` option is missing/)
+        expect { subject }.to raise_error(Html2rss::Selectors::PostProcessors::MissingOption,
+                                          /The `start` option is missing/)
       end
     end
   end

@@ -64,7 +64,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
     end
 
     context 'when fan-out is truncated by MAX_SUB_SITEMAPS' do
-      def large_index_xml
+      let(:large_index_xml) do
         locs = (1..5).map { |i| "<sitemap><loc>https://example.com/sitemap-#{i}.xml</loc></sitemap>" }.join
         "<?xml version=\"1.0\"?><sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">#{locs}</sitemapindex>"
       end
@@ -85,17 +85,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Sitemap do
         expect { described_class.new(Nokogiri::HTML(link_html), url:, request_session: session).to_a }
           .not_to raise_error
       end
-    end
-
-    def mock_session(*xml_bodies)
-      session = instance_double(Html2rss::RequestSession)
-      responses = xml_bodies.map { |xml| instance_double(Html2rss::RequestService::Response, body: xml) }
-      allow(session).to receive(:follow_up).and_return(*responses)
-      session
-    end
-
-    def mock_sitemap_response(xml)
-      instance_double(Html2rss::RequestService::Response, body: xml)
     end
   end
 end

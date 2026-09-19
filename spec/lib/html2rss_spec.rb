@@ -591,22 +591,23 @@ RSpec.describe Html2rss do
   describe '.validate' do
     it 'validates hash config' do
       config = { channel: { url: 'https://example.com' }, selectors: { items: { selector: 'div' } } }
-      expect(described_class.validate(config)).to be_a(Dry::Validation::Result)
+      expect(described_class.validate(config)).to be_a(Html2rss::Config::ValidationReport)
     end
 
     it 'validates yaml file' do
-      expect(described_class.validate('spec/fixtures/single.test.yml')).to be_a(Dry::Validation::Result)
+      expect(described_class.validate('spec/fixtures/single.test.yml')).to be_a(Html2rss::Config::ValidationReport)
     end
 
     it 'validates yaml string' do
       yaml = "channel:\n  url: https://example.com\nselectors:\n  items:\n    selector: div\n"
-      expect(described_class.validate(yaml)).to be_a(Dry::Validation::Result)
+      expect(described_class.validate(yaml)).to be_a(Html2rss::Config::ValidationReport)
     end
 
-    it 'returns Config::ValidationResult for unparseable YAML', :aggregate_failures do
+    it 'returns ValidationReport for unparseable YAML', :aggregate_failures do
       result = described_class.validate("- items\n")
-      expect(result).to be_a(Html2rss::Config::ValidationResult)
+      expect(result).to be_a(Html2rss::Config::ValidationReport)
       expect(result).not_to be_success
+      expect(result.issues.map(&:code)).to include(:parse)
     end
   end
 

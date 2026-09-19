@@ -3,33 +3,6 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Scoring::Engine do
-  def build_node(name:, href: nil, text: '', children: [])
-    attrs = Html2rss::SST::Attrs.build(href:)
-    Html2rss::SST::Node.build(name:, attrs:, own_text: text, children:)
-  end
-
-  def build_segment(root:, link: nil, position: 0)
-    Html2rss::AutoSource::Segment.build(
-      root_node: root,
-      primary_link: link,
-      strategy: :semantic,
-      position:
-    )
-  end
-
-  def article_segment(href:, title:, position:)
-    link = build_node(name: :a, href:, text: title)
-    root = build_node(
-      name: :article,
-      children: [
-        build_node(name: :h2, text: title),
-        link,
-        build_node(name: :p, text: 'Extra descriptive context that is long enough for signals here.')
-      ]
-    )
-    build_segment(root:, link:, position:)
-  end
-
   let(:engine) { described_class.new(link_resolver: Html2rss::Scoring::LinkResolver.new('https://example.com/')) }
 
   describe '#rank / #rank_top' do

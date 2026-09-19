@@ -93,9 +93,11 @@ module Html2rss
             end
           end
         else
-          warn "\e[31m✗ Test failed\e[0m (#{source})"
-          warn "  Error: #{result.error_message}" if result.error_message
-          result.validation_errors&.each { |k, v| warn "  Schema error [#{k}]: #{Array(v).join(', ')}" }
+          $stderr.puts "\e[31m✗ Test failed\e[0m (#{source})" # rubocop:disable Style/StderrPuts
+          $stderr.puts "  Error: #{result.error_message}" if result.error_message # rubocop:disable Style/StderrPuts
+          result.validation_issues&.each do |issue|
+            $stderr.puts "  Schema error #{issue}" # rubocop:disable Style/StderrPuts
+          end
         end
       end
 

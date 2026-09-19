@@ -34,12 +34,15 @@ module Html2rss
       # Would return:
       #    'Product (23,42€)'
       class Template < Base
-        # Config-facing options contract (validator / SchemaDoc / Base.validate_options!).
+        # Expected Ruby class for the extracted value before this post-processor runs.
+        VALUE_TYPE = String
+
+        # Config-facing options contract (validator / SchemaExport / Base.validate_options!).
         OPTIONS = [
-          Option.new(name: :string, type: String)
+          OptionSpec.new(name: :string, type: String)
         ].freeze
 
-        # JSON Schema description exported via +schema_doc+.
+        # JSON Schema description exported via +schema_export+.
         # rubocop:disable Style/FormatStringToken -- documents Kernel#format `%{key}` placeholders
         DESCRIPTION = 'Format a string with Kernel#format-style placeholders (`%{key}` / `%<key>s`). ' \
                       '`%{self}` is the current selector value; other keys resolve sibling selectors.'
@@ -51,36 +54,38 @@ module Html2rss
         # rubocop:enable Style/FormatStringToken
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_doc = SchemaDoc.for_post_processor(name: :template, klass: self)
+        def self.schema_export = SchemaExport.for_post_processor(name: :template, klass: self)
 
-        # @param value [String] extracted selector value
-        # @param context [Selectors::Context] post-processor context
+        ##
+        # Ensures a non-empty template +string+ option and an +item_env+ for sibling lookup.
+        #
+        # @param _value [String] current selector value (unused here)
+        # @param context [Selectors::StepEnv] must include step_config[:string] and item_env
         # @return [void]
-        def self.validate_args!(value, context)
-          assert_type value, String, :value, context:
-
-          string = context.options&.dig(:string).to_s
+        # @raise [InvalidType] when the template string is blank
+        # @raise [MissingOption] when item_env is missing
+        def self.validate_args!(_value, context)
+          string = context.step_config[:string].to_s
           raise InvalidType, 'The `string` template is absent.' if string.empty?
 
-          return if context.item_scope
+          return if context.item_env
 
-          raise MissingOption, 'The post-processor context is missing `item_scope`.', [], cause: nil
+          raise MissingOption, 'The post-processor context is missing `item_env`.', [], cause: nil
         end
 
         ##
         # @param value [String]
-        # @param context [Selectors::Context]
+        # @param context [Selectors::StepEnv]
         def initialize(value, context)
           super
 
-          @options = context.options || {}
-          @string = @options[:string].to_s
+          @string = context.step_config[:string].to_s
           @getter = ->(key) { item_value(key) }
         end
 
         ##
         # @return [String]
-        def get
+        def call
           Html2rss::Config::DynamicParams.call(@string, {}, getter: @getter, replace_missing_with: '')
         end
 
@@ -92,7 +97,7 @@ module Html2rss
           key = key.to_sym
           return value if key == :self
 
-          @context.item_scope.select(key)
+          @context.item_env.select(key)
         end
       end
     end

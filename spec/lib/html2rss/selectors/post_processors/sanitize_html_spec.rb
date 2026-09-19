@@ -3,13 +3,13 @@
 RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
-  describe '#get' do
-    subject { described_class.new(html, context).get }
+  describe '#call' do
+    subject { described_class.new(html, context).call }
 
     let(:channel) do
       { title: 'Example: questions', url: 'https://example.com/questions' }
     end
-    let(:context) { Html2rss::Selectors::Context.new(channel:, options: {}) }
+    let(:context) { Html2rss::Selectors::StepEnv.new(base_url: channel[:url], step_config: {}) }
 
     let(:sanitized_html) do
       <<~HTML
@@ -47,8 +47,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     end
   end
 
-  describe '.get' do
-    subject { described_class.get(html, 'http://example.com') }
+  describe '.call' do
+    subject { described_class.call(html, 'http://example.com') }
 
     let(:html) { '<p>Hi <a href="/world">World!</a><script></script></p>' }
     let(:sanitized_html) do
@@ -61,12 +61,12 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
 
     it 'strips style tags and their CSS contents completely' do
       dirty = "<p>Before</p>\n<style>body { display: none; } p { color: red; }</style>\n<p>After</p>"
-      expect(described_class.get(dirty, 'http://example.com')).to eq("<p>Before</p>\n\n<p>After</p>")
+      expect(described_class.call(dirty, 'http://example.com')).to eq("<p>Before</p>\n\n<p>After</p>")
     end
 
     it 'strips inline style attributes' do
       dirty = '<p style="color: red; font-size: 20px;">Styled text</p>'
-      expect(described_class.get(dirty, 'http://example.com')).to eq('<p>Styled text</p>')
+      expect(described_class.call(dirty, 'http://example.com')).to eq('<p>Styled text</p>')
     end
 
     context 'with html being nil' do
@@ -78,18 +78,16 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
     end
   end
 
-  describe '.validate_args!' do
-    let(:context) { { foo: :bar } }
+  describe 'VALUE_TYPE' do
+    let(:context) { Html2rss::Selectors::StepEnv.new(base_url: 'http://example.com', step_config: {}) }
 
     it 'does not raise when value is a String' do
-      expect do
-        described_class.validate_args!('some html', context)
-      end.not_to raise_error
+      expect { described_class.new('some html', context) }.not_to raise_error
     end
 
     it 'raises when value is not a String' do
       expect do
-        described_class.validate_args!(123, context)
+        described_class.new(123, context)
       end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType)
     end
   end
