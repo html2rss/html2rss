@@ -20,8 +20,11 @@ module Html2rss
 
     include Enumerable
 
+    # Wire spelling of the default items selector.
+    # Runtime CSS is {Html::Navigator::MAIN_ANCHOR_SELECTOR}.
+    DEFAULT_ITEMS_SELECTOR = 'a[href]'
     # Default selectors options merged into user configuration.
-    DEFAULT_CONFIG = { items: { enhance: true } }.freeze
+    DEFAULT_CONFIG = { items: { selector: DEFAULT_ITEMS_SELECTOR, enhance: true } }.freeze
 
     # Selector key that points to the root list of article nodes.
     ITEMS_SELECTOR_KEY = :items
@@ -153,7 +156,17 @@ module Html2rss
 
     attr_reader :response
 
-    def items_selector = @selectors.dig(ITEMS_SELECTOR_KEY, :selector)
+    def items_selector
+      selector = @selectors.dig(ITEMS_SELECTOR_KEY, :selector)
+      return Html::Navigator::MAIN_ANCHOR_SELECTOR if default_items_selector?(selector)
+
+      selector
+    end
+
+    def default_items_selector?(selector)
+      text = selector.to_s.strip
+      text.empty? || text == DEFAULT_ITEMS_SELECTOR
+    end
 
     def enhance? = !!@selectors.dig(ITEMS_SELECTOR_KEY, :enhance)
 

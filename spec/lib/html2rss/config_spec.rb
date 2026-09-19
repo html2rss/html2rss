@@ -288,6 +288,17 @@ RSpec.describe Html2rss::Config do
     end
   end
 
+  describe '.prepare_defaults' do
+    it 'fills an omitted items selector and leaves auto_source-only configs selector-free', :aggregate_failures do
+      omitted = described_class.prepare_defaults(selectors: { items: { enhance: false } })
+      auto_only = described_class.prepare_defaults(auto_source: { enabled: true })
+
+      expect(omitted.dig(:selectors, :items, :selector)).to eq(Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR)
+      expect(omitted.dig(:selectors, :items, :enhance)).to be(false)
+      expect(auto_only).not_to have_key(:selectors)
+    end
+  end
+
   describe '.resolve_and_validate' do
     let(:config) do
       {
