@@ -145,6 +145,8 @@ Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
 
 **Enhance audit:** `selectors.items.enhance` is list-card enrichment via `Html::ArticleExtractor` on matched item nodes. `Test::EnhanceAudit` owns `quality_report.metrics.enhance_gains` and warn-only enhance warnings; `compare_enhance` on test is diagnostic only. Auto-source-only configs (no selectors) skip enhance_gains.
 
+Default items-selector spelling is `Selectors::DEFAULT_ITEMS_SELECTOR`; it expands to `Html::Navigator::MAIN_ANCHOR_SELECTOR` only for that spelling (or a blank selector), and `Config.prepare_defaults` applies it only when `selectors:` is present.
+
 When verbs change, update `CONTEXT.md` § Frozen contract, this table, `README.md`, and `lib/html2rss/mcp/README.md`.
 
 ## Operating Checklist

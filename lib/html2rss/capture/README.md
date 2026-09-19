@@ -58,13 +58,13 @@ html2rss capture https://example.com --explain   # quality JSON on stderr; YAML 
 1. **Request** — `FeedPipeline` (AutoFallback when `:auto`)
 2. **Discover** — AutoSource extracts admitted articles
 3. **Segment** — try SST Segmenter strategies `:list` → `:cluster` → `:semantic`
-4. **Gate** — emit items selector only when ≥ `MIN_SELECTOR_MATCHES` (2) articles match
-5. **Assemble** — `{ items: { selector:, enhance: true } }` plus channel
+4. **Gate** — keep a derived items selector when ≥ `MIN_SELECTOR_MATCHES` (2) articles match
+5. **Assemble** — `{ items: { selector:, enhance: } }` plus channel. HTML derivation misses fall back to `Selectors::DEFAULT_ITEMS_SELECTOR` (`segment_strategy: :default`) instead of omitting selectors.
 
 ## Constraints
 
 - Selector quality depends on page structure; treat output as a first draft.
-- When the quality gate fails, selectors are omitted (`has_selectors: false`) rather than inventing attribute selectors.
+- When HTML derivation misses (no articles, no SST document, fewer than `MIN_SELECTOR_MATCHES` pairs, or a rescued `ArgumentError`), Capture emits the default items selector with `segment_strategy: :default`. `enhance` still follows admission evidence (false when chrome drops are high). Non-HTML responses still omit selectors.
 - Botasaurus hops need `BOTASAURUS_SCRAPER_URL`.
 
 See also {Html2rss::AutoSource} for article discovery and {Html2rss::FeedPipeline} for the `:auto` request chain.
