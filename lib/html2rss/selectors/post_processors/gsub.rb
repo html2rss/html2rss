@@ -47,14 +47,22 @@ module Html2rss
           { 'name' => 'gsub', 'pattern' => 'boo', 'replacement' => 'baz' }
         ].freeze
 
+        # Byte cap for a slash-stripped +pattern+ source. Also the JSON Schema +maxLength+.
+        MAX_PATTERN_BYTES = 256
+
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_export = SchemaExport.for_post_processor(name: :gsub, klass: self)
 
         ##
         # Compiles and memoizes a gsub +pattern+ string as a Regexp.
         #
+        # Raises before memoizing when the slash-stripped source exceeds
+        # {MAX_PATTERN_BYTES} or its star-height is greater than 1.
+        #
         # @param string [String]
         # @return [Regexp]
+        # @raise [ArgumentError] when +string+ is not a String, exceeds the byte cap,
+        #   or contains nested quantifiers
         def self.compiled_pattern(string)
           compiled_patterns[string] ||= compile_regexp_string(string)
         end
@@ -69,19 +77,51 @@ module Html2rss
         #
         # It will remove one pair of surrounding slashes ('/') from the String
         # to maintain backwards compatibility before building the Regexp.
+        # Length is checked on that slash-stripped source, then the AST is
+        # walked for nested quantifiers, then +to_re+.
         #
         # @param string [String]
         # @return [Regexp]
+        # @raise [ArgumentError] when +string+ is not a String, exceeds {MAX_PATTERN_BYTES},
+        #   or contains nested quantifiers
         def self.compile_regexp_string(string)
           raise ArgumentError, 'must be a string!' unless string.is_a?(String)
 
-          # Only remove surrounding slashes if the string has at least 3 characters
-          # to avoid issues with single character strings like "/"
-          source = string
-          source = source[1..-2] if source.length >= 3 && source.start_with?('/') && source.end_with?('/')
-          Regexp::Parser.parse(source, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
+          source = regexp_source(string)
+          raise ArgumentError, "pattern exceeds #{MAX_PATTERN_BYTES} bytes" if source.bytesize > MAX_PATTERN_BYTES
+
+          expression = Regexp::Parser.parse(source, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE)
+          raise ArgumentError, 'pattern contains nested quantifiers' if nested_quantifiers?(expression)
+
+          expression.to_re
         end
         private_class_method :compile_regexp_string
+
+        # Strips one pair of surrounding slashes when the source is long enough.
+        #
+        # @param string [String]
+        # @return [String]
+        def self.regexp_source(string)
+          return string unless string.length >= 3 && string.start_with?('/') && string.end_with?('/')
+
+          string[1..-2]
+        end
+        private_class_method :regexp_source
+
+        # Star-height greater than 1: a quantified node whose subtree contains another.
+        #
+        # +each_expression+ yields +(node, index)+. Do not pass +&:quantified?+:
+        # +Symbol#to_proc+ would forward the index into +quantified?+ (arity 0).
+        #
+        # @param expression [Regexp::Expression::Subexpression]
+        # @return [Boolean]
+        # rubocop:disable-next Style/SymbolProc
+        def self.nested_quantifiers?(expression)
+          expression.each_expression.any? do |node|
+            node.quantified? && !node.terminal? && node.each_expression.any? { |child| child.quantified? }
+          end
+        end
+        private_class_method :nested_quantifiers?
 
         ##
         # @param value [String]
