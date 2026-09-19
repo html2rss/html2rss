@@ -38,20 +38,28 @@ module Html2rss
           OptionSpec.new(name: :replacement, type: [String, Hash])
         ].freeze
 
+        # Byte cap for a slash-stripped +pattern+ source. Also the JSON Schema +maxLength+.
+        MAX_PATTERN_BYTES = 256
+
         # JSON Schema description exported via +schema_export+.
-        DESCRIPTION = 'Replace matches of `pattern` in the extracted string with `replacement` ' \
-                      '(Ruby String#gsub; pattern may be a regexp-like string).'
+        DESCRIPTION = format(
+          'Replace matches of `pattern` in the extracted string with `replacement` ' \
+          '(Ruby String#gsub; pattern may be a regexp-like string). ' \
+          'Patterns over %d bytes, or with nested quantifiers, are rejected.',
+          MAX_PATTERN_BYTES
+        ).freeze
 
         # Example post-process objects for JSON Schema +examples+.
         EXAMPLES = [
           { 'name' => 'gsub', 'pattern' => 'boo', 'replacement' => 'baz' }
         ].freeze
 
-        # Byte cap for a slash-stripped +pattern+ source. Also the JSON Schema +maxLength+.
-        MAX_PATTERN_BYTES = 256
-
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
-        def self.schema_export = SchemaExport.for_post_processor(name: :gsub, klass: self)
+        def self.schema_export
+          fragment = SchemaExport.for_post_processor(name: :gsub, klass: self)
+          fragment.fetch(:properties).fetch(:pattern)[:maxLength] = MAX_PATTERN_BYTES
+          fragment
+        end
 
         ##
         # Compiles and memoizes a gsub +pattern+ string as a Regexp.
