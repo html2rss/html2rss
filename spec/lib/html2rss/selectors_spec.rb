@@ -215,6 +215,29 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
+    context 'when all enhanceable fields are already extracted' do
+      let(:selectors) do
+        {
+          items: { selector: 'article', enhance: true },
+          title: { extractor: 'static', static: 'Selected title' },
+          url: { extractor: 'static', static: 'https://example.com/selected' },
+          description: { extractor: 'static', static: 'Selected description' },
+          published_at: { extractor: 'static', static: 'Mon, 01 Jul 2019 12:00:00 +0000' },
+          enclosure: { extractor: 'static', static: 'https://example.com/file.mp3', content_type: 'audio/mpeg' },
+          categories: %i[category],
+          category: { extractor: 'static', static: 'News' }
+        }
+      end
+
+      it 'does not call ArticleExtractor' do
+        allow(Html2rss::Html::ArticleExtractor).to receive(:call)
+
+        instance.each_enhance_pair.to_a
+
+        expect(Html2rss::Html::ArticleExtractor).not_to have_received(:call)
+      end
+    end
+
     context 'when leftover contains a naive date' do
       let(:time_zone) { 'Europe/Berlin' }
       let(:body) do

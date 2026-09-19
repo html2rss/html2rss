@@ -49,7 +49,7 @@ module Html2rss
         # @param selector [String, nil] CSS selector used to find the element
         def initialize(xml, attribute: nil, selector: nil, **)
           @attribute = attribute
-          @element = Extractors.element(xml, selector)
+          @element = Extractors.element(xml, selector, first: true)
         end
 
         ##
@@ -57,7 +57,7 @@ module Html2rss
         #
         # @return [String] The value of the attribute.
         def call
-          @element.attr(@attribute).to_s
+          @element&.[](@attribute).to_s
         end
       end
     end

@@ -1,0 +1,142 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Captures wall time + allocation baseline for the selectors extraction path.
+# Usage: mise exec -- bin/selectors-perf-baseline [--write PATH]
+
+require 'bundler/setup'
+require 'nokogiri'
+require 'optparse'
+require_relative '../lib/html2rss'
+
+WARMUP = 1
+RUNS = 5
+
+PAGE_1_SELECTORS = {
+  items: { selector: 'article.slide', enhance: true },
+  title: { selector: 'h3.title' },
+  url: { selector: 'a', extractor: 'href' },
+  published_at: { selector: 'time' }
+}.freeze
+
+CASES = [
+  {
+    name: 'performance_optimized_site',
+    html: 'spec/examples/performance_optimized_site.html',
+    yml: 'spec/examples/performance_optimized_site.yml'
+  },
+  {
+    name: 'combined_scraper_sources',
+    html: 'spec/examples/combined_scraper_sources.html',
+    yml: 'spec/examples/combined_scraper_sources.yml'
+  },
+  {
+    name: 'conditional_processing_site',
+    html: 'spec/examples/conditional_processing_site.html',
+    yml: 'spec/examples/conditional_processing_site.yml'
+  },
+  {
+    name: 'page_1',
+    html: 'spec/fixtures/page_1.html',
+    selectors: PAGE_1_SELECTORS,
+    url: 'https://PAGE.com/',
+    time_zone: 'America/New_York'
+  }
+].freeze
+
+def build_response(body, url)
+  parsed_body = Nokogiri::HTML(body)
+  response = Html2rss::RequestService::Response.new(
+    body:,
+    headers: { 'content-type' => 'text/html' },
+    url:
+  )
+  response.instance_variable_set(:@parsed_body, parsed_body)
+  response
+end
+
+def load_case(root, spec)
+  body = File.read(File.join(root, spec[:html]))
+  spec[:yml] ? load_yaml_case(root, spec, body) : load_inline_case(spec, body)
+end
+
+def load_yaml_case(root, spec, body)
+  config = Html2rss::Config.new(Html2rss.config_from_yaml_file(File.join(root, spec[:yml])))
+  response = build_response(body, Html2rss::Url.from_absolute(config.url))
+  [spec[:name], response, config.selectors, config.time_zone]
+end
+
+def load_inline_case(spec, body)
+  response = build_response(body, Html2rss::Url.from_absolute(spec[:url]))
+  [spec[:name], response, spec[:selectors], spec[:time_zone]]
+end
+
+def run_selectors(response, selectors, time_zone)
+  Html2rss::Selectors.new(response, selectors:, time_zone:).articles.size
+end
+
+def measure(loaded_cases)
+  GC.start
+  before_alloc = GC.stat[:total_allocated_objects]
+  started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  counts = loaded_cases.to_h do |name, response, selectors, time_zone|
+    [name, run_selectors(response, selectors, time_zone)]
+  end
+  wall = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+  allocs = GC.stat[:total_allocated_objects] - before_alloc
+  [wall, allocs, counts]
+end
+
+options = { write: nil }
+OptionParser.new do |opts|
+  opts.on('--write PATH', 'Write markdown baseline to PATH') { |path| options[:write] = path }
+end.parse!
+
+root = File.expand_path('..', __dir__)
+loaded_cases = CASES.map { |spec| load_case(root, spec) }
+
+WARMUP.times { measure(loaded_cases) }
+
+walls = []
+allocs = []
+article_counts = nil
+RUNS.times do
+  wall, alloc, counts = measure(loaded_cases)
+  walls << wall
+  allocs << alloc
+  article_counts = counts
+end
+
+median = ->(arr) { arr.sort[arr.size / 2] }
+wall_med = median.call(walls)
+alloc_med = median.call(allocs)
+
+lines = []
+lines << '# Selectors performance baseline'
+lines << ''
+lines << "Captured: #{Time.now.utc.iso8601}"
+lines << "Ruby: #{RUBY_VERSION}"
+lines << "Cases: #{CASES.map { _1[:name] }.join(', ')}"
+lines << "Warmup runs: #{WARMUP}; measured runs: #{RUNS} (median reported)"
+lines << ''
+lines << '| Metric | Value |'
+lines << '| --- | --- |'
+lines << "| wall_time_s (median) | #{format('%.6f', wall_med)} |"
+lines << "| allocations (median) | #{alloc_med} |"
+lines << "| wall_budget_1_1x | #{format('%.6f', wall_med * 1.1)} |"
+lines << "| alloc_budget_1_15x | #{(alloc_med * 1.15).ceil} |"
+lines << ''
+lines << 'Article counts per case:'
+CASES.each do |spec|
+  lines << "- #{spec[:name]}: #{article_counts[spec[:name]]}"
+end
+lines << ''
+
+report = lines.join("\n")
+puts report
+
+if options[:write]
+  path = File.expand_path(options[:write], root)
+  File.write(path, report)
+  warn "Wrote #{path}"
+end

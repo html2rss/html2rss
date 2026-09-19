@@ -18,6 +18,13 @@ RSpec.describe Html2rss::Url do
       expect { described_class.from_relative('http://example .com', base_url) }
         .to raise_error(ArgumentError, 'URL could not be parsed')
     end
+
+    it 'resolves against an already-parsed Html2rss::Url without changing the result' do
+      parsed_base = described_class.from_absolute('https://example.com/section/')
+
+      expect(described_class.from_relative('../item', parsed_base).to_s)
+        .to eq(described_class.from_relative('../item', 'https://example.com/section/').to_s)
+    end
   end
 
   describe '.sanitize' do

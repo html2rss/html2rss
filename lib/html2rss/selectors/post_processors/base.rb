@@ -32,8 +32,28 @@ module Html2rss
         # @raise [MissingOption] if a required option key is absent
         # @raise [InvalidType] if a present option has the wrong type
         def self.validate_options!(context)
-          OptionSpec.for(self).each { |spec| validate_option_spec!(spec, context.step_config, context) }
+          specs = option_specs
+          return if specs.empty?
+
+          step_config = context.step_config
+          cache = validated_step_configs
+          return if cache[step_config]
+
+          specs.each { |spec| validate_option_spec!(spec, step_config, context) }
+          cache[step_config] = true
         end
+
+        # rubocop:disable-next ThreadSafety/ClassInstanceVariable
+        def self.option_specs
+          @option_specs ||= OptionSpec.for(self)
+        end
+        private_class_method :option_specs
+
+        # rubocop:disable-next ThreadSafety/ClassInstanceVariable
+        def self.validated_step_configs
+          @validated_step_configs ||= {}.compare_by_identity
+        end
+        private_class_method :validated_step_configs
 
         ##
         # @param spec [Selectors::OptionSpec]

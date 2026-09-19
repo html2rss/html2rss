@@ -42,13 +42,20 @@ module Html2rss
       url = Addressable::URI.parse(relative_url.to_s.strip)
       return new(url) if url.absolute?
 
-      base_uri = Addressable::URI.parse(base_url.to_s)
-      base_uri.path = '/' if base_uri.path.empty?
-
-      new(base_uri.join(url).normalize)
+      base_url.is_a?(self) ? base_url.join_uri(url) : join_parsed_base(base_url, url)
     rescue Addressable::URI::InvalidURIError
       raise ArgumentError, 'URL could not be parsed'
     end
+
+    # @param base_url [String]
+    # @param url [Addressable::URI]
+    # @return [Url]
+    def self.join_parsed_base(base_url, url)
+      uri = Addressable::URI.parse(base_url.to_s)
+      uri.path = '/' if uri.path.empty?
+      new(uri.join(url).normalize)
+    end
+    private_class_method :join_parsed_base
 
     ##
     # Creates a URL by sanitizing a raw URL string.
@@ -304,6 +311,20 @@ module Html2rss
     #
     # @return [String] the debug representation
     def inspect = "#<#{self.class}:#{object_id} @uri=#{@uri.inspect}>"
+
+    ##
+    # Resolves +relative_uri+ against this URL's already-parsed Addressable URI.
+    #
+    # @param relative_uri [Addressable::URI]
+    # @return [Url]
+    def join_uri(relative_uri)
+      base = @uri
+      if base.path.empty?
+        base = base.dup
+        base.path = '/'
+      end
+      self.class.new(base.join(relative_uri).normalize)
+    end
 
     protected
 
