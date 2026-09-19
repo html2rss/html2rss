@@ -434,7 +434,8 @@
           "properties": {
             "selector": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "default": "a[href]"
             },
             "order": {
               "enum": [
@@ -507,9 +508,7 @@
               ]
             }
           },
-          "required": [
-            "selector"
-          ],
+          "required": [],
           "description": "Defines the items selector and list-card enhance settings."
         },
         "enclosure": {
