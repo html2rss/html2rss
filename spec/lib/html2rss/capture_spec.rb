@@ -202,10 +202,23 @@ RSpec.describe Html2rss::Capture do
         allow(Html2rss::Log).to receive(:warn)
       end
 
-      it 'warns and omits selectors', :aggregate_failures do
-        expect(result.config[:selectors]).to be_nil
-        expect(result.has_selectors).to be false
+      # rubocop:disable-next RSpec/ExampleLength -- default selector plus test next_step
+      it 'emits the default items selector when derivation raises ArgumentError', :aggregate_failures do
+        expect(result.config[:selectors]).to eq(
+          items: { selector: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR, enhance: true }
+        )
+        expect(result.has_selectors).to be true
+        expect(result.segment_strategy).to eq(:default)
         expect(Html2rss::Log).to have_received(:warn).with(/bad sst/)
+        next_step = Html2rss::MCP::Outcome.capture(
+          yaml: result.yaml,
+          articles_count: result.articles_count,
+          has_selectors: result.has_selectors,
+          channel_title: result.channel_title,
+          requested_strategy: 'auto',
+          segment_strategy: result.segment_strategy
+        ).next_step
+        expect(next_step.name).to eq(:test)
       end
     end
 
@@ -241,6 +254,37 @@ RSpec.describe Html2rss::Capture do
       expect(result.has_selectors).to be true
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- empty HTML still gets the default, next_step stays inspect
+    it 'emits the default items selector when HTML has no articles', :aggregate_failures do
+      stub_outcome(html_response('<html><body></body></html>'), articles: [])
+
+      result = described_class.new(url).build
+      expect(result.config[:selectors]).to eq(
+        items: { selector: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR, enhance: true }
+      )
+      expect(result.segment_strategy).to eq(:default)
+      expect(Html2rss::MCP::Outcome.capture(
+        yaml: result.yaml,
+        articles_count: result.articles_count,
+        has_selectors: result.has_selectors,
+        channel_title: result.channel_title,
+        requested_strategy: 'auto'
+      ).next_step.name).to eq(:inspect)
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- JSON response must not inherit the HTML default
+    it 'omits selectors for a non-HTML response', :aggregate_failures do
+      response = html_response('[]', content_type: 'application/json')
+      article = Html2rss::Article.new(
+        url: Html2rss::Url.from_absolute("#{url}/1"), title: 'One Two Three', id: '1'
+      )
+      stub_outcome(response, articles: [article])
+
+      result = described_class.new(url).build
+      expect(result.config[:selectors]).to be_nil
+      expect(result.has_selectors).to be false
+    end
+
     it 'stamps selected_strategy into config when AutoFallback chose a concrete strategy' do
       response = html_response(File.read('spec/fixtures/local_feed_test.html'))
       articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
@@ -249,8 +293,8 @@ RSpec.describe Html2rss::Capture do
       expect(described_class.new(url).build.config[:strategy]).to eq(:botasaurus)
     end
 
-    # rubocop:disable-next RSpec/ExampleLength -- single-article quality gate
-    it 'reports has_selectors false when too few matches' do
+    # rubocop:disable-next RSpec/ExampleLength -- quality-gate miss emits default and test next_step
+    it 'emits the default items selector when too few matches', :aggregate_failures do
       html = <<~HTML
         <html><body>
           <article><h2><a href="/only">Only One Article Title</a></h2></article>
@@ -261,7 +305,17 @@ RSpec.describe Html2rss::Capture do
       )
       stub_outcome(html_response(html), articles: [article])
 
-      expect(described_class.new(url).build.has_selectors).to be false
+      result = described_class.new(url).build
+      expect(result.has_selectors).to be true
+      expect(result.segment_strategy).to eq(:default)
+      expect(result.config.dig(:selectors, :items, :selector)).to eq(Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR)
+      expect(Html2rss::MCP::Outcome.capture(
+        yaml: result.yaml,
+        articles_count: result.articles_count,
+        has_selectors: result.has_selectors,
+        channel_title: result.channel_title,
+        requested_strategy: 'auto'
+      ).next_step.name).to eq(:test)
     end
 
     it 'falls back to cluster when list yields too few matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -305,6 +359,23 @@ RSpec.describe Html2rss::Capture do
       result = described_class.new(url).build
 
       expect(result.config.dig(:selectors, :items, :enhance)).to be(false)
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- chrome drops keep enhance off on the default selector
+    it 'keeps enhance off when the default selector covers a chrome-heavy miss', :aggregate_failures do
+      html = <<~HTML
+        <html><body>
+          <article><h2><a href="/only">Only One Article Title</a></h2></article>
+        </body></html>
+      HTML
+      article = Html2rss::Article.new(
+        url: Html2rss::Url.from_absolute("#{url}/only"), title: 'Only One Article Title', id: '1'
+      )
+      stub_outcome(html_response(html), articles: [article], admission_drops: { junk: 2, credit: 1 })
+
+      items = described_class.new(url).build.config.dig(:selectors, :items)
+      expect(items[:selector]).to eq(Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR)
+      expect(items[:enhance]).to be(false)
     end
   end
 

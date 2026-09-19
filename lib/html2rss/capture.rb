@@ -257,19 +257,24 @@ module Html2rss
     # @return [Array(Hash, Symbol, nil)] selectors hash and winning segment strategy
     def derive_selectors(response, articles)
       return hint_selectors if @items_selector_hint
-      return [{}, nil] if articles.empty? || !response.html_response?
+      return [{}, nil] unless response.html_response?
+      return default_selectors if articles.empty?
 
       sst = SST::Normalizer.call(response.body)
-      return [{}, nil] unless sst
+      return default_selectors unless sst
 
       select_enhance_selectors(sst, articles)
     rescue ArgumentError => error
       Log.warn("Capture selector derivation failed: #{error.message}")
-      [{}, nil]
+      default_selectors
     end
 
     def hint_selectors
       [{ items: { selector: @items_selector_hint, enhance: resolve_enhance } }, :hint]
+    end
+
+    def default_selectors
+      [{ items: { selector: Selectors::DEFAULT_ITEMS_SELECTOR, enhance: resolve_enhance } }, :default]
     end
 
     def select_enhance_selectors(sst, articles) # rubocop:disable Metrics/MethodLength -- strategy loop + gate
@@ -287,7 +292,7 @@ module Html2rss
         return [{ items: { selector: items_sel, enhance: } }, strategy]
       end
 
-      [{}, nil]
+      default_selectors
     end
 
     def match_segments_to_articles(segments, articles)
