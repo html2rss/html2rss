@@ -318,6 +318,35 @@ RSpec.describe Html2rss::Capture do
       ).next_step.name).to eq(:test)
     end
 
+    it 'derives a cluster selector from shared card class when list cannot group', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <div class="card-item">
+            <a href="javascript:void(0)">Share</a>
+            <h2><a href="/posts/alpha-release">Alpha release notes for the first card</a></h2>
+            <p>Description text for the first clustered card goes here extra.</p>
+          </div>
+          <div class="card-item">
+            <a href="mailto:ed@example.com">Email</a>
+            <p><a href="/posts/beta-release">Beta release notes for the second card</a></p>
+            <p>Description text for the second clustered card goes here extra.</p>
+          </div>
+          <div class="card-item">
+            <a class="card" href="/posts/gamma-release">Gamma release notes for the third card</a>
+            <p>Description text for the third clustered card goes here extra.</p>
+          </div>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      stub_outcome(response, articles:)
+
+      result = described_class.new(url).build
+      expect(articles.size).to be >= 2
+      expect(result.segment_strategy).to eq(:cluster)
+      expect(result.config.dig(:selectors, :items, :selector)).to eq('div.card-item')
+    end
+
     it 'falls back to cluster when list yields too few matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response('<html><body><div id="root"></div></body></html>')
       articles = [

@@ -170,7 +170,7 @@ When a heading-only item or wrapping `<a>` lacks leftover description and date, 
 
 ## DOM candidate clustering
 
-Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Scraper::Sitemap` (XML, not heuristic HTML).
+Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:cluster` strategy). Cluster sets each card's primary link via `PrimaryLink`. Group ranking weights live in `Scoring::ClusterScorer`. Sitemap discovery remains `AutoSource::Scraper::Sitemap` (XML, not heuristic HTML).
 
 ## Channel
 

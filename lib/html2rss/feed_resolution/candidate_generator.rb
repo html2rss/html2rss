@@ -99,11 +99,8 @@ module Html2rss
 
       def segment_urls_for(sst, strategy, link_resolver)
         segmenter = AutoSource::Segmenter.new(sst, base_url: entry_url, strategy:, link_resolver:)
-        primary = AutoSource::Segmenter::PrimaryLink.new(segmenter)
-
         segmenter.call.filter_map do |segment|
-          link = segment.primary_link || primary.select(segment.root_node)
-          absolute_same_origin(link&.attrs&.href)
+          absolute_same_origin(segment.primary_link&.attrs&.href)
         end.uniq
       end
 

@@ -108,12 +108,14 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         document_for(html),
         base_url: 'https://example.com',
         strategy: :cluster,
-        minimum_selector_frequency: 3
+        minimum_selector_frequency: 3,
+        permit_unanchored: true
       )
 
       expect(segments.size).to eq(3)
       expect(segments.first.root_node.attrs.class_names).to include('card-item')
       expect(segments.map(&:strategy).uniq).to eq([:cluster])
+      expect(segments.map(&:primary_link)).to all(be_nil)
     end
 
     it 'groups mixed-case class tokens into one cluster', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -138,12 +140,49 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         document_for(html),
         base_url: 'https://example.com',
         strategy: :cluster,
-        minimum_selector_frequency: 3
+        minimum_selector_frequency: 3,
+        permit_unanchored: true
       )
 
       expect(segments.size).to eq(3)
       expect(segments.first.root_node.attrs.class_names).to include('PostCard').or include('postcard')
       expect(segments.map(&:strategy).uniq).to eq([:cluster])
+      expect(segments.map(&:primary_link)).to all(be_nil)
+    end
+
+    it 'keeps the content href on anchored cards, not javascript: or mailto:', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <div class="card-item p-4">
+            <a href="javascript:void(0)">Share</a>
+            <h2><a href="/posts/alpha-release">Alpha release notes for the first card</a></h2>
+            <p>Description text for the first clustered card goes here extra.</p>
+          </div>
+          <div class="card-item p-4">
+            <a href="mailto:ed@example.com">Email</a>
+            <h2><a href="/posts/beta-release">Beta release notes for the second card</a></h2>
+            <p>Description text for the second clustered card goes here extra.</p>
+          </div>
+          <div class="card-item p-4">
+            <a href="javascript:void(0)">Share</a>
+            <h2><a href="/posts/gamma-release">Gamma release notes for the third card</a></h2>
+            <p>Description text for the third clustered card goes here extra.</p>
+          </div>
+        </body></html>
+      HTML
+
+      segments = described_class.call(
+        document_for(html),
+        base_url: 'https://example.com',
+        strategy: :cluster,
+        minimum_selector_frequency: 3,
+        permit_unanchored: false
+      )
+
+      expect(segments.size).to eq(3)
+      expect(segments.map { _1.primary_link.attrs.href }).to eq(
+        %w[/posts/alpha-release /posts/beta-release /posts/gamma-release]
+      )
     end
   end
 end
