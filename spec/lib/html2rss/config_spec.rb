@@ -353,6 +353,29 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(config)).to be_success
     end
 
+    context 'with a nested gsub quantifier' do
+      let(:config) do
+        {
+          channel: { url: 'http://example.com' },
+          selectors: {
+            items: { selector: '.item' },
+            title: {
+              selector: 'h2',
+              post_process: [{ name: 'gsub', pattern: '(a+)+', replacement: 'x' }]
+            }
+          }
+        }
+      end
+
+      it 'admits the pattern through Gsub compile as invalid_value', :aggregate_failures do
+        result = Html2rss.validate(config)
+        issue = result.issues.find { |entry| entry.message == 'pattern contains nested quantifiers' }
+
+        expect(result).to be_failure
+        expect(issue.code).to eq(:invalid_value)
+      end
+    end
+
     it 'applies runtime defaults before validation', :aggregate_failures do
       expect(described_class.validate(config)).to be_success
       expect(described_class.from_hash(config).time_zone).to eq('UTC')

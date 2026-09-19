@@ -122,6 +122,9 @@ module Html2rss
           post_process_option_type_errors(klass, value).each do |field, message|
             key(field).failure(message)
           end
+
+          pattern_error = gsub_pattern_error(klass, value)
+          key(:pattern).failure(pattern_error) if pattern_error
         end
 
         private
@@ -135,6 +138,24 @@ module Html2rss
               [spec.name, spec.error_message(optional: !spec.required)]
             end
           end
+        end
+
+        # Same compile as Gsub#call. ArgumentError is the bound; other parser
+        # errors stay exceptions so admit and execute still share one path.
+        #
+        # @param klass [Class]
+        # @param value [Hash]
+        # @return [String, nil]
+        def gsub_pattern_error(klass, value)
+          return unless klass == Selectors::PostProcessors::Gsub
+
+          pattern = value[:pattern]
+          return unless pattern.is_a?(String)
+
+          Selectors::PostProcessors::Gsub.compiled_pattern(pattern)
+          nil
+        rescue ArgumentError => error
+          error.message
         end
       end
 

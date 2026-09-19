@@ -181,6 +181,25 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
       it { is_expected.to be_success }
     end
 
+    context 'with nested gsub quantifiers' do
+      let(:config) do
+        { title: { post_process: [{ name: 'gsub', pattern: '(a+)+', replacement: 'x' }] } }
+      end
+
+      it 'fails through Gsub compile', :aggregate_failures do
+        expect(result).to be_failure
+        expect(result.errors.map(&:text)).to include('pattern contains nested quantifiers')
+      end
+    end
+
+    context 'with overlapping gsub alternation' do
+      let(:config) do
+        { title: { post_process: [{ name: 'gsub', pattern: '(a|aa)+', replacement: 'x' }] } }
+      end
+
+      it { is_expected.to be_success }
+    end
+
     context 'with substring without end' do
       let(:config) do
         { title: { post_process: [{ name: 'substring', start: 0 }] } }
