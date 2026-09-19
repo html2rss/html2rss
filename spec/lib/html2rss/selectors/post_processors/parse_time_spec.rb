@@ -44,4 +44,20 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
         .to raise_error(ArgumentError, 'time_zone cannot be nil or empty')
     end
   end
+
+  it 'does not mutate ENV TZ' do
+    previous_tz = ENV.fetch('TZ', nil)
+    ctx = Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin')
+
+    described_class.new('2019-07-01 12:00', ctx).call
+
+    expect(ENV.fetch('TZ', nil)).to eq(previous_tz)
+  end
+
+  it 'keeps an explicit offset from the source string' do
+    ctx = Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin')
+
+    expect(described_class.new('2019-07-01 12:00:00 +0000', ctx).call)
+      .to eq('Mon, 01 Jul 2019 12:00:00 +0000')
+  end
 end

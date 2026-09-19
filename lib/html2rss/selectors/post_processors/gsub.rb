@@ -51,6 +51,39 @@ module Html2rss
         def self.schema_export = SchemaExport.for_post_processor(name: :gsub, klass: self)
 
         ##
+        # Compiles and memoizes a gsub +pattern+ string as a Regexp.
+        #
+        # @param string [String]
+        # @return [Regexp]
+        def self.compiled_pattern(string)
+          compiled_patterns[string] ||= compile_regexp_string(string)
+        end
+
+        # rubocop:disable-next ThreadSafety/ClassInstanceVariable
+        def self.compiled_patterns
+          @compiled_patterns ||= {}
+        end
+        private_class_method :compiled_patterns
+
+        # Parses the given String and builds a Regexp out of it.
+        #
+        # It will remove one pair of surrounding slashes ('/') from the String
+        # to maintain backwards compatibility before building the Regexp.
+        #
+        # @param string [String]
+        # @return [Regexp]
+        def self.compile_regexp_string(string)
+          raise ArgumentError, 'must be a string!' unless string.is_a?(String)
+
+          # Only remove surrounding slashes if the string has at least 3 characters
+          # to avoid issues with single character strings like "/"
+          source = string
+          source = source[1..-2] if source.length >= 3 && source.start_with?('/') && source.end_with?('/')
+          Regexp::Parser.parse(source, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
+        end
+        private_class_method :compile_regexp_string
+
+        ##
         # @param value [String]
         # @param context [Selectors::StepEnv]
         def initialize(value, context)
@@ -75,24 +108,8 @@ module Html2rss
         ##
         # @return [Regexp]
         def pattern
-          @pattern.is_a?(String) ? parse_regexp_string(@pattern) : @pattern
-        end
-
-        ##
-        # Parses the given String and builds a Regexp out of it.
-        #
-        # It will remove one pair of surrounding slashes ('/') from the String
-        # to maintain backwards compatibility before building the Regexp.
-        #
-        # @param string [String]
-        # @return [Regexp]
-        def parse_regexp_string(string)
-          raise ArgumentError, 'must be a string!' unless string.is_a?(String)
-
-          # Only remove surrounding slashes if the string has at least 3 characters
-          # to avoid issues with single character strings like "/"
-          string = string[1..-2] if string.length >= 3 && string.start_with?('/') && string.end_with?('/')
-          Regexp::Parser.parse(string, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE).to_re
+          raw = @pattern
+          raw.is_a?(String) ? self.class.compiled_pattern(raw) : raw
         end
       end
     end

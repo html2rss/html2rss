@@ -11,7 +11,7 @@ YAML / MCP wire vocabulary is unchanged (`selectors`, `extractor`, `post_process
 ## Live flow
 
 1. **Parse** — HTML stays on `Response#parsed_body`. JSON responses are converted once via `JsonXml` into an HTML5 fragment so CSS selectors still run.
-2. **Items** — `items.selector` finds each card/node. Optional `enhance: true` fills missing fields via `Html::ArticleExtractor` (list-card enrichment).
+2. **Items** — `items.selector` finds each card/node. Optional `enhance: true` fills missing fields via `Html::ArticleExtractor` (list-card enrichment). Enhancement is skipped when title, url, description, published_at, enclosures, and categories are already populated.
 3. **Field dispatch** (private on `Selectors`) — for each selectable key (`title`, `url`, `enclosure`, `categories`, …):
    - Regular fields → `Extractors.call` → optional `PostProcessors.call` chain
    - Special keys → enclosure wrap, guid fan-out, multi-node categories

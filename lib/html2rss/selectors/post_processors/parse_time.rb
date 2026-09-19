@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'date'
 require 'time'
 require 'tzinfo'
 
@@ -41,6 +42,18 @@ module Html2rss
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_export = SchemaExport.for_post_processor(name: :parse_time, klass: self)
 
+        # @param identifier [String] IANA time zone name
+        # @return [TZInfo::Timezone]
+        def self.timezone(identifier)
+          timezones[identifier] ||= TZInfo::Timezone.get(identifier)
+        end
+
+        # rubocop:disable-next ThreadSafety/ClassInstanceVariable
+        def self.timezones
+          @timezones ||= {}
+        end
+        private_class_method :timezones
+
         ##
         # Ensures +context.time_zone+ is a non-empty String before parsing.
         #
@@ -61,25 +74,35 @@ module Html2rss
         ##
         # Converts the provided time string to RFC822 format, taking into account the time_zone.
         #
+        # Uses in-memory {TZInfo::Timezone} conversion so parsing never mutates +ENV['TZ']+
+        # (which would invalidate libc +tzset+ and re-read zoneinfo from disk).
+        #
         # @return [String] RFC822 formatted time
         # @raise [TZInfo::InvalidTimezoneIdentifier] if the configured time zone is invalid
         def call
-          with_timezone(context.time_zone) { Time.parse(value).rfc822 }
+          parse_time(value, context.time_zone).rfc822
         end
 
         private
 
-        def with_timezone(time_zone)
-          return yield if time_zone.nil? || time_zone.empty?
+        def parse_time(string, time_zone)
+          components = Date._parse(string, false)
+          if components[:zone] || components.key?(:offset)
+            Time.parse(string)
+          else
+            local_time_in_zone(components, time_zone)
+          end
+        end
 
-          # Validate timezone using TZInfo
-          TZInfo::Timezone.get(time_zone)
-
-          prev_tz = ENV.fetch('TZ', Time.now.getlocal.zone)
-          ENV['TZ'] = time_zone
-          yield
-        ensure
-          ENV['TZ'] = prev_tz if prev_tz
+        def local_time_in_zone(components, time_zone)
+          self.class.timezone(time_zone).local_time(
+            components[:year],
+            components[:mon],
+            components[:mday],
+            components[:hour] || 0,
+            components[:min] || 0,
+            (components[:sec] || 0) + (components[:sec_fraction] || 0)
+          )
         end
       end
     end

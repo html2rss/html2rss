@@ -34,6 +34,11 @@ module Html2rss
     SELECTOR_TO_ARTICLE_KEY = { enclosure: :enclosures }.freeze
     # Selector keys that may be copied onto an Article (PROVIDED_KEYS + mapped aliases).
     SELECTABLE_SELECTOR_KEYS = Set[*(Html2rss::Article::PROVIDED_KEYS + SELECTOR_TO_ARTICLE_KEY.keys)].freeze
+    # ArticleExtractor keys that enhance can fill. Skip the extractor when all are already present.
+    ENHANCEABLE_KEYS = %i[title url description published_at enclosures categories].freeze
+    # Per-field extraction plan compiled once from the static selector config.
+    CompiledField = Data.define(:name, :article_key, :config, :extractor_class, :post_process_steps, :special)
+    private_constant :CompiledField
 
     ##
     # Initializes a new Selectors instance.
@@ -48,6 +53,8 @@ module Html2rss
       @time_zone = time_zone
       @rss_item_attributes = @selectors.keys.select { SELECTABLE_SELECTOR_KEYS.include?(_1) }
       @parsed_body = nil
+      @compiled_fields = compile_selector_fields
+      @compiled_item_fields = @rss_item_attributes.filter_map { @compiled_fields[_1] }
     end
 
     ##
@@ -120,8 +127,11 @@ module Html2rss
       name = name.to_sym
       raise InvalidSelectorName, "Attribute selector '#{name}' is reserved for items." if name == ITEMS_SELECTOR_KEY
 
-      selector_key, config = selector_config_for(name, allow_nil: name == :url)
-      select_field(selector_key, scope:, config:)
+      field = @compiled_fields[name]
+      return select_compiled(field, scope) if field
+      return select_field(name, scope:, config: nil) if name == :url
+
+      raise InvalidSelectorName, "Selector for '#{name}' is not defined."
     end
 
     ##
@@ -162,11 +172,11 @@ module Html2rss
 
     def extract_article(item)
       scope = item_env_for(item, @url)
-      hash = @rss_item_attributes.each_with_object({}) do |selector_key, h|
-        value = scope.select(selector_key)
+      hash = @compiled_item_fields.each_with_object({}) do |field, h|
+        value = select_compiled(field, scope)
         next if value.nil?
 
-        article_key = SELECTOR_TO_ARTICLE_KEY.fetch(selector_key, selector_key)
+        article_key = field.article_key
         h[article_key] = article_key == :enclosures ? wrap_enclosure_value(value) : value
       end
 
@@ -175,6 +185,8 @@ module Html2rss
     end
 
     def enhance_article_hash(article_hash, article_tag) # rubocop:disable Metrics/MethodLength -- merge extracted keys
+      return article_hash if enhanceable_fields_present?(article_hash)
+
       selected_anchor = Html2rss::Html::Navigator.main_anchor_for(article_tag)
       extracted = Html2rss::Html::ArticleExtractor.call(
         article_tag,
@@ -192,6 +204,10 @@ module Html2rss
       end
     end
 
+    def enhanceable_fields_present?(article_hash)
+      ENHANCEABLE_KEYS.all? { |key| article_hash[key] }
+    end
+
     def wrap_enclosure_value(value)
       value.is_a?(Array) ? value : [value]
     end
@@ -207,6 +223,60 @@ module Html2rss
       end
     end
 
+    def select_compiled(field, scope)
+      if fallback_url_selector?(field.name, field.config, scope.item)
+        return default_item_url(scope.item, scope.base_url)
+      end
+      raise InvalidSelectorName, "Selector for '#{field.name}' is not defined." if field.config.nil?
+
+      if field.special
+        select_special(field.name, scope:, config: field.config)
+      else
+        select_regular_compiled(field, scope)
+      end
+    end
+
+    def compile_selector_fields
+      @selectors.each_key.with_object({}) do |name, acc|
+        next if name == ITEMS_SELECTOR_KEY
+
+        acc[name] = compile_field(name)
+      end
+    end
+
+    def compile_field(name)
+      config = @selectors[name]
+      CompiledField.new(
+        name:,
+        article_key: SELECTOR_TO_ARTICLE_KEY.fetch(name, name),
+        config:,
+        extractor_class: extractor_class_for(config),
+        post_process_steps: compile_post_process_steps(config),
+        special: SPECIAL_ATTRIBUTES.member?(name)
+      )
+    end
+
+    def extractor_class_for(config)
+      return unless config.is_a?(Hash)
+
+      Extractors::NAME_TO_CLASS[config[:extractor]&.to_sym || Extractors::DEFAULT_EXTRACTOR]
+    end
+
+    def compile_post_process_steps(config)
+      return unless config.is_a?(Hash) && config[:post_process]
+
+      steps = config[:post_process]
+      (steps.is_a?(Array) ? steps : [steps]).map { |step| compile_post_process_step(step) }
+    end
+
+    def compile_post_process_step(step)
+      klass = PostProcessors::NAME_TO_CLASS[step[:name].to_sym]
+      raise PostProcessors::UnknownPostProcessorName, "Unknown name '#{step[:name]}'" unless klass
+
+      klass.validate_options!(StepEnv.new(step_config: step, time_zone: @time_zone))
+      [klass, step]
+    end
+
     def select_special(name, scope:, config:)
       case name
       when :enclosure
@@ -219,10 +289,21 @@ module Html2rss
     end
 
     def select_regular(_name, scope:, config:)
-      merged_config = config.merge(base_url: scope.base_url)
-      value = Extractors.call(merged_config, scope.item)
+      value = Extractors.call(config, scope.item, base_url: scope.base_url)
 
       apply_post_process_steps(scope:, value:, post_process_steps: config[:post_process])
+    end
+
+    def select_regular_compiled(field, scope)
+      value = field.extractor_class.new(
+        scope.item,
+        selector: field.config[:selector],
+        attribute: field.config[:attribute],
+        static: field.config[:static],
+        base_url: scope.base_url
+      ).call
+
+      apply_compiled_post_process(scope, value, field.post_process_steps)
     end
 
     def apply_post_process_steps(scope:, value:, post_process_steps:)
@@ -235,6 +316,16 @@ module Html2rss
     def post_process(scope, value, post_process_steps)
       post_process_steps.each do |step_config|
         value = PostProcessors.call(step_config[:name], value, scope.context_for(step_config:))
+      end
+
+      value
+    end
+
+    def apply_compiled_post_process(scope, value, steps)
+      return value unless value && steps
+
+      steps.each do |klass, step_config|
+        value = klass.new(value, scope.context_for(step_config:)).call
       end
 
       value
@@ -264,7 +355,7 @@ module Html2rss
     end
 
     def extract_categories_from_node(node, scope:, config:)
-      values = Extractors.call(config.merge(base_url: scope.base_url, selector: nil), node)
+      values = Extractors.call(config, node, base_url: scope.base_url, selector: nil)
       values = apply_post_process_steps(scope:, value: values, post_process_steps: config[:post_process])
 
       Array(values).filter_map { |category| extract_category_text(category) }
