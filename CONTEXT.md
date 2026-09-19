@@ -1,6 +1,6 @@
-# Context — deepened request and AutoSource seams
+# Context
 
-Contributor map for the four Strong module deepenings on this branch. Prefer these homes over reintroducing dual ownership.
+Contributor map for request, AutoSource, and selectors seams.
 
 ## Native feed preference
 
@@ -53,10 +53,8 @@ CLI/MCP **`apply`** calls **`feed_result`**; **`scrape`** calls **`auto_feed_res
 | `spec/lib/html2rss/cli_spec.rb`, `html2rss_spec.rb`                                               | Wave 2 Agent CLI  |
 | `spec/lib/html2rss/mcp/**`                                                                        | Wave 2 Agent MCP  |
 | `spec/lib/html2rss/page_recon/diagnostics_spec.rb`                                                | Wave 1            |
-| `AGENTS.md`, `README.md`, `CONTEXT.md`, `CHANGELOG.md`, `lib/html2rss/*/README.md`, `mcp.rb` YARD | Wave 2 Agent Docs |
+| `AGENTS.md`, `README.md`, `CONTEXT.md`, `lib/html2rss/*/README.md`, `mcp.rb` YARD | docs |
 | `spec/integration/curation_golden_path_spec.rb`                                                   | Wave 3 Integrator |
-
-**Hot files (serialize or integrator-only):** `html2rss.rb`, `CONTEXT.md` when the curation contract changes.
 
 ### Factory signatures
 
