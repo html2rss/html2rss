@@ -55,13 +55,10 @@ RSpec.describe Html2rss::Selectors do
       let(:selectors) { { items: { selector: 'a', enhance: false } } }
 
       it 'still admits junk-scheme anchors', :aggregate_failures do
-        articles = instance.articles
+        urls = instance.articles.filter_map { |article| article.url&.to_s }
 
-        expect(articles.size).to eq(4)
-        expect(articles.filter_map { |article| article.url&.to_s }).to include(
-          'http://example.com/posts/real',
-          'mailto:ed@example.com'
-        )
+        expect(instance.articles.size).to eq(4)
+        expect(urls).to include('http://example.com/posts/real', 'mailto:ed@example.com')
       end
     end
   end
