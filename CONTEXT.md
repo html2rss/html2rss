@@ -6,8 +6,7 @@ Contributor map for request, AutoSource, and selectors seams.
 
 Same-origin RSS/Atom preference for curation gates (Capture defer/`--force`, Recon `:defer`).
 Owned only by `Syndication::Discovery.best_feed_url` (head alternates + path probes via session).
-`PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second
-preference algorithm. Do not reintroduce Capture `FeedLink`-only probes or Recon “first alternate” fallbacks.
+`PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second preference algorithm.
 
 ## Frozen contract
 
@@ -87,57 +86,57 @@ Composable curation seams for inspect → recon → capture → validate/test �
 
 ## Scrape target
 
-Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override; do not mutate `Config` for resolution rewrites.
+Immutable entry vs effective fetch URL for one pipeline run. Owned by `Html2rss::ScrapeTarget` — constructed from `Config#url`, sticky-updated only when `FeedResolution.try_apply!` returns `:succeeded` (retry extract yielded items). Tournament wins with an empty retry leave `effective_url` on the entry URL so later auto-fallback strategies do not inherit a failed rewrite. `RequestSession.build` accepts an optional `scrape_url:` override. `Config` stays unchanged.
 
 ## Page assessment
 
-Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; tournament policy uses that typed `articles:` array — do not reintroduce parallel `classify_no_scraper_surface` call sites for resolution gates.
+Cheap surface class and admitted article count for probe scoring. Owned by `PageRecon::Assessment` via `PageRecon.assess` (fixed AutoSource limit). Empty-extract error labels use `PageRecon.surface_category_for` (classify only — no second AutoSource). Full pipeline extract counts stay on `FeedPipeline#deduplicated_articles`; tournament policy uses that typed `articles:` array.
 
-Diagnostic URL fetch for curation inspect and recon is owned by `PageRecon::Diagnostics` (via `PageRecon.probe` → `PageRecon::Probe`: `session`, `response`, `result`, `strategy`). Do not reintroduce twin `fetch_initial` / `fetch_response` helpers in those callers.
+Diagnostic URL fetch for curation inspect and recon is owned by `PageRecon::Diagnostics` (via `PageRecon.probe` → `PageRecon::Probe`: `session`, `response`, `result`, `strategy`).
 
 ## Syndication candidate catalog
 
-Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it — do not duplicate path arrays.
+Shared path lexicon for native feed discovery and entry-resolution listing guesses. Owned by `Syndication::CandidateCatalog` (`FEED_PATHS`, `LISTING_PATHS`). `Syndication::Discovery` and `FeedResolution::CandidateGenerator` consume it.
 
 ## URL document identity
 
-Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it — do not reintroduce string `chomp('/')` same-page compares. Differs from `Url#==` (slash-sensitive); do not change `==`.
+Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it. Differs from `Url#==` (slash-sensitive).
 
 ## Feed resolution policy
 
-Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` Array (`ArgumentError` otherwise; derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`). Do not pass `articles_count:`.
+Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` Array (`ArgumentError` otherwise; derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`).
 
 ## Feed resolution candidates
 
-Same-origin probe URL mix for the tournament. Owned by `FeedResolution::CandidateGenerator`: one Discovery feed slot + up to `max - 1` listing URLs (taxonomy-first nav → segment first-wins `:list` → `:cluster` → `:semantic` → `LISTING_PATHS`). Do not concat-then-`.first(max)` (starves listing seeds).
+Same-origin probe URL mix for the tournament. Owned by `FeedResolution::CandidateGenerator`: one Discovery feed slot + up to `max - 1` listing URLs (taxonomy-first nav → segment first-wins `:list` → `:cluster` → `:semantic` → `LISTING_PATHS`). Listing seeds stay in that mix; a concatenated list truncated with `.first(max)` drops them.
 
 ## Feed resolution scoring
 
-Probe score weights, drop penalties, and winner pick for the entry URL tournament. Owned by `FeedResolution::Scorer`. `FeedResolution::Probe` fetches via `PageRecon.assess` (not fat `PageRecon.call`); do not inline scoring in `Probe`.
+Probe score weights, drop penalties, and winner pick for the entry URL tournament. Owned by `FeedResolution::Scorer`. `FeedResolution::Probe` fetches via `PageRecon.assess` (not fat `PageRecon.call`).
 
 ## Surface category
 
-Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`). `PageRecon::Assessment` exposes those predicates; `FeedResolution::Policy` and `Scorer` call them — do not re-list WEAK Sets.
+Closed surface class for no-scraper / assessment gates. Owned by `Html2rss::SurfaceCategory` (`weak?` / `blocked?` / `listing_bonus?`). `PageRecon::Assessment` exposes those predicates; `FeedResolution::Policy` and `Scorer` call them.
 
 ## Entry-resolution options
 
-Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Options` (`enabled?`, `max_probes`, `request_slots`). Policy eligibility, Runner probe caps, and budget slot reservation consume it — do not dig the Hash in three places.
+Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Options` (`enabled?`, `max_probes`, `request_slots`). Policy eligibility, Runner probe caps, and budget slot reservation consume it.
 
 ## Pipeline outcome URLs
 
-`FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash — do not flatten the domain pair earlier. `Diag.applied: true` means the tournament picked a winner; it does not mean wire `scrape_url` changed. Only `Status` `scrape_url` / `ScrapeTarget.effective_url` reflect a sticky rewrite after a successful retry.
+`FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash. `Diag.applied: true` means the tournament picked a winner; it does not mean wire `scrape_url` changed. Only `Status` `scrape_url` / `ScrapeTarget.effective_url` reflect a sticky rewrite after a successful retry.
 
 ## Request Budget
 
-Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once — no `RuntimeInput` passthrough). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms` — strategies must not reimplement `remaining || policy.total`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
+Shared wall-clock and HTTP request meters for one feed build. Constructed via `RequestSession::RuntimePolicy.resources_for(config)` (policy + budget from one expansion); `budget_for` remains a thin alias. `FeedPipeline` builds sessions with `RequestSession.build` (Context normalizes once). `RequestService::Context` requires an explicit `budget:`. Adapter attempt timeouts resolve through `Budget#effective_timeout_seconds` / `#effective_timeout_ms`. Auto fallback run state lives on `FeedPipeline::AutoFallback::AttemptState`. Article collection threads `FeedPipeline::ExtractionContext`.
 
 ## HTML-ness
 
-Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and curation inspect all call that one predicate — do not reintroduce a parallel `html_document?`. Gzip/brotli inflate stays on `CompressedBody`, called only from the HTTPX adapter; unlabeled octet-stream inflate must not grow onto Botasaurus or LocalFile.
+Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and curation inspect all call that one predicate. Gzip/brotli inflate stays on `CompressedBody`, called only from the HTTPX adapter.
 
 ## Botasaurus scrape contract
 
-OpenAPI 2.0 `ScrapeRequest` / `ScrapeSuccess` / `ScrapeError` is the wire authority. CI locks client constants against `spec/fixtures/botasaurus/openapi.yaml` (vendored sibling snapshot); when `../botasaurus-scrape-api/openapi.yaml` is present locally, specs assert the fixture still matches. There is no `ScrapeResponse` alias. Closed sets, wait bounds, request option keys, and `window_size` `{width, height}` live on `RequestService::BotasaurusContract`. `Config::Validator::BotasaurusRequestConfig` consumes those constants for YAML admission (`scroll` is scroll-to-bottom; there is no `scroll_to_bottom`). `BotasaurusStrategy` is HTTPX `POST /scrape` plus gem error mapping: 200 → `Success`; 4xx/5xx → `Error` (`challenge_block` → `BlockedSurfaceDetected`, `timeout` / 504 → `RequestTimedOut`, otherwise `BotasaurusServiceError`). **Transport hop** (HTTP to scrape-api, not JSON body): `User-Agent` = `RequestHeaders::DEFAULT_USER_AGENT`, `Accept-Encoding: identity`, per-execute `X-Request-Id`. Target headers stay in `ScrapeRequest.headers`. scrape-api honors inbound `X-Request-Id` for all `diagnostics.request_id` envelopes. `Response#transport_meta` is `diagnostics` plus success-only `metadata_error`. Do not flatten old 1.x field names, parse FastAPI `detail`, or override published OpenAPI defaults.
+OpenAPI 2.0 `ScrapeRequest` / `ScrapeSuccess` / `ScrapeError` is the wire authority. CI locks client constants against `spec/fixtures/botasaurus/openapi.yaml` (vendored sibling snapshot); when `../botasaurus-scrape-api/openapi.yaml` is present locally, specs assert the fixture still matches. Closed sets, wait bounds, request option keys, and `window_size` `{width, height}` live on `RequestService::BotasaurusContract`. `Config::Validator::BotasaurusRequestConfig` consumes those constants for YAML admission (`scroll` is scroll-to-bottom). `BotasaurusStrategy` is HTTPX `POST /scrape` plus gem error mapping: 200 → `Success`; 4xx/5xx → `Error` (`challenge_block` → `BlockedSurfaceDetected`, `timeout` / 504 → `RequestTimedOut`, otherwise `BotasaurusServiceError`). **Transport hop** (HTTP to scrape-api, not JSON body): `User-Agent` = `RequestHeaders::DEFAULT_USER_AGENT`, `Accept-Encoding: identity`, per-execute `X-Request-Id`. Target headers stay in `ScrapeRequest.headers`. scrape-api honors inbound `X-Request-Id` for all `diagnostics.request_id` envelopes. `Response#transport_meta` is `diagnostics` plus success-only `metadata_error`.
 
 ## DOM chrome
 
@@ -159,11 +158,11 @@ Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoS
 
 ## Enhance leftover fields
 
-Visible leftover after excluding heading/anchor/kicker/`time` is split once on block newlines. Keep/drop (CTA, date-shaped, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Dates stay on `ArticleRules::Date` (datetime attrs + date-shaped leftover lines, channel `time_zone`; invalid identifiers fall back to UTC so extract does not raise). Categories stay on `ArticleRules::Category` (class tokens, not layout `label`/`section` substrings) and reject Description keepers except type chips, which are leftover chrome rather than taxonomy. Both `Html::ArticleExtractor` and `Html::SstArticleExtractor` call those modules — do not copy leftover denylists into `Cleanup.junk_reason`.
+Visible leftover after excluding heading/anchor/kicker/`time` is split once on block newlines. Keep/drop (CTA, date-shaped, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Dates stay on `ArticleRules::Date` (datetime attrs + date-shaped leftover lines, channel `time_zone`; invalid identifiers fall back to UTC so extract does not raise). Categories stay on `ArticleRules::Category` (class tokens, not layout `label`/`section` substrings) and reject Description keepers except type chips, which are leftover chrome rather than taxonomy. Both `Html::ArticleExtractor` and `Html::SstArticleExtractor` call those modules.
 
 ## Leftover parent-card walk
 
-When a heading-only item or wrapping `<a>` lacks leftover description and date, extractors climb via `Navigator.parent_until_condition` / `SST::Index#parent_until`. Walk policy (`miss?` / `thin_wrapper?` / `crowded?` from heading count + distinct main hrefs) is owned by `Html2rss::Html::CardWalk`. Adapters still traverse. Capture's items-selector lift is a second job: it shares only `Navigator.usable_card_parent?` stop tags and aborts with `contains_other_root?` (listing-root set). Do not fold Capture lift into CardWalk.
+When a heading-only item or wrapping `<a>` lacks leftover description and date, extractors climb via `Navigator.parent_until_condition` / `SST::Index#parent_until`. Walk policy (`miss?` / `thin_wrapper?` / `crowded?` from heading count + distinct main hrefs) is owned by `Html2rss::Html::CardWalk`. Adapters still traverse. Capture's items-selector lift is a second job: it shares only `Navigator.usable_card_parent?` stop tags and aborts with `contains_other_root?` (listing-root set).
 
 ## DOM candidate clustering
 
@@ -171,7 +170,7 @@ Anchorless/classless card discovery is owned by `AutoSource::Segmenter` (`:clust
 
 ## Channel
 
-Feed channel metadata (title, description, ttl, language, author, image, last_build_date) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article — they do not own channel extraction.
+Feed channel metadata (title, description, ttl, language, author, image, last_build_date) extracted from the response/document with config overrides. Owned by `Html2rss::Channel`. `FeedBuilder::Rss` and `FeedBuilder::JsonFeed` are format adapters that consume Channel + Article.
 
 ## Pagination strategy registry
 
@@ -181,4 +180,4 @@ Supported pagination strategy names and factory classes live in `RequestSession:
 
 Module guide: `lib/html2rss/selectors/README.md`.
 
-Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::OptionSpec` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::OptionSpec.for` / `expectation_for`, and `Selectors::SchemaExport` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractors run as `new(xml, **config)`. Do not reintroduce parallel `OPTION_TYPES` maps or hardcode per-name type soups in the validator or schema.
+Extractor and post-processor names live in `Selectors::Extractors::NAME_TO_CLASS` and `Selectors::PostProcessors::NAME_TO_CLASS`. Each strategy owns config-facing options as an `OPTIONS` Array of `Selectors::OptionSpec` (name, type, required). `Config::SelectorsValidator::Selector`, `Selectors::OptionSpec.for` / `expectation_for`, and `Selectors::SchemaExport` consume that contract; post-processor `Base` enforces `OPTIONS` plus optional `VALUE_TYPE` at runtime. Extractors run as `new(xml, **config)`.
