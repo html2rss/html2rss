@@ -848,7 +848,7 @@
       "gsub": {
         "type": "object",
         "title": "gsub",
-        "description": "Replace matches of `pattern` in the extracted string with `replacement` (Ruby String#gsub; pattern may be a regexp-like string). Patterns over 256 bytes, or with nested quantifiers, are rejected.",
+        "description": "Replace matches of `pattern` in the extracted string with `replacement` (Ruby String#gsub; pattern may be a regexp-like string). Patterns over 256 characters as written, or with nested quantifiers, are rejected.",
         "examples": [
           {
             "name": "gsub",

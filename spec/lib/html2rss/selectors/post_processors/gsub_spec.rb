@@ -100,7 +100,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     end
   end
 
-  # Ordinary YAML must stay valid. Nested quantifiers, the byte cap, and unparsable
+  # Ordinary YAML must stay valid. Nested quantifiers, the character cap, and unparsable
   # patterns are the rejects. Overlapping alternation stays accepted (star-height residual).
   describe '.compiled_pattern' do
     ordinary_patterns = [
@@ -118,8 +118,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       { label: 'overlapping alternation', pattern: '(a|aa)+', value: 'aaa', replacement: 'x', expected: 'x' }
     ].freeze
 
-    it 'publishes a 256-byte pattern cap' do
-      expect(described_class::MAX_PATTERN_BYTES).to eq(256)
+    it 'publishes a 256-character pattern cap' do
+      expect(described_class::MAX_PATTERN_LENGTH).to eq(256)
     end
 
     ordinary_patterns.each do |row|
@@ -154,34 +154,33 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       expect { processor.call }.to raise_error(ArgumentError, 'pattern contains nested quantifiers')
     end
 
-    it 'rejects a source longer than the byte cap' do
-      over = 'a' * (described_class::MAX_PATTERN_BYTES + 1)
+    it 'rejects an authored pattern longer than the character cap' do
+      over = 'a' * (described_class::MAX_PATTERN_LENGTH + 1)
 
       expect { described_class.compiled_pattern(over) }
-        .to raise_error(ArgumentError, "pattern exceeds #{described_class::MAX_PATTERN_BYTES} bytes")
+        .to raise_error(ArgumentError, "pattern exceeds #{described_class::MAX_PATTERN_LENGTH} characters")
     end
 
-    it 'counts the byte cap after stripping surrounding slashes' do
-      wrapped = "/#{'a' * (described_class::MAX_PATTERN_BYTES + 1)}/"
+    it 'counts characters of the authored string, including surrounding slashes' do
+      wrapped = "/#{'a' * described_class::MAX_PATTERN_LENGTH}/"
 
       expect { described_class.compiled_pattern(wrapped) }
-        .to raise_error(ArgumentError, "pattern exceeds #{described_class::MAX_PATTERN_BYTES} bytes")
+        .to raise_error(ArgumentError, "pattern exceeds #{described_class::MAX_PATTERN_LENGTH} characters")
     end
 
-    it 'accepts a slash-stripped source of exactly the byte cap', :aggregate_failures do
-      cap = described_class::MAX_PATTERN_BYTES
+    it 'accepts an authored pattern of exactly the character cap', :aggregate_failures do
+      cap = described_class::MAX_PATTERN_LENGTH
 
       expect(described_class.compiled_pattern('a' * cap)).to be_a(Regexp)
-      expect(described_class.compiled_pattern("/#{'a' * cap}/")).to be_a(Regexp)
+      expect(described_class.compiled_pattern("/#{'a' * (cap - 2)}/")).to be_a(Regexp)
     end
 
-    it 'counts bytes, not characters', :aggregate_failures do
+    it 'counts characters, not bytes', :aggregate_failures do
       pattern = 'é' * 129
 
-      expect(pattern.length).to be <= described_class::MAX_PATTERN_BYTES
-      expect(pattern.bytesize).to be > described_class::MAX_PATTERN_BYTES
-      expect { described_class.compiled_pattern(pattern) }
-        .to raise_error(ArgumentError, "pattern exceeds #{described_class::MAX_PATTERN_BYTES} bytes")
+      expect(pattern.length).to be <= described_class::MAX_PATTERN_LENGTH
+      expect(pattern.bytesize).to be > described_class::MAX_PATTERN_LENGTH
+      expect(described_class.compiled_pattern(pattern)).to be_a(Regexp)
     end
   end
 end

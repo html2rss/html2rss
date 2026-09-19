@@ -91,7 +91,7 @@ RSpec.describe Html2rss::Config::Schema do
       expect(gsub.fetch('required')).to include('name', 'pattern', 'replacement')
       expect(gsub.dig('properties', 'pattern', 'type')).to eq('string')
       expect(gsub.dig('properties', 'pattern', 'maxLength')).to eq(
-        Html2rss::Selectors::PostProcessors::Gsub::MAX_PATTERN_BYTES
+        Html2rss::Selectors::PostProcessors::Gsub::MAX_PATTERN_LENGTH
       )
       expect(gsub.dig('properties', 'replacement', 'type')).to eq(%w[string object])
     end

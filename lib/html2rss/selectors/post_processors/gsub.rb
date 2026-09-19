@@ -38,15 +38,16 @@ module Html2rss
           OptionSpec.new(name: :replacement, type: [String, Hash])
         ].freeze
 
-        # Byte cap for a slash-stripped +pattern+ source. Also the JSON Schema +maxLength+.
-        MAX_PATTERN_BYTES = 256
+        # Character cap for the authored +pattern+ string (before slash stripping).
+        # Same unit as JSON Schema +maxLength+.
+        MAX_PATTERN_LENGTH = 256
 
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = format(
           'Replace matches of `pattern` in the extracted string with `replacement` ' \
           '(Ruby String#gsub; pattern may be a regexp-like string). ' \
-          'Patterns over %d bytes, or with nested quantifiers, are rejected.',
-          MAX_PATTERN_BYTES
+          'Patterns over %d characters as written, or with nested quantifiers, are rejected.',
+          MAX_PATTERN_LENGTH
         ).freeze
 
         # Example post-process objects for JSON Schema +examples+.
@@ -57,19 +58,19 @@ module Html2rss
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_export
           fragment = SchemaExport.for_post_processor(name: :gsub, klass: self)
-          fragment.fetch(:properties).fetch(:pattern)[:maxLength] = MAX_PATTERN_BYTES
+          fragment.fetch(:properties).fetch(:pattern)[:maxLength] = MAX_PATTERN_LENGTH
           fragment
         end
 
         ##
         # Compiles and memoizes a gsub +pattern+ string as a Regexp.
         #
-        # Raises before memoizing when the slash-stripped source exceeds
-        # {MAX_PATTERN_BYTES}, its star-height is greater than 1, or it does not parse.
+        # Raises before memoizing when the authored pattern exceeds
+        # {MAX_PATTERN_LENGTH} characters, its star-height is greater than 1, or it does not parse.
         #
         # @param string [String]
         # @return [Regexp]
-        # @raise [ArgumentError] when +string+ is not a String, exceeds the byte cap,
+        # @raise [ArgumentError] when +string+ is not a String, exceeds the character cap,
         #   contains nested quantifiers, or does not parse
         def self.compiled_pattern(string)
           compiled_patterns[string] ||= compile_regexp_string(string)
@@ -85,19 +86,20 @@ module Html2rss
         #
         # It will remove one pair of surrounding slashes ('/') from the String
         # to maintain backwards compatibility before building the Regexp.
-        # Length is checked on that slash-stripped source, then the AST is
-        # walked for nested quantifiers, then +to_re+. Parser errors are
-        # re-raised as ArgumentError so validation and execution share one path.
+        # Length is the character count of the authored string (the JSON Schema
+        # +maxLength+ unit), then the AST is walked for nested quantifiers,
+        # then +to_re+. Parser errors are re-raised as ArgumentError so
+        # validation and execution share one path.
         #
         # @param string [String]
         # @return [Regexp]
-        # @raise [ArgumentError] when +string+ is not a String, exceeds {MAX_PATTERN_BYTES},
+        # @raise [ArgumentError] when +string+ is not a String, exceeds {MAX_PATTERN_LENGTH},
         #   contains nested quantifiers, or does not parse
         def self.compile_regexp_string(string)
           raise ArgumentError, 'must be a string!' unless string.is_a?(String)
+          raise ArgumentError, "pattern exceeds #{MAX_PATTERN_LENGTH} characters" if string.length > MAX_PATTERN_LENGTH
 
           source = regexp_source(string)
-          raise ArgumentError, "pattern exceeds #{MAX_PATTERN_BYTES} bytes" if source.bytesize > MAX_PATTERN_BYTES
 
           expression = Regexp::Parser.parse(source, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE)
           raise ArgumentError, 'pattern contains nested quantifiers' if nested_quantifiers?(expression)
