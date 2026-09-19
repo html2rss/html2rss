@@ -59,5 +59,6 @@ Selectors (orchestrator)
 
 - Class / YAML name stays `Selectors`.
 - Strategy verb is `#call`.
+- `gsub` rejects a `pattern` longer than 256 characters as written, or whose star-height is greater than 1; `Html2rss.validate` and extraction share that compile.
 
 See also {file:CONTEXT CONTEXT.md} for registry ownership and {Html2rss::Config::SelectorsValidator} for Dry validation of the selectors hash.
