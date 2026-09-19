@@ -140,8 +140,8 @@ module Html2rss
           end
         end
 
-        # Same compile as Gsub#call. ArgumentError is the bound; other parser
-        # errors stay exceptions so admit and execute still share one path.
+        # Same compile as Gsub#call. ArgumentError is the bound; Gsub maps
+        # parser errors onto that path so admit and execute still share it.
         #
         # @param klass [Class]
         # @param value [Hash]

@@ -100,8 +100,8 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
     end
   end
 
-  # Ordinary YAML must stay valid. Nested quantifiers and the byte cap are the only rejects.
-  # Overlapping alternation stays accepted (star-height residual, not this bound).
+  # Ordinary YAML must stay valid. Nested quantifiers, the byte cap, and unparsable
+  # patterns are the rejects. Overlapping alternation stays accepted (star-height residual).
   describe '.compiled_pattern' do
     ordinary_patterns = [
       { label: 'literal replacement', pattern: 'boo', value: 'Foo bar and boo', replacement: 'baz',
@@ -134,6 +134,14 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       it "rejects nested quantifiers in #{pattern}" do
         expect { described_class.compiled_pattern(pattern) }
           .to raise_error(ArgumentError, 'pattern contains nested quantifiers')
+      end
+    end
+
+    %w[( (?) *].each do |pattern|
+      it "rejects unparsable pattern #{pattern.inspect} as ArgumentError", :aggregate_failures do
+        expect { described_class.compiled_pattern(pattern) }.to raise_error(ArgumentError) do |error|
+          expect(error).not_to be_a(Regexp::Parser::Error)
+        end
       end
     end
 

@@ -65,12 +65,12 @@ module Html2rss
         # Compiles and memoizes a gsub +pattern+ string as a Regexp.
         #
         # Raises before memoizing when the slash-stripped source exceeds
-        # {MAX_PATTERN_BYTES} or its star-height is greater than 1.
+        # {MAX_PATTERN_BYTES}, its star-height is greater than 1, or it does not parse.
         #
         # @param string [String]
         # @return [Regexp]
         # @raise [ArgumentError] when +string+ is not a String, exceeds the byte cap,
-        #   or contains nested quantifiers
+        #   contains nested quantifiers, or does not parse
         def self.compiled_pattern(string)
           compiled_patterns[string] ||= compile_regexp_string(string)
         end
@@ -86,12 +86,13 @@ module Html2rss
         # It will remove one pair of surrounding slashes ('/') from the String
         # to maintain backwards compatibility before building the Regexp.
         # Length is checked on that slash-stripped source, then the AST is
-        # walked for nested quantifiers, then +to_re+.
+        # walked for nested quantifiers, then +to_re+. Parser errors are
+        # re-raised as ArgumentError so validation and execution share one path.
         #
         # @param string [String]
         # @return [Regexp]
         # @raise [ArgumentError] when +string+ is not a String, exceeds {MAX_PATTERN_BYTES},
-        #   or contains nested quantifiers
+        #   contains nested quantifiers, or does not parse
         def self.compile_regexp_string(string)
           raise ArgumentError, 'must be a string!' unless string.is_a?(String)
 
@@ -102,6 +103,8 @@ module Html2rss
           raise ArgumentError, 'pattern contains nested quantifiers' if nested_quantifiers?(expression)
 
           expression.to_re
+        rescue Regexp::Parser::Error => error
+          raise ArgumentError, error.message, [], cause: nil
         end
         private_class_method :compile_regexp_string
 
