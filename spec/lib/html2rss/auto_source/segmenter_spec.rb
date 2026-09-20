@@ -259,5 +259,47 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         %w[/posts/alpha-release /posts/beta-release /posts/gamma-release]
       )
     end
+
+    it 'attaches content hrefs when list cannot group isolated class cards', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <section>
+            <nav><a href="/news/alpha-sidebar-notes">Alpha sidebar notes extra words here</a></nav>
+            <div class="card-item">
+              <a href="javascript:void(0)">Share</a>
+              <h2><a href="/posts/alpha-release">Alpha release notes for the first card</a></h2>
+              <p>Description text for the first clustered card goes here extra.</p>
+            </div>
+          </section>
+          <section>
+            <nav><a href="/news/beta-sidebar-notes">Beta sidebar notes extra words here</a></nav>
+            <div class="card-item">
+              <a href="mailto:ed@example.com">Email</a>
+              <h2><a href="/posts/beta-release">Beta release notes for the second card</a></h2>
+              <p>Description text for the second clustered card goes here extra.</p>
+            </div>
+          </section>
+          <section>
+            <nav><a href="/news/gamma-sidebar-notes">Gamma sidebar notes extra words here</a></nav>
+            <div class="card-item">
+              <a href="javascript:void(0)">Share</a>
+              <h2><a href="/posts/gamma-release">Gamma release notes for the third card</a></h2>
+              <p>Description text for the third clustered card goes here extra.</p>
+            </div>
+          </section>
+        </body></html>
+      HTML
+      document = document_for(html)
+
+      list = described_class.call(document, base_url: 'https://example.com', strategy: :list)
+      cluster = described_class.call(
+        document, base_url: 'https://example.com', strategy: :cluster, permit_unanchored: false
+      )
+
+      expect(list).to be_empty
+      expect(cluster.map { _1.primary_link.attrs.href }).to eq(
+        %w[/posts/alpha-release /posts/beta-release /posts/gamma-release]
+      )
+    end
   end
 end

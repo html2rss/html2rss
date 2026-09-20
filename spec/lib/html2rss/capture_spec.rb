@@ -381,6 +381,57 @@ RSpec.describe Html2rss::Capture do
       expect(result.config.dig(:selectors, :items, :selector)).to eq('div.card-item')
     end
 
+    it 'derives a cluster selector when isolated class cards cannot list-group', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <section>
+            <nav><a href="/news/alpha-sidebar-notes">Alpha sidebar notes extra words here</a></nav>
+            <div class="card-item">
+              <a href="javascript:void(0)">Share</a>
+              <h2><a href="/posts/alpha-release">Alpha release notes for the first card</a></h2>
+              <p>Description text for the first clustered card goes here extra.</p>
+            </div>
+          </section>
+          <section>
+            <nav><a href="/news/beta-sidebar-notes">Beta sidebar notes extra words here</a></nav>
+            <div class="card-item">
+              <a href="mailto:ed@example.com">Email</a>
+              <h2><a href="/posts/beta-release">Beta release notes for the second card</a></h2>
+              <p>Description text for the second clustered card goes here extra.</p>
+            </div>
+          </section>
+          <section>
+            <nav><a href="/news/gamma-sidebar-notes">Gamma sidebar notes extra words here</a></nav>
+            <div class="card-item">
+              <a href="javascript:void(0)">Share</a>
+              <h2><a href="/posts/gamma-release">Gamma release notes for the third card</a></h2>
+              <p>Description text for the third clustered card goes here extra.</p>
+            </div>
+          </section>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = [
+        Html2rss::Article.new(
+          url: Html2rss::Url.from_absolute('https://example.com/posts/alpha-release'),
+          title: 'Alpha release notes for the first card', id: '1'
+        ),
+        Html2rss::Article.new(
+          url: Html2rss::Url.from_absolute('https://example.com/posts/beta-release'),
+          title: 'Beta release notes for the second card', id: '2'
+        ),
+        Html2rss::Article.new(
+          url: Html2rss::Url.from_absolute('https://example.com/posts/gamma-release'),
+          title: 'Gamma release notes for the third card', id: '3'
+        )
+      ]
+      stub_outcome(response, articles:)
+
+      result = described_class.new(url).build
+      expect(result.segment_strategy).to eq(:cluster)
+      expect(result.config.dig(:selectors, :items, :selector)).to eq('div.card-item')
+    end
+
     it 'falls back to cluster when list yields too few matches', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response('<html><body><div id="root"></div></body></html>')
       articles = [
