@@ -7,7 +7,7 @@ module Html2rss
     #
     # Strategies:
     # - +:semantic+ — leaf article/section/li/tr/div containers with a primary link
-    # - +:list+ — repeated tag_path anchors walked to a shared container boundary
+    # - +:list+ — repeated cards grouped by parent (`main` is a filter when present)
     # - +:cluster+ — class / structure clustering for anchorless card grids
     class Segmenter
       # @param document [SST::Document]

@@ -331,15 +331,7 @@ module Html2rss
       return nil if matched.empty?
 
       roots = lift_heading_link_roots(matched.map { |m| m[:segment].root_node })
-      shared = shared_class_items_selector(roots)
-      return shared if shared
-
-      paths = roots.map(&:tag_path)
-      common = common_path_prefix(paths)
-      tag_path = common.empty? ? paths.first.to_s : common
-      return nil if tag_path.empty?
-
-      css_from_trimmed_tag_path(tag_path)
+      shared_class_items_selector(roots) || unique_tag_items_selector(roots) || path_items_selector(roots)
     end
 
     def lift_heading_link_roots(roots)
@@ -399,6 +391,20 @@ module Html2rss
       return nil if shared.nil? || shared.empty?
 
       "#{roots.first.name}.#{shared.min}"
+    end
+
+    def unique_tag_items_selector(roots)
+      names = roots.map { |root| root.name.to_s }.uniq
+      names.join(', ') if names.size > 1
+    end
+
+    def path_items_selector(roots)
+      paths = roots.map(&:tag_path)
+      common = common_path_prefix(paths)
+      tag_path = common.empty? ? paths.first.to_s : common
+      return if tag_path.empty?
+
+      css_from_trimmed_tag_path(tag_path)
     end
 
     def css_from_trimmed_tag_path(tag_path)

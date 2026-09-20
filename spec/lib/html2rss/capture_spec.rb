@@ -318,7 +318,42 @@ RSpec.describe Html2rss::Capture do
       ).next_step.name).to eq(:test)
     end
 
-    it 'derives a cluster selector from shared card class when list cannot group', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'emits unique heading tags for mixed heading runs instead of a parent path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <div role="main">
+            <h2><a href="/rel/1-0">Release 1.0 notes extra words here</a></h2>
+            <p>Details about the first release that make this a real article body.</p>
+            <h3><a href="/rel/1-1">Release 1.1 notes extra words here</a></h3>
+            <p>Details about the second release that make this a real article body.</p>
+            <h2><a href="/rel/2-0">Release 2.0 notes extra words here</a></h2>
+            <p>Details about the third release that make this a real article body.</p>
+          </div>
+        </body></html>
+      HTML
+      response = html_response(html)
+      articles = [
+        Html2rss::Article.new(
+          url: Html2rss::Url.from_absolute('https://example.com/rel/1-0'),
+          title: 'Release 1.0 notes extra words here', id: '1'
+        ),
+        Html2rss::Article.new(
+          url: Html2rss::Url.from_absolute('https://example.com/rel/1-1'),
+          title: 'Release 1.1 notes extra words here', id: '2'
+        ),
+        Html2rss::Article.new(
+          url: Html2rss::Url.from_absolute('https://example.com/rel/2-0'),
+          title: 'Release 2.0 notes extra words here', id: '3'
+        )
+      ]
+      stub_outcome(response, articles:)
+
+      result = described_class.new(url).build
+      expect(result.segment_strategy).to eq(:list)
+      expect(result.config.dig(:selectors, :items, :selector)).to eq('h2, h3')
+    end
+
+    it 'emits the shared card class when mixed inner permalinks share a parent', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = <<~HTML
         <html><body>
           <div class="card-item">
@@ -342,8 +377,7 @@ RSpec.describe Html2rss::Capture do
       stub_outcome(response, articles:)
 
       result = described_class.new(url).build
-      expect(articles.size).to be >= 2
-      expect(result.segment_strategy).to eq(:cluster)
+      expect(result.segment_strategy).to eq(:list)
       expect(result.config.dig(:selectors, :items, :selector)).to eq('div.card-item')
     end
 

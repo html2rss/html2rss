@@ -45,7 +45,7 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       HTML
     end
 
-    it 'clusters repeated tag_path anchors into article segments', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'groups repeated list cards under a shared parent', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       segments = described_class.call(
         document_for(html),
         base_url: 'https://example.com',
@@ -56,6 +56,81 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
 
       expect(segments.size).to eq(3)
       expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/posts/1 /posts/2 /posts/3])
+    end
+
+    it 'groups mixed heading and card anchors by parent and keeps only main', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <section>
+            <h2><a href="/outside/one">Outside One Title Extra Words</a></h2>
+            <a class="card" href="/outside/two">Outside Two Title Extra Words</a>
+            <h2><a href="/outside/three">Outside Three Title Extra Words</a></h2>
+            <a class="card" href="/outside/four">Outside Four Title Extra Words</a>
+          </section>
+          <main>
+            <div>
+              <h2><a href="/posts/one">Post One Title Extra Words</a></h2>
+              <a class="card" href="/posts/two">Post Two Title Extra Words</a>
+              <h2><a href="/posts/three">Post Three Title Extra Words</a></h2>
+              <a class="card" href="/posts/four">Post Four Title Extra Words</a>
+            </div>
+          </main>
+        </body></html>
+      HTML
+
+      segments = described_class.call(document_for(html), base_url: 'https://example.com', strategy: :list)
+
+      expect(segments.map { _1.primary_link.attrs.href }).to eq(
+        %w[/posts/one /posts/two /posts/three /posts/four]
+      )
+    end
+
+    it 'groups mixed heading levels under one parent, including role=main', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <section>
+            <h2><a href="/outside/one">Outside One Title Extra Words</a></h2>
+            <h3><a href="/outside/two">Outside Two Title Extra Words</a></h3>
+          </section>
+          <div role="main">
+            <h2><a href="/rel/1-0">Release 1.0 notes extra words here</a></h2>
+            <p>Details about the first release that make this a real article body.</p>
+            <h3><a href="/rel/1-1">Release 1.1 notes extra words here</a></h3>
+            <p>Details about the second release that make this a real article body.</p>
+            <h2><a href="/rel/2-0">Release 2.0 notes extra words here</a></h2>
+            <p>Details about the third release that make this a real article body.</p>
+          </div>
+        </body></html>
+      HTML
+
+      segments = described_class.call(document_for(html), base_url: 'https://example.com', strategy: :list)
+
+      expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/rel/1-0 /rel/1-1 /rel/2-0])
+      expect(segments.map { _1.root_node.name }).to eq(%i[h2 h3 h2])
+    end
+
+    it 'keeps same-shaped links eligible when the document has no main', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = <<~HTML
+        <html><body>
+          <section>
+            <h2><a href="/outside/one">Outside One Title Extra Words</a></h2>
+            <a class="card" href="/outside/two">Outside Two Title Extra Words</a>
+            <h2><a href="/outside/three">Outside Three Title Extra Words</a></h2>
+            <a class="card" href="/outside/four">Outside Four Title Extra Words</a>
+          </section>
+          <div>
+            <h2><a href="/posts/one">Post One Title Extra Words</a></h2>
+            <a class="card" href="/posts/two">Post Two Title Extra Words</a>
+            <h2><a href="/posts/three">Post Three Title Extra Words</a></h2>
+            <a class="card" href="/posts/four">Post Four Title Extra Words</a>
+          </div>
+        </body></html>
+      HTML
+
+      segments = described_class.call(document_for(html), base_url: 'https://example.com', strategy: :list)
+      hrefs = segments.map { _1.primary_link.attrs.href }
+
+      expect(hrefs).to include('/outside/one', '/posts/one')
     end
   end
 
