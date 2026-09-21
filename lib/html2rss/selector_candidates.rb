@@ -22,6 +22,10 @@ module Html2rss
     DEFAULT_MIN_MATCHES = 2
     private_constant :DEFAULT_MIN_MATCHES
 
+    # Class token that identifies a non-heading title node. Same pattern title_node matches.
+    TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
+    private_constant :TITLE_CLASS_PATTERN
+
     class << self
       ##
       # @return [Hash{Symbol=>Array}] frozen empty buckets
@@ -111,7 +115,9 @@ module Html2rss
     end
 
     def relative_field_selector(root, field)
-      relative_css(root, field_node(root, field))
+      node = field_node(root, field)
+      token = identifying_title_class(node) if field == :title
+      relative_css(root, node, class_token: token)
     end
 
     def field_node(root, field)
@@ -129,8 +135,7 @@ module Html2rss
       root.find do |node|
         next if node.equal?(root)
 
-        node.attrs.class_names.any? { |name| name.match?(/title|font-bold|font-semibold/) } &&
-          !node.visible_text.to_s.strip.empty?
+        identifying_title_class(node) && !node.visible_text.to_s.strip.empty?
       end
     end
 
@@ -154,13 +159,45 @@ module Html2rss
       end
     end
 
-    def relative_css(root, node)
-      return if node.nil? || node.equal?(root)
+    # First class that title_node used to accept this node, not the lexicographically smallest token.
+    def identifying_title_class(node)
+      return if node.nil? || node.heading?
 
-      classes = node.attrs.class_names
-      return "#{node.name}.#{classes.min}" unless classes.empty?
+      node.attrs.class_names.find { |name| name.match?(TITLE_CLASS_PATTERN) }
+    end
+
+    def relative_css(root, node, class_token:)
+      return if node.nil? || node.equal?(root)
+      return "#{node.name}.#{css_escape_ident(class_token)}" if class_token
 
       relative_path_css(root, node)
+    end
+
+    # CSSOM "serialize an identifier" (CSS.escape). Class tokens are untrusted HTML.
+    def css_escape_ident(token)
+      return '\\-' if token == '-'
+
+      token.each_char.with_index.map { |char, index| css_escaped_char(char, index, token) }.join
+    end
+
+    def css_escaped_char(char, index, token)
+      code = char.ord
+      return "\uFFFD" if code.zero?
+      return "\\#{code.to_s(16)} " if css_hex_escape?(code, index, token)
+      return char if css_ident_literal?(code)
+
+      "\\#{char}"
+    end
+
+    def css_hex_escape?(code, index, token)
+      code.between?(1, 0x1F) || code == 0x7F ||
+        (index.zero? && code.between?(0x30, 0x39)) ||
+        (index == 1 && code.between?(0x30, 0x39) && token.start_with?('-'))
+    end
+
+    def css_ident_literal?(code)
+      code >= 0x80 || code == 0x2D || code == 0x5F ||
+        code.between?(0x30, 0x39) || code.between?(0x41, 0x5A) || code.between?(0x61, 0x7A)
     end
 
     def relative_path_css(root, node)

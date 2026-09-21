@@ -129,5 +129,40 @@ RSpec.describe Html2rss::SelectorCandidates do
       expect(buckets[:link]).to eq([])
       expect(buckets[:title]).to eq([{ selector: 'h2' }])
     end
+
+    # rubocop:disable-next RSpec/ExampleLength -- identifying class plus one CSS-escape token
+    it 'publishes the identifying title class instead of the smallest utility class', :aggregate_failures do
+      bold = [%w[flex font-semibold], %w[hidden font-semibold]].map.with_index do |class_names, index|
+        title = Html2rss::SST::Node.build(
+          name: :span,
+          attrs: Html2rss::SST::Attrs.build(class_names:),
+          own_text: "Headline #{index}",
+          tag_path: '/html/body/div/span'
+        )
+        Html2rss::SST::Node.build(
+          name: :div, attrs: Html2rss::SST::Attrs.build(class_names: ['item']),
+          children: [title], tag_path: '/html/body/div'
+        )
+      end
+      broken = [['a', 'title]'], ['flex', 'title]']].map.with_index do |class_names, index|
+        title = Html2rss::SST::Node.build(
+          name: :span,
+          attrs: Html2rss::SST::Attrs.build(class_names:),
+          own_text: "Headline #{index}",
+          tag_path: '/html/body/div/span'
+        )
+        Html2rss::SST::Node.build(
+          name: :div, attrs: Html2rss::SST::Attrs.build(class_names: ['item']),
+          children: [title], tag_path: '/html/body/div'
+        )
+      end
+      item = { selector: 'div.item', enhance: true, strategy: :list, kind: :shared_class, match_count: 2 }
+
+      expect(described_class.call(items_evidence: [item.merge(roots: bold)])[:title])
+        .to eq([{ selector: 'span.font-semibold' }])
+      # `]` would close an attribute selector if interpolated raw.
+      expect(described_class.call(items_evidence: [item.merge(roots: broken)])[:title])
+        .to eq([{ selector: 'span.title\]' }])
+    end
   end
 end
