@@ -5,7 +5,6 @@ require 'httpx/plugins/follow_redirects'
 require 'httpx/plugins/callbacks'
 require 'httpx/plugins/ssrf_filter'
 require 'httpx/plugins/brotli'
-require 'httpx/plugins/fiber_concurrency'
 require 'httpx/plugins/retries'
 
 module Html2rss
@@ -16,6 +15,14 @@ module Html2rss
     # and redirect handling without monkey-patching.
     # rubocop:disable-next Metrics/ClassLength -- terminal redirect retry colocated with HTTPX transport
     class HttpxStrategy < Strategy
+      # HTTPX default; kept explicit so ping reconnects cannot omit a bound.
+      MAX_RETRIES = 3
+      # Forces the selector timer retry path. Unset retry_after recurses in fetch_response;
+      # combined with ping! on a reused closed selector that never decrements retries,
+      # that overflows the stack and kills Falcon workers.
+      RETRY_AFTER_SECONDS = 0.25
+      RETRY_OPTIONS = { max_retries: MAX_RETRIES, retry_after: RETRY_AFTER_SECONDS }.freeze
+
       class << self
         # rubocop:disable ThreadSafety/ClassInstanceVariable
         # @return [HTTPX::Session]
@@ -24,8 +31,7 @@ module Html2rss
                             .plugin(:follow_redirects)
                             .plugin(:callbacks)
                             .plugin(:brotli)
-                            .plugin(:fiber_concurrency)
-                            .plugin(:retries)
+                            .plugin(:retries, **RETRY_OPTIONS)
         end
 
         # @return [HTTPX::Session]
@@ -43,6 +49,8 @@ module Html2rss
         reset_redirect_tracking!
         raw_response = request_with_terminal_redirect_retry(deadline:)
         build_response(raw_response)
+      rescue SystemStackError
+        raise HTTPX::ConnectionError, 'HTTPX retry recursion exhausted'
       end
 
       private
@@ -141,7 +149,8 @@ module Html2rss
           follow_insecure_redirects: false,
           max_response_body_size: ctx.policy.max_response_bytes,
           resolver_class: :system,
-          redirect_on: redirect_callback
+          redirect_on: redirect_callback,
+          **RETRY_OPTIONS
         }
       end
 
