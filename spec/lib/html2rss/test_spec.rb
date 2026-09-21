@@ -148,6 +148,11 @@ RSpec.describe Html2rss::Test do
         expect(result.error_message).to include('Extracted 2 items (minimum required: 5)')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:min_items))
         expect(result.rss).to be_nil
+      end
+
+      it 'keeps the fetched page body when the item count is below min_items' do
+        result = described_class.call(valid_config, min_items: 5)
+
         expect(result.response_body).to eq('<html></html>')
       end
 
