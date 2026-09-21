@@ -211,13 +211,22 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect { execute }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /127.0.0.1/)
     end
 
-    it 'maps HTTPX retry recursion SystemStackError to ConnectionError' do
+    # rubocop:disable-next RSpec/ExampleLength -- slot spend plus retry bounds on the overflow path
+    it 'maps HTTPX retry recursion SystemStackError to ConnectionError after one budget slot',
+       :aggregate_failures do
       session = instance_double(HTTPX::Session)
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with).and_return(session)
       allow(session).to receive(:get).and_raise(SystemStackError, 'stack level too deep')
 
       expect { execute }.to raise_error(HTTPX::ConnectionError, /retry recursion/)
+      expect(budget).to have_received(:consume!)
+      expect(session).to have_received(:with).with(
+        hash_including(
+          max_retries: described_class::MAX_RETRIES,
+          retry_after: described_class::RETRY_AFTER_SECONDS
+        )
+      )
     end
   end
 

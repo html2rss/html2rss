@@ -21,6 +21,13 @@ module Html2rss
       # combined with ping! on a reused closed selector that never decrements retries,
       # that overflows the stack and kills Falcon workers.
       RETRY_AFTER_SECONDS = 0.25
+      # Bounds passed to the retries plugin and every +session.with+.
+      # HTTPX retries stay inside one {RequestService::Budget} slot and the shared
+      # wall-clock deadline; do not consume a slot per attempt.
+      # Do not reload +:fiber_concurrency+: a reused closed selector made +ping!+
+      # skip decrementing retries and recurse until +SystemStackError+.
+      #
+      # @return [Hash{Symbol => Integer, Float}]
       RETRY_OPTIONS = { max_retries: MAX_RETRIES, retry_after: RETRY_AFTER_SECONDS }.freeze
 
       class << self
@@ -49,8 +56,6 @@ module Html2rss
         reset_redirect_tracking!
         raw_response = request_with_terminal_redirect_retry(deadline:)
         build_response(raw_response)
-      rescue SystemStackError
-        raise HTTPX::ConnectionError, 'HTTPX retry recursion exhausted'
       end
 
       private
@@ -130,10 +135,18 @@ module Html2rss
       def execute_http_request(deadline:, consume_budget: true)
         preflight!(consume_budget:)
         session = session_client(deadline)
-        response = session.get(request_url.to_s, headers: ctx.headers)
+        response = http_get(session)
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
 
         response
+      end
+
+      # GET only. Overflow here is HTTPX retry recursion; the same error from
+      # redirect handling or body decode must stay loud.
+      def http_get(session)
+        session.get(request_url.to_s, headers: ctx.headers)
+      rescue SystemStackError
+        raise HTTPX::ConnectionError, 'HTTPX retry recursion exhausted'
       end
 
       def session_client(deadline)
