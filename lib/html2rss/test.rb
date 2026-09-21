@@ -89,6 +89,7 @@ module Html2rss
     ##
     # Immutable outcome of a configuration test. Success carries +rss+ XML from the
     # first live extraction; failures carry a typed {FailureKind}.
+    # +response_body+ is a copy of the fetched page for in-process readers and stays off {#to_h}.
     Result = Data.define(
       :success,
       :item_count,
@@ -102,7 +103,8 @@ module Html2rss
       :failure_kind,
       :rss,
       :quality_report,
-      :enhance_compare
+      :enhance_compare,
+      :response_body
     ) do
       ##
       # @param success [Boolean]
@@ -118,9 +120,10 @@ module Html2rss
       # @param rss [String, nil]
       # @param quality_report [QualityReport, nil]
       # @param enhance_compare [Hash, nil]
+      # @param response_body [String, nil] fetched page HTML copied from the pipeline response
       def initialize(success:, item_count:, sample_items:, channel_title:, channel_url:, # rubocop:disable Metrics/ParameterLists
                      strategy_used:, duration_seconds:, validation_issues:, error_message:,
-                     failure_kind:, rss:, quality_report: nil, enhance_compare: nil)
+                     failure_kind:, rss:, quality_report: nil, enhance_compare: nil, response_body: nil)
         super
       end
 
@@ -137,8 +140,8 @@ module Html2rss
       end
 
       ##
-      # @return [Hash{Symbol => Object}] hash representation (wire shape at the serialize seam)
-      def to_h # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- wire serialization of all Result fields
+      # @return [Hash{Symbol => Object}] public test hash; +response_body+ stays off this wire
+      def to_h # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- wire serialization omits response_body
         {
           success:,
           item_count:,
@@ -207,12 +210,12 @@ module Html2rss
       enhance_compare = build_enhance_compare(config, pipeline_outcome) if compare_enhance
 
       build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare,
-                        min_items:, strict_quality:)
+                        min_items:, strict_quality:, response_body: pipeline_outcome&.response&.body)
     end
     private_class_method :execute_timed_pipeline
 
     def build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
-                          min_items:, strict_quality:)
+                          min_items:, strict_quality:, response_body:)
       rss_doc = feed_result.to_rss
       outcome = Policy.evaluate(item_count: rss_doc.items.size, min_items:, strict_quality:, quality_report:)
       strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
@@ -231,7 +234,8 @@ module Html2rss
         failure_kind: outcome.failure_kind,
         rss: outcome.passed ? rss_doc.to_s : nil,
         quality_report:,
-        enhance_compare:
+        enhance_compare:,
+        response_body:
       )
     end
     private_class_method :build_test_result
