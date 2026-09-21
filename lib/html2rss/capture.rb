@@ -257,19 +257,24 @@ module Html2rss
     # @return [Array(Hash, Symbol, nil)] selectors hash and winning segment strategy
     def derive_selectors(response, articles)
       return hint_selectors if @items_selector_hint
-      return [{}, nil] if articles.empty? || !response.html_response?
+      return [{}, nil] unless response.html_response?
+      return default_selectors if articles.empty?
 
       sst = SST::Normalizer.call(response.body)
-      return [{}, nil] unless sst
+      return default_selectors unless sst
 
       select_enhance_selectors(sst, articles)
     rescue ArgumentError => error
       Log.warn("Capture selector derivation failed: #{error.message}")
-      [{}, nil]
+      default_selectors
     end
 
     def hint_selectors
       [{ items: { selector: @items_selector_hint, enhance: resolve_enhance } }, :hint]
+    end
+
+    def default_selectors
+      [{ items: { selector: Selectors::DEFAULT_ITEMS_SELECTOR, enhance: resolve_enhance } }, :default]
     end
 
     def select_enhance_selectors(sst, articles) # rubocop:disable Metrics/MethodLength -- strategy loop + gate
@@ -287,7 +292,7 @@ module Html2rss
         return [{ items: { selector: items_sel, enhance: } }, strategy]
       end
 
-      [{}, nil]
+      default_selectors
     end
 
     def match_segments_to_articles(segments, articles)
@@ -326,15 +331,7 @@ module Html2rss
       return nil if matched.empty?
 
       roots = lift_heading_link_roots(matched.map { |m| m[:segment].root_node })
-      shared = shared_class_items_selector(roots)
-      return shared if shared
-
-      paths = roots.map(&:tag_path)
-      common = common_path_prefix(paths)
-      tag_path = common.empty? ? paths.first.to_s : common
-      return nil if tag_path.empty?
-
-      css_from_trimmed_tag_path(tag_path)
+      shared_class_items_selector(roots) || unique_tag_items_selector(roots) || path_items_selector(roots)
     end
 
     def lift_heading_link_roots(roots)
@@ -394,6 +391,20 @@ module Html2rss
       return nil if shared.nil? || shared.empty?
 
       "#{roots.first.name}.#{shared.min}"
+    end
+
+    def unique_tag_items_selector(roots)
+      names = roots.map { |root| root.name.to_s }.uniq
+      names.join(', ') if names.size > 1
+    end
+
+    def path_items_selector(roots)
+      paths = roots.map(&:tag_path)
+      common = common_path_prefix(paths)
+      tag_path = common.empty? ? paths.first.to_s : common
+      return if tag_path.empty?
+
+      css_from_trimmed_tag_path(tag_path)
     end
 
     def css_from_trimmed_tag_path(tag_path)

@@ -50,6 +50,13 @@ RSpec.describe Html2rss::Config::Schema do
       expect(pattern_schema.fetch('description')).to include('Dynamic selector definition')
     end
 
+    it 'publishes the default items selector without requiring it', :aggregate_failures do
+      items = json_schema.dig('properties', 'selectors', 'properties', 'items')
+
+      expect(items.fetch('required')).to eq([])
+      expect(items.dig('properties', 'selector', 'default')).to eq(Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR)
+    end
+
     it 'documents pagination configuration under items selector', :aggregate_failures do
       pagination_schema = json_schema.dig('properties', 'selectors', 'properties', 'items', 'properties', 'pagination')
 

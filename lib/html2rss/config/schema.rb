@@ -124,6 +124,10 @@ module Html2rss
         # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Layout/LineLength
         def overlay
           items_schema = Html2rss::Config::SelectorsValidator::Items.new.schema.json_schema(loose: true)
+          items_schema[:required] = Array(items_schema[:required]).reject { |key| key.to_sym == :selector }
+          items_schema[:properties][:selector] = items_schema.fetch(:properties).fetch(:selector).merge(
+            default: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR
+          )
           items_schema[:properties][:enhance] = items_schema.fetch(:properties).fetch(:enhance).merge(
             description: 'List-card enrichment: run Html::ArticleExtractor on each matched item node ' \
                          'to fill missing fields from the card HTML.'

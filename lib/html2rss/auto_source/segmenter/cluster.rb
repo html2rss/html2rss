@@ -13,15 +13,18 @@ module Html2rss
         # @param segmenter [Segmenter]
         # @return [Array<Segment>]
         def call(segmenter)
+          primary = PrimaryLink.new(segmenter)
           nodes = best_group_nodes(segmenter)
-          nodes.each_with_index.map do |node, position|
-            Segment.build(root_node: node, primary_link: nil, strategy: :cluster, position:)
+          nodes.each_with_index.filter_map do |node, position|
+            link = primary.select(node)
+            next unless link || segmenter.permit_unanchored
+
+            Segment.build(root_node: node, primary_link: link, strategy: :cluster, position:)
           end
         end
 
         def best_group_nodes(segmenter)
-          class_groups = collect_class_groups(segmenter)
-          groups = class_groups.empty? ? collect_structure_groups(segmenter) : class_groups
+          groups = collect_groups(segmenter)
           return [] if groups.empty?
 
           resolver = OverlapResolver.new(index: segmenter.index)
@@ -33,33 +36,29 @@ module Html2rss
         module_function :best_group_nodes
         private_class_method :best_group_nodes
 
-        def collect_class_groups(segmenter) # rubocop:disable Metrics/AbcSize
-          groups = Hash.new { |h, k| h[k] = [] }
+        def collect_groups(segmenter) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+          class_groups = Hash.new { |hash, key| hash[key] = [] }
+          structure_groups = Hash.new { |hash, key| hash[key] = [] }
+          min = segmenter.minimum_selector_frequency
+
           segmenter.index.each_node do |node|
             next if SST::Tags::CLUSTER_EXCLUDED_NAMES.include?(node.name)
             next if segmenter.index.ignored_chrome?(node)
 
             cls = normalize_class(node.attrs.class_names)
-            groups[cls] << node unless cls.empty?
-          end
-          groups.select { |_, nodes| nodes.size >= segmenter.minimum_selector_frequency }
-        end
-        module_function :collect_class_groups
-        private_class_method :collect_class_groups
-
-        def collect_structure_groups(segmenter) # rubocop:disable Metrics/AbcSize
-          groups = Hash.new { |h, k| h[k] = [] }
-          segmenter.index.each_node do |node|
-            next if SST::Tags::CLUSTER_EXCLUDED_NAMES.include?(node.name)
-            next if segmenter.index.ignored_chrome?(node)
+            class_groups[cls] << node unless cls.empty?
 
             sig = structure_signature(node)
-            groups[sig] << node unless sig.empty?
+            structure_groups[sig] << node unless sig.empty?
           end
-          groups.select { |_, nodes| nodes.size >= segmenter.minimum_selector_frequency }
+
+          frequent_class = class_groups.select { |_, nodes| nodes.size >= min }
+          return frequent_class unless frequent_class.empty?
+
+          structure_groups.select { |_, nodes| nodes.size >= min }
         end
-        module_function :collect_structure_groups
-        private_class_method :collect_structure_groups
+        module_function :collect_groups
+        private_class_method :collect_groups
 
         def normalize_class(class_names)
           return '' if class_names.empty?
@@ -73,7 +72,7 @@ module Html2rss
           kids = node.children
           return '' if kids.empty?
 
-          kids.map { |c| c.name.to_s }.join('>')
+          kids.map { |child| child.name.to_s }.join('>')
         end
         module_function :structure_signature
         private_class_method :structure_signature

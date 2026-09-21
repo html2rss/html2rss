@@ -23,6 +23,46 @@ RSpec.describe Html2rss::Selectors do
     HTML
   end
 
+  describe 'default items selector' do
+    let(:body) do
+      <<~HTML
+        <html><body>
+          <a href="/posts/real">Real story</a>
+          <a href="#">Top</a>
+          <a href="javascript:void(0)">Popup</a>
+          <a href="mailto:ed@example.com">Email</a>
+        </body></html>
+      HTML
+    end
+
+    context 'when the items selector is the default spelling' do
+      let(:selectors) { { items: { selector: described_class::DEFAULT_ITEMS_SELECTOR, enhance: false } } }
+
+      it 'admits only the permalink, not junk-scheme anchors' do
+        expect(instance.articles.map { |article| article.url.to_s }).to eq(['http://example.com/posts/real'])
+      end
+    end
+
+    context 'when the items selector is blank' do
+      let(:selectors) { { items: { selector: '   ', enhance: false } } }
+
+      it 'expands like the default and drops junk-scheme anchors' do
+        expect(instance.articles.map { |article| article.url.to_s }).to eq(['http://example.com/posts/real'])
+      end
+    end
+
+    context 'when the items selector is an explicit a' do
+      let(:selectors) { { items: { selector: 'a', enhance: false } } }
+
+      it 'still admits junk-scheme anchors', :aggregate_failures do
+        urls = instance.articles.filter_map { |article| article.url&.to_s }
+
+        expect(instance.articles.size).to eq(4)
+        expect(urls).to include('http://example.com/posts/real', 'mailto:ed@example.com')
+      end
+    end
+  end
+
   describe '#articles' do
     subject(:titles) { instance.articles.map(&:title) }
 

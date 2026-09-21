@@ -4,8 +4,8 @@ module Html2rss
   class AutoSource
     class Segmenter
       ##
-      # Builds repeated-list article segments from tag_path frequency
-      # (port of Discovery::ListCandidates using tag_path instead of xpath).
+      # Builds repeated-list article segments by grouping cards under a shared parent.
+      # When the document has a +main+ or +[role=main]+, anchors outside it are dropped.
       module List
         module_function
 
@@ -30,40 +30,55 @@ module Html2rss
         end
 
         def article_pairs(segmenter)
-          by_path = relevant_links_by_path(segmenter)
-          top_paths(segmenter, by_path).flat_map do |path|
-            by_path.fetch(path, []).filter_map do |node|
-              article_tag = parent_until_boundary(segmenter, node)
-              next unless article_tag
-
-              [article_tag, node]
-            end
-          end
+          top_groups(segmenter).flatten(1)
         end
         module_function :article_pairs
         private_class_method :article_pairs
 
-        def relevant_links_by_path(segmenter)
-          by_path = Hash.new { |hash, path| hash[path] = [] }
-          segmenter.index.each_node do |node|
+        def top_groups(segmenter)
+          cards_by_parent(segmenter)
+            .select { |_parent, cards| cards.size >= segmenter.minimum_selector_frequency }
+            .max_by(segmenter.use_top_selectors) { |_parent, cards| cards.size }
+            .map(&:last)
+        end
+        module_function :top_groups
+        private_class_method :top_groups
+
+        def cards_by_parent(segmenter) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+          index = segmenter.index
+          main = main_landmark(index)
+          groups = {}.compare_by_identity
+
+          index.each_node do |node|
             next unless node.link?
-            next if segmenter.index.ignored_chrome?(node)
+            next if index.ignored_chrome?(node)
             next unless relevant_anchor?(segmenter, node)
+            next if main && !inside_main?(index, node, main)
 
-            by_path[node.tag_path] << node
+            card = parent_until_boundary(segmenter, node)
+            next unless card
+
+            parent = index.parent_of(card)
+            next unless parent
+
+            (groups[parent] ||= []) << [card, node]
           end
-          by_path
+          groups
         end
-        module_function :relevant_links_by_path
-        private_class_method :relevant_links_by_path
+        module_function :cards_by_parent
+        private_class_method :cards_by_parent
 
-        def top_paths(segmenter, by_path)
-          by_path.select { |_path, nodes| nodes.size >= segmenter.minimum_selector_frequency }
-                 .max_by(segmenter.use_top_selectors) { |_path, nodes| nodes.size }
-                 .map(&:first)
+        def main_landmark(index)
+          index.each_node.find { |node| node.name == :main || node.attrs.raw['role'] == 'main' }
         end
-        module_function :top_paths
-        private_class_method :top_paths
+        module_function :main_landmark
+        private_class_method :main_landmark
+
+        def inside_main?(index, node, main)
+          node.equal?(main) || index.descendant_of?(node, main)
+        end
+        module_function :inside_main?
+        private_class_method :inside_main?
 
         def relevant_anchor?(segmenter, node)
           facts = segmenter.link_resolver.destination_facts(node)
@@ -82,7 +97,7 @@ module Html2rss
 
         def parent_until_boundary(segmenter, node)
           index = segmenter.index
-          link_counts = Hash.new { |hash, curr| hash[curr] = count_links(curr) }
+          link_counts = Hash.new { |hash, curr| hash[curr] = count_relevant_links(segmenter, curr) }
 
           index.parent_until(node, lambda { |curr|
             return true if BOUNDARY_TAGS.include?(curr.name)
@@ -95,11 +110,16 @@ module Html2rss
         module_function :parent_until_boundary
         private_class_method :parent_until_boundary
 
-        def count_links(node)
-          node.link? ? 1 : node.count_descendants(&:link?)
+        def count_relevant_links(segmenter, node)
+          # Chrome inside a card must not stop the walk before the shared list parent.
+          if node.link?
+            relevant_anchor?(segmenter, node) ? 1 : 0
+          else
+            node.count_descendants { |child| child.link? && relevant_anchor?(segmenter, child) }
+          end
         end
-        module_function :count_links
-        private_class_method :count_links
+        module_function :count_relevant_links
+        private_class_method :count_relevant_links
       end
     end
   end
