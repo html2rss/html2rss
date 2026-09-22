@@ -67,6 +67,7 @@ RSpec.describe Html2rss::Test do
         expect(result.success).to be(false)
         expect(result.valid_schema?).to be(false)
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:schema))
+        expect(result.response_body).to be_nil
       end
     end
 
@@ -99,6 +100,13 @@ RSpec.describe Html2rss::Test do
         expect(result.sample_items.size).to eq(2)
         expect(result.rss).to be_a(String)
         expect(result.failure_kind).to be_nil
+      end
+
+      it 'keeps the fetched page body in-process and off the public test hash', :aggregate_failures do
+        result = described_class.call(valid_config, min_items: 1)
+
+        expect(result.response_body).to eq('<html></html>')
+        expect(result.to_h).not_to have_key(:response_body)
       end
 
       it 'attaches quality_report from feed audit', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -140,6 +148,12 @@ RSpec.describe Html2rss::Test do
         expect(result.error_message).to include('Extracted 2 items (minimum required: 5)')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:min_items))
         expect(result.rss).to be_nil
+      end
+
+      it 'keeps the fetched page body when the item count is below min_items' do
+        result = described_class.call(valid_config, min_items: 5)
+
+        expect(result.response_body).to eq('<html></html>')
       end
 
       it 'keeps warn-only quality_report when strict_quality is false despite duplicate URLs', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -239,6 +253,7 @@ RSpec.describe Html2rss::Test do
         expect(result.success).to be(false)
         expect(result.error_message).to include('network failure')
         expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:execution))
+        expect(result.response_body).to be_nil
       end
     end
 

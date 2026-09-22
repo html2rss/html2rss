@@ -29,7 +29,8 @@ module Html2rss
     # Result of a capture operation (config plus quality meta).
     CaptureResult = Data.define(
       :config, :yaml, :articles_count, :channel_title, :has_selectors, :segment_strategy,
-      :admission_drops, :selected_strategy, :inferred_topics, :native_feed, :suggested_channel_url
+      :admission_drops, :selected_strategy, :inferred_topics, :native_feed, :suggested_channel_url,
+      :candidates
     ) do
       # rubocop:disable Metrics/ParameterLists
       ##
@@ -44,9 +45,10 @@ module Html2rss
       # @param inferred_topics [Array<String>]
       # @param native_feed [String, nil]
       # @param suggested_channel_url [String, nil]
+      # @param candidates [Hash{Symbol=>Array}, nil] ranked selector buckets from {SelectorCandidates}
       def initialize(config:, articles_count:, channel_title:, has_selectors:, segment_strategy:, # rubocop:disable Metrics/MethodLength
                      yaml: nil, admission_drops: {}, selected_strategy: nil, inferred_topics: [], native_feed: nil,
-                     suggested_channel_url: nil)
+                     suggested_channel_url: nil, candidates: nil)
         super(
           config:,
           yaml: yaml || "#{SCHEMA_MODELINE}\n#{Config.to_yaml(config)}",
@@ -58,7 +60,8 @@ module Html2rss
           selected_strategy:,
           inferred_topics:,
           native_feed:,
-          suggested_channel_url:
+          suggested_channel_url:,
+          candidates: candidates || SelectorCandidates.empty
         )
       end
       # rubocop:enable Metrics/ParameterLists
@@ -127,7 +130,7 @@ module Html2rss
     def build # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       outcome = FeedPipeline.new(raw_config).to_outcome
       @admission_drops = outcome.admission_drops
-      selectors, segment_strategy = derive_selectors(outcome.response, outcome.articles)
+      selectors, segment_strategy, candidates = derive_selectors(outcome.response, outcome.articles)
       ch_title = @title || channel_title_from(outcome.response)
       topics = @topics || infer_topics("#{@url} #{ch_title}")
       native_feed = probe_native_feed(outcome.response) unless @force
@@ -151,7 +154,8 @@ module Html2rss
         selected_strategy: outcome.selected_strategy,
         inferred_topics: topics,
         native_feed:,
-        suggested_channel_url: suggested_channel_url(outcome)
+        suggested_channel_url: suggested_channel_url(outcome),
+        candidates:
       )
     end
 
@@ -254,19 +258,19 @@ module Html2rss
       { strategy: :local_file, request: { local_file_path: @local_file_path } }
     end
 
-    # @return [Array(Hash, Symbol, nil)] selectors hash and winning segment strategy
+    # @return [Array(Hash, Symbol, nil, Hash)] selectors, segment strategy, candidate buckets
     def derive_selectors(response, articles)
-      return hint_selectors if @items_selector_hint
-      return [{}, nil] unless response.html_response?
-      return default_selectors if articles.empty?
+      return [*hint_selectors, SelectorCandidates.empty] if @items_selector_hint
+      return [{}, nil, SelectorCandidates.empty] unless response.html_response?
+      return [*default_selectors, SelectorCandidates.empty] if articles.empty?
 
       sst = SST::Normalizer.call(response.body)
-      return default_selectors unless sst
+      return [*default_selectors, SelectorCandidates.empty] unless sst
 
       select_enhance_selectors(sst, articles)
     rescue ArgumentError => error
       Log.warn("Capture selector derivation failed: #{error.message}")
-      default_selectors
+      [*default_selectors, SelectorCandidates.empty]
     end
 
     def hint_selectors
@@ -277,22 +281,44 @@ module Html2rss
       [{ items: { selector: Selectors::DEFAULT_ITEMS_SELECTOR, enhance: resolve_enhance } }, :default]
     end
 
-    def select_enhance_selectors(sst, articles) # rubocop:disable Metrics/MethodLength -- strategy loop + gate
+    def select_enhance_selectors(sst, articles)
+      evidence = collect_items_evidence(sst, articles)
+      candidates = SelectorCandidates.call(items_evidence: evidence, min_matches: MIN_SELECTOR_MATCHES)
+      top = candidates[:items].first
+      return [*default_selectors, candidates] unless top
+
+      strategy = evidence.find { |entry| entry[:selector] == top[:selector] }&.fetch(:strategy)
+      [{ items: top }, strategy, candidates]
+    end
+
+    def collect_items_evidence(sst, articles)
       link_resolver = Scoring::LinkResolver.new(@url)
       enhance = resolve_enhance
 
-      SEGMENT_STRATEGIES.each do |strategy|
+      SEGMENT_STRATEGIES.flat_map do |strategy|
         segments = AutoSource::Segmenter.call(
           sst, base_url: @url, strategy:, permit_unanchored: false, link_resolver:
         )
         matched = match_segments_to_articles(segments, articles)
-        items_sel = items_selector(matched)
-        next unless items_sel && matched.size >= MIN_SELECTOR_MATCHES
+        next [] if matched.size < MIN_SELECTOR_MATCHES
 
-        return [{ items: { selector: items_sel, enhance: } }, strategy]
+        items_evidence_for(matched, strategy:, enhance:)
       end
+    end
 
-      default_selectors
+    def items_evidence_for(matched, strategy:, enhance:)
+      roots = lift_heading_link_roots(matched.map { |pair| pair[:segment].root_node })
+      selector_variants_for(roots).map do |kind, selector|
+        { selector:, enhance:, strategy:, kind:, match_count: matched.size, roots: }
+      end
+    end
+
+    def selector_variants_for(roots)
+      [
+        [:shared_class, shared_class_items_selector(roots)],
+        [:unique_tag, unique_tag_items_selector(roots)],
+        [:path, path_items_selector(roots)]
+      ].filter_map { |kind, selector| [kind, selector] if selector }
     end
 
     def match_segments_to_articles(segments, articles)
@@ -325,13 +351,6 @@ module Html2rss
 
     def title_from_segment(segment)
       segment.root_node.visible_text.to_s.strip
-    end
-
-    def items_selector(matched)
-      return nil if matched.empty?
-
-      roots = lift_heading_link_roots(matched.map { |m| m[:segment].root_node })
-      shared_class_items_selector(roots) || unique_tag_items_selector(roots) || path_items_selector(roots)
     end
 
     def lift_heading_link_roots(roots)

@@ -27,7 +27,9 @@ File.write('my-feed.yml', result.yaml)
 rss = Html2rss.apply(result.config)
 ```
 
-`Html2rss.capture` and `Capture.build` both return a `CaptureResult` with YAML (`#yaml`, includes the schema modeline) and quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`, `native_feed`).
+`Html2rss.capture` and `Capture.build` both return a `CaptureResult` with YAML (`#yaml`, includes the schema modeline) and quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`, `native_feed`, `candidates`).
+
+`#candidates` is ranked discovery evidence: `{ items:, title:, link:, published: }` arrays (best-first, deduplicated). Items entries are `{ selector:, enhance: }`; field entries are `{ selector: }` only. Buckets may be empty when evidence is missing. The default `a[href]` YAML fallback is not listed as discovered evidence.
 
 **Wire vs internal:** user-facing **`Html2rss.apply`** ships RSS from a config Hash. Pipeline internals **`Html2rss.feed` / `feed_result`** stay unchanged — use `apply` in CLI/MCP/docs examples, not `feed`.
 
