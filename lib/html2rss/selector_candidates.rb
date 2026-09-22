@@ -75,8 +75,16 @@ module Html2rss
           selector = entry[:selector].to_s
           next if selector.empty? || ranked.any? { |c| c[:selector] == selector }
 
-          ranked << { selector:, enhance: entry[:enhance] }
+          ranked << item_candidate(entry)
         end
+    end
+
+    def item_candidate(entry)
+      {
+        selector: entry[:selector].to_s,
+        enhance: entry[:enhance],
+        sample: visible_sample(Array(entry[:roots]).first)
+      }
     end
 
     def item_rank_key(entry)
@@ -97,21 +105,29 @@ module Html2rss
       usable = roots.select { |root| root.respond_to?(:find_all) }
       return [] if usable.size < @min_matches
 
-      rank_field_counts(count_field_selectors(usable, field))
+      rank_field_tallies(count_field_selectors(usable, field))
     end
 
     def count_field_selectors(roots, field)
-      roots.each_with_object(Hash.new(0)) do |root, counts|
+      roots.each_with_object({}) do |root, tallies|
+        node = field_node(root, field)
         selector = relative_field_selector(root, field)
-        counts[selector] += 1 if selector
+        next unless selector
+
+        tallies[selector] ||= { count: 0, sample: visible_sample(node) }
+        tallies[selector][:count] += 1
       end
     end
 
-    def rank_field_counts(counts)
-      counts
-        .select { |_selector, count| count >= @min_matches }
-        .sort_by { |selector, count| [-count, selector.length, selector] }
-        .map { |selector, _count| { selector: } }
+    def rank_field_tallies(tallies)
+      tallies
+        .select { |_selector, data| data[:count] >= @min_matches }
+        .sort_by { |selector, data| [-data[:count], selector.length, selector] }
+        .map { |selector, data| { selector:, sample: data[:sample] } }
+    end
+
+    def visible_sample(node)
+      node&.visible_text.to_s.gsub(/\s+/, ' ').strip
     end
 
     def relative_field_selector(root, field)

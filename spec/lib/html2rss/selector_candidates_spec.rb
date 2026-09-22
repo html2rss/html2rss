@@ -31,7 +31,7 @@ RSpec.describe Html2rss::SelectorCandidates do
 
       items = described_class.call(items_evidence: evidence)[:items]
       expect(items.map { |c| c[:selector] }).to eq(['div.item', 'article, section', 'main > div'])
-      expect(items.first).to eq(selector: 'div.item', enhance: true)
+      expect(items.first).to eq(selector: 'div.item', enhance: true, sample: '')
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- field bucket contract across three keys
@@ -59,9 +59,10 @@ RSpec.describe Html2rss::SelectorCandidates do
       ]
 
       buckets = described_class.call(items_evidence: evidence)
-      expect(buckets[:title]).to eq([{ selector: 'h2' }])
-      expect(buckets[:link]).to eq([{ selector: 'h2 > a' }])
-      expect(buckets[:published]).to eq([{ selector: 'time' }])
+      expect(buckets[:items].first).to include(selector: 'div.item', sample: 'Post 0 Jan')
+      expect(buckets[:title]).to eq([{ selector: 'h2', sample: 'Post 0' }])
+      expect(buckets[:link]).to eq([{ selector: 'h2 > a', sample: 'Post 0' }])
+      expect(buckets[:published]).to eq([{ selector: 'time', sample: 'Jan' }])
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- min_matches gate for published vs title
@@ -103,7 +104,7 @@ RSpec.describe Html2rss::SelectorCandidates do
 
       buckets = described_class.call(items_evidence: evidence)
       expect(buckets[:published]).to eq([])
-      expect(buckets[:title]).to eq([{ selector: 'h2' }])
+      expect(buckets[:title]).to eq([{ selector: 'h2', sample: 'One' }])
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- wrapping-anchor roots skip link bucket
@@ -127,7 +128,7 @@ RSpec.describe Html2rss::SelectorCandidates do
 
       buckets = described_class.call(items_evidence: evidence)
       expect(buckets[:link]).to eq([])
-      expect(buckets[:title]).to eq([{ selector: 'h2' }])
+      expect(buckets[:title]).to eq([{ selector: 'h2', sample: '/news/one' }])
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- identifying class plus one CSS-escape token
@@ -159,10 +160,10 @@ RSpec.describe Html2rss::SelectorCandidates do
       item = { selector: 'div.item', enhance: true, strategy: :list, kind: :shared_class, match_count: 2 }
 
       expect(described_class.call(items_evidence: [item.merge(roots: bold)])[:title])
-        .to eq([{ selector: 'span.font-semibold' }])
+        .to eq([{ selector: 'span.font-semibold', sample: 'Headline 0' }])
       # `]` would close an attribute selector if interpolated raw.
       expect(described_class.call(items_evidence: [item.merge(roots: broken)])[:title])
-        .to eq([{ selector: 'span.title\]' }])
+        .to eq([{ selector: 'span.title\]', sample: 'Headline 0' }])
     end
   end
 end
