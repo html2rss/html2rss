@@ -287,7 +287,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     context 'when upstream includes xhr_responses' do
       let(:response_payload) do
         base_payload.merge(
-          'xhr_responses' => [
+          xhr_responses: [
             {
               'url' => 'https://api.example/articles?token=secret',
               'body' => '[{"title":"One","url":"/one"}]',
@@ -315,7 +315,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       let(:chunk) { 'y' * Html2rss::RequestService::BotasaurusContract::Success::MAX_XHR_BODY_BYTES }
       let(:response_payload) do
         base_payload.merge(
-          'xhr_responses' => Array.new(5) do |index|
+          xhr_responses: Array.new(5) do |index|
             { 'url' => "https://api.example/#{index}", 'body' => chunk, 'status_code' => 200 }
           end
         )
@@ -335,7 +335,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       let(:oversized_body) { 'x' * (Html2rss::RequestService::BotasaurusContract::Success::MAX_XHR_BODY_BYTES + 1) }
       let(:response_payload) do
         base_payload.merge(
-          'xhr_responses' => [
+          xhr_responses: [
             { 'url' => 'https://api.example/a', 'body' => '{"ok":true}', 'status_code' => 200 },
             { 'url' => 'https://api.example/b', 'body' => oversized_body, 'status_code' => 200 }
           ]
