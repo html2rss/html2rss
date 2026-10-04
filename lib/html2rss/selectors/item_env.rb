@@ -2,12 +2,14 @@
 
 module Html2rss
   class Selectors
+    ItemEnv = Data.define(:item, :base_url, :scraper, :time_zone)
+
     ##
     # Per-item extraction environment: owns the article node, page +base_url+, and
     # +time_zone+ for one extraction pass.
     #
     # Distinct from {StepEnv}, which is the post-processor invocation bag (+step_config+).
-    ItemEnv = Data.define(:item, :base_url, :scraper, :time_zone) do
+    class ItemEnv
       ##
       # Selects an attribute using this env's item and base_url.
       #

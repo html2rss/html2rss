@@ -6,9 +6,11 @@ module Html2rss
     # Diagnostic inspect path (not Capture or Recon ownership). Fetches via {.probe},
     # then adds scraper/XHR diagnostics for curation inspect surfaces.
     module Diagnostics # rubocop:disable Metrics/ModuleLength -- diagnostic wire fields stay co-located
+      Report = Data.define(:data)
+
       ##
       # Typed diagnostic report for inspect wire payloads and Outcome policy.
-      Report = Data.define(:data) do
+      class Report
         ##
         # @return [Boolean]
         def alternate_feeds?

@@ -2,10 +2,12 @@
 
 module Html2rss
   class Selectors
+    StepEnv = Data.define(:step_config, :base_url, :time_zone, :item_env)
+
     # Invocation environment passed to post-processors.
     # When built via {ItemEnv#context_for}, +item_env+ carries the per-item
     # extraction base_url for nested selects (e.g. Template).
-    StepEnv = Data.define(:step_config, :base_url, :time_zone, :item_env) do
+    class StepEnv
       ##
       # @param step_config [Hash] post-processor configuration (YAML step)
       # @param base_url [String, Html2rss::Url, nil] page URL for relative resolution

@@ -11,9 +11,11 @@ module Html2rss
       # One selector validation error.
       Error = Data.define(:path, :text)
 
+      Result = Data.define(:errors)
+
       ##
       # Validation result containing collected selector errors.
-      Result = Data.define(:errors) do
+      class Result
         # @return [Boolean]
         def success? = errors.empty?
 

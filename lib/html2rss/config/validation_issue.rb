@@ -2,14 +2,15 @@
 
 module Html2rss
   class Config
+    ValidationIssue = Data.define(:path, :code, :message, :expected, :actual)
+
     ##
     # One structured validation finding for GUI/MCP/CLI/Test.
     #
     # +path+ is JSON-pointer-friendly segments. +code+ is closed ({CODES}).
     # +expected+ / +actual+ are JSON-ish or +nil+ (never invented).
-    ValidationIssue = Data.define(:path, :code, :message, :expected, :actual) do
+    class ValidationIssue
       # Closed set of issue codes (mapper owns Dry predicate → code).
-      # rubocop:disable-next Lint/ConstantDefinitionInBlock -- Data.define type constant
       CODES = Set[
         :missing_key,
         :type_mismatch,

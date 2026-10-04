@@ -2,10 +2,12 @@
 
 module Html2rss
   module MCP
+    ConfigArgument = Data.define(:config)
+
     # Feed config supplied over MCP as a hash XOR a YAML string.
     #
     # Config does not know MCP. YAML parsing stays on {Html2rss::Config.from_yaml}.
-    ConfigArgument = Data.define(:config) do
+    class ConfigArgument
       class << self
         ##
         # @param config [Hash, nil] feed configuration hash

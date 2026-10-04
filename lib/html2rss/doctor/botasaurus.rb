@@ -8,9 +8,11 @@ module Html2rss
     ##
     # Preflight checks for Botasaurus scrape-api connectivity.
     module Botasaurus
+      Check = Data.define(:name, :ok, :detail)
+
       ##
       # One named doctor check outcome.
-      Check = Data.define(:name, :ok, :detail) do
+      class Check
         ##
         # @return [Hash{Symbol => Object}]
         def to_h
@@ -18,9 +20,11 @@ module Html2rss
         end
       end
 
+      Result = Data.define(:ok, :checks, :message)
+
       ##
       # Aggregate doctor command outcome.
-      Result = Data.define(:ok, :checks, :message) do
+      class Result
         ##
         # @return [Hash{Symbol => Object}]
         def to_h
