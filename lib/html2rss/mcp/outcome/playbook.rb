@@ -8,7 +8,7 @@ module Html2rss
       # and prompt bodies. {Server} delegates here — do not duplicate prose in
       # +server.rb+.
       class Playbook
-        # Default guidance copy keyed by {Outcome::NextStep::NAMES}.
+        # Default guidance copy; {Outcome::NextStep::ALL} is built from these keys.
         GUIDANCE = {
           done: 'Done. Read payload for the result.',
           inspect: 'Call inspect next. Read payload for diagnostics (final_url, status, ' \

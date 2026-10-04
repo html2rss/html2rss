@@ -140,8 +140,12 @@ module Html2rss
 
         def protocol_configuration
           ::MCP::Configuration.new.tap do |config|
-            config.exception_reporter = method(:report_protocol_exception)
-            config.around_request = method(:around_protocol_request)
+            config.exception_reporter = lambda { |error, server_context|
+              report_protocol_exception(error, server_context)
+            }
+            config.around_request = lambda { |data, &block|
+              around_protocol_request(data, &block)
+            }
             config.validate_tool_call_results = true
           end
         end
@@ -220,24 +224,25 @@ module Html2rss
           tool_error_response(error)
         end
 
-        # rubocop:disable-next Metrics/MethodLength -- listing fields stay together
-        def define_envelope_tool(server, name:, description:, input_schema:,
-                                 annotations: Contract::ANNOTATIONS_OPEN_WORLD)
-          run = method(:handle_tool_call)
-          server.define_tool(
-            name:,
-            title: Contract::TITLES.fetch(name.to_sym),
-            description:,
-            annotations:,
-            input_schema:,
-            output_schema: Contract.output_schema
-          ) do |**kwargs|
-            run.call { yield(**kwargs) }
-          end
+        def register_tools(server)
+          Tools::TOOLS.each { |tool| register_envelope_tool(server, tool) }
         end
 
-        def register_tools(server)
-          Tools.register_all(server, registrar: method(:define_envelope_tool))
+        # rubocop:disable-next Metrics/MethodLength -- listing fields stay together
+        def register_envelope_tool(server, tool)
+          invoke = ->(&block) { handle_tool_call(&block) }
+          server.define_tool(
+            name: tool.name,
+            title: tool.title,
+            description: tool.description,
+            annotations: tool.annotations,
+            input_schema: tool.input_schema,
+            output_schema: Contract.output_schema
+          ) do |**kwargs|
+            args = kwargs.dup
+            args.delete(:server_context)
+            invoke.call { tool.call.call(**args) }
+          end
         end
 
         def register_resources(server)
@@ -254,7 +259,7 @@ module Html2rss
         end
 
         def register_prompts(server) # rubocop:disable Metrics/MethodLength -- prompt argument mapping
-          to_result = method(:prompt_result)
+          to_result = ->(text) { prompt_result(text) }
           PROMPTS.each do |entry|
             arguments = entry[:arguments].map do |spec|
               ::MCP::Prompt::Argument.new(name: spec[:name], description: spec[:description],
