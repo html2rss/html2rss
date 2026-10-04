@@ -46,6 +46,14 @@ RSpec.describe Html2rss::Capture do
         expect(result.config[:directory]).to include(:topics, :title, :summary)
         expect(result.yaml).to include('# yaml-language-server')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
+        expect(result.candidates[:items].first).to include(
+          selector: 'div.item', enhance: true, sample: 'First Post Item'
+        )
+        expect(result.candidates[:title]).to include(hash_including(selector: 'h2'))
+        expect(result.candidates[:link]).to include(hash_including(selector: a_string_matching(/a/)))
+        expect(result.candidates[:items].map { |c| c[:selector] }).not_to include(
+          Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR
+        )
       end
     end
 
@@ -263,6 +271,7 @@ RSpec.describe Html2rss::Capture do
         items: { selector: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR, enhance: true }
       )
       expect(result.segment_strategy).to eq(:default)
+      expect(result.candidates).to eq(Html2rss::SelectorCandidates.empty)
       expect(Html2rss::MCP::Outcome.capture(
         yaml: result.yaml,
         articles_count: result.articles_count,
@@ -283,6 +292,7 @@ RSpec.describe Html2rss::Capture do
       result = described_class.new(url).build
       expect(result.config[:selectors]).to be_nil
       expect(result.has_selectors).to be false
+      expect(result.candidates).to eq(Html2rss::SelectorCandidates.empty)
     end
 
     it 'stamps selected_strategy into config when AutoFallback chose a concrete strategy' do
@@ -309,6 +319,10 @@ RSpec.describe Html2rss::Capture do
       expect(result.has_selectors).to be true
       expect(result.segment_strategy).to eq(:default)
       expect(result.config.dig(:selectors, :items, :selector)).to eq(Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR)
+      expect(result.candidates[:items]).to be_empty
+      expect(result.candidates[:items].map { |c| c[:selector] }).not_to include(
+        Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR
+      )
       expect(Html2rss::MCP::Outcome.capture(
         yaml: result.yaml,
         articles_count: result.articles_count,
@@ -441,7 +455,9 @@ RSpec.describe Html2rss::Capture do
       stub_outcome(response, articles:)
 
       attrs = instance_double(Html2rss::SST::Attrs, class_names: ['card'], href: nil)
-      cluster_root = instance_double(Html2rss::SST::Node, name: 'div', tag_path: '/html/body/div.card', attrs:)
+      cluster_root = instance_double(
+        Html2rss::SST::Node, name: 'div', tag_path: '/html/body/div.card', attrs:, visible_text: 'Alpha'
+      )
       link_a = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/a'))
       link_b = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/b'))
       # rubocop:disable RSpec/VerifiedDoubles -- Segment is a Struct-like collaborator without a stable class API here

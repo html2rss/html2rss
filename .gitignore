@@ -15,6 +15,7 @@ docs/
 /target/
 
 # Local/Dev environment files
+.local/
 .agents/
 .codex/
 .tool-versions
