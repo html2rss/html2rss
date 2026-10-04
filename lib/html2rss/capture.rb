@@ -25,12 +25,14 @@ module Html2rss
     CHROME_DROP_THRESHOLD = 3
     private_constant :CHROME_DROP_THRESHOLD
 
-    ##
-    # Result of a capture operation (config plus quality meta).
     CaptureResult = Data.define(
       :config, :yaml, :articles_count, :channel_title, :has_selectors, :segment_strategy,
       :admission_drops, :selected_strategy, :inferred_topics, :native_feed, :suggested_channel_url
-    ) do
+    )
+
+    ##
+    # Result of a capture operation (config plus quality meta).
+    class CaptureResult
       # rubocop:disable Metrics/ParameterLists
       ##
       # @param config [Hash]
