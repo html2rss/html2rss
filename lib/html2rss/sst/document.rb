@@ -2,9 +2,11 @@
 
 module Html2rss
   module SST
+    Document = Data.define(:root, :index, :degraded, :node_count)
+
     ##
     # Immutable SST document: root node plus relationship index.
-    Document = Data.define(:root, :index, :degraded, :node_count) do
+    class Document
       ##
       # @param root [Node]
       # @param index [Index]

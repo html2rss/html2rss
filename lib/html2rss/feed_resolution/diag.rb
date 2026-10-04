@@ -2,9 +2,11 @@
 
 module Html2rss
   module FeedResolution
+    Diag = Data.define(:applied, :probe_count, :reason, :winner_score)
+
     ##
     # Wire-safe diagnostics for one entry-resolution attempt (Status / Marshal edge).
-    Diag = Data.define(:applied, :probe_count, :reason, :winner_score) do
+    class Diag
       ##
       # @param result [Html2rss::FeedResolution::Result]
       # @return [Diag]

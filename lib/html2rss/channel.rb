@@ -2,8 +2,9 @@
 
 require 'time'
 
-# rubocop:disable Metrics/ModuleLength -- Channel value object owns extract + freeze + Marshal
 module Html2rss
+  Channel = Data.define(:title, :url, :description, :language, :ttl, :last_build_date, :image, :author)
+
   ##
   # Materialized channel metadata for feed builders and {FeedResult}.
   #
@@ -27,7 +28,7 @@ module Html2rss
   #   @return [Html2rss::Url, nil]
   # @!attribute [r] author
   #   @return [String, nil]
-  Channel = Data.define(:title, :url, :description, :language, :ttl, :last_build_date, :image, :author) do
+  class Channel # rubocop:disable Metrics/ClassLength -- Channel value object owns extract + freeze + Marshal
     class << self
       ##
       # Materializes channel attributes from an HTTP response and optional overrides.
@@ -193,5 +194,4 @@ module Html2rss
       Time.httpdate(value)
     end
   end
-  # rubocop:enable Metrics/ModuleLength
 end

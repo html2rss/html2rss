@@ -2,9 +2,11 @@
 
 module Html2rss
   module FeedResolution
+    Options = Data.define(:enabled, :max_probes)
+
     ##
     # Typed +auto_source.entry_resolution+ options (one expansion from config Hash).
-    Options = Data.define(:enabled, :max_probes) do
+    class Options
       ##
       # @param auto_source [Hash, nil]
       # @return [Options]

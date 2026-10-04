@@ -2,10 +2,12 @@
 
 module Html2rss
   module Html
+    FeedLink = Data.define(:href, :mime_type)
+
     # A native RSS/Atom hint from a document head +link[rel=alternate]+.
     #
     # Does not guess +/feed+ or +/rss.xml+ paths — that stays in configs +probe_rss+.
-    FeedLink = Data.define(:href, :mime_type) do
+    class FeedLink
       class << self
         ##
         # Collects RSS/Atom +rel=alternate+ links from +doc+'s +head+.

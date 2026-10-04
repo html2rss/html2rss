@@ -2,9 +2,14 @@
 
 module Html2rss
   class AutoSource
+    Segment = Data.define(:root_node, :primary_link, :strategy, :position)
+
     ##
     # One candidate content block discovered by {Segmenter}.
-    Segment = Data.define(:root_node, :primary_link, :strategy, :position) do
+    class Segment
+      # Allowed Segmenter strategies.
+      STRATEGIES = Set[:semantic, :list, :cluster].freeze
+
       ##
       # @param root_node [SST::Node]
       # @param primary_link [SST::Node, nil]
@@ -17,13 +22,11 @@ module Html2rss
         unless primary_link.nil? || primary_link.is_a?(SST::Node)
           raise ArgumentError, 'primary_link must be SST::Node or nil'
         end
-        raise ArgumentError, "unknown strategy: #{strategy.inspect}" unless Segment::STRATEGIES.include?(strategy)
+        raise ArgumentError, "unknown strategy: #{strategy.inspect}" unless STRATEGIES.include?(strategy)
         raise ArgumentError, 'position must be Integer' unless position.is_a?(Integer)
 
         new(root_node:, primary_link:, strategy:, position:)
       end
     end
-    # Allowed Segmenter strategies.
-    Segment::STRATEGIES = Set[:semantic, :list, :cluster].freeze
   end
 end

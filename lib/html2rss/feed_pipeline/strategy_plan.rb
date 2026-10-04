@@ -8,16 +8,20 @@ module Html2rss
     # {RequestService} executes concrete adapters only. +:auto+ is resolved here before
     # any session or adapter call — plan vs transport locality.
     class StrategyPlan
+      Auto = Data.define
+
       # Feed-level auto plan: try {AutoFallback::CHAIN} until items are extracted.
-      Auto = Data.define do
+      class Auto
         # @return [Integer]
         def request_slots
           [AutoFallback::CHAIN.size - 1, 0].max
         end
       end
 
+      Concrete = Data.define(:strategy)
+
       # Concrete transport strategy name for {RequestService}.
-      Concrete = Data.define(:strategy) do
+      class Concrete
         # @return [Integer]
         def request_slots = 0
       end

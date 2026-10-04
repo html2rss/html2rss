@@ -10,8 +10,10 @@ module Html2rss
     # Default worker threads for batch operations.
     DEFAULT_CONCURRENCY = 5
 
+    BatchResult = Data.define(:total, :successful, :results)
+
     # Value object representing the outcome of a batch operation.
-    BatchResult = Data.define(:total, :successful, :results) do
+    class BatchResult
       ##
       # @return [Hash{Symbol => Object}]
       def to_h
