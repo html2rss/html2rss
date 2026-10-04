@@ -163,4 +163,14 @@ RSpec.describe Html2rss::Config::IssueMapper do
         .to raise_error(ArgumentError, /unmapped Dry validation predicate: :never_heard_of\?/)
     end
   end
+
+  describe 'actual value provenance' do
+    it 'does not treat a non-Dry message #input as the actual value' do
+      message = double(path: %i[channel url], predicate: :key?, text: 'is missing', input: 'sneaky')
+      dry = instance_double(Dry::Validation::Result, success?: false, errors: [message])
+      values = { channel: {}, selectors: { items: { selector: '.a' } } }
+
+      expect(described_class.from(dry, values:).issues.first.actual).to be_nil
+    end
+  end
 end
