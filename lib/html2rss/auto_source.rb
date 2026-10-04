@@ -180,7 +180,7 @@ module Html2rss
             captured_responses:
           )
           next unless instance
-          next unless Scraper.extractable_instance?(instance)
+          next unless instance.extractable?
 
           matched = true
           articles.concat(run_scraper(instance))

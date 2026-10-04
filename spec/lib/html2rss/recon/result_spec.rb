@@ -8,7 +8,7 @@ RSpec.describe Html2rss::Recon::Result do
       status: 200,
       verdict: Html2rss::Recon::Verdict[:build],
       native_feed: nil,
-      surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
+      surface_category: Html2rss::SurfaceCategory[:listing],
       articles_count: 10,
       scheme_downgrade: false,
       notes: ['html_bytes=1024'],

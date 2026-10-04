@@ -15,7 +15,7 @@ module Html2rss
     class Assessment
       ##
       # @return [Html2rss::SurfaceCategory]
-      def category = SurfaceCategory.coerce(surface_category)
+      def category = SurfaceCategory[surface_category]
 
       ##
       # @return [Boolean]

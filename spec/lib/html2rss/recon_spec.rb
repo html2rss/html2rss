@@ -193,7 +193,7 @@ RSpec.describe Html2rss::Recon do
           status: 200,
           verdict: Html2rss::Recon::Verdict[:build],
           native_feed: nil,
-          surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
+          surface_category: Html2rss::SurfaceCategory[:listing],
           articles_count: 1,
           scheme_downgrade: false,
           notes: [],

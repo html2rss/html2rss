@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Html2rss
+  SurfaceCategory = Data.define(:name)
+
   ##
   # Closed surface class for no-scraper / page-assessment gates.
   #
@@ -10,27 +12,15 @@ module Html2rss
     # Surfaces that warrant listing/feed resolution (hubs / shells — not blocked).
     WEAK = Set[:high_entropy_surface, :app_shell, :unsupported_surface].freeze
 
-    class << self
-      ##
-      # @param value [SurfaceCategory, Symbol, String, nil]
-      # @return [SurfaceCategory]
-      def coerce(value)
-        return value if value.is_a?(self)
-        return new(name: nil) if value.nil?
-
-        new(name: value.to_sym)
-      end
-    end
+    # Frozen name → instance table.
+    ALL = %i[listing blocked_surface app_shell high_entropy_surface unsupported_surface]
+          .to_h { |name| [name, new(name:)] }.freeze
+    private_class_method :new
 
     ##
-    # @return [Symbol, nil]
-    attr_reader :name
-
-    ##
-    # @param name [Symbol, nil]
-    def initialize(name:)
-      @name = name
-    end
+    # @param name [Symbol, String]
+    # @return [SurfaceCategory]
+    def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown surface category: #{name.inspect}" }
 
     ##
     # @return [Boolean]
@@ -41,23 +31,15 @@ module Html2rss
     def blocked? = name == :blocked_surface
 
     ##
-    # @return [Boolean] non-weak, non-blocked surface eligible for listing bonus
-    def listing_bonus? = !name.nil? && !weak? && !blocked?
+    # @return [Boolean] listing surface eligible for listing bonus
+    def listing_bonus? = name == :listing
 
     ##
-    # @return [Symbol, nil]
+    # @return [Symbol]
     def to_sym = name
 
     ##
-    # @param other [Object]
-    # @return [Boolean]
-    def ==(other)
-      other.is_a?(self.class) && name == other.name
-    end
-    alias eql? ==
-
-    ##
-    # @return [Integer]
-    def hash = [self.class, name].hash
+    # @return [String]
+    def to_s = name.to_s
   end
 end
