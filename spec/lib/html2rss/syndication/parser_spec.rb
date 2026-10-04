@@ -73,6 +73,26 @@ RSpec.describe Html2rss::Syndication::Parser do
     it 'returns an empty array for unparseable bodies' do
       expect(described_class.parse('not xml at all <<<')).to eq([])
     end
+
+    it 'reads Atom text from content, not serialized XML', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Feed</title>
+          <entry>
+            <id>urn:example:xhtml</id>
+            <title>Entry</title>
+            <link href="https://example.com/e/xhtml" rel="alternate"/>
+            <content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">Inner</div></content>
+          </entry>
+        </feed>
+      XML
+
+      article = described_class.parse(body).first
+
+      expect(article[:description]).to eq('<div xmlns="http://www.w3.org/1999/xhtml">Inner</div>')
+      expect(article[:description]).not_to include('<content')
+    end
   end
 
   describe '.parse_response' do
