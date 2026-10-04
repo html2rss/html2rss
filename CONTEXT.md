@@ -62,7 +62,7 @@ PageRecon::Diagnostics.call(url:, strategy:) → Report
 PageRecon::Diagnostics.batch(urls:, ...) → [Report]
 Batch.batch_inspect / batch_recon / batch_scrape
 Html2rss.inspect / .apply / .scrape / .batch_scrape / .batch_inspect / .batch_recon
-Outcome::Playbook.instructions, Outcome factories typed, Contract::TITLES keys == verbs
+Outcome::Playbook.instructions, Outcome factories typed, Tool.title on MCP::Server::Tools::Tool, NextStep::ALL / Playbook::GUIDANCE keys == verbs
 ```
 
 Instruction prose SSOT: `Outcome::Playbook`. Module guide: `lib/html2rss/mcp/README.md`.
