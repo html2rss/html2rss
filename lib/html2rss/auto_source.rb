@@ -93,7 +93,7 @@ module Html2rss
         Scraper::SCRAPERS.sum do |scraper|
           if config.dig(:scraper, scraper.options_key, :enabled)
             opts = config.dig(:scraper, scraper.options_key)
-            scraper.respond_to?(:request_slots) ? scraper.request_slots(opts) : 0
+            scraper.request_slots(opts)
           else
             0
           end
@@ -180,7 +180,7 @@ module Html2rss
             captured_responses:
           )
           next unless instance
-          next unless Scraper.extractable_instance?(instance, parsed_body)
+          next unless Scraper.extractable_instance?(instance)
 
           matched = true
           articles.concat(run_scraper(instance))

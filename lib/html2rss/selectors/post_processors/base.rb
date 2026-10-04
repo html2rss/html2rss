@@ -5,9 +5,16 @@ module Html2rss
     module PostProcessors
       ##
       # All post processors must inherit from this base class and implement `#call`.
-      # Declare +VALUE_TYPE+ when the extracted value must be a fixed Ruby type;
-      # override +validate_args!+ only for semantic checks beyond that.
+      # Declare +VALUE_TYPE+ when the extracted value must be a fixed Ruby type
+      # (+nil+ when any type is accepted); override +validate_args!+ only for
+      # semantic checks beyond that. Every processor owns +OPTIONS+ (+[]+ when none).
       class Base
+        # Config-facing options contract (empty on the abstract base).
+        OPTIONS = [].freeze
+
+        # Expected Ruby class for the extracted value; +nil+ skips the type check.
+        VALUE_TYPE = nil
+
         # Asserts that the value is of the expected type(s)
         #
         # @param value [Object] the value to check
@@ -99,7 +106,7 @@ module Html2rss
 
           klass = self.class
           klass.validate_options!(context)
-          klass.assert_type(value, klass::VALUE_TYPE, :value, context:) if klass.const_defined?(:VALUE_TYPE, false)
+          klass.assert_type(value, klass::VALUE_TYPE, :value, context:) if klass::VALUE_TYPE
           klass.validate_args!(value, context)
 
           @value = value

@@ -23,6 +23,9 @@ module Html2rss
       # Always ensure to sanitize the HTML during post-processing with
       # {PostProcessors::SanitizeHtml}.
       class Html
+        # Config-facing options contract (none).
+        OPTIONS = [].freeze
+
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return the outer HTML of the selected element. ' \
                       'Sanitize during post-processing (e.g. `sanitize_html`).'

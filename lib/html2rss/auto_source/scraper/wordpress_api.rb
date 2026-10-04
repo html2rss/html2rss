@@ -56,6 +56,9 @@ module Html2rss
           @page_scope = PageScope.from(parsed_body:, url: @url)
         end
 
+        # @return [Boolean]
+        def extractable? = self.class.articles?(parsed_body)
+
         ##
         # Yields article hashes from the WordPress posts API.
         #

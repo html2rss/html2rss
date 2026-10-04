@@ -54,6 +54,9 @@ module Html2rss
           @max_age_days = opts.fetch(:max_age_days, Scraper::Sitemap::Parser::DEFAULT_MAX_AGE_DAYS)
         end
 
+        # @return [Boolean]
+        def extractable? = self.class.articles?(parsed_body)
+
         ##
         # Yields article hashes from the sitemap.
         #
