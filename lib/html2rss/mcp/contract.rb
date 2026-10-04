@@ -201,26 +201,12 @@ module Html2rss
       # Tool annotations for +validate+ (closed world).
       ANNOTATIONS_VALIDATE = ANNOTATIONS_OPEN_WORLD.merge(open_world_hint: false).freeze
 
-      # Human titles for +tools/list+.
-      TITLES = {
-        scrape: 'Scrape',
-        inspect: 'Inspect',
-        recon: 'Recon',
-        batch_scrape: 'Batch scrape',
-        batch_inspect: 'Batch inspect',
-        batch_recon: 'Batch recon',
-        capture: 'Capture',
-        validate: 'Validate',
-        apply: 'Apply',
-        test: 'Test'
-      }.freeze
-
       # @api private
       CATALOG_ENTRY_LINE = lambda do |entry|
-        schema = entry.fetch(:input_schema)
+        schema = entry.input_schema
         required = Array(schema[:required]).sort.join(',')
         one_of = Array(schema[:oneOf]).map { |branch| Array(branch[:required]).sort.join('+') }.sort.join('|')
-        [entry.fetch(:name), required, one_of].reject(&:empty?).join(':')
+        [entry.name, required, one_of].reject(&:empty?).join(':')
       end.freeze
 
       class << self
@@ -229,7 +215,7 @@ module Html2rss
         #
         # @return [Array<String>]
         def catalog_tools
-          Server::Tools::TOOLS.map { |entry| entry.fetch(:name) }.sort
+          Server::Tools::TOOLS.map(&:name).sort
         end
 
         ##
@@ -239,7 +225,7 @@ module Html2rss
         #
         # @return [String] 16-char hex digest prefix
         def catalog_fingerprint
-          lines = Server::Tools::TOOLS.sort_by { |entry| entry.fetch(:name) }.map(&CATALOG_ENTRY_LINE)
+          lines = Server::Tools::TOOLS.sort_by(&:name).map(&CATALOG_ENTRY_LINE)
           Digest::SHA256.hexdigest(lines.join("\n")).slice(0, 16)
         end
 
@@ -254,7 +240,7 @@ module Html2rss
             required: %w[ok next_step guidance payload],
             properties: {
               ok: { type: 'boolean' },
-              next_step: { type: 'string', enum: Outcome::NextStep::NAMES.map(&:to_s) },
+              next_step: { type: 'string', enum: Outcome::NextStep::ALL.keys.map(&:to_s) },
               guidance: { type: 'string' },
               payload: { type: 'object' }
             }

@@ -4,20 +4,20 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::MCP::Outcome do
   describe Html2rss::MCP::Outcome::NextStep do
-    it 'exposes the closed set of wire names' do
-      expect(described_class::NAMES.map(&:to_s)).to contain_exactly(
+    it 'exposes the closed set of wire names from Playbook guidance' do
+      expect(described_class::ALL.keys.map(&:to_s)).to contain_exactly(
         'done', 'inspect', 'recon', 'validate', 'apply',
         'scrape', 'capture', 'read_runtime', 'test'
       )
     end
 
     it 'cannot be built with an unknown name' do
-      expect { described_class.new(name: :retry_invalid) }
+      expect { described_class[:retry_invalid] }
         .to raise_error(ArgumentError, /unknown next_step/)
     end
 
-    it 'owns guidance copy on each named factory' do
-      expect(described_class.inspect.guidance).to include('inspect')
+    it 'owns guidance copy on each named instance' do
+      expect(described_class[:inspect].guidance).to include('inspect')
     end
   end
 
@@ -72,7 +72,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     describe '.recon_guidance' do
       it 'appends scheme downgrade hint' do
         result = instance_double(Html2rss::Recon::Result, scheme_downgrade: true)
-        next_step = Html2rss::MCP::Outcome::NextStep.capture
+        next_step = Html2rss::MCP::Outcome::NextStep[:capture]
 
         expect(described_class.recon_guidance(result, next_step))
           .to include('HTTPS→HTTP downgrade', next_step.guidance)
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
       it 'returns next_step guidance when scheme is not downgraded' do
         result = instance_double(Html2rss::Recon::Result, scheme_downgrade: false)
-        next_step = Html2rss::MCP::Outcome::NextStep.capture
+        next_step = Html2rss::MCP::Outcome::NextStep[:capture]
 
         expect(described_class.recon_guidance(result, next_step)).to eq(next_step.guidance)
       end

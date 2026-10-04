@@ -67,7 +67,7 @@ RSpec.describe Html2rss::MCP::Server do
         'capture', 'validate', 'test', 'apply'
       )
       expect(protocol_server.tools.keys).to match_array(
-        Html2rss::MCP::Contract::TITLES.keys.map(&:to_s)
+        Html2rss::MCP::Server::Tools::TOOLS.map(&:name)
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('default (HTTPX) → Botasaurus AutoFallback')
