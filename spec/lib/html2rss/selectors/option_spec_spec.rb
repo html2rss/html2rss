@@ -67,5 +67,9 @@ RSpec.describe Html2rss::Selectors::OptionSpec do
       expect(described_class.for(Html2rss::Selectors::Extractors::Attribute).map(&:name))
         .to include(:attribute)
     end
+
+    it 'reads empty OPTIONS from strategies that declare none' do
+      expect(described_class.for(Html2rss::Selectors::PostProcessors::ParseUri)).to eq([])
+    end
   end
 end

@@ -21,6 +21,9 @@ module Html2rss
       # Would return:
       #    'Lorem ipsum dolor ...'
       class Text
+        # Config-facing options contract (none).
+        OPTIONS = [].freeze
+
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return collapsed visible text of the selected element (default extractor).'
 

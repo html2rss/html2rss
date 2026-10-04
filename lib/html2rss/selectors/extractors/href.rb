@@ -24,6 +24,9 @@ module Html2rss
       # Would return:
       #    'http://blog-without-a-feed.example.com/posts/latest-findings'
       class Href
+        # Config-facing options contract (none).
+        OPTIONS = [].freeze
+
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Return the absolute URL from the selected element\'s `href` attribute ' \
                       '(relative hrefs are resolved against the page base URL).'

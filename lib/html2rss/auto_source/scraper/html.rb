@@ -23,6 +23,11 @@ module Html2rss
         def self.options_key = :html
 
         ##
+        # @param _opts [Hash] unused options
+        # @return [Integer]
+        def self.request_slots(_opts = {}) = 0
+
+        ##
         # @param parsed_body [Nokogiri::HTML::Document]
         # @return [Boolean]
         def self.articles?(parsed_body)

@@ -17,6 +17,11 @@ module Html2rss
         # @return [Symbol] scraper config key
         def self.options_key = :microdata
 
+        ##
+        # @param _opts [Hash] unused options
+        # @return [Integer]
+        def self.request_slots(_opts = {}) = 0
+
         class << self
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
           def articles?(parsed_body)
@@ -80,6 +85,9 @@ module Html2rss
           @parsed_body = parsed_body
           @url = url
         end
+
+        # @return [Boolean]
+        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # Iterates over normalized article hashes extracted from supported Microdata roots.

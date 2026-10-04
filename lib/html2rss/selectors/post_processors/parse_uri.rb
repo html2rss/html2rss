@@ -23,6 +23,12 @@ module Html2rss
       # Would return:
       #    'http://why-not-use-a-link.uh'
       class ParseUri < Base
+        # Expected Ruby class for the extracted value; any type is accepted.
+        VALUE_TYPE = nil
+
+        # Config-facing options contract (none).
+        OPTIONS = [].freeze
+
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Normalize a URL string; resolve relative URLs against the channel URL.'
 

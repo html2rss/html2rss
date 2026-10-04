@@ -8,7 +8,7 @@ module Html2rss
     module Scraper
       ##
       # Scrapes OpenGraph meta tags and oEmbed JSON descriptors from HTML pages.
-      class MetaOembed
+      class MetaOembed # rubocop:disable Metrics/ClassLength -- request_slots + extractable? stay on the scraper
         include Enumerable
 
         # Selector for OpenGraph meta tags.
@@ -29,6 +29,10 @@ module Html2rss
 
         # @return [Symbol] scraper config key
         def self.options_key = :meta_oembed
+
+        # @param _opts [Hash] unused options
+        # @return [Integer]
+        def self.request_slots(_opts = {}) = 0
 
         class << self
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
@@ -56,6 +60,9 @@ module Html2rss
           @url = Html2rss::Url.from_absolute(url)
           @request_session = request_session
         end
+
+        # @return [Boolean]
+        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # Yields normalized article hash extracted from OpenGraph meta tags and optional oEmbed data.

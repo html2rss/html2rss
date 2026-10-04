@@ -5,6 +5,20 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
 
   let(:value) { 'test' }
 
+  describe 'post-processor protocol' do
+    Html2rss::Selectors::PostProcessors::NAME_TO_CLASS.each_value do |klass|
+      describe klass.name do
+        it 'declares OPTIONS so OptionSpec.for can read the contract without a fallback' do
+          expect(klass::OPTIONS).to be_an(Array)
+        end
+
+        it 'declares VALUE_TYPE so Base can type-check without const_defined?' do
+          expect(klass.constants(false)).to include(:VALUE_TYPE)
+        end
+      end
+    end
+  end
+
   describe '.validate_options!' do
     let(:processor) do
       Class.new(described_class) do

@@ -51,6 +51,9 @@ module Html2rss
           @request_session = request_session
         end
 
+        # @return [Boolean]
+        def extractable? = self.class.articles?(parsed_body)
+
         ##
         # @yieldparam article [Hash{Symbol => Object}]
         # @return [Enumerator, void]

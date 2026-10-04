@@ -36,6 +36,9 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
+        # Config-facing options contract (none).
+        OPTIONS = [].freeze
+
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Convert Markdown to HTML (Kramdown) and sanitize the result. ' \
                       'Often chained after `template`.'

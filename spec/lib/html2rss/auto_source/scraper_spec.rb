@@ -37,6 +37,20 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     end
   end
 
+  describe 'scraper protocol' do
+    described_class::SCRAPERS.each do |klass|
+      describe klass.name do
+        it 'declares request_slots so AutoSource can sum follow-up budget without a fallback' do
+          expect(klass.request_slots({})).to be_an(Integer)
+        end
+
+        it 'declares extractable? so instance matching does not fall back to articles?' do
+          expect(klass.instance_methods(false)).to include(:extractable?)
+        end
+      end
+    end
+  end
+
   describe '.from(parsed_body, opts)' do
     context 'when suitable scraper is found' do
       let(:parsed_body) do

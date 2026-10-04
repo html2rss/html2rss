@@ -14,6 +14,11 @@ module Html2rss
         # @return [Symbol] scraper config key
         def self.options_key = :json_state
 
+        ##
+        # @param _opts [Hash] unused options
+        # @return [Integer]
+        def self.request_slots(_opts = {}) = 0
+
         class << self
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
           def articles?(parsed_body)
