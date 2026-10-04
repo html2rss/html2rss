@@ -16,27 +16,14 @@ module Html2rss
     ##
     # Closed curation verdict (:build / :defer / :drop).
     class Verdict
-      # Closed set of curation verdict wire names.
-      NAMES = Set[:build, :defer, :drop].freeze
-
-      class << self
-        ##
-        # @param value [Verdict, Symbol, String]
-        # @return [Verdict]
-        def coerce(value)
-          return value if value.is_a?(self)
-
-          new(name: value.to_sym)
-        end
-      end
+      # Frozen name → instance table.
+      ALL = %i[build defer drop].to_h { |name| [name, new(name:)] }.freeze
+      private_class_method :new
 
       ##
-      # @param name [Symbol]
-      def initialize(name:)
-        raise ArgumentError, "unknown verdict: #{name.inspect}" unless NAMES.include?(name)
-
-        super
-      end
+      # @param name [Symbol, String]
+      # @return [Verdict]
+      def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown verdict: #{name.inspect}" }
 
       ##
       # @return [Boolean]
@@ -204,13 +191,13 @@ module Html2rss
     private_class_method :build_notes
 
     def determine_verdict(recon, native_feed)
-      return Verdict.coerce(:drop) if recon.status.nil? || recon.status >= 400 || recon.scheme_downgrade
-      return Verdict.coerce(:defer) if native_feed
+      return Verdict[:drop] if recon.status.nil? || recon.status >= 400 || recon.scheme_downgrade
+      return Verdict[:defer] if native_feed
 
       category = SurfaceCategory.coerce(recon.surface_category)
-      return Verdict.coerce(:drop) if category.blocked?
+      return Verdict[:drop] if category.blocked?
 
-      Verdict.coerce(:build)
+      Verdict[:build]
     end
     private_class_method :determine_verdict
 
@@ -219,7 +206,7 @@ module Html2rss
         requested_url: url_obj,
         final_url: url_obj,
         status: nil,
-        verdict: Verdict.coerce(:drop),
+        verdict: Verdict[:drop],
         native_feed: nil,
         surface_category: SurfaceCategory.coerce(:unsupported_surface),
         articles_count: 0,

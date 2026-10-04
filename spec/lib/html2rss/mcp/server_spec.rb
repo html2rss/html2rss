@@ -355,7 +355,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss).to receive(:test).and_return(
           test_result(
             success: false,
-            failure_kind: Html2rss::Test::FailureKind.coerce(:quality),
+            failure_kind: Html2rss::Test::FailureKind[:quality],
             error_message: 'Feed quality check failed (duplicate_urls)',
             quality_report:
           )
@@ -385,7 +385,7 @@ RSpec.describe Html2rss::MCP::Server do
 
       it 'routes schema failure next_step to validate', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
         allow(Html2rss).to receive(:test).and_return(
-          test_result(success: false, failure_kind: Html2rss::Test::FailureKind.coerce(:schema))
+          test_result(success: false, failure_kind: Html2rss::Test::FailureKind[:schema])
         )
 
         result = call_tool.call('test', { config: { bad: true } })

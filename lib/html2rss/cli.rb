@@ -300,7 +300,7 @@ module Html2rss
     def filter_recon_results(results, verdict_filter)
       return results unless verdict_filter
 
-      expected = Recon::Verdict.coerce(verdict_filter.downcase)
+      expected = Recon::Verdict[verdict_filter.downcase]
       results.select { |r| r.verdict == expected }
     rescue ArgumentError => error
       raise Thor::Error, error.message
