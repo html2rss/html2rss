@@ -163,5 +163,45 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
         expect(item.css('description').text).to eq('<p>Paragraph</p>')
       end
     end
+
+    context 'when title and author are blank' do
+      let(:articles) do
+        [
+          Html2rss::Article.new(
+            url: 'http://example.com/1',
+            id: 1,
+            title: '  ',
+            author: '',
+            description: 'Description 1',
+            scraper: RSpec
+          )
+        ]
+      end
+      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
+
+      it 'omits those tags because Article already turns blanks into nil', :aggregate_failures do
+        expect(item.at_css('title')).to be_nil
+        expect(item.at_css('author')).to be_nil
+        expect(item.at_css('description').text).not_to be_empty
+      end
+    end
+
+    context 'when presented description is empty' do
+      let(:articles) do
+        [
+          Html2rss::Article.new(
+            url: 'http://example.com/1',
+            id: 1,
+            title: 'Title 1',
+            scraper: RSpec
+          )
+        ]
+      end
+      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
+
+      it 'omits the description tag' do
+        expect(item.at_css('description')).to be_nil
+      end
+    end
   end
 end
