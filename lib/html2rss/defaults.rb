@@ -4,13 +4,20 @@ module Html2rss
   ##
   # Global defaults for the Html2rss gem.
   class Defaults
-    # The valid symbol log levels.
-    VALID_LOG_LEVELS = Set[:debug, :info, :warn, :error, :fatal, :unknown].freeze
+    # Named Logger severities accepted by {#log_level=}.
+    LOG_LEVELS = {
+      debug: Logger::DEBUG,
+      info: Logger::INFO,
+      warn: Logger::WARN,
+      error: Logger::ERROR,
+      fatal: Logger::FATAL,
+      unknown: Logger::UNKNOWN
+    }.freeze
 
-    # @return [Object] the logger
+    # @return [Logger] the logger
     attr_reader :logger
 
-    # @return [Proc, nil] the logger formatter
+    # @return [Proc, Logger::Formatter, nil] the logger formatter
     attr_reader :logger_formatter
 
     # @return [Symbol, Integer] the current log level
@@ -46,12 +53,15 @@ module Html2rss
     ##
     # Sets the logger.
     #
-    # @param logger [Object]
-    # @return [Object] the logger
+    # @param logger [Logger]
+    # @return [Logger] the logger
+    # @raise [ArgumentError] if logger is not a Logger
     def logger=(logger)
+      raise ArgumentError, 'logger must be a Logger' unless logger.is_a?(::Logger)
+
       @logger = logger
-      @logger.level = @log_level if @logger.respond_to?(:level=)
-      @logger.formatter = @logger_formatter if @logger_formatter && @logger.respond_to?(:formatter=)
+      @logger.level = @log_level
+      @logger.formatter = @logger_formatter if @logger_formatter
     end
 
     ##
@@ -62,34 +72,39 @@ module Html2rss
     # @raise [ArgumentError] if the log level is invalid
     def log_level=(level)
       @log_level = normalize_log_level(level)
-      @logger.level = @log_level if @logger.respond_to?(:level=)
+      @logger.level = @log_level
     end
 
     ##
     # Sets the logger formatter.
     #
-    # @param formatter [Proc, #call, nil] the new logger formatter
-    # @return [Proc, #call, nil] the new logger formatter
-    # @raise [ArgumentError] if formatter does not respond to #call
+    # @param formatter [Proc, Logger::Formatter, nil] the new logger formatter
+    # @return [Proc, Logger::Formatter, nil] the new logger formatter
+    # @raise [ArgumentError] if formatter is not a Proc, Logger::Formatter, or nil
     def logger_formatter=(formatter)
-      raise ArgumentError, 'formatter must respond to #call or be nil' if formatter && !formatter.respond_to?(:call)
-
-      @logger_formatter = formatter
-      @logger.formatter = @logger_formatter if @logger.respond_to?(:formatter=)
+      @logger_formatter = case formatter
+                          when nil, Proc, Logger::Formatter
+                            formatter
+                          else
+                            raise ArgumentError, 'formatter must be a Proc, Logger::Formatter, or nil'
+                          end
+      @logger.formatter = @logger_formatter
     end
 
     ##
     # Sets the global request headers.
     #
-    # @param headers [Hash, Proc, #call, nil] the HTTP request headers to globally apply
-    # @return [Hash, Proc, #call, nil] the assigned headers
-    # @raise [ArgumentError] if headers is not a Hash or callable
+    # @param headers [Hash, Proc, nil] the HTTP request headers to globally apply
+    # @return [Hash, Proc, nil] the assigned headers
+    # @raise [ArgumentError] if headers is not a Hash, Proc, or nil
     def headers=(headers)
-      if headers && !headers.is_a?(Hash) && !headers.respond_to?(:call)
-        raise ArgumentError, 'headers must be a Hash or respond to #call'
-      end
-
-      @headers = headers.is_a?(Hash) ? headers.dup.freeze : headers
+      @headers = case headers
+                 when nil then nil
+                 when Hash then headers.dup.freeze
+                 when Proc then headers
+                 else
+                   raise ArgumentError, 'headers must be a Hash or Proc'
+                 end
     end
 
     ##
@@ -164,14 +179,11 @@ module Html2rss
 
     def normalize_log_level(level)
       if level.is_a?(Integer)
-        raise ArgumentError, "invalid log level: #{level}" unless level.between?(0, 5)
+        raise ArgumentError, "invalid log level: #{level}" unless LOG_LEVELS.value?(level)
 
         level
       else
-        sym = level.to_s.downcase.to_sym
-        raise ArgumentError, "invalid log level: #{level}" unless VALID_LOG_LEVELS.include?(sym)
-
-        Logger.const_get(sym.upcase)
+        LOG_LEVELS.fetch(level.to_s.downcase.to_sym) { raise ArgumentError, "invalid log level: #{level}" }
       end
     end
   end

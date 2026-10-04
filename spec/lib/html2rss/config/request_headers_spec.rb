@@ -23,6 +23,20 @@ RSpec.describe Html2rss::Config::RequestHeaders do
     it 'does not include a connection-specific header' do
       expect(described_class.browser_defaults).not_to have_key('Connection')
     end
+
+    it 'merges Hash global headers into the browser defaults' do
+      Html2rss.configure { |config| config.headers = { 'x-from-hash' => 'yes' } }
+      expect(described_class.browser_defaults['X-From-Hash']).to eq('yes')
+    ensure
+      Html2rss.reset_defaults!
+    end
+
+    it 'calls Proc global headers and merges the Hash result' do
+      Html2rss.configure { |config| config.headers = -> { { 'x-from-proc' => 'yes' } } }
+      expect(described_class.browser_defaults['X-From-Proc']).to eq('yes')
+    ensure
+      Html2rss.reset_defaults!
+    end
   end
 
   describe '#to_h' do
