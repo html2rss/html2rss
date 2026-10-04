@@ -34,15 +34,12 @@ module Html2rss
         private
 
         def add_item_string_values(article, item_maker)
-          assign_text(item_maker, :title=, article.title)
-          assign_text(item_maker, :description=, ItemPresentation.description_for(article))
-          assign_text(item_maker, :author=, article.author)
+          item_maker.title = article.title
+          item_maker.author = article.author
+          description = ItemPresentation.description_for(article)
+          item_maker.description = description if description && !description.empty?
           item_maker.link = article.url.to_s if article.url
           item_maker.pubDate = article.published_at&.rfc2822
-        end
-
-        def assign_text(item_maker, setter, value)
-          item_maker.public_send(setter, value) if value && !value.empty?
         end
 
         def add_item_categories(article, item_maker)
@@ -93,12 +90,13 @@ module Html2rss
         @stylesheets.map { |style| Stylesheet.new(**style) }
       end
 
-      # rubocop:disable-next Metrics/AbcSize
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
       def make_channel(maker)
         channel_maker = maker.channel
-        %i[language title description ttl].each do |key|
-          channel_maker.public_send(:"#{key}=", channel.public_send(key))
-        end
+        channel_maker.language = channel.language
+        channel_maker.title = channel.title
+        channel_maker.description = channel.description
+        channel_maker.ttl = channel.ttl
 
         channel_maker.managingEditor = channel.author if channel.author
         channel_maker.author = channel.author if channel.author
