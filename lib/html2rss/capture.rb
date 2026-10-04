@@ -368,7 +368,6 @@ module Html2rss
 
     def wrapping_anchor_root?(node)
       return false unless node.name.to_s == 'a'
-      return false unless node.respond_to?(:find)
 
       tags = Html::Navigator::WRAPPING_ANCHOR_CHILD_TAGS
       node.find { |child| !child.equal?(node) && tags.include?(child.name.to_s) }

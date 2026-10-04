@@ -72,7 +72,7 @@ module Html2rss
         # @return [Boolean]
         def usable_card_parent?(node)
           return false unless node
-          return false if node.respond_to?(:document?) && node.document?
+          return false if node.is_a?(Nokogiri::XML::Document)
 
           !CARD_WALK_STOP_TAGS.include?(Probe.tag(node))
         end
@@ -88,8 +88,7 @@ module Html2rss
           while current_tag
             found = current_tag.at_css(selector)
             return found if found
-
-            return nil unless current_tag.respond_to?(:parent)
+            break if current_tag.is_a?(Nokogiri::XML::Document)
 
             current_tag = current_tag.parent
           end
@@ -115,11 +114,12 @@ module Html2rss
         # @param parent_node [Nokogiri::XML::Node] potential ancestor
         # @return [Boolean] true when child_node is a descendant of parent_node
         def descendant_of?(child_node, parent_node)
-          curr = child_node.respond_to?(:parent) ? child_node.parent : nil
+          curr = child_node.is_a?(Nokogiri::XML::Document) ? nil : child_node.parent
           while curr
             return true if curr == parent_node
+            break if curr.is_a?(Nokogiri::XML::Document)
 
-            curr = curr.respond_to?(:parent) ? curr.parent : nil
+            curr = curr.parent
           end
           false
         end

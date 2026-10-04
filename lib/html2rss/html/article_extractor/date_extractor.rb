@@ -10,7 +10,7 @@ module Html2rss
         # @param time_zone [String] channel time zone for naive values
         # @return [DateTime, nil]
         def self.call(article_tag, leftover_lines: [], time_zone: 'UTC')
-          datetimes = article_tag.respond_to?(:css) ? article_tag.css('[datetime]').map { |tag| tag['datetime'] } : []
+          datetimes = article_tag.css('[datetime]').map { |tag| tag['datetime'] }
           ArticleRules::Date.earliest(datetimes, leftover_lines:, time_zone:)
         end
       end

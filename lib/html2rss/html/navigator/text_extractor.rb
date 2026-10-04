@@ -19,7 +19,7 @@ module Html2rss
           # @param exclude_nodes [Array<Nokogiri::XML::Node>, nil] nodes to exclude from extraction
           # @return [String, nil] the concatenated visible text, or nil if none is found
           def call(tag, separator: ' ', exclude_nodes: nil)
-            return tag.text.gsub(/\s+/, ' ').strip if tag.respond_to?(:text?) && tag.text?
+            return tag.text.gsub(/\s+/, ' ').strip if tag.is_a?(Nokogiri::XML::Text)
 
             parts = iterate_children(tag, separator, exclude_nodes)
             return if parts.empty?
