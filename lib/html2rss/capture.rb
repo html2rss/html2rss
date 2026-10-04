@@ -290,7 +290,8 @@ module Html2rss
       return [*default_selectors, candidates] unless top
 
       strategy = evidence.find { |entry| entry[:selector] == top[:selector] }&.fetch(:strategy)
-      [{ items: top }, strategy, candidates]
+      items = { selector: top[:selector], enhance: top[:enhance] }
+      [{ items: }, strategy, candidates]
     end
 
     def collect_items_evidence(sst, articles)

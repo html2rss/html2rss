@@ -46,7 +46,9 @@ RSpec.describe Html2rss::Capture do
         expect(result.config[:directory]).to include(:topics, :title, :summary)
         expect(result.yaml).to include('# yaml-language-server')
         expect(result.channel_title).to eq(result.config.dig(:channel, :title))
-        expect(result.candidates[:items].first).to eq(selector: 'div.item', enhance: true)
+        expect(result.candidates[:items].first).to include(
+          selector: 'div.item', enhance: true, sample: 'First Post Item'
+        )
         expect(result.candidates[:title]).to include(hash_including(selector: 'h2'))
         expect(result.candidates[:link]).to include(hash_including(selector: a_string_matching(/a/)))
         expect(result.candidates[:items].map { |c| c[:selector] }).not_to include(
@@ -453,7 +455,9 @@ RSpec.describe Html2rss::Capture do
       stub_outcome(response, articles:)
 
       attrs = instance_double(Html2rss::SST::Attrs, class_names: ['card'], href: nil)
-      cluster_root = instance_double(Html2rss::SST::Node, name: 'div', tag_path: '/html/body/div.card', attrs:)
+      cluster_root = instance_double(
+        Html2rss::SST::Node, name: 'div', tag_path: '/html/body/div.card', attrs:, visible_text: 'Alpha'
+      )
       link_a = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/a'))
       link_b = instance_double(Html2rss::SST::Node, attrs: instance_double(Html2rss::SST::Attrs, href: '/b'))
       # rubocop:disable RSpec/VerifiedDoubles -- Segment is a Struct-like collaborator without a stable class API here
