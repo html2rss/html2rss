@@ -2,8 +2,6 @@
 
 module Html2rss
   class CLI
-    ##
-    # Display-only probe facts for inspect and recon text cards.
     ProbeView = Data.define(
       :requested,
       :final,
@@ -15,7 +13,11 @@ module Html2rss
       :alternate_feeds,
       :notes,
       :strategy
-    ) do
+    )
+
+    ##
+    # Display-only probe facts for inspect and recon text cards.
+    class ProbeView
       class << self
         ##
         # @param data [Hash] inspect wire payload

@@ -98,6 +98,7 @@ Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strateg
 - Raise meaningful errors; never fail silently.
 - Document every public method with YARD tags (`@param`, `@return`).
 - Prefer direct, skimmable code over metric-driven indirection. Do not introduce tiny helper methods whose main purpose is to satisfy RuboCop metrics.
+- No metaprogramming or reflection in `lib/`, enforced by `Html2rss/NoMetaprogramming`. Never disable it inline; fix the type instead. Use the closed-set enum pattern (`ALL`, `private_class_method :new`, `self.[]`) and the Data-block pattern (`X = Data.define(...)` then `class X ... end`).
 
 ## Testing Standards
 

@@ -2,8 +2,6 @@
 
 module Html2rss
   module Scoring
-    ##
-    # Typed container signals produced by {ContainerAssessor} for {Engine} rules.
     Observation = Data.define(
       :title_word_count,
       :path_length,
@@ -21,7 +19,11 @@ module Html2rss
       :high_confidence_junk_path,
       :high_confidence_utility_destination,
       :selected_anchor_present
-    ) do
+    )
+
+    ##
+    # Typed container signals produced by {ContainerAssessor} for {Engine} rules.
+    class Observation
       ##
       # @return [Boolean] true when fewer than two positive content signals are present
       def weak_signals?

@@ -175,6 +175,17 @@ module Html2rss
 
           ##
           # @api private
+          # @param url [String]
+          # @param strategy [String, Symbol]
+          # @param items_selector [String, nil]
+          # @param force [Boolean]
+          # @param topics [Array<String>, nil]
+          # @param title [String, nil]
+          # @param summary [String, nil]
+          # @param enhance [Boolean, nil]
+          # @param limit [Integer, nil]
+          # @param max_redirects [Integer, nil]
+          # @param max_requests [Integer, nil]
           # @return [Outcome]
           def capture_outcome(url:, strategy: 'auto', items_selector: nil, force: false, topics: nil, title: nil, # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
                               summary: nil, enhance: nil, limit: nil, max_redirects: nil, max_requests: nil)

@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
-module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + marshal stay co-located
+module Html2rss
+  Status = Data.define(
+    :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count,
+    :strategy_attempts, :admission_drops, :entry_url, :scrape_url, :entry_resolution
+  )
+
   ##
   # Shared RSS +generator+ / JSON Feed +user_comment+ formatter string.
   #
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
-  Status = Data.define(
-    :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count,
-    :strategy_attempts, :admission_drops, :entry_url, :scrape_url, :entry_resolution
-  ) do
+  class Status
     class << self
       ##
       # Builds status from extracted articles and scrape telemetry.

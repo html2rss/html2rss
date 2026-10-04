@@ -46,8 +46,6 @@ module Html2rss
       def to_s = name.to_s
     end
 
-    ##
-    # Immutable outcome of a reconnaissance operation.
     Result = Data.define(
       :requested_url,
       :final_url,
@@ -59,7 +57,11 @@ module Html2rss
       :scheme_downgrade,
       :notes,
       :html_bytesize
-    ) do
+    )
+
+    ##
+    # Immutable outcome of a reconnaissance operation.
+    class Result
       ##
       # @return [Boolean]
       def build? = verdict.build?
