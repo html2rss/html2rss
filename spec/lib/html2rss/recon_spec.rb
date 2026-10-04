@@ -58,7 +58,7 @@ RSpec.describe Html2rss::Recon do
       result = described_class.call(url)
       expect(result).to be_a(Html2rss::Recon::Result)
       expect(result.defer?).to be(true)
-      expect(result.verdict).to eq(Html2rss::Recon::Verdict.coerce(:defer))
+      expect(result.verdict).to eq(Html2rss::Recon::Verdict[:defer])
       expect(Html2rss::PageRecon).to have_received(:probe).with(
         kind_of(Html2rss::Url), hash_including(strategy: :auto)
       )
@@ -191,7 +191,7 @@ RSpec.describe Html2rss::Recon do
           requested_url: Html2rss::Url.from_absolute(target_url),
           final_url: Html2rss::Url.from_absolute(target_url),
           status: 200,
-          verdict: Html2rss::Recon::Verdict.coerce(:build),
+          verdict: Html2rss::Recon::Verdict[:build],
           native_feed: nil,
           surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
           articles_count: 1,

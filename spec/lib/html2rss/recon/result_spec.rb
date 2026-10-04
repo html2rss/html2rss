@@ -6,7 +6,7 @@ RSpec.describe Html2rss::Recon::Result do
       requested_url: Html2rss::Url.from_absolute('https://example.com/blog'),
       final_url: Html2rss::Url.from_absolute('https://example.com/blog/'),
       status: 200,
-      verdict: Html2rss::Recon::Verdict.coerce(:build),
+      verdict: Html2rss::Recon::Verdict[:build],
       native_feed: nil,
       surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
       articles_count: 10,

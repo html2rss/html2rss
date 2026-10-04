@@ -7,31 +7,19 @@ module Html2rss
   module Test # rubocop:disable Metrics/ModuleLength -- Result + FailureKind nest with owner
     module_function
 
+    FailureKind = Data.define(:name)
+
     ##
     # Closed failure classification for a failed test run.
-    FailureKind = Data.define(:name) do
-      # Closed set of test failure wire names.
-      # rubocop:disable-next Lint/ConstantDefinitionInBlock -- Data.define type constant
-      NAMES = Set[:schema, :execution, :min_items, :quality].freeze
-
-      class << self
-        ##
-        # @param value [FailureKind, Symbol, String]
-        # @return [FailureKind]
-        def coerce(value)
-          return value if value.is_a?(self)
-
-          new(name: value.to_sym)
-        end
-      end
+    class FailureKind
+      # Frozen name → instance table.
+      ALL = %i[schema execution min_items quality].to_h { |name| [name, new(name:)] }.freeze
+      private_class_method :new
 
       ##
-      # @param name [Symbol]
-      def initialize(name:)
-        raise ArgumentError, "unknown failure kind: #{name.inspect}" unless NAMES.include?(name)
-
-        super
-      end
+      # @param name [Symbol, String]
+      # @return [FailureKind]
+      def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown failure kind: #{name.inspect}" }
 
       ##
       # @return [Boolean]
@@ -58,19 +46,11 @@ module Html2rss
       def to_s = name.to_s
     end
 
+    QualityReport = Data.define(:warnings, :metrics, :native_feed, :defer_reason)
+
     ##
     # Ship-quality audit summary for a configuration test (warn-only).
-    QualityReport = Data.define(:warnings, :metrics, :native_feed, :defer_reason) do
-      ##
-      # @return [Hash{Symbol => Object}]
-      def to_h
-        {
-          warnings: warnings.map(&:to_s),
-          metrics:,
-          **(native_feed ? { native_feed:, defer_reason: defer_reason.to_s } : {})
-        }.compact
-      end
-
+    class QualityReport
       ##
       # @param audit [Html2rss::AutoSource::Cleanup::AuditResult]
       # @param native_feed [String, nil]
@@ -84,11 +64,18 @@ module Html2rss
         end
         new(warnings: report_warnings.freeze, metrics: audit.metrics, native_feed:, defer_reason:)
       end
+
+      ##
+      # @return [Hash{Symbol => Object}]
+      def to_h
+        {
+          warnings: warnings.map(&:to_s),
+          metrics:,
+          **(native_feed ? { native_feed:, defer_reason: defer_reason.to_s } : {})
+        }.compact
+      end
     end
 
-    ##
-    # Immutable outcome of a configuration test. Success carries +rss+ XML from the
-    # first live extraction; failures carry a typed {FailureKind}.
     Result = Data.define(
       :success,
       :item_count,
@@ -103,7 +90,12 @@ module Html2rss
       :rss,
       :quality_report,
       :enhance_compare
-    ) do
+    )
+
+    ##
+    # Immutable outcome of a configuration test. Success carries +rss+ XML from the
+    # first live extraction; failures carry a typed {FailureKind}.
+    class Result
       ##
       # @param success [Boolean]
       # @param item_count [Integer]
@@ -238,14 +230,24 @@ module Html2rss
 
     def extract_samples(items, limit: 3)
       items.first(limit).map do |item|
+        article = feed_item_as_article(item)
         {
-          title: item.title.to_s.strip,
-          url: (item.respond_to?(:link) ? item.link : item.url).to_s,
-          published_at: (item.respond_to?(:pubDate) ? item.pubDate : item.published_at)
+          title: article.title.to_s.strip,
+          url: article.url.to_s,
+          published_at: article.published_at
         }
       end
     end
     private_class_method :extract_samples
+
+    def feed_item_as_article(item)
+      case item
+      when Article then item
+      else
+        Article.new(title: item.title, url: item.link, published_at: item.pubDate)
+      end
+    end
+    private_class_method :feed_item_as_article
 
     ##
     # Builds a ship-quality report for RSS items (shared by test and MCP apply).
@@ -378,7 +380,7 @@ module Html2rss
         duration_seconds: 0.0,
         validation_issues: report.issues,
         error_message: 'Configuration schema validation failed',
-        failure_kind: FailureKind.coerce(:schema),
+        failure_kind: FailureKind[:schema],
         rss: nil,
         quality_report: nil
       )
@@ -396,7 +398,7 @@ module Html2rss
         duration_seconds: duration.round(3),
         validation_issues: nil,
         error_message: "#{error.class}: #{error.message}",
-        failure_kind: FailureKind.coerce(:execution),
+        failure_kind: FailureKind[:execution],
         rss: nil,
         quality_report: nil
       )

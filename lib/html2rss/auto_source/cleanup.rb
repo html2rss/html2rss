@@ -97,13 +97,14 @@ module Html2rss
           JUNK_TITLE_RULES.find { |_, pattern| pattern.match?(normalized) }&.first
         end
 
-        # @param items [Array] RSS or article-like objects with title and link/url
+        # @param items [Array<Html2rss::Article, RSS::Rss::Channel::Item>]
         # @return [AuditResult]
         def audit_feed_items(items)
-          metrics = initial_audit_metrics(items.size)
+          articles = items.map { |item| feed_item_as_article(item) }
+          metrics = initial_audit_metrics(articles.size)
           violations = Hash.new(0)
-          warnings = audit_url_diversity(items, metrics, violations)
-          audit_item_titles(items, metrics, violations)
+          warnings = audit_url_diversity(articles, metrics, violations)
+          audit_item_titles(articles, metrics, violations)
           warnings = finalize_audit_warnings(warnings, metrics)
           log_audit(metrics, warnings, violations)
           AuditResult.new(warnings:, metrics: metrics.freeze, violations: violations.freeze)
@@ -256,8 +257,16 @@ module Html2rss
           url&.without_fragment&.to_s
         end
 
+        def feed_item_as_article(item)
+          case item
+          when Article then item
+          else
+            Article.new(title: item.title, url: item.link)
+          end
+        end
+
         def item_url(item)
-          raw = item.respond_to?(:link) ? item.link : item.url
+          raw = item.url
           raw.nil? || raw.to_s.empty? ? nil : Html2rss::Url.from_absolute(raw.to_s)
         rescue ArgumentError
           nil

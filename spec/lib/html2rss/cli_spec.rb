@@ -108,7 +108,7 @@ RSpec.describe Html2rss::CLI do
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 200,
-        verdict: Html2rss::Recon::Verdict.coerce(:build),
+        verdict: Html2rss::Recon::Verdict[:build],
         native_feed: nil,
         surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
         articles_count: 5,
@@ -131,7 +131,7 @@ RSpec.describe Html2rss::CLI do
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 200,
-        verdict: Html2rss::Recon::Verdict.coerce(:defer),
+        verdict: Html2rss::Recon::Verdict[:defer],
         native_feed: 'https://example.com/feed.xml',
         surface_category: Html2rss::SurfaceCategory.coerce(:article_list),
         articles_count: 5,
@@ -150,7 +150,7 @@ RSpec.describe Html2rss::CLI do
         requested_url: Html2rss::Url.from_absolute('https://example.com/news'),
         final_url: Html2rss::Url.from_absolute('https://example.com/news'),
         status: 404,
-        verdict: Html2rss::Recon::Verdict.coerce(:drop),
+        verdict: Html2rss::Recon::Verdict[:drop],
         native_feed: nil,
         surface_category: Html2rss::SurfaceCategory.coerce(:unsupported_surface),
         articles_count: 0,
@@ -349,7 +349,7 @@ RSpec.describe Html2rss::CLI do
           Html2rss::Config::ValidationIssue.new(path: %i[channel url], code: :missing_key, message: 'is missing')
         ],
         error_message: 'Configuration schema validation failed',
-        failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
+        failure_kind: Html2rss::Test::FailureKind[:schema],
         rss: nil
       )
     end

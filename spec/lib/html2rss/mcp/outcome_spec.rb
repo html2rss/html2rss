@@ -244,7 +244,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'points at validate on schema failure' do # rubocop:disable RSpec/ExampleLength
       result = test_result(
-        failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
+        failure_kind: Html2rss::Test::FailureKind[:schema],
         validation_issues: [
           Html2rss::Config::ValidationIssue.new(path: %i[channel], code: :missing_key, message: 'missing')
         ],
@@ -254,17 +254,17 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'points at capture on execution failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:execution))
+      result = test_result(failure_kind: Html2rss::Test::FailureKind[:execution])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
 
     it 'points at capture on min_items failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:min_items))
+      result = test_result(failure_kind: Html2rss::Test::FailureKind[:min_items])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
 
     it 'points at capture on quality failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:quality))
+      result = test_result(failure_kind: Html2rss::Test::FailureKind[:quality])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
   end
