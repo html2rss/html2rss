@@ -19,9 +19,6 @@ module Html2rss
             ReviewNewsArticle SatiricalArticle ScholarlyArticle SocialMediaPosting TechArticle
           ].to_set.freeze
 
-          # Attributes exposed by `#call` in generated article hashes.
-          DEFAULT_ATTRIBUTES = %i[id title description author url image published_at categories].freeze
-
           # @param schema_object [Hash{Symbol => Object}] parsed schema.org object
           # @param url [String, Html2rss::Url, nil] base URL used for relative normalization
           def initialize(schema_object, url:)
@@ -29,8 +26,10 @@ module Html2rss
             @base_url = normalized_base_url(url)
           end
 
-          # @return [Hash] the scraped article hash with DEFAULT_ATTRIBUTES
-          def call = DEFAULT_ATTRIBUTES.to_h { [_1, public_send(_1)] }
+          # @return [Hash{Symbol => Object}] scraped article attributes
+          def call
+            { id:, title:, description:, author:, url:, image:, published_at:, categories: }
+          end
 
           # @return [String, nil] stable schema object identifier
           def id

@@ -5,19 +5,11 @@ require 'zlib'
 module Html2rss
   ##
   # Article is a simple data object representing an article extracted from a page.
-  # It is enumerable and responds to all keys specified in PROVIDED_KEYS.
   #
   # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
-  # rubocop:disable-next Metrics/ClassLength -- value object retains Marshal + defensive freeze helpers
   class Article
-    include Enumerable
-    include Comparable
-
     # Allowed article attributes accepted by the value object constructor.
     PROVIDED_KEYS = %i[id title description url image author guid published_at enclosures categories scraper].freeze
-    # Fast set lookup for valid article attribute keys.
-    PROVIDED_KEYS_SET = Set[*PROVIDED_KEYS].freeze
-    private_constant :PROVIDED_KEYS_SET
     # Separator used to build deterministic deduplication fingerprints.
     DEDUP_FINGERPRINT_SEPARATOR = '#!/'
     # Sentinel object used to pre-initialize instance variables in the constructor.
@@ -26,41 +18,30 @@ module Html2rss
     # when attributes are lazily/conditionally accessed in different sequences.
     NOT_SET = Object.new.freeze
 
-    # @param options [Hash{Symbol => String}]
-    # @option options [String] :id stable article identifier
-    # @option options [String] :title article title
-    # @option options [String] :description raw extracted description/content (not feed-rendered HTML)
-    # @option options [String, Html2rss::Url] :url canonical article URL
-    # @option options [String, Html2rss::Url] :image image URL for description / JSON Feed +image+
-    # @option options [String] :author author name
-    # @option options [String] :guid explicit GUID override
-    # @option options [String, Time, DateTime] :published_at publication timestamp
-    # @option options [Array<Hash{Symbol => Object}>] :enclosures enclosure attribute hashes
-    # @option options [Array<String>] :categories category labels
-    # @option options [Class] :scraper scraper class that produced the article
-    def initialize(**options)
-      @to_h = options.transform_values { freeze_option(_1) }.freeze
+    # @param id [String, nil] stable article identifier
+    # @param title [String, nil] article title
+    # @param description [String, nil] raw extracted description/content (not feed-rendered HTML)
+    # @param url [String, Html2rss::Url, nil] canonical article URL
+    # @param image [String, Html2rss::Url, nil] image URL for description / JSON Feed +image+
+    # @param author [String, nil] author name
+    # @param guid [String, Array, nil] explicit GUID override
+    # @param published_at [String, Time, DateTime, nil] publication timestamp
+    # @param enclosures [Array<Hash{Symbol => Object}>, nil] enclosure attribute hashes
+    # @param categories [Array<String>, nil] category labels
+    # @param scraper [Class, nil] scraper class that produced the article
+    # rubocop:disable-next Metrics/ParameterLists -- eleven article keys stay explicit
+    def initialize(id: nil, title: nil, description: nil, url: nil, image: nil, author: nil, guid: nil,
+                   published_at: nil, enclosures: nil, categories: nil, scraper: nil)
+      @to_h = { id:, title:, description:, url:, image:, author:, guid:, published_at:, enclosures:, categories:,
+                scraper: }.compact.transform_values { freeze_option(_1) }.freeze
 
       @url = @image = @guid = @enclosures = @categories = @published_at = NOT_SET
-
-      return unless options.each_key.any? { !PROVIDED_KEYS_SET.include?(_1) }
-
-      unknown_keys = options.keys - PROVIDED_KEYS
-      Log.warn "Article: unknown keys found: #{unknown_keys.join(', ')}"
     end
 
     # Checks if the article is valid based on the presence of URL, ID, and either title or description.
     # @return [Boolean] True if the article is valid, otherwise false.
     def valid?
       !url.to_s.empty? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
-    end
-
-    # @yield [key, value]
-    # @return [Enumerator] if no block is given
-    def each
-      return enum_for(:each) unless block_given?
-
-      PROVIDED_KEYS.each { |key| yield(key, public_send(key)) }
     end
 
     # @return [String, nil] stable article identifier
@@ -141,14 +122,6 @@ module Html2rss
     # @return [Class, nil] scraper class that produced this article
     def scraper
       @to_h[:scraper]
-    end
-
-    # @param other [Object] value compared against this article
-    # @return [Integer, nil] comparison result for compatible Article values
-    def <=>(other)
-      return nil unless other.is_a?(Article)
-
-      0 if other.all? { |key, value| value == public_send(key) ? public_send(key) <=> value : false }
     end
 
     private

@@ -12,15 +12,13 @@ RSpec.describe Html2rss::Article do
       expect(instance.description).to eq(options[:description])
     end
 
-    context 'when unknown options are present' do
-      let(:options) { { title: 'Sample instance', url: 'http://example.com', description: 'By John Doe', unknown_key: 'value' } }
+    it 'accepts every key in PROVIDED_KEYS' do
+      attrs = described_class::PROVIDED_KEYS.to_h { |key| [key, key == :enclosures ? [] : 'x'] }
+      expect { described_class.new(**attrs) }.not_to raise_error
+    end
 
-      before { allow(Html2rss::Log).to receive(:warn) }
-
-      it 'logs a warning' do
-        described_class.new(**options)
-        expect(Html2rss::Log).to have_received(:warn).with('Article: unknown keys found: unknown_key')
-      end
+    it 'rejects unknown keys' do
+      expect { described_class.new(title: 'Sample', unknown_key: 'value') }.to raise_error(ArgumentError)
     end
   end
 
@@ -55,26 +53,6 @@ RSpec.describe Html2rss::Article do
 
       expect(article.categories).to eq(['News'])
       expect { article.categories << 'More' }.to raise_error(FrozenError)
-    end
-  end
-
-  describe '#each' do
-    let(:yields) do
-      described_class::PROVIDED_KEYS.map do |key|
-        [key, instance.public_send(key)]
-      end
-    end
-
-    it 'yields each PROVIDED_KEY with their values' do
-      expect { |b| instance.each(&b) }.to yield_successive_args(*yields)
-    end
-
-    it 'returns an Enumerator if no block is given' do
-      expect(instance.each).to be_an(Enumerator)
-    end
-
-    it 'returns frozen values' do
-      instance.each { |value| expect(value).to be_frozen } # rubocop:disable RSpec/IteratedExpectation
     end
   end
 
