@@ -391,7 +391,7 @@ module Html2rss
     end
 
     def extract_nodes(item:, config:)
-      return unless config.respond_to?(:[]) && config[:selector]
+      return unless config.is_a?(Hash) && config[:selector]
 
       Extractors.element(item, config[:selector])
     end
@@ -411,7 +411,7 @@ module Html2rss
     end
 
     def anchor_element?(item)
-      item.respond_to?(:name) && item.name.to_s.casecmp('a').zero?
+      item.name.to_s.casecmp('a').zero?
     end
 
     def default_item_url(item, base_url = @url)

@@ -114,23 +114,19 @@ module Html2rss
       def resolve_root_nk
         parsed = @parsed_body
 
-        if parsed.respond_to?(:at_css)
-          html = parsed.at_css('html')
-          return html if html
+        html = parsed.at_css('html')
+        return html if html
 
-          body = parsed.at_css('body')
-          if body
-            Html2rss::Log.warn('sst.normalizer root fallback: body')
-            return body
-          end
+        body = parsed.at_css('body')
+        if body
+          Html2rss::Log.warn('sst.normalizer root fallback: body')
+          return body
         end
 
-        if parsed.respond_to?(:element_children)
-          first = parsed.element_children.find { |child| element_root?(child) }
-          if first
-            Html2rss::Log.warn('sst.normalizer root fallback: first element child')
-            return first
-          end
+        first = parsed.element_children.find { |child| element_root?(child) }
+        if first
+          Html2rss::Log.warn('sst.normalizer root fallback: first element child')
+          return first
         end
 
         Html2rss::Log.warn('sst.normalizer root fallback: self')
@@ -143,7 +139,6 @@ module Html2rss
 
       # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def normalize_element(nk_node, parent:, depth:, path:, chrome:)
-        return unless nk_node.respond_to?(:name)
         return unless nk_node.element?
 
         tag = Html2rss::Html::Probe.tag(nk_node)

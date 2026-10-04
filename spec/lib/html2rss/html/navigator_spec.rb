@@ -13,6 +13,12 @@ RSpec.describe Html2rss::Html::Navigator do
     it 'returns the visible text from the tag and its children' do
       expect(visible_text).to eq('Hello World')
     end
+
+    it 'collapses whitespace on a text node' do
+      text_node = Nokogiri::HTML.fragment('  Hello   World  ').children.first
+
+      expect(described_class.extract_visible_text(text_node)).to eq('Hello World')
+    end
   end
 
   describe '.main_anchor_for' do
@@ -78,6 +84,7 @@ RSpec.describe Html2rss::Html::Navigator do
       expect(described_class.usable_card_parent?(document.at_css('div'))).to be(true)
       expect(described_class.usable_card_parent?(document.at_css('nav'))).to be(false)
       expect(described_class.usable_card_parent?(document.at_css('body'))).to be(false)
+      expect(described_class.usable_card_parent?(document)).to be(false)
     end
 
     it 'treats uppercase NAV as a card-walk stop' do
@@ -121,6 +128,10 @@ RSpec.describe Html2rss::Html::Navigator do
         anchor = described_class.find_closest_selector_upwards(current_tag, 'a')
         expect(anchor).to eq(expected_anchor)
       end
+    end
+
+    it 'returns nil after walking to the document' do
+      expect(described_class.find_closest_selector_upwards(document.at_css('div'), 'footer')).to be_nil
     end
   end
 
