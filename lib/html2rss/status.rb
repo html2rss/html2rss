@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
-module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + marshal stay co-located
+module Html2rss
+  Status = Data.define(
+    :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count,
+    :strategy_attempts, :admission_drops, :entry_url, :scrape_url, :entry_resolution
+  )
+
   ##
   # Shared RSS +generator+ / JSON Feed +user_comment+ formatter string.
   #
   # Exposed publicly via {FeedResult#status}. Safe to log without reading articles.
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
-  Status = Data.define(
-    :version, :scraper_tallies, :dedup_dropped, :selected_strategy, :attempt_count,
-    :strategy_attempts, :admission_drops, :entry_url, :scrape_url, :entry_resolution
-  ) do
+  class Status
     class << self
       ##
       # Builds status from extracted articles and scrape telemetry.
@@ -63,7 +65,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
     # @param admission_drops [Hash{String => Integer}]
     # @param entry_url [String, nil]
     # @param scrape_url [String, nil]
-    # @param entry_resolution [Hash, nil]
+    # @param entry_resolution [Html2rss::FeedResolution::Diag, Hash, nil]
     # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- Status Data.define members
     def initialize(
       version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
@@ -152,8 +154,11 @@ module Html2rss # rubocop:disable Metrics/ModuleLength -- Status Data.define + m
     def freeze_entry_resolution(value)
       return if value.nil?
 
-      hash = value.respond_to?(:to_h) ? value.to_h : value
-      hash.to_h.transform_keys(&:to_sym).freeze
+      case value
+      when Hash, FeedResolution::Diag then value.to_h
+      else
+        raise ArgumentError, "entry_resolution must be a Hash or FeedResolution::Diag, got #{value.class}"
+      end.transform_keys(&:to_sym).freeze
     end
 
     def validate_counters!(dedup:, attempts:, selected_strategy:)

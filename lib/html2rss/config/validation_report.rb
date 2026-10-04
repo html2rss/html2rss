@@ -2,10 +2,12 @@
 
 module Html2rss
   class Config
+    ValidationReport = Data.define(:issues)
+
     ##
     # Public result of config validation. Dry::Validation::Result never crosses this boundary.
     # +success+ is derived from +issues+ — invalid states like +success: true+ with issues cannot exist.
-    ValidationReport = Data.define(:issues) do
+    class ValidationReport
       ##
       # @return [Html2rss::Config::ValidationReport]
       def self.ok

@@ -13,13 +13,13 @@ module Html2rss
       ##
       # @param config [Html2rss::Config]
       # @param articles [Array<Html2rss::Article>] typed extract results (count derived)
-      # @param surface_category [Html2rss::SurfaceCategory, Symbol, nil]
+      # @param surface_category [Html2rss::SurfaceCategory, Symbol]
       # @return [Boolean]
       def resolve?(config:, articles:, surface_category:)
         raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
         return false unless eligible_config?(config)
 
-        category = SurfaceCategory.coerce(surface_category)
+        category = SurfaceCategory[surface_category]
         return false if category.blocked?
 
         articles.size < ARTICLE_FLOOR || category.weak? || native_feed_majority?(articles)

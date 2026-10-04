@@ -9,7 +9,7 @@ RSpec.describe Html2rss::Defaults do
     subject(:config) { described_class.new }
 
     it 'has default log_level from ENV or :warn' do
-      expected_level = Logger.const_get(ENV.fetch('LOG_LEVEL', :warn).to_s.upcase.to_sym)
+      expected_level = described_class::LOG_LEVELS.fetch(ENV.fetch('LOG_LEVEL', :warn).to_s.downcase.to_sym)
       expect(config.log_level).to eq(expected_level)
     end
 
@@ -76,8 +76,15 @@ RSpec.describe Html2rss::Defaults do
 
     it 'raises ArgumentError for invalid headers' do
       expect { config.headers = 'not' }.to raise_error(
-        ArgumentError, /headers must be a Hash or respond to #call/
+        ArgumentError, /headers must be a Hash or Proc/
       )
+    end
+
+    it 'raises ArgumentError for a callable that is not a Proc' do
+      callable = Object.new
+      def callable.call = {}
+
+      expect { config.headers = callable }.to raise_error(ArgumentError, /headers must be a Hash or Proc/)
     end
 
     it 'dups and freezes the assigned Hash', :aggregate_failures do
@@ -178,49 +185,28 @@ RSpec.describe Html2rss::Defaults do
     end
   end
 
-  describe 'Html2rss::Log delegation' do
-    let(:custom_logger) { instance_double(Logger) }
+  describe 'Html2rss::Log forwarding' do
+    let(:log_output) { StringIO.new }
+    let(:custom_logger) { Logger.new(log_output) }
 
     before do
-      allow(custom_logger).to receive_messages(respond_to?: true, 'level=' => nil, 'formatter=' => nil)
-      allow(custom_logger).to receive(:info).with('delegated message')
-      Html2rss.configure { |config| config.logger = custom_logger }
+      Html2rss.configure do |config|
+        config.logger = custom_logger
+        config.log_level = :info
+      end
     end
 
-    it 'delegates to the active defaults logger' do
+    it 'forwards to the active defaults logger' do
       Html2rss::Log.info('delegated message')
-      expect(custom_logger).to have_received(:info).with('delegated message')
+      expect(log_output.string).to include('delegated message')
     end
   end
 
-  describe 'custom duck-typed logger' do
-    let(:messages) { [] }
-    let(:duck_logger) do
-      Class.new do
-        attr_accessor :level, :formatter
+  describe '#logger=' do
+    subject(:config) { described_class.new }
 
-        def info(msg)
-          @messages ||= []
-          @messages << msg
-        end
-
-        def messages
-          @messages ||= []
-        end
-      end.new
-    end
-
-    it 'accepts any object and forwards log levels if supported', :aggregate_failures do
-      Html2rss.configure { |c| [c.logger = duck_logger, c.log_level = :info] }
-
-      expect(duck_logger.level).to eq(Logger::INFO)
-      Html2rss::Log.info('duck message')
-      expect(duck_logger.messages).to eq(['duck message'])
-    end
-
-    it 'accepts objects that do not respond to level= or formatter=' do
-      simple_logger = Class.new { def info(_msg); end }.new
-      expect { Html2rss.configure { |c| c.logger = simple_logger } }.not_to raise_error
+    it 'rejects a non-Logger so level= and formatter= can be called directly' do
+      expect { config.logger = Object.new }.to raise_error(ArgumentError, /logger must be a Logger/)
     end
   end
 
@@ -243,10 +229,16 @@ RSpec.describe Html2rss::Defaults do
     end
   end
 
-  describe 'invalid logger_formatter' do
-    it 'raises ArgumentError if formatter does not respond to call' do
-      expect { Html2rss.configure { |c| c.logger_formatter = 'not callable' } }
-        .to raise_error(ArgumentError, /formatter must respond to #call/)
+  describe 'logger_formatter types' do
+    it 'accepts a Logger::Formatter' do
+      formatter = Logger::Formatter.new
+      Html2rss.configure { |config| config.logger_formatter = formatter }
+      expect(Html2rss.defaults.logger_formatter).to eq(formatter)
+    end
+
+    it 'rejects a formatter that is not a Proc or Logger::Formatter' do
+      expect { Html2rss.configure { |config| config.logger_formatter = 'not callable' } }
+        .to raise_error(ArgumentError, /formatter must be a Proc, Logger::Formatter, or nil/)
     end
   end
 

@@ -8,12 +8,14 @@ module Html2rss
   # article count. Diagnostic fetch for Inspect/Recon lives on {.probe} — not twin
   # fetch helpers in those callers.
   class PageRecon # rubocop:disable Metrics/ClassLength -- recon bag stays co-located
+    Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response)
+
     ##
     # Cheap surface + admission facts shared by AutoFallback gates and FeedResolution probes.
-    Assessment = Data.define(:surface_category, :articles_count, :admission_drops, :html_response) do
+    class Assessment
       ##
       # @return [Html2rss::SurfaceCategory]
-      def category = SurfaceCategory.coerce(surface_category)
+      def category = SurfaceCategory[surface_category]
 
       ##
       # @return [Boolean]
@@ -27,8 +29,6 @@ module Html2rss
       # @return [Boolean]
       def listing_bonus? = category.listing_bonus?
     end
-    ##
-    # Recon facts used by Inspect and FeedResolution.
     Result = Data.define(
       :requested_url,
       :final_url,
@@ -43,7 +43,11 @@ module Html2rss
       :content_type,
       :blocked_surface,
       :sst
-    ) do
+    )
+
+    ##
+    # Recon facts used by Inspect and FeedResolution.
+    class Result
       ##
       # @return [Hash{Symbol => Object}]
       def to_h # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- omit-empty optional keys

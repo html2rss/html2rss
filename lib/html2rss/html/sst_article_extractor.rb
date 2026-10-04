@@ -223,7 +223,7 @@ module Html2rss
       def immediate_card_parent
         parent = sst_parent
         index = SST::Index.for_node(@root)
-        index&.parent_until(parent, method(:usable_walk_parent?))
+        index&.parent_until(parent, ->(node) { usable_walk_parent?(node) })
       end
 
       def usable_walk_parent?(node)

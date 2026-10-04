@@ -2,9 +2,11 @@
 
 module Html2rss
   module Scoring
+    RankedSegment = Data.define(:segment, :score)
+
     ##
     # A segment paired with its composite score.
-    RankedSegment = Data.define(:segment, :score) do
+    class RankedSegment
       ##
       # @return [SST::Node]
       def root_node = segment.root_node

@@ -32,7 +32,9 @@ module Html2rss
 
       ##
       # @param allow_private_networks [Boolean] whether private network targets are allowed
-      # @param resolver [#each_address, #getaddrinfo] DNS resolver used for hostname classification
+      # @param resolver [Socket, Resolv] DNS resolver used for hostname classification.
+      #   +Socket+ (the default) uses +getaddrinfo+; any other resolver is Resolv-shaped
+      #   and must implement +each_address+.
       def initialize(allow_private_networks:, resolver: Socket)
         @allow_private_networks = allow_private_networks ? true : false
         @resolver = resolver
@@ -89,10 +91,10 @@ module Html2rss
         literal = parse_ip(host)
         return [literal] if literal
 
-        if resolver.respond_to?(:each_address)
-          addresses_from_each_address(host)
-        else
+        if resolver == Socket
           addresses_from_getaddrinfo(host)
+        else
+          addresses_from_each_address(host)
         end
       rescue Resolv::ResolvError, SocketError, SystemCallError
         []

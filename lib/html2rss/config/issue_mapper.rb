@@ -72,7 +72,7 @@ module Html2rss
         def actual_for(path, values, message)
           dug = dig_path(values, path)
           return dug unless dug.nil?
-          return message.input if message.respond_to?(:input) && !message.input.nil?
+          return message.input if message.is_a?(Dry::Schema::Message) && !message.input.nil?
 
           nil
         end

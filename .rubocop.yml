@@ -1,3 +1,6 @@
+require:
+  - ./.rubocop/cops/html2rss/no_metaprogramming.rb
+
 plugins:
   - rubocop-performance
   - rubocop-rspec
@@ -42,3 +45,7 @@ Naming/RescuedExceptionsVariableName:
 
 Layout/ClassStructure:
   Enabled: true
+
+Html2rss/NoMetaprogramming:
+  Include:
+    - 'lib/**/*.rb'

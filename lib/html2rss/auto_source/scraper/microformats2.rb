@@ -18,6 +18,11 @@ module Html2rss
         # @return [Symbol] scraper config key
         def self.options_key = :microformats2
 
+        ##
+        # @param _opts [Hash] unused options
+        # @return [Integer]
+        def self.request_slots(_opts = {}) = 0
+
         class << self
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
           # @return [Boolean] whether Microformats2 h-entry elements exist
@@ -37,6 +42,9 @@ module Html2rss
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
         end
+
+        # @return [Boolean]
+        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # Yields normalized article hashes extracted from h-entry elements.

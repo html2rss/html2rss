@@ -11,20 +11,30 @@ loader.inflector.inflect(
 loader.setup
 
 require 'logger'
-require 'forwardable'
 require 'html2rss/defaults'
 
 ##
 # The Html2rss namespace.
 module Html2rss # rubocop:disable Metrics/ModuleLength
   ##
-  # The logger instance.
+  # Forwards debug/info/warn/error to {Html2rss.logger}.
   module Log
     class << self
-      extend Forwardable
+      ##
+      # @return [true]
+      def debug(...) = Html2rss.logger.debug(...)
 
-      def_delegator 'Html2rss', :logger
-      def_delegators :logger, :debug, :info, :warn, :error, :fatal, :unknown, :level, :level=, :formatter, :formatter=
+      ##
+      # @return [true]
+      def info(...) = Html2rss.logger.info(...)
+
+      ##
+      # @return [true]
+      def warn(...) = Html2rss.logger.warn(...)
+
+      ##
+      # @return [true]
+      def error(...) = Html2rss.logger.error(...)
     end
   end
 
@@ -319,13 +329,13 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
     end
 
     ##
-    # @return [Object] the logger
+    # @return [Logger] the logger
     def logger
       defaults.logger
     end
 
     ##
-    # @param logger [Object] the new logger
+    # @param logger [Logger] the new logger
     def logger=(logger)
       configure { |config| config.logger = logger }
     end
@@ -336,7 +346,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
     # @return [void]
     def reset_defaults!
       @defaults = nil
-      logger.level = defaults.log_level if logger.respond_to?(:level=)
+      logger.level = defaults.log_level
     end
   end
 
@@ -360,7 +370,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
     end
   end
 
-  logger.level = defaults.log_level if logger.respond_to?(:level=)
+  logger.level = defaults.log_level
 end
 
 loader.eager_load

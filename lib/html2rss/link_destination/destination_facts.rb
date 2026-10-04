@@ -2,7 +2,6 @@
 
 module Html2rss
   module LinkDestination
-    # Normalized URL plus reusable route-classification facts for one link.
     DestinationFacts = Data.define(
       :url,
       :destination,
@@ -15,7 +14,10 @@ module Html2rss
       :strong_post_suffix,
       :high_confidence_junk_path,
       :high_confidence_utility_destination
-    ) do
+    )
+
+    # Normalized URL plus reusable route-classification facts for one link.
+    class DestinationFacts
       # @param url [Html2rss::Url] normalized destination URL
       # @return [DestinationFacts] route facts for downstream link scoring
       def self.build(url) # rubocop:disable Metrics/MethodLength

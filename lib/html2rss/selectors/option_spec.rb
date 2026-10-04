@@ -2,15 +2,16 @@
 
 module Html2rss
   class Selectors
+    OptionSpec = Data.define(:name, :type, :required)
+
     ##
     # One config-facing option on an extractor or post-processor strategy.
     #
     # Strategies own an +OPTIONS+ Array of these. This type is also the
     # introspection SoT (+for+ / +expectation_for+); {SchemaExport} maps Ruby
     # types to JSON Schema only.
-    OptionSpec = Data.define(:name, :type, :required) do
+    class OptionSpec
       # Maps Ruby option types to JSON Schema +type+ strings.
-      # rubocop:disable-next Lint/ConstantDefinitionInBlock -- Data.define type constant
       RUBY_TO_JSON_TYPE = {
         String => 'string',
         Integer => 'integer',
@@ -19,7 +20,6 @@ module Html2rss
       }.freeze
 
       # Human-readable labels for validation error messages.
-      # rubocop:disable-next Lint/ConstantDefinitionInBlock -- Data.define type constant
       TYPE_LABELS = {
         Integer => 'an integer',
         String => 'a string',
@@ -92,7 +92,7 @@ module Html2rss
         # @param klass [Class] extractor or post-processor class
         # @return [Array<OptionSpec>]
         def for(klass)
-          klass.const_defined?(:OPTIONS) ? klass::OPTIONS : []
+          klass::OPTIONS
         end
 
         ##

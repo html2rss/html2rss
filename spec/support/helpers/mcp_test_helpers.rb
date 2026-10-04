@@ -13,7 +13,7 @@ module McpTestHelpers
       requested_url: 'https://example.com',
       final_url: 'https://example.com',
       status: 200,
-      verdict: Html2rss::Recon::Verdict.coerce(verdict),
+      verdict: Html2rss::Recon::Verdict[verdict],
       native_feed: nil,
       surface_category: :article_listing,
       articles_count: 3,

@@ -124,8 +124,7 @@ module Html2rss
       end
 
       def leftover_exclude_nodes_for(node)
-        times = node.respond_to?(:css) ? node.css('time') : []
-        [heading, selected_anchor, kicker_node, *times].compact
+        [heading, selected_anchor, kicker_node, *node.css('time')].compact
       end
 
       def heading_or_anchor_item?
@@ -156,8 +155,7 @@ module Html2rss
       end
 
       def immediate_card_parent
-        parent = article_tag.respond_to?(:parent) ? article_tag.parent : nil
-        Navigator.parent_until_condition(parent, method(:usable_walk_parent?))
+        Navigator.parent_until_condition(article_tag.parent, ->(node) { usable_walk_parent?(node) })
       end
 
       def usable_walk_parent?(node)

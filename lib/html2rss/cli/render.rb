@@ -117,8 +117,7 @@ module Html2rss
         if view.final && view.final != view.requested
           puts "        Final:    #{view.final} (HTTP #{view.status || 'ERR'})"
         end
-        surface = view.surface.respond_to?(:to_s) ? view.surface.to_s : view.surface
-        puts "        Surface:  #{surface} (#{view.articles_count} articles)"
+        puts "        Surface:  #{view.surface} (#{view.articles_count} articles)"
       end
       private_class_method :probe_lines
     end

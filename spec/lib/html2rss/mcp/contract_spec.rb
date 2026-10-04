@@ -104,9 +104,16 @@ RSpec.describe Html2rss::MCP::Contract do
       expect(described_class.catalog_fingerprint).to eq(fingerprint)
     end
 
-    it 'changes when the published tool set changes' do
+    it 'changes when the published tool set changes' do # rubocop:disable RSpec/ExampleLength -- Tool construction is the mutation
       baseline = described_class.catalog_fingerprint
-      extra_tool = { name: 'future_tool', kind: :url, input_schema: { required: %w[url] } }
+      extra_tool = Html2rss::MCP::Server::Tools::Tool.new(
+        name: 'future_tool',
+        title: 'Future',
+        description: 'future',
+        input_schema: { required: %w[url] },
+        annotations: Html2rss::MCP::Contract::ANNOTATIONS_OPEN_WORLD,
+        call: ->(**) {}
+      )
       stub_const('Html2rss::MCP::Server::Tools::TOOLS', Html2rss::MCP::Server::Tools::TOOLS + [extra_tool])
 
       expect(described_class.catalog_fingerprint).not_to eq(baseline)
@@ -115,11 +122,11 @@ RSpec.describe Html2rss::MCP::Contract do
     it 'changes when a tool oneOf branch changes' do # rubocop:disable RSpec/ExampleLength -- mutation setup encodes fingerprint sensitivity
       baseline = described_class.catalog_fingerprint
       mutated = Html2rss::MCP::Server::Tools::TOOLS.map do |entry|
-        next entry unless entry.fetch(:name) == 'validate'
+        next entry unless entry.name == 'validate'
 
-        schema = Html2rss::HashUtil.deep_dup(entry.fetch(:input_schema))
+        schema = Html2rss::HashUtil.deep_dup(entry.input_schema)
         schema[:oneOf] = [{ required: %w[config yaml] }]
-        entry.merge(input_schema: schema)
+        entry.with(input_schema: schema)
       end
       stub_const('Html2rss::MCP::Server::Tools::TOOLS', mutated)
 

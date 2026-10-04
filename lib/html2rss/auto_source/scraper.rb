@@ -164,16 +164,6 @@ module Html2rss
       end
 
       ##
-      # @param instance [Object]
-      # @param parsed_body [Nokogiri::HTML::Document]
-      # @return [Boolean]
-      def self.extractable_instance?(instance, parsed_body)
-        return instance.extractable? if instance.respond_to?(:extractable?)
-
-        instance.class.articles?(parsed_body)
-      end
-
-      ##
       # @param parsed_body [Nokogiri::HTML::Document]
       # @param body [String, nil] raw response body (preferred for blocked-surface checks)
       # @return [NoScraperFound]

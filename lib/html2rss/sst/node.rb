@@ -2,10 +2,12 @@
 
 module Html2rss
   module SST
+    Node = Data.define(:name, :attrs, :own_text, :children, :tag_path)
+
     ##
     # Immutable simplified semantic tree node. Predicates and traversal live on
     # the type so Scoring/Segmenter never touch Nokogiri.
-    Node = Data.define(:name, :attrs, :own_text, :children, :tag_path) do
+    class Node
       ##
       # @param name [Symbol, String]
       # @param attrs [Attrs, nil]
@@ -116,14 +118,14 @@ module Html2rss
 
       ##
       # @return [Array<Node>]
-      def find_all(&predicate)
-        each_node.select(&predicate)
+      def find_all(&)
+        each_node.select(&)
       end
 
       ##
       # @return [Node, nil]
-      def find(&predicate)
-        each_node.find(&predicate)
+      def find(&)
+        each_node.find(&)
       end
 
       ##

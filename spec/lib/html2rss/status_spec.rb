@@ -149,6 +149,27 @@ RSpec.describe Html2rss::Status do
       expect(status.admission_drops).to eq('credit' => 2)
       expect(status.to_h).to include(admission_drops: { 'credit' => 2 })
     end
+
+    it 'freezes FeedResolution::Diag entry_resolution as a symbol-key hash', :aggregate_failures do
+      diag = Html2rss::FeedResolution::Diag.new(applied: true, probe_count: 2, reason: :winner, winner_score: 4)
+      status = described_class.build(articles: [], dedup_dropped: 0, entry_resolution: diag)
+
+      expect(status.entry_resolution).to eq(applied: true, probe_count: 2, reason: :winner, winner_score: 4)
+      expect(status.entry_resolution).to be_frozen
+    end
+
+    it 'freezes Hash entry_resolution with symbol keys' do
+      status = described_class.build(articles: [], dedup_dropped: 0,
+                                     entry_resolution: { 'applied' => false, 'probe_count' => 1, 'reason' => :skipped })
+
+      expect(status.entry_resolution).to eq(applied: false, probe_count: 1, reason: :skipped)
+    end
+
+    it 'rejects entry_resolution values that are not a Hash or Diag' do
+      expect do
+        described_class.build(articles: [], dedup_dropped: 0, entry_resolution: Object.new)
+      end.to raise_error(ArgumentError, /Hash or FeedResolution::Diag/)
+    end
   end
 
   describe '#to_generator_comment' do

@@ -37,14 +37,13 @@ module Html2rss
 
       class << self
         ##
-        # :reek:ManualDispatch
         # :reek:TooManyStatements
         #
         # @return [Hash{String => String}] the default header set merged with global defaults
         def browser_defaults
           defaults = DEFAULT_HEADERS.dup
           global_headers = Html2rss.defaults.headers
-          global_headers = global_headers.call if global_headers.respond_to?(:call)
+          global_headers = global_headers.call if global_headers.is_a?(Proc)
 
           if global_headers.is_a?(Hash)
             global_headers.each do |key, value|

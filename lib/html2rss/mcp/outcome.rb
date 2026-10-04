@@ -13,24 +13,16 @@ module Html2rss
       NextStep = Data.define(:name, :guidance)
 
       ##
-      # Closed set of agent next actions. Invalid names cannot be constructed.
+      # Closed set of agent next actions. Names are owned by {Playbook::GUIDANCE}.
       class NextStep
-        # Wire names for +next_step+.
-        NAMES = %i[done inspect recon validate apply scrape capture read_runtime test].freeze
+        # Frozen name → instance table built from {Playbook::GUIDANCE}.
+        ALL = Playbook::GUIDANCE.to_h { |name, guidance| [name, new(name:, guidance:)] }.freeze
+        private_class_method :new
 
         ##
         # @param name [Symbol, String]
-        # @param guidance [String, nil]
-        def initialize(name:, guidance: nil)
-          step = name.to_sym
-          raise ArgumentError, "unknown next_step: #{name.inspect}" unless NAMES.include?(step)
-
-          super(name: step, guidance: (guidance || Playbook::GUIDANCE.fetch(step)).freeze)
-        end
-
-        class << self
-          NAMES.each { |step| define_method(step) { new(name: step) } }
-        end
+        # @return [NextStep]
+        def self.[](name) = ALL.fetch(name.to_sym) { raise ArgumentError, "unknown next_step: #{name.inspect}" }
       end
 
       ##
@@ -111,7 +103,7 @@ module Html2rss
         # @return [Outcome]
         def validate(report:)
           ok = report.success?
-          next_step = ok ? NextStep.test : NextStep.validate
+          next_step = ok ? NextStep[:test] : NextStep[:validate]
           payload = ok ? {} : { issues: report.issues.map(&:to_h) }
           new(ok:, next_step:, guidance: next_step.guidance, payload:)
         end
@@ -132,17 +124,17 @@ module Html2rss
         ##
         # @param batch_result [Html2rss::Batch::BatchResult]
         # @return [Outcome]
-        def batch_scrape(batch_result) = batch(batch_result, NextStep.scrape)
+        def batch_scrape(batch_result) = batch(batch_result, NextStep[:scrape])
 
         ##
         # @param batch_result [Html2rss::Batch::BatchResult]
         # @return [Outcome]
-        def batch_inspect(batch_result) = batch(batch_result, NextStep.inspect)
+        def batch_inspect(batch_result) = batch(batch_result, NextStep[:inspect])
 
         ##
         # @param batch_result [Html2rss::Batch::BatchResult]
         # @return [Outcome]
-        def batch_recon(batch_result) = batch(batch_result, NextStep.recon)
+        def batch_recon(batch_result) = batch(batch_result, NextStep[:recon])
 
         ##
         # @param rss [String]
@@ -152,7 +144,7 @@ module Html2rss
         # @return [Outcome]
         def apply(rss:, item_count:, empty: item_count.zero?, quality_report: nil)
           ok = !empty
-          next_step = ok ? NextStep.done : NextStep.inspect
+          next_step = ok ? NextStep[:done] : NextStep[:inspect]
           payload = { rss:, item_count: }
           payload[:quality_report] = quality_report if quality_report
           new(ok:, next_step:, guidance: next_step.guidance, payload:)
@@ -170,15 +162,15 @@ module Html2rss
         private
 
         def batch(batch_result, failure_step)
-          step = batch_result.successful.positive? ? NextStep.done : failure_step
+          step = batch_result.successful.positive? ? NextStep[:done] : failure_step
           new(ok: true, next_step: step, guidance: step.guidance, payload: batch_result.to_h)
         end
 
         def scrape_next_step(empty, botasaurus_configured:)
-          return NextStep.done unless empty
-          return NextStep.read_runtime unless botasaurus_configured
+          return NextStep[:done] unless empty
+          return NextStep[:read_runtime] unless botasaurus_configured
 
-          NextStep.inspect
+          NextStep[:inspect]
         end
 
         def scrape_payload(items:, requested_strategy:, channel_title:, admission_drops:)
@@ -189,33 +181,33 @@ module Html2rss
         end
 
         def inspect_next_step(report)
-          return NextStep.recon if report.alternate_feeds?
-          return NextStep.capture if report.articles_count.positive?
+          return NextStep[:recon] if report.alternate_feeds?
+          return NextStep[:capture] if report.articles_count.positive?
 
-          NextStep.scrape
+          NextStep[:scrape]
         end
 
         def recon_next_step(result)
-          return NextStep.done if result.defer?
-          return NextStep.capture if result.build?
+          return NextStep[:done] if result.defer?
+          return NextStep[:capture] if result.build?
 
-          NextStep.scrape
+          NextStep[:scrape]
         end
 
         def capture_next_step(articles_count:, has_selectors:, native_feed: nil)
-          return NextStep.done if native_feed
+          return NextStep[:done] if native_feed
 
-          articles_count.positive? && has_selectors ? NextStep.test : NextStep.inspect
+          articles_count.positive? && has_selectors ? NextStep[:test] : NextStep[:inspect]
         end
 
         def test_next_step(test_result)
-          return NextStep.apply if test_result.success
+          return NextStep[:apply] if test_result.success
 
           kind = test_result.failure_kind
-          return NextStep.validate if kind&.schema?
-          return NextStep.capture if kind&.execution? || kind&.min_items? || kind&.quality?
+          return NextStep[:validate] if kind&.schema?
+          return NextStep[:capture] if kind&.execution? || kind&.min_items? || kind&.quality?
 
-          NextStep.capture
+          NextStep[:capture]
         end
 
         def test_guidance(test_result, next_step)
@@ -245,15 +237,15 @@ module Html2rss
 
         def next_step_for_error(error)
           case error
-          when RequestService::BotasaurusConfigurationError then NextStep.read_runtime
-          when Contract::UnpublishedRequestError then NextStep.validate
+          when RequestService::BotasaurusConfigurationError then NextStep[:read_runtime]
+          when Contract::UnpublishedRequestError then NextStep[:validate]
           when ArgumentError then argument_error_next_step(error)
-          else NextStep.inspect
+          else NextStep[:inspect]
           end
         end
 
         def argument_error_next_step(error)
-          XOR_ERROR.match?(error.message) ? NextStep.validate : NextStep.inspect
+          XOR_ERROR.match?(error.message) ? NextStep[:validate] : NextStep[:inspect]
         end
       end
     end

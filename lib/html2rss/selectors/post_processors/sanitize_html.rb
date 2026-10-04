@@ -41,6 +41,9 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
+        # Config-facing options contract (none).
+        OPTIONS = [].freeze
+
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Sanitize HTML (sanitize gem RELAXED plus html2rss defaults: absolute URLs, ' \
                       'safe link/img attributes, wrap lone images in anchors).'

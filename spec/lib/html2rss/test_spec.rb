@@ -66,7 +66,7 @@ RSpec.describe Html2rss::Test do
         result = described_class.call(invalid_config)
         expect(result.success).to be(false)
         expect(result.valid_schema?).to be(false)
-        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:schema))
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:schema])
       end
     end
 
@@ -138,7 +138,7 @@ RSpec.describe Html2rss::Test do
         result = described_class.call(valid_config, min_items: 5)
         expect(result.success).to be(false)
         expect(result.error_message).to include('Extracted 2 items (minimum required: 5)')
-        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:min_items))
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:min_items])
         expect(result.rss).to be_nil
       end
 
@@ -170,7 +170,7 @@ RSpec.describe Html2rss::Test do
         result = described_class.call(valid_config, min_items: 1, strict_quality: true)
 
         expect(result.success).to be(false)
-        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:quality))
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:quality])
         expect(result.error_message).to include('duplicate_urls')
         expect(result.rss).to be_nil
         expect(result.quality_report.warnings).to include(:duplicate_urls)
@@ -188,7 +188,7 @@ RSpec.describe Html2rss::Test do
         result = described_class.call(valid_config, min_items: 1, strict_quality: true)
 
         expect(result.success).to be(false)
-        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:quality))
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:quality])
         expect(result.error_message).to include('generic_titles')
       end
 
@@ -203,7 +203,7 @@ RSpec.describe Html2rss::Test do
 
         result = described_class.call(valid_config, min_items: 5, strict_quality: true)
 
-        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:min_items))
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:min_items])
       end
 
       it 'handles file path input' do
@@ -238,7 +238,7 @@ RSpec.describe Html2rss::Test do
         result = described_class.call(valid_config)
         expect(result.success).to be(false)
         expect(result.error_message).to include('network failure')
-        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:execution))
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:execution])
       end
     end
 

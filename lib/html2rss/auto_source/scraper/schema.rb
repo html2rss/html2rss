@@ -46,6 +46,11 @@ module Html2rss
         # @return [Symbol] scraper config key
         def self.options_key = :schema
 
+        ##
+        # @param _opts [Hash] unused options
+        # @return [Integer]
+        def self.request_slots(_opts = {}) = 0
+
         class << self
           # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
           # @return [Boolean] whether the page includes supported schema types
@@ -165,6 +170,9 @@ module Html2rss
           @url = url
           @opts = opts
         end
+
+        # @return [Boolean]
+        def extractable? = self.class.articles?(parsed_body)
 
         ##
         # @yield [Hash] Each scraped article_hash

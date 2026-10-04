@@ -11,11 +11,13 @@ module Html2rss
       EMPTY_RAW = {}.freeze
     end
 
-    ##
-    # Typed HTML attributes for an SST node. Absent fields are +nil+.
     Attrs = Data.define(
       :href, :src, :id, :class_names, :datetime, :itemprop, :style, :srcset, :type, :raw
-    ) do
+    )
+
+    ##
+    # Typed HTML attributes for an SST node. Absent fields are +nil+.
+    class Attrs
       class << self
         ##
         # @param href [String, nil]

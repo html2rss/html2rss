@@ -15,6 +15,11 @@ module Html2rss
         # @return [Symbol] config key used to enable or configure this scraper
         def self.options_key = :semantic_html
 
+        ##
+        # @param _opts [Hash] unused options
+        # @return [Integer]
+        def self.request_slots(_opts = {}) = 0
+
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @return [Boolean] true when at least one semantic container has an eligible anchor
         def self.articles?(parsed_body)

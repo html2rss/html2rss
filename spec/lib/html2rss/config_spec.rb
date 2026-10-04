@@ -413,7 +413,7 @@ RSpec.describe Html2rss::Config do
         result = Html2rss.test(config)
         issue = result.validation_issues.find { |entry| entry.path.include?(:pattern) }
         expect(result.success).to be(false)
-        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind.coerce(:schema))
+        expect(result.failure_kind).to eq(Html2rss::Test::FailureKind[:schema])
         expect(issue.code).to eq(:invalid_value)
       end
     end

@@ -8,9 +8,11 @@ module Html2rss
     module Policy
       module_function
 
+      Outcome = Data.define(:passed, :failure_kind, :error_message)
+
       ##
       # Outcome of evaluating test thresholds.
-      Outcome = Data.define(:passed, :failure_kind, :error_message) do
+      class Outcome
         # @return [Boolean]
         def success? = passed
 
@@ -63,11 +65,11 @@ module Html2rss
       def outcome_failure(min_items_passed:, quality_failed:, item_count:, min_items:, quality_report:)
         return [nil, nil] if min_items_passed && !quality_failed
         unless min_items_passed
-          return [FailureKind.coerce(:min_items),
+          return [FailureKind[:min_items],
                   "Extracted #{item_count} items (minimum required: #{min_items})"]
         end
 
-        [FailureKind.coerce(:quality), quality_failure_message(quality_report)]
+        [FailureKind[:quality], quality_failure_message(quality_report)]
       end
 
       def quality_failure_message(quality_report)

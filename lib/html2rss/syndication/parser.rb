@@ -95,9 +95,9 @@ module Html2rss
       private_class_method :atom_link
 
       def atom_text(node)
-        return if node.nil?
+        return unless node.is_a?(RSS::Atom::TextConstruct) || node.is_a?(RSS::Atom::Feed::Entry::Content)
 
-        node.respond_to?(:content) ? node.content : node.to_s
+        node.content
       end
       module_function :atom_text
       private_class_method :atom_text

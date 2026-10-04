@@ -25,12 +25,14 @@ module Html2rss
     CHROME_DROP_THRESHOLD = 3
     private_constant :CHROME_DROP_THRESHOLD
 
-    ##
-    # Result of a capture operation (config plus quality meta).
     CaptureResult = Data.define(
       :config, :yaml, :articles_count, :channel_title, :has_selectors, :segment_strategy,
       :admission_drops, :selected_strategy, :inferred_topics, :native_feed, :suggested_channel_url
-    ) do
+    )
+
+    ##
+    # Result of a capture operation (config plus quality meta).
+    class CaptureResult
       # rubocop:disable Metrics/ParameterLists
       ##
       # @param config [Hash]
@@ -368,7 +370,6 @@ module Html2rss
 
     def wrapping_anchor_root?(node)
       return false unless node.name.to_s == 'a'
-      return false unless node.respond_to?(:find)
 
       tags = Html::Navigator::WRAPPING_ANCHOR_CHILD_TAGS
       node.find { |child| !child.equal?(node) && tags.include?(child.name.to_s) }

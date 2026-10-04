@@ -617,4 +617,12 @@ RSpec.describe Html2rss do
       expect(described_class.schema_json).to include('$schema')
     end
   end
+
+  describe '.logger=' do
+    after { described_class.reset_defaults! }
+
+    it 'rejects a non-Logger' do
+      expect { described_class.logger = Object.new }.to raise_error(ArgumentError, /logger must be a Logger/)
+    end
+  end
 end

@@ -67,7 +67,7 @@ RSpec.describe Html2rss::MCP::Server do
         'capture', 'validate', 'test', 'apply'
       )
       expect(protocol_server.tools.keys).to match_array(
-        Html2rss::MCP::Contract::TITLES.keys.map(&:to_s)
+        Html2rss::MCP::Server::Tools::TOOLS.map(&:name)
       )
       expect(protocol_server.prompts.keys).to contain_exactly('scrape-webpage', 'capture-feed-config')
       expect(protocol_server.instructions).to include('default (HTTPX) → Botasaurus AutoFallback')
@@ -355,7 +355,7 @@ RSpec.describe Html2rss::MCP::Server do
         allow(Html2rss).to receive(:test).and_return(
           test_result(
             success: false,
-            failure_kind: Html2rss::Test::FailureKind.coerce(:quality),
+            failure_kind: Html2rss::Test::FailureKind[:quality],
             error_message: 'Feed quality check failed (duplicate_urls)',
             quality_report:
           )
@@ -385,7 +385,7 @@ RSpec.describe Html2rss::MCP::Server do
 
       it 'routes schema failure next_step to validate', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- tools/call next_step contract
         allow(Html2rss).to receive(:test).and_return(
-          test_result(success: false, failure_kind: Html2rss::Test::FailureKind.coerce(:schema))
+          test_result(success: false, failure_kind: Html2rss::Test::FailureKind[:schema])
         )
 
         result = call_tool.call('test', { config: { bad: true } })

@@ -4,20 +4,20 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::MCP::Outcome do
   describe Html2rss::MCP::Outcome::NextStep do
-    it 'exposes the closed set of wire names' do
-      expect(described_class::NAMES.map(&:to_s)).to contain_exactly(
+    it 'exposes the closed set of wire names from Playbook guidance' do
+      expect(described_class::ALL.keys.map(&:to_s)).to contain_exactly(
         'done', 'inspect', 'recon', 'validate', 'apply',
         'scrape', 'capture', 'read_runtime', 'test'
       )
     end
 
     it 'cannot be built with an unknown name' do
-      expect { described_class.new(name: :retry_invalid) }
+      expect { described_class[:retry_invalid] }
         .to raise_error(ArgumentError, /unknown next_step/)
     end
 
-    it 'owns guidance copy on each named factory' do
-      expect(described_class.inspect.guidance).to include('inspect')
+    it 'owns guidance copy on each named instance' do
+      expect(described_class[:inspect].guidance).to include('inspect')
     end
   end
 
@@ -72,7 +72,7 @@ RSpec.describe Html2rss::MCP::Outcome do
     describe '.recon_guidance' do
       it 'appends scheme downgrade hint' do
         result = instance_double(Html2rss::Recon::Result, scheme_downgrade: true)
-        next_step = Html2rss::MCP::Outcome::NextStep.capture
+        next_step = Html2rss::MCP::Outcome::NextStep[:capture]
 
         expect(described_class.recon_guidance(result, next_step))
           .to include('HTTPS→HTTP downgrade', next_step.guidance)
@@ -80,7 +80,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
       it 'returns next_step guidance when scheme is not downgraded' do
         result = instance_double(Html2rss::Recon::Result, scheme_downgrade: false)
-        next_step = Html2rss::MCP::Outcome::NextStep.capture
+        next_step = Html2rss::MCP::Outcome::NextStep[:capture]
 
         expect(described_class.recon_guidance(result, next_step)).to eq(next_step.guidance)
       end
@@ -244,7 +244,7 @@ RSpec.describe Html2rss::MCP::Outcome do
 
     it 'points at validate on schema failure' do # rubocop:disable RSpec/ExampleLength
       result = test_result(
-        failure_kind: Html2rss::Test::FailureKind.coerce(:schema),
+        failure_kind: Html2rss::Test::FailureKind[:schema],
         validation_issues: [
           Html2rss::Config::ValidationIssue.new(path: %i[channel], code: :missing_key, message: 'missing')
         ],
@@ -254,17 +254,17 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'points at capture on execution failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:execution))
+      result = test_result(failure_kind: Html2rss::Test::FailureKind[:execution])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
 
     it 'points at capture on min_items failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:min_items))
+      result = test_result(failure_kind: Html2rss::Test::FailureKind[:min_items])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
 
     it 'points at capture on quality failure' do
-      result = test_result(failure_kind: Html2rss::Test::FailureKind.coerce(:quality))
+      result = test_result(failure_kind: Html2rss::Test::FailureKind[:quality])
       expect(described_class.test(result).next_step.name).to eq(:capture)
     end
   end

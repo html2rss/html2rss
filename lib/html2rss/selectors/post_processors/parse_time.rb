@@ -31,6 +31,9 @@ module Html2rss
         # Expected Ruby class for the extracted value before this post-processor runs.
         VALUE_TYPE = String
 
+        # Config-facing options contract (none).
+        OPTIONS = [].freeze
+
         # JSON Schema description exported via +schema_export+.
         DESCRIPTION = 'Parse a time string with Time.parse and return RFC822, using the channel `time_zone`.'
 
