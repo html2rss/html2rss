@@ -6,45 +6,6 @@ require 'tmpdir'
 RSpec.describe Html2rss::Config do
   it { expect(described_class::InvalidConfig).to be < Html2rss::Error }
 
-  describe Html2rss::Config::MultipleFeedsConfig do
-    describe '::CONFIG_KEY_FEEDS' do
-      it { expect(described_class::CONFIG_KEY_FEEDS).to eq :feeds }
-    end
-
-    describe '.to_single_feed' do
-      let(:yaml) do
-        {
-          channel: { language: 'en', metadata: { site: 'global' } },
-          headers: { 'User-Agent': 'Global Agent' },
-          stylesheets: [{ href: '/global.css', type: 'text/css' }],
-          strategy: :default,
-          feeds: {
-            sample: {
-              channel: { metadata: { section: 'local' } },
-              headers: { 'X-Feed': 'sample' },
-              stylesheets: [{ href: '/local.css', type: 'text/css' }],
-              strategy: :botasaurus
-            }
-          }
-        }
-      end
-
-      let(:expected_merged) do
-        {
-          channel: { language: 'en', metadata: { site: 'global', section: 'local' } },
-          headers: { 'User-Agent': 'Global Agent', 'X-Feed': 'sample' },
-          stylesheets: [{ href: '/global.css', type: 'text/css' }, { href: '/local.css', type: 'text/css' }],
-          strategy: :botasaurus
-        }
-      end
-
-      it 'deep merges nested hash values and keeps local scalar overrides' do
-        merged = described_class.to_single_feed(yaml[:feeds][:sample].dup, yaml)
-        expect(merged).to include(expected_merged)
-      end
-    end
-  end
-
   describe '.load_yaml' do
     let(:tmp_dir) { Dir.mktmpdir }
     let(:write_yaml) do
@@ -63,18 +24,6 @@ RSpec.describe Html2rss::Config do
           described_class.load_yaml(file)
         end.to raise_error(Html2rss::Config::InvalidConfig,
                            "File 'non-existing-file' does not exist")
-      end
-    end
-
-    context 'when the file exists & the feed name is reserved' do
-      let(:file) { 'spec/fixtures/feeds.test.yml' }
-
-      it 'raises InvalidConfig' do
-        expect do
-          described_class.load_yaml(file,
-                                    described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS)
-        end.to raise_error(Html2rss::Config::InvalidConfig,
-                           "`#{described_class::MultipleFeedsConfig::CONFIG_KEY_FEEDS}` is a reserved feed name")
       end
     end
 
@@ -106,32 +55,6 @@ RSpec.describe Html2rss::Config do
       end
     end
 
-    context 'when feeds is not a mapping' do
-      {
-        'a list' => "feeds:\n  - a\n",
-        'a scalar' => "feeds: x\n"
-      }.each do |label, body|
-        it "raises InvalidConfig naming the file for #{label}, with or without a feed name", :aggregate_failures do
-          path = write_yaml.call('feeds.yml', body)
-          message = /File '#{Regexp.escape(path)}': `feeds` must be a mapping/
-
-          expect { described_class.load_yaml(path) }.to raise_error(Html2rss::Config::InvalidConfig, message)
-          expect { described_class.load_yaml(path, 'a') }.to raise_error(Html2rss::Config::InvalidConfig, message)
-          expect(described_class.resolve_and_validate(path, feed_name: 'a').last).not_to be_success
-        end
-      end
-    end
-
-    context 'when a feed entry is not a mapping' do
-      it 'raises InvalidConfig naming the file and feed', :aggregate_failures do
-        path = write_yaml.call('feeds.yml', "feeds:\n  a:\n    - 1\n")
-
-        expect { described_class.load_yaml(path, 'a') }
-          .to raise_error(Html2rss::Config::InvalidConfig, "File '#{path}': feed 'a' must be a mapping")
-        expect(described_class.resolve_and_validate(path, feed_name: 'a').last).not_to be_success
-      end
-    end
-
     context 'when the file is not valid YAML' do
       it 'raises InvalidConfig' do
         path = write_yaml.call('bad.yml', "a: [\n")
@@ -145,52 +68,22 @@ RSpec.describe Html2rss::Config do
     context 'when the file exists & is single config' do
       let(:file) { 'spec/fixtures/single.test.yml' }
 
-      it 'raises InvalidConfig' do
+      it 'returns the configuration hash' do
         expect(described_class.load_yaml(file)).to be_a(Hash)
       end
     end
 
-    context 'when the file exists with multiple feeds & the feed name is not found' do
+    context 'when the file has a top-level feeds: key' do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
       it 'raises InvalidConfig' do
-        expect do
-          described_class.load_yaml(file,
-                                    'non-existing-feed')
-        end.to raise_error(Html2rss::Config::InvalidConfig, /Feed 'non-existing-feed' not found under `feeds` key/)
+        expect { described_class.load_yaml(file) }
+          .to raise_error(Html2rss::Config::InvalidConfig, /top-level `feeds:` is not supported/)
       end
     end
 
-    context 'when the file exists with multiple feeds & the feed name is omitted' do
-      let(:file) { 'spec/fixtures/feeds.test.yml' }
-
-      it 'raises InvalidConfig listing the available feeds' do
-        expect { described_class.load_yaml(file) }.to raise_error(
-          Html2rss::Config::InvalidConfig,
-          'Feed name is required under `feeds`. Available feeds: releases_page, json, notitle, withparams'
-        )
-      end
-    end
-
-    # rubocop:disable-next RSpec/ExampleLength -- custom key is only observable from a temp file
-    it 'forwards a custom feeds key when merging global config' do
-      Dir.mktmpdir do |dir|
-        path = File.join(dir, 'sources.yml')
-        File.write(path, <<~YAML)
-          headers:
-            User-Agent: Custom
-          sources:
-            news:
-              channel:
-                url: http://example.com
-        YAML
-        loaded = described_class.load_yaml(path, 'news', multiple_feeds_key: :sources)
-        expect(loaded).not_to have_key(:sources)
-      end
-    end
-
-    context 'when the file exists with multiple feeds & the feed name is found' do
-      let(:file) { 'spec/fixtures/feeds.test.yml' }
+    context 'when loading a single-feed fixture split from the old multi-feed file' do
+      let(:file) { 'spec/fixtures/notitle.test.yml' }
 
       let(:expected_config) do
         {
@@ -205,7 +98,7 @@ RSpec.describe Html2rss::Config do
       end
 
       it 'returns the configuration' do
-        expect(described_class.load_yaml(file, 'notitle')).to match(expected_config)
+        expect(described_class.load_yaml(file)).to match(expected_config)
       end
     end
   end
@@ -501,27 +394,6 @@ RSpec.describe Html2rss::Config do
       parameterized = config.merge(channel: { url: 'https://example.com/%<section>s' })
       _raw, validation = described_class.resolve_and_validate(parameterized, params: { section: 'news' })
       expect(validation).to be_success
-    end
-
-    it 'loads the named feed from a multi-feed file' do # rubocop:disable RSpec/ExampleLength
-      Dir.mktmpdir do |dir|
-        path = File.join(dir, 'feeds.yml')
-        File.write(path, <<~YAML)
-          feeds:
-            news:
-              channel:
-                url: http://example.com
-              selectors:
-                items:
-                  selector: ".item"
-                title:
-                  selector: h2
-                guid:
-                  - title
-        YAML
-        _raw, validation = described_class.resolve_and_validate(path, feed_name: 'news')
-        expect(validation).to be_success
-      end
     end
 
     it 'does not swallow an IssueMapper InvalidError as a soft :parse issue' do

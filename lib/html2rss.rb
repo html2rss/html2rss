@@ -87,11 +87,10 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Side door: schema-only check without live extraction.
   #
   # @param config_input [Hash, String]
-  # @param feed_name [String, nil]
   # @param params [Hash]
   # @return [Html2rss::Config::ValidationReport]
-  def self.validate(config_input, feed_name = nil, params: {})
-    _raw, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
+  def self.validate(config_input, params: {})
+    _raw, validation = Config.resolve_and_validate(config_input, params:)
     validation
   end
 
@@ -100,7 +99,6 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # Golden path step 4.
   #
   # @param config_input [Hash, String] config hash, YAML string, or file path
-  # @param feed_name [String, nil] optional feed name in multi-feed file
   # @param min_items [Integer] minimum required items, >= 0 (default: 1)
   # @param params [Hash] dynamic feed params
   # @param strategy [Symbol, nil] optional strategy override
@@ -108,12 +106,11 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param compare_enhance [Boolean] diagnostic enhance off vs on comparison on cached HTML
   # @param sample_limit [Integer] maximum number of +Result#items+, >= 0 (default: 3)
   # @return [Html2rss::Test::Result]
-  def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, # rubocop:disable Metrics/ParameterLists
+  def self.test(config_input, min_items: 1, params: {}, strategy: nil, strict_quality: false, # rubocop:disable Metrics/ParameterLists
                 compare_enhance: false, sample_limit: 3)
     Option.integer(:min_items, min_items, min: 0)
     Option.integer(:sample_limit, sample_limit, min: 0)
-    Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:, compare_enhance:,
-                                       sample_limit:)
+    Test.call(config_input, min_items:, params:, strategy:, strict_quality:, compare_enhance:, sample_limit:)
   end
 
   ##
@@ -203,11 +200,12 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   ##
   # Loads a feed configuration from YAML.
   #
+  # One YAML file is one feed. A top-level +feeds:+ map is rejected.
+  #
   # @param file [String] path to the YAML file
-  # @param feed_name [String, nil] optional feed name inside a multi-feed config
   # @return [Hash{Symbol => Object}] loaded configuration hash
-  def self.config_from_yaml_file(file, feed_name = nil)
-    Config.load_yaml(file, feed_name)
+  def self.config_from_yaml_file(file)
+    Config.load_yaml(file)
   end
 
   ##

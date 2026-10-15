@@ -1,0 +1,49 @@
+---
+stylesheets:
+- href: "/style.xls"
+  media: all
+  type: text/xsl
+- href: "/rss.css"
+  media: all
+  type: text/css
+headers:
+  User-Agent: html2rss-spec/1.0 (+https://example.com/bot)
+  Accept: application/json
+channel:
+  title: JSON
+  url: https://example.com/api/surveys
+  ttl: 600
+selectors:
+  items:
+    selector: new > array > object, recent > array > object
+  title:
+    selector: title
+    post_process:
+    - name: template
+      string: "%<self>s (%<grade>s) [Rated %<mpaa_rating>s] (%<year>s)"
+  grade:
+    selector: grade
+  movie_title:
+    selector: movie_title
+  url:
+    post_process:
+    - name: template
+      string: https://example.com/search/movie/%<movie_title>s/results
+  mpaa_rating:
+    selector: mpaa_rating
+  distributor:
+    selector: distributor
+  year:
+    selector: year
+  categories:
+  - mpaa_rating
+  - grade
+  - year
+  description:
+    post_process:
+    - name: template
+      string: |
+        # %<movie_title>s
+
+        MPAA rating: %<mpaa_rating>s
+    - name: markdown_to_html

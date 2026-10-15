@@ -1,0 +1,53 @@
+---
+stylesheets:
+- href: "/style.xls"
+  media: all
+  type: text/xsl
+- href: "/rss.css"
+  media: all
+  type: text/css
+headers:
+  User-Agent: html2rss-spec/1.0 (+https://example.com/bot)
+channel:
+  url: https://example.com/example/widget/releases
+selectors:
+  items:
+    selector: ".release"
+  title:
+    selector: ".release-header .text-normal a"
+    post_process:
+    - name: template
+      string: "%<self>s (%<author>s)"
+  author:
+    selector: ".avatar"
+    extractor: attribute
+    attribute: alt
+    post_process:
+    - name: substring
+      start: 1
+    - name: substring
+      start: 0
+      end: -2
+  url:
+    selector: ".release-header .text-normal a"
+    extractor: href
+  description:
+    selector: ".markdown-body"
+    extractor: html
+  published_at:
+    selector: relative-time
+    extractor: attribute
+    attribute: datetime
+    post_process:
+    - name: parse_time
+  version:
+    selector: ".v-align-top .css-truncate-target"
+  categories:
+  - author
+  - version
+  enclosure:
+    selector: img.avatar
+    extractor: attribute
+    attribute: src
+  guid:
+  - url

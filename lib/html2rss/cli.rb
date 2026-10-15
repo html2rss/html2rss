@@ -144,7 +144,7 @@ module Html2rss
       handle_capture_output(result, url)
     end
 
-    desc 'test [CONFIG_INPUT] [feed_name]', 'Validate schema AND execute live extraction (fails on 0 items)'
+    desc 'test [CONFIG_INPUT]', 'Validate schema AND execute live extraction (fails on 0 items)'
     method_option :params, type: :hash, default: {}
     method_option :min_items, type: :numeric, default: 1, desc: 'Minimum required articles to pass'
     method_option :strict_quality, type: :boolean, default: false,
@@ -156,14 +156,12 @@ module Html2rss
     method_option :xml, type: :boolean, desc: 'Dump RSS XML alongside summary', default: false
     method_option :quiet, aliases: '-q', type: :boolean, default: false
     # @param config_input [String, nil] YAML file path, content, or '-' for stdin
-    # @param feed_name [String, nil] optional feed name
     # @return [void]
-    def test(config_input = nil, feed_name = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def test(config_input = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       raw_content, input_source = read_config_input(config_input)
       result = execute_feed do
         Html2rss.test(
           raw_content,
-          feed_name,
           min_items: options.fetch(:min_items, 1),
           params: options[:params] || {},
           strategy: options[:strategy],
@@ -193,13 +191,12 @@ module Html2rss
 
     feed_transport_options
     feed_emit_options
-    desc 'apply [CONFIG_INPUT] [feed_name]', 'Print RSS built from YAML config to stdout'
+    desc 'apply [CONFIG_INPUT]', 'Print RSS built from YAML config to stdout'
     method_option :params, type: :hash, default: {}
     # @param source [String, nil] YAML file path or '-'
-    # @param feed_name [String, nil] optional named feed
     # @return [void]
-    def apply(source = nil, feed_name = nil)
-      config = execute_feed { load_apply_config(source, feed_name) }
+    def apply(source = nil)
+      config = execute_feed { load_apply_config(source) }
       config[:params] = options[:params] || {}
       execute_feed { apply_runtime_request_overrides!(config) }
       apply_local_file_input!(config, options[:input]) if options[:input]
@@ -411,8 +408,8 @@ module Html2rss
       options[:strategy]&.to_sym || :auto
     end
 
-    def load_apply_config(source, feed_name)
-      return Html2rss.config_from_yaml_file(source.to_s, feed_name) if File.file?(source.to_s)
+    def load_apply_config(source)
+      return Html2rss.config_from_yaml_file(source.to_s) if File.file?(source.to_s)
 
       raw_content, = read_config_input(source)
       Config.from_yaml(raw_content)

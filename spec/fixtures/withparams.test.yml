@@ -1,0 +1,18 @@
+---
+stylesheets:
+- href: "/style.xls"
+  media: all
+  type: text/xsl
+- href: "/rss.css"
+  media: all
+  type: text/css
+headers:
+  User-Agent: html2rss-spec/1.0 (+https://example.com/bot)
+channel:
+  url: https://example.com/daily/reading?sign=%<sign>s
+  description: 'The value of param is: %<param>s'
+selectors:
+  items:
+    selector: div.daily-reading
+  description:
+    selector: p

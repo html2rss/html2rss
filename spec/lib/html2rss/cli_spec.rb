@@ -92,11 +92,11 @@ RSpec.describe Html2rss::CLI do
       end
     end
 
-    it 'fails a named feed that is not a mapping with a clean Thor::Error', :aggregate_failures do
+    it 'fails a multi-feed file with a clean Thor::Error', :aggregate_failures do
       path = File.join(tmp_dir, 'feeds.yml').tap { File.write(_1, "feeds:\n  a:\n    - 1\n") }
 
-      expect { cli.validate(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
-      expect { cli.apply(path, 'a') }.to raise_error(Thor::Error, /feed 'a' must be a mapping/)
+      expect { cli.validate(path) }.to raise_error(Thor::Error, /top-level `feeds:` is not supported/)
+      expect { cli.apply(path) }.to raise_error(Thor::Error, /top-level `feeds:` is not supported/)
     end
   end
 
@@ -457,7 +457,6 @@ RSpec.describe Html2rss::CLI do
 
         expect(Html2rss).to have_received(:test).with(
           'config.yml',
-          nil,
           hash_including(min_items: 0)
         )
       end
@@ -469,7 +468,6 @@ RSpec.describe Html2rss::CLI do
 
         expect(Html2rss).to have_received(:test).with(
           'config.yml',
-          nil,
           hash_including(strict_quality: true)
         )
       end
@@ -481,7 +479,6 @@ RSpec.describe Html2rss::CLI do
 
         expect(Html2rss).to have_received(:test).with(
           'config.yml',
-          nil,
           hash_including(compare_enhance: true)
         )
       end
@@ -578,7 +575,7 @@ RSpec.describe Html2rss::CLI do
       end
 
       it 'validates multiple files with ok indicators' do
-        expect { cli.validate('spec/fixtures/single.test.yml', 'spec/fixtures/feeds.test.yml') }
+        expect { cli.validate('spec/fixtures/single.test.yml', 'spec/fixtures/notitle.test.yml') }
           .to output(%r{ok\s+spec/fixtures/single\.test\.yml}).to_stdout
       end
     end
@@ -594,7 +591,7 @@ RSpec.describe Html2rss::CLI do
       end
 
       it 'raises a CLI error summarizing multiple file failures' do
-        expect { cli.validate('spec/fixtures/single.test.yml', 'spec/fixtures/feeds.test.yml') }
+        expect { cli.validate('spec/fixtures/single.test.yml', 'spec/fixtures/notitle.test.yml') }
           .to raise_error(Thor::Error, %r{2/2 configurations failed validation})
       end
     end
