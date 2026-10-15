@@ -27,7 +27,7 @@ module Html2rss
       true
     end
 
-    desc 'feed YAML_FILE [feed_name]', 'Print RSS built from the YAML_FILE file to stdout'
+    desc 'feed YAML_FILE', 'Print RSS built from the YAML_FILE file to stdout'
     method_option :params,
                   type: :hash,
                   optional: true,
@@ -47,10 +47,9 @@ module Html2rss
                   type: :string,
                   desc: 'Local HTML file path to read input from'
     # @param yaml_file [String] path to YAML config
-    # @param feed_name [String, nil] optional named feed in multi-feed config
     # @return [void]
-    def feed(yaml_file, feed_name = nil)
-      config = Html2rss.config_from_yaml_file(yaml_file, feed_name)
+    def feed(yaml_file)
+      config = Html2rss.config_from_yaml_file(yaml_file)
       config[:params] = options[:params] || {}
       apply_runtime_request_overrides!(config)
       apply_local_file_input!(config, options[:input]) if options[:input]
@@ -184,7 +183,7 @@ module Html2rss
       )
     end
 
-    desc 'validate YAML_FILE [feed_name]', 'Validate a YAML config with the runtime validator'
+    desc 'validate YAML_FILE', 'Validate a YAML config with the runtime validator'
     method_option :params,
                   type: :hash,
                   optional: true,
@@ -194,10 +193,9 @@ module Html2rss
     # Validates a YAML config and prints the result.
     #
     # @param yaml_file [String] the YAML file to validate
-    # @param feed_name [String, nil] optional feed name for multi-feed files
     # @return [void]
-    def validate(yaml_file, feed_name = nil)
-      result = Html2rss::Config.validate_yaml(yaml_file, feed_name, params: options[:params] || {})
+    def validate(yaml_file)
+      result = Html2rss::Config.validate_yaml(yaml_file, params: options[:params] || {})
 
       raise Thor::Error, "Invalid configuration: #{result.errors.to_h}" unless result.success?
 

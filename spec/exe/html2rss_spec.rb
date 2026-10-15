@@ -57,9 +57,9 @@ RSpec.describe 'exe/html2rss', :slow do
       end
     end
 
-    context 'with arguments: feed YAML_FILE FEED_NAME' do
+    context 'with a YAML file that declares stylesheets' do
       subject(:output) do
-        capture_cli_output('feed', 'spec/fixtures/feeds.test.yml', 'nuxt-releases', cassette: 'nuxt-releases')
+        capture_cli_output('feed', 'spec/fixtures/nuxt-releases.test.yml', cassette: 'nuxt-releases')
       end
 
       it 'generates the RSS', :aggregate_failures do
@@ -73,7 +73,7 @@ RSpec.describe 'exe/html2rss', :slow do
 
   context 'with feed config: withparams' do
     subject(:output) do
-      capture_cli_output('feed', 'spec/fixtures/feeds.test.yml', 'withparams', '--params', 'sign:10', 'param:value',
+      capture_cli_output('feed', 'spec/fixtures/withparams.test.yml', '--params', 'sign:10', 'param:value',
                          cassette: 'notitle')
     end
 
@@ -98,10 +98,17 @@ RSpec.describe 'exe/html2rss', :slow do
       expect(output).to include('Configuration is valid')
     end
 
-    it 'validates a named feed from a multi-feed config file' do
-      output = `#{executable} validate spec/fixtures/feeds.test.yml notitle`
+    it 'validates a single-feed config file' do
+      output = `#{executable} validate spec/fixtures/notitle.test.yml`
 
       expect(output).to include('Configuration is valid')
+    end
+
+    it 'rejects a multi-feed feeds: map', :aggregate_failures do
+      output = `#{executable} validate spec/fixtures/feeds.test.yml 2>&1`
+
+      expect(output).to include('top-level `feeds:` is not supported')
+      expect($?.exitstatus).not_to eq(0) # rubocop:disable Style/SpecialGlobalVars
     end
 
     it 'exits with an error for invalid selector references', :aggregate_failures do

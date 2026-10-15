@@ -55,7 +55,7 @@ schema: ## Regenerate and verify the config schema
 
 validate-fixtures: ## Validate fixture configs
 	$(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/single.test.yml
-	$(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/feeds.test.yml notitle
+	$(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/notitle.test.yml
 	! $(RUBY_RUNNER)bundle exec exe/html2rss validate spec/fixtures/invalid_selectors.test.yml
 
 docs: ## Generate documentation

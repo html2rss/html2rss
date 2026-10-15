@@ -3,26 +3,21 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss do
-  let(:config_file) { File.join(%w[spec fixtures feeds.test.yml]) }
+  let(:config_file) { File.join(%w[spec fixtures nuxt-releases.test.yml]) }
   let(:name) { 'nuxt-releases' }
 
   it 'has a version number' do
     expect(Html2rss::VERSION).not_to be_nil
   end
 
-  describe '.config_from_yaml_file(file, feed_name = nil)' do
-    subject(:feed) do
-      described_class.config_from_yaml_file(config_file, name)
+  describe '.config_from_yaml_file' do
+    it 'loads a single-feed YAML file' do
+      expect(described_class.config_from_yaml_file(config_file)).to be_a(Hash)
     end
 
-    context 'with known name' do
-      it { expect(feed).to be_a(Hash) }
-    end
-
-    context 'with unknown name' do
-      it 'raises an ArgumentError' do
-        expect { described_class.config_from_yaml_file(config_file, 'unknown') }.to raise_error(ArgumentError)
-      end
+    it 'rejects a top-level feeds: map' do
+      expect { described_class.config_from_yaml_file(File.join(%w[spec fixtures feeds.test.yml])) }
+        .to raise_error(ArgumentError, /feeds:/)
     end
   end
 
@@ -71,7 +66,7 @@ RSpec.describe Html2rss do
       subject(:xml) { Nokogiri.XML(feed_return.to_s) }
 
       let(:config) do
-        described_class.config_from_yaml_file(config_file, name)
+        described_class.config_from_yaml_file(config_file)
       end
       let(:feed_return) { VCR.use_cassette(name) { described_class.feed(config) } }
 
@@ -150,7 +145,7 @@ RSpec.describe Html2rss do
     context 'with config having selectors and is json response' do
       subject(:feed) do
         VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_file(config_file, name)
+          config = described_class.config_from_yaml_file(File.join(%w[spec fixtures json.test.yml]))
           described_class.feed(config)
         end
       end
@@ -313,7 +308,7 @@ RSpec.describe Html2rss do
     context 'with config without title selector' do
       subject(:feed) do
         VCR.use_cassette(name) do
-          config = described_class.config_from_yaml_file(config_file, name)
+          config = described_class.config_from_yaml_file(File.join(%w[spec fixtures notitle.test.yml]))
           described_class.feed(config)
         end
       end
@@ -417,7 +412,7 @@ RSpec.describe Html2rss do
 
     context 'with config being a Hash' do
       let(:config) do
-        described_class.config_from_yaml_file(config_file, name)
+        described_class.config_from_yaml_file(config_file)
       end
       let(:feed_return) { VCR.use_cassette(name) { described_class.json_feed(config) } }
       let(:first_item) { feed_return[:items].first }

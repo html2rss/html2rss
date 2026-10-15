@@ -31,11 +31,12 @@ module Html2rss
   ##
   # Loads a feed configuration from YAML.
   #
+  # One YAML file is one feed. A top-level +feeds:+ map is rejected.
+  #
   # @param file [String] path to the YAML file
-  # @param feed_name [String, nil] optional feed name inside a multi-feed config
   # @return [Hash{Symbol => Object}] loaded configuration hash
-  def self.config_from_yaml_file(file, feed_name = nil)
-    Config.load_yaml(file, feed_name)
+  def self.config_from_yaml_file(file)
+    Config.load_yaml(file)
   end
 
   ##

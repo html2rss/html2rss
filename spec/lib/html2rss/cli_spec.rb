@@ -20,13 +20,6 @@ RSpec.describe Html2rss::CLI do
       expect { cli.feed('example.yml') }.to output("#{rss_xml}\n").to_stdout
     end
 
-    it 'passes the feed_name to config_from_yaml_file' do
-      allow(Html2rss).to receive(:config_from_yaml_file).with('example.yml',
-                                                              'feed_name').and_return({ url: 'https://example.com' })
-
-      expect { cli.feed('example.yml', 'feed_name') }.to output("#{rss_xml}\n").to_stdout
-    end
-
     {
       'strategy' => [{ strategy: 'botasaurus' }, { strategy: :botasaurus }],
       'max_redirects' => [{ max_redirects: 8 }, { request: { max_redirects: 8 } }],
@@ -392,7 +385,7 @@ RSpec.describe Html2rss::CLI do
       it 'passes the params option to runtime validation' do
         cli.invoke(:validate, ['config.yml'], { params: { 'query' => 'ruby' } })
 
-        expect(Html2rss::Config).to have_received(:validate_yaml).with('config.yml', nil, params: { 'query' => 'ruby' })
+        expect(Html2rss::Config).to have_received(:validate_yaml).with('config.yml', params: { 'query' => 'ruby' })
       end
     end
 

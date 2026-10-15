@@ -6,8 +6,8 @@ require 'yaml'
 module Html2rss
   ##
   # The provided configuration is used to generate the RSS feed.
-  # This class provides methods to load and process configuration from a YAML file,
-  # supporting both single and multiple feed configurations.
+  # This class provides methods to load and process configuration from a YAML file.
+  # One YAML file is one feed.
   #
   # Configuration is validated during initialization.
   class Config # rubocop:disable Metrics/ClassLength
@@ -63,12 +63,10 @@ module Html2rss
       # Loads and validates a YAML configuration file.
       #
       # @param file [String] the YAML file to load
-      # @param feed_name [String, nil] optional feed name for multi-feed files
-      # @param multiple_feeds_key [Symbol] key under which multiple feeds are defined
       # @param params [Hash{Symbol => Object, Hash{String => Object, nil}}] dynamic parameters for string formatting
       # @return [Dry::Validation::Result] validation result after defaults are applied
-      def validate_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS, params: UNSET)
-        validate(load_yaml(file, feed_name, multiple_feeds_key:), params:)
+      def validate_yaml(file, params: UNSET)
+        validate(load_yaml(file), params:)
       end
 
       ##
@@ -102,34 +100,21 @@ module Html2rss
       ##
       # Loads the feed configuration from a YAML file.
       #
-      # Supports multiple feeds defined under the specified key (default :feeds).
+      # One YAML file is one feed. A top-level +:feeds+ key is rejected so a
+      # multi-feed map cannot be mistaken for a single feed.
       #
       # @param file [String] the YAML file to load.
-      # @param feed_name [String, nil] the feed name when using multiple feeds.
-      # @param multiple_feeds_key [Symbol] the key under which multiple feeds are defined.
       # @return [Hash{Symbol => Object}] the configuration hash.
-      # @raise [ArgumentError] if the file doesn't exist or feed is not found.
-      # rubocop:disable Metrics/MethodLength
-      def load_yaml(file, feed_name = nil, multiple_feeds_key: MultipleFeedsConfig::CONFIG_KEY_FEEDS)
+      # @raise [ArgumentError] if the file doesn't exist, is not a Hash, or has +:feeds+.
+      def load_yaml(file)
         raise ArgumentError, "File '#{file}' does not exist" unless File.exist?(file)
-        raise ArgumentError, "`#{multiple_feeds_key}` is a reserved feed name" if feed_name == multiple_feeds_key
 
         yaml = YAML.safe_load_file(file, symbolize_names: true)
+        raise ArgumentError, 'YAML must deserialize to a Hash' unless yaml.is_a?(Hash)
+        raise ArgumentError, 'top-level `feeds:` is not supported; one YAML file is one feed' if yaml.key?(:feeds)
 
-        return yaml unless yaml.key?(multiple_feeds_key)
-
-        unless feed_name
-          available_feeds = yaml.fetch(multiple_feeds_key).keys.join(', ')
-          raise ArgumentError,
-                "Feed name is required under `#{multiple_feeds_key}`. Available feeds: #{available_feeds}"
-        end
-
-        config = yaml.dig(multiple_feeds_key, feed_name.to_sym)
-        raise ArgumentError, "Feed '#{feed_name}' not found under `#{multiple_feeds_key}` key." unless config
-
-        MultipleFeedsConfig.to_single_feed(config, yaml, multiple_feeds_key:)
+        yaml
       end
-      # rubocop:enable Metrics/MethodLength
 
       ##
       # Processes the provided configuration hash, applying dynamic parameters if given,
