@@ -132,7 +132,7 @@ RSpec.describe 'exe/html2rss', :slow do
     end
 
     it 'rejects a multi-feed feeds: map', :aggregate_failures do
-      output = `#{executable} validate spec/fixtures/feeds.test.yml 2>&1`
+      output = `#{executable} validate spec/fixtures/feeds_key_rejected.test.yml 2>&1`
 
       expect(output).to include('top-level `feeds:` is not supported')
       expect($?.exitstatus).not_to eq(0) # rubocop:disable Style/SpecialGlobalVars

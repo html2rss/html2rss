@@ -74,7 +74,7 @@ RSpec.describe Html2rss::Config do
     end
 
     context 'when the file has a top-level feeds: key' do
-      let(:file) { 'spec/fixtures/feeds.test.yml' }
+      let(:file) { 'spec/fixtures/feeds_key_rejected.test.yml' }
 
       it 'raises InvalidConfig' do
         expect { described_class.load_yaml(file) }

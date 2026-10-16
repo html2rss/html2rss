@@ -16,7 +16,7 @@ RSpec.describe Html2rss do
     end
 
     it 'rejects a top-level feeds: map' do
-      expect { described_class.config_from_yaml_file(File.join(%w[spec fixtures feeds.test.yml])) }
+      expect { described_class.config_from_yaml_file(File.join(%w[spec fixtures feeds_key_rejected.test.yml])) }
         .to raise_error(Html2rss::Config::InvalidConfig, /feeds:/)
     end
   end
