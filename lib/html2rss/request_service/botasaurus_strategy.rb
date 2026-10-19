@@ -84,7 +84,7 @@ module Html2rss
         {
           operation_timeout: timeout,
           connect_timeout: [ctx.policy.connect_timeout_seconds, timeout].min,
-          read_timeout: [ctx.policy.read_timeout_seconds, timeout].min,
+          read_timeout: timeout,
           request_timeout: timeout,
           total_request_timeout: timeout
         }

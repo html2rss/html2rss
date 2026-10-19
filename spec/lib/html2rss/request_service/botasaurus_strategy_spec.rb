@@ -175,9 +175,10 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
     context 'when feed budget exceeds the scrape-api transport cap' do
       before do
         allow(budget).to receive(:effective_timeout_seconds).and_return(60.0)
+        allow(policy).to receive(:read_timeout_seconds).and_return(10)
       end
 
-      it 'uses the scrape total plus transport buffer for HTTPX timeout' do
+      it 'does not cap the scrape-api hop at the target-site read timeout' do
         allow(HTTPX).to receive(:with).and_call_original
         execute
 
@@ -187,6 +188,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
           hash_including(
             timeout: hash_including(
               operation_timeout: cap.to_f,
+              read_timeout: cap.to_f,
               request_timeout: cap.to_f,
               total_request_timeout: cap.to_f
             )
