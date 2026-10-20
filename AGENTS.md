@@ -1,165 +1,49 @@
-These rules apply to every task in this project unless explicitly overridden.
-Bias: caution over speed on non-trivial work. Use judgment on trivial tasks.
+# AGENTS.md
 
-## Rule 1 — Think Before Coding
+Architecture and seam ownership map: `CONTEXT.md`.
 
-State assumptions explicitly. If uncertain, ask rather than guess.
-Present multiple interpretations when ambiguity exists.
-Push back when a simpler approach exists.
-Stop when confused. Name what's unclear.
+## Coding & Architecture Contracts
 
-## Rule 2 — Simplicity First
-
-Minimum code that solves the problem. Nothing speculative.
-No features beyond what was asked. No abstractions for single-use code.
-Test: would a senior engineer say this is overcomplicated? If yes, simplify.
-
-## Rule 3 — Surgical Changes
-
-Touch only what you must. Clean up only your own mess.
-Don't "improve" adjacent code, comments, or formatting.
-Don't refactor what isn't broken. Match existing style.
-
-## Rule 4 — Goal-Driven Execution
-
-Define success criteria. Loop until verified.
-Don't follow steps. Define success and iterate.
-Strong success criteria let you loop independently.
-
-## Rule 5 — Use the model only for judgment calls
-
-Use me for: classification, drafting, summarization, extraction.
-Do NOT use me for: routing, retries, deterministic transforms.
-If code can answer, code answers.
-
-## Rule 6 — Token budgets are not advisory
-
-Per-task: 4,000 tokens. Per-session: 30,000 tokens.
-If approaching budget, summarize and start fresh.
-Surface the breach. Do not silently overrun.
-
-## Rule 7 — Surface conflicts, don't average them
-
-If two patterns contradict, pick one (more recent / more tested).
-Explain why. Flag the other for cleanup.
-Don't blend conflicting patterns.
-
-## Rule 8 — Read before you write
-
-Before adding code, read exports, immediate callers, shared utilities.
-"Looks orthogonal" is dangerous. If unsure why code is structured a way, ask.
-
-## Rule 9 — Tests verify intent, not just behavior
-
-Tests must encode WHY behavior matters, not just WHAT it does.
-A test that can't fail when business logic changes is wrong.
-
-## Rule 10 — Checkpoint after every significant step
-
-Summarize what was done, what's verified, what's left.
-Don't continue from a state you can't describe back.
-If you lose track, stop and restate.
-
-## Rule 11 — Match the codebase's conventions, even if you disagree
-
-Conformance > taste inside the codebase.
-If you genuinely think a convention is harmful, surface it. Don't fork silently.
-
-## Rule 12 — Fail loud
-
-"Completed" is wrong if anything was skipped silently.
-"Tests pass" is wrong if any were skipped.
-Default to surfacing uncertainty, not hiding it.
-
-## Role
-
-Act as an autonomous engineering agent with deep expertise in programming, especially modern Ruby, Docker, and web scraping. Operate with a privacy-first mindset, lean on open standards, and reach for proven tooling when it accelerates delivery.
-
-## Mission
-
-Produce RSS 2.0 feeds from websites by scraping HTML or JSON. Adapt your strategy when layouts or anti-bot protections shift, and document the decisions that keep the pipeline reliable.
-
-## Contributor Entrypoint
-
-- Treat `lib/html2rss.rb` as the contributor-facing entrypoint to the gem.
-- A curious contributor should be able to read `lib/html2rss.rb` top to bottom and understand the high-level pipeline.
-- Keep `lib/html2rss.rb` focused on that orchestration story. It should explain what happens, not how every detail is calculated.
-
-## Coding Standards
-
-- Target Ruby 3.3 or newer.
-- Use plain Ruby—never pull in ActiveSupport.
-- Add `# frozen_string_literal: true` to every Ruby file.
-- Prefer keyword arguments.
-- Favor functional iterators (`map`, `filter`, `find`) over imperative loops.
-- Use `Set`.
-- Keep methods short (≤10 lines) and single-purpose.
-- Name things descriptively and encapsulate behaviour in service objects or modules.
-- Raise meaningful errors; never fail silently.
+- Keep `lib/html2rss.rb` as the high-level orchestration entrypoint; do not add `lib/html2rss/README.md`.
+- Target Ruby >= 3.3, plain Ruby only (never ActiveSupport), with `# frozen_string_literal: true` in every Ruby file.
+- Keep methods <= 10 lines and single-purpose, but prefer direct code over tiny helper methods introduced only to satisfy RuboCop metrics.
 - Document every public method with YARD tags (`@param`, `@return`).
-- Prefer direct, skimmable code over metric-driven indirection. Do not introduce tiny helper methods whose main purpose is to satisfy RuboCop metrics.
-- No metaprogramming or reflection in `lib/`, enforced by `Html2rss/NoMetaprogramming`. Never disable it inline; fix the type instead. Use the closed-set enum pattern (`ALL`, `private_class_method :new`, `self.[]`) and the Data-block pattern (`X = Data.define(...)` then `class X ... end`).
+- No metaprogramming or reflection in `lib/`, enforced by `Html2rss/NoMetaprogramming`. Never disable it inline; use the closed-set enum pattern (`ALL`, `private_class_method :new`, `self.[]`) and Data-block pattern (`X = Data.define(...)` then `class X ... end`).
 
-## Testing Standards
+## Testing Contracts
 
-- Use RSpec with clear `describe` and `context` blocks.
-- Express setup with `let`.
-- Do not define methods within \_spec.rb files. If unavoidable, consider creating a supporting file (helper/shared_example/...).
-- Never use `send(:method_name)`
-- Use of [rspec-matchers](https://rspec.info/features/3-13/rspec-expectations/built-in-matchers/) properly.
-- Fix Rubocop offense `RSpec/MultipleExpectations` by tagging example with `:aggregate_failures`.
+- Do not define methods inside `*_spec.rb` files; use helpers or shared examples when needed.
+- Never use `send(:method_name)` in specs.
+- Tag multi-expectation examples with `:aggregate_failures` (`RSpec/MultipleExpectations`).
 
-- Stub with `allow(...).to receive(...).and_return(...)`.
-- Prefer `expect(...).to eq(...)` and `expect(...).to have_received(...)` expectations.
-- Share examples for common extractor or post-processor behaviours.
+## Description & HTML Processing
 
-## Security & Performance
-
-- Sanitize all HTML before output.
-- Validate every input; never trust remote data.
-- Cache expensive work when it is safe to do so.
-- Minimize allocations; prefer bang methods when appropriate.
-
-## Description & HTML Processing Guidelines
-
-- **Preserve Layout Newlines**: When parsing, sanitizing, or modifying HTML text, ensure you preserve structural block newlines (`\n` or `\n\n`) and lists.
-- **Placeholder Newline Protection**: To collapse horizontal spaces without stripping structural newlines, temporarily replace newlines with a placeholder (e.g. `__NEWLINE_PLACEHOLDER__`) before calling standard whitespace-collapsing regular expressions (like `gsub(/\s+/, ' ')`), and restore them afterward.
-- **Excluding Redundant Titles & Anchors**: To keep descriptions clean and avoid duplicate data, always exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor elements (`a`) when extracting visible text for an article's description.
-- **Collapse Internal Text Wrapping**: Collapse consecutive wrapping whitespaces (including line breaks) inside raw HTML text nodes to a single space to prevent source code wrapping from turning into structural description newlines.
+- Preserve structural block newlines (`\n`, `\n\n`) and lists. Protect newlines with `__NEWLINE_PLACEHOLDER__` before horizontal whitespace collapsing (`gsub(/\s+/, ' ')`) and restore them afterward.
+- Collapse consecutive wrapping whitespace (including line breaks) inside raw HTML text nodes to a single space.
+- Exclude heading elements (`h1..h6`) and the selected read-more/permalink anchor (`a`) when extracting visible article description text.
 - New junk title patterns require a fixture with expected **reason**; prefer fixing extractor title provenance when a reason keeps firing.
 
 ## Curation CLI / MCP
 
-User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share **seven verbs**. Contract: `CONTEXT.md` § Frozen contract. Module guide: `lib/html2rss/mcp/README.md`.
+User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share seven verbs (`inspect`, `recon`, `capture`, `validate`, `test`, `apply`, `scrape`) plus batch variants (`batch_inspect`, `batch_recon`, `batch_scrape`). Canonical contract: `CONTEXT.md` § Frozen contract. Module guide: `lib/html2rss/mcp/README.md`. When verbs change, update `CONTEXT.md` § Frozen contract, this section, `README.md`, and `lib/html2rss/mcp/README.md`.
 
-| Verb     | Job                                                              |
-| -------- | ---------------------------------------------------------------- |
-| inspect  | Cheap diagnostics (final URL, status, alternates, surface)       |
-| recon    | Verdict + native_feed preference (`:build` / `:defer` / `:drop`) |
-| capture  | YAML draft config                                                |
-| validate | Schema only                                                      |
-| test     | Schema + live extraction (min_items)                             |
-| apply    | Ship RSS from config                                             |
-| scrape   | Articles now (one-shot auto-source)                              |
-
-Batch: `batch_inspect`, `batch_recon`, `batch_scrape`.
-
-**Enhance audit:** `selectors.items.enhance` is list-card enrichment via `Html::ArticleExtractor` on matched item nodes. `Test::EnhanceAudit` owns `quality_report.metrics.enhance_gains` and warn-only enhance warnings; `compare_enhance` on test is diagnostic only. Auto-source-only configs (no selectors) skip enhance_gains.
-
-Default items-selector spelling is `Selectors::DEFAULT_ITEMS_SELECTOR`; it expands to `Html::Navigator::MAIN_ANCHOR_SELECTOR` only for that spelling (or a blank selector), and `Config.prepare_defaults` applies it only when `selectors:` is present.
-
-When verbs change, update `CONTEXT.md` § Frozen contract, this table, `README.md`, and `lib/html2rss/mcp/README.md`.
+- **Enhance audit:** `selectors.items.enhance` enriches matched item nodes via `Html::ArticleExtractor`. `Test::EnhanceAudit` owns `quality_report.metrics.enhance_gains` and warn-only enhance warnings; `compare_enhance` on test is diagnostic only. Auto-source-only configs (no selectors) skip `enhance_gains`.
+- **Default items selector:** `Selectors::DEFAULT_ITEMS_SELECTOR` expands to `Html::Navigator::MAIN_ANCHOR_SELECTOR` only for that spelling (or blank), applied by `Config.prepare_defaults` only when `selectors:` is present (`CONTEXT.md` § Default items selector).
 
 ## Operating Checklist
 
-- Use `make quick` during implementation for the fast local feedback loop. It should stay focused on changed-file linting and targeted specs.
-- Treat `make ready` as the implementation quality gate before handoff or a potential PR merge. It must cover the repo's required merge checks.
-- When adding or modifying configuration options in `lib/html2rss/selectors/config.rb` or `lib/html2rss/config/validator.rb`, update `lib/html2rss/config/schema.rb` (`Html2rss::Config::Schema`) so the property is exported to the JSON schema, then run `make schema` to sync `schema/html2rss-config.schema.json`.
-- Catalog metadata on `directory` (`title`, `summary`, `topics`) is validated in `DirectoryConfig`. When changing those rules, regenerate the schema and coordinate `html2rss-configs` validation plus `Html2rss::Configs::Catalog`.
-- Treat YARD linting as a contract-integrity check for contributor-facing APIs and documentation syntax correctness. Keep validator scope high-signal; avoid baseline/todo suppression files as a long-term mechanism.
-- Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec commands through `mise exec -- ...` directly or via Make targets.
-- Treat `docs/` as generated YARD HTML only (`make docs` / `make clean`). Never commit source markdown there.
+- Run Ruby, Bundler, Rake, RuboCop, Reek, YARD, and RSpec via `mise exec -- ...` or Make targets (`make quick` for changed-file lint and targeted specs; `make ready` for pre-merge checks).
+- When changing config options in `lib/html2rss/selectors/config.rb` or `lib/html2rss/config/validator.rb`, update `lib/html2rss/config/schema.rb` (`Html2rss::Config::Schema`) and run `make schema` to sync `schema/html2rss-config.schema.json`.
+- Catalog metadata on `directory` (`title`, `summary`, `topics`) is validated in `DirectoryConfig`. When changing rules, run `make schema` and coordinate `html2rss-configs` validation plus `Html2rss::Configs::Catalog`.
+- Keep YARD lint clean without baseline/todo suppression files. `docs/` is generated YARD HTML only (`make docs` / `make clean`); never commit source markdown there.
 - `CHANGELOG.md` is the 0.19.x archive; release notes are GitHub Releases (release-drafter).
-- Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,mcp,selectors}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
-- Wire those guides with `{include:file:lib/.../README.md}` on the owning class. Do not add them to `.yardopts --files`: YARD extra-file names are `File.basename` without extension, so extra `README.md` files all emit `file.README.html` and clobber the gem README.
+- Keep living module guides at `lib/html2rss/{auto_source,capture,feed_pipeline,mcp,selectors}/README.md`, wired via `{include:file:lib/.../README.md}` on the owning class. Never add them to `.yardopts --files` (all `README.md` extra files emit `file.README.html` and clobber the gem README).
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.
+
+## Release
+
+- After merging a PR to `master` or when shipping, ask whether to bump and which version unless already specified; never invent the version.
+- Dispatch `.github/workflows/bump-version.yml` on `master` only after the user answers (`bump_type`: `auto`, `patch`, `minor`, `major`, or `custom`; pass `custom_version` only when `bump_type` is `custom`).
+- Wait for the workflow run to bump `lib/html2rss/version.rb`, regenerate the config schema, and open `release/vX.Y.Z` (`chore(release): bump version to vX.Y.Z`).
+- Merge `release/vX.Y.Z` (squash or rebase only; merge commits are disabled on `master`) only when asked and after Ruby 3.3, Ruby 3.4, Ruby 4.0, and lint are green.
+- Stop after that merge. Publish the draft release (`.github/workflows/release_gem.yml`) only when asked.
