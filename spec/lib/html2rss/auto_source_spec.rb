@@ -58,6 +58,14 @@ RSpec.describe Html2rss::AutoSource do
       expect(schema.call(toggled_config)).to be_success
     end
 
+    it 'allows toggling the json_document scraper' do
+      toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(
+        scraper: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].merge(json_document: { enabled: false })
+      )
+
+      expect(schema.call(toggled_config)).to be_success
+    end
+
     it 'allows toggling the wordpress_api scraper' do
       toggled_config = Html2rss::AutoSource::DEFAULT_CONFIG.merge(
         scraper: Html2rss::AutoSource::DEFAULT_CONFIG[:scraper].merge(wordpress_api: { enabled: false })
@@ -535,6 +543,74 @@ RSpec.describe Html2rss::AutoSource do
         expect(articles.size).to be >= 1
         expect(articles.map { |article| article.url.to_s }).to all(include('/iss-today/'))
         expect(articles.map(&:title)).to all(match(/\A\S+(?:\s+\S+){2,}/))
+      end
+    end
+
+    context 'with a JSON document listing (indieappsales slice)' do
+      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+      let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
+      let(:response) do
+        Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
+      end
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'admits nothing by default and logs keep_different_domain', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to eq([])
+        expect(auto_source.admission_drops).to include('different_domain' => 2)
+        expect(Html2rss::Log).to have_received(:warn) do |payload|
+          parsed = JSON.parse(payload)
+          expect(parsed).to include(
+            'event_name' => 'auto_source.admission_emptied',
+            'host' => url.host,
+            'hint' => Html2rss::AutoSource::Cleanup::DIFFERENT_DOMAIN_HINT
+          )
+          expect(parsed['drop_tallies']).to include('different_domain' => 2)
+        end
+      end
+    end
+
+    context 'with a JSON document listing keeping different domains' do
+      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+      let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
+      let(:response) do
+        Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
+      end
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(cleanup: { keep_different_domain: true })
+      end
+
+      it 'keeps the long-named off-domain item', :aggregate_failures do
+        expect(articles.map(&:title)).to eq(['Long Enough App Name'])
+        expect(articles.first.url.to_s).to eq('https://apps.apple.com/app/id1234567890')
+        expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::JsonDocument)
+      end
+    end
+
+    context 'with json_document disabled on a JSON listing' do
+      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+      let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
+      let(:response) do
+        Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
+      end
+      let(:config) do
+        described_class::DEFAULT_CONFIG.merge(
+          scraper: described_class::DEFAULT_CONFIG[:scraper].merge(json_document: { enabled: false })
+        )
+      end
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      # rubocop:disable-next RSpec/ExampleLength -- structured event_name + category assert
+      it 'logs no_scraper unsupported_surface without classifying HTML', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(Html2rss::Log).to have_received(:warn) do |payload|
+          parsed = JSON.parse(payload)
+          expect(parsed).to include(
+            'event_name' => 'auto_source.no_scraper',
+            'category' => 'unsupported_surface'
+          )
+        end
       end
     end
   end

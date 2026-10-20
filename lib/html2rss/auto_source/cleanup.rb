@@ -63,7 +63,21 @@ module Html2rss
       # Read-only ship-quality audit on RSS/article-like items (no mutation).
       AuditResult = Data.define(:warnings, :metrics, :violations)
 
+      # Config key named when different_domain drops emptied admission.
+      DIFFERENT_DOMAIN_HINT = 'auto_source.cleanup.keep_different_domain: true'
+
       class << self
+        # Mitigating config hint when admission drops emptied a non-empty capture.
+        # Other drop reasons remain counts only.
+        #
+        # @param drop_tallies [Hash{String => Integer}]
+        # @return [String, nil]
+        def admission_hint(drop_tallies)
+          return unless drop_tallies.fetch('different_domain', 0).positive?
+
+          DIFFERENT_DOMAIN_HINT
+        end
+
         # @param articles [Array<Article>] extracted article candidates
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
         # @param keep_different_domain [Boolean] whether to keep off-domain entries

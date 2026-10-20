@@ -75,5 +75,21 @@ RSpec.describe Html2rss::AutoSource::Scraper::XhrArticles do
         expect(articles).to be_empty
       end
     end
+
+    context 'when the same generic payload is also scraped by JsonDocument' do
+      let(:payload) do
+        [{ title: 'Shared Headline Extra Words', url: '/shared/one', description: 'Parity check.' }]
+      end
+      let(:captured_responses) { [{ 'body' => payload.to_json }] }
+
+      it 'yields the same url and title as JsonDocument', :aggregate_failures do
+        json_document_articles = Html2rss::AutoSource::Scraper::JsonDocument
+                                 .new(payload, url: base_url).each.to_a
+
+        expect(articles).not_to be_empty
+        expect(articles.first[:url]).to eq(json_document_articles.first[:url])
+        expect(articles.first[:title]).to eq(json_document_articles.first[:title])
+      end
+    end
   end
 end

@@ -36,6 +36,9 @@ module Html2rss
         optional(:json_state).hash do
           optional(:enabled).filled(:bool)
         end
+        optional(:json_document).hash do
+          optional(:enabled).filled(:bool)
+        end
         optional(:xhr_articles).hash do
           optional(:enabled).filled(:bool)
         end

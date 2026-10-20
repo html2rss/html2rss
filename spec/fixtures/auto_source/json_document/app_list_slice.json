@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Long Enough App Name",
+    "link": "https://apps.apple.com/app/id1234567890",
+    "description": "A short pitch for an indie iOS app currently on sale.",
+    "categories": ["games", "productivity"],
+    "icon": "https://cdn.indieappsales.com/icons/long-enough.png"
+  },
+  {
+    "name": "Shorty",
+    "link": "https://apps.apple.com/app/id0987654321",
+    "description": "One-word title below the Cleanup word floor.",
+    "categories": ["utilities"],
+    "icon": "https://cdn.indieappsales.com/icons/shorty.png"
+  }
+]

@@ -32,8 +32,11 @@ module Html2rss
         [Html].freeze
       ].freeze
 
+      # JSON response body scrapers (routed by AutoSource before SCRAPER_TIERS).
+      DOCUMENT_SCRAPERS = [JsonDocument].freeze
+
       # Flat ordered list (request slot accounting, detection helpers).
-      SCRAPERS = SCRAPER_TIERS.flatten.freeze
+      SCRAPERS = (DOCUMENT_SCRAPERS + SCRAPER_TIERS.flatten).freeze
 
       # Heuristic scrapers that share one memoized SST::Document per page.
       HEURISTIC_SCRAPERS = Set[SemanticHtml, Html].freeze
@@ -91,6 +94,7 @@ module Html2rss
       # @option opts [Hash] :microdata scraper toggle and configuration
       # @option opts [Hash] :microformats2 scraper toggle and configuration
       # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :json_document scraper toggle and configuration
       # @option opts [Hash] :xhr_articles scraper toggle and configuration
       # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration
@@ -139,6 +143,7 @@ module Html2rss
       # @option opts [Hash] :microdata scraper toggle and configuration
       # @option opts [Hash] :microformats2 scraper toggle and configuration
       # @option opts [Hash] :json_state scraper toggle and configuration
+      # @option opts [Hash] :json_document scraper toggle and configuration
       # @option opts [Hash] :xhr_articles scraper toggle and configuration
       # @option opts [Hash] :meta_oembed scraper toggle and configuration
       # @option opts [Hash] :semantic_html scraper toggle and configuration

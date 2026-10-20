@@ -10,8 +10,9 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 
 ## Live flow
 
-1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML). Direct syndication responses skip HTML scrapers and parse via `Syndication::Parser`.
-2. **Scraper tiers** — Enabled scrapers that claim the page (shallow `articles?` or instance `extractable?`) run in `Scraper::SCRAPER_TIERS` order. Merge within a tier, then stop when enough articles survive Cleanup:
+1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML, or a Hash/Array for JSON). Direct syndication responses skip HTML scrapers and parse via `Syndication::Parser`.
+2. **JSON document body** — When `parsed_body` is a Hash or Array, AutoSource runs `JsonDocument` only (no HTML tiers). Same-domain Cleanup stays on. If the scraper yielded items and Cleanup kept none, `Log.warn` emits `auto_source.admission_emptied` with drop tallies; a `different_domain` tally names `auto_source.cleanup.keep_different_domain: true`.
+3. **Scraper tiers** (HTML only) — Enabled scrapers that claim the page (shallow `articles?` or instance `extractable?`) run in `Scraper::SCRAPER_TIERS` order. Merge within a tier, then stop when enough articles survive Cleanup:
 
    0. Native feed: NativeFeed (head alternates + path discovery → RSS/Atom parse)
    1. In-page structured: Schema, Microdata, Microformats2, JsonState, XhrArticles
@@ -19,14 +20,14 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
    3. Heuristic: SemanticHtml
    4. Heuristic: Html (skipped when earlier tiers already admitted at least one clean article)
 
-3. **Structured / API scrapers** — Schema, Microdata, MF2, JSON state, XHR JSON, oEmbed, WordPress REST, and Sitemap work on Nokogiri CSS/XPath or JSON/XML parsers. They do not use SST.
-4. **Heuristic scrapers** — `SemanticHtml` and `Html` normalize once into an `SST::Document`, then:
+4. **Structured / API scrapers** — Schema, Microdata, MF2, JSON state, XHR JSON, oEmbed, WordPress REST, and Sitemap work on Nokogiri CSS/XPath or JSON/XML parsers. They do not use SST. `JsonDocument` walks a JSON response body (JSON Feed mapping or `JsonState.discover_articles`).
+5. **Heuristic scrapers** — `SemanticHtml` and `Html` normalize once into an `SST::Document`, then:
 
    `SST::Normalizer` → `AutoSource::Segmenter` → `Scoring::Engine` → extractor / article materialization.
 
-5. **Cleanup** — Merge, dedupe, hard-exclude non-article destinations (via `PathClassifier` facts), drop junk titles, and trim to `limit`. Html is skipped when earlier tiers already admitted clean items.
+6. **Cleanup** — Merge, dedupe, hard-exclude non-article destinations (via `PathClassifier` facts), drop junk titles, and trim to `limit`. Html is skipped when earlier tiers already admitted clean items.
 
-6. **Entry URL resolution** (pipeline, not this class) — when AutoFallback sees a weak homepage extract, `FeedResolution` may rewrite the scrape URL to a listing/feed before escalating strategies. See {Html2rss::FeedPipeline} and {Html2rss::FeedResolution}.
+7. **Entry URL resolution** (pipeline, not this class) — when AutoFallback sees a weak homepage extract, `FeedResolution` may rewrite the scrape URL to a listing/feed before escalating strategies. See {Html2rss::FeedPipeline} and {Html2rss::FeedResolution}.
 
 Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (cards grouped by parent; `main` is a filter), `:cluster` (class/structure grids for anchorless cards). Scoring ranks and demotes; `LinkDestination::NoisePolicy` owns content-anchor eligibility. Cleanup owns feed-item admission.
 
@@ -34,7 +35,8 @@ Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (car
 
 | Surface                                                                                       | Owns DOM                                                         |
 | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `Response#parsed_body`                                                                        | Single HTML parse for the page                                   |
+| `Response#parsed_body`                                                                        | HTML document, or Hash/Array for JSON bodies                     |
+| `JsonDocument`                                                                                | Parsed JSON Hash/Array (no Nokogiri)                             |
 | Schema / Microdata / MF2 / JsonState / XhrArticles / MetaOembed / app-shell detection         | Nokogiri                                                         |
 | Sitemap detection (CSS/XPath)                                                                 | Nokogiri; URL list parsing uses raw `response.body` (XML string) |
 | Selectors path / Sanitize transformers                                                        | Nokogiri (unchanged)                                             |
@@ -51,7 +53,8 @@ Production heuristic scrapers should reuse one `SST::Document` memoized from `pa
 
 ## Non-goals
 
-- Replacing Selectors, Schema, Microdata, MF2, JsonState, or XhrArticles with SST.
+- Replacing Selectors, Schema, Microdata, MF2, JsonState, JsonDocument, or XhrArticles with SST.
+- Turning `keep_different_domain` on automatically for JSON documents.
 - A second HTML parser beside Nokogiri.
 - Dual Response payload (Nokogiri + SST always).
 - App-shell classification on SST.
