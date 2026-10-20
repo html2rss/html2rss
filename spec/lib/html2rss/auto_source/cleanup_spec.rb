@@ -31,6 +31,27 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     ]
   end
 
+  describe '::DEFAULT_CONFIG' do
+    it 'denies off-domain article URLs by default' do
+      expect(described_class::DEFAULT_CONFIG.fetch(:keep_different_domain)).to be(false)
+    end
+  end
+
+  describe '.admission_hint' do
+    it 'explains the keep_different_domain trust tradeoff when that drop emptied admission',
+       :aggregate_failures do
+      hint = described_class.admission_hint('different_domain' => 2)
+
+      expect(hint).to eq(described_class::DIFFERENT_DOMAIN_HINT)
+      expect(hint).to include('keep_different_domain')
+      expect(hint).to include('any domain supplied by the source')
+    end
+
+    it 'returns nil when different_domain was not the emptying reason' do
+      expect(described_class.admission_hint('short_title' => 1)).to be_nil
+    end
+  end
+
   describe '.call' do
     subject(:result) { described_class.call(articles, url:, keep_different_domain:) }
 

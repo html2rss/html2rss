@@ -10,8 +10,8 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 
 ## Live flow
 
-1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML, or a Hash/Array for JSON). Direct syndication responses skip HTML scrapers and parse via `Syndication::Parser`.
-2. **JSON document body** — When `parsed_body` is a Hash or Array, AutoSource runs `JsonDocument` only (no HTML tiers). Same-domain Cleanup stays on. If the scraper yielded items and Cleanup kept none, `Log.warn` emits `auto_source.admission_emptied` with drop tallies; a `different_domain` tally names `auto_source.cleanup.keep_different_domain: true`.
+1. **Request** — `RequestSession` returns a `Response` with `body` (String) and `parsed_body` (Nokogiri HTML, or parsed JSON for JSON media types). Direct syndication responses skip HTML scrapers and parse via `Syndication::Parser`.
+2. **JSON document body** — When the response is a JSON media type (`Response#json_response?`), AutoSource runs `JsonDocument` only (no HTML tiers). Scalar JSON is `unsupported_surface`. Same-domain Cleanup stays on by default (`keep_different_domain: false`). If the scraper yielded items and Cleanup kept none, `Log.warn` emits `auto_source.admission_emptied` with drop tallies; a `different_domain` tally hints at `auto_source.cleanup.keep_different_domain: true` / `--keep-different-domain`, which lets the remote source control off-domain link targets (no affiliation or safety check). Guidance stays in help/docs and that structured warning — stdout feed output stays composable.
 3. **Scraper tiers** (HTML only) — Enabled scrapers that claim the page (shallow `articles?` or instance `extractable?`) run in `Scraper::SCRAPER_TIERS` order. Merge within a tier, then stop when enough articles survive Cleanup:
 
    0. Native feed: NativeFeed (head alternates + path discovery → RSS/Atom parse)
@@ -54,7 +54,7 @@ Production heuristic scrapers should reuse one `SST::Document` memoized from `pa
 ## Non-goals
 
 - Replacing Selectors, Schema, Microdata, MF2, JsonState, JsonDocument, or XhrArticles with SST.
-- Turning `keep_different_domain` on automatically for JSON documents.
+- Turning `keep_different_domain` on automatically for JSON documents (operators must opt in explicitly; the flag trusts the source for any published link domain).
 - A second HTML parser beside Nokogiri.
 - Dual Response payload (Nokogiri + SST always).
 - App-shell classification on SST.

@@ -62,6 +62,9 @@ html2rss capture https://example.com/news | html2rss test -
 # One-shot articles now
 html2rss scrape https://example.com/news
 html2rss scrape https://example.com/news --format jsonfeed --explain
+# Off-domain item URLs are dropped by default. --keep-different-domain opts in
+# and lets the remote source control published links to unrelated domains.
+html2rss scrape https://example.com/app-list.json --keep-different-domain
 
 # Durable config workflow
 html2rss capture https://example.com/news --write feed.yml

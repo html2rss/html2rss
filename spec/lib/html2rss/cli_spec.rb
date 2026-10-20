@@ -557,6 +557,14 @@ RSpec.describe Html2rss::CLI do
       expect { cli.invoke(:scrape, ['https://example.com/news'], { keep_different_domain: true }) }
         .to output("#{rss_xml}\n").to_stdout
     end
+
+    it 'defaults --keep-different-domain to false and documents the trust tradeoff', :aggregate_failures do
+      option = described_class.commands['scrape'].options[:keep_different_domain]
+
+      expect(option.default).to be(false)
+      expect(option.description).to include('any domain supplied by the source')
+      expect(option.description).to include('no affiliation/safety check')
+    end
   end
 
   describe '#schema' do

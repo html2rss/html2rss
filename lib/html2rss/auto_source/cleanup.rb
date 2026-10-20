@@ -64,8 +64,10 @@ module Html2rss
       AuditResult = Data.define(:warnings, :metrics, :violations)
 
       # Config key / CLI flag named when different_domain drops emptied admission.
+      # Opt-in trusts the remote source for off-domain link targets (no affiliation check).
       DIFFERENT_DOMAIN_HINT =
-        'auto_source.cleanup.keep_different_domain: true (or --keep-different-domain)'
+        'auto_source.cleanup.keep_different_domain: true (or --keep-different-domain); ' \
+        'allows published items to link to any domain supplied by the source'
 
       class << self
         # Mitigating config hint when admission drops emptied a non-empty capture.
@@ -81,7 +83,8 @@ module Html2rss
 
         # @param articles [Array<Article>] extracted article candidates
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
-        # @param keep_different_domain [Boolean] whether to keep off-domain entries
+        # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
+        #   different domain than +url+ (source-controlled off-domain links; default false)
         # @return [Result] cleaned articles and frozen drop tallies
         def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain)) # rubocop:disable Metrics/MethodLength -- ordered reject pipeline
           Log.debug "Cleanup: start with #{articles.size} articles"
