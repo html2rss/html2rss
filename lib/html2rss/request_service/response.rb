@@ -71,8 +71,11 @@ module Html2rss
       # @return [String] normalized content type header value
       def content_type = header('content-type').to_s
 
-      # @return [Boolean] whether response content is JSON
-      def json_response? = content_type.include?('application/json')
+      # @return [Boolean] whether the media type is JSON (`*/json` or `*+json`)
+      def json_response?
+        media_type = content_type.split(';', 2).first.to_s.strip.downcase
+        media_type.end_with?('/json', '+json')
+      end
 
       # @return [Boolean] whether response content is HTML (header or sniffed body, never JSON)
       def html_response?
