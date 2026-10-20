@@ -23,6 +23,8 @@ module Html2rss
           ID_KEYS = %i[id guid uuid slug key].freeze
           # Max times to unwrap a Hash URL value (e.g. path.alias, links.self.href).
           MAX_URL_UNWRAP = 3
+          # Nested title/description keys (WordPress +rendered+, CMS +value+/+text+).
+          SCALAR_KEYS = %i[rendered value text].freeze
           # Snake `_at`/`_on` or camel `At`/`On` suffix after a closed published-at miss.
           DATE_KEY_SUFFIX = /_at\z|_on\z|[a-z]At\z|[a-z]On\z/
 
@@ -55,11 +57,28 @@ module Html2rss
           end
           # rubocop:enable Metrics/MethodLength
 
-          # @param value [Object] candidate scalar value
-          # @return [String, nil] normalized non-empty string value
+          # @param value [Object] candidate scalar, or Hash wrapping +rendered+/+value+/+text+
+          # @return [String, nil] normalized non-empty string (HTML preserved for descriptions)
           def string(value)
+            value = unwrap_scalar(value)
+            return unless value.is_a?(String) || value.is_a?(Numeric)
+
             trimmed = value.to_s.strip
             trimmed unless trimmed.empty?
+          end
+
+          # @param value [Object] candidate scalar or nested Hash
+          # @return [Object, nil] String/Numeric after at most {MAX_URL_UNWRAP} Hash unwraps
+          def unwrap_scalar(value)
+            depth = 0
+            while value.is_a?(Hash) && depth < MAX_URL_UNWRAP
+              nested = SCALAR_KEYS.find { |key| value.key?(key) }
+              break unless nested
+
+              value = value[nested]
+              depth += 1
+            end
+            value unless value.is_a?(Hash) || value.is_a?(Array)
           end
 
           # @param entry [Hash] raw article entry candidate

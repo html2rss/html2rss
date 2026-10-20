@@ -328,5 +328,38 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
         )
       end
     end
+
+    context 'with WordPress-style rendered title and excerpt' do
+      let(:document) do
+        [
+          {
+            title: { rendered: 'How to build a feed' },
+            excerpt: { rendered: '<p>A short excerpt.</p>' },
+            link: '/feed-reader'
+          }
+        ]
+      end
+
+      it 'unwraps rendered scalars without publishing Hash#to_s', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'How to build a feed',
+            description: '<p>A short excerpt.</p>',
+            url: Html2rss::Url.from_relative('/feed-reader', base_url)
+          )
+        )
+        expect(articles.first[:title]).not_to include('rendered')
+      end
+    end
+
+    context 'with a title hash that has no scalar wrapper keys' do
+      let(:document) do
+        [{ title: { locale: 'en', format: 'plain' }, url: '/no-scalar' }]
+      end
+
+      it 'yields nothing when title and description cannot be unwrapped' do
+        expect(articles.compact).to be_empty
+      end
+    end
   end
 end

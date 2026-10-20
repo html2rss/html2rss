@@ -128,10 +128,7 @@ module Html2rss
           names unless names.empty?
         end
 
-        def string(value)
-          trimmed = value.to_s.strip
-          trimmed unless trimmed.empty?
-        end
+        def string(value) = JsonState::ArticleNormalizer.string(value)
       end
     end
   end

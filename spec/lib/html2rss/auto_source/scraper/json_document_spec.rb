@@ -208,6 +208,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonDocument do
       end
     end
 
+    context 'with WordPress-style rendered title on a non-feed document' do
+      let(:parsed_body) do
+        [
+          {
+            title: { rendered: 'How to build a feed' },
+            excerpt: { rendered: '<p>A short excerpt.</p>' },
+            link: '/feed-reader'
+          }
+        ]
+      end
+
+      it 'unwraps rendered scalars via JsonState', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'How to build a feed',
+            description: '<p>A short excerpt.</p>',
+            url: Html2rss::Url.from_relative('/feed-reader', base_url)
+          )
+        )
+        expect(articles.first[:title]).not_to include('rendered')
+      end
+    end
+
     context 'with a non-article object' do
       let(:parsed_body) { { status: 'ok', count: 0 } }
 
