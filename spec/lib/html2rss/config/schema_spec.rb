@@ -122,11 +122,14 @@ RSpec.describe Html2rss::Config::Schema do
       expect(pagination_properties.keys).not_to include('start')
     end
 
-    it 'includes the runtime auto_source scraper options', :aggregate_failures do
+    it 'includes the runtime auto_source scraper options', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       scraper_schema = json_schema.dig('properties', 'auto_source', 'properties', 'scraper', 'properties')
 
-      expect(scraper_schema).to include('microdata', 'schema', 'json_state', 'xhr_articles', 'semantic_html', 'html')
+      expect(scraper_schema).to include(
+        'microdata', 'schema', 'json_state', 'json_document', 'xhr_articles', 'semantic_html', 'html'
+      )
       expect(json_schema.dig('properties', 'auto_source', 'default', 'scraper', 'microdata', 'enabled')).to be(true)
+      expect(json_schema.dig('properties', 'auto_source', 'default', 'scraper', 'json_document', 'enabled')).to be(true)
     end
 
     it 'enforces non-empty selector reference arrays', :aggregate_failures do

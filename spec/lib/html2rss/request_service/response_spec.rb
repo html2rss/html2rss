@@ -29,6 +29,37 @@ RSpec.describe Html2rss::RequestService::Response do
     end
   end
 
+  describe '#json_response?' do
+    [
+      { content_type: 'application/json', label: 'application/json' },
+      { content_type: 'text/json', label: 'text/json' },
+      { content_type: 'text/json; charset=utf-8', label: 'text/json with charset' },
+      { content_type: 'application/feed+json', label: 'application/feed+json' },
+      { content_type: 'application/vnd.api+json', label: 'application/vnd.api+json' }
+    ].each do |example|
+      context "when Content-Type is #{example[:label]}" do
+        let(:body) { '[]' }
+        let(:headers) { { 'content-type' => example[:content_type] } }
+
+        it 'is a JSON body, not HTML and not a syndication feed', :aggregate_failures do
+          expect(instance.json_response?).to be true
+          expect(instance.html_response?).to be false
+          expect(instance.feed_response?).to be false
+        end
+      end
+    end
+
+    context 'when Content-Type is application/rss+xml' do
+      let(:body) { '<?xml version="1.0"?><rss version="2.0"></rss>' }
+      let(:headers) { { 'content-type' => 'application/rss+xml' } }
+
+      it 'is a syndication feed, not JSON', :aggregate_failures do
+        expect(instance.json_response?).to be false
+        expect(instance.feed_response?).to be true
+      end
+    end
+  end
+
   describe '#html_response?' do
     [
       { content_type: 'application/octet-stream', label: 'octet-stream' },
@@ -131,6 +162,15 @@ RSpec.describe Html2rss::RequestService::Response do
 
       it 'parses the body as JSON' do
         expect(parsed_body).to eq({ key: 'value' })
+      end
+    end
+
+    context 'when Content-Type is text/json' do
+      let(:body) { '[{"name":"Example App"}]' }
+      let(:headers) { { 'content-type' => 'text/json' } }
+
+      it 'parses the body as JSON so listing URLs are not UnsupportedResponseContentType' do
+        expect(parsed_body).to eq([{ name: 'Example App' }])
       end
     end
 

@@ -61,6 +61,9 @@ module Html2rss
         json_state: {
           enabled: true
         },
+        json_document: {
+          enabled: true
+        },
         xhr_articles: {
           enabled: true
         },
@@ -113,6 +116,7 @@ module Html2rss
       @parsed_body = response.parsed_body
       @body = response.body
       @url = response.url
+      @json_response = response.json_response?
       @captured_responses = response.captured_responses
       @opts = opts
       @request_session = request_session
@@ -155,6 +159,8 @@ module Html2rss
 
     # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
+      return extract_json_document_articles if json_response?
+
       articles = []
       matched = false
       document = nil
@@ -194,9 +200,53 @@ module Html2rss
 
       raise Scraper.no_scraper_found_for(parsed_body, body:) unless matched
 
+      finish_articles(articles)
+    end
+
+    def json_response?
+      @json_response
+    end
+
+    def extract_json_document_articles
+      instance = json_document_instance
+      raise Scraper::NoScraperFound.new(category: :unsupported_surface) unless instance&.extractable?
+
+      articles = run_scraper(instance)
+      raise Scraper::NoScraperFound.new(category: :unsupported_surface) if articles.empty?
+
+      finish_articles(articles)
+    end
+
+    def json_document_instance
+      Scraper.build_instance(
+        Scraper::JsonDocument,
+        parsed_body,
+        opts: @opts.fetch(:scraper, {}),
+        url:,
+        request_session:,
+        body:,
+        captured_responses:
+      )
+    end
+
+    def finish_articles(articles)
+      captured_count = articles.size
       result = Cleanup.call(articles, url:, **cleanup_options)
       @admission_drops = result.drop_tallies
+      log_admission_emptied(captured_count, result) if captured_count.positive? && result.articles.empty?
       result.articles.first(article_limit)
+    end
+
+    def log_admission_emptied(captured_count, result)
+      payload = {
+        event_name: 'auto_source.admission_emptied',
+        host: url.host,
+        captured_count:,
+        drop_tallies: result.drop_tallies
+      }
+      hint = Cleanup.admission_hint(result.drop_tallies)
+      payload[:hint] = hint if hint
+      Log.warn(payload.to_json)
     end
 
     def enough_articles?(articles)

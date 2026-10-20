@@ -6,11 +6,6 @@ module Html2rss
       class JsonState
         # Identifies arrays that look like collections of article hashes.
         module CandidateDetector
-          # Preferred keys when extracting title-like values from state payloads.
-          TITLE_KEYS = %i[title headline name text].freeze
-          # Preferred keys when extracting URL-like values from state payloads.
-          URL_KEYS = %i[url link href permalink slug path canonicalUrl shortUrl].freeze
-
           module_function
 
           # @param document [Hash, Array, Object] candidate document node
@@ -48,13 +43,14 @@ module Html2rss
           # @param object [Hash] article candidate object
           # @return [Object, nil] detected title-like value
           def title_from(object)
-            ValueFinder.fetch(object, TITLE_KEYS)
+            ValueFinder.fetch(object, ArticleNormalizer::TITLE_KEYS)
           end
 
           # @param object [Hash] article candidate object
-          # @return [Object, nil] detected URL-like value
+          # @return [Object, nil] detected URL-like value (including links.self)
           def url_from(object)
-            ValueFinder.fetch(object, URL_KEYS)
+            ValueFinder.fetch(object, ArticleNormalizer::URL_KEYS) ||
+              ValueFinder.fetch(object[:links], ArticleNormalizer::URL_KEYS)
           end
         end
       end
