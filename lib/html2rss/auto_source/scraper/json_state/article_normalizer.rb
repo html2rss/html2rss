@@ -69,13 +69,13 @@ module Html2rss
           # @return [Html2rss::Url, nil] resolved absolute URL
           def resolve_link(entry, keys:, base_url:, log_key:)
             value = unwrap_url(ValueFinder.fetch(entry, keys), keys) ||
-                    unwrap_url(entry[:links], keys)
+                    unwrap_url(ValueFinder.fetch(entry[:links], keys), keys)
             string = string(value)
             return unless string
 
             Url.from_relative(string, base_url)
           rescue ArgumentError
-            Log.debug(log_key, url: string)
+            Log.debug("#{log_key}: url=#{string}")
             nil
           end
 

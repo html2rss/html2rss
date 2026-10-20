@@ -239,6 +239,44 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
       end
     end
 
+    context 'with array-form links containing href' do
+      let(:document) do
+        [
+          {
+            title: 'HAL-style links',
+            links: [
+              { rel: 'related', href: 'https://example.com/related' },
+              { rel: 'self', href: 'https://example.com/hal/1' }
+            ],
+            description: 'URL only in links array entries.'
+          }
+        ]
+      end
+
+      it 'resolves the first href from the links array' do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'HAL-style links',
+            description: 'URL only in links array entries.',
+            url: Html2rss::Url.from_absolute('https://example.com/related')
+          )
+        )
+      end
+    end
+
+    context 'with an unparseable article URL' do
+      let(:document) { [{ title: 'Broken URL', url: ':::', description: 'Skipped' }] }
+
+      before { allow(Html2rss::Log).to receive(:debug) }
+
+      it 'logs a single-string debug message and yields no article', :aggregate_failures do
+        expect(articles.compact).to be_empty
+        expect(Html2rss::Log).to have_received(:debug).with(
+          a_string_including('JsonState: invalid URL encountered', 'url=:::')
+        )
+      end
+    end
+
     context 'with published_on after the closed date-key list misses' do
       let(:document) { [{ title: 'Dated item', url: '/dated', published_on: '2024-06-15' }] }
 

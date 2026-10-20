@@ -90,6 +90,101 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonDocument do
       end
     end
 
+    context 'with a JSON Feed 1.0 document' do
+      let(:parsed_body) do
+        {
+          version: 'https://jsonfeed.org/version/1',
+          title: 'Legacy Feed',
+          items: [
+            {
+              id: 'https://example.com/legacy/1',
+              url: 'https://example.com/legacy/1',
+              title: 'Legacy post',
+              content_text: 'Body'
+            }
+          ]
+        }
+      end
+
+      it 'maps items via the JSON Feed path' do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'Legacy post',
+            url: Html2rss::Url.from_absolute('https://example.com/legacy/1')
+          )
+        )
+      end
+    end
+
+    context 'with an adversarial JSON Feed version substring' do
+      let(:parsed_body) do
+        {
+          version: 'https://evil.example/jsonfeed.org/version/1.1',
+          title: 'Not a feed',
+          items: [
+            {
+              id: 'https://example.com/posts/1',
+              title: 'Should walk via JsonState',
+              url: 'https://example.com/posts/1',
+              content_text: 'Only JSON Feed maps content_text'
+            }
+          ]
+        }
+      end
+
+      it 'does not unlock JSON Feed mapping from a substring host', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'Should walk via JsonState',
+            url: Html2rss::Url.from_absolute('https://example.com/posts/1')
+          )
+        )
+        expect(articles.first).not_to include(:description)
+      end
+    end
+
+    context 'with a lookalike JSON Feed version host' do
+      let(:parsed_body) do
+        {
+          version: 'https://jsonfeed.org.evil.example/version/1.1',
+          items: [
+            { title: 'Lookalike host', url: 'https://example.com/lookalike', description: 'Ok' }
+          ]
+        }
+      end
+
+      it 'still discovers the item via JsonState without JSON Feed recognition' do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'Lookalike host',
+            url: Html2rss::Url.from_absolute('https://example.com/lookalike')
+          )
+        )
+      end
+    end
+
+    context 'with array-form links on a JSON document listing' do
+      let(:parsed_body) do
+        [
+          {
+            title: 'Array links article',
+            links: [{ rel: 'self', href: 'https://example.com/array-links/1' }],
+            description: 'URL only in links array.'
+          }
+        ]
+      end
+
+      it 'resolves href through ValueFinder so detector and normalizer agree' do # rubocop:disable RSpec/ExampleLength
+        expect(articles).to contain_exactly(
+          a_hash_including(
+            title: 'Array links article',
+            description: 'URL only in links array.',
+            url: Html2rss::Url.from_absolute('https://example.com/array-links/1')
+          )
+        )
+      end
+    end
+
     context 'with a flat array of title/url objects' do
       let(:parsed_body) do
         [

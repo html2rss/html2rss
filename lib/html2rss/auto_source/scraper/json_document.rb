@@ -9,8 +9,11 @@ module Html2rss
       class JsonDocument
         include Enumerable
 
-        # Substring that identifies a JSON Feed +version+ URL.
-        JSON_FEED_VERSION_MARKER = 'jsonfeed.org'
+        # Exact JSON Feed 1.0 / 1.1 +version+ URLs (no substring host matching).
+        JSON_FEED_VERSIONS = Set[
+          'https://jsonfeed.org/version/1',
+          'https://jsonfeed.org/version/1.1'
+        ].freeze
 
         # @return [Symbol] scraper config key
         def self.options_key = :json_document
@@ -60,8 +63,7 @@ module Html2rss
         def json_feed?
           return false unless @parsed_body.is_a?(Hash)
 
-          version = @parsed_body[:version].to_s
-          version.include?(JSON_FEED_VERSION_MARKER) && @parsed_body[:items].is_a?(Array)
+          JSON_FEED_VERSIONS.include?(@parsed_body[:version].to_s) && @parsed_body[:items].is_a?(Array)
         end
 
         def each_json_feed_item
