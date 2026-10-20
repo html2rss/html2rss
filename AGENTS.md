@@ -163,3 +163,13 @@ When verbs change, update `CONTEXT.md` § Frozen contract, this table, `README.m
 - Keep living module guides next to the owner: `lib/html2rss/{auto_source,capture,feed_pipeline,mcp,selectors}/README.md`. Do not add `lib/html2rss/README.md` — the pipeline story stays in `lib/html2rss.rb`.
 - Wire those guides with `{include:file:lib/.../README.md}` on the owning class. Do not add them to `.yardopts --files`: YARD extra-file names are `File.basename` without extension, so extra `README.md` files all emit `file.README.html` and clobber the gem README.
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.
+
+## Release
+
+Frontier models: after you merge a pull request to `master`, or when the user is shipping, ask whether to bump and which version, unless they already said to bump and named it. Do not invent the version. Dispatch `.github/workflows/bump-version.yml` on `master` only after they answer. `bump_type` is `auto` (Release Drafter), `patch`, `minor`, `major`, or `custom`. Pass `custom_version` only when `bump_type` is `custom`.
+
+Learnings:
+
+- Wait for that workflow run. It bumps `lib/html2rss/version.rb`, regenerates the config schema, and opens `release/vX.Y.Z` (`chore(release): bump version to vX.Y.Z`). It does not publish the gem.
+- Merge that pull request only when the user asked, and only after Ruby 3.3, Ruby 3.4, Ruby 4.0, and lint are green. `master` protection is strict. Squash or rebase; merge commits are disabled.
+- Stop after that merge. Publish the draft release only when asked. Publishing runs `.github/workflows/release_gem.yml`.
