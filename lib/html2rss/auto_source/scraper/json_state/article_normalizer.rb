@@ -5,7 +5,7 @@ module Html2rss
     module Scraper
       class JsonState
         # Shapes raw entries into the structure required downstream.
-        module ArticleNormalizer
+        module ArticleNormalizer # rubocop:disable Metrics/ModuleLength -- field keys + URL/scalar unwrap stay co-located
           # Preferred keys when extracting title-like values from state payloads.
           TITLE_KEYS = %i[title headline name text].freeze
           # Preferred keys when extracting URL-like values from state payloads.
