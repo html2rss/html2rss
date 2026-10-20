@@ -613,6 +613,47 @@ RSpec.describe Html2rss::AutoSource do
         end
       end
     end
+
+    shared_examples 'scalar JSON unsupported_surface' do |body_json|
+      let(:body) { body_json }
+      let(:response) do
+        Html2rss::RequestService::Response.new(
+          body:,
+          headers: { 'content-type' => 'application/json' },
+          url:
+        )
+      end
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      # rubocop:disable-next RSpec/ExampleLength -- empty result + structured category assert
+      it 'returns empty without raising and logs unsupported_surface', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(Html2rss::Log).to have_received(:warn) do |payload|
+          parsed = JSON.parse(payload)
+          expect(parsed).to include(
+            'event_name' => 'auto_source.no_scraper',
+            'category' => 'unsupported_surface'
+          )
+        end
+      end
+    end
+
+    context 'with scalar JSON null' do
+      it_behaves_like 'scalar JSON unsupported_surface', 'null'
+    end
+
+    context 'with scalar JSON boolean' do
+      it_behaves_like 'scalar JSON unsupported_surface', 'true'
+    end
+
+    context 'with scalar JSON number' do
+      it_behaves_like 'scalar JSON unsupported_surface', '42'
+    end
+
+    context 'with scalar JSON string' do
+      it_behaves_like 'scalar JSON unsupported_surface', '"not-a-document"'
+    end
   end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

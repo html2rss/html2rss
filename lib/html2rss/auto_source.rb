@@ -116,6 +116,7 @@ module Html2rss
       @parsed_body = response.parsed_body
       @body = response.body
       @url = response.url
+      @json_response = response.json_response?
       @captured_responses = response.captured_responses
       @opts = opts
       @request_session = request_session
@@ -158,7 +159,7 @@ module Html2rss
 
     # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def extract_articles
-      return extract_json_document_articles if json_document_body?
+      return extract_json_document_articles if json_response?
 
       articles = []
       matched = false
@@ -202,8 +203,8 @@ module Html2rss
       finish_articles(articles)
     end
 
-    def json_document_body?
-      parsed_body.is_a?(Hash) || parsed_body.is_a?(Array)
+    def json_response?
+      @json_response
     end
 
     def extract_json_document_articles
