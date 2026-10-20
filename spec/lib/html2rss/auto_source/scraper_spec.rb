@@ -26,8 +26,10 @@ RSpec.describe Html2rss::AutoSource::Scraper do
       )
     end
 
-    it 'flattens tiers into SCRAPERS' do
-      expect(described_class::SCRAPERS).to eq(described_class::SCRAPER_TIERS.flatten)
+    it 'prefixes DOCUMENT_SCRAPERS then flattens SCRAPER_TIERS into SCRAPERS' do
+      expect(described_class::SCRAPERS).to eq(
+        described_class::DOCUMENT_SCRAPERS + described_class::SCRAPER_TIERS.flatten
+      )
     end
 
     it 'registers NativeFeed for request sessions' do

@@ -42,15 +42,15 @@ module Html2rss
 
         # @yield [Hash{Symbol => Object}] normalized article hash
         # @return [Enumerator, void] article enumerator when no block is given
-        def each
-          return enum_for(:each) unless block_given?
+        def each(&block)
+          return enum_for(:each) unless block
           return unless extractable?
 
           if json_feed?
-            each_json_feed_item { |article| yield article }
+            each_json_feed_item(&block)
           else
             JsonState.discover_articles(@parsed_body, base_url: @url) do |article|
-              yield article if article
+              yield(article) if article
             end
           end
         end

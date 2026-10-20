@@ -547,7 +547,7 @@ RSpec.describe Html2rss::CLI do
         .to output(/"title": "Example"/).to_stdout
     end
 
-    it 'builds an auto-source config that keeps different domains', :aggregate_failures do
+    it 'builds an auto-source config that keeps different domains', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss).to receive(:scrape).and_call_original
       allow(Html2rss).to receive(:feed_result) do |config|
         expect(config.dig(:auto_source, :cleanup, :keep_different_domain)).to be(true)

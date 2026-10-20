@@ -168,7 +168,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
         }
       end
 
-      it 'yields the nested article', :aggregate_failures do
+      it 'yields the nested article', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         expect(articles).to contain_exactly(
           a_hash_including(
             title: 'Shared walk',
@@ -209,7 +209,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
         [{ attributes: { title: 'Drupal node', path: { alias: '/nodes/1', langcode: 'en' } } }]
       end
 
-      it 'resolves the alias as the article URL' do
+      it 'resolves the alias as the article URL' do # rubocop:disable RSpec/ExampleLength
         expect(articles).to contain_exactly(
           a_hash_including(
             title: 'Drupal node',
@@ -229,7 +229,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
         ]
       end
 
-      it 'resolves self.href as the article URL' do
+      it 'resolves self.href as the article URL' do # rubocop:disable RSpec/ExampleLength
         expect(articles).to contain_exactly(
           a_hash_including(
             title: 'JSON:API resource',
@@ -280,7 +280,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
         ]
       end
 
-      it 'does not use src as the article URL' do
+      it 'does not use src as the article URL' do # rubocop:disable RSpec/ExampleLength
         expect(articles).to contain_exactly(
           a_hash_including(
             title: 'Image card',
@@ -292,5 +292,3 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
     end
   end
 end
-
-

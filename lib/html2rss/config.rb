@@ -127,6 +127,7 @@ module Html2rss
       # @param limit [Integer, nil] max articles to keep in the auto-sourced feed
       # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
       # @return [Hash{Symbol => Object}] feed config hash ready for {from_hash}
+      # rubocop:disable-next Metrics/MethodLength -- keep_different_domain override stays co-located
       def auto_source_config(url:, items_selector: nil, request_controls: nil, limit: nil,
                              keep_different_domain: nil)
         auto_source = AutoSource::DEFAULT_CONFIG

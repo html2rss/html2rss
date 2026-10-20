@@ -214,7 +214,7 @@ module Html2rss
     method_option :items_selector, type: :string, desc: 'CSS selector hint for items'
     method_option :limit, type: :numeric, desc: 'Max articles (auto-source)'
     method_option :keep_different_domain, type: :boolean, default: false,
-                                         desc: 'Keep articles whose URLs are on a different domain'
+                                          desc: 'Keep articles whose URLs are on a different domain'
     # @param url [String, nil]
     # @return [void]
     def scrape(url = nil)
