@@ -125,10 +125,17 @@ module Html2rss
       # @param items_selector [String, nil] optional selector hint for item extraction
       # @param request_controls [Html2rss::Config::RequestControls, nil] explicit request controls to write
       # @param limit [Integer, nil] max articles to keep in the auto-sourced feed
+      # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
       # @return [Hash{Symbol => Object}] feed config hash ready for {from_hash}
-      def auto_source_config(url:, items_selector: nil, request_controls: nil, limit: nil)
+      def auto_source_config(url:, items_selector: nil, request_controls: nil, limit: nil,
+                             keep_different_domain: nil)
         auto_source = AutoSource::DEFAULT_CONFIG
         auto_source = auto_source.merge(limit:) unless limit.nil?
+        unless keep_different_domain.nil?
+          auto_source = auto_source.merge(
+            cleanup: auto_source[:cleanup].merge(keep_different_domain:)
+          )
+        end
 
         config = {
           channel: default_config[:channel].merge(url:),

@@ -213,6 +213,8 @@ module Html2rss
     desc 'scrape [URL]', 'Automatically source an RSS feed from a URL (one-shot auto-source)'
     method_option :items_selector, type: :string, desc: 'CSS selector hint for items'
     method_option :limit, type: :numeric, desc: 'Max articles (auto-source)'
+    method_option :keep_different_domain, type: :boolean, default: false,
+                                         desc: 'Keep articles whose URLs are on a different domain'
     # @param url [String, nil]
     # @return [void]
     def scrape(url = nil)
@@ -430,7 +432,8 @@ module Html2rss
         max_redirects: options[:max_redirects],
         max_requests: options[:max_requests],
         local_file_path:,
-        limit: options[:limit]&.to_i
+        limit: options[:limit]&.to_i,
+        keep_different_domain: options[:keep_different_domain]
       )
     end
 

@@ -546,6 +546,17 @@ RSpec.describe Html2rss::CLI do
       expect { cli.invoke(:scrape, ['https://example.com/news'], { format: 'jsonfeed', explain: true }) }
         .to output(/"title": "Example"/).to_stdout
     end
+
+    it 'builds an auto-source config that keeps different domains', :aggregate_failures do
+      allow(Html2rss).to receive(:scrape).and_call_original
+      allow(Html2rss).to receive(:feed_result) do |config|
+        expect(config.dig(:auto_source, :cleanup, :keep_different_domain)).to be(true)
+        feed_res
+      end
+
+      expect { cli.invoke(:scrape, ['https://example.com/news'], { keep_different_domain: true }) }
+        .to output("#{rss_xml}\n").to_stdout
+    end
   end
 
   describe '#schema' do

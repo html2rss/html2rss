@@ -134,6 +134,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
   # @param local_file_path [String, nil] optional local HTML file path
   # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
+  # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
   # @return [Html2rss::FeedResult]
   def self.scrape(url,
                   strategy: :auto,
@@ -141,9 +142,10 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
                   max_redirects: nil,
                   max_requests: 4,
                   local_file_path: nil,
-                  limit: nil)
+                  limit: nil,
+                  keep_different_domain: nil)
     auto_feed_result(url, strategy:, items_selector:, max_redirects:, max_requests:,
-                          local_file_path:, limit:)
+                          local_file_path:, limit:, keep_different_domain:)
   end
 
   ##
@@ -246,6 +248,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @param max_requests [Integer] optional request budget override (default: 4 for sitemap sub-fetches)
   # @param local_file_path [String, nil] optional local HTML file path
   # @param limit [Integer, nil] max articles to keep (default: {AutoSource::DEFAULT_LIMIT})
+  # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
   # @return [Html2rss::FeedResult]
   def self.auto_feed_result(url,
                             strategy: :auto,
@@ -253,9 +256,10 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
                             max_redirects: nil,
                             max_requests: 4,
                             local_file_path: nil,
-                            limit: nil)
+                            limit: nil,
+                            keep_different_domain: nil)
     feed_result(build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
-                                         local_file_path:, limit:))
+                                         local_file_path:, limit:, keep_different_domain:))
   end
 
   ##
@@ -355,12 +359,13 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
 
     # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength
     def build_auto_source_config(url:, strategy:, items_selector:, max_redirects:, max_requests:,
-                                 local_file_path: nil, limit: nil)
+                                 local_file_path: nil, limit: nil, keep_different_domain: nil)
       config = Config.auto_source_config(
         url:,
         items_selector:,
         request_controls: Config::RequestControls.from_shortcut(strategy:, max_redirects:, max_requests:),
-        limit:
+        limit:,
+        keep_different_domain:
       )
       if local_file_path
         config[:request] ||= {}
