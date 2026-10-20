@@ -10,18 +10,20 @@ RSpec.describe Html2rss::MCP::Contract do
   describe 'STRATEGIES' do
     it 'is the published MCP set and excludes local_file', :aggregate_failures do
       expect(described_class::STRATEGIES).to eq(%w[auto default httpx botasaurus])
-      expect(described_class::ALL_ACCEPTED_STRATEGIES).to eq(%w[auto default httpx botasaurus faraday])
+      expect(described_class::ALL_ACCEPTED_STRATEGIES).to eq(%w[auto default httpx botasaurus faraday browserless])
     end
   end
 
   describe '.assert_published_request!' do
     let(:base) { { channel: { url: 'https://example.com' } } }
 
+    # rubocop:disable-next RSpec/ExampleLength -- published + migration strategy accept matrix
     it 'allows omitting strategy and published names', :aggregate_failures do
       expect { described_class.assert_published_request!(base) }.not_to raise_error
       expect { described_class.assert_published_request!(base.merge(strategy: :default)) }.not_to raise_error
       expect { described_class.assert_published_request!(base.merge(strategy: :httpx)) }.not_to raise_error
       expect { described_class.assert_published_request!(base.merge(strategy: :faraday)) }.not_to raise_error
+      expect { described_class.assert_published_request!(base.merge(strategy: :browserless)) }.not_to raise_error
       expect { described_class.assert_published_request!(base.merge(strategy: 'botasaurus')) }.not_to raise_error
     end
 

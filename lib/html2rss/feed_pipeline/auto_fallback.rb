@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module Html2rss
   class FeedPipeline
     # Retries feed extraction across concrete request strategies for the :auto plan.
@@ -248,8 +250,15 @@ module Html2rss
           Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
                    "after timeout=#{error.class} #{detail}")
         else
-          Log.warn("#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
-                   "after error=#{error.class} #{detail}")
+          Log.warn({
+            event_name: 'auto_fallback.error',
+            host:,
+            strategy: strategy.to_s,
+            next_strategy: next_strategy.to_s,
+            error_class: error.class.name,
+            message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
+                     "after error=#{error.class} #{detail}"
+          }.to_json)
         end
         Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message} #{detail}")
       end

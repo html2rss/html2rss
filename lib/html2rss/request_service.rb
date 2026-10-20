@@ -61,7 +61,15 @@ module Html2rss
       httpx: HttpxStrategy,
       faraday: HttpxStrategy,
       botasaurus: BotasaurusStrategy,
+      browserless: BotasaurusStrategy,
       local_file: LocalFileStrategy
+    }.freeze
+
+    # Deprecated strategy aliases and the preferred replacement name for warnings.
+    # @return [Hash{Symbol => Symbol}]
+    MIGRATION_REPLACEMENTS = {
+      faraday: :default,
+      browserless: :botasaurus
     }.freeze
 
     # Canonical default strategy symbol.
@@ -96,15 +104,16 @@ module Html2rss
                 "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
         end
 
-        warn_migration_strategy(strategy_sym) if strategy_sym == :faraday
+        warn_migration_strategy(strategy_sym) if MIGRATION_REPLACEMENTS.key?(strategy_sym)
         strategy_class.new(ctx).execute
       end
 
       private
 
       def warn_migration_strategy(strategy)
+        replacement = MIGRATION_REPLACEMENTS.fetch(strategy)
         message = "RequestService: strategy ':#{strategy}' is deprecated for migration and will be removed " \
-                  "in a future release. Use ':default' instead."
+                  "in a future release. Use ':#{replacement}' instead."
         warn(message, category: :deprecated)
         Log.warn(message)
       end

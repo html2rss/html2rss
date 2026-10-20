@@ -131,7 +131,12 @@ module Html2rss
     def articles
       @articles ||= extract_articles
     rescue Html2rss::AutoSource::Scraper::NoScraperFound => error
-      Log.warn "#{self.class}: no scraper matched #{url} (#{error.message})"
+      Log.warn({
+        event_name: 'auto_source.no_scraper',
+        host: url.host,
+        category: error.category,
+        message: "#{self.class}: no scraper matched #{url} (#{error.message})"
+      }.to_json)
       @admission_drops = {}.freeze
       []
     end

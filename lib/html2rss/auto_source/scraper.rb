@@ -51,8 +51,8 @@ module Html2rss
                            'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, ' \
                            'or run from an environment that can complete anti-bot checks.',
           app_shell: 'app-shell surface detected (client-rendered page with little or no ' \
-                     'server-rendered article HTML). Configure BOTASAURUS_SCRAPER_URL or target a direct ' \
-                     'listing/update URL instead of a homepage or shell entrypoint.',
+                     'server-rendered article HTML). Target a direct listing/update URL instead of a ' \
+                     'homepage or shell entrypoint; a browser strategy does not add extractable markup here.',
           high_entropy_surface: 'high-entropy surface (e.g. news homepage) with few or no durable ' \
                                 'article destinations after admission. Target a section, topic, or ' \
                                 'listing/update URL instead of the site homepage.',

@@ -116,10 +116,18 @@ RSpec.describe Html2rss::AutoSource do
 
       before { allow(Html2rss::Log).to receive(:warn) }
 
+      # rubocop:disable-next RSpec/ExampleLength -- structured event_name + host + category assert
       it 'logs a warning and returns an empty array', :aggregate_failures do
         expect(articles).to eq([])
-        expect(Html2rss::Log).to have_received(:warn)
-          .with(a_string_including("#{described_class}: no scraper matched #{url}"))
+        expect(Html2rss::Log).to have_received(:warn) do |payload|
+          parsed = JSON.parse(payload)
+          expect(parsed).to include(
+            'event_name' => 'auto_source.no_scraper',
+            'host' => url.host,
+            'category' => 'unsupported_surface'
+          )
+          expect(parsed['message']).to include("#{described_class}: no scraper matched #{url}")
+        end
       end
     end
 

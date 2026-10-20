@@ -11,7 +11,7 @@ module Html2rss
       # Published MCP request strategies (excludes +local_file+).
       STRATEGIES = %w[auto default httpx botasaurus].freeze
       # Accepted migration strategies retained for backwards compatibility.
-      MIGRATION_STRATEGIES = %w[faraday].freeze
+      MIGRATION_STRATEGIES = %w[faraday browserless].freeze
       # Complete set of strategies accepted by {.assert_published_request!}.
       ALL_ACCEPTED_STRATEGIES = (STRATEGIES + MIGRATION_STRATEGIES).freeze
 

@@ -54,9 +54,20 @@ RSpec.describe Html2rss::Error do
         expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
       end
 
-      it 'does not twin Botasaurus prose when app_shell already covers it', :aggregate_failures do
+      # rubocop:disable-next RSpec/ExampleLength -- guidance + hint + no twin BOTASAURUS assert
+      it 'appends the Botasaurus config hint beside app_shell guidance', :aggregate_failures do
         error = described_class.new(attempts:, surface_category: :app_shell)
         guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:app_shell)
+
+        expect(error.message).to include(guidance)
+        expect(error.message).to include(botasaurus_hint)
+        expect(guidance).not_to include('BOTASAURUS_SCRAPER_URL')
+        expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
+      end
+
+      it 'does not twin Botasaurus prose when blocked_surface already covers it', :aggregate_failures do
+        error = described_class.new(attempts:, surface_category: :blocked_surface)
+        guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:blocked_surface)
 
         expect(error.message).to include(guidance)
         expect(error.message).not_to include(botasaurus_hint)
