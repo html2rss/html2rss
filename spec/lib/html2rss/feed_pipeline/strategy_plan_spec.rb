@@ -40,6 +40,7 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
       expect(described_class.valid?(:auto)).to be true
       expect(described_class.valid?(:default)).to be true
       expect(described_class.valid?(:faraday)).to be true
+      expect(described_class.valid?(:browserless)).to be true
       expect(described_class.valid?('botasaurus')).to be true
     end
 

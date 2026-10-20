@@ -91,11 +91,13 @@ RSpec.describe Html2rss::FeedPipeline do
           )
         end
 
+        # rubocop:disable-next RSpec/ExampleLength -- category + honest app-shell hint assert
         it 'appends the shared app-shell guidance', :aggregate_failures do
           expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
             expect(error.surface_category).to eq(:app_shell)
             expect(error.message).to include('app-shell surface detected')
-            expect(error.message).to include('BOTASAURUS_SCRAPER_URL')
+            expect(error.message).to include('browser strategy does not add extractable markup')
+            expect(error.message).not_to include('BOTASAURUS_SCRAPER_URL')
           end
         end
       end

@@ -37,12 +37,14 @@ RSpec.describe Html2rss::RequestService do
   end
 
   describe '.default_strategy_name' do
+    # rubocop:disable-next RSpec/ExampleLength -- registered strategy + migration alias matrix
     specify(:aggregate_failures) do
       expect(described_class.default_strategy_name).to be :default
       expect(described_class.strategy_registered?(:default)).to be true
       expect(described_class.strategy_registered?(:httpx)).to be true
       expect(described_class.strategy_registered?(:faraday)).to be true
       expect(described_class.strategy_registered?(:botasaurus)).to be true
+      expect(described_class.strategy_registered?(:browserless)).to be true
     end
   end
 
@@ -89,7 +91,22 @@ RSpec.describe Html2rss::RequestService do
         execute
 
         expect(strategy_class).to have_received(:new).with(ctx)
-        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':faraday' is deprecated/)
+        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':faraday' is deprecated.*Use ':default'/)
+      end
+    end
+
+    context 'with a deprecated browserless strategy alias' do
+      let(:strategy) { :browserless }
+      let(:strategy_class) { described_class::BotasaurusStrategy }
+
+      it 'logs a migration warning and delegates to BotasaurusStrategy', :aggregate_failures do
+        allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
+        allow(Html2rss::Log).to receive(:warn)
+
+        execute
+
+        expect(strategy_class).to have_received(:new).with(ctx)
+        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':browserless' is deprecated.*Use ':botasaurus'/)
       end
     end
 

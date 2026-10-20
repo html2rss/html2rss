@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module Html2rss
   ##
   # Entry URL tournament for weak homepage/hub extracts.
@@ -120,12 +122,12 @@ module Html2rss
 
         nil
       rescue RequestService::RequestBudgetExceeded
-        Log.warn('FeedResolution: entry resolution skipped (request budget exhausted)')
+        log_budget_exhausted
         nil
       rescue *NON_FALLBACK_ERRORS
         raise
       rescue StandardError => error
-        Log.warn("FeedResolution: entry resolution retry failed (#{error.class})")
+        log_retry_failed(error)
         nil
       end
 
@@ -133,6 +135,32 @@ module Html2rss
 
       attr_reader :pipeline, :config, :response, :session, :strategy, :resources, :articles,
                   :scrape_target, :state, :budget, :assessment
+
+      def log_budget_exhausted
+        Log.warn({
+          event_name: 'feed_resolution.budget_exhausted',
+          host: channel_host,
+          message: 'FeedResolution: entry resolution skipped (request budget exhausted)'
+        }.to_json)
+      end
+
+      def log_retry_failed(error)
+        Log.warn({
+          event_name: 'feed_resolution.retry_failed',
+          host: channel_host,
+          error_class: error.class.name,
+          message: "FeedResolution: entry resolution retry failed (#{error.class.name})"
+        }.to_json)
+      end
+
+      # +Config#url+ is a String; parse once for structured logs.
+      #
+      # @return [String, nil]
+      def channel_host
+        Url.from_absolute(config.url.to_s).host
+      rescue ArgumentError
+        nil
+      end
 
       def eligible?
         return false if state.resolution_tried?
