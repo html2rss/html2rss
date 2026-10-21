@@ -448,6 +448,15 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
           expect(error.timeout_phase).to be_nil
         end
       end
+
+      it 'attaches transport_meta from the scrape error envelope', :aggregate_failures do
+        expect { execute }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
+          expect(error.transport_meta).to include(
+            'request_id' => 'req-504',
+            'error_category' => 'timeout'
+          )
+        end
+      end
     end
 
     context 'when scrape envelope returns 504 with timeout_phase' do
@@ -466,6 +475,11 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
           expect(error.timeout_phase).to eq('boot')
           expect(error.message).to include('timeout_phase=boot')
           expect(error.message).to include('req-boot')
+          expect(error.transport_meta).to include(
+            'request_id' => 'req-boot',
+            'timeout_phase' => 'boot',
+            'error_category' => 'timeout'
+          )
         end
       end
     end
@@ -487,6 +501,15 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
             Html2rss::RequestService::BotasaurusServiceError,
             /status=502, error_category=navigation_error, error=navigation failed, request_id=trace-123/
           )
+      end
+
+      it 'attaches transport_meta including error_category', :aggregate_failures do
+        expect { execute }.to raise_error(Html2rss::RequestService::BotasaurusServiceError) do |error|
+          expect(error.transport_meta).to include(
+            'request_id' => 'trace-123',
+            'error_category' => 'navigation_error'
+          )
+        end
       end
     end
 
@@ -545,6 +568,20 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       it 'raises BlockedSurfaceDetected' do
         expect { execute }
           .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected, /Blocked surface detected/)
+      end
+
+      it 'attaches challenge transport_meta on BlockedSurfaceDetected', :aggregate_failures do
+        expect { execute }.to raise_error(Html2rss::RequestService::BlockedSurfaceDetected) do |error|
+          expect(error.transport_meta).to include(
+            'request_id' => 'req-challenge',
+            'error_category' => 'challenge_block'
+          )
+          expect(error.transport_meta['challenge']).to include(
+            'blocked' => true,
+            'detected' => true,
+            'marker' => 'Just a moment...'
+          )
+        end
       end
     end
 

@@ -198,6 +198,11 @@ module Html2rss
           "Botasaurus scrape failed (#{details.join(', ')})."
         end
 
+        # @return [Hash{String => Object}] allowlisted diagnostics plus error_category (frozen)
+        def transport_meta
+          diagnostics.merge('error_category' => error_category).freeze
+        end
+
         private
 
         attr_reader :payload, :transport_status
