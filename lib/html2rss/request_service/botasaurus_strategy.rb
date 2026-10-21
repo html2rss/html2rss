@@ -49,14 +49,16 @@ module Html2rss
       end
 
       def raise_from_error!(error)
-        raise BlockedSurfaceDetected, "Blocked surface detected: #{error.challenge_message}" if error.challenge_block?
-
-        if error.timeout?
-          log_timeout!(reason: 'botasaurus_upstream')
-          raise RequestTimedOut.new(error.failure_message, timeout_phase: error.timeout_phase)
-        end
-
-        raise BotasaurusServiceError, error.failure_message
+        err = if error.challenge_block?
+                BlockedSurfaceDetected.new("Blocked surface detected: #{error.challenge_message}")
+              elsif error.timeout?
+                log_timeout!(reason: 'botasaurus_upstream')
+                RequestTimedOut.new(error.failure_message, timeout_phase: error.timeout_phase)
+              else
+                BotasaurusServiceError.new(error.failure_message)
+              end
+        err.transport_meta = error.transport_meta
+        raise err
       end
 
       def response_url(final_url)

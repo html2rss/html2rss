@@ -98,24 +98,49 @@ module Html2rss
       # @return [Response] the response from the executed strategy.
       # @raise [UnknownStrategy] if the strategy is not registered.
       def execute(ctx, strategy: default_strategy_name)
-        strategy_sym = strategy.to_sym
+        strategy_sym = resolve_strategy_name(strategy, relation: ctx.relation, host: ctx.url.host)
         strategy_class = STRATEGIES.fetch(strategy_sym) do
           raise UnknownStrategy,
                 "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
         end
 
-        warn_migration_strategy(strategy_sym) if MIGRATION_REPLACEMENTS.key?(strategy_sym)
         strategy_class.new(ctx).execute
       end
 
       private
 
-      def warn_migration_strategy(strategy)
-        replacement = MIGRATION_REPLACEMENTS.fetch(strategy)
-        message = "RequestService: strategy ':#{strategy}' is deprecated for migration and will be removed " \
-                  "in a future release. Use ':#{replacement}' instead."
-        warn(message, category: :deprecated)
-        Log.warn(message)
+      ##
+      # Resolves deprecated migration aliases to their replacement strategy name.
+      # @param strategy [Symbol, String] requested strategy name
+      # @param relation [Symbol] request relation (+ :initial + or follow-up)
+      # @param host [String, nil] request host for structured deprecation telemetry
+      # @return [Symbol] canonical strategy name after migration remapping
+      def resolve_strategy_name(strategy, relation:, host:)
+        strategy_sym = strategy.to_sym
+        replacement = MIGRATION_REPLACEMENTS[strategy_sym]
+        return strategy_sym unless replacement
+
+        warn_migration_strategy(strategy_sym, replacement, relation:, host:)
+        replacement
+      end
+
+      ##
+      # Emits a structured +strategy_deprecated+ warning once per session (+ :initial + only).
+      # @param strategy [Symbol] deprecated strategy alias
+      # @param replacement [Symbol] preferred strategy name
+      # @param relation [Symbol] request relation
+      # @param host [String, nil] request host
+      # @return [void]
+      def warn_migration_strategy(strategy, replacement, relation:, host:)
+        return unless relation == :initial
+
+        Log.warn({
+          event_name: 'strategy_deprecated',
+          strategy: strategy.to_s,
+          replacement: replacement.to_s,
+          host:,
+          message: "#{name}: strategy=#{strategy.inspect} is deprecated; using #{replacement.inspect} instead."
+        }.to_json)
       end
     end
   end
