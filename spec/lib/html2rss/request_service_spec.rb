@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'json'
 
 RSpec.describe Html2rss::RequestService do
   let(:error_types) do
@@ -52,12 +53,15 @@ RSpec.describe Html2rss::RequestService do
     subject(:execute) { described_class.execute(ctx, strategy:) }
 
     let(:strategy) { :default }
-    let(:ctx) { instance_double(Html2rss::RequestService::Context) }
-
-    let(:strategy_class) { described_class::HttpxStrategy }
-    let(:strategy_instance) do
-      instance_double strategy_class, execute: nil
+    let(:ctx) do
+      instance_double(
+        Html2rss::RequestService::Context,
+        relation: :initial,
+        url: instance_double(Html2rss::Url, host: 'example.com')
+      )
     end
+    let(:strategy_class) { described_class::HttpxStrategy }
+    let(:strategy_instance) { instance_double(strategy_class, execute: nil) }
 
     context 'with a known strategy' do
       it do
@@ -84,14 +88,23 @@ RSpec.describe Html2rss::RequestService do
     context 'with a deprecated migration strategy alias' do
       let(:strategy) { :faraday }
 
-      it 'logs a migration warning and delegates to HttpxStrategy', :aggregate_failures do
+      # rubocop:disable-next RSpec/ExampleLength -- asserts structured strategy_deprecated JSON fields
+      it 'emits structured strategy_deprecated and delegates to HttpxStrategy', :aggregate_failures do
         allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
         allow(Html2rss::Log).to receive(:warn)
 
         execute
 
         expect(strategy_class).to have_received(:new).with(ctx)
-        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':faraday' is deprecated.*Use ':default'/)
+        expect(Html2rss::Log).to have_received(:warn) do |payload|
+          expect(JSON.parse(payload)).to include(
+            'event_name' => 'strategy_deprecated',
+            'strategy' => 'faraday',
+            'replacement' => 'default',
+            'host' => 'example.com',
+            'message' => a_string_including('strategy=:faraday', 'using :default')
+          )
+        end
       end
     end
 
@@ -99,14 +112,39 @@ RSpec.describe Html2rss::RequestService do
       let(:strategy) { :browserless }
       let(:strategy_class) { described_class::BotasaurusStrategy }
 
-      it 'logs a migration warning and delegates to BotasaurusStrategy', :aggregate_failures do
+      # rubocop:disable-next RSpec/ExampleLength -- asserts structured strategy_deprecated JSON fields
+      it 'emits structured strategy_deprecated and delegates to BotasaurusStrategy', :aggregate_failures do
         allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
         allow(Html2rss::Log).to receive(:warn)
 
         execute
 
         expect(strategy_class).to have_received(:new).with(ctx)
-        expect(Html2rss::Log).to have_received(:warn).with(/strategy ':browserless' is deprecated.*Use ':botasaurus'/)
+        expect(Html2rss::Log).to have_received(:warn) do |payload|
+          expect(JSON.parse(payload)).to include(
+            'event_name' => 'strategy_deprecated',
+            'strategy' => 'browserless',
+            'replacement' => 'botasaurus',
+            'host' => 'example.com',
+            'message' => a_string_including('strategy=:browserless', 'using :botasaurus')
+          )
+        end
+      end
+    end
+
+    context 'when a follow-up context uses a deprecated strategy' do
+      # rubocop:disable-next RSpec/ExampleLength -- builds initial+follow_up contexts to assert once-per-session
+      it 'does not re-emit strategy_deprecated', :aggregate_failures do
+        budget = described_class::Budget.new(max_requests: 2)
+        initial = described_class::Context.new(url: 'https://example.com/news', budget:)
+        follow_up = initial.follow_up(url: 'https://example.com/news?page=2', relation: :pagination)
+        allow(described_class::HttpxStrategy).to receive(:new).and_return(strategy_instance)
+        allow(Html2rss::Log).to receive(:warn)
+
+        described_class.execute(initial, strategy: :faraday)
+        described_class.execute(follow_up, strategy: :faraday)
+
+        expect(Html2rss::Log).to have_received(:warn).once
       end
     end
 
