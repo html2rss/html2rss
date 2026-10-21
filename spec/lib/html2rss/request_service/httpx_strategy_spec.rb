@@ -240,50 +240,54 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
   end
 
   describe 'per-request deadline ceiling' do
-    let(:session) { described_class.base_ssrf_session }
-
-    before do
-      allow(policy).to receive_messages(total_timeout_seconds: 50, connect_timeout_seconds: 5,
-                                        read_timeout_seconds: 10)
-      allow(described_class).to receive(:base_ssrf_session).and_return(session)
-      allow(session).to receive(:with).and_call_original
-      allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(1_000.0)
+    # Single probe bag keeps this group at the MultipleMemoizedHelpers ceiling.
+    let(:deadline_probe) do
+      timeouts = {}
+      session = instance_double(HTTPX::Session)
+      raw_response = instance_double(
+        HTTPX::Response,
+        status: 200,
+        body: StringIO.new('<html>ok</html>'),
+        headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' }),
+        uri: URI('https://example.com')
+      )
+      allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
+      allow(session).to receive(:with) do |options|
+        timeouts.replace(options.fetch(:timeout))
+        session
+      end
+      allow(session).to receive(:get).and_return(raw_response)
+      { timeouts: }
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- budget vs ceiling timeout wiring
     it 'caps operation_timeout and total_request_timeout at connect + read when budget is larger',
        :aggregate_failures do
+      allow(policy).to receive_messages(total_timeout_seconds: 50, connect_timeout_seconds: 5,
+                                        read_timeout_seconds: 10)
       allow(budget).to receive(:effective_timeout_seconds).with(fallback: 50).and_return(50.0)
+      timeouts = deadline_probe.fetch(:timeouts)
 
       execute
 
-      expect(session).to have_received(:with).with(
-        hash_including(
-          timeout: hash_including(
-            operation_timeout: 15.0,
-            request_timeout: 15.0,
-            total_request_timeout: 15.0
-          )
-        )
-      )
+      expect(timeouts[:operation_timeout]).to be_within(0.05).of(15.0)
+      expect(timeouts[:request_timeout]).to be_within(0.05).of(15.0)
+      expect(timeouts[:total_request_timeout]).to be_within(0.05).of(15.0)
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- remaining budget still wins when smaller
     it 'respects a smaller remaining budget deadline below the connect + read ceiling',
        :aggregate_failures do
+      allow(policy).to receive_messages(total_timeout_seconds: 50, connect_timeout_seconds: 5,
+                                        read_timeout_seconds: 10)
       allow(budget).to receive(:effective_timeout_seconds).with(fallback: 50).and_return(4.0)
+      timeouts = deadline_probe.fetch(:timeouts)
 
       execute
 
-      expect(session).to have_received(:with).with(
-        hash_including(
-          timeout: hash_including(
-            operation_timeout: 4.0,
-            request_timeout: 4.0,
-            total_request_timeout: 4.0
-          )
-        )
-      )
+      expect(timeouts[:operation_timeout]).to be_within(0.05).of(4.0)
+      expect(timeouts[:request_timeout]).to be_within(0.05).of(4.0)
+      expect(timeouts[:total_request_timeout]).to be_within(0.05).of(4.0)
     end
   end
 end
