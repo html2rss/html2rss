@@ -218,6 +218,66 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :botasaurus).once
       end
 
+      context 'when botasaurus raises a terminal RequestTimedOut' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:timed_out) do
+          Html2rss::RequestService::RequestTimedOut.new('upstream timed out', timeout_phase: 'work').tap do |error|
+            error.transport_meta = {
+              'request_id' => 'req-timeout',
+              'error_category' => 'timeout',
+              'timeout_phase' => 'work'
+            }
+          end
+        end
+        let(:strategy_results) do
+          {
+            default: empty_response,
+            botasaurus: timed_out
+          }
+        end
+
+        it 're-raises RequestTimedOut instead of NoFeedItemsExtracted', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
+            expect(error.timeout_phase).to eq('work')
+            expect(error.attempts.map { |attempt| attempt[:strategy] }).to eq(%i[default botasaurus])
+            expect(error.transport_meta).to include('timeout_phase' => 'work')
+          end
+        end
+      end
+
+      context 'when botasaurus ends with a terminal challenge error' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
+        let(:challenge_meta) do
+          {
+            'request_id' => 'req-challenge',
+            'error_category' => 'challenge_block',
+            'challenge' => { 'blocked' => true, 'detected' => true, 'marker' => 'Just a moment...' }
+          }
+        end
+        let(:strategy_results) do
+          blocked = Html2rss::RequestService::BlockedSurfaceDetected.new('Blocked surface detected')
+          blocked.transport_meta = challenge_meta
+          {
+            default: empty_response,
+            botasaurus: blocked
+          }
+        end
+
+        # rubocop:disable-next RSpec/ExampleLength -- terminal error + attempts + transport_meta
+        it 're-raises the terminal error with attempts and transport_meta', :aggregate_failures do
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::BlockedSurfaceDetected) do |error|
+            expect(error.message).to include('Blocked surface detected')
+            expect(error.attempts).to include(
+              hash_including(strategy: :default, items_count: 0),
+              hash_including(
+                strategy: :botasaurus,
+                error_class: 'Html2rss::RequestService::BlockedSurfaceDetected',
+                transport_meta: challenge_meta
+              )
+            )
+            expect(error.transport_meta).to eq(challenge_meta)
+          end
+        end
+      end
+
       context 'when every strategy yields an app-shell page' do # rubocop:disable RSpec/NestedGroups, RSpec/MultipleMemoizedHelpers
         let(:app_shell_response) do
           build_response.call(
@@ -378,7 +438,7 @@ RSpec.describe Html2rss::FeedPipeline do
         end
 
         pipeline = described_class.new(base_config.merge(strategy: :auto, request: { total_timeout_seconds: 1 }))
-        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted) do |error|
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
           expect(error.attempts.map { |attempt| attempt[:strategy] }).to include(:default, :botasaurus)
           expect(error.attempts).to include(
             hash_including(strategy: :botasaurus, error_class: 'Html2rss::RequestService::RequestTimedOut')
