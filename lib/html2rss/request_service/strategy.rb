@@ -111,18 +111,24 @@ module Html2rss
 
       # @param reason [String] timeout classification (budget_exhausted / transport)
       # @return [void]
-      # rubocop:disable-next Metrics/AbcSize -- structured timeout fields stay in one log line
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured timeout fields stay in one log line
       def log_timeout!(reason:)
         remaining = ctx.budget.remaining_timeout_seconds
         remaining_label = remaining.nil? ? 'untracked' : format('%.3f', remaining)
+        host = ctx.url.host
         detail = [
           "strategy=#{self.class.name}",
-          "host=#{ctx.url.host}",
+          "host=#{host}",
           "elapsed=#{format('%.3f', ctx.budget.elapsed_seconds)}s",
           "budget_remaining=#{remaining_label}",
           "reason=#{reason}"
         ]
-        Log.info("#{self.class}: request timeout #{detail.join(' ')}")
+        Log.info({
+          event_name: 'request_service.timeout',
+          host:,
+          strategy: self.class.name,
+          message: "#{self.class}: request timeout #{detail.join(' ')}"
+        }.to_json)
       end
 
       # @param error [StandardError]

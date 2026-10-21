@@ -176,7 +176,8 @@ RSpec.describe Html2rss::FeedPipeline do
         pipeline.to_result
 
         expect(Html2rss::Log).to have_received(:info).with(
-          /auto fallback default -> botasaurus after zero extracted items/
+          a_string_including('"event_name":"auto_fallback.zero_items"')
+            .and(a_string_including('after zero extracted items'))
         ).once
       end
 
@@ -184,7 +185,8 @@ RSpec.describe Html2rss::FeedPipeline do
         pipeline.to_result
 
         expect(Html2rss::Log).to have_received(:info).with(
-          /auto selected strategy=botasaurus after attempts=2/
+          a_string_including('"event_name":"auto_fallback.selected"')
+            .and(a_string_including('auto selected strategy=botasaurus after attempts=2'))
         ).once
       end
 
@@ -416,7 +418,9 @@ RSpec.describe Html2rss::FeedPipeline do
 
         it 'logs timeout fallback at info with host and budget context' do
           expect(Html2rss::Log).to have_received(:info).with(
-            /auto fallback default -> botasaurus after timeout=Html2rss::RequestService::RequestTimedOut.*host=/
+            a_string_including('"event_name":"auto_fallback.timeout"')
+              .and(a_string_including('RequestTimedOut'))
+              .and(a_string_including('"host"'))
           ).once
         end
 

@@ -75,19 +75,31 @@ module Html2rss
 
         attr_reader :parsed_body, :url, :request_session, :page_scope
 
+        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured rescue logs
         def fetch_posts
           response = posts_response
           return unless response
 
           Array(response.parsed_body)
         rescue RequestService::UnsupportedResponseContentType => error
-          Log.warn("#{self.class}: unsupported WordPress API posts content type (#{error.message})")
+          Log.warn({
+            event_name: 'wordpress_api.unsupported_content_type',
+            host: url.host,
+            error_class: error.class.name,
+            message: "#{self.class}: unsupported WordPress API posts content type (#{error.message})"
+          }.to_json)
           nil
         rescue JSON::ParserError => error
-          Log.warn("#{self.class}: failed to parse WordPress API posts JSON (#{error.message})")
+          Log.warn({
+            event_name: 'wordpress_api.parse_failed',
+            host: url.host,
+            error_class: error.class.name,
+            message: "#{self.class}: failed to parse WordPress API posts JSON (#{error.message})"
+          }.to_json)
           nil
         end
 
+        # rubocop:disable-next Metrics/MethodLength -- structured fetch-failed warn
         def posts_response
           return unless request_session
           return unless (resolved_posts_url = posts_endpoint_url)
@@ -98,7 +110,12 @@ module Html2rss
             origin_url: url
           )
         rescue Html2rss::Error => error
-          Log.warn("#{self.class}: failed to fetch WordPress API posts (#{error.class}: #{error.message})")
+          Log.warn({
+            event_name: 'wordpress_api.fetch_failed',
+            host: url.host,
+            error_class: error.class.name,
+            message: "#{self.class}: failed to fetch WordPress API posts (#{error.class}: #{error.message})"
+          }.to_json)
           nil
         end
 

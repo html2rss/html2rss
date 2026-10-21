@@ -321,10 +321,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     context 'with malformed JSON' do
       let(:parsed_body) { script_tag.call('{invalid json}') }
 
-      it 'logs a warning and returns an empty array', :aggregate_failures do
+      it 'logs a warning and returns an empty array', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- structured warn payload
         expect { |b| new.each(&b) }.not_to yield_with_args
-        expect(Html2rss::Log).to have_received(:warn)
-          .with("#{described_class}: failed to parse JSON", error: anything)
+        expect(Html2rss::Log).to have_received(:warn) do |payload|
+          event = JSON.parse(payload)
+          expect(event['event_name']).to eq('schema.parse_failed')
+          expect(event['message']).to include("#{described_class}: failed to parse JSON")
+        end
       end
     end
 

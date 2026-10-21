@@ -7,7 +7,7 @@ module Html2rss
     module Scraper
       ##
       # Scrapes articles from XML sitemaps explicitly linked in HTML or discovered via standard sitemap paths.
-      class Sitemap
+      class Sitemap # rubocop:disable Metrics/ClassLength -- scraper + structured warn paths
         include Enumerable
 
         # Selector for sitemap link tags in HTML head
@@ -78,6 +78,7 @@ module Html2rss
 
         attr_reader :parsed_body, :body, :url, :request_session, :min_priority, :max_age_days
 
+        # rubocop:disable-next Metrics/MethodLength -- structured budget-exhausted warn
         def fetch_and_parse_entries
           entries = parse_direct_sitemap
           return entries unless entries.empty?
@@ -87,7 +88,11 @@ module Html2rss
 
           parse_sitemap_xml(xml_body)
         rescue Html2rss::RequestService::RequestBudgetExceeded
-          Log.warn("#{self.class}: sitemap fetch stopped — request budget exhausted")
+          Log.warn({
+            event_name: 'sitemap.budget_exhausted',
+            host: url.host,
+            message: "#{self.class}: sitemap fetch stopped — request budget exhausted"
+          }.to_json)
           []
         end
 
@@ -122,10 +127,15 @@ module Html2rss
 
           Scraper::Sitemap::Parser.call(xml, min_priority:, max_age_days:).entries
         rescue Html2rss::RequestService::RequestBudgetExceeded
-          Log.warn("#{self.class}: sitemap fan-out stopped — request budget exhausted")
+          Log.warn({
+            event_name: 'sitemap.fanout_budget_exhausted',
+            host: url.host,
+            message: "#{self.class}: sitemap fan-out stopped — request budget exhausted"
+          }.to_json)
           nil
         end
 
+        # rubocop:disable-next Metrics/MethodLength -- structured fetch-failed warn
         def fetch_xml(target_url)
           return unless request_session && target_url
 
@@ -134,7 +144,12 @@ module Html2rss
         rescue Html2rss::RequestService::RequestBudgetExceeded
           raise
         rescue Html2rss::Error => error
-          Log.warn("#{self.class}: failed to fetch sitemap (#{error.class}: #{error.message})")
+          Log.warn({
+            event_name: 'sitemap.fetch_failed',
+            host: url.host,
+            error_class: error.class.name,
+            message: "#{self.class}: failed to fetch sitemap (#{error.class}: #{error.message})"
+          }.to_json)
           nil
         end
 

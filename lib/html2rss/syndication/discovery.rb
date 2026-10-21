@@ -60,7 +60,11 @@ module Html2rss
         ).tap do |response|
           next unless response
 
-          Log.info("Syndication::Discovery: host=#{page.host} selected_feed_url=#{response.url}")
+          Log.info({
+            event_name: 'syndication.discovery.selected',
+            host: page.host,
+            message: "Syndication::Discovery: host=#{page.host} selected_feed_url=#{response.url}"
+          }.to_json)
         end
       end
 
