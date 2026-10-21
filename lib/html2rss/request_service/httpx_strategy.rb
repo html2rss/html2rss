@@ -60,8 +60,18 @@ module Html2rss
 
       private
 
+      # Caps one HTTPX execute (including internal MAX_RETRIES) so a hanging
+      # :default tier cannot consume the full shared auto-fallback budget.
+      #
+      # @return [Float] monotonic deadline
       def request_deadline
-        monotonic_now + ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+        budget_timeout = ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+        monotonic_now + [budget_timeout, attempt_timeout_ceiling].min
+      end
+
+      # @return [Float] connect + read ceiling for a single attempt
+      def attempt_timeout_ceiling
+        (ctx.policy.connect_timeout_seconds + ctx.policy.read_timeout_seconds).to_f
       end
 
       def reset_redirect_tracking!
