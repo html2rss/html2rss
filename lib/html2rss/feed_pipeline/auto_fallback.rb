@@ -221,7 +221,7 @@ module Html2rss
         pipeline.deduplicated_articles(config:, response:, request_session:)
       end
 
-      # rubocop:disable-next Metrics/ParameterLists -- success kwargs match PipelineOutcome
+      # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- success kwargs + structured selected log
       def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
         attempt_count = state.attempts.size
         state.succeed!(
@@ -231,9 +231,15 @@ module Html2rss
         )
         return unless attempt_count > 1
 
-        Log.info("#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempt_count} " \
-                 "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
-                 "budget_remaining=#{budget_remaining_label}")
+        Log.info({
+          event_name: 'auto_fallback.selected',
+          host: response.url.host,
+          strategy: strategy.to_s,
+          attempt_count:,
+          message: "#{self.class}: auto selected strategy=#{strategy} after attempts=#{attempt_count} " \
+                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
+                   "budget_remaining=#{budget_remaining_label}"
+        }.to_json)
       end
 
       def finalize_failure(state)
@@ -268,8 +274,15 @@ module Html2rss
         detail = "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                  "budget_remaining=#{budget_remaining_label}"
         if error.is_a?(RequestService::RequestTimedOut)
-          Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
-                   "after timeout=#{error.class} #{detail}")
+          Log.info({
+            event_name: 'auto_fallback.timeout',
+            host:,
+            strategy: strategy.to_s,
+            next_strategy: next_strategy.to_s,
+            error_class: error.class.name,
+            message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
+                     "after timeout=#{error.class} #{detail}"
+          }.to_json)
         else
           Log.warn({
             event_name: 'auto_fallback.error',
@@ -285,9 +298,16 @@ module Html2rss
       end
 
       def log_info_fallback_zero_items(strategy:, next_strategy:, response:)
-        Log.info("#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items " \
-                 "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
-                 "budget_remaining=#{budget_remaining_label}")
+        host = response.url.host
+        Log.info({
+          event_name: 'auto_fallback.zero_items',
+          host:,
+          strategy: strategy.to_s,
+          next_strategy: next_strategy.to_s,
+          message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} after zero extracted items " \
+                   "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
+                   "budget_remaining=#{budget_remaining_label}"
+        }.to_json)
       end
 
       def budget_remaining_label

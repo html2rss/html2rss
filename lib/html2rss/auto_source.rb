@@ -277,7 +277,12 @@ module Html2rss
     def run_scraper(instance)
       instance.map { |item| article_from_scraper_item(item, instance) }
     rescue *OPERATIONAL_ERRORS => error
-      Log.warn("#{self.class}: #{instance.class} quarantined #{error.class}: #{error.message}")
+      Log.warn({
+        event_name: 'auto_source.quarantined',
+        host: url.host,
+        error_class: error.class.name,
+        message: "#{self.class}: #{instance.class} quarantined #{error.class}: #{error.message}"
+      }.to_json)
       []
     end
 

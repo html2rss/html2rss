@@ -12,7 +12,7 @@ module Html2rss
       #
       # @see https://schema.org/docs/full.html
       # @see https://developers.google.com/search/docs/appearance/structured-data/article#microdata
-      class Schema
+      class Schema # rubocop:disable Metrics/ClassLength -- scraper + structured warn paths
         include Enumerable
 
         # Matches a leading schema.org URL prefix on @type values (http or https).
@@ -156,7 +156,11 @@ module Html2rss
           def parse_script_tag(script_tag)
             JSON.parse(script_tag.text, symbolize_names: true)
           rescue JSON::ParserError => error
-            Log.warn("#{name}: failed to parse JSON", error: error.message)
+            Log.warn({
+              event_name: 'schema.parse_failed',
+              error_class: error.class.name,
+              message: "#{name}: failed to parse JSON (#{error.message})"
+            }.to_json)
             []
           end
         end

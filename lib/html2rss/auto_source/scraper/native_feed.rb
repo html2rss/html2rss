@@ -57,16 +57,25 @@ module Html2rss
         ##
         # @yieldparam article [Hash{Symbol => Object}]
         # @return [Enumerator, void]
+        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured empty/items logs
         def each(&)
           return enum_for(:each) unless block_given?
 
           articles = fetch_articles
           if articles.empty?
-            Log.info("#{self.class}: host=#{url.host} item_count=0 fallback=true")
+            Log.info({
+              event_name: 'auto_source.native_feed.empty',
+              host: url.host,
+              message: "#{self.class}: host=#{url.host} item_count=0 fallback=true"
+            }.to_json)
             return
           end
 
-          Log.info("#{self.class}: host=#{url.host} item_count=#{articles.size} fallback=false")
+          Log.info({
+            event_name: 'auto_source.native_feed.items',
+            host: url.host,
+            message: "#{self.class}: host=#{url.host} item_count=#{articles.size} fallback=false"
+          }.to_json)
           articles.each(&)
         end
 
@@ -74,7 +83,8 @@ module Html2rss
 
         attr_reader :parsed_body, :url, :request_session
 
-        def fetch_articles # rubocop:disable Metrics/MethodLength -- discovery + parse path
+        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- discovery + parse + structured warn
+        def fetch_articles
           return [] unless request_session
 
           response = Syndication::Discovery.best_feed_response(
@@ -87,7 +97,12 @@ module Html2rss
 
           Syndication::Parser.parse_response(response)
         rescue Html2rss::Error, ArgumentError => error
-          Log.warn("#{self.class}: host=#{url.host} failed (#{error.class}: #{error.message})")
+          Log.warn({
+            event_name: 'auto_source.native_feed.failed',
+            host: url.host,
+            error_class: error.class.name,
+            message: "#{self.class}: host=#{url.host} failed (#{error.class}: #{error.message})"
+          }.to_json)
           []
         end
       end

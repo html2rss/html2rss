@@ -6,7 +6,7 @@ module Html2rss
   module Syndication
     ##
     # Parses RSS 2.0 and Atom documents into AutoSource article hashes.
-    module Parser
+    module Parser # rubocop:disable Metrics/ModuleLength -- feed formats + structured parse warn
       module_function
 
       ##
@@ -29,7 +29,11 @@ module Html2rss
 
         items_from(feed, base_url:).filter_map { |item| article_hash(item, base_url:) }
       rescue RSS::Error => error
-        Log.warn("Syndication::Parser: failed to parse feed (#{error.class}: #{error.message})")
+        Log.warn({
+          event_name: 'syndication.parse_failed',
+          error_class: error.class.name,
+          message: "Syndication::Parser: failed to parse feed (#{error.class}: #{error.message})"
+        }.to_json)
         []
       end
 

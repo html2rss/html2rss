@@ -59,7 +59,7 @@ module Html2rss
             nil
           end
 
-          def fetchable_page_scope?
+          def fetchable_page_scope? # rubocop:disable Metrics/MethodLength -- scope checks + structured warn
             return true if page_scope.fetchable?
 
             if page_scope.reason == :non_archive
@@ -70,7 +70,11 @@ module Html2rss
               return false
             end
 
-            logger.warn("#{WordpressApi}: unable to derive safe WordPress archive scope for #{page_url}")
+            logger.warn({
+              event_name: 'wordpress_api.unsafe_archive_scope',
+              host: page_url.host,
+              message: "#{WordpressApi}: unable to derive safe WordPress archive scope for #{page_url}"
+            }.to_json)
             false
           end
 

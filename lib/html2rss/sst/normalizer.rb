@@ -119,17 +119,29 @@ module Html2rss
 
         body = parsed.at_css('body')
         if body
-          Html2rss::Log.warn('sst.normalizer root fallback: body')
+          Html2rss::Log.warn({
+            event_name: 'sst.normalizer.root_fallback',
+            reason: 'body',
+            message: 'sst.normalizer root fallback: body'
+          }.to_json)
           return body
         end
 
         first = parsed.element_children.find { |child| element_root?(child) }
         if first
-          Html2rss::Log.warn('sst.normalizer root fallback: first element child')
+          Html2rss::Log.warn({
+            event_name: 'sst.normalizer.root_fallback',
+            reason: 'first_element_child',
+            message: 'sst.normalizer root fallback: first element child'
+          }.to_json)
           return first
         end
 
-        Html2rss::Log.warn('sst.normalizer root fallback: self')
+        Html2rss::Log.warn({
+          event_name: 'sst.normalizer.root_fallback',
+          reason: 'self',
+          message: 'sst.normalizer root fallback: self'
+        }.to_json)
         parsed
       end
 
@@ -146,7 +158,11 @@ module Html2rss
 
         if @node_count >= MAX_NODES && !@degraded
           @degraded = true
-          Html2rss::Log.warn("sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only")
+          Html2rss::Log.warn({
+            event_name: 'sst.normalizer.max_nodes',
+            max_nodes: MAX_NODES,
+            message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
+          }.to_json)
         end
 
         return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)

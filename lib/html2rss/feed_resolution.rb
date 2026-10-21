@@ -285,10 +285,13 @@ module Html2rss
 
       def result(applied:, reason:, scrape_url:, probe_count:, winner_score:)
         scrape_host = Html2rss::Url.from_absolute(scrape_url).host
-        Log.info(
-          "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{scrape_host} " \
-          "applied=#{applied} probe_count=#{probe_count} winner_score=#{winner_score.inspect} reason=#{reason}"
-        )
+        Log.info({
+          event_name: 'feed_resolution.result',
+          host: entry_url.host,
+          message: "FeedResolution: entry_host=#{entry_url.host} scrape_host=#{scrape_host} " \
+                   "applied=#{applied} probe_count=#{probe_count} winner_score=#{winner_score.inspect} " \
+                   "reason=#{reason}"
+        }.to_json)
         Result.new(entry_url: entry_url.to_s, scrape_url:, applied:, reason:, probe_count:, winner_score:)
       end
     end

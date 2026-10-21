@@ -116,6 +116,7 @@ module Html2rss
         end
 
         # @return [Hash{Symbol => Object}] oEmbed fields hash
+        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured warn keeps fields local
         def fetch_oembed_data
           return {} unless request_session && (link_node = oembed_link_node)
           return {} unless (oembed_url = resolve_url(link_node['href']))
@@ -123,7 +124,12 @@ module Html2rss
           response = request_session.follow_up(url: oembed_url, relation: :auto_source, origin_url: url)
           parse_oembed_response(response)
         rescue Html2rss::Error, RequestService::UnsupportedResponseContentType, JSON::ParserError => error
-          Log.warn("#{self.class}: failed to fetch oEmbed payload (#{error.class}: #{error.message})")
+          Log.warn({
+            event_name: 'meta_oembed.fetch_failed',
+            host: url.host,
+            error_class: error.class.name,
+            message: "#{self.class}: failed to fetch oEmbed payload (#{error.class}: #{error.message})"
+          }.to_json)
           {}
         end
 
