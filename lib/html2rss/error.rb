@@ -2,7 +2,13 @@
 
 module Html2rss
   # The Html2rss::Error base class.
-  class Error < StandardError; end
+  class Error < StandardError
+    # @return [Array<Hash{Symbol => Object}>, nil] tier attempt diagnostics when set by AutoFallback
+    attr_accessor :attempts
+
+    # @return [Hash{String => Object}, nil] allowlisted upstream transport telemetry when attached
+    attr_accessor :transport_meta
+  end
 
   # Raised when auto fallback exhausts all concrete tiers and extractors find no feed items.
   class NoFeedItemsExtracted < Error

@@ -5,6 +5,15 @@ require 'nokogiri'
 RSpec.describe Html2rss::Error do
   it { expect(described_class).to be < StandardError }
 
+  it 'exposes mutable attempts and transport_meta for AutoFallback', :aggregate_failures do
+    error = described_class.new('boom')
+    error.attempts = [{ strategy: :default, items_count: nil, error_class: 'RuntimeError' }]
+    error.transport_meta = { 'request_id' => 'req-1' }
+
+    expect(error.attempts.first[:strategy]).to eq(:default)
+    expect(error.transport_meta).to eq('request_id' => 'req-1')
+  end
+
   describe Html2rss::NoFeedItemsExtracted do
     let(:attempts) { [{ strategy: :default, items_count: 0, error_class: nil }] }
     let(:botasaurus_hint) { Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT }

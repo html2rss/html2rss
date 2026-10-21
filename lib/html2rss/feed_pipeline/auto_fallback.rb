@@ -30,12 +30,13 @@ module Html2rss
       ##
       # Mutable run state for one auto-fallback chain: attempts plus selected result.
       class AttemptState
-        attr_reader :attempts, :result, :last_response, :entry_resolution
+        attr_reader :attempts, :result, :last_response, :last_error, :entry_resolution
 
         def initialize
           @attempts = []
           @result = nil
           @last_response = nil
+          @last_error = nil
           @entry_resolution = nil
           @resolution_tried = false
           @aborted = false
@@ -70,7 +71,11 @@ module Html2rss
         # @param error [Exception] caught error
         # @return [void]
         def record_error(strategy:, error:)
-          @attempts << { strategy:, items_count: nil, error_class: error.class.name }
+          attempt = { strategy:, items_count: nil, error_class: error.class.name }
+          meta = error.is_a?(Html2rss::Error) ? error.transport_meta : nil
+          attempt[:transport_meta] = meta if meta&.any?
+          @attempts << attempt
+          @last_error = error
         end
 
         # @param strategy [Symbol] strategy that returned a response
@@ -78,6 +83,7 @@ module Html2rss
         # @param transport_meta [Hash, nil] optional allowlisted upstream telemetry
         # @return [void]
         def record_items(strategy:, items_count:, transport_meta: nil)
+          @last_error = nil
           attempt = { strategy:, items_count:, error_class: nil }
           attempt[:transport_meta] = transport_meta if transport_meta && !transport_meta.empty?
           @attempts << attempt
@@ -136,7 +142,7 @@ module Html2rss
         state = run_attempts
         return state.result if state.succeeded?
 
-        finalize_failure(attempts: state.attempts, response: state.last_response)
+        finalize_failure(state)
       end
 
       private
@@ -230,9 +236,24 @@ module Html2rss
                  "budget_remaining=#{budget_remaining_label}")
       end
 
-      def finalize_failure(attempts:, response:)
-        surface_category = surface_category_for(response)
-        raise NoFeedItemsExtracted.new(attempts:, surface_category:)
+      def finalize_failure(state)
+        if raise_last_error?(state)
+          error = state.last_error
+          error.attempts = state.attempts if error.is_a?(Html2rss::Error)
+          raise error
+        end
+
+        raise NoFeedItemsExtracted.new(
+          attempts: state.attempts,
+          surface_category: surface_category_for(state.last_response)
+        )
+      end
+
+      def raise_last_error?(state)
+        error = state.last_error
+        return false if error.nil? || error.is_a?(RequestService::BotasaurusConfigurationError)
+
+        true
       end
 
       def surface_category_for(response)
