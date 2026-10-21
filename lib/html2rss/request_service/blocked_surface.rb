@@ -47,6 +47,17 @@ module Html2rss
           message: 'Blocked surface detected: Vercel Security Checkpoint. ' \
                    'This site is a JS-rendered SPA behind Vercel edge protection. ' \
                    'Configure BOTASAURUS_SCRAPER_URL or target a direct listing URL.'
+        },
+        {
+          key: :http_403_forbidden,
+          min_matches: 2,
+          patterns: [
+            %r{<title>\s*403\s+forbidden\s*</title>}i,
+            %r{<h1>\s*403\s+forbidden\s*</h1>}i
+          ],
+          message: 'Blocked surface detected: HTTP 403 Forbidden access block page. ' \
+                   'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, ' \
+                   'or run from an environment that is not IP-blocked.'
         }
       ].freeze
 
