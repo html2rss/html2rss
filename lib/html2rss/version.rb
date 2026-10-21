@@ -2,6 +2,6 @@
 
 module Html2rss
   # Current application version.
-  VERSION = '0.32.0'
+  VERSION = '0.32.1'
   public_constant :VERSION
 end
