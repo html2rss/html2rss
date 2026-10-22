@@ -78,6 +78,12 @@ module Html2rss
     # @return [Symbol]
     DEFAULT_STRATEGY_NAME = :default
 
+    # Maximum distinct [strategy, host] deprecation warnings tracked per process.
+    MAX_DEPRECATION_WARNINGS = 256
+    # Mutex guarding process-local deprecation warning deduplication.
+    DEPRECATION_MUTEX = Mutex.new
+    private_constant :DEPRECATION_MUTEX
+
     class << self
       # @return [Symbol] the default strategy name
       def default_strategy_name = DEFAULT_STRATEGY_NAME
@@ -109,6 +115,13 @@ module Html2rss
         strategy_class.new(ctx).execute
       end
 
+      ##
+      # Clears process-local deprecation warning state (used by specs).
+      # @return [void]
+      def reset_deprecation_warnings!
+        DEPRECATION_MUTEX.synchronize { @warned_deprecations = Set.new }
+      end
+
       private
 
       ##
@@ -127,14 +140,15 @@ module Html2rss
       end
 
       ##
-      # Emits a structured +strategy_deprecated+ warning once per session (+ :initial + only).
+      # Emits a structured +strategy_deprecated+ warning once per +(strategy, host)+ per process
+      # on initial session requests (+relation == :initial+). Multi-worker servers may emit once per worker.
       # @param strategy [Symbol] deprecated strategy alias
       # @param replacement [Symbol] preferred strategy name
       # @param relation [Symbol] request relation
       # @param host [String, nil] request host
       # @return [void]
       def warn_migration_strategy(strategy, replacement, relation:, host:)
-        return unless relation == :initial
+        return unless relation == :initial && claim_deprecation_warning?(strategy, host)
 
         Log.warn({
           event_name: 'strategy_deprecated',
@@ -143,6 +157,14 @@ module Html2rss
           host:,
           message: "#{name}: strategy=#{strategy.inspect} is deprecated; using #{replacement.inspect} instead."
         }.to_json)
+      end
+
+      def claim_deprecation_warning?(strategy, host)
+        DEPRECATION_MUTEX.synchronize do
+          @warned_deprecations ||= Set.new
+          @warned_deprecations.clear if @warned_deprecations.size >= MAX_DEPRECATION_WARNINGS
+          !@warned_deprecations.add?([strategy, host]).nil?
+        end
       end
     end
   end

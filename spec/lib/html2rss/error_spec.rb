@@ -14,6 +14,74 @@ RSpec.describe Html2rss::Error do
     expect(error.transport_meta).to eq('request_id' => 'req-1')
   end
 
+  describe '#diagnostics' do
+    let(:attempts) do
+      [
+        { strategy: :default, items_count: 0, error_class: nil },
+        {
+          strategy: :botasaurus,
+          items_count: nil,
+          error_class: 'Html2rss::RequestService::RequestTimedOut',
+          transport_meta: {
+            request_id: 'req-2',
+            strategy_used: 'botasaurus',
+            render_ms: 1200,
+            error_category: 'timeout',
+            timeout_phase: 'work'
+          }
+        }
+      ]
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- diagnostics field assertions stay in one example
+    it 'builds strategy_attempts and transport fields from attempts', :aggregate_failures do
+      error = described_class.new('boom')
+      error.attempts = attempts
+
+      expect(error.diagnostics).to eq(
+        strategy_attempts: attempts,
+        request_id: 'req-2',
+        strategy_used: 'botasaurus',
+        render_ms: 1200,
+        error_category: 'timeout',
+        timeout_phase: 'work'
+      )
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- direct transport_meta merge assertions
+    it 'merges direct transport_meta when attempts omit telemetry', :aggregate_failures do
+      error = described_class.new('boom')
+      error.attempts = [{ strategy: :default, items_count: 0, error_class: nil }]
+      error.transport_meta = { 'request_id' => 'req-direct', strategy_used: 'default' }
+
+      expect(error.diagnostics).to include(
+        strategy_attempts: error.attempts,
+        request_id: 'req-direct',
+        strategy_used: 'default'
+      )
+    end
+
+    it 'prefers attempt transport_meta timeout_phase over RequestTimedOut#timeout_phase', :aggregate_failures do
+      timed_out = Html2rss::RequestService::RequestTimedOut.new('timed out', timeout_phase: 'boot')
+      timed_out.attempts = attempts
+
+      expect(timed_out.diagnostics[:timeout_phase]).to eq('work')
+    end
+
+    it 'falls back to RequestTimedOut#timeout_phase when transport_meta omits it', :aggregate_failures do
+      timed_out = Html2rss::RequestService::RequestTimedOut.new('timed out', timeout_phase: 'queue')
+      timed_out.attempts = [{ strategy: :default, items_count: nil, error_class: timed_out.class.name }]
+
+      expect(timed_out.diagnostics).to include(timeout_phase: 'queue')
+    end
+
+    it 'includes surface_category from NoFeedItemsExtracted', :aggregate_failures do
+      error = Html2rss::NoFeedItemsExtracted.new(attempts:, surface_category: :app_shell)
+
+      expect(error.diagnostics).to include(surface_category: :app_shell, strategy_attempts: attempts)
+    end
+  end
+
   describe Html2rss::NoFeedItemsExtracted do
     let(:attempts) { [{ strategy: :default, items_count: 0, error_class: nil }] }
     let(:botasaurus_hint) { Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT }
