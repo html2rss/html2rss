@@ -37,7 +37,7 @@ Retries share the feed's request/session policy. Pin a concrete strategy when yo
 
 ### Terminal fallback outcome
 
-A hop that returns zero items does **not** erase an earlier terminal transport failure (`RequestTimedOut` or `BlockedSurfaceDetected`). `AutoFallback` remembers that error across later hops and, when no later hop yields items, re-raises it with `attempts` attached. A later hop that extracts items still succeeds. Two zero-item hops with no terminal transport error still raise `NoFeedItemsExtracted`. `html2rss-web` `ErrorClassifier` maps the raised error to HTTP/cache policy; it does not invent a second cache rule for empty extraction.
+A hop that returns zero items does **not** erase an earlier terminal transport failure (`RequestTimedOut`, `BlockedSurfaceDetected`, or `ConnectionFailed`). `AutoFallback` remembers that error across later hops and, when no later hop yields items, re-raises it with `attempts` attached. A later hop that extracts items still succeeds. Two zero-item hops with no terminal transport error still raise `NoFeedItemsExtracted`. True empty stays the web policy already in force: listing `EXTRACTION_EMPTY` is cacheable; `app_shell` and `high_entropy_surface` are not. `html2rss-web` `ErrorClassifier` maps the raised error to HTTP/cache policy; it does not invent a second cache rule for empty extraction.
 
 ## Success signals
 

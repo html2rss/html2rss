@@ -32,7 +32,8 @@ module Html2rss
       # decisions instead of EXTRACTION_EMPTY.
       TERMINAL_TRANSPORT_ERRORS = [
         RequestService::RequestTimedOut,
-        RequestService::BlockedSurfaceDetected
+        RequestService::BlockedSurfaceDetected,
+        RequestService::ConnectionFailed
       ].freeze
 
       ##
