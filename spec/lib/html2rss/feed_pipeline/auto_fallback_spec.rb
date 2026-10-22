@@ -19,7 +19,8 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
     it 'names the transport failures preserved across zero-item hops', :aggregate_failures do
       expect(described_class::TERMINAL_TRANSPORT_ERRORS).to include(
         Html2rss::RequestService::RequestTimedOut,
-        Html2rss::RequestService::BlockedSurfaceDetected
+        Html2rss::RequestService::BlockedSurfaceDetected,
+        Html2rss::RequestService::ConnectionFailed
       )
     end
   end
@@ -99,8 +100,35 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       it 're-raises RequestTimedOut with both attempts attached', :aggregate_failures do
         expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
           expect(error.attempts).to include(
-            hash_including(strategy: :default, error_class: 'Html2rss::RequestService::RequestTimedOut'),
-            hash_including(strategy: :botasaurus, items_count: 0, error_class: nil)
+            hash_including(
+              strategy: :default,
+              error_class: 'Html2rss::RequestService::RequestTimedOut',
+              elapsed_ms: a_kind_of(Integer)
+            ),
+            hash_including(strategy: :botasaurus, items_count: 0, error_class: nil, elapsed_ms: a_kind_of(Integer))
+          )
+        end
+      end
+    end
+
+    context 'when default connection fails and botasaurus extracts zero items' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:strategy_results) do
+        {
+          default: Html2rss::RequestService::ConnectionFailed.new('connection refused'),
+          botasaurus: empty_response
+        }
+      end
+
+      # rubocop:disable-next RSpec/ExampleLength -- attempts for both hops
+      it 're-raises ConnectionFailed with both attempts attached', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::ConnectionFailed) do |error|
+          expect(error.attempts).to include(
+            hash_including(
+              strategy: :default,
+              error_class: 'Html2rss::RequestService::ConnectionFailed',
+              elapsed_ms: a_kind_of(Integer)
+            ),
+            hash_including(strategy: :botasaurus, items_count: 0, error_class: nil, elapsed_ms: a_kind_of(Integer))
           )
         end
       end

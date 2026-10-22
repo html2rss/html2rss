@@ -32,7 +32,8 @@ module Html2rss
       # decisions instead of EXTRACTION_EMPTY.
       TERMINAL_TRANSPORT_ERRORS = [
         RequestService::RequestTimedOut,
-        RequestService::BlockedSurfaceDetected
+        RequestService::BlockedSurfaceDetected,
+        RequestService::ConnectionFailed
       ].freeze
 
       ##
@@ -79,12 +80,11 @@ module Html2rss
 
         # @param strategy [Symbol] strategy that raised
         # @param error [Exception] caught error
+        # @param elapsed_ms [Integer, nil] monotonic hop duration in milliseconds
         # @return [void]
-        def record_error(strategy:, error:)
-          attempt = { strategy:, items_count: nil, error_class: error.class.name }
+        def record_error(strategy:, error:, elapsed_ms: nil)
           meta = error.is_a?(Html2rss::Error) ? error.transport_meta : nil
-          attempt[:transport_meta] = meta if meta&.any?
-          @attempts << attempt
+          append_attempt(strategy:, error_class: error.class.name, transport_meta: meta, elapsed_ms:)
           @last_error = error
           return unless TERMINAL_TRANSPORT_ERRORS.any? { |klass| error.is_a?(klass) }
 
@@ -94,12 +94,11 @@ module Html2rss
         # @param strategy [Symbol] strategy that returned a response
         # @param items_count [Integer] extracted article count
         # @param transport_meta [Hash, nil] optional allowlisted upstream telemetry
+        # @param elapsed_ms [Integer, nil] monotonic hop duration in milliseconds
         # @return [void]
-        def record_items(strategy:, items_count:, transport_meta: nil)
+        def record_items(strategy:, items_count:, transport_meta: nil, elapsed_ms: nil)
           @last_error = nil
-          attempt = { strategy:, items_count:, error_class: nil }
-          attempt[:transport_meta] = transport_meta if transport_meta&.any?
-          @attempts << attempt
+          append_attempt(strategy:, items_count:, transport_meta:, elapsed_ms:)
         end
 
         # @param response [RequestService::Response] last response that reached extraction
@@ -131,6 +130,37 @@ module Html2rss
             entry_resolution:
           )
         end
+
+        # Raises the terminal transport error, last error, or NoFeedItemsExtracted with attempts attached.
+        #
+        # @return [void] always raises
+        # @raise [Html2rss::Error, StandardError]
+        def raise_failure!
+          if (error = failure_error)
+            error.attempts = attempts if error.is_a?(Html2rss::Error)
+            raise error
+          end
+
+          response = @last_response
+          surface_category = PageRecon.surface_category_for(response:, url: response.url) if response
+          raise NoFeedItemsExtracted.new(attempts:, surface_category:)
+        end
+
+        private
+
+        def append_attempt(strategy:, items_count: nil, error_class: nil, transport_meta: nil, elapsed_ms: nil)
+          attempt = { strategy:, items_count:, error_class: }
+          attempt[:elapsed_ms] = elapsed_ms unless elapsed_ms.nil?
+          attempt[:transport_meta] = transport_meta if transport_meta&.any?
+          @attempts << attempt
+        end
+
+        def failure_error
+          return @terminal_transport_error if @terminal_transport_error
+          return if @last_error.nil? || @last_error.is_a?(RequestService::BotasaurusConfigurationError)
+
+          @last_error
+        end
       end
 
       ##
@@ -155,7 +185,7 @@ module Html2rss
         state = run_attempts
         return state.result if state.succeeded?
 
-        finalize_failure(state)
+        state.raise_failure!
       end
 
       private
@@ -171,37 +201,33 @@ module Html2rss
         end
       end
 
+      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- hop timing + NON_FALLBACK rescue stay co-located
       def attempt(strategy:, next_strategy:, state:)
+        started_ms = monotonic_ms
         request_session = pipeline.request_session_for(
           config, strategy:, resources:, scrape_url: scrape_target.effective_url
         )
-        response = fetch_response(request_session:, strategy:, next_strategy:, state:)
-        return unless response
-
-        process_response(response:, strategy:, next_strategy:, request_session:, state:)
-      rescue RequestService::UnsupportedResponseContentType => error
-        state.record_error(strategy:, error:)
-        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy
-      end
-
-      def fetch_response(request_session:, strategy:, next_strategy:, state:)
-        request_session.fetch_initial_response
-      rescue *NON_FALLBACK_ERRORS
-        raise
+        response = request_session.fetch_initial_response
+        process_response(
+          response:, strategy:, next_strategy:, request_session:, state:,
+          elapsed_ms: monotonic_ms - started_ms
+        )
+      rescue *NON_FALLBACK_ERRORS => error
+        state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
+        state.abort!
       rescue StandardError => error
-        state.record_error(strategy:, error:)
-        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy
-        nil
+        state.record_error(strategy:, error:, elapsed_ms: monotonic_ms - started_ms)
+        log_fallback_error(strategy:, next_strategy:, error:, request_session:) if next_strategy && request_session
       end
 
-      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
-      def process_response(response:, strategy:, next_strategy:, request_session:, state:)
+      # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Metrics/ParameterLists -- extract + resolution delegate
+      def process_response(response:, strategy:, next_strategy:, request_session:, state:, elapsed_ms: nil)
         articles, dedup_dropped, admission_drops = pipeline.deduplicated_articles(
           config:, response:, request_session:
         )
         state.remember_response(response)
         items_count = articles.size
-        state.record_items(strategy:, items_count:, transport_meta: response.transport_meta)
+        state.record_items(strategy:, items_count:, transport_meta: response.transport_meta, elapsed_ms:)
         Log.debug("#{self.class}: strategy=#{strategy} items=#{items_count} " \
                   "host=#{response.url.host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                   "budget_remaining=#{budget_remaining_label}")
@@ -249,30 +275,7 @@ module Html2rss
         }.to_json)
       end
 
-      def finalize_failure(state)
-        error = failure_error(state)
-        if error
-          error.attempts = state.attempts if error.is_a?(Html2rss::Error)
-          raise error
-        end
-
-        response = state.last_response
-        raise NoFeedItemsExtracted.new(
-          attempts: state.attempts,
-          surface_category: (PageRecon.surface_category_for(response:, url: response.url) if response)
-        )
-      end
-
-      # Prefer a remembered timeout/blocked-surface over a later zero-item hop so
-      # callers do not cache EXTRACTION_EMPTY for a transport failure.
-      def failure_error(state)
-        return state.terminal_transport_error if state.terminal_transport_error
-
-        error = state.last_error
-        return if error.nil? || error.is_a?(RequestService::BotasaurusConfigurationError)
-
-        error
-      end
+      def monotonic_ms = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
 
       # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- shared payload then info/warn dispatch
       def log_fallback_error(strategy:, next_strategy:, error:, request_session:)

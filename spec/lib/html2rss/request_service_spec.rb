@@ -14,6 +14,7 @@ RSpec.describe Html2rss::RequestService do
       described_class::CrossOriginFollowUpDenied,
       described_class::ResponseTooLarge,
       described_class::RequestTimedOut,
+      described_class::ConnectionFailed,
       described_class::BotasaurusConfigurationError,
       described_class::BotasaurusConnectionFailed,
       described_class::BotasaurusServiceError
@@ -52,6 +53,8 @@ RSpec.describe Html2rss::RequestService do
   describe '#execute' do
     subject(:execute) { described_class.execute(ctx, strategy:) }
 
+    before { described_class.reset_deprecation_warnings! }
+
     let(:strategy) { :default }
     let(:ctx) do
       instance_double(
@@ -85,50 +88,61 @@ RSpec.describe Html2rss::RequestService do
       end
     end
 
-    context 'with a deprecated migration strategy alias' do
-      let(:strategy) { :faraday }
+    {
+      faraday: ['default', described_class::HttpxStrategy],
+      browserless: ['botasaurus', described_class::BotasaurusStrategy]
+    }.each do |deprecated_strategy, (replacement, strategy_klass)|
+      context "with a deprecated migration strategy alias (#{deprecated_strategy})" do
+        let(:strategy) { deprecated_strategy }
+        let(:strategy_class) { strategy_klass }
 
-      # rubocop:disable-next RSpec/ExampleLength -- asserts structured strategy_deprecated JSON fields
-      it 'emits structured strategy_deprecated and delegates to HttpxStrategy', :aggregate_failures do
-        allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
-        allow(Html2rss::Log).to receive(:warn)
+        # rubocop:disable-next RSpec/ExampleLength -- asserts structured strategy_deprecated JSON fields
+        it 'emits structured strategy_deprecated and delegates to the replacement strategy', :aggregate_failures do
+          allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
+          allow(Html2rss::Log).to receive(:warn)
 
-        execute
+          execute
 
-        expect(strategy_class).to have_received(:new).with(ctx)
-        expect(Html2rss::Log).to have_received(:warn) do |payload|
-          expect(JSON.parse(payload)).to include(
-            'event_name' => 'strategy_deprecated',
-            'strategy' => 'faraday',
-            'replacement' => 'default',
-            'host' => 'example.com',
-            'message' => a_string_including('strategy=:faraday', 'using :default')
-          )
+          expect(strategy_class).to have_received(:new).with(ctx)
+          expect(Html2rss::Log).to have_received(:warn) do |payload|
+            expect(JSON.parse(payload)).to include(
+              'event_name' => 'strategy_deprecated',
+              'strategy' => deprecated_strategy.to_s,
+              'replacement' => replacement,
+              'host' => 'example.com',
+              'message' => a_string_including(
+                "strategy=:#{deprecated_strategy}",
+                "using :#{replacement}"
+              )
+            )
+          end
         end
       end
     end
 
-    context 'with a deprecated browserless strategy alias' do
-      let(:strategy) { :browserless }
-      let(:strategy_class) { described_class::BotasaurusStrategy }
+    context 'when the same deprecated strategy and host are used on two initial requests' do
+      let(:strategy) { :faraday }
 
-      # rubocop:disable-next RSpec/ExampleLength -- asserts structured strategy_deprecated JSON fields
-      it 'emits structured strategy_deprecated and delegates to BotasaurusStrategy', :aggregate_failures do
-        allow(strategy_class).to receive(:new).with(ctx).and_return(strategy_instance)
+      # rubocop:disable-next RSpec/ExampleLength -- two hosts plus duplicate initial execute
+      it 'emits strategy_deprecated once per strategy and host', :aggregate_failures do
+        allow(strategy_class).to receive(:new).and_return(strategy_instance)
         allow(Html2rss::Log).to receive(:warn)
 
         execute
+        execute
 
-        expect(strategy_class).to have_received(:new).with(ctx)
-        expect(Html2rss::Log).to have_received(:warn) do |payload|
-          expect(JSON.parse(payload)).to include(
-            'event_name' => 'strategy_deprecated',
-            'strategy' => 'browserless',
-            'replacement' => 'botasaurus',
-            'host' => 'example.com',
-            'message' => a_string_including('strategy=:browserless', 'using :botasaurus')
-          )
-        end
+        expect(Html2rss::Log).to have_received(:warn).once
+
+        other_ctx = instance_double(
+          Html2rss::RequestService::Context,
+          relation: :initial,
+          url: instance_double(Html2rss::Url, host: 'other.example.com')
+        )
+        allow(strategy_class).to receive(:new).with(other_ctx).and_return(strategy_instance)
+
+        described_class.execute(other_ctx, strategy: :faraday)
+
+        expect(Html2rss::Log).to have_received(:warn).twice
       end
     end
 

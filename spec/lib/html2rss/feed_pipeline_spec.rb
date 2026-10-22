@@ -341,8 +341,17 @@ RSpec.describe Html2rss::FeedPipeline do
           }
         end
 
+        # rubocop:disable-next RSpec/ExampleLength -- attempts + execute call expectations
         it 'aborts immediately without attempting Botasaurus', :aggregate_failures do
-          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RedirectLimitReached)
+          expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RedirectLimitReached) do |error|
+            expect(error.attempts).to include(
+              hash_including(
+                strategy: :default,
+                error_class: 'Html2rss::RequestService::RedirectLimitReached',
+                elapsed_ms: a_kind_of(Integer)
+              )
+            )
+          end
           expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
           expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         end
@@ -435,6 +444,7 @@ RSpec.describe Html2rss::FeedPipeline do
       it 'lets Strategy enforce exhausted time budget on later auto attempts', :aggregate_failures do
         t = 0.0
         allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC) { t }
+        allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC, :millisecond) { (t * 1000).to_i }
         allow(Html2rss::RequestService).to receive(:execute).and_call_original
         allow(Html2rss::RequestService).to receive(:execute).with(anything, strategy: :default) do
           t += 1.5 # advance time to exceed the 1s budget
@@ -530,10 +540,10 @@ RSpec.describe Html2rss::FeedPipeline do
 
         expect(result.status.selected_strategy).to eq(:botasaurus)
         expect(result.status.attempt_count).to eq(2)
-        expect(result.status.strategy_attempts).to eq(
+        expect(result.status.strategy_attempts).to match(
           [
-            { strategy: :default, items_count: 0, error_class: nil },
-            { strategy: :botasaurus, items_count: 1, error_class: nil }
+            hash_including(strategy: :default, items_count: 0, error_class: nil, elapsed_ms: a_kind_of(Integer)),
+            hash_including(strategy: :botasaurus, items_count: 1, error_class: nil, elapsed_ms: a_kind_of(Integer))
           ]
         )
         expect(result.status.to_h).to include(

@@ -204,6 +204,13 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect { execute }.to raise_error(Html2rss::RequestService::RequestTimedOut, /timed out/)
     end
 
+    it 'maps HTTPX::ConnectionError to ConnectionFailed' do
+      stub_request(:get, 'https://example.com')
+        .to_raise(HTTPX::ConnectionError.new('connection refused'))
+
+      expect { execute }.to raise_error(Html2rss::RequestService::ConnectionFailed, /connection refused/)
+    end
+
     it 'maps HTTPX::ServerSideRequestForgeryError to PrivateNetworkDenied' do
       stub_request(:get, 'https://example.com')
         .to_raise(HTTPX::ServerSideRequestForgeryError.new('127.0.0.1 not allowed'))
@@ -212,14 +219,14 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- slot spend plus per-request retry override
-    it 'maps HTTPX retry recursion SystemStackError to ConnectionError after one budget slot',
+    it 'maps HTTPX retry recursion SystemStackError to ConnectionFailed after one budget slot',
        :aggregate_failures do
       session = instance_double(HTTPX::Session)
       allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
       allow(session).to receive(:with).and_return(session)
       allow(session).to receive(:get).and_raise(SystemStackError, 'stack level too deep')
 
-      expect { execute }.to raise_error(HTTPX::ConnectionError, /retry recursion/)
+      expect { execute }.to raise_error(Html2rss::RequestService::ConnectionFailed, /retry recursion/)
       expect(budget).to have_received(:consume!)
       expect(session).to have_received(:with).with(
         hash_including(
