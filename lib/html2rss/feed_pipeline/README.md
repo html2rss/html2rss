@@ -35,6 +35,10 @@ These abort immediately (`AutoFallback::NON_FALLBACK_ERRORS`): unknown strategy,
 
 Retries share the feed's request/session policy. Pin a concrete strategy when you need a single-hop budget profile.
 
+### Terminal fallback outcome
+
+A hop that returns zero items does **not** erase an earlier terminal transport failure (`RequestTimedOut` or `BlockedSurfaceDetected`). `AutoFallback` remembers that error across later hops and, when no later hop yields items, re-raises it with `attempts` attached. A later hop that extracts items still succeeds. Two zero-item hops with no terminal transport error still raise `NoFeedItemsExtracted`. `html2rss-web` `ErrorClassifier` maps the raised error to HTTP/cache policy; it does not invent a second cache rule for empty extraction.
+
 ## Success signals
 
 - `Html2rss::RequestService::Response` includes transport metadata for the strategy that produced it.

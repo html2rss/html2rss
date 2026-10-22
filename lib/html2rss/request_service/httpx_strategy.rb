@@ -66,7 +66,7 @@ module Html2rss
       # @return [Float] monotonic deadline
       def request_deadline
         budget_timeout = ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
-        monotonic_now + [budget_timeout, attempt_timeout_ceiling].min
+        Process.clock_gettime(Process::CLOCK_MONOTONIC) + [budget_timeout, attempt_timeout_ceiling].min
       end
 
       # @return [Float] connect + read ceiling for a single attempt
@@ -186,6 +186,7 @@ module Html2rss
         session.with(session_options(deadline))
       end
 
+      # Plugin retries stay off per request; Ruby owns deadline-bounded TimeoutError retries.
       def session_options(deadline)
         remaining = remaining_timeout_seconds(deadline)
         {
@@ -195,13 +196,8 @@ module Html2rss
           max_response_body_size: ctx.policy.max_response_bytes,
           resolver_class: :system,
           redirect_on: redirect_callback,
-          **per_request_retry_options
+          **RETRY_OPTIONS.merge(max_retries: 0)
         }
-      end
-
-      # Plugin retries stay off per request; Ruby owns deadline-bounded TimeoutError retries.
-      def per_request_retry_options
-        { max_retries: 0, retry_after: RETRY_AFTER_SECONDS }
       end
 
       def session_timeouts(remaining)
@@ -246,14 +242,10 @@ module Html2rss
       end
 
       def remaining_timeout_seconds(deadline)
-        remaining = deadline - monotonic_now
+        remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raise RequestTimedOut, 'Request timed out' if remaining <= 0
 
         remaining
-      end
-
-      def monotonic_now
-        Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
 
       def timeout_error?(error)
