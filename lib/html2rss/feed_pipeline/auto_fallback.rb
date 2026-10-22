@@ -98,7 +98,7 @@ module Html2rss
         def record_items(strategy:, items_count:, transport_meta: nil)
           @last_error = nil
           attempt = { strategy:, items_count:, error_class: nil }
-          attempt[:transport_meta] = transport_meta if transport_meta && !transport_meta.empty?
+          attempt[:transport_meta] = transport_meta if transport_meta&.any?
           @attempts << attempt
         end
 
@@ -196,7 +196,9 @@ module Html2rss
 
       # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize -- extract + resolution delegate
       def process_response(response:, strategy:, next_strategy:, request_session:, state:)
-        articles, dedup_dropped, admission_drops = articles_for(response:, request_session:)
+        articles, dedup_dropped, admission_drops = pipeline.deduplicated_articles(
+          config:, response:, request_session:
+        )
         state.remember_response(response)
         items_count = articles.size
         state.record_items(strategy:, items_count:, transport_meta: response.transport_meta)
@@ -217,21 +219,13 @@ module Html2rss
                                 state:)
         end
 
-        if deterministic_status?(response)
+        if DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
           state.abort!
           Log.debug("#{self.class}: deterministic HTTP #{response.status}; aborting auto fallback")
           return
         end
 
         log_info_fallback_zero_items(strategy:, next_strategy:, response:) if next_strategy
-      end
-
-      def deterministic_status?(response)
-        DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
-      end
-
-      def articles_for(response:, request_session:)
-        pipeline.deduplicated_articles(config:, response:, request_session:)
       end
 
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- success kwargs + structured selected log
@@ -262,9 +256,10 @@ module Html2rss
           raise error
         end
 
+        response = state.last_response
         raise NoFeedItemsExtracted.new(
           attempts: state.attempts,
-          surface_category: surface_category_for(state.last_response)
+          surface_category: (PageRecon.surface_category_for(response:, url: response.url) if response)
         )
       end
 
@@ -279,38 +274,22 @@ module Html2rss
         error
       end
 
-      def surface_category_for(response)
-        return unless response
-
-        PageRecon.surface_category_for(response:, url: response.url)
-      end
-
-      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength
+      # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- shared payload then info/warn dispatch
       def log_fallback_error(strategy:, next_strategy:, error:, request_session:)
         host = request_session.url.host
         detail = "host=#{host} elapsed=#{format('%.3f', budget.elapsed_seconds)}s " \
                  "budget_remaining=#{budget_remaining_label}"
-        if error.is_a?(RequestService::RequestTimedOut)
-          Log.info({
-            event_name: 'auto_fallback.timeout',
-            host:,
-            strategy: strategy.to_s,
-            next_strategy: next_strategy.to_s,
-            error_class: error.class.name,
-            message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
-                     "after timeout=#{error.class} #{detail}"
-          }.to_json)
-        else
-          Log.warn({
-            event_name: 'auto_fallback.error',
-            host:,
-            strategy: strategy.to_s,
-            next_strategy: next_strategy.to_s,
-            error_class: error.class.name,
-            message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
-                     "after error=#{error.class} #{detail}"
-          }.to_json)
-        end
+        timed_out = error.is_a?(RequestService::RequestTimedOut)
+        payload = {
+          event_name: timed_out ? 'auto_fallback.timeout' : 'auto_fallback.error',
+          host:,
+          strategy: strategy.to_s,
+          next_strategy: next_strategy.to_s,
+          error_class: error.class.name,
+          message: "#{self.class}: auto fallback #{strategy} -> #{next_strategy} " \
+                   "after #{timed_out ? "timeout=#{error.class}" : "error=#{error.class}"} #{detail}"
+        }.to_json
+        timed_out ? Log.info(payload) : Log.warn(payload)
         Log.debug("#{self.class}: strategy=#{strategy} error=#{error.class}: #{error.message} #{detail}")
       end
 
