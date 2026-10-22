@@ -3,11 +3,60 @@
 module Html2rss
   # The Html2rss::Error base class.
   class Error < StandardError
+    # Upstream transport_meta keys promoted into error diagnostics.
+    TRANSPORT_META_KEYS = %i[request_id strategy_used render_ms error_category timeout_phase].freeze
+
+    class << self
+      ##
+      # Builds a sparse diagnostics hash from attempt hashes and optional error metadata.
+      #
+      # @param attempts [Array<Hash>, nil] tier attempt diagnostics
+      # @param transport_meta [Hash, nil] direct error transport metadata
+      # @param timeout_phase [String, nil] timeout stage when known
+      # @param surface_category [Symbol, nil] page surface classification when known
+      # @return [Hash{Symbol => Object}]
+      def diagnostics_from_attempts(attempts, transport_meta: nil, timeout_phase: nil, surface_category: nil)
+        list = Array(attempts)
+        meta = list.filter_map { |item| item[:transport_meta] || item['transport_meta'] }.last || transport_meta
+        fields = extract_transport_fields(meta)
+        fields[:timeout_phase] ||= timeout_phase
+        fields[:surface_category] = surface_category
+        { strategy_attempts: (list if list.any?), **fields }.compact
+      end
+
+      private
+
+      def extract_transport_fields(meta)
+        return {} unless meta
+
+        TRANSPORT_META_KEYS.to_h { |key| [key, meta[key] || meta[key.to_s]] }
+      end
+    end
+
     # @return [Array<Hash{Symbol => Object}>, nil] tier attempt diagnostics when set by AutoFallback
     attr_accessor :attempts
 
     # @return [Hash{String => Object}, nil] allowlisted upstream transport telemetry when attached
     attr_accessor :transport_meta
+
+    # @return [String, nil] scrape-api timeout stage when known (overridden by RequestTimedOut)
+    def timeout_phase = nil
+
+    # @return [Symbol, nil] surface classification when known (overridden by NoFeedItemsExtracted)
+    def surface_category = nil
+
+    ##
+    # Sparse telemetry hash for observability consumers.
+    #
+    # @return [Hash{Symbol => Object}]
+    def diagnostics
+      self.class.diagnostics_from_attempts(
+        attempts,
+        transport_meta:,
+        timeout_phase:,
+        surface_category:
+      )
+    end
   end
 
   # Raised when auto fallback exhausts all concrete tiers and extractors find no feed items.
