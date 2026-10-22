@@ -27,16 +27,26 @@ module Html2rss
         RequestService::RedirectLimitReached
       ].freeze
 
+      # Transport failures preserved across a later hop that extracts zero items.
+      # Re-raised from finalize_failure so web maps them to uncacheable gateway/blocked
+      # decisions instead of EXTRACTION_EMPTY.
+      TERMINAL_TRANSPORT_ERRORS = [
+        RequestService::RequestTimedOut,
+        RequestService::BlockedSurfaceDetected
+      ].freeze
+
       ##
       # Mutable run state for one auto-fallback chain: attempts plus selected result.
       class AttemptState
-        attr_reader :attempts, :result, :last_response, :last_error, :entry_resolution
+        attr_reader :attempts, :result, :last_response, :last_error, :entry_resolution,
+                    :terminal_transport_error
 
         def initialize
           @attempts = []
           @result = nil
           @last_response = nil
           @last_error = nil
+          @terminal_transport_error = nil
           @entry_resolution = nil
           @resolution_tried = false
           @aborted = false
@@ -76,6 +86,9 @@ module Html2rss
           attempt[:transport_meta] = meta if meta&.any?
           @attempts << attempt
           @last_error = error
+          return unless TERMINAL_TRANSPORT_ERRORS.any? { |klass| error.is_a?(klass) }
+
+          @terminal_transport_error = error
         end
 
         # @param strategy [Symbol] strategy that returned a response
@@ -243,8 +256,8 @@ module Html2rss
       end
 
       def finalize_failure(state)
-        if raise_last_error?(state)
-          error = state.last_error
+        error = failure_error(state)
+        if error
           error.attempts = state.attempts if error.is_a?(Html2rss::Error)
           raise error
         end
@@ -255,11 +268,15 @@ module Html2rss
         )
       end
 
-      def raise_last_error?(state)
-        error = state.last_error
-        return false if error.nil? || error.is_a?(RequestService::BotasaurusConfigurationError)
+      # Prefer a remembered timeout/blocked-surface over a later zero-item hop so
+      # callers do not cache EXTRACTION_EMPTY for a transport failure.
+      def failure_error(state)
+        return state.terminal_transport_error if state.terminal_transport_error
 
-        true
+        error = state.last_error
+        return if error.nil? || error.is_a?(RequestService::BotasaurusConfigurationError)
+
+        error
       end
 
       def surface_category_for(response)
