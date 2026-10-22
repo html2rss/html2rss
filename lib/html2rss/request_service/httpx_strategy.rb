@@ -21,9 +21,9 @@ module Html2rss
       # combined with ping! on a reused closed selector that never decrements retries,
       # that overflows the stack and kills Falcon workers.
       RETRY_AFTER_SECONDS = 0.25
-      # Bounds passed to the retries plugin and every +session.with+.
-      # HTTPX retries stay inside one {RequestService::Budget} slot and the shared
-      # wall-clock deadline; do not consume a slot per attempt.
+      # Base-session retries plugin defaults (stack-overflow guard for ping reconnects).
+      # Per-request +session.with+ sets +max_retries: 0+; Ruby owns TimeoutError retries
+      # against the monotonic deadline so HTTPX cannot stack read timeouts past the cap.
       # Do not reload +:fiber_concurrency+: a reused closed selector made +ping!+
       # skip decrementing retries and recurse until +SystemStackError+.
       #
@@ -54,14 +54,14 @@ module Html2rss
       def perform_execute
         deadline = request_deadline
         reset_redirect_tracking!
-        raw_response = request_with_terminal_redirect_retry(deadline:)
+        raw_response = request_with_deadline_retries(deadline:)
         build_response(raw_response)
       end
 
       private
 
-      # Caps one HTTPX execute (including internal MAX_RETRIES) so a hanging
-      # :default tier cannot consume the full shared auto-fallback budget.
+      # Caps one strategy execute (Ruby retries included) so a hanging :default tier
+      # cannot consume the full shared auto-fallback budget.
       #
       # @return [Float] monotonic deadline
       def request_deadline
@@ -81,8 +81,30 @@ module Html2rss
         @current_url = request_url
       end
 
-      def request_with_terminal_redirect_retry(deadline:)
-        raw_response = execute_http_request(deadline:)
+      # Retries HTTPX timeouts in Ruby while the shared monotonic deadline has time left.
+      # First try consumes the budget slot; retries do not.
+      def request_with_deadline_retries(deadline:)
+        state = { retries_remaining: MAX_RETRIES, consume_budget: true }
+
+        begin
+          request_with_terminal_redirect_retry(deadline:, consume_budget: state[:consume_budget])
+        rescue HTTPX::TimeoutError => error
+          prepare_deadline_retry!(deadline:, state:, error:)
+          retry
+        end
+      end
+
+      def prepare_deadline_retry!(deadline:, state:, error:)
+        raise error if state[:retries_remaining].zero?
+
+        remaining_timeout_seconds(deadline)
+        state[:retries_remaining] -= 1
+        state[:consume_budget] = false
+        reset_redirect_tracking!
+      end
+
+      def request_with_terminal_redirect_retry(deadline:, consume_budget: true)
+        raw_response = execute_http_request(deadline:, consume_budget:)
         return raw_response unless redirect_limit_reached?(raw_response)
 
         unless terminal_redirect_retryable?(raw_response)
@@ -173,8 +195,13 @@ module Html2rss
           max_response_body_size: ctx.policy.max_response_bytes,
           resolver_class: :system,
           redirect_on: redirect_callback,
-          **RETRY_OPTIONS
+          **per_request_retry_options
         }
+      end
+
+      # Plugin retries stay off per request; Ruby owns deadline-bounded TimeoutError retries.
+      def per_request_retry_options
+        { max_retries: 0, retry_after: RETRY_AFTER_SECONDS }
       end
 
       def session_timeouts(remaining)
