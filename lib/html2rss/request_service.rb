@@ -28,6 +28,8 @@ module Html2rss
     class RedirectLimitReached < Html2rss::Error; end
     # Raised when blocked content surfaces are detected.
     class BlockedSurfaceDetected < Html2rss::Error; end
+    # Raised when the target connection fails before a response document exists.
+    class ConnectionFailed < Html2rss::Error; end
 
     # Raised when a request times out.
     class RequestTimedOut < Html2rss::Error

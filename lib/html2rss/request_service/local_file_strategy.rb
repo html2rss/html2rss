@@ -15,6 +15,9 @@ module Html2rss
 
       def skip_postflight? = true
 
+      # Local files never open a socket; keep filesystem errors as wire classes.
+      def connection_error?(_error) = false
+
       ##
       # @return [Response] the mock response wrapped around the file contents
       # @raise [ArgumentError] if the local file path is missing

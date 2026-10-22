@@ -133,9 +133,9 @@ module Html2rss
 
       # @param error [StandardError]
       # @return [void]
-      # @raise [StandardError]
+      # @raise [ConnectionFailed]
       def translate_connection_error(error)
-        raise error
+        raise ConnectionFailed, error.message
       end
 
       # @param error [StandardError]
