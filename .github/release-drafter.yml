@@ -22,9 +22,11 @@ template: |
 
   $CHANGES
 
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
   ---
   <!-- Release Instructions:
-  1. Run the manual 'Bump version' GitHub workflow on the `master` branch.
+  1. Dispatch the Bump Version workflow on `master` with `version` set to an explicit semver (`X.Y.Z`).
   2. Review and merge the resulting version bump pull request.
-  3. Publish this draft release on GitHub. The 'Release Gem' workflow will automatically build and publish the gem to RubyGems.
+  3. Publish this draft release on GitHub. The Release Gem workflow builds and publishes the gem to RubyGems.
   -->

@@ -43,7 +43,7 @@ User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share seven verbs 
 ## Release
 
 - After merging a PR to `master` or when shipping, ask whether to bump and which version unless already specified; never invent the version.
-- Dispatch `.github/workflows/bump-version.yml` on `master` only after the user answers (`bump_type`: `auto`, `patch`, `minor`, `major`, or `custom`; pass `custom_version` only when `bump_type` is `custom`).
+- Dispatch `.github/workflows/bump-version.yml` on `master` only after the user names an explicit semver: `gh workflow run bump-version.yml --ref master -f version=X.Y.Z`. The workflow accepts only that version.
 - Wait for the workflow run to bump `lib/html2rss/version.rb`, regenerate the config schema, and open `release/vX.Y.Z` (`chore(release): bump version to vX.Y.Z`).
 - Merge `release/vX.Y.Z` (squash or rebase only; merge commits are disabled on `master`) only when asked and after Ruby 3.3, Ruby 3.4, Ruby 4.0, and lint are green.
 - Stop after that merge. Publish the draft release (`.github/workflows/release_gem.yml`) only when asked.
