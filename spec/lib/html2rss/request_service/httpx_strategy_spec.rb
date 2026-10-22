@@ -211,7 +211,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect { execute }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /127.0.0.1/)
     end
 
-    # rubocop:disable-next RSpec/ExampleLength -- slot spend plus retry bounds on the overflow path
+    # rubocop:disable-next RSpec/ExampleLength -- slot spend plus per-request retry override
     it 'maps HTTPX retry recursion SystemStackError to ConnectionError after one budget slot',
        :aggregate_failures do
       session = instance_double(HTTPX::Session)
@@ -223,7 +223,7 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
       expect(budget).to have_received(:consume!)
       expect(session).to have_received(:with).with(
         hash_including(
-          max_retries: described_class::MAX_RETRIES,
+          max_retries: 0,
           retry_after: described_class::RETRY_AFTER_SECONDS
         )
       )
@@ -236,6 +236,33 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     it 'bounds retries on the selector timer path so ping reconnects cannot recurse', :aggregate_failures do
       expect(options.max_retries).to eq(described_class::MAX_RETRIES)
       expect(options.retry_after).to eq(described_class::RETRY_AFTER_SECONDS)
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- deadline-bounded Ruby retries vs plugin
+    it 'retries TimeoutError in Ruby without consuming extra budget slots', :aggregate_failures do
+      session = instance_double(HTTPX::Session)
+      timeout = HTTPX::TimeoutError.new({ request_timeout: 5 }, 'timed out')
+      raw_response = instance_double(
+        HTTPX::Response,
+        status: 200,
+        body: StringIO.new('<html>ok</html>'),
+        headers: instance_double(HTTPX::Headers, to_h: { 'content-type' => 'text/html' }),
+        uri: URI('https://example.com')
+      )
+      outcomes = [timeout, timeout, raw_response]
+      allow(described_class).to receive_messages(base_session: session, base_ssrf_session: session)
+      allow(session).to receive(:with).and_return(session)
+      allow(session).to receive(:get) do
+        outcome = outcomes.shift
+        raise outcome if outcome.is_a?(Exception)
+
+        outcome
+      end
+
+      expect(execute.status).to eq(200)
+      expect(budget).to have_received(:consume!).once
+      expect(session).to have_received(:get).exactly(3).times
+      expect(session).to have_received(:with).with(hash_including(max_retries: 0)).at_least(:once)
     end
   end
 
