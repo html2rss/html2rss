@@ -57,7 +57,7 @@ module Html2rss
     # @return [Logger] the logger
     # @raise [ArgumentError] if logger is not a Logger
     def logger=(logger)
-      raise ArgumentError, 'logger must be a Logger' unless logger.is_a?(::Logger)
+      raise ArgumentError, 'logger must be a Logger' unless logger.is_a?(Logger)
 
       @logger = logger
       @logger.level = @log_level

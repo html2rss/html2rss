@@ -202,11 +202,31 @@ RSpec.describe Html2rss::Defaults do
     end
   end
 
-  describe '#logger=' do
+  describe '#logger=', mutant_expression: 'Html2rss::Defaults#logger=' do
     subject(:config) { described_class.new }
 
-    it 'rejects a non-Logger so level= and formatter= can be called directly' do
-      expect { config.logger = Object.new }.to raise_error(ArgumentError, /logger must be a Logger/)
+    # rubocop:disable-next RSpec/ExampleLength -- level, formatter, subclass, and nil formatter
+    it 'applies level and formatter to a Logger, including subclasses', :aggregate_failures do
+      config.log_level = :error
+      formatter = proc { |*| 'x' }
+      config.logger_formatter = formatter
+      subclass = Class.new(Logger).new(StringIO.new)
+      subclass.level = Logger::DEBUG
+
+      config.logger = subclass
+
+      expect(config.logger).to equal(subclass)
+      expect(subclass.level).to eq(Logger::ERROR)
+      expect(subclass.formatter).to equal(formatter)
+
+      config.logger_formatter = nil
+      bare = Logger.new(StringIO.new)
+      bare.formatter = Logger::Formatter.new
+      kept = bare.formatter
+      config.logger = bare
+
+      expect(bare.formatter).to equal(kept)
+      expect { config.logger = Object.new }.to raise_error(ArgumentError, 'logger must be a Logger')
     end
   end
 
