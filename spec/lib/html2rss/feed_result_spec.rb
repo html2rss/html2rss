@@ -183,6 +183,23 @@ RSpec.describe Html2rss::FeedResult do
       expect(built.to_rss.to_s).to include('rss.xsl')
     end
 
+    it 'freezes the stylesheet list, each sheet, and copied strings', :aggregate_failures do
+      built = described_class.new(channel:, articles:, status:, stylesheets: [{ href: +'rss.xsl', type: +'text/xsl' }])
+      stored = built.instance_variable_get(:@stylesheets)
+      expect(stored).to be_frozen
+      expect(stored.first).to be_frozen
+      expect(stored.first[:href]).to be_frozen
+    end
+
+    it 'keeps a non-string stylesheet value as the same object' do
+      extra = Object.new
+      built = described_class.new(
+        channel:, articles:, status:, stylesheets: [{ href: +'rss.xsl', type: +'text/xsl', extra: }]
+      )
+
+      expect(built.instance_variable_get(:@stylesheets).first[:extra]).to equal(extra)
+    end
+
     it 'keeps channel_title immutable for callers', :aggregate_failures do
       expect(result.channel_title).to be_frozen
       expect { result.channel_title << 'X' }.to raise_error(FrozenError)
