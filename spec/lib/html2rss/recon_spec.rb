@@ -108,6 +108,42 @@ RSpec.describe Html2rss::Recon do
       end
     end
 
+    context 'when HTTP status is missing' do
+      let(:page_recon_result) { super().with(status: nil) }
+      let(:discovered_feed) { nil }
+
+      it 'returns DROP verdict' do
+        expect(described_class.call(url).drop?).to be(true)
+      end
+    end
+
+    context 'when HTTP status is 400' do
+      let(:page_recon_result) { super().with(status: 400) }
+      let(:discovered_feed) { nil }
+
+      it 'returns DROP verdict' do
+        expect(described_class.call(url).drop?).to be(true)
+      end
+    end
+
+    context 'when HTTP status is 399' do
+      let(:page_recon_result) { super().with(status: 399) }
+      let(:discovered_feed) { nil }
+
+      it 'returns BUILD verdict' do
+        expect(described_class.call(url).build?).to be(true)
+      end
+    end
+
+    context 'when the surface is blocked' do
+      let(:page_recon_result) { super().with(status: 200, surface_category: :blocked_surface, scheme_downgrade: false) }
+      let(:discovered_feed) { nil }
+
+      it 'returns DROP verdict' do
+        expect(described_class.call(url).drop?).to be(true)
+      end
+    end
+
     context 'when HTTP status is 404' do
       let(:fake_response) do
         instance_double(
