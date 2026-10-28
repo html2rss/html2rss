@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
 
 RSpec.describe Html2rss::Config do
   it { expect(described_class::InvalidConfig).to be < Html2rss::Error }
@@ -321,12 +322,40 @@ RSpec.describe Html2rss::Config do
       expect(config).not_to have_key(:strategy)
     end
 
-    it 'returns ValidationReport on parse failure', :aggregate_failures do
+    it 'returns ValidationReport on parse failure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       raw, validation = described_class.resolve_and_validate("- items\n")
       expect(raw).to eq({})
       expect(validation).to be_a(described_class::ValidationReport)
       expect(validation).not_to be_success
       expect(validation.issues.map(&:code)).to include(:parse)
+      expect(validation.issues.map(&:message)).to include('YAML must deserialize to a Hash')
+    end
+
+    it 'validates with the supplied dynamic params' do
+      parameterized = config.merge(channel: { url: 'https://example.com/%<section>s' })
+      _raw, validation = described_class.resolve_and_validate(parameterized, params: { section: 'news' })
+      expect(validation).to be_success
+    end
+
+    it 'loads the named feed from a multi-feed file' do # rubocop:disable RSpec/ExampleLength
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'feeds.yml')
+        File.write(path, <<~YAML)
+          feeds:
+            news:
+              channel:
+                url: http://example.com
+              selectors:
+                items:
+                  selector: ".item"
+                title:
+                  selector: h2
+                guid:
+                  - title
+        YAML
+        _raw, validation = described_class.resolve_and_validate(path, feed_name: 'news')
+        expect(validation).to be_success
+      end
     end
 
     it 'does not swallow IssueMapper ArgumentError as a soft :parse issue' do
