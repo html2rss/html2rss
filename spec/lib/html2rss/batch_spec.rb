@@ -236,5 +236,34 @@ RSpec.describe Html2rss::Batch do
       expect(second[:verdict]).to eq(:drop)
       expect(second[:notes]).to eq(['error: StandardError - Connection failed'])
     end
+
+    it 'uses auto and the default worker count when strategy and concurrency are omitted' do
+      allow(Html2rss::Recon).to receive(:batch).and_return([])
+      described_class.batch_recon(urls:, cache_dir: '/tmp/recon-cache')
+      expect(Html2rss::Recon).to have_received(:batch).with(
+        urls, strategy: :auto, max_threads: described_class::DEFAULT_CONCURRENCY, cache_dir: '/tmp/recon-cache'
+      )
+    end
+
+    it 'symbolizes a string strategy and treats nil as auto', :aggregate_failures do
+      allow(Html2rss::Recon).to receive(:batch).and_return([])
+      described_class.batch_recon(urls:, strategy: 'botasaurus', concurrency: 2)
+      described_class.batch_recon(urls:, strategy: nil, concurrency: 2)
+      expect(Html2rss::Recon).to have_received(:batch).with(urls, strategy: :botasaurus, max_threads: 2)
+      expect(Html2rss::Recon).to have_received(:batch).with(urls, strategy: :auto, max_threads: 2)
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- 399, 400, and a missing status share one count
+    it 'counts a status of 399 and rejects 400 or a missing status' do
+      allow(Html2rss::Recon).to receive(:batch).and_return(
+        [
+          instance_double(Html2rss::Recon::Result, status: 399, to_h: { status: 399 }),
+          instance_double(Html2rss::Recon::Result, status: 400, to_h: { status: 400 }),
+          instance_double(Html2rss::Recon::Result, status: nil, to_h: {})
+        ]
+      )
+      result = described_class.batch_recon(urls:, concurrency: 1)
+      expect(result.successful).to eq(1)
+    end
   end
 end

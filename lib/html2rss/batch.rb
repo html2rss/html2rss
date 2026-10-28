@@ -112,7 +112,7 @@ module Html2rss
       # @return [BatchResult]
       def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **)
         results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency, **)
-        successful = results.count { |r| r.status ? r.status < 400 : false }
+        successful = results.count { |r| r.status < 400 if r.status }
         BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
       end
 
