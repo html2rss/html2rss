@@ -443,6 +443,46 @@ RSpec.describe Html2rss do
     end
   end
 
+  describe '.auto_feed_result' do
+    it 'passes url, strategy, and limit into the config', :aggregate_failures do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com/page', strategy: :default, limit: 3)
+      expect(config.dig(:channel, :url)).to eq('https://example.com/page')
+      expect(config[:strategy]).to eq(:default)
+      expect(config.dig(:auto_source, :limit)).to eq(3)
+    end
+
+    it 'sets local_file_path without dropping request limits', :aggregate_failures do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com', local_file_path: '/tmp/p.html', max_redirects: 2)
+      expect(config.dig(:request, :local_file_path)).to eq('/tmp/p.html')
+      expect(config.dig(:request, :max_redirects)).to eq(2)
+    end
+
+    it 'passes an items selector' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com', items_selector: '.card')
+      expect(config.dig(:selectors, :items)).to eq(selector: '.card', enhance: true)
+    end
+
+    it 'omits local_file_path when none is given' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com')
+      expect(config[:request]).not_to have_key(:local_file_path)
+    end
+
+    it 'forwards keep_different_domain' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com', keep_different_domain: true)
+      expect(config.dig(:auto_source, :cleanup, :keep_different_domain)).to be true
+    end
+  end
+
   describe '.auto_source' do
     let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source('https://www.welt.de/', limit: 10_000) } }
 
