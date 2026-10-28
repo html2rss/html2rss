@@ -98,8 +98,7 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
     end
   end
 
-  describe '#trusted_post_context?',
-           mutant_expression: 'Html2rss::LinkDestination::PathClassifier#trusted_post_context?' do
+  describe '#trusted_post_context?' do
     let(:trusted) do
       lambda do |limit, *segments|
         classifier_for(*segments).instance_eval { trusted_post_context?(limit) }

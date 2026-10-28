@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::SST::Normalizer do
-  describe '.call', mutant_expression: ['Html2rss::SST::Normalizer', 'Html2rss::SST::Normalizer#normalize_element'] do
+  describe '.call' do
     let(:simple_html) do
       <<~HTML
         <html><body>

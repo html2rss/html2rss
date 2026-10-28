@@ -3,8 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Article::Enclosure do
-  describe '.guess_content_type_from_url',
-           mutant_expression: 'Html2rss::Article::Enclosure.guess_content_type_from_url' do
+  describe '.guess_content_type_from_url' do
     {
       'https://example.com/image.jpg' => 'image/jpeg',
       'https://example.com/image.png' => 'image/png',

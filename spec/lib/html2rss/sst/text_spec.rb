@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-RSpec.describe Html2rss::SST::Text, mutant_expression: 'Html2rss::SST::Text#extract' do
+RSpec.describe Html2rss::SST::Text do
   let(:extract) do
     lambda do |node, **kwargs|
       Object.new.extend(described_class).instance_eval { extract(node, **kwargs) }

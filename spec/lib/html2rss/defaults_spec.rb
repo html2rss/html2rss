@@ -202,7 +202,7 @@ RSpec.describe Html2rss::Defaults do
     end
   end
 
-  describe '#logger=', mutant_expression: 'Html2rss::Defaults#logger=' do
+  describe '#logger=' do
     subject(:config) { described_class.new }
 
     # rubocop:disable-next RSpec/ExampleLength -- level, formatter, subclass, and nil formatter
@@ -393,7 +393,7 @@ RSpec.describe Html2rss::Defaults do
     end
   end
 
-  describe '#initialize_copy', mutant_expression: 'Html2rss::Defaults#initialize_copy' do
+  describe '#initialize_copy' do
     # rubocop:disable-next RSpec/ExampleLength -- dup isolation for headers, procs, and stylesheets
     it 'isolates copied headers and stylesheets from the source', :aggregate_failures do
       source = described_class.new

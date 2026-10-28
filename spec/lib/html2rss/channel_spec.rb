@@ -223,7 +223,7 @@ RSpec.describe Html2rss::Channel do
     end
   end
 
-  describe 'last_build_date normalization', mutant_expression: 'Html2rss::Channel#normalize_last_build_date' do
+  describe 'last_build_date normalization' do
     let(:built) do
       lambda do |last_build_date|
         described_class.new(
