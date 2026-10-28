@@ -76,6 +76,24 @@ RSpec.describe Html2rss::Batch do
         ]
       )
     end
+
+    it 'uses the default worker count when concurrency is omitted' do
+      allow(described_class).to receive(:map).and_call_original
+      described_class.run([1]) { |item| item }
+      expect(described_class).to have_received(:map).with([1], concurrency: described_class::DEFAULT_CONCURRENCY)
+    end
+
+    it 'wraps a single value as one item' do
+      result = described_class.run('ab') { |item| item }
+      expect(result.total).to eq(1)
+    end
+
+    it 'counts present non-hash results and ignores a false ok flag' do
+      special = Class.new(Hash).new
+      special[:ok] = false
+      result = described_class.run([special, nil, 'kept', 'also', {}]) { |item| item }
+      expect(result.successful).to eq(2)
+    end
   end
 
   describe '.batch_scrape' do
