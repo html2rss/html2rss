@@ -20,7 +20,7 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
     end
 
     it 'raises ArgumentError for an unknown plan' do
-      expect { described_class.resolve(:unknown) }.to raise_error(ArgumentError, /unknown strategy plan/)
+      expect { described_class.resolve(:unknown) }.to raise_error(ArgumentError, 'unknown strategy plan: :unknown')
     end
   end
 
