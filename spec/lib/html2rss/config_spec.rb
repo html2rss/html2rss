@@ -92,8 +92,27 @@ RSpec.describe Html2rss::Config do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
       it 'raises an ArgumentError listing the available feeds' do
-        expect { described_class.load_yaml(file) }
-          .to raise_error(ArgumentError, /Feed name is required under `feeds`\. Available feeds:/)
+        expect { described_class.load_yaml(file) }.to raise_error(
+          ArgumentError,
+          'Feed name is required under `feeds`. Available feeds: nuxt-releases, json, notitle, withparams'
+        )
+      end
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- custom key is only observable from a temp file
+    it 'forwards a custom feeds key when merging global config' do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'sources.yml')
+        File.write(path, <<~YAML)
+          headers:
+            User-Agent: Custom
+          sources:
+            news:
+              channel:
+                url: http://example.com
+        YAML
+        loaded = described_class.load_yaml(path, 'news', multiple_feeds_key: :sources)
+        expect(loaded).not_to have_key(:sources)
       end
     end
 
