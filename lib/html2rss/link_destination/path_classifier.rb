@@ -199,16 +199,12 @@ module Html2rss
       end
 
       def trusted_post_context?(limit)
-        return false if limit <= 0
         return false if leading_high_confidence_junk?
 
-        content_segments = SEGMENT_SETS.fetch(:content)
-        context_segments = SEGMENT_SETS.fetch(:deep_post_context)
-
-        (0...limit).any? do |i|
-          content_segments.include?(@lexicon[i]) ||
-            segments[i].match?(PathClassifier::YEARISH_SEGMENT) ||
-            context_segments.include?(@lexicon[i])
+        content = SEGMENT_SETS.fetch(:content)
+        context = SEGMENT_SETS.fetch(:deep_post_context)
+        segments.zip(@lexicon).first(limit.clamp(0..)).any? do |segment, folded|
+          content.include?(folded) || segment.match?(YEARISH_SEGMENT) || context.include?(folded)
         end
       end
 
