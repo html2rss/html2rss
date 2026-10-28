@@ -10,6 +10,10 @@ RSpec.describe Html2rss do
     expect(Html2rss::VERSION).not_to be_nil
   end
 
+  it 'config_from_yaml_file loads a single-feed file without a feed name' do
+    expect(described_class.config_from_yaml_file('spec/fixtures/single.test.yml')).to be_a(Hash)
+  end
+
   describe '.config_from_yaml_file(file, feed_name = nil)' do
     subject(:feed) do
       described_class.config_from_yaml_file(config_file, name)
