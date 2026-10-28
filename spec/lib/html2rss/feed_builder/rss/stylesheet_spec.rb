@@ -27,6 +27,14 @@ RSpec.describe Html2rss::FeedBuilder::Rss::Stylesheet do
         expect(stylesheet.type).to eq('text/css')
         expect(stylesheet.media).to eq('all')
       end
+
+      it 'accepts string subclasses for href and media', :aggregate_failures do
+        href = Class.new(String).new('http://example.com/style.css')
+        media = Class.new(String).new('screen')
+        sheet = described_class.new(href:, type: 'text/css', media:)
+        expect(sheet.href).to equal(href)
+        expect(sheet.media).to equal(media)
+      end
     end
 
     context 'with an invalid href' do
