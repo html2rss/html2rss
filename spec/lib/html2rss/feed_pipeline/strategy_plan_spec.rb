@@ -29,6 +29,10 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
       expect(described_class.concrete_for_diagnostic(:auto)).to eq(:default)
     end
 
+    it 'defaults an omitted name to the default strategy' do
+      expect(described_class.concrete_for_diagnostic).to eq(:default)
+    end
+
     it 'passes through concrete strategies and nil → auto', :aggregate_failures do
       expect(described_class.concrete_for_diagnostic(:botasaurus)).to eq(:botasaurus)
       expect(described_class.concrete_for_diagnostic(nil)).to eq(:default)
