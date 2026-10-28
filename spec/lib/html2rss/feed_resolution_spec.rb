@@ -244,7 +244,7 @@ RSpec.describe Html2rss::FeedResolution do
       Html2rss.reset_defaults!
     end
 
-    it 'returns nil when policy rejects after the page is assessed' do
+    it 'returns nil when policy rejects after the page is assessed', :aggregate_failures do
       articles = Array.new(3) { instance_double(Html2rss::Article, scraper: Html2rss::AutoSource::Scraper::Schema) }
       assessment = Html2rss::PageRecon::Assessment.new(
         surface_category: :listing, articles_count: 3, admission_drops: {}, html_response: true
@@ -256,6 +256,32 @@ RSpec.describe Html2rss::FeedResolution do
       outcome = described_class.try_apply!(
         pipeline:, config:, response:, session:, strategy: :default, resources:,
         articles:, scrape_target:, state:, budget:
+      )
+
+      expect(Html2rss::PageRecon).to have_received(:assess).with(response:, url: entry_url)
+      expect(outcome).to be_nil
+    end
+
+    it 'returns nil when resolution already ran' do
+      state.mark_resolution_tried!
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+
+      expect(apply_outcome).to be_nil
+    end
+
+    it 'returns nil for a feed response' do
+      feed = instance_double(Html2rss::RequestService::Response, feed_response?: true)
+      assessment = Html2rss::PageRecon::Assessment.new(
+        surface_category: :listing, articles_count: 0, admission_drops: {}, html_response: false
+      )
+      allow(Html2rss::PageRecon).to receive(:assess).and_return(assessment)
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+
+      outcome = described_class.try_apply!(
+        pipeline:, config:, response: feed, session:, strategy: :default, resources:,
+        articles: [], scrape_target:, state:, budget:
       )
 
       expect(outcome).to be_nil
