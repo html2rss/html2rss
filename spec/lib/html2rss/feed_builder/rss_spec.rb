@@ -48,6 +48,11 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
     end.to raise_error(ArgumentError, /generator/)
   end
 
+  it 'builds without stylesheets when none are given' do
+    rss = described_class.new(channel:, articles:, generator: 'html2rss').call
+    expect(rss.to_s).not_to include('xml-stylesheet')
+  end
+
   describe '#call' do
     subject(:rss) { instance.call }
 
