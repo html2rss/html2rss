@@ -100,7 +100,7 @@ module Html2rss
       # @return [Document]
       def call
         root_nk = resolve_root_nk
-        root = normalize_element(root_nk, parent: nil, depth: 0, path: '', chrome: false)
+        root = normalize_element(root_nk, depth: 0, path: '', chrome: false)
         raise EmptyTree, 'SST Normalizer produced an empty tree' unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
@@ -150,15 +150,15 @@ module Html2rss
       end
 
       # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-      def normalize_element(nk_node, parent:, depth:, path:, chrome:)
+      def normalize_element(nk_node, depth:, path:, chrome:)
         return unless nk_node.element?
 
-        tag = Html2rss::Html::Probe.tag(nk_node)
+        tag = Html::Probe.tag(nk_node)
         return if STRIPPED_TAGS.include?(tag)
 
         if @node_count >= MAX_NODES && !@degraded
           @degraded = true
-          Html2rss::Log.warn({
+          Log.warn({
             event_name: 'sst.normalizer.max_nodes',
             max_nodes: MAX_NODES,
             message: "sst.normalizer MAX_NODES=#{MAX_NODES} breached; degrading to semantic-tag-only"
@@ -168,21 +168,18 @@ module Html2rss
         return if @degraded && !SEMANTIC_DEGRADE_TAGS.include?(tag)
 
         @node_count += 1
-        tag_path = path.empty? ? "/#{tag}" : "#{path}/#{tag}"
+        tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
         own_text = direct_text(nk_node)
         chrome_here = chrome || IGNORED_CONTAINER_TAGS.include?(tag)
 
         children = nk_node.element_children.filter_map do |child|
-          normalize_element(child, parent: :pending, depth: depth + 1, path: tag_path, chrome: chrome_here)
-        end.freeze
+          normalize_element(child, depth: depth + 1, path: tag_path, chrome: chrome_here)
+        end
 
         node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:)
-        @parents[node] = parent == :pending ? nil : parent
         @depths[node] = depth
         @ignored_chrome[node] = chrome_here
-
-        # Fix parent pointers now that node exists.
         children.each { |child| @parents[child] = node }
 
         node
