@@ -33,6 +33,27 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
+  context 'when decode is given a gzip body' do
+    let(:gzip_body) do
+      StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+    end
+
+    it 'inflates the gzip body' do
+      expect(described_class.decode(gzip_body)).to eq(html)
+    end
+  end
+
+  context 'when gzip magic is followed by a truncated payload' do
+    let(:truncated) do
+      gzip = StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      gzip.byteslice(0, 4)
+    end
+
+    it 'returns the original body' do
+      expect(described_class.decode(truncated)).to eq(truncated)
+    end
+  end
+
   context 'when body has unlabeled octet-stream brotli HTML' do
     let(:headers) { { 'content-type' => 'application/octet-stream' } }
     let(:body) { Brotli.deflate(html) }
