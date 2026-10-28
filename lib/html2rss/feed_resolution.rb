@@ -116,11 +116,7 @@ module Html2rss
         return unless resolution.applied
 
         effective = scrape_target.with_effective(resolution.scrape_url)
-        return ApplyOutcome.new(scrape_target: effective, status: :succeeded) if retry_with(
-          resolution, effective:
-        )
-
-        nil
+        ApplyOutcome.new(scrape_target: effective, status: :succeeded) if retry_with(effective:)
       rescue RequestService::RequestBudgetExceeded
         log_budget_exhausted
         nil
@@ -184,7 +180,7 @@ module Html2rss
         )
       end
 
-      def retry_with(_resolution, effective:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- retry extract path
+      def retry_with(effective:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- retry extract path
         retry_session = pipeline.request_session_for(
           config, strategy:, resources:, scrape_url: effective.effective_url
         )

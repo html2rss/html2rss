@@ -123,8 +123,25 @@ RSpec.describe Html2rss::FeedResolution do
       )
     end
     let(:budget) { instance_double(Html2rss::RequestService::Budget, remaining_requests: 10) }
+    let(:active_budget) { budget }
     let(:state) { Html2rss::FeedPipeline::AutoFallback::AttemptState.new }
     let(:scrape_target) { Html2rss::ScrapeTarget.from_config(config) }
+    let(:applied_resolution) do
+      described_class::Result.new(
+        entry_url:, scrape_url: listing_url, applied: true, reason: :winner, probe_count: 1, winner_score: 1
+      )
+    end
+    let(:skipped_resolution) do
+      described_class::Result.new(
+        entry_url:, scrape_url: entry_url, applied: false, reason: :no_winner, probe_count: 0, winner_score: nil
+      )
+    end
+    let(:apply_outcome) do
+      described_class.try_apply!(
+        pipeline:, config:, response:, session:, strategy: :default, resources:,
+        articles: [], scrape_target:, state:, budget: active_budget
+      )
+    end
 
     before do
       allow(pipeline).to receive_messages(
@@ -190,8 +207,78 @@ RSpec.describe Html2rss::FeedResolution do
       )
 
       expect(outcome).to have_attributes(status: :succeeded)
+      expect(outcome.scrape_target.effective_url).to eq(listing_url)
       expect(state.result.articles).to eq([article])
       expect(state.result.scrape_target.effective_url).to eq(listing_url)
+    end
+
+    it 're-raises non-fallback errors from the retry' do
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(retry_session).to receive(:fetch_initial_response).and_raise(Html2rss::RequestService::InvalidUrl)
+
+      expect { apply_outcome }.to raise_error(Html2rss::RequestService::InvalidUrl)
+    end
+
+    it 'returns nil when the retry raises a generic error', :aggregate_failures do
+      log = StringIO.new
+      Html2rss.logger = Logger.new(log)
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(retry_session).to receive(:fetch_initial_response).and_raise(RuntimeError)
+
+      expect(apply_outcome).to be_nil
+      expect(log.string).to include('feed_resolution.retry_failed', 'RuntimeError')
+    ensure
+      Html2rss.reset_defaults!
+    end
+
+    it 'returns nil when the retry exceeds the request budget', :aggregate_failures do
+      log = StringIO.new
+      Html2rss.logger = Logger.new(log)
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      error = Html2rss::RequestService::RequestBudgetExceeded
+      allow(retry_session).to receive(:fetch_initial_response).and_raise(error)
+
+      expect(apply_outcome).to be_nil
+      expect(log.string).to include('feed_resolution.budget_exhausted')
+    ensure
+      Html2rss.reset_defaults!
+    end
+
+    it 'returns nil when policy rejects after the page is assessed' do
+      articles = Array.new(3) { instance_double(Html2rss::Article, scraper: Html2rss::AutoSource::Scraper::Schema) }
+      assessment = Html2rss::PageRecon::Assessment.new(
+        surface_category: :listing, articles_count: 3, admission_drops: {}, html_response: true
+      )
+      allow(Html2rss::PageRecon).to receive(:assess).and_return(assessment)
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+
+      outcome = described_class.try_apply!(
+        pipeline:, config:, response:, session:, strategy: :default, resources:,
+        articles:, scrape_target:, state:, budget:
+      )
+
+      expect(outcome).to be_nil
+    end
+
+    it 'does not succeed when the tournament does not apply' do
+      allow(described_class).to receive(:call).and_return(skipped_resolution)
+      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+
+      expect(apply_outcome).to be_nil
+    end
+
+    it 'returns nil when fewer than three requests remain' do
+      low_budget = instance_double(Html2rss::RequestService::Budget, remaining_requests: 2)
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+
+      outcome = described_class.try_apply!(
+        pipeline:, config:, response:, session:, strategy: :default, resources:,
+        articles: [], scrape_target:, state:, budget: low_budget
+      )
+
+      expect(outcome).to be_nil
     end
   end
 end
