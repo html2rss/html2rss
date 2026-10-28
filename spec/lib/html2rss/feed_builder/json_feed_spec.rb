@@ -90,5 +90,11 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
         described_class.new(channel:, articles:, user_comment:, feed_url: :symbol)
       end.to raise_error(ArgumentError, /feed_url must be a String or nil/)
     end
+
+    it 'accepts a String subclass feed_url' do
+      url = Class.new(String).new('https://example.com/feed.json')
+      payload = described_class.new(channel:, articles:, user_comment:, feed_url: url).call
+      expect(payload[:feed_url]).to eq('https://example.com/feed.json')
+    end
   end
 end
