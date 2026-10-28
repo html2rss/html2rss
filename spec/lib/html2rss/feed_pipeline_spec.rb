@@ -52,6 +52,10 @@ RSpec.describe Html2rss::FeedPipeline do
         end
       end
 
+      it 'builds an outcome when params are omitted' do
+        expect(pipeline.to_outcome.articles.map(&:title)).to eq(['default'])
+      end
+
       it 'runs the configured strategy path and does not invoke auto fallback', :aggregate_failures do
         result = pipeline.to_result
         rss = result.to_rss
@@ -85,6 +89,10 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(Html2rss::RequestService).to have_received(:execute).with(
           have_attributes(url: have_attributes(to_s: 'https://example.com/news')), strategy: :default
         )
+      end
+
+      it 'returns the interpolated outcome' do
+        expect(pipeline.to_outcome.articles.map(&:title)).to eq(['scoped'])
       end
     end
 
