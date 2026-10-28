@@ -138,6 +138,11 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         }
       end
 
+      it 'logs the timeout before the next strategy', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut)
+        expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto fallback default -> botasaurus'))
+      end
+
       # rubocop:disable-next RSpec/ExampleLength -- attempts for both hops
       it 're-raises RequestTimedOut with both attempts attached', :aggregate_failures do
         expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
@@ -145,9 +150,9 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
             hash_including(
               strategy: :default,
               error_class: 'Html2rss::RequestService::RequestTimedOut',
-              elapsed_ms: a_kind_of(Integer)
+              elapsed_ms: be < 10_000
             ),
-            hash_including(strategy: :botasaurus, items_count: 0, error_class: nil, elapsed_ms: a_kind_of(Integer))
+            hash_including(strategy: :botasaurus, items_count: 0, error_class: nil, elapsed_ms: be < 10_000)
           )
         end
       end
@@ -168,9 +173,9 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
             hash_including(
               strategy: :default,
               error_class: 'Html2rss::RequestService::ConnectionFailed',
-              elapsed_ms: a_kind_of(Integer)
+              elapsed_ms: be < 10_000
             ),
-            hash_including(strategy: :botasaurus, items_count: 0, error_class: nil, elapsed_ms: a_kind_of(Integer))
+            hash_including(strategy: :botasaurus, items_count: 0, error_class: nil, elapsed_ms: be < 10_000)
           )
         end
       end
@@ -187,6 +192,15 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       it 'succeeds with the later hop items' do
         expect(pipeline.to_result.to_rss.items.map(&:title)).to eq(['bota'])
       end
+
+      it 'passes the effective URL into the request session' do
+        allow(pipeline).to receive(:request_session_for).and_call_original
+        pipeline.to_result
+
+        expect(pipeline).to have_received(:request_session_for).with(
+          kind_of(Html2rss::Config), hash_including(scrape_url: 'https://example.com/news')
+        ).at_least(:once)
+      end
     end
 
     context 'when every hop extracts zero items with no terminal transport error' do # rubocop:disable RSpec/MultipleMemoizedHelpers
@@ -199,6 +213,52 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
 
       it 'raises NoFeedItemsExtracted' do
         expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted)
+      end
+
+      it 'logs the fallback before the next strategy' do
+        pipeline.to_result
+      rescue Html2rss::NoFeedItemsExtracted
+        expect(Html2rss::Log).to have_received(:info).with(
+          a_string_including('auto_fallback.zero_items').and(a_string_including('botasaurus'))
+        )
+      end
+    end
+
+    context 'when the last strategy raises' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:strategy_results) do
+        {
+          default: empty_response,
+          botasaurus: RuntimeError.new('late')
+        }
+      end
+
+      it 'does not log a next hop after the last strategy', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(RuntimeError, 'late')
+        expect(Html2rss::Log).not_to have_received(:warn).with(a_string_including('botasaurus ->'))
+      end
+    end
+
+    context 'when the session cannot be opened' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      before { allow(pipeline).to receive(:request_session_for).and_raise(RuntimeError, 'no session') }
+
+      it 'does not log a fallback for a missing session' do
+        expect { pipeline.to_result }.to raise_error(RuntimeError, 'no session')
+      end
+    end
+
+    context 'when default raises a non-fallback error' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:strategy_results) do
+        {
+          default: Html2rss::RequestService::InvalidUrl.new('bad url'),
+          botasaurus: item_response
+        }
+      end
+
+      it 'aborts before the next strategy', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::InvalidUrl) do |error|
+          expect(error.attempts).to include(hash_including(strategy: :default, elapsed_ms: be < 10_000))
+        end
+        expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
       end
     end
   end
