@@ -222,7 +222,7 @@ module Html2rss
     # @return [Url] a new URL with the updated query string
     def with_query_values(values)
       uri = @uri.dup
-      uri.query_values = values
+      uri.query_values = values.transform_keys(&:to_s).transform_values(&:to_s)
       self.class.from_absolute(uri)
     end
 

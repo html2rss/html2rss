@@ -293,6 +293,33 @@ RSpec.describe Html2rss::Url do
 
       expect(url.to_s).to eq('https://example.com/index.php?rest_route=/')
     end
+
+    it 'stringifies nil to an empty query value' do
+      url = described_class.from_absolute('https://example.com/a')
+
+      expect(url.with_query_values(tag: nil).query_values).to eq('tag' => '')
+    end
+
+    it 'stringifies an array as one query value' do
+      url = described_class.from_absolute('https://example.com/a')
+      values = %w[a b]
+
+      expect(url.with_query_values(tag: values).query_values).to eq('tag' => values.to_s)
+    end
+
+    it 'stringifies an object that only implements to_s' do
+      url = described_class.from_absolute('https://example.com/a')
+      value = Object.new
+
+      expect(url.with_query_values(tag: value).query_values).to eq('tag' => value.to_s)
+    end
+
+    it 'stringifies a key that only implements to_s' do
+      url = described_class.from_absolute('https://example.com/a')
+      key = Object.new
+
+      expect(url.with_query_values(key => '1').query_values).to eq(key.to_s => '1')
+    end
   end
 
   describe 'delegation' do
