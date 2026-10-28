@@ -59,6 +59,13 @@ RSpec.describe Html2rss::FeedResult do
       expect(built.channel_title).to eq('Example')
       expect(built.instance_variable_get(:@articles)).to be_frozen
     end
+
+    it 'rejects a non-array articles list or stylesheet list', :aggregate_failures do
+      expect { described_class.new(channel:, articles: nil, status:) }
+        .to raise_error(ArgumentError, 'articles must be an Array')
+      expect { described_class.new(channel:, articles:, status:, stylesheets: nil) }
+        .to raise_error(ArgumentError, 'stylesheets must be an Array')
+    end
   end
 
   describe 'public API surface' do
