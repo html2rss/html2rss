@@ -559,14 +559,30 @@ RSpec.describe Html2rss do
   end
 
   describe '.scrape' do
-    it 'delegates to auto_feed_result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      feed_result = instance_double(Html2rss::FeedResult)
-      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
+    let(:feed_result) { instance_double(Html2rss::FeedResult) }
 
-      expect(described_class.scrape('https://example.com', strategy: :default)).to eq(feed_result)
+    before { allow(described_class).to receive(:auto_feed_result).and_return(feed_result) }
+
+    it 'forwards every scrape option', :aggregate_failures do
+      options = { strategy: :default, items_selector: '.card', max_redirects: 2, max_requests: 8,
+                  local_file_path: '/tmp/p.html', limit: 3, keep_different_domain: true }
+
+      expect(described_class.scrape('https://example.com', **options)).to eq(feed_result)
+      expect(described_class).to have_received(:auto_feed_result).with('https://example.com', **options)
+    end
+
+    it 'defaults strategy to auto and max_requests to 4' do # rubocop:disable RSpec/ExampleLength
+      described_class.scrape('https://example.com')
+
       expect(described_class).to have_received(:auto_feed_result).with(
         'https://example.com',
-        hash_including(strategy: :default)
+        strategy: :auto,
+        items_selector: nil,
+        max_redirects: nil,
+        max_requests: 4,
+        local_file_path: nil,
+        limit: nil,
+        keep_different_domain: nil
       )
     end
   end
