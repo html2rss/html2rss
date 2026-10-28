@@ -511,6 +511,22 @@ RSpec.describe Html2rss do
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_source
+
+    it 'forwards strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      feed_result = instance_double(Html2rss::FeedResult, to_rss: :rss)
+      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
+
+      expect(described_class.auto_source('https://example.com', local_file_path: '/tmp/p.html')).to eq(:rss)
+      expect(described_class).to have_received(:auto_feed_result).with(
+        'https://example.com',
+        strategy: :auto,
+        items_selector: nil,
+        max_redirects: nil,
+        max_requests: 4,
+        local_file_path: '/tmp/p.html',
+        limit: nil
+      )
+    end
   end
 
   describe '.auto_json_feed' do
