@@ -9,6 +9,26 @@ RSpec.describe Html2rss::Capture do
     allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
   end
 
+  describe '.build' do
+    it 'defaults the strategy to auto' do
+      stub_outcome(html_response('<html></html>'), articles: [])
+      expect(described_class.build(url)).to be_a(described_class::CaptureResult)
+    end
+
+    it 'forwards an explicit strategy' do
+      stub_outcome(html_response('<html></html>'), articles: [])
+      expect(described_class.build(url, strategy: :default).config[:strategy]).to eq(:default)
+    end
+
+    it 'forwards the source url and keyword options', :aggregate_failures do
+      page = 'https://example.com/unique-capture'
+      stub_outcome(html_response('<html></html>'), articles: [])
+      result = described_class.build(page, items_selector: '.card')
+      expect(result.config.dig(:channel, :url)).to eq(page)
+      expect(result.config.dig(:selectors, :items, :selector)).to eq('.card')
+    end
+  end
+
   describe '#build' do
     it 'asks Syndication::Discovery for native feed preference with a session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response(File.read('spec/fixtures/local_feed_test.html'))
