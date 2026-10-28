@@ -14,6 +14,17 @@ RSpec.describe Html2rss::Error do
     expect(error.transport_meta).to eq('request_id' => 'req-1')
   end
 
+  it 'has no timeout phase or surface category by default', :aggregate_failures do
+    error = described_class.new('boom')
+
+    expect(error.timeout_phase).to be_nil
+    expect(error.surface_category).to be_nil
+  end
+
+  it 'omits empty diagnostics' do
+    expect(described_class.diagnostics_from_attempts(nil)).to eq({})
+  end
+
   describe '#diagnostics' do
     let(:attempts) do
       [
@@ -80,11 +91,52 @@ RSpec.describe Html2rss::Error do
 
       expect(error.diagnostics).to include(surface_category: :app_shell, strategy_attempts: attempts)
     end
+
+    it 'reads a string-keyed transport_meta from an attempt' do
+      error = described_class.new('boom')
+      error.attempts = [{ 'transport_meta' => { request_id: 'req-string' } }]
+
+      expect(error.diagnostics[:request_id]).to eq('req-string')
+    end
+
+    it 'keeps an earlier attempt transport_meta when a later attempt has none' do
+      error = described_class.new('boom')
+      error.attempts = [{ transport_meta: { request_id: 'req-first' } }, { strategy: :botasaurus }]
+
+      expect(error.diagnostics[:request_id]).to eq('req-first')
+    end
   end
 
-  describe Html2rss::NoFeedItemsExtracted do
+  describe Html2rss::NoFeedItemsExtracted, mutant_expression: 'Html2rss::NoFeedItemsExtracted' do
     let(:attempts) { [{ strategy: :default, items_count: 0, error_class: nil }] }
     let(:botasaurus_hint) { Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT }
+
+    it 'summarizes item counts and error classes', :aggregate_failures do
+      attempts = [{ strategy: :default, items_count: 4 }, { strategy: :browser, error_class: 'RuntimeError' }]
+      message = described_class.new(attempts:).message
+      expect(message).to include('default (4 items), browser (RuntimeError error). ')
+      expect(message).to end_with('Try a more specific listing URL or provide explicit selectors.')
+    end
+
+    it 'summarizes an attempt that omits count, class, and strategy' do
+      message = described_class.new(attempts: [{}]).message
+
+      expect(message).to include('( error)')
+    end
+
+    it 'separates surface guidance with a space' do
+      error = described_class.new(attempts:, surface_category: :app_shell)
+      guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:app_shell)
+
+      expect(error.message).to end_with("selectors. #{guidance}")
+    end
+
+    it 'does not append guidance for unsupported_surface' do
+      error = described_class.new(attempts:, surface_category: :unsupported_surface)
+      guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:unsupported_surface)
+
+      expect(error.message).not_to include(guidance)
+    end
 
     it 'keeps the base empty-feed message without a surface hint', :aggregate_failures do
       error = described_class.new(attempts:)
