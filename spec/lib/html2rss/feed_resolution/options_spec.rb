@@ -51,4 +51,18 @@ RSpec.describe Html2rss::FeedResolution::Options do
       end.to raise_error(ArgumentError)
     end
   end
+
+  describe '#request_slots' do
+    it 'adds the retry slot when enabled' do
+      expect(described_class.new(enabled: true, max_probes: 5).request_slots).to eq(6)
+    end
+
+    it 'returns zero when disabled' do
+      expect(described_class.new(enabled: false, max_probes: 5).request_slots).to eq(0)
+    end
+
+    it 'keeps a single retry when there are no probes' do
+      expect(described_class.new(enabled: true, max_probes: 0).request_slots).to eq(1)
+    end
+  end
 end
