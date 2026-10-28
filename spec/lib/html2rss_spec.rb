@@ -690,5 +690,11 @@ RSpec.describe Html2rss do
     it 'rejects a non-Logger' do
       expect { described_class.logger = Object.new }.to raise_error(ArgumentError, /logger must be a Logger/)
     end
+
+    it 'stores the given logger' do
+      logger = Logger.new(nil)
+      described_class.logger = logger
+      expect(described_class.logger).to equal(logger)
+    end
   end
 end
