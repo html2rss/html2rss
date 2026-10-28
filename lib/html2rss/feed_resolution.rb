@@ -220,7 +220,7 @@ module Html2rss
       def initialize(entry_url:, response:, session:, config:, articles:, surface_category: nil)
         raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
 
-        @entry_url = Html2rss::Url.from_absolute(entry_url)
+        @entry_url = Url.from_absolute(entry_url)
         @response = response
         @session = session
         @config = config

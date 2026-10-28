@@ -85,6 +85,32 @@ RSpec.describe Html2rss::FeedResolution do
     end.to raise_error(ArgumentError, 'articles must be an Array')
   end
 
+  it 'rejects a truthy non-array on the runner' do
+    expect do
+      described_class::Runner.new(entry_url:, response:, session:, config:, articles: 'no')
+    end.to raise_error(ArgumentError, 'articles must be an Array')
+  end
+
+  it 'rejects a runner entry URL that is not absolute' do
+    expect do
+      described_class::Runner.new(entry_url: '/news', response:, session:, config:, articles: [])
+    end.to raise_error(ArgumentError, 'URL must be absolute')
+  end
+
+  it 'allows omitting the runner surface category' do
+    runner = described_class::Runner.new(entry_url:, response:, session:, config:, articles: [])
+
+    expect(runner).to be_a(described_class::Runner)
+  end
+
+  it 'accepts an Array subclass and keeps the absolute entry URL' do
+    runner = described_class::Runner.new(
+      entry_url:, response:, session:, config:, articles: Class.new(Array).new, surface_category: :blocked_surface
+    )
+
+    expect(runner.call).to have_attributes(applied: false, reason: :policy_skip, scrape_url: entry_url)
+  end
+
   describe '.try_apply!' do
     let(:listing_url) { 'https://example.com/news' }
     let(:retry_session) { instance_double(Html2rss::RequestSession) }
