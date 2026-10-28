@@ -112,15 +112,18 @@ module Html2rss
       # @return [BatchResult]
       def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **)
         results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency, **)
-        successful = results.count { |r| r.status < 400 if r.status }
+        successful = results.count { |result| http_success?(result.status) }
         BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
       end
 
       private
 
       def diagnostic_success?(report)
-        status = report.to_wire_h[:status]
-        status < 400 if status
+        http_success?(report.to_wire_h[:status])
+      end
+
+      def http_success?(status)
+        !status.nil? && status < 400
       end
 
       def scrape_single_url(url:, strategy:, limit:)
