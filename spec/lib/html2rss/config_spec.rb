@@ -871,6 +871,18 @@ RSpec.describe Html2rss::Config do
       it 'freezes string defaults exposed by public readers' do
         expect(instance.time_zone).to be_frozen
       end
+
+      it 'exposes validated request budgets', :aggregate_failures do
+        defaults = Html2rss::RequestService::Policy::DEFAULTS
+        expect(instance.strategy).to eq(described_class.default_strategy_name)
+        expect(instance.max_redirects).to eq(defaults[:max_redirects])
+        expect(instance.max_requests).to eq(defaults[:max_requests])
+        expect(instance.total_timeout_seconds).to eq(defaults[:total_timeout_seconds])
+      end
+
+      it 'freezes the validated config' do
+        expect { instance.instance_variable_get(:@config)[:extra] = true }.to raise_error(FrozenError)
+      end
     end
 
     context 'when the configuration is valid with auto_source' do
@@ -918,6 +930,37 @@ RSpec.describe Html2rss::Config do
       it 'applies default auto_source configuration' do
         expect(instance.auto_source).to eq(expected_auto_source_config)
       end
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- strategy and the three request budgets are one assignment
+    it 'keeps the validated strategy and request budgets', :aggregate_failures do
+      built = described_class.new(
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          strategy: :default,
+          request: { max_redirects: 2, max_requests: 3, total_timeout_seconds: 4 }
+        }
+      )
+      expect(built.strategy).to eq(:default)
+      expect(built.max_redirects).to eq(2)
+      expect(built.max_requests).to eq(3)
+      expect(built.total_timeout_seconds).to eq(4)
+    end
+
+    it 'applies the default strategy when the caller omits one' do
+      built = described_class.new(
+        { channel: { url: 'http://example.com' }, selectors: { items: { selector: '.item' }, title: { selector: 'h2' } } }
+      )
+      expect(built.strategy).to eq(:auto)
+    end
+
+    it 'accepts a frozen config hash' do
+      frozen = {
+        channel: { url: 'http://example.com' },
+        selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+      }.freeze
+      expect(described_class.new(frozen).url).to eq('http://example.com')
     end
 
     context 'when the configuration is invalid' do
