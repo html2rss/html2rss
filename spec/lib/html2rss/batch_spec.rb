@@ -20,6 +20,36 @@ RSpec.describe Html2rss::Batch do
       expect(described_class.map([1], concurrency: 0) { |x| x }).to eq([1])
       expect(described_class.map([1, 2], concurrency: 100) { |x| x }).to eq([1, 2])
     end
+
+    it 'uses one worker when the requested concurrency is below 1' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map([1, 2], concurrency: 0) { |item| item }
+      expect(Thread).to have_received(:new).once
+    end
+
+    it 'caps workers at the item count' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map([1, 2, 3, 4], concurrency: 100) { |item| item }
+      expect(Thread).to have_received(:new).exactly(4).times
+    end
+
+    it 'caps workers at MAX_CONCURRENCY' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map((1..20).to_a, concurrency: 100) { |item| item }
+      expect(Thread).to have_received(:new).exactly(described_class::MAX_CONCURRENCY).times
+    end
+
+    it 'uses the requested concurrency when it is inside the bounds' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map((1..8).to_a, concurrency: 3) { |item| item }
+      expect(Thread).to have_received(:new).exactly(3).times
+    end
+
+    it 'treats a missing concurrency as a single worker' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map((1..8).to_a, concurrency: nil) { |item| item }
+      expect(Thread).to have_received(:new).once
+    end
   end
 
   describe '.run' do
@@ -45,6 +75,24 @@ RSpec.describe Html2rss::Batch do
           { url: 'https://example.com/b', ok: false, error: 'Failed' }
         ]
       )
+    end
+
+    it 'uses the default worker count when concurrency is omitted' do
+      allow(described_class).to receive(:map).and_call_original
+      described_class.run([1]) { |item| item }
+      expect(described_class).to have_received(:map).with([1], concurrency: described_class::DEFAULT_CONCURRENCY)
+    end
+
+    it 'wraps a single value as one item' do
+      result = described_class.run('ab') { |item| item }
+      expect(result.total).to eq(1)
+    end
+
+    it 'counts present non-hash results and ignores a false ok flag' do
+      special = Class.new(Hash).new
+      special[:ok] = false
+      result = described_class.run([special, nil, 'kept', 'also', {}]) { |item| item }
+      expect(result.successful).to eq(2)
     end
   end
 
@@ -139,6 +187,27 @@ RSpec.describe Html2rss::Batch do
       expect(second[:status]).to be_nil
       expect(second[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
     end
+
+    # rubocop:disable-next RSpec/ExampleLength -- 399, 400, and a missing status share one count
+    it 'counts a status of 399 and rejects 400 or a missing status' do
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:batch).and_return(
+        [
+          Html2rss::PageRecon::Diagnostics::Report.new(data: { status: 399 }),
+          Html2rss::PageRecon::Diagnostics::Report.new(data: { status: 400 }),
+          Html2rss::PageRecon::Diagnostics::Report.new(data: {})
+        ]
+      )
+      result = described_class.batch_inspect(urls: ['https://example.com/edge'], strategy: :auto)
+      expect(result.successful).to eq(1)
+    end
+
+    it 'uses auto and the default worker count when strategy and concurrency are omitted' do
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:batch).and_return([])
+      described_class.batch_inspect(urls:)
+      expect(Html2rss::PageRecon::Diagnostics).to have_received(:batch).with(
+        urls:, strategy: :auto, concurrency: described_class::DEFAULT_CONCURRENCY
+      )
+    end
   end
 
   describe '.batch_recon' do
@@ -192,6 +261,35 @@ RSpec.describe Html2rss::Batch do
       expect(second[:status]).to be_nil
       expect(second[:verdict]).to eq(:drop)
       expect(second[:notes]).to eq(['error: StandardError - Connection failed'])
+    end
+
+    it 'uses auto and the default worker count when strategy and concurrency are omitted' do
+      allow(Html2rss::Recon).to receive(:batch).and_return([])
+      described_class.batch_recon(urls:, cache_dir: '/tmp/recon-cache')
+      expect(Html2rss::Recon).to have_received(:batch).with(
+        urls, strategy: :auto, max_threads: described_class::DEFAULT_CONCURRENCY, cache_dir: '/tmp/recon-cache'
+      )
+    end
+
+    it 'symbolizes a string strategy and treats nil as auto', :aggregate_failures do
+      allow(Html2rss::Recon).to receive(:batch).and_return([])
+      described_class.batch_recon(urls:, strategy: 'botasaurus', concurrency: 2)
+      described_class.batch_recon(urls:, strategy: nil, concurrency: 2)
+      expect(Html2rss::Recon).to have_received(:batch).with(urls, strategy: :botasaurus, max_threads: 2)
+      expect(Html2rss::Recon).to have_received(:batch).with(urls, strategy: :auto, max_threads: 2)
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- 399, 400, and a missing status share one count
+    it 'counts a status of 399 and rejects 400 or a missing status' do
+      allow(Html2rss::Recon).to receive(:batch).and_return(
+        [
+          instance_double(Html2rss::Recon::Result, status: 399, to_h: { status: 399 }),
+          instance_double(Html2rss::Recon::Result, status: 400, to_h: { status: 400 }),
+          instance_double(Html2rss::Recon::Result, status: nil, to_h: {})
+        ]
+      )
+      result = described_class.batch_recon(urls:, concurrency: 1)
+      expect(result.successful).to eq(1)
     end
   end
 end

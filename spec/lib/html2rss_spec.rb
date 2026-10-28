@@ -10,6 +10,10 @@ RSpec.describe Html2rss do
     expect(Html2rss::VERSION).not_to be_nil
   end
 
+  it 'config_from_yaml_file loads a single-feed file without a feed name' do
+    expect(described_class.config_from_yaml_file('spec/fixtures/single.test.yml')).to be_a(Hash)
+  end
+
   describe '.config_from_yaml_file(file, feed_name = nil)' do
     subject(:feed) do
       described_class.config_from_yaml_file(config_file, name)
@@ -443,6 +447,62 @@ RSpec.describe Html2rss do
     end
   end
 
+  describe '.auto_feed_result' do
+    it 'passes url, strategy, and limit into the config', :aggregate_failures do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com/page', strategy: :default, limit: 3)
+      expect(config.dig(:channel, :url)).to eq('https://example.com/page')
+      expect(config[:strategy]).to eq(:default)
+      expect(config.dig(:auto_source, :limit)).to eq(3)
+    end
+
+    it 'sets local_file_path without dropping request limits', :aggregate_failures do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com', local_file_path: '/tmp/p.html', max_redirects: 2)
+      expect(config.dig(:request, :local_file_path)).to eq('/tmp/p.html')
+      expect(config.dig(:request, :max_redirects)).to eq(2)
+    end
+
+    it 'passes an items selector' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com', items_selector: '.card')
+      expect(config.dig(:selectors, :items)).to eq(selector: '.card', enhance: true)
+    end
+
+    it 'omits local_file_path when none is given', :aggregate_failures do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com')
+      expect(config[:request]).not_to have_key(:local_file_path)
+      expect(config[:request]).to include(max_requests: 4)
+      expect(config).not_to have_key(:strategy)
+    end
+
+    it 'returns the feed result from the pipeline' do
+      feed_result = instance_double(Html2rss::FeedResult)
+      allow(described_class).to receive(:feed_result).and_return(feed_result)
+
+      expect(described_class.auto_feed_result('https://example.com')).to eq(feed_result)
+    end
+
+    it 'forwards the default auto strategy' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+      allow(Html2rss::Config::RequestControls).to receive(:from_shortcut).and_call_original
+      described_class.auto_feed_result('https://example.com')
+      expect(Html2rss::Config::RequestControls).to have_received(:from_shortcut).with(hash_including(strategy: :auto))
+    end
+
+    it 'forwards keep_different_domain' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com', keep_different_domain: true)
+      expect(config.dig(:auto_source, :cleanup, :keep_different_domain)).to be true
+    end
+  end
+
   describe '.auto_source' do
     let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source('https://www.welt.de/', limit: 10_000) } }
 
@@ -455,6 +515,22 @@ RSpec.describe Html2rss do
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_source
+
+    it 'forwards strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      feed_result = instance_double(Html2rss::FeedResult, to_rss: :rss)
+      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
+
+      expect(described_class.auto_source('https://example.com', local_file_path: '/tmp/p.html')).to eq(:rss)
+      expect(described_class).to have_received(:auto_feed_result).with(
+        'https://example.com',
+        strategy: :auto,
+        items_selector: nil,
+        max_redirects: nil,
+        max_requests: 4,
+        local_file_path: '/tmp/p.html',
+        limit: nil
+      )
+    end
   end
 
   describe '.auto_json_feed' do
@@ -473,6 +549,22 @@ RSpec.describe Html2rss do
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_json_feed
+
+    it 'forwards strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      feed_result = instance_double(Html2rss::FeedResult, to_json_feed: :json)
+      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
+
+      expect(described_class.auto_json_feed('https://example.com', local_file_path: '/tmp/p.html')).to eq(:json)
+      expect(described_class).to have_received(:auto_feed_result).with(
+        'https://example.com',
+        strategy: :auto,
+        items_selector: nil,
+        max_redirects: nil,
+        max_requests: 4,
+        local_file_path: '/tmp/p.html',
+        limit: nil
+      )
+    end
   end
 
   describe '.inspect' do
@@ -485,6 +577,10 @@ RSpec.describe Html2rss do
         url: 'https://example.com', strategy: :auto, deep: false
       )
     end
+
+    it 'forwards unknown options to diagnostics' do
+      expect { described_class.inspect('https://example.com', not_an_option: true) }.to raise_error(ArgumentError)
+    end
   end
 
   describe '.recon' do
@@ -492,6 +588,12 @@ RSpec.describe Html2rss do
       allow(Html2rss::Recon).to receive(:call).with('https://example.com', strategy: :auto)
       described_class.recon('https://example.com')
       expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto)
+    end
+
+    it 'forwards extra recon options' do
+      allow(Html2rss::Recon).to receive(:call)
+      described_class.recon('https://example.com', cache_dir: '/tmp/c')
+      expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto, cache_dir: '/tmp/c')
     end
   end
 
@@ -503,6 +605,15 @@ RSpec.describe Html2rss do
       described_class.test('config.yml')
       expect(Html2rss::Test).to have_received(:call).with(
         'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false
+      )
+    end
+
+    it 'forwards the feed name and strategy' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Test).to receive(:call)
+      described_class.test('config.yml', 'named', strategy: :default)
+      expect(Html2rss::Test).to have_received(:call).with(
+        'config.yml', 'named',
+        min_items: 1, params: {}, strategy: :default, strict_quality: false, compare_enhance: false
       )
     end
   end
@@ -519,14 +630,30 @@ RSpec.describe Html2rss do
   end
 
   describe '.scrape' do
-    it 'delegates to auto_feed_result', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-      feed_result = instance_double(Html2rss::FeedResult)
-      allow(described_class).to receive(:auto_feed_result).and_return(feed_result)
+    let(:feed_result) { instance_double(Html2rss::FeedResult) }
 
-      expect(described_class.scrape('https://example.com', strategy: :default)).to eq(feed_result)
+    before { allow(described_class).to receive(:auto_feed_result).and_return(feed_result) }
+
+    it 'forwards every scrape option', :aggregate_failures do
+      options = { strategy: :default, items_selector: '.card', max_redirects: 2, max_requests: 8,
+                  local_file_path: '/tmp/p.html', limit: 3, keep_different_domain: true }
+
+      expect(described_class.scrape('https://example.com', **options)).to eq(feed_result)
+      expect(described_class).to have_received(:auto_feed_result).with('https://example.com', **options)
+    end
+
+    it 'defaults strategy to auto and max_requests to 4' do # rubocop:disable RSpec/ExampleLength
+      described_class.scrape('https://example.com')
+
       expect(described_class).to have_received(:auto_feed_result).with(
         'https://example.com',
-        hash_including(strategy: :default)
+        strategy: :auto,
+        items_selector: nil,
+        max_redirects: nil,
+        max_requests: 4,
+        local_file_path: nil,
+        limit: nil,
+        keep_different_domain: nil
       )
     end
   end
@@ -542,6 +669,15 @@ RSpec.describe Html2rss do
         strategy: :auto,
         limit: 5,
         concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
+      )
+    end
+
+    it 'defaults limit to 10' do # rubocop:disable RSpec/ExampleLength
+      batch_result = instance_double(Html2rss::Batch::BatchResult)
+      allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
+      described_class.batch_scrape(%w[https://a.test])
+      expect(Html2rss::Batch).to have_received(:batch_scrape).with(
+        urls: %w[https://a.test], strategy: :auto, limit: 10, concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
       )
     end
   end
@@ -591,7 +727,16 @@ RSpec.describe Html2rss do
   describe '.validate' do
     it 'validates hash config' do
       config = { channel: { url: 'https://example.com' }, selectors: { items: { selector: 'div' } } }
-      expect(described_class.validate(config)).to be_a(Html2rss::Config::ValidationReport)
+      expect(described_class.validate(config)).to be_success
+    end
+
+    it 'forwards a feed name from a multi-feed file' do
+      expect(described_class.validate('spec/fixtures/feeds.test.yml', 'nuxt-releases')).to be_success
+    end
+
+    it 'forwards dynamic params' do
+      config = { channel: { url: 'https://example.com/%<section>s' }, selectors: { items: { selector: 'div' } } }
+      expect(described_class.validate(config, params: { section: 'news' })).to be_success
     end
 
     it 'validates yaml file' do
@@ -616,6 +761,11 @@ RSpec.describe Html2rss do
       expect(described_class.schema_json).to be_a(String)
       expect(described_class.schema_json).to include('$schema')
     end
+
+    it 'pretty-prints unless pretty is false', :aggregate_failures do
+      expect(described_class.schema_json).to include("\n")
+      expect(described_class.schema_json(pretty: false)).not_to include("\n")
+    end
   end
 
   describe '.logger=' do
@@ -623,6 +773,12 @@ RSpec.describe Html2rss do
 
     it 'rejects a non-Logger' do
       expect { described_class.logger = Object.new }.to raise_error(ArgumentError, /logger must be a Logger/)
+    end
+
+    it 'stores the given logger' do
+      logger = Logger.new(nil)
+      described_class.logger = logger
+      expect(described_class.logger).to equal(logger)
     end
   end
 end

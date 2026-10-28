@@ -42,17 +42,16 @@ module Html2rss
       url = Addressable::URI.parse(relative_url.to_s.strip)
       return new(url) if url.absolute?
 
-      base_url.is_a?(self) ? base_url.join_uri(url) : join_parsed_base(base_url, url)
+      join_parsed_base(base_url, url)
     rescue Addressable::URI::InvalidURIError
       raise ArgumentError, 'URL could not be parsed'
     end
 
-    # @param base_url [String]
+    # @param base_url [String, Url]
     # @param url [Addressable::URI]
     # @return [Url]
     def self.join_parsed_base(base_url, url)
       uri = Addressable::URI.parse(base_url.to_s)
-      uri.path = '/' if uri.path.empty?
       new(uri.join(url).normalize)
     end
     private_class_method :join_parsed_base
@@ -64,10 +63,10 @@ module Html2rss
     # @param raw_url [String] the raw URL string to sanitize
     # @return [Url, nil] the sanitized URL, or nil if no valid URL found
     def self.sanitize(raw_url)
-      match = raw_url.to_s.match(%r{(?:(?:https?|ftp|mailto)://|mailto:)[^\s<>"]+})
+      match = raw_url.to_s.match(%r{(?:(?:https?|ftp)://|mailto:)[^\s<>"]+})
       return unless match
 
-      new(Addressable::URI.parse(match[0].strip).normalize)
+      new(Addressable::URI.parse(match[0]).normalize)
     end
 
     ##
@@ -79,7 +78,7 @@ module Html2rss
     def self.from_absolute(url_string)
       return url_string if url_string.is_a?(self)
 
-      new(Addressable::URI.parse(url_string.to_s.strip).normalize).tap do |url|
+      new(Addressable::URI.parse(url_string.to_s.lstrip).normalize).tap do |url|
         raise ArgumentError, 'URL must be absolute' unless url.absolute?
       end
     rescue Addressable::URI::InvalidURIError
@@ -100,7 +99,7 @@ module Html2rss
     #   Url.for_channel('/relative/path')
     #   # => raises ArgumentError: "URL must be absolute"
     def self.for_channel(url_string)
-      stripped = url_string.to_s.strip
+      stripped = url_string.to_s.lstrip
       return nil if stripped.empty?
 
       from_absolute(stripped).tap { validate_channel_url(_1) }
@@ -116,10 +115,10 @@ module Html2rss
       tags = { 'link[rel="canonical"]' => 'href', 'meta[property="og:url"]' => 'content',
                'meta[name="twitter:url"]' => 'content', 'base[href]' => 'href' }
       tags.each do |sel, attr|
-        val = doc.at_css(sel)&.[](attr).to_s.strip
-        return from_absolute(val) unless val.empty?
+        val = doc.at_css(sel)&.[](attr)
+        return from_absolute(val)
       rescue ArgumentError
-        next
+        nil
       end
       nil
     end
@@ -130,11 +129,8 @@ module Html2rss
     # @param url [Url] the URL to validate
     # @raise [ArgumentError] if the URL doesn't meet channel requirements
     def self.validate_channel_url(url)
-      raise ArgumentError, 'URL must be absolute' unless url.absolute?
-
-      uri = Addressable::URI.parse(url.to_s)
-      has_forbidden_at = uri.user || uri.password
-      has_forbidden_at ||= [uri.query, uri.fragment].compact.any? { |value| value.include?('@') }
+      has_forbidden_at = url.user
+      has_forbidden_at ||= [url.query, url.fragment].compact.any? { |value| value.include?('@') }
       raise ArgumentError, 'URL must not contain an @ character' if has_forbidden_at
 
       scheme = url.scheme
@@ -147,18 +143,21 @@ module Html2rss
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
     def initialize(uri)
       @uri = uri.freeze
-      @path_segments = @uri.path.to_s.split('/').reject(&:empty?).freeze
+      @path_segments = path.split('/').reject(&:empty?).freeze
       freeze
     end
 
     # @return [String] normalized URL string
-    def to_s = @uri.to_s
+    def to_s = @uri.to_str
 
     # @return [String, nil] URI scheme, for example `http` or `https`
     def scheme = @uri.scheme
 
     # @return [String, nil] URI host component
     def host = @uri.host
+
+    # @return [String, nil] userinfo user, without the password
+    def user = @uri.user
 
     # Registrable domain (eTLD+1). Same-site hosts like www.wp.pl and wiadomosci.wp.pl
     # share `wp.pl`. IP literals stay the host so 1.2.3.4 is not treated as `3.4`.
@@ -189,7 +188,7 @@ module Html2rss
     # Returns the URL query string as a hash of string keys and values.
     #
     # @return [Hash{String => String}] normalized query parameters
-    def query_values = @uri.query_values(Hash) || {}
+    def query_values = @uri.query_values || {}
 
     ##
     # Returns the URL path split into non-empty segments.
@@ -205,7 +204,7 @@ module Html2rss
     def with_path(path)
       uri = @uri.dup
       uri.path = path
-      self.class.from_absolute(uri.normalize.to_s)
+      self.class.from_absolute(uri)
     end
 
     ##
@@ -213,7 +212,7 @@ module Html2rss
     #
     # @return [Url] this URL when already fragment-free; otherwise a new URL
     def without_fragment
-      @uri.fragment ? self.class.from_absolute(@uri.omit(:fragment).normalize.to_s) : self
+      fragment ? self.class.from_absolute(@uri.omit(:fragment)) : self
     end
 
     ##
@@ -224,7 +223,7 @@ module Html2rss
     def with_query_values(values)
       uri = @uri.dup
       uri.query_values = values.transform_keys(&:to_s).transform_values(&:to_s)
-      self.class.from_absolute(uri.normalize.to_s)
+      self.class.from_absolute(uri)
     end
 
     ##
@@ -240,15 +239,7 @@ module Html2rss
     #   url = Url.from_absolute('https://example.com/hello%20world/article.html')
     #   url.titleized # => "Hello World Article"
     def titleized
-      path = @uri.path
-      return '' if path.empty?
-
-      nicer_path = CGI.unescapeURIComponent(path)
-                      .split('/')
-                      .flat_map do |part|
-                        part.gsub(/[^a-zA-Z0-9.]/, ' ').gsub(/\s+/, ' ').split
-                      end
-
+      nicer_path = CGI.unescapeURIComponent(path).gsub(/[^a-zA-Z0-9.]/, ' ').split
       nicer_path.map!(&:capitalize)
       File.basename(nicer_path.join(' '), '.*')
     end
@@ -266,8 +257,7 @@ module Html2rss
     #   url = Url.from_absolute('https://example.com')
     #   url.channel_titleized # => "example.com"
     def channel_titleized
-      nicer_path = CGI.unescapeURIComponent(@uri.path).split('/').reject(&:empty?)
-      host = @uri.host
+      nicer_path = CGI.unescapeURIComponent(path).split('/').reject(&:empty?)
 
       nicer_path.any? ? "#{host}: #{nicer_path.map(&:capitalize).join(' ')}" : host
     end
@@ -318,12 +308,7 @@ module Html2rss
     # @param relative_uri [Addressable::URI]
     # @return [Url]
     def join_uri(relative_uri)
-      base = @uri
-      if base.path.empty?
-        base = base.dup
-        base.path = '/'
-      end
-      self.class.new(base.join(relative_uri).normalize)
+      self.class.new(@uri.join(relative_uri).normalize)
     end
 
     protected
@@ -332,15 +317,13 @@ module Html2rss
     #
     # @return [String]
     def document_identity
-      uri = @uri.omit(:fragment)
-      "#{uri.scheme}\0#{uri.authority}\0#{uri.path.to_s.chomp('/')}\0#{uri.query}"
+      "#{scheme}\0#{@uri.authority}\0#{path.chomp('/')}\0#{query}"
     end
 
     private
 
     def ip_address_host?
-      IPAddr.new(host.to_s)
-      true
+      !IPAddr.new(host).nil?
     rescue IPAddr::Error
       false
     end

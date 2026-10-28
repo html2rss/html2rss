@@ -45,7 +45,29 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
   it 'requires a non-blank generator' do
     expect do
       described_class.new(channel:, articles:, generator: ' ')
-    end.to raise_error(ArgumentError, /generator/)
+    end.to raise_error(ArgumentError, 'generator must be a non-blank String')
+  end
+
+  it 'rejects a non-string generator' do
+    expect do
+      described_class.new(channel:, articles:, generator: 1)
+    end.to raise_error(ArgumentError, 'generator must be a non-blank String')
+  end
+
+  it 'rejects a generator that is blank only after stripping both sides' do
+    expect do
+      described_class.new(channel:, articles:, generator: " \n")
+    end.to raise_error(ArgumentError, 'generator must be a non-blank String')
+  end
+
+  it 'accepts a String subclass generator' do
+    generator = Class.new(String).new('html2rss')
+    expect(described_class.new(channel:, articles:, generator:).call).to be_a(RSS::Rss)
+  end
+
+  it 'builds without stylesheets when none are given' do
+    rss = described_class.new(channel:, articles:, generator: 'html2rss').call
+    expect(rss.to_s).not_to include('xml-stylesheet')
   end
 
   describe '#call' do

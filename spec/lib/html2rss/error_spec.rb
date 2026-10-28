@@ -2,6 +2,8 @@
 
 require 'nokogiri'
 
+# Mutant binds examples from the first constant of each top-level describe.
+# rubocop:disable-next RSpec/MultipleDescribes
 RSpec.describe Html2rss::Error do
   it { expect(described_class).to be < StandardError }
 
@@ -12,6 +14,17 @@ RSpec.describe Html2rss::Error do
 
     expect(error.attempts.first[:strategy]).to eq(:default)
     expect(error.transport_meta).to eq('request_id' => 'req-1')
+  end
+
+  it 'has no timeout phase or surface category by default', :aggregate_failures do
+    error = described_class.new('boom')
+
+    expect(error.timeout_phase).to be_nil
+    expect(error.surface_category).to be_nil
+  end
+
+  it 'omits empty diagnostics' do
+    expect(described_class.diagnostics_from_attempts(nil)).to eq({})
   end
 
   describe '#diagnostics' do
@@ -80,76 +93,117 @@ RSpec.describe Html2rss::Error do
 
       expect(error.diagnostics).to include(surface_category: :app_shell, strategy_attempts: attempts)
     end
-  end
 
-  describe Html2rss::NoFeedItemsExtracted do
-    let(:attempts) { [{ strategy: :default, items_count: 0, error_class: nil }] }
-    let(:botasaurus_hint) { Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT }
+    it 'reads a string-keyed transport_meta from an attempt' do
+      error = described_class.new('boom')
+      error.attempts = [{ 'transport_meta' => { request_id: 'req-string' } }]
 
-    it 'keeps the base empty-feed message without a surface hint', :aggregate_failures do
-      error = described_class.new(attempts:)
-
-      expect(error.message).to include('No feed items extracted after auto fallback')
-      expect(error.message).not_to include('app-shell surface detected')
-      expect(error.message).not_to include(botasaurus_hint)
+      expect(error.diagnostics[:request_id]).to eq('req-string')
     end
 
-    it 'appends shared Scraper guidance for app_shell', :aggregate_failures do
+    it 'keeps an earlier attempt transport_meta when a later attempt has none' do
+      error = described_class.new('boom')
+      error.attempts = [{ transport_meta: { request_id: 'req-first' } }, { strategy: :botasaurus }]
+
+      expect(error.diagnostics[:request_id]).to eq('req-first')
+    end
+  end
+end
+
+RSpec.describe Html2rss::NoFeedItemsExtracted do
+  let(:attempts) { [{ strategy: :default, items_count: 0, error_class: nil }] }
+  let(:botasaurus_hint) { Html2rss::RequestService::BotasaurusConfigurationError::EMPTY_FEED_HINT }
+
+  it 'summarizes item counts and error classes', :aggregate_failures do
+    attempts = [{ strategy: :default, items_count: 4 }, { strategy: :browser, error_class: 'RuntimeError' }]
+    message = described_class.new(attempts:).message
+    expect(message).to include('default (4 items), browser (RuntimeError error). ')
+    expect(message).to end_with('Try a more specific listing URL or provide explicit selectors.')
+  end
+
+  it 'summarizes an attempt that omits count, class, and strategy' do
+    message = described_class.new(attempts: [{}]).message
+
+    expect(message).to include('( error)')
+  end
+
+  it 'separates surface guidance with a space' do
+    error = described_class.new(attempts:, surface_category: :app_shell)
+    guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:app_shell)
+
+    expect(error.message).to end_with("selectors. #{guidance}")
+  end
+
+  it 'does not append guidance for unsupported_surface' do
+    error = described_class.new(attempts:, surface_category: :unsupported_surface)
+    guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:unsupported_surface)
+
+    expect(error.message).not_to include(guidance)
+  end
+
+  it 'keeps the base empty-feed message without a surface hint', :aggregate_failures do
+    error = described_class.new(attempts:)
+
+    expect(error.message).to include('No feed items extracted after auto fallback')
+    expect(error.message).not_to include('app-shell surface detected')
+    expect(error.message).not_to include(botasaurus_hint)
+  end
+
+  it 'appends shared Scraper guidance for app_shell', :aggregate_failures do
+    error = described_class.new(attempts:, surface_category: :app_shell)
+    guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:app_shell)
+
+    expect(error.surface_category).to eq(:app_shell)
+    expect(error.message).to include(guidance)
+    expect(error.message).not_to include('No scrapers found:')
+  end
+
+  it 'appends shared Scraper guidance for high_entropy_surface', :aggregate_failures do
+    error = described_class.new(attempts:, surface_category: :high_entropy_surface)
+    guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:high_entropy_surface)
+
+    expect(error.surface_category).to eq(:high_entropy_surface)
+    expect(error.message).to include(guidance)
+    expect(error.message).to include('listing/update URL')
+  end
+
+  context 'when a BotasaurusConfigurationError attempt is present' do
+    let(:attempts) do
+      [
+        { strategy: :default, items_count: 0, error_class: nil },
+        {
+          strategy: :botasaurus,
+          items_count: nil,
+          error_class: 'Html2rss::RequestService::BotasaurusConfigurationError'
+        }
+      ]
+    end
+
+    it 'appends the owned Botasaurus config hint once', :aggregate_failures do
+      error = described_class.new(attempts:)
+
+      expect(error.message).to include(botasaurus_hint)
+      expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- guidance + hint + no twin BOTASAURUS assert
+    it 'appends the Botasaurus config hint beside app_shell guidance', :aggregate_failures do
       error = described_class.new(attempts:, surface_category: :app_shell)
       guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:app_shell)
 
-      expect(error.surface_category).to eq(:app_shell)
       expect(error.message).to include(guidance)
-      expect(error.message).not_to include('No scrapers found:')
+      expect(error.message).to include(botasaurus_hint)
+      expect(guidance).not_to include('BOTASAURUS_SCRAPER_URL')
+      expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
     end
 
-    it 'appends shared Scraper guidance for high_entropy_surface', :aggregate_failures do
-      error = described_class.new(attempts:, surface_category: :high_entropy_surface)
-      guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:high_entropy_surface)
+    it 'does not twin Botasaurus prose when blocked_surface already covers it', :aggregate_failures do
+      error = described_class.new(attempts:, surface_category: :blocked_surface)
+      guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:blocked_surface)
 
-      expect(error.surface_category).to eq(:high_entropy_surface)
       expect(error.message).to include(guidance)
-      expect(error.message).to include('listing/update URL')
-    end
-
-    context 'when a BotasaurusConfigurationError attempt is present' do
-      let(:attempts) do
-        [
-          { strategy: :default, items_count: 0, error_class: nil },
-          {
-            strategy: :botasaurus,
-            items_count: nil,
-            error_class: 'Html2rss::RequestService::BotasaurusConfigurationError'
-          }
-        ]
-      end
-
-      it 'appends the owned Botasaurus config hint once', :aggregate_failures do
-        error = described_class.new(attempts:)
-
-        expect(error.message).to include(botasaurus_hint)
-        expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
-      end
-
-      # rubocop:disable-next RSpec/ExampleLength -- guidance + hint + no twin BOTASAURUS assert
-      it 'appends the Botasaurus config hint beside app_shell guidance', :aggregate_failures do
-        error = described_class.new(attempts:, surface_category: :app_shell)
-        guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:app_shell)
-
-        expect(error.message).to include(guidance)
-        expect(error.message).to include(botasaurus_hint)
-        expect(guidance).not_to include('BOTASAURUS_SCRAPER_URL')
-        expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
-      end
-
-      it 'does not twin Botasaurus prose when blocked_surface already covers it', :aggregate_failures do
-        error = described_class.new(attempts:, surface_category: :blocked_surface)
-        guidance = Html2rss::AutoSource::Scraper::NoScraperFound::CATEGORY_MESSAGES.fetch(:blocked_surface)
-
-        expect(error.message).to include(guidance)
-        expect(error.message).not_to include(botasaurus_hint)
-        expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
-      end
+      expect(error.message).not_to include(botasaurus_hint)
+      expect(error.message.scan('BOTASAURUS_SCRAPER_URL').size).to eq(1)
     end
   end
 end

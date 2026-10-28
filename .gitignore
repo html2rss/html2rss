@@ -9,6 +9,8 @@
 
 # rspec failure tracking
 .rspec_status
+/.mutant/
+/.worktrees/
 # YARD HTML only — regenerate with `make docs`; never write source here
 docs/
 /vendor/

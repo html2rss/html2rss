@@ -112,15 +112,18 @@ module Html2rss
       # @return [BatchResult]
       def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **)
         results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency, **)
-        successful = results.count { |r| r.status ? r.status < 400 : false }
+        successful = results.count { |result| http_success?(result.status) }
         BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
       end
 
       private
 
       def diagnostic_success?(report)
-        status = report.to_wire_h[:status]
-        status ? status < 400 : false
+        http_success?(report.to_wire_h[:status])
+      end
+
+      def http_success?(status)
+        !status.nil? && status < 400
       end
 
       def scrape_single_url(url:, strategy:, limit:)
@@ -134,8 +137,6 @@ module Html2rss
       end
 
       def worker_pool_size(item_count, requested_concurrency)
-        return 1 if item_count <= 1
-
         [[1, requested_concurrency.to_i].max, item_count, MAX_CONCURRENCY].min
       end
 

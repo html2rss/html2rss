@@ -83,7 +83,7 @@ module Html2rss
         # @param elapsed_ms [Integer, nil] monotonic hop duration in milliseconds
         # @return [void]
         def record_error(strategy:, error:, elapsed_ms: nil)
-          meta = error.is_a?(Html2rss::Error) ? error.transport_meta : nil
+          meta = error.transport_meta if error.is_a?(Error)
           append_attempt(strategy:, error_class: error.class.name, transport_meta: meta, elapsed_ms:)
           @last_error = error
           return unless TERMINAL_TRANSPORT_ERRORS.any? { |klass| error.is_a?(klass) }
@@ -137,7 +137,7 @@ module Html2rss
         # @raise [Html2rss::Error, StandardError]
         def raise_failure!
           if (error = failure_error)
-            error.attempts = attempts if error.is_a?(Html2rss::Error)
+            error.attempts = attempts if error.is_a?(Error)
             raise error
           end
 

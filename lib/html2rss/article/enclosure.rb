@@ -16,12 +16,8 @@ module Html2rss
       def self.guess_content_type_from_url(url, default: 'application/octet-stream')
         return default unless url
 
-        path = url.path
-        ext = File.extname(path)
-        ext = ext[1..] if ext.start_with?('.')
-
-        content_type = MIME::Types.type_for(ext)
-        content_type.first&.to_s || 'application/octet-stream'
+        found = MIME::Types.type_for(url.path).first
+        found&.content_type || default
       end
 
       # @param url [Html2rss::Url] absolute enclosure URL

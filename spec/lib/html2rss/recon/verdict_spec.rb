@@ -2,7 +2,7 @@
 
 RSpec.describe Html2rss::Recon::Verdict do
   it 'rejects unknown names' do
-    expect { described_class[:maybe] }.to raise_error(ArgumentError, /unknown verdict/)
+    expect { described_class[:maybe] }.to raise_error(ArgumentError, 'unknown verdict: :maybe')
   end
 
   it 'looks up symbols and strings', :aggregate_failures do

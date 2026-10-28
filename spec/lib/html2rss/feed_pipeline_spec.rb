@@ -52,6 +52,17 @@ RSpec.describe Html2rss::FeedPipeline do
         end
       end
 
+      it 'builds an outcome when params are omitted' do
+        expect(pipeline.to_outcome.articles.map(&:title)).to eq(['default'])
+      end
+
+      it 'returns the outcome and the feed result', :aggregate_failures do
+        outcome, result = pipeline.to_outcome_and_result
+
+        expect(outcome.articles.map(&:title)).to eq(['default'])
+        expect(result.to_rss.items.map(&:title)).to eq(['default'])
+      end
+
       it 'runs the configured strategy path and does not invoke auto fallback', :aggregate_failures do
         result = pipeline.to_result
         rss = result.to_rss
@@ -59,6 +70,45 @@ RSpec.describe Html2rss::FeedPipeline do
         expect(rss.items.map(&:title)).to eq(['default'])
         expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default).once
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
+      end
+    end
+
+    context 'when the config interpolates params' do
+      let(:config) do
+        base_config.merge(
+          strategy: :default,
+          channel: { url: 'https://example.com/%<section>s', title: 'Example News' },
+          params: { section: 'news' }
+        )
+      end
+      let(:pipeline) { described_class.new(config) }
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
+          ctx.budget.consume!
+          build_response.call(body: '<html><body><article><h1>scoped</h1></article></body></html>', url: ctx.url.to_s)
+        end
+      end
+
+      it 'fetches the interpolated channel URL' do
+        pipeline.to_result
+
+        expect(Html2rss::RequestService).to have_received(:execute).with(
+          have_attributes(url: have_attributes(to_s: 'https://example.com/news')), strategy: :default
+        )
+      end
+
+      it 'returns the interpolated outcome' do
+        expect(pipeline.to_outcome.articles.map(&:title)).to eq(['scoped'])
+      end
+
+      it 'interpolates params into the paired result', :aggregate_failures do
+        result = pipeline.to_outcome_and_result.last
+
+        expect(result.to_rss.items.map(&:title)).to eq(['scoped'])
+        expect(Html2rss::RequestService).to have_received(:execute).with(
+          have_attributes(url: have_attributes(to_s: 'https://example.com/news')), strategy: :default
+        )
       end
     end
 

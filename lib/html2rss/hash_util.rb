@@ -16,7 +16,7 @@ module Html2rss
       in Array
         object.map { deep_dup(_1) }
       else
-        object.dup rescue StandardError # rubocop:disable Style/RescueModifier
+        object.dup
       end
     end
 
@@ -105,7 +105,7 @@ module Html2rss
       value.each_value { assert_string_keys!(_1, context:, deep:) } if deep
     end
 
-    def symbol_key(key, context:)
+    def self.symbol_key(key, context:)
       case key
       in Symbol then key
       in String then key.to_sym

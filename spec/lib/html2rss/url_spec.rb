@@ -25,6 +25,25 @@ RSpec.describe Html2rss::Url do
       expect(described_class.from_relative('../item', parsed_base).to_s)
         .to eq(described_class.from_relative('../item', 'https://example.com/section/').to_s)
     end
+
+    it 'strips whitespace and keeps an absolute URL instead of joining it to the base' do
+      absolute = described_class.new(Addressable::URI.parse('HTTP://Example.COM/a/../b'))
+      resolved = described_class.from_relative('  HTTP://Example.COM/a/../b  ', 'https://example.com/base/')
+
+      expect(resolved).to eq(absolute)
+    end
+
+    it 'resolves a Url passed as the relative input' do
+      relative = described_class.from_absolute('https://other.example/a')
+
+      expect(described_class.from_relative(relative, 'https://example.com/base/').to_s)
+        .to eq('https://other.example/a')
+    end
+
+    it 'normalizes the scheme and host of the base while joining' do
+      expect(described_class.from_relative('item', 'HTTPS://Example.COM/dir/').to_s)
+        .to eq('https://example.com/dir/item')
+    end
   end
 
   describe '.sanitize' do
@@ -39,12 +58,19 @@ RSpec.describe Html2rss::Url do
       'http://www.詹姆斯.com/' => 'http://www.xn--8ws00zhy3a.com/',
       ',https://wurstfing.er:4711' => 'https://wurstfing.er:4711/',
       'feed:https://h2r.example.com/auto_source/aHR123' => 'https://h2r.example.com/auto_source/aHR123',
-      'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/' => 'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/'
+      'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/' => 'https://[2001:470:30:84:e276:63ff:fe72:3900]/blog/',
+      'ftp://example.com/file' => 'ftp://example.com/file',
+      'mailto://user@example.com' => 'mailto://user@example.com'
     }.each_pair do |raw_url, expected|
       it "sanitizes #{raw_url.inspect} to #{expected.inspect}" do
         result = described_class.sanitize(raw_url)
         expect(result&.to_s).to eq(expected)
       end
+    end
+
+    it 'returns a Url when the string contains an ftp URL' do
+      expect(described_class.sanitize('ftp://example.com/file'))
+        .to eq(described_class.from_absolute('ftp://example.com/file'))
     end
   end
 
@@ -62,6 +88,29 @@ RSpec.describe Html2rss::Url do
     it 'rejects relative URLs' do
       expect { described_class.from_absolute('/path') }.to raise_error(ArgumentError, 'URL must be absolute')
     end
+
+    it 'strips surrounding whitespace' do
+      expect(described_class.from_absolute('  https://example.com/a  ').to_s).to eq('https://example.com/a')
+    end
+
+    it 'normalizes scheme, host, and dot segments' do
+      expect(described_class.from_absolute('HTTPS://Example.COM/a/../b').to_s).to eq('https://example.com/b')
+    end
+
+    it 'rejects an unparsable URL' do
+      expect { described_class.from_absolute('http://example .com') }
+        .to raise_error(ArgumentError, 'URL must be absolute')
+    end
+
+    it 'coerces non-string input with to_s' do
+      expect { described_class.from_absolute(1) }.to raise_error(ArgumentError, 'URL must be absolute')
+    end
+
+    it 'returns a subclass instance unchanged' do
+      child = Class.new(described_class).from_absolute('https://example.com/a')
+
+      expect(described_class.from_absolute(child)).to equal(child)
+    end
   end
 
   describe '#titleized' do
@@ -71,7 +120,8 @@ RSpec.describe Html2rss::Url do
       'http://www.example.com/foobar/baz.txt' => 'Foobar Baz',
       'http://www.example.com/foo-bar/baz_qux.pdf' => 'Foo Bar Baz Qux',
       'http://www.example.com/foo%20bar/baz%20qux.php' => 'Foo Bar Baz Qux',
-      'http://www.example.com/foo%20bar/baz%20qux-4711.html' => 'Foo Bar Baz Qux 4711'
+      'http://www.example.com/foo%20bar/baz%20qux-4711.html' => 'Foo Bar Baz Qux 4711',
+      'http://www.example.com/foo--bar' => 'Foo Bar'
     }.each_pair do |url_string, expected|
       it "titleizes #{url_string} to #{expected}" do
         url = described_class.from_absolute(url_string)
@@ -84,7 +134,8 @@ RSpec.describe Html2rss::Url do
     {
       'http://www.example.com' => 'www.example.com',
       'http://www.example.com/foobar' => 'www.example.com: Foobar',
-      'http://www.example.com/foobar/baz' => 'www.example.com: Foobar Baz'
+      'http://www.example.com/foobar/baz' => 'www.example.com: Foobar Baz',
+      'http://www.example.com/foo%20bar' => 'www.example.com: Foo bar'
     }.each_pair do |url_string, expected|
       it "channel titleizes #{url_string} to #{expected}" do
         url = described_class.from_absolute(url_string)
@@ -128,6 +179,12 @@ RSpec.describe Html2rss::Url do
       expect(url.with_path('/wp-json/').to_s).to eq('https://example.com/wp-json/?lang=de')
     end
 
+    it 'normalizes a replacement path' do
+      url = described_class.from_absolute('https://example.com/old?x=1')
+
+      expect(url.with_path('/a/../b')).to eq(described_class.from_absolute('https://example.com/b?x=1'))
+    end
+
     it 'does not mutate the original url' do
       url = described_class.from_absolute('https://example.com/wp-json')
 
@@ -148,6 +205,12 @@ RSpec.describe Html2rss::Url do
       url = described_class.from_absolute('https://example.com/news')
 
       expect(url.without_fragment).to equal(url)
+    end
+
+    it 'normalizes when dropping a fragment from an unnormalized absolute URL' do
+      url = described_class.from_relative('HTTP://Example.COM/a/../b#top', 'https://example.com/')
+
+      expect(url.without_fragment).to eq(described_class.from_absolute('http://example.com/b'))
     end
 
     it 'does not mutate the original url' do
@@ -187,14 +250,40 @@ RSpec.describe Html2rss::Url do
 
       expect(url.same_document?('https://example.com/blog')).to be false
     end
+
+    it 'requires the same scheme' do
+      page = described_class.from_absolute('https://example.com/blog')
+
+      expect(page).not_to be_same_document(described_class.from_absolute('http://example.com/blog'))
+    end
+
+    it 'requires the same host' do
+      page = described_class.from_absolute('https://example.com/blog')
+
+      expect(page).not_to be_same_document(described_class.from_absolute('https://other.example/blog'))
+    end
+
+    it 'requires the same path' do
+      page = described_class.from_absolute('https://example.com/blog')
+
+      expect(page).not_to be_same_document(described_class.from_absolute('https://example.com/news'))
+    end
+
+    it 'treats a subclass instance as the same document' do
+      page = described_class.from_absolute('https://example.com/blog')
+      child = Class.new(described_class).from_absolute('https://example.com/blog/')
+
+      expect(page).to be_same_document(child)
+    end
   end
 
   describe '#with_query_values' do
     it 'returns a new url with the provided query values' do
       url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F')
+      updated = url.with_query_values(rest_route: '/wp/v2/posts', per_page: '100')
+      expected = described_class.from_absolute('https://example.com/index.php?per_page=100&rest_route=/wp/v2/posts')
 
-      expect(url.with_query_values(rest_route: '/wp/v2/posts', per_page: '100').to_s)
-        .to eq('https://example.com/index.php?per_page=100&rest_route=/wp/v2/posts')
+      expect(updated).to eq(expected)
     end
 
     it 'does not mutate the original url' do
@@ -203,6 +292,33 @@ RSpec.describe Html2rss::Url do
       url.with_query_values(rest_route: '/wp/v2/posts')
 
       expect(url.to_s).to eq('https://example.com/index.php?rest_route=/')
+    end
+
+    it 'stringifies nil to an empty query value' do
+      url = described_class.from_absolute('https://example.com/a')
+
+      expect(url.with_query_values(tag: nil).query_values).to eq('tag' => '')
+    end
+
+    it 'stringifies an array as one query value' do
+      url = described_class.from_absolute('https://example.com/a')
+      values = %w[a b]
+
+      expect(url.with_query_values(tag: values).query_values).to eq('tag' => values.to_s)
+    end
+
+    it 'stringifies an object that only implements to_s' do
+      url = described_class.from_absolute('https://example.com/a')
+      value = Object.new
+
+      expect(url.with_query_values(tag: value).query_values).to eq('tag' => value.to_s)
+    end
+
+    it 'stringifies a key that only implements to_s' do
+      url = described_class.from_absolute('https://example.com/a')
+      key = Object.new
+
+      expect(url.with_query_values(key => '1').query_values).to eq(key.to_s => '1')
     end
   end
 
@@ -232,6 +348,26 @@ RSpec.describe Html2rss::Url do
     it 'delegates absolute? method' do
       expect(url.absolute?).to be true
     end
+
+    it 'exposes an explicit port' do
+      expect(described_class.from_absolute('http://example.com:8080/path').port).to eq(8080)
+    end
+
+    it 'exposes the query string' do
+      expect(described_class.from_absolute('https://example.com/path?q=1').query).to eq('q=1')
+    end
+
+    it 'exposes the fragment' do
+      expect(described_class.from_absolute('https://example.com/path#top').fragment).to eq('top')
+    end
+
+    it 'exposes the userinfo user' do
+      expect(described_class.from_absolute('https://user@example.com/a').user).to eq('user')
+    end
+
+    it 'falls back to the host when there is no registrable domain' do
+      expect(described_class.from_absolute('http://localhost/x').domain).to eq('localhost')
+    end
   end
 
   describe 'comparison' do
@@ -253,6 +389,41 @@ RSpec.describe Html2rss::Url do
 
     it 'compares URLs with spaceship operator for inequality' do
       expect(first_url <=> second_url).not_to eq(0)
+    end
+
+    it 'orders URLs lexicographically by their string' do
+      expect(first_url <=> second_url).to eq(-1)
+    end
+
+    it 'orders by the string form of a non-URL' do
+      expect(first_url <=> 1).to eq(1)
+    end
+
+    it 'is not equal to the URL string' do
+      expect(first_url).not_to eq(first_url.to_s)
+    end
+
+    it 'treats a subclass instance with the same URL as equal' do
+      child = Class.new(described_class).from_absolute(first_url.to_s)
+
+      expect(first_url).to eq(child)
+    end
+
+    it 'matches eql? when the normalized strings match' do
+      expect(first_url).to eql(first_url_dup)
+    end
+
+    it 'rejects eql? for a different URL' do
+      expect(first_url).not_to eql(second_url)
+    end
+
+    it 'hashes by the normalized URL string' do
+      expect(first_url.hash).to eq(first_url.to_s.hash)
+    end
+
+    it 'includes the class, object id, and URI in inspect' do
+      addressable = /#<Addressable::URI:0x[0-9a-f]+ URI:#{Regexp.escape(first_url.to_s)}>/
+      expect(first_url.inspect).to match(/\A#<Html2rss::Url:#{first_url.object_id} @uri=#{addressable}>\z/)
     end
   end
 
@@ -296,6 +467,7 @@ RSpec.describe Html2rss::Url do
     context 'with URLs containing @ character outside the path' do
       [
         'https://user@example.com',
+        'https://:secret@example.com',
         'https://example.com?param=value@test',
         'https://example.com/#frag@test'
       ].each do |url_with_at|
@@ -336,6 +508,10 @@ RSpec.describe Html2rss::Url do
 
       it 'returns nil for whitespace-only string' do
         expect(described_class.for_channel('   ')).to be_nil
+      end
+
+      it 'strips surrounding whitespace' do
+        expect(described_class.for_channel('  https://example.com/a  ').to_s).to eq('https://example.com/a')
       end
     end
 
@@ -382,6 +558,24 @@ RSpec.describe Html2rss::Url do
       html = '<html><head><link rel="canonical" href="not-a-url"></head></html>'
       expect(described_class.extract_from_html(html)).to be_nil
     end
+
+    it 'prefers a canonical link over og:url' do
+      html = '<link rel="canonical" href="https://example.com/canonical">' \
+             '<meta property="og:url" content="https://example.com/og-url">'
+      expect(described_class.extract_from_html(html).to_s).to eq('https://example.com/canonical')
+    end
+
+    it 'skips an invalid canonical link and uses og:url' do
+      html = '<link rel="canonical" href="not-a-url">' \
+             '<meta property="og:url" content="https://example.com/og-url">'
+      expect(described_class.extract_from_html(html).to_s).to eq('https://example.com/og-url')
+    end
+
+    it 'strips whitespace around an extracted URL' do
+      html = '<html><head><link rel="canonical" href="  https://example.com/canonical  "></head></html>'
+
+      expect(described_class.extract_from_html(html).to_s).to eq('https://example.com/canonical')
+    end
   end
 
   describe 'immutability' do
@@ -389,6 +583,34 @@ RSpec.describe Html2rss::Url do
 
     it 'is frozen' do
       expect(url).to be_frozen
+    end
+
+    it 'freezes the wrapped URI' do
+      uri = Addressable::URI.parse('https://example.com/a')
+
+      described_class.new(uri)
+
+      expect(uri).to be_frozen
+    end
+
+    it 'freezes path segments' do
+      expect(url.path_segments).to be_frozen
+    end
+  end
+
+  describe '#join_uri' do
+    it 'resolves a relative URI and returns a Url' do
+      base = described_class.from_absolute('https://example.com/dir/a')
+
+      expect(base.join_uri(Addressable::URI.parse('../item')))
+        .to eq(described_class.from_absolute('https://example.com/item'))
+    end
+
+    it 'normalizes an absolute URI joined onto the base' do
+      base = described_class.from_absolute('https://example.com/dir/')
+
+      expect(base.join_uri(Addressable::URI.parse('HTTP://Example.COM/a/../b')))
+        .to eq(described_class.from_absolute('http://example.com/b'))
     end
   end
 end

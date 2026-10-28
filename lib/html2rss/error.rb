@@ -40,10 +40,10 @@ module Html2rss
     attr_accessor :transport_meta
 
     # @return [String, nil] scrape-api timeout stage when known (overridden by RequestTimedOut)
-    def timeout_phase = nil
+    def timeout_phase; end
 
     # @return [Symbol, nil] surface classification when known (overridden by NoFeedItemsExtracted)
-    def surface_category = nil
+    def surface_category; end
 
     ##
     # Sparse telemetry hash for observability consumers.
@@ -87,7 +87,8 @@ module Html2rss
 
     def base_message
       summaries = attempts.map do |attempt|
-        details = attempt[:items_count].nil? ? "#{attempt[:error_class]} error" : "#{attempt[:items_count]} items"
+        count = attempt[:items_count]
+        details = count.nil? ? "#{attempt[:error_class]} error" : "#{count} items"
         "#{attempt[:strategy]} (#{details})"
       end.join(', ')
 

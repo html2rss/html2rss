@@ -97,4 +97,30 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       expect(classifier.junk_path?).to be(false)
     end
   end
+
+  describe '#trusted_post_context?' do
+    let(:trusted) do
+      lambda do |limit, *segments|
+        classifier_for(*segments).instance_eval { trusted_post_context?(limit) }
+      end
+    end
+
+    it 'accepts content, year, or press context before the limit', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      expect(trusted.call(0, 'blog')).to be(false)
+      expect(trusted.call(-1, 'blog')).to be(false)
+      expect(trusted.call(1, 'blog')).to be(true)
+      expect(trusted.call(1, 'Blog')).to be(true)
+      expect(trusted.call(1, 'misc')).to be(false)
+      expect(trusted.call(1, '123')).to be(false)
+      expect(trusted.call(1, 'x2026')).to be(false)
+      expect(trusted.call(1, '2026 ')).to be(false)
+      expect(trusted.call(1, '2026')).to be(true)
+      expect(trusted.call(1, 'press')).to be(true)
+      expect(trusted.call(1, 'Press')).to be(true)
+      expect(trusted.call(1, 'misc', 'blog')).to be(false)
+      expect(trusted.call(2, 'misc', 'blog')).to be(true)
+      expect(trusted.call(2, 'blog', 'misc')).to be(true)
+      expect(trusted.call(2, 'about', 'blog')).to be(false)
+    end
+  end
 end

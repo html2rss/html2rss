@@ -223,6 +223,29 @@ RSpec.describe Html2rss::Channel do
     end
   end
 
+  describe 'last_build_date normalization' do
+    let(:built) do
+      lambda do |last_build_date|
+        described_class.new(
+          title: 't', url: 'https://example.com', description: 'd', language: 'en', ttl: 60,
+          last_build_date:, image: nil, author: nil
+        )
+      end
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- Time, HTTP-date, subclasses, and rejection
+    it 'accepts a Time or HTTP-date and rejects anything else', :aggregate_failures do
+      stamp = Class.new(Time).allocate
+      http_date = 'Tue, 01 Jan 2019 00:00:00 GMT'
+      string_subclass = Class.new(String).new(http_date)
+
+      expect(built.call(stamp).last_build_date).to equal(stamp)
+      expect(built.call(http_date).last_build_date).to eq(Time.httpdate(http_date))
+      expect(built.call(string_subclass).last_build_date).to eq(Time.httpdate(http_date))
+      expect { built.call(1) }.to raise_error(ArgumentError, 'last_build_date must be a Time or HTTP-date String')
+    end
+  end
+
   describe '#ttl' do
     context 'with a cache-control header' do
       it 'extracts the ttl' do

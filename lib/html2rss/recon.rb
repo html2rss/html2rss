@@ -192,7 +192,7 @@ module Html2rss
     end
     private_class_method :build_notes
 
-    def determine_verdict(recon, native_feed)
+    def self.determine_verdict(recon, native_feed)
       return Verdict[:drop] if recon.status.nil? || recon.status >= 400 || recon.scheme_downgrade
       return Verdict[:defer] if native_feed
 

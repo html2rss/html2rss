@@ -205,8 +205,28 @@ RSpec.describe Html2rss::Defaults do
   describe '#logger=' do
     subject(:config) { described_class.new }
 
-    it 'rejects a non-Logger so level= and formatter= can be called directly' do
-      expect { config.logger = Object.new }.to raise_error(ArgumentError, /logger must be a Logger/)
+    # rubocop:disable-next RSpec/ExampleLength -- level, formatter, subclass, and nil formatter
+    it 'applies level and formatter to a Logger, including subclasses', :aggregate_failures do
+      config.log_level = :error
+      formatter = proc { |*| 'x' }
+      config.logger_formatter = formatter
+      subclass = Class.new(Logger).new(StringIO.new)
+      subclass.level = Logger::DEBUG
+
+      config.logger = subclass
+
+      expect(config.logger).to equal(subclass)
+      expect(subclass.level).to eq(Logger::ERROR)
+      expect(subclass.formatter).to equal(formatter)
+
+      config.logger_formatter = nil
+      bare = Logger.new(StringIO.new)
+      bare.formatter = Logger::Formatter.new
+      kept = bare.formatter
+      config.logger = bare
+
+      expect(bare.formatter).to equal(kept)
+      expect { config.logger = Object.new }.to raise_error(ArgumentError, 'logger must be a Logger')
     end
   end
 
@@ -370,6 +390,28 @@ RSpec.describe Html2rss::Defaults do
         channel = Html2rss::Channel.from_response(response, overrides: { ttl: 20 })
         expect(channel.ttl).to eq(60) # override 20 clamped to min_ttl (60)
       end
+    end
+  end
+
+  describe '#initialize_copy' do
+    # rubocop:disable-next RSpec/ExampleLength -- dup isolation for headers, procs, and stylesheets
+    it 'isolates copied headers and stylesheets from the source', :aggregate_failures do
+      source = described_class.new
+      source.log_level = :info
+      source.headers = Class.new(Hash)['user-agent' => 'custom']
+      source.stylesheets = [{ href: 'a.xsl', type: 'text/xsl' }]
+      copy = source.dup
+      copy.headers['user-agent'] = 'other'
+      copy.stylesheets.first[:href] = 'b.xsl'
+      callable = -> { { 'user-agent' => 'dynamic' } }
+      proc_source = described_class.new
+      proc_source.headers = callable
+
+      expect(source.headers['user-agent']).to eq('custom')
+      expect(source.stylesheets.first[:href]).to eq('a.xsl')
+      expect(copy.log_level).to eq(Logger::INFO)
+      expect(described_class.new.dup.headers).to be_nil
+      expect(proc_source.dup.headers).to equal(callable)
     end
   end
 end

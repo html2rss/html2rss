@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
 
 RSpec.describe Html2rss::Config do
   it { expect(described_class::InvalidConfig).to be < Html2rss::Error }
@@ -91,8 +92,27 @@ RSpec.describe Html2rss::Config do
       let(:file) { 'spec/fixtures/feeds.test.yml' }
 
       it 'raises an ArgumentError listing the available feeds' do
-        expect { described_class.load_yaml(file) }
-          .to raise_error(ArgumentError, /Feed name is required under `feeds`\. Available feeds:/)
+        expect { described_class.load_yaml(file) }.to raise_error(
+          ArgumentError,
+          'Feed name is required under `feeds`. Available feeds: nuxt-releases, json, notitle, withparams'
+        )
+      end
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- custom key is only observable from a temp file
+    it 'forwards a custom feeds key when merging global config' do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'sources.yml')
+        File.write(path, <<~YAML)
+          headers:
+            User-Agent: Custom
+          sources:
+            news:
+              channel:
+                url: http://example.com
+        YAML
+        loaded = described_class.load_yaml(path, 'news', multiple_feeds_key: :sources)
+        expect(loaded).not_to have_key(:sources)
       end
     end
 
@@ -162,6 +182,18 @@ RSpec.describe Html2rss::Config do
 
     it 'uses safe_load so untrusted YAML cannot instantiate Ruby objects' do
       expect { described_class.from_yaml("--- !ruby/object:Object {}\n") }.to raise_error(Psych::DisallowedClass)
+    end
+
+    it 'accepts a String subclass document' do
+      yaml = Class.new(String).new("channel:\n  url: https://example.com\n")
+      expect(described_class.from_yaml(yaml)).to eq(channel: { url: 'https://example.com' })
+    end
+
+    it 'accepts a Hash subclass document' do
+      parsed = Class.new(Hash).new
+      parsed['channel'] = { 'url' => 'https://example.com' }
+      allow(YAML).to receive(:safe_load).and_return(parsed)
+      expect(described_class.from_yaml("channel:\n")).to eq(channel: { url: 'https://example.com' })
     end
   end
 
@@ -321,12 +353,40 @@ RSpec.describe Html2rss::Config do
       expect(config).not_to have_key(:strategy)
     end
 
-    it 'returns ValidationReport on parse failure', :aggregate_failures do
+    it 'returns ValidationReport on parse failure', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       raw, validation = described_class.resolve_and_validate("- items\n")
       expect(raw).to eq({})
       expect(validation).to be_a(described_class::ValidationReport)
       expect(validation).not_to be_success
       expect(validation.issues.map(&:code)).to include(:parse)
+      expect(validation.issues.map(&:message)).to include('YAML must deserialize to a Hash')
+    end
+
+    it 'validates with the supplied dynamic params' do
+      parameterized = config.merge(channel: { url: 'https://example.com/%<section>s' })
+      _raw, validation = described_class.resolve_and_validate(parameterized, params: { section: 'news' })
+      expect(validation).to be_success
+    end
+
+    it 'loads the named feed from a multi-feed file' do # rubocop:disable RSpec/ExampleLength
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'feeds.yml')
+        File.write(path, <<~YAML)
+          feeds:
+            news:
+              channel:
+                url: http://example.com
+              selectors:
+                items:
+                  selector: ".item"
+                title:
+                  selector: h2
+                guid:
+                  - title
+        YAML
+        _raw, validation = described_class.resolve_and_validate(path, feed_name: 'news')
+        expect(validation).to be_success
+      end
     end
 
     it 'does not swallow IssueMapper ArgumentError as a soft :parse issue' do
@@ -423,16 +483,40 @@ RSpec.describe Html2rss::Config do
       expect(described_class.from_hash(config).time_zone).to eq('UTC')
     end
 
+    it 'accepts an omitted items selector after defaults are applied' do
+      omitted = config.merge(selectors: { items: { enhance: false }, title: { selector: 'h2' }, guid: ['title'] })
+      expect(described_class.validate(omitted)).to be_success
+    end
+
+    it 'applies explicit params when placeholders have no defaults' do # rubocop:disable RSpec/ExampleLength
+      parameterized = {
+        headers: { 'X-Query': '%<query>s' },
+        channel: { url: 'https://example.com/search?q=%<query>s' },
+        selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+      }
+      expect(described_class.validate(parameterized, params: { query: 'ruby' })).to be_success
+    end
+
     it 'accepts configs when strategy is omitted' do
       config_without_strategy = config.dup
 
       expect(described_class.validate(config_without_strategy)).to be_success
     end
 
-    it 'rejects unknown strategy values' do
-      config_with_unknown_strategy = config.merge(strategy: :unknown)
+    it 'rejects unknown strategy values and records the actual', :aggregate_failures do
+      result = described_class.validate(config.merge(strategy: :unknown))
+      issue = result.issues.find { |entry| entry.path == [:strategy] }
+      expect(result).to be_failure
+      expect(issue.actual).to eq(:unknown)
+    end
 
-      expect(described_class.validate(config_with_unknown_strategy)).to be_failure
+    it 'records the rejected strategy when parameters are also missing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      parameterized = config.merge(strategy: :unknown, parameters: { query: { type: 'string' } },
+                                   channel: { url: 'https://example.com/%<query>s' })
+      result = described_class.validate(parameterized)
+      issue = result.issues.find { |entry| entry.path == [:strategy] }
+      expect(result).to be_failure
+      expect(issue.actual).to eq(:unknown)
     end
 
     context 'when directory includes valid metadata' do
@@ -743,6 +827,12 @@ RSpec.describe Html2rss::Config do
           a_string_including('Missing parameter for formatting: key<query> not found')
         )
       end
+
+      it 'applies defaults when a placeholder is missing its param' do
+        omitted = config.merge(selectors: { items: { enhance: false }, title: { selector: 'h2' } })
+        result = described_class.validate(omitted)
+        expect(result.issues.map(&:path)).to eq([[]])
+      end
     end
   end
 
@@ -780,6 +870,18 @@ RSpec.describe Html2rss::Config do
 
       it 'freezes string defaults exposed by public readers' do
         expect(instance.time_zone).to be_frozen
+      end
+
+      it 'exposes validated request budgets', :aggregate_failures do
+        defaults = Html2rss::RequestService::Policy::DEFAULTS
+        expect(instance.strategy).to eq(described_class.default_strategy_name)
+        expect(instance.max_redirects).to eq(defaults[:max_redirects])
+        expect(instance.max_requests).to eq(defaults[:max_requests])
+        expect(instance.total_timeout_seconds).to eq(defaults[:total_timeout_seconds])
+      end
+
+      it 'freezes the validated config' do
+        expect { instance.instance_variable_get(:@config)[:extra] = true }.to raise_error(FrozenError)
       end
     end
 
@@ -828,6 +930,37 @@ RSpec.describe Html2rss::Config do
       it 'applies default auto_source configuration' do
         expect(instance.auto_source).to eq(expected_auto_source_config)
       end
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- strategy and the three request budgets are one assignment
+    it 'keeps the validated strategy and request budgets', :aggregate_failures do
+      built = described_class.new(
+        {
+          channel: { url: 'http://example.com' },
+          selectors: { items: { selector: '.item' }, title: { selector: 'h2' } },
+          strategy: :default,
+          request: { max_redirects: 2, max_requests: 3, total_timeout_seconds: 4 }
+        }
+      )
+      expect(built.strategy).to eq(:default)
+      expect(built.max_redirects).to eq(2)
+      expect(built.max_requests).to eq(3)
+      expect(built.total_timeout_seconds).to eq(4)
+    end
+
+    it 'applies the default strategy when the caller omits one' do
+      built = described_class.new(
+        { channel: { url: 'http://example.com' }, selectors: { items: { selector: '.item' }, title: { selector: 'h2' } } }
+      )
+      expect(built.strategy).to eq(:auto)
+    end
+
+    it 'accepts a frozen config hash' do
+      frozen = {
+        channel: { url: 'http://example.com' },
+        selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+      }.freeze
+      expect(described_class.new(frozen).url).to eq('http://example.com')
     end
 
     context 'when the configuration is invalid' do

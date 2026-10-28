@@ -132,9 +132,9 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
   end
 
-  describe '.inspect' do
+  describe '.inspect_report' do
     it 'points at recon when alternates are present' do
-      outcome = described_class.inspect(
+      outcome = described_class.inspect_report(
         report: report(alternate_feeds: [{ href: 'https://example.com/feed.xml' }])
       )
 
@@ -142,13 +142,13 @@ RSpec.describe Html2rss::MCP::Outcome do
     end
 
     it 'points at capture when extractable articles are present' do
-      outcome = described_class.inspect(report: report(articles_count: 3))
+      outcome = described_class.inspect_report(report: report(articles_count: 3))
 
       expect(outcome.next_step.name).to eq(:capture)
     end
 
     it 'points at scrape when recon is otherwise empty' do
-      outcome = described_class.inspect(report: report(articles_count: 0))
+      outcome = described_class.inspect_report(report: report(articles_count: 0))
 
       expect(outcome.next_step.name).to eq(:scrape)
     end

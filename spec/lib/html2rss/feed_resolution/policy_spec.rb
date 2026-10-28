@@ -23,6 +23,12 @@ RSpec.describe Html2rss::FeedResolution::Policy do
     ).to be false
   end
 
+  it 'skips when auto_source is absent' do
+    bare = instance_double(Html2rss::Config, auto_source: nil, selectors: nil)
+
+    expect(described_class.resolve?(config: bare, articles: [schema_article], surface_category: :listing)).to be false
+  end
+
   it 'skips when selectors are present' do
     config = instance_double(Html2rss::Config, auto_source: { entry_resolution: { enabled: true } },
                                                selectors: { items: {} })
@@ -60,9 +66,33 @@ RSpec.describe Html2rss::FeedResolution::Policy do
     ).to be true
   end
 
+  it 'resolves a non-weak surface at integer 50% NativeFeed (2 of 4)' do
+    articles = [native_article, native_article, schema_article, schema_article]
+
+    expect(described_class.resolve?(config:, articles:, surface_category: :listing)).to be true
+  end
+
+  it 'skips a non-weak surface below integer 50% NativeFeed (1 of 3)' do
+    articles = [native_article, schema_article, schema_article]
+
+    expect(described_class.resolve?(config:, articles:, surface_category: :listing)).to be false
+  end
+
   it 'raises when articles is not an Array' do
     expect do
       described_class.resolve?(config:, articles: nil, surface_category: :listing)
     end.to raise_error(ArgumentError, 'articles must be an Array')
+  end
+
+  it 'raises when articles is a truthy non-array' do
+    expect do
+      described_class.resolve?(config:, articles: 'no', surface_category: :listing)
+    end.to raise_error(ArgumentError, 'articles must be an Array')
+  end
+
+  it 'resolves a weak surface once articles reach the floor' do
+    articles = Class.new(Array).new.push(schema_article, schema_article, schema_article)
+
+    expect(described_class.resolve?(config:, articles:, surface_category: :high_entropy_surface)).to be true
   end
 end

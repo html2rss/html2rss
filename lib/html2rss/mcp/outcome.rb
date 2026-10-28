@@ -60,7 +60,7 @@ module Html2rss
         ##
         # @param report [PageRecon::Diagnostics::Report]
         # @return [Outcome]
-        def inspect(report:)
+        def inspect_report(report:)
           next_step = inspect_next_step(report)
           guidance = Playbook.inspect_guidance(report)
           new(ok: true, next_step:, guidance:, payload: report.to_wire_h)

@@ -23,8 +23,7 @@ module Html2rss
     def initialize(channel:, articles:, status:, stylesheets: [])
       raise ArgumentError, 'channel must be a Html2rss::Channel' unless channel.is_a?(Channel)
       raise ArgumentError, 'status must be a Html2rss::Status' unless status.is_a?(Status)
-
-      articles = Array(articles)
+      raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
       raise ArgumentError, 'articles must all be Html2rss::Article' unless articles.all?(Article)
 
       @channel = channel
@@ -82,7 +81,9 @@ module Html2rss
     end
 
     def freeze_stylesheets(stylesheets)
-      Array(stylesheets).map do |sheet|
+      raise ArgumentError, 'stylesheets must be an Array' unless stylesheets.is_a?(Array)
+
+      stylesheets.map do |sheet|
         sheet.to_h.transform_keys(&:to_sym).transform_values do |value|
           value.is_a?(String) ? value.dup.freeze : value
         end.freeze

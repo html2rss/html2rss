@@ -25,22 +25,20 @@ module Html2rss
         articles.size < ARTICLE_FLOOR || category.weak? || native_feed_majority?(articles)
       end
 
-      def eligible_config?(config)
+      def self.eligible_config?(config)
         return false unless config.auto_source
         return false if config.selectors
 
         Options.from_auto_source(config.auto_source).enabled?
       end
-      module_function :eligible_config?
       private_class_method :eligible_config?
 
-      def native_feed_majority?(articles)
+      def self.native_feed_majority?(articles)
         return false if articles.empty?
 
         native = articles.count { |article| article.scraper == AutoSource::Scraper::NativeFeed }
         native * 2 >= articles.size
       end
-      module_function :native_feed_majority?
       private_class_method :native_feed_majority?
     end
   end

@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Article::Enclosure do
-  describe '.guess_content_type_from_url(url)' do
+  describe '.guess_content_type_from_url' do
     {
       'https://example.com/image.jpg' => 'image/jpeg',
       'https://example.com/image.png' => 'image/png',
@@ -14,6 +14,15 @@ RSpec.describe Html2rss::Article::Enclosure do
       'https://api.PAGE.com/wp-content/photo.jpg?quality=85&w=925&h=617&crop=1&resize=925,617' => 'image/jpeg'
     }.each_pair do |url, expected|
       it { expect(described_class.guess_content_type_from_url(Html2rss::Url.from_relative(url, 'https://example.com'))).to eq expected }
+    end
+
+    it 'returns a string default when the url is missing or unrecognized', :aggregate_failures do
+      unknown = Html2rss::Url.from_absolute('https://example.com/file.notarealext')
+      jpeg = described_class.guess_content_type_from_url(Html2rss::Url.from_absolute('https://example.com/a.jpg'))
+
+      expect(described_class.guess_content_type_from_url(nil, default: 'image/jpeg')).to eq('image/jpeg')
+      expect(described_class.guess_content_type_from_url(unknown, default: 'text/html')).to eq('text/html')
+      expect(jpeg).to be_a(String)
     end
   end
 

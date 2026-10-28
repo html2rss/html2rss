@@ -1,0 +1,14 @@
+---
+includes:
+- lib
+requires:
+- html2rss
+integration:
+  name: rspec
+fail_fast: false
+selection:
+  strategy: expression
+mutation:
+  timeout: 15.0
+coverage_criteria:
+  timeout: false

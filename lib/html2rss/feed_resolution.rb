@@ -116,11 +116,7 @@ module Html2rss
         return unless resolution.applied
 
         effective = scrape_target.with_effective(resolution.scrape_url)
-        return ApplyOutcome.new(scrape_target: effective, status: :succeeded) if retry_with(
-          resolution, effective:
-        )
-
-        nil
+        ApplyOutcome.new(scrape_target: effective, status: :succeeded) if retry_with(effective:)
       rescue RequestService::RequestBudgetExceeded
         log_budget_exhausted
         nil
@@ -184,7 +180,7 @@ module Html2rss
         )
       end
 
-      def retry_with(_resolution, effective:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- retry extract path
+      def retry_with(effective:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- retry extract path
         retry_session = pipeline.request_session_for(
           config, strategy:, resources:, scrape_url: effective.effective_url
         )
@@ -220,7 +216,7 @@ module Html2rss
       def initialize(entry_url:, response:, session:, config:, articles:, surface_category: nil)
         raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
 
-        @entry_url = Html2rss::Url.from_absolute(entry_url)
+        @entry_url = Url.from_absolute(entry_url)
         @response = response
         @session = session
         @config = config

@@ -20,13 +20,17 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
     end
 
     it 'raises ArgumentError for an unknown plan' do
-      expect { described_class.resolve(:unknown) }.to raise_error(ArgumentError, /unknown strategy plan/)
+      expect { described_class.resolve(:unknown) }.to raise_error(ArgumentError, 'unknown strategy plan: :unknown')
     end
   end
 
   describe '.concrete_for_diagnostic' do
     it 'collapses :auto to the default strategy' do
       expect(described_class.concrete_for_diagnostic(:auto)).to eq(:default)
+    end
+
+    it 'defaults an omitted name to the default strategy' do
+      expect(described_class.concrete_for_diagnostic).to eq(:default)
     end
 
     it 'passes through concrete strategies and nil → auto', :aggregate_failures do
@@ -42,6 +46,12 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
       expect(described_class.valid?(:faraday)).to be true
       expect(described_class.valid?(:browserless)).to be true
       expect(described_class.valid?('botasaurus')).to be true
+    end
+
+    it 'accepts a String subclass naming a registered strategy' do
+      name = Class.new(String).new('default')
+
+      expect(described_class.valid?(name)).to be true
     end
 
     it 'rejects unknown names and non-names', :aggregate_failures do

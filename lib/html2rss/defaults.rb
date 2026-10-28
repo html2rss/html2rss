@@ -57,7 +57,7 @@ module Html2rss
     # @return [Logger] the logger
     # @raise [ArgumentError] if logger is not a Logger
     def logger=(logger)
-      raise ArgumentError, 'logger must be a Logger' unless logger.is_a?(::Logger)
+      raise ArgumentError, 'logger must be a Logger' unless logger.is_a?(Logger)
 
       @logger = logger
       @logger.level = @log_level
@@ -171,8 +171,8 @@ module Html2rss
     # @return [void]
     def initialize_copy(other)
       super
-      @headers = @headers.dup if @headers.is_a?(Hash)
-      @stylesheets = @stylesheets.map(&:dup) if @stylesheets.is_a?(Array)
+      @headers = other.headers.dup if other.headers.is_a?(Hash)
+      @stylesheets = other.stylesheets.map(&:dup)
     end
 
     private
