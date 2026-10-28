@@ -36,7 +36,7 @@ module Html2rss
             input_schema: Contract::INSPECT_INPUT_SCHEMA,
             annotations: Contract::ANNOTATIONS_OPEN_WORLD,
             call: lambda { |url:, strategy: 'auto', **|
-              Outcome.inspect(
+              Outcome.inspect_report(
                 report: PageRecon::Diagnostics.call(
                   url:, strategy: Runtime.coerce_strategy(strategy), deep: false
                 )
