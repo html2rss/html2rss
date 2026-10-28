@@ -468,11 +468,27 @@ RSpec.describe Html2rss do
       expect(config.dig(:selectors, :items)).to eq(selector: '.card', enhance: true)
     end
 
-    it 'omits local_file_path when none is given' do
+    it 'omits local_file_path when none is given', :aggregate_failures do
       allow(described_class).to receive(:feed_result) { |config| config }
 
       config = described_class.auto_feed_result('https://example.com')
       expect(config[:request]).not_to have_key(:local_file_path)
+      expect(config[:request]).to include(max_requests: 4)
+      expect(config).not_to have_key(:strategy)
+    end
+
+    it 'returns the feed result from the pipeline' do
+      feed_result = instance_double(Html2rss::FeedResult)
+      allow(described_class).to receive(:feed_result).and_return(feed_result)
+
+      expect(described_class.auto_feed_result('https://example.com')).to eq(feed_result)
+    end
+
+    it 'forwards the default auto strategy' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+      allow(Html2rss::Config::RequestControls).to receive(:from_shortcut).and_call_original
+      described_class.auto_feed_result('https://example.com')
+      expect(Html2rss::Config::RequestControls).to have_received(:from_shortcut).with(hash_including(strategy: :auto))
     end
 
     it 'forwards keep_different_domain' do
