@@ -32,6 +32,35 @@ RSpec.describe Html2rss::FeedResult do
   end
   let(:status) { Html2rss::Status.build(articles:, dedup_dropped: 1) }
 
+  describe '.new' do
+    let(:channel_subclass) do
+      Class.new(Html2rss::Channel).new(
+        title: channel.title, url: channel.url, description: channel.description, language: channel.language,
+        ttl: channel.ttl, last_build_date: channel.last_build_date, image: channel.image, author: channel.author
+      )
+    end
+    let(:status_subclass) do
+      Class.new(Html2rss::Status).new(
+        version: status.version, scraper_tallies: status.scraper_tallies, dedup_dropped: status.dedup_dropped
+      )
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- type errors, subclass acceptance, and frozen articles
+    it 'rejects a non-Channel, non-Status, or non-Article and freezes stored articles', :aggregate_failures do
+      expect { described_class.new(channel: Object.new, articles:, status:) }
+        .to raise_error(ArgumentError, 'channel must be a Html2rss::Channel')
+      expect { described_class.new(channel:, articles:, status: Object.new) }
+        .to raise_error(ArgumentError, 'status must be a Html2rss::Status')
+      expect { described_class.new(channel:, articles: [Object.new], status:) }
+        .to raise_error(ArgumentError, 'articles must all be Html2rss::Article')
+
+      built = described_class.new(channel: channel_subclass, articles:, status: status_subclass)
+
+      expect(built.channel_title).to eq('Example')
+      expect(built.instance_variable_get(:@articles)).to be_frozen
+    end
+  end
+
   describe 'public API surface' do
     it 'exposes exactly the frozen closed query/render set', :aggregate_failures do
       expect(result.public_methods(false)).to match_array(%i[empty? channel_title to_rss to_json_feed status])
