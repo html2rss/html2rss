@@ -169,6 +169,19 @@ RSpec.describe Html2rss::Batch do
       expect(second[:status]).to be_nil
       expect(second[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
     end
+
+    # rubocop:disable-next RSpec/ExampleLength -- 399, 400, and a missing status share one count
+    it 'counts a status of 399 and rejects 400 or a missing status' do
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:batch).and_return(
+        [
+          Html2rss::PageRecon::Diagnostics::Report.new(data: { status: 399 }),
+          Html2rss::PageRecon::Diagnostics::Report.new(data: { status: 400 }),
+          Html2rss::PageRecon::Diagnostics::Report.new(data: {})
+        ]
+      )
+      result = described_class.batch_inspect(urls: ['https://example.com/edge'], strategy: :auto)
+      expect(result.successful).to eq(1)
+    end
   end
 
   describe '.batch_recon' do

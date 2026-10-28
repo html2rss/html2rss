@@ -120,7 +120,7 @@ module Html2rss
 
       def diagnostic_success?(report)
         status = report.to_wire_h[:status]
-        status ? status < 400 : false
+        status < 400 if status
       end
 
       def scrape_single_url(url:, strategy:, limit:)
