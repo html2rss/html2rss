@@ -134,8 +134,6 @@ module Html2rss
       end
 
       def worker_pool_size(item_count, requested_concurrency)
-        return 1 if item_count <= 1
-
         [[1, requested_concurrency.to_i].max, item_count, MAX_CONCURRENCY].min
       end
 

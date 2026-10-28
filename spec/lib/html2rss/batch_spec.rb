@@ -20,6 +20,36 @@ RSpec.describe Html2rss::Batch do
       expect(described_class.map([1], concurrency: 0) { |x| x }).to eq([1])
       expect(described_class.map([1, 2], concurrency: 100) { |x| x }).to eq([1, 2])
     end
+
+    it 'uses one worker when the requested concurrency is below 1' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map([1, 2], concurrency: 0) { |item| item }
+      expect(Thread).to have_received(:new).once
+    end
+
+    it 'caps workers at the item count' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map([1, 2, 3, 4], concurrency: 100) { |item| item }
+      expect(Thread).to have_received(:new).exactly(4).times
+    end
+
+    it 'caps workers at MAX_CONCURRENCY' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map((1..20).to_a, concurrency: 100) { |item| item }
+      expect(Thread).to have_received(:new).exactly(described_class::MAX_CONCURRENCY).times
+    end
+
+    it 'uses the requested concurrency when it is inside the bounds' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map((1..8).to_a, concurrency: 3) { |item| item }
+      expect(Thread).to have_received(:new).exactly(3).times
+    end
+
+    it 'treats a missing concurrency as a single worker' do
+      allow(Thread).to receive(:new).and_call_original
+      described_class.map((1..8).to_a, concurrency: nil) { |item| item }
+      expect(Thread).to have_received(:new).once
+    end
   end
 
   describe '.run' do
