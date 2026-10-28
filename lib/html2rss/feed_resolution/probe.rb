@@ -16,7 +16,7 @@ module Html2rss
       # @param origin_url [String, Html2rss::Url]
       def initialize(request_session:, origin_url:)
         @request_session = request_session
-        @origin_url = Html2rss::Url.from_absolute(origin_url)
+        @origin_url = Url.from_absolute(origin_url)
       end
 
       ##

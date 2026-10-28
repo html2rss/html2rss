@@ -54,6 +54,12 @@ RSpec.describe Html2rss::FeedResolution::Probe do
     expect(scored).to have_attributes(url: candidate_url, articles_count: be >= 1)
   end
 
+  it 'rejects an origin URL that is not absolute' do
+    expect do
+      described_class.new(request_session: session, origin_url: '/news')
+    end.to raise_error(ArgumentError, 'URL must be absolute')
+  end
+
   it 'returns nil when the follow-up raises Html2rss::Error' do
     allow(session).to receive(:follow_up).and_raise(Html2rss::Error, 'denied')
 
