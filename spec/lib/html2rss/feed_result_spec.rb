@@ -96,9 +96,11 @@ RSpec.describe Html2rss::FeedResult do
   end
 
   describe '#to_rss' do
-    it 'renders RSS using status generator comment' do
-      xml = Nokogiri.XML(result.to_rss.to_s)
+    it 'renders stylesheets and the status generator comment', :aggregate_failures do
+      rss = result.to_rss.to_s
+      xml = Nokogiri.XML(rss)
       expect(xml.at_css('channel > generator').text).to eq(status.to_generator_comment)
+      expect(rss).to include('rss.xsl')
     end
   end
 
