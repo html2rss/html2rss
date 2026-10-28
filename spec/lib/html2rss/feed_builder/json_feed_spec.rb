@@ -28,7 +28,25 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
   it 'requires a non-blank user_comment' do
     expect do
       described_class.new(channel:, articles:, user_comment: nil)
-    end.to raise_error(ArgumentError, /user_comment/)
+    end.to raise_error(ArgumentError, 'user_comment must be a non-blank String')
+  end
+
+  it 'rejects a whitespace user_comment' do
+    expect do
+      described_class.new(channel:, articles:, user_comment: ' ')
+    end.to raise_error(ArgumentError, 'user_comment must be a non-blank String')
+  end
+
+  it 'rejects a non-string user_comment' do
+    expect do
+      described_class.new(channel:, articles:, user_comment: 1)
+    end.to raise_error(ArgumentError, 'user_comment must be a non-blank String')
+  end
+
+  it 'accepts a String subclass user_comment' do
+    comment = Class.new(String).new('html2rss V. test')
+    feed = described_class.new(channel:, articles:, user_comment: comment).call
+    expect(feed[:user_comment]).to eq('html2rss V. test')
   end
 
   it 'filters out items that cannot satisfy the JSON Feed content requirement', :aggregate_failures do
