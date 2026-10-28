@@ -452,6 +452,21 @@ RSpec.describe Html2rss::Config do
       expect(described_class.from_hash(config).time_zone).to eq('UTC')
     end
 
+    it 'accepts an omitted items selector after defaults are applied' do
+      omitted = config.merge(selectors: { items: { enhance: false }, title: { selector: 'h2' }, guid: ['title'] })
+      expect(described_class.validate(omitted)).to be_success
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- placeholder config is the input under test
+    it 'applies explicit params when placeholders have no defaults' do
+      parameterized = {
+        headers: { 'X-Query': '%<query>s' },
+        channel: { url: 'https://example.com/search?q=%<query>s' },
+        selectors: { items: { selector: '.item' }, title: { selector: 'h2' } }
+      }
+      expect(described_class.validate(parameterized, params: { query: 'ruby' })).to be_success
+    end
+
     it 'accepts configs when strategy is omitted' do
       config_without_strategy = config.dup
 
@@ -771,6 +786,12 @@ RSpec.describe Html2rss::Config do
         expect(result.issues.map(&:message)).to include(
           a_string_including('Missing parameter for formatting: key<query> not found')
         )
+      end
+
+      it 'applies defaults when a placeholder is missing its param' do
+        omitted = config.merge(selectors: { items: { enhance: false }, title: { selector: 'h2' } })
+        result = described_class.validate(omitted)
+        expect(result.issues.map(&:path)).to eq([[]])
       end
     end
   end
