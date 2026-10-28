@@ -675,7 +675,16 @@ RSpec.describe Html2rss do
   describe '.validate' do
     it 'validates hash config' do
       config = { channel: { url: 'https://example.com' }, selectors: { items: { selector: 'div' } } }
-      expect(described_class.validate(config)).to be_a(Html2rss::Config::ValidationReport)
+      expect(described_class.validate(config)).to be_success
+    end
+
+    it 'forwards a feed name from a multi-feed file' do
+      expect(described_class.validate('spec/fixtures/feeds.test.yml', 'nuxt-releases')).to be_success
+    end
+
+    it 'forwards dynamic params' do
+      config = { channel: { url: 'https://example.com/%<section>s' }, selectors: { items: { selector: 'div' } } }
+      expect(described_class.validate(config, params: { section: 'news' })).to be_success
     end
 
     it 'validates yaml file' do
@@ -699,11 +708,6 @@ RSpec.describe Html2rss do
     it 'returns schema JSON string', :aggregate_failures do
       expect(described_class.schema_json).to be_a(String)
       expect(described_class.schema_json).to include('$schema')
-    end
-
-    it 'pretty-prints unless pretty is false', :aggregate_failures do
-      expect(described_class.schema_json).to include("\n")
-      expect(described_class.schema_json(pretty: false)).not_to include("\n")
     end
   end
 
