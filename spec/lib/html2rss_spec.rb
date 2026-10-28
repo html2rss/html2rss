@@ -537,6 +537,12 @@ RSpec.describe Html2rss do
       described_class.recon('https://example.com')
       expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto)
     end
+
+    it 'forwards extra recon options' do
+      allow(Html2rss::Recon).to receive(:call)
+      described_class.recon('https://example.com', cache_dir: '/tmp/c')
+      expect(Html2rss::Recon).to have_received(:call).with('https://example.com', strategy: :auto, cache_dir: '/tmp/c')
+    end
   end
 
   describe '.test' do
