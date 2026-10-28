@@ -24,6 +24,7 @@ group :development, :test do
   gem 'rubocop-thread_safety', require: false
   gem 'rubocop-yard', require: false
 
+  gem 'mutant-rspec', require: false
   gem 'rspec', '~> 3.0', require: false
   gem 'rspec-instafail', require: false
   gem 'vcr', require: false

@@ -9,7 +9,7 @@ SHELL_SCRIPTS = \
 	bin/ready \
 	bin/setup
 
-.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors
+.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors mutant-test mutant
 
 help: ## Show available commands
 	@echo "Available commands:"
@@ -24,6 +24,8 @@ help: ## Show available commands
 	@echo "  make perf-baseline - Record auto-source wall/alloc baseline"
 	@echo "  make perf-baseline-selectors - Record selectors wall/alloc baseline"
 	@echo "  make ready   - Run the local PR readiness checks"
+	@echo "  make mutant-test - Run the suite through mutant's test runner"
+	@echo "  make mutant  - Run mutation analysis for SUBJECT"
 	@echo "  make clean   - Clean build artifacts"
 
 lint-changed: ## Run RuboCop only on changed Ruby files
@@ -70,6 +72,12 @@ perf-baseline-selectors: ## Record selectors wall/alloc baseline markdown
 
 ready: ## Run the local PR readiness checks
 	bin/ready
+
+mutant-test: ## Run the suite through mutant's test runner
+	$(RUBY_RUNNER)bundle exec mutant test --usage opensource
+
+mutant: ## Run mutation analysis for SUBJECT
+	MUTANT_JOBS=$${MUTANT_JOBS:-2} $(RUBY_RUNNER)bundle exec mutant run --usage opensource $(SUBJECT)
 
 clean: ## Clean build artifacts
 	rm -rf coverage/ doc/ docs/ tmp/ html2rss-*.gem .rspec_status
