@@ -11,11 +11,11 @@ module Html2rss
       # @param auto_source [Hash, nil]
       # @return [Options]
       def self.from_auto_source(auto_source)
-        raw = auto_source.is_a?(Hash) ? auto_source[:entry_resolution] : nil
+        raw = auto_source[:entry_resolution] if auto_source.is_a?(Hash)
         raw = {} unless raw.is_a?(Hash)
         new(
-          enabled: raw.fetch(:enabled, FeedResolution::DEFAULT_CONFIG[:enabled]) != false,
-          max_probes: Integer(raw.fetch(:max_probes, FeedResolution::DEFAULT_CONFIG[:max_probes]))
+          enabled: raw[:enabled] != false,
+          max_probes: Integer(raw.fetch(:max_probes, DEFAULT_CONFIG[:max_probes]))
         )
       end
 
