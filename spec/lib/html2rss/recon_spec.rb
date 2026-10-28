@@ -68,6 +68,25 @@ RSpec.describe Html2rss::Recon do
       )
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- result fields and forwarded probe options
+    it 'keeps probe facts on the result', :aggregate_failures do
+      result = described_class.call(url, max_redirects: 2)
+
+      expect(result.requested_url.to_s).to eq(url)
+      expect(result.final_url.to_s).to eq(url)
+      expect(result.status).to eq(200)
+      expect(result.native_feed.to_s).to eq('https://example.com/feed.xml')
+      expect(result.surface_category).to eq(Html2rss::SurfaceCategory[page_recon_result.surface_category])
+      expect(result.articles_count).to eq(page_recon_result.articles_count)
+      expect(result.scheme_downgrade).to be(false)
+      expect(result.html_bytesize).to eq(html_body.bytesize)
+      expect(result.notes).to all(be_a(String))
+      expect(result.notes.join).to include('native_rss=https://example.com/feed.xml')
+      expect(Html2rss::PageRecon).to have_received(:probe).with(
+        kind_of(Html2rss::Url), hash_including(strategy: :auto, max_redirects: 2)
+      )
+    end
+
     context 'when Discovery finds no feed and articles are present' do
       let(:html_body) do
         <<~HTML
@@ -196,6 +215,47 @@ RSpec.describe Html2rss::Recon do
       end
     end
 
+    it 'does not cache when no directory is given' do
+      allow(described_class).to receive(:cache_html_body)
+      described_class.call(url)
+      expect(described_class).not_to have_received(:cache_html_body)
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- mutex is only observable around the cache write
+    it 'writes the cache through the supplied mutex' do
+      mutex = Mutex.new
+      allow(mutex).to receive(:synchronize).and_call_original
+      Dir.mktmpdir do |dir|
+        described_class.call(url, cache_dir: dir, cache_mutex: mutex)
+        expect(mutex).to have_received(:synchronize)
+      end
+    end
+
+    context 'when the probe body is empty' do
+      let(:empty_response) do
+        instance_double(
+          Html2rss::RequestService::Response,
+          url: Html2rss::Url.from_absolute(url),
+          status: 200,
+          body: nil,
+          html_response?: true,
+          parsed_body: Nokogiri::HTML('')
+        )
+      end
+      let(:probe) do
+        Html2rss::PageRecon::Probe.new(
+          session: fake_session, response: empty_response, result: page_recon_result, strategy: :default
+        )
+      end
+
+      it 'records no byte size and skips caching', :aggregate_failures do
+        allow(described_class).to receive(:cache_html_body)
+        result = Dir.mktmpdir { |dir| described_class.call(url, cache_dir: dir) }
+        expect(result.html_bytesize).to be_nil
+        expect(described_class).not_to have_received(:cache_html_body)
+      end
+    end
+
     context 'when probe raises an error' do
       before do
         allow(Html2rss::PageRecon).to receive(:probe).and_raise(StandardError.new('connection refused'))
@@ -204,6 +264,7 @@ RSpec.describe Html2rss::Recon do
       it 'returns DROP verdict with error note', :aggregate_failures do
         result = described_class.call(url)
         expect(result.drop?).to be(true)
+        expect(result.requested_url.to_s).to eq(url)
         expect(result.notes.first).to include('connection refused')
       end
     end
