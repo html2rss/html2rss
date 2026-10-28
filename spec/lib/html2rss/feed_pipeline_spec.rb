@@ -62,6 +62,32 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    context 'when the config interpolates params' do
+      let(:config) do
+        base_config.merge(
+          strategy: :default,
+          channel: { url: 'https://example.com/%<section>s', title: 'Example News' },
+          params: { section: 'news' }
+        )
+      end
+      let(:pipeline) { described_class.new(config) }
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, **|
+          ctx.budget.consume!
+          build_response.call(body: '<html><body><article><h1>scoped</h1></article></body></html>', url: ctx.url.to_s)
+        end
+      end
+
+      it 'fetches the interpolated channel URL' do
+        pipeline.to_result
+
+        expect(Html2rss::RequestService).to have_received(:execute).with(
+          have_attributes(url: have_attributes(to_s: 'https://example.com/news')), strategy: :default
+        )
+      end
+    end
+
     context 'when strategy is non-auto with auto_source yielding zero articles' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:config) do
         {
