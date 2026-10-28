@@ -372,4 +372,26 @@ RSpec.describe Html2rss::Defaults do
       end
     end
   end
+
+  describe '#initialize_copy', mutant_expression: 'Html2rss::Defaults#initialize_copy' do
+    # rubocop:disable-next RSpec/ExampleLength -- dup isolation for headers, procs, and stylesheets
+    it 'isolates copied headers and stylesheets from the source', :aggregate_failures do
+      source = described_class.new
+      source.log_level = :info
+      source.headers = Class.new(Hash)['user-agent' => 'custom']
+      source.stylesheets = [{ href: 'a.xsl', type: 'text/xsl' }]
+      copy = source.dup
+      copy.headers['user-agent'] = 'other'
+      copy.stylesheets.first[:href] = 'b.xsl'
+      callable = -> { { 'user-agent' => 'dynamic' } }
+      proc_source = described_class.new
+      proc_source.headers = callable
+
+      expect(source.headers['user-agent']).to eq('custom')
+      expect(source.stylesheets.first[:href]).to eq('a.xsl')
+      expect(copy.log_level).to eq(Logger::INFO)
+      expect(described_class.new.dup.headers).to be_nil
+      expect(proc_source.dup.headers).to equal(callable)
+    end
+  end
 end
