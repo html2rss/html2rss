@@ -170,6 +170,7 @@ RSpec.describe Html2rss::FeedResult do
       expect(restored.status.selected_strategy).to eq(status.selected_strategy)
       expect(restored.status.attempt_count).to eq(status.attempt_count)
       expect(restored.to_rss).to be_a(RSS::Rss)
+      expect(restored.to_rss.to_s).to include('rss.xsl')
       expect(restored.to_json_feed[:title]).to eq('Example')
     end
   end
