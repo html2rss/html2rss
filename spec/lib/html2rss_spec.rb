@@ -610,6 +610,15 @@ RSpec.describe Html2rss do
         concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
       )
     end
+
+    it 'defaults limit to 10' do # rubocop:disable RSpec/ExampleLength
+      batch_result = instance_double(Html2rss::Batch::BatchResult)
+      allow(Html2rss::Batch).to receive(:batch_scrape).and_return(batch_result)
+      described_class.batch_scrape(%w[https://a.test])
+      expect(Html2rss::Batch).to have_received(:batch_scrape).with(
+        urls: %w[https://a.test], strategy: :auto, limit: 10, concurrency: Html2rss::Batch::DEFAULT_CONCURRENCY
+      )
+    end
   end
 
   describe '.batch_inspect' do
