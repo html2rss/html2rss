@@ -12,21 +12,16 @@ module Html2rss
       # @param separator [String]
       # @param exclude [Array<Node>, nil]
       # @return [String, nil]
-      def extract(node, separator: ' ', exclude: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+      def extract(node, separator: ' ', exclude: nil)
         raise ArgumentError, 'node is required' unless node
 
         excluded = exclude&.each_with_object({}.compare_by_identity) { |n, h| h[n] = true }
-        if node.children.empty?
-          text = node.own_text.to_s.gsub(/\s+/, ' ').strip
-          return text.empty? ? nil : text
-        end
-
         parts = collect_parts(node, separator, excluded)
-        own = node.own_text.to_s.gsub(/\s+/, ' ').strip
-        parts = [own, *parts] unless own.empty?
+        own = node.own_text.gsub(/\s+/, ' ').strip
+        parts.unshift(own) unless own.empty?
         return if parts.empty?
 
-        parts.join.squeeze(' ').strip
+        parts.join
       end
 
       def collect_parts(node, separator, excluded)
