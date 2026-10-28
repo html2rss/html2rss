@@ -709,6 +709,11 @@ RSpec.describe Html2rss do
       expect(described_class.schema_json).to be_a(String)
       expect(described_class.schema_json).to include('$schema')
     end
+
+    it 'pretty-prints unless pretty is false', :aggregate_failures do
+      expect(described_class.schema_json).to include("\n")
+      expect(described_class.schema_json(pretty: false)).not_to include("\n")
+    end
   end
 
   describe '.logger=' do
