@@ -137,7 +137,7 @@ module Html2rss
         # @raise [Html2rss::Error, StandardError]
         def raise_failure!
           if (error = failure_error)
-            error.attempts = attempts if error.is_a?(Html2rss::Error)
+            error.attempts = attempts if error.is_a?(Error)
             raise error
           end
 

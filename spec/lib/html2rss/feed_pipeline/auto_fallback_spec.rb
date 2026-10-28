@@ -67,6 +67,26 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
 
       expect(state.terminal_transport_error).to eq(error)
     end
+
+    it 're-raises a non-Html2rss error without attaching attempts' do
+      error = RuntimeError.new('boom')
+      state.record_error(strategy: :default, error:)
+
+      expect { state.raise_failure! }.to raise_error(error)
+    end
+
+    it 'raises NoFeedItemsExtracted when nothing failed' do
+      expect { state.raise_failure! }.to raise_error(Html2rss::NoFeedItemsExtracted)
+    end
+
+    it 'classifies the last response on an empty failure', :aggregate_failures do
+      response = instance_double(Html2rss::RequestService::Response, url: :listing)
+      state.remember_response(response)
+      allow(Html2rss::PageRecon).to receive(:surface_category_for).and_return(:app_shell)
+
+      expect { state.raise_failure! }.to raise_error(have_attributes(surface_category: :app_shell))
+      expect(Html2rss::PageRecon).to have_received(:surface_category_for).with(response:, url: :listing)
+    end
   end
 
   describe 'transport failure preservation through the auto chain' do # rubocop:disable RSpec/MultipleMemoizedHelpers
