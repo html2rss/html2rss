@@ -164,6 +164,18 @@ RSpec.describe Html2rss::Config do
     it 'uses safe_load so untrusted YAML cannot instantiate Ruby objects' do
       expect { described_class.from_yaml("--- !ruby/object:Object {}\n") }.to raise_error(Psych::DisallowedClass)
     end
+
+    it 'accepts a String subclass document' do
+      yaml = Class.new(String).new("channel:\n  url: https://example.com\n")
+      expect(described_class.from_yaml(yaml)).to eq(channel: { url: 'https://example.com' })
+    end
+
+    it 'accepts a Hash subclass document' do
+      parsed = Class.new(Hash).new
+      parsed['channel'] = { 'url' => 'https://example.com' }
+      allow(YAML).to receive(:safe_load).and_return(parsed)
+      expect(described_class.from_yaml("channel:\n")).to eq(channel: { url: 'https://example.com' })
+    end
   end
 
   describe '.from_hash' do
@@ -457,8 +469,7 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(omitted)).to be_success
     end
 
-    # rubocop:disable-next RSpec/ExampleLength -- placeholder config is the input under test
-    it 'applies explicit params when placeholders have no defaults' do
+    it 'applies explicit params when placeholders have no defaults' do # rubocop:disable RSpec/ExampleLength
       parameterized = {
         headers: { 'X-Query': '%<query>s' },
         channel: { url: 'https://example.com/search?q=%<query>s' },
@@ -473,10 +484,20 @@ RSpec.describe Html2rss::Config do
       expect(described_class.validate(config_without_strategy)).to be_success
     end
 
-    it 'rejects unknown strategy values' do
-      config_with_unknown_strategy = config.merge(strategy: :unknown)
+    it 'rejects unknown strategy values and records the actual', :aggregate_failures do
+      result = described_class.validate(config.merge(strategy: :unknown))
+      issue = result.issues.find { |entry| entry.path == [:strategy] }
+      expect(result).to be_failure
+      expect(issue.actual).to eq(:unknown)
+    end
 
-      expect(described_class.validate(config_with_unknown_strategy)).to be_failure
+    it 'records the rejected strategy when parameters are also missing', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      parameterized = config.merge(strategy: :unknown, parameters: { query: { type: 'string' } },
+                                   channel: { url: 'https://example.com/%<query>s' })
+      result = described_class.validate(parameterized)
+      issue = result.issues.find { |entry| entry.path == [:strategy] }
+      expect(result).to be_failure
+      expect(issue.actual).to eq(:unknown)
     end
 
     context 'when directory includes valid metadata' do
