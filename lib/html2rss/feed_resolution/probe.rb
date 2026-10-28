@@ -28,7 +28,7 @@ module Html2rss
           relation: :entry_resolution,
           origin_url:
         )
-        score_response(url, response)
+        score_response(response)
       rescue Html2rss::Error
         nil
       end
@@ -37,7 +37,7 @@ module Html2rss
 
       attr_reader :request_session, :origin_url
 
-      def score_response(_url, response) # rubocop:disable Metrics/MethodLength -- feed vs HTML branches
+      def score_response(response) # rubocop:disable Metrics/MethodLength -- feed vs HTML branches
         if response.feed_response?
           count = Syndication::Parser.parse_response(response).size
           return Scored.new(
