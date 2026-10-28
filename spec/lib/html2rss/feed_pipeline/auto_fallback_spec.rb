@@ -45,6 +45,28 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       expect(state.last_error).to be_nil
       expect(state.terminal_transport_error).to eq(blocked)
     end
+
+    it 'records transport metadata for an Html2rss::Error subclass' do
+      error = Class.new(Html2rss::Error).new('plain')
+      error.transport_meta = { 'error_category' => 'denied' }
+      state.record_error(strategy: :default, error:, elapsed_ms: 12)
+
+      expect(state.attempts.last).to include(transport_meta: { 'error_category' => 'denied' }, elapsed_ms: 12)
+    end
+
+    it 'remembers a non-terminal error without storing it as terminal transport' do
+      error = RuntimeError.new('boom')
+      state.record_error(strategy: :default, error:)
+
+      expect(state).to have_attributes(last_error: error, terminal_transport_error: nil)
+    end
+
+    it 'keeps a subclass of a terminal transport error' do
+      error = Class.new(Html2rss::RequestService::RequestTimedOut).new('timed out')
+      state.record_error(strategy: :default, error:)
+
+      expect(state.terminal_transport_error).to eq(error)
+    end
   end
 
   describe 'transport failure preservation through the auto chain' do # rubocop:disable RSpec/MultipleMemoizedHelpers
