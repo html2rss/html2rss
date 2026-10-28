@@ -167,11 +167,12 @@ module Html2rss
     ##
     # Copy constructor for duplicating defaults.
     #
-    # @param _other [Html2rss::Defaults] the original defaults
+    # @param other [Html2rss::Defaults] the original defaults
     # @return [void]
-    def initialize_copy(_other)
-      @headers = @headers.dup if @headers.is_a?(Hash)
-      @stylesheets = @stylesheets.map(&:dup)
+    def initialize_copy(other)
+      super
+      @headers = other.headers.dup if other.headers.is_a?(Hash)
+      @stylesheets = other.stylesheets.map(&:dup)
     end
 
     private
