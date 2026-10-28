@@ -23,6 +23,12 @@ RSpec.describe Html2rss::FeedResolution::Policy do
     ).to be false
   end
 
+  it 'skips when auto_source is absent' do
+    bare = instance_double(Html2rss::Config, auto_source: nil, selectors: nil)
+
+    expect(described_class.resolve?(config: bare, articles: [schema_article], surface_category: :listing)).to be false
+  end
+
   it 'skips when selectors are present' do
     config = instance_double(Html2rss::Config, auto_source: { entry_resolution: { enabled: true } },
                                                selectors: { items: {} })
