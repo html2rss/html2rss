@@ -44,6 +44,12 @@ RSpec.describe Html2rss::FeedPipeline::StrategyPlan do
       expect(described_class.valid?('botasaurus')).to be true
     end
 
+    it 'accepts a String subclass naming a registered strategy' do
+      name = Class.new(String).new('default')
+
+      expect(described_class.valid?(name)).to be true
+    end
+
     it 'rejects unknown names and non-names', :aggregate_failures do
       expect(described_class.valid?(:unknown)).to be false
       expect(described_class.valid?(nil)).to be false
