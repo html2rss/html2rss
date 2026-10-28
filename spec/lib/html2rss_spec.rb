@@ -555,6 +555,15 @@ RSpec.describe Html2rss do
         'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false
       )
     end
+
+    it 'forwards the feed name and strategy' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Test).to receive(:call)
+      described_class.test('config.yml', 'named', strategy: :default)
+      expect(Html2rss::Test).to have_received(:call).with(
+        'config.yml', 'named',
+        min_items: 1, params: {}, strategy: :default, strict_quality: false, compare_enhance: false
+      )
+    end
   end
 
   describe '.apply' do
