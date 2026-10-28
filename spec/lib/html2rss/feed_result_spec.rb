@@ -151,6 +151,38 @@ RSpec.describe Html2rss::FeedResult do
       expect(built.to_rss.to_s).not_to include('evil.xsl')
     end
 
+    # rubocop:disable-next RSpec/ExampleLength -- string keys and caller mutation share one render
+    it 'copies string-keyed stylesheet values before rendering', :aggregate_failures do
+      href = +'rss.xsl'
+      styles = [{ 'href' => href, 'type' => +'text/xsl' }]
+      built = described_class.new(channel:, articles:, status:, stylesheets: styles)
+      href.replace('evil.xsl')
+      rss = built.to_rss.to_s
+      expect(rss).to include('rss.xsl')
+      expect(rss).not_to include('evil.xsl')
+    end
+
+    it 'copies a String subclass stylesheet href' do
+      href = Class.new(String).new('rss.xsl')
+      built = described_class.new(channel:, articles:, status:, stylesheets: [{ href:, type: 'text/xsl' }])
+      href.replace('evil.xsl')
+      expect(built.to_rss.to_s).to include('rss.xsl')
+    end
+
+    it 'rejects a non-string stylesheet media value' do
+      sheet = { href: 'rss.xsl', type: 'text/xsl', media: :all }
+      built = described_class.new(channel:, articles:, status:, stylesheets: [sheet])
+      expect { built.to_rss }.to raise_error(ArgumentError, 'stylesheet.media must be a String')
+    end
+
+    it 'copies stylesheet values from an object that converts to a hash' do
+      href = +'rss.xsl'
+      sheet = Struct.new(:href, :type).new(href, +'text/xsl')
+      built = described_class.new(channel:, articles:, status:, stylesheets: [sheet])
+      href.replace('evil.xsl')
+      expect(built.to_rss.to_s).to include('rss.xsl')
+    end
+
     it 'keeps channel_title immutable for callers', :aggregate_failures do
       expect(result.channel_title).to be_frozen
       expect { result.channel_title << 'X' }.to raise_error(FrozenError)
