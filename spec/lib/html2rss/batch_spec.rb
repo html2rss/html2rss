@@ -182,6 +182,14 @@ RSpec.describe Html2rss::Batch do
       result = described_class.batch_inspect(urls: ['https://example.com/edge'], strategy: :auto)
       expect(result.successful).to eq(1)
     end
+
+    it 'uses auto and the default worker count when strategy and concurrency are omitted' do
+      allow(Html2rss::PageRecon::Diagnostics).to receive(:batch).and_return([])
+      described_class.batch_inspect(urls:)
+      expect(Html2rss::PageRecon::Diagnostics).to have_received(:batch).with(
+        urls:, strategy: :auto, concurrency: described_class::DEFAULT_CONCURRENCY
+      )
+    end
   end
 
   describe '.batch_recon' do
