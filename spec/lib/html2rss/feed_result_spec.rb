@@ -119,6 +119,10 @@ RSpec.describe Html2rss::FeedResult do
       expect(payload[:items].first[:content_text]).to eq('Body')
       expect(payload[:items].first).not_to have_key(:content_html)
     end
+
+    it 'omits feed_url when the caller does not pass one' do
+      expect(result.to_json_feed).not_to have_key(:feed_url)
+    end
   end
 
   describe '#status' do
