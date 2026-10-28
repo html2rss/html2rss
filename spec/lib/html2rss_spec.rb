@@ -525,6 +525,10 @@ RSpec.describe Html2rss do
         url: 'https://example.com', strategy: :auto, deep: false
       )
     end
+
+    it 'forwards unknown options to diagnostics' do
+      expect { described_class.inspect('https://example.com', not_an_option: true) }.to raise_error(ArgumentError)
+    end
   end
 
   describe '.recon' do
