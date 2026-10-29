@@ -152,5 +152,28 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
         expect(decoded).to eq(html)
       end
     end
+
+    context 'with stacked deflate then gzip encodings' do
+      let(:headers) { { 'content-encoding' => 'deflate, gzip' } }
+      let(:body) do
+        deflated = Zlib::Deflate.deflate(html)
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(deflated) } }.string
+      end
+
+      it 'inflates outermost encoding first' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with an unknown encoding listed before gzip' do
+      let(:headers) { { 'content-encoding' => 'gzip, x-foo' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'keeps the buffer when an encoding cannot inflate' do
+        expect(decoded).to eq(html)
+      end
+    end
   end
 end
