@@ -130,6 +130,15 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
       end
     end
 
+    context 'with corrupted deflate encoding' do
+      let(:headers) { { 'content-encoding' => 'deflate' } }
+      let(:body) { 'not deflate' }
+
+      it 'returns original body' do
+        expect(decoded).to eq('not deflate')
+      end
+    end
+
     context 'with br encoding' do
       let(:headers) { { 'content-encoding' => 'br' } }
       let(:body) { Brotli.deflate('any content') }
