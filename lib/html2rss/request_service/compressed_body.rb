@@ -89,7 +89,8 @@ module Html2rss
         header('content-encoding')
           .to_s
           .split(',')
-          .filter_map { |val| (s = val.strip.downcase).empty? ? nil : s }
+          .map { |val| val.strip.downcase }
+          .reject(&:empty?)
       end
 
       def octet_stream?
@@ -97,9 +98,7 @@ module Html2rss
       end
 
       def header(name)
-        @headers.fetch(name) do
-          @headers.find { |key, _value| key.to_s.casecmp?(name) }&.last
-        end
+        @headers.find { |key, _value| key.to_s.casecmp?(name) }&.last
       end
     end
   end

@@ -74,6 +74,15 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
+  context 'when body has mixed-case octet-stream brotli HTML' do
+    let(:headers) { { 'Content-Type' => 'Application/Octet-Stream' } }
+    let(:body) { Brotli.deflate(html) }
+
+    it 'inflates the unlabeled brotli HTML body' do
+      expect(decoded).to eq(html)
+    end
+  end
+
   context 'when unlabeled brotli HTML is not octet-stream' do
     let(:headers) { { 'content-type' => 'text/html' } }
     let(:body) { Brotli.deflate(html) }
@@ -130,6 +139,55 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
       end
 
       it 'inflates the labeled gzip body' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with uppercase gzip encoding and trailing spaces' do
+      let(:headers) { { 'content-encoding' => ' GZIP ' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'normalizes the encoding token' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with blank content-encoding tokens around gzip magic' do
+      let(:headers) { { 'content-encoding' => ' , ' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'ignores blank tokens and inflates unlabeled gzip' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with symbol Content-Encoding key' do
+      let(:headers) { { 'Content-Encoding': 'gzip' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'matches header names case-insensitively' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with a non-string Content-Encoding key' do
+      let(:header_key) { Object.new }
+      let(:headers) { { header_key => 'gzip' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      before do
+        allow(header_key).to receive(:to_s).and_return('Content-Encoding')
+      end
+
+      it 'stringifies header keys before matching' do
         expect(decoded).to eq(html)
       end
     end
