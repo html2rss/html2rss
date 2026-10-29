@@ -25,33 +25,20 @@ module Html2rss
       # @return [Integer] remaining request slots after consumption
       # @raise [RequestBudgetExceeded] if no request slots remain
       def consume!
-        consume_request!
-      end
-
-      ##
-      # Consumes one HTTP request slot.
-      #
-      # @return [Integer] remaining request slots after consumption
-      # @raise [RequestBudgetExceeded] if no request slots remain
-      def consume_request!
         @mutex.synchronize do
           raise RequestBudgetExceeded, 'Request budget exhausted' if @remaining_requests.zero?
 
           @remaining_requests -= 1
         end
       end
-
-      ##
-      # @return [Integer] HTTP request slots still available
-      def remaining
-        remaining_requests
-      end
+      alias consume_request! consume!
 
       ##
       # @return [Integer] HTTP request slots still available
       def remaining_requests
         @mutex.synchronize { @remaining_requests }
       end
+      alias remaining remaining_requests
 
       ##
       # @return [Float, nil] the remaining timeout in seconds, or nil if not tracked
