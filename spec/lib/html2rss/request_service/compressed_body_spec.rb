@@ -169,6 +169,15 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
       it 'inflates the raw deflate body' do
         expect(decoded).to eq(html)
       end
+
+      it 'closes the fallback inflater', :aggregate_failures do
+        inflater = instance_double(Zlib::Inflate, inflate: html, close: nil)
+        allow(Zlib::Inflate).to receive(:inflate).and_raise(Zlib::DataError)
+        allow(Zlib::Inflate).to receive(:new).with(-Zlib::MAX_WBITS).and_return(inflater)
+
+        expect(decoded).to eq(html)
+        expect(inflater).to have_received(:close)
+      end
     end
 
     context 'with stacked deflate then gzip encodings' do
