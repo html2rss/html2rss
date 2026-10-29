@@ -38,7 +38,7 @@ RSpec.describe Html2rss::RequestService::ResponseGuard do
       end.to raise_error(Html2rss::RequestService::ResponseTooLarge, 'Response exceeded 1000 bytes')
     end
 
-    it 'raises when the body matches an anti-bot interstitial signature' do
+    it 'raises when the body matches an anti-bot interstitial signature' do # rubocop:disable RSpec/ExampleLength
       expect { guard.inspect_body!(blocked_body) }
         .to raise_error(
           Html2rss::RequestService::BlockedSurfaceDetected,
@@ -48,7 +48,7 @@ RSpec.describe Html2rss::RequestService::ResponseGuard do
         )
     end
 
-    it 'raises when the body matches an nginx 403 Forbidden block page' do
+    it 'raises when the body matches an nginx 403 Forbidden block page' do # rubocop:disable RSpec/ExampleLength
       expect { guard.inspect_body!(nginx_403_body) }
         .to raise_error(
           Html2rss::RequestService::BlockedSurfaceDetected,
