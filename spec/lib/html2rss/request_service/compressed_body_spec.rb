@@ -33,6 +33,17 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
+  context 'when unlabeled gzip contains bytes that are not UTF-8' do
+    let(:html) { "<div>\xFF\xFE</div>".b }
+    let(:body) do
+      StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+    end
+
+    it 'inflates the bytes in binary encoding' do
+      expect(decoded).to eq(html)
+    end
+  end
+
   context 'when decode is given a gzip body' do
     let(:gzip_body) do
       StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
@@ -63,9 +74,40 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
+  context 'when body has mixed-case octet-stream brotli HTML' do
+    let(:headers) { { 'Content-Type' => 'Application/Octet-Stream' } }
+    let(:body) { Brotli.deflate(html) }
+
+    it 'inflates the unlabeled brotli HTML body' do
+      expect(decoded).to eq(html)
+    end
+  end
+
+  context 'when unlabeled brotli HTML is not octet-stream' do
+    let(:headers) { { 'content-type' => 'text/html' } }
+    let(:body) { Brotli.deflate(html) }
+
+    it 'leaves the body unchanged' do
+      expect(decoded).to eq(body)
+    end
+  end
+
   context 'when unlabeled octet-stream brotli is not HTML' do
     let(:headers) { { 'content-type' => 'application/octet-stream' } }
     let(:body) { Brotli.deflate('plain text payload') }
+
+    it 'leaves the body unchanged' do
+      expect(decoded).to eq(body)
+    end
+  end
+
+  context 'when unlabeled octet-stream brotli inflates to UTF-16 HTML' do
+    let(:headers) { { 'content-type' => 'application/octet-stream' } }
+    let(:body) { Brotli.deflate(html) }
+
+    before do
+      allow(Brotli).to receive(:inflate).and_return(html.encode(Encoding::UTF_16LE))
+    end
 
     it 'leaves the body unchanged' do
       expect(decoded).to eq(body)
@@ -101,12 +143,70 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
       end
     end
 
+    context 'with uppercase gzip encoding and trailing spaces' do
+      let(:headers) { { 'content-encoding' => ' GZIP ' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'normalizes the encoding token' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with blank content-encoding tokens around gzip magic' do
+      let(:headers) { { 'content-encoding' => ' , ' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'ignores blank tokens and inflates unlabeled gzip' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with symbol Content-Encoding key' do
+      let(:headers) { { 'Content-Encoding': 'gzip' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'matches header names case-insensitively' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with a non-string Content-Encoding key' do
+      let(:header_key) { Object.new }
+      let(:headers) { { header_key => 'gzip' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      before do
+        allow(header_key).to receive(:to_s).and_return('Content-Encoding')
+      end
+
+      it 'stringifies header keys before matching' do
+        expect(decoded).to eq(html)
+      end
+    end
+
     context 'with corrupted gzip encoding' do
       let(:headers) { { 'content-encoding' => 'gzip' } }
       let(:body) { 'not gzip' }
 
       it 'returns original body' do
         expect(decoded).to eq('not gzip')
+      end
+    end
+
+    context 'with corrupted deflate encoding' do
+      let(:headers) { { 'content-encoding' => 'deflate' } }
+      let(:body) { 'not deflate' }
+
+      it 'returns original body' do
+        expect(decoded).to eq('not deflate')
       end
     end
 
@@ -138,6 +238,38 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
       end
 
       it 'inflates the raw deflate body' do
+        expect(decoded).to eq(html)
+      end
+
+      it 'closes the fallback inflater', :aggregate_failures do
+        inflater = instance_double(Zlib::Inflate, inflate: html, close: nil)
+        allow(Zlib::Inflate).to receive(:inflate).and_raise(Zlib::DataError)
+        allow(Zlib::Inflate).to receive(:new).with(-Zlib::MAX_WBITS).and_return(inflater)
+
+        expect(decoded).to eq(html)
+        expect(inflater).to have_received(:close)
+      end
+    end
+
+    context 'with stacked deflate then gzip encodings' do
+      let(:headers) { { 'content-encoding' => 'deflate, gzip' } }
+      let(:body) do
+        deflated = Zlib::Deflate.deflate(html)
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(deflated) } }.string
+      end
+
+      it 'inflates outermost encoding first' do
+        expect(decoded).to eq(html)
+      end
+    end
+
+    context 'with an unknown encoding listed before gzip' do
+      let(:headers) { { 'content-encoding' => 'gzip, x-foo' } }
+      let(:body) do
+        StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+      end
+
+      it 'keeps the buffer when an encoding cannot inflate' do
         expect(decoded).to eq(html)
       end
     end
