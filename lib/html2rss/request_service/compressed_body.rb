@@ -79,9 +79,8 @@ module Html2rss
       def try_brotli(raw, require_html: true)
         inflated = Brotli.inflate(raw)
         return inflated unless require_html
-        return inflated if inflated.b.match?(HTML_BODY_SNIFF)
 
-        nil
+        inflated.b.match?(HTML_BODY_SNIFF) ? inflated : nil
       rescue Brotli::Error, ArgumentError
         nil
       end

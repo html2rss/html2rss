@@ -92,6 +92,19 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
+  context 'when unlabeled octet-stream brotli inflates to UTF-16 HTML' do
+    let(:headers) { { 'content-type' => 'application/octet-stream' } }
+    let(:body) { Brotli.deflate(html) }
+
+    before do
+      allow(Brotli).to receive(:inflate).and_return(html.encode(Encoding::UTF_16LE))
+    end
+
+    it 'leaves the body unchanged' do
+      expect(decoded).to eq(body)
+    end
+  end
+
   context 'when unlabeled octet-stream is not brotli' do
     let(:headers) { { 'content-type' => 'application/octet-stream' } }
     let(:body) { 'PK not a brotli stream' }
