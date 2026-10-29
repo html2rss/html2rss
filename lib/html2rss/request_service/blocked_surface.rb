@@ -79,10 +79,10 @@ module Html2rss
       end
 
       def self.interstitial_signature_match?(body, signature)
-        min_matches = signature.fetch(:min_matches, 1)
+        min_matches = signature[:min_matches]
         matches = 0
 
-        signature.fetch(:patterns).each do |pattern|
+        signature[:patterns].each do |pattern|
           matches += 1 if pattern.match?(body)
           return true if matches >= min_matches
         end
@@ -91,11 +91,7 @@ module Html2rss
       end
       private_class_method :interstitial_signature_match?
 
-      def self.normalize_body(body)
-        body.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '')
-      rescue Encoding::CompatibilityError, Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
-        body.to_s.force_encoding(Encoding::UTF_8).scrub
-      end
+      def self.normalize_body(body) = body.to_s.scrub
       private_class_method :normalize_body
     end
   end
