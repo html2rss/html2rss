@@ -7,41 +7,50 @@ require 'zlib'
 module Html2rss
   class RequestService
     # Decodes gzip/brotli bodies when Content-Encoding is missing or the type is octet-stream.
-    module CompressedBody
+    class CompressedBody
       # Gzip stream magic (RFC 1952).
       GZIP_MAGIC = "\x1F\x8B".b.freeze
       # HTML prefix for unlabeled brotli trial decode. Same object as {Response::HTML_BODY_SNIFF}.
       HTML_BODY_SNIFF = Response::HTML_BODY_SNIFF
 
-      module_function
-
       # @param body [String, nil] raw response body
       # @param headers [Hash] response headers (Content-Encoding / Content-Type)
       # @return [String, nil] decoded body when compressed; otherwise the original body
-      def decode(body, headers: {})
+      def self.decode(body, headers: {})
         return body if body.nil? || body.empty?
 
         raw = body.to_s.b
-        decode_labeled(raw, headers) || decode_unlabeled(raw, headers) || body
+        new(raw, headers).decoded_body || body
       end
 
-      def decode_labeled(raw, headers)
-        encodings = content_encodings(headers)
+      # @param raw [String] binary response body
+      # @param headers [Hash] response headers (Content-Encoding / Content-Type)
+      def initialize(raw, headers)
+        @raw = raw
+        @headers = headers
+      end
+      private_class_method :new
+
+      # @return [String, nil] inflated body, or nil when the bytes are not a recognized stream
+      def decoded_body
+        decode_labeled || decode_unlabeled
+      end
+
+      private
+
+      def decode_labeled
+        encodings = content_encodings
         return if encodings.empty?
 
-        encodings.reverse.reduce(raw) { |buffer, encoding| inflate(buffer, encoding) || buffer }
+        encodings.reverse.reduce(@raw) { |buffer, encoding| inflate(buffer, encoding) || buffer }
       end
-      module_function :decode_labeled
-      private_class_method :decode_labeled
 
-      def decode_unlabeled(raw, headers)
-        return uncompress_gzip(raw) if raw.start_with?(GZIP_MAGIC)
-        return unless octet_stream?(headers)
+      def decode_unlabeled
+        return uncompress_gzip(@raw) if @raw.start_with?(GZIP_MAGIC)
+        return unless octet_stream?
 
-        try_brotli(raw)
+        try_brotli(@raw)
       end
-      module_function :decode_unlabeled
-      private_class_method :decode_unlabeled
 
       def inflate(raw, encoding)
         case encoding
@@ -55,8 +64,6 @@ module Html2rss
       rescue Zlib::Error, Brotli::Error, ArgumentError
         nil
       end
-      module_function :inflate
-      private_class_method :inflate
 
       def inflate_deflate(raw)
         inflater = nil
@@ -67,16 +74,12 @@ module Html2rss
       ensure
         inflater&.close
       end
-      module_function :inflate_deflate
-      private_class_method :inflate_deflate
 
       def uncompress_gzip(raw)
-        Zlib::GzipReader.wrap(StringIO.new(raw), encoding: 'ASCII-8BIT', &:read)
+        Zlib::GzipReader.wrap(StringIO.new(raw), &:read).b
       rescue Zlib::Error
         nil
       end
-      module_function :uncompress_gzip
-      private_class_method :uncompress_gzip
 
       def try_brotli(raw, require_html: true)
         inflated = Brotli.inflate(raw)
@@ -87,31 +90,23 @@ module Html2rss
       rescue Brotli::Error, ArgumentError
         nil
       end
-      module_function :try_brotli
-      private_class_method :try_brotli
 
-      def content_encodings(headers)
-        header(headers, 'content-encoding')
+      def content_encodings
+        header('content-encoding')
           .to_s
           .split(',')
           .filter_map { |val| (s = val.strip.downcase).empty? ? nil : s }
       end
-      module_function :content_encodings
-      private_class_method :content_encodings
 
-      def octet_stream?(headers)
-        header(headers, 'content-type').to_s.downcase.include?('application/octet-stream')
+      def octet_stream?
+        header('content-type').to_s.downcase.include?('application/octet-stream')
       end
-      module_function :octet_stream?
-      private_class_method :octet_stream?
 
-      def header(headers, name)
-        headers.fetch(name) do
-          headers.find { |key, _value| key.to_s.casecmp?(name) }&.last
+      def header(name)
+        @headers.fetch(name) do
+          @headers.find { |key, _value| key.to_s.casecmp?(name) }&.last
         end
       end
-      module_function :header
-      private_class_method :header
     end
   end
 end

@@ -33,6 +33,17 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
+  context 'when unlabeled gzip contains bytes that are not UTF-8' do
+    let(:html) { "<div>\xFF\xFE</div>".b }
+    let(:body) do
+      StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
+    end
+
+    it 'inflates the bytes in binary encoding' do
+      expect(decoded).to eq(html)
+    end
+  end
+
   context 'when decode is given a gzip body' do
     let(:gzip_body) do
       StringIO.new.tap { |io| Zlib::GzipWriter.wrap(io) { |gzip| gzip.write(html) } }.string
