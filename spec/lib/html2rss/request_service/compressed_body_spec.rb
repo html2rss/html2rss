@@ -74,6 +74,15 @@ RSpec.describe Html2rss::RequestService::CompressedBody do
     end
   end
 
+  context 'when unlabeled brotli HTML is not octet-stream' do
+    let(:headers) { { 'content-type' => 'text/html' } }
+    let(:body) { Brotli.deflate(html) }
+
+    it 'leaves the body unchanged' do
+      expect(decoded).to eq(body)
+    end
+  end
+
   context 'when unlabeled octet-stream brotli is not HTML' do
     let(:headers) { { 'content-type' => 'application/octet-stream' } }
     let(:body) { Brotli.deflate('plain text payload') }
