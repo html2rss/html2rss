@@ -40,18 +40,30 @@ RSpec.describe Html2rss::RequestService::ResponseGuard do
 
     it 'raises when the body matches an anti-bot interstitial signature' do
       expect { guard.inspect_body!(blocked_body) }
-        .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected,
-                        /Blocked surface detected: Cloudflare anti-bot interstitial page/)
+        .to raise_error(
+          Html2rss::RequestService::BlockedSurfaceDetected,
+          'Blocked surface detected: Cloudflare anti-bot interstitial page. ' \
+          'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, or run from an ' \
+          'environment that can complete anti-bot checks.'
+        )
     end
 
     it 'raises when the body matches an nginx 403 Forbidden block page' do
       expect { guard.inspect_body!(nginx_403_body) }
-        .to raise_error(Html2rss::RequestService::BlockedSurfaceDetected,
-                        /Blocked surface detected: HTTP 403 Forbidden access block page/)
+        .to raise_error(
+          Html2rss::RequestService::BlockedSurfaceDetected,
+          'Blocked surface detected: HTTP 403 Forbidden access block page. ' \
+          'Target a direct listing URL, configure BOTASAURUS_SCRAPER_URL, or run from an ' \
+          'environment that is not IP-blocked.'
+        )
     end
 
     it 'does not raise when only one marker appears' do
       expect { guard.inspect_body!('<html><title>Just a moment...</title></html>') }.not_to raise_error
+    end
+
+    it 'treats a nil body as empty' do
+      expect { guard.inspect_body!(nil) }.not_to raise_error
     end
   end
 end
