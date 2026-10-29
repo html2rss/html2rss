@@ -25,7 +25,6 @@ module Html2rss
       def fetch
         file_path = ctx.request[:local_file_path]
         raise ArgumentError, 'Local file path is required for local_file strategy' unless file_path
-        raise Errno::ENOENT, "File not found: #{file_path}" unless File.exist?(file_path)
 
         body = File.read(file_path)
         Response.new(
