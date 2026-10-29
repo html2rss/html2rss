@@ -17,8 +17,6 @@ module Html2rss
       # @param headers [Hash] response headers (Content-Encoding / Content-Type)
       # @return [String, nil] decoded body when compressed; otherwise the original body
       def self.decode(body, headers: {})
-        return body if body.nil? || body.empty?
-
         raw = body.to_s.b
         new(raw, headers).decoded_body || body
       end
