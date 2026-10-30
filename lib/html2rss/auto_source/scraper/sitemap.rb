@@ -7,7 +7,7 @@ module Html2rss
     module Scraper
       ##
       # Scrapes articles from XML sitemaps explicitly linked in HTML or discovered via standard sitemap paths.
-      class Sitemap # rubocop:disable Metrics/ClassLength -- scraper + structured warn paths
+      class Sitemap
         include Enumerable
 
         # Selector for sitemap link tags in HTML head
@@ -65,13 +65,7 @@ module Html2rss
         def each
           return enum_for(:each) unless block_given?
 
-          entries = fetch_and_parse_entries
-          return if entries.empty?
-
-          entries.each do |entry|
-            article_hash = article_from_entry(entry)
-            yield article_hash if article_hash
-          end
+          fetch_and_parse_entries.each { |entry| yield article_from_entry(entry) }
         end
 
         private
@@ -137,7 +131,7 @@ module Html2rss
 
         # rubocop:disable-next Metrics/MethodLength -- structured fetch-failed warn
         def fetch_xml(target_url)
-          return unless request_session && target_url
+          return unless request_session
 
           response = request_session.follow_up(url: target_url, relation: :auto_source, origin_url: url)
           response&.body
@@ -160,8 +154,6 @@ module Html2rss
         end
 
         def article_from_entry(entry)
-          return unless entry.url
-
           {
             url: entry.url,
             title: entry.title,
