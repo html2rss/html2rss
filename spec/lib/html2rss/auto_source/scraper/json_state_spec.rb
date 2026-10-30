@@ -39,6 +39,49 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
 
       expect(described_class).not_to be_articles(parsed_body)
     end
+
+    it 'returns exactly false when there is no parsed body', :aggregate_failures do
+      expect(described_class.articles?(nil)).to be(false)
+      expect(described_class.articles?(Nokogiri::HTML(''))).to be(false)
+    end
+  end
+
+  describe '.options_key' do
+    it 'uses the json_state config key' do
+      expect(described_class.options_key).to eq(:json_state)
+    end
+  end
+
+  describe '.request_slots' do
+    it 'makes no additional HTTP requests for any options', :aggregate_failures do
+      expect(described_class.request_slots).to eq(0)
+      expect(described_class.request_slots({ max: 5 })).to eq(0)
+    end
+  end
+
+  describe '#extractable?' do
+    it 'is true when a script holds article-like arrays' do
+      parsed_body = Nokogiri::HTML(
+        '<html><body><script type="application/json">[{"title":"A","url":"/a"}]</script></body></html>'
+      )
+
+      expect(described_class.new(parsed_body, url: base_url)).to be_extractable
+    end
+
+    it 'is false when JSON scripts hold no article-like arrays' do
+      parsed_body = Nokogiri::HTML('<html><body><script type="application/json">{"status":"ok"}</script></body></html>')
+
+      expect(described_class.new(parsed_body, url: base_url)).not_to be_extractable
+    end
+
+    it 'is true when only one of several JSON documents is article-like' do
+      parsed_body = Nokogiri::HTML(
+        '<html><body><script type="application/json">{"status":"ok"}</script>' \
+        '<script type="application/json">[{"title":"A","url":"/a"}]</script></body></html>'
+      )
+
+      expect(described_class.new(parsed_body, url: base_url)).to be_extractable
+    end
   end
 
   describe '#each' do
@@ -146,6 +189,20 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
 
       it 'extracts article values through symbolized nested keys' do
         expect(articles).to contain_exactly(expected_article)
+      end
+    end
+
+    context 'when an array mixes articles with entries that cannot be normalised' do
+      let(:parsed_body) do
+        Nokogiri::HTML(
+          '<html><body><script type="application/json">' \
+          '[{"title":"Kept","url":"/kept"},{"title":"No link"}]' \
+          '</script></body></html>'
+        )
+      end
+
+      it 'yields only the normalisable articles' do
+        expect(articles).to contain_exactly(a_hash_including(title: 'Kept'))
       end
     end
   end
