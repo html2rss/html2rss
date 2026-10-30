@@ -23,8 +23,6 @@ module Html2rss
         # @param base_url [String, Html2rss::Url] base URL for relative enclosure links
         # @return [Array<Hash{Symbol => Object}>] normalized enclosure hashes
         def self.call(article_tag, base_url)
-          return [] unless article_tag
-
           article_tag.css(SELECTOR).filter_map do |element|
             extract_from_element(element, base_url)
           end
@@ -34,7 +32,7 @@ module Html2rss
           case element.name
           when 'img'
             ArticleRules::Enclosure.from_image(element['src'], base_url)
-          when 'video', 'audio', 'source'
+          when 'audio', 'source'
             ArticleRules::Enclosure.from_media(element['src'], element['type'], base_url)
           when 'iframe'
             ArticleRules::Enclosure.from_iframe(element['src'], base_url)
