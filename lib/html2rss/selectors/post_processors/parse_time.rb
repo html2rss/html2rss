@@ -104,7 +104,7 @@ module Html2rss
             components[:mday],
             components[:hour] || 0,
             components[:min] || 0,
-            (components[:sec] || 0) + (components[:sec_fraction] || 0)
+            components[:sec] || 0
           )
         end
       end
