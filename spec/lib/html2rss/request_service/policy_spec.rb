@@ -307,6 +307,102 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
   end
 
+  describe '#initialize' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
+    {
+      connect_timeout_seconds: 0, read_timeout_seconds: 0, total_timeout_seconds: 0, max_redirects: -1,
+      max_response_bytes: 0, max_decompressed_bytes: 0, max_requests: 0
+    }.each do |name, invalid|
+      it "names #{name} in its error" do
+        expect { described_class.new(resolver:, name => invalid) }
+          .to raise_error(Html2rss::Error, /\A#{name} must be an Integer/)
+      end
+    end
+
+    it 'defaults timeouts to the DEFAULTS table', :aggregate_failures do
+      expect(policy.connect_timeout_seconds).to eq(described_class::DEFAULTS[:connect_timeout_seconds])
+      expect(policy.read_timeout_seconds).to eq(described_class::DEFAULTS[:read_timeout_seconds])
+      expect(policy.total_timeout_seconds).to eq(described_class::DEFAULTS[:total_timeout_seconds])
+    end
+
+    it 'hands the resolver and private-network flag to the network guard', :aggregate_failures do
+      allow(Html2rss::RequestService::NetworkGuard).to receive(:new).and_call_original
+      described_class.new(resolver:, allow_private_networks: 'yes')
+
+      expect(Html2rss::RequestService::NetworkGuard)
+        .to have_received(:new).with(allow_private_networks: true, resolver:)
+    end
+
+    it 'is frozen' do
+      expect(policy).to be_frozen
+    end
+  end
+
+  describe '#validate_request!' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
+    before do
+      allow(resolver).to receive(:each_address).and_yield('93.184.216.34')
+    end
+
+    {
+      ['http://example.com/', 'http://example.com:80/'] => true,
+      ['http://example.com/', 'http://example.com:8080/'] => false,
+      ['http://example.com:8080/', 'http://example.com/'] => false,
+      ['https://example.com/', 'https://example.com:443/'] => true,
+      ['https://example.com:8443/', 'https://example.com/'] => false,
+      ['http://example.com/', 'https://example.com/'] => false,
+      ['https://example.com:80/', 'https://example.com/'] => false,
+      ['http://example.com:443/', 'http://example.com/'] => false,
+      ['http://example.com/', 'http://EXAMPLE.com/x'] => true,
+      ['http://example.com/', 'http://user:pass@example.com/x'] => true,
+      ['http://example.com/', 'http://example.com.evil.test/'] => false,
+      ['http://example.com/', 'http://evil.test@example.org/'] => false,
+      ['http://example.com/', 'http://sub.example.com/'] => false
+    }.each do |(origin, target), allowed|
+      it "#{allowed ? 'allows' : 'denies'} follow-up #{target} from origin #{origin}", :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        origin_url = Html2rss::Url.from_absolute(origin)
+        url = Html2rss::Url.from_absolute(target)
+        check = -> { policy.validate_request!(url:, origin_url:, relation: :pagination) }
+
+        if allowed
+          expect(&check).not_to raise_error
+        else
+          expect(&check).to raise_error(Html2rss::Error)
+        end
+      end
+    end
+
+    it 'raises the cross-origin error naming the url for other hosts' do
+      origin_url = Html2rss::Url.from_absolute('http://example.com/')
+      url = Html2rss::Url.from_absolute('http://example.org:81/x')
+
+      expect { policy.validate_request!(url:, origin_url:, relation: :auto_source) }
+        .to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied,
+                        'Cross-origin follow-up denied for http://example.org:81/x')
+    end
+
+    it 'does not apply origin rules to the initial request' do
+      origin_url = Html2rss::Url.from_absolute('https://example.com/')
+      url = Html2rss::Url.from_absolute('http://example.org/')
+
+      expect { policy.validate_request!(url:, origin_url:, relation: :initial) }.not_to raise_error
+    end
+
+    it 'still enforces the public-network rule when cross-origin follow-ups are allowed' do
+      open_policy = described_class.new(resolver:, allow_cross_origin_followups: true)
+      origin_url = Html2rss::Url.from_absolute('https://example.com/')
+      url = Html2rss::Url.from_absolute('https://10.0.0.1/')
+
+      expect { open_policy.validate_request!(url:, origin_url:, relation: :pagination) }
+        .to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+    end
+
+    it 'denies an IPv4-mapped IPv6 loopback literal' do
+      origin_url = Html2rss::Url.from_absolute('http://[::ffff:127.0.0.1]/')
+
+      expect { policy.validate_request!(url: origin_url, origin_url:, relation: :initial) }
+        .to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+    end
+  end
+
   describe '#validate_redirect!' do
     subject(:validate_redirect!) { policy.validate_redirect!(from_url:, to_url:, origin_url:, relation:) }
 

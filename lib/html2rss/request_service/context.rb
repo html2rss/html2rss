@@ -87,9 +87,7 @@ module Html2rss
       end
 
       def normalize_request(request)
-        normalized = HashUtil.deep_symbolize_keys(request, context: 'request')
-        HashUtil.assert_symbol_keys!(normalized, context: 'request')
-        normalized
+        HashUtil.deep_symbolize_keys(request, context: 'request')
       end
     end
   end
