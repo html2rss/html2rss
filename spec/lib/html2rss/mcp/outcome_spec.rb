@@ -212,6 +212,99 @@ RSpec.describe Html2rss::MCP::Outcome do
 
       expect(outcome.payload[:yaml]).to include('channel:')
     end
+
+    it 'emits only the base payload keys when no optional draft fields are given', :aggregate_failures do
+      outcome = described_class.capture(**base)
+
+      expect(outcome.payload).to eq(
+        yaml: base[:yaml], articles_count: 3, has_selectors: true,
+        channel_title: 'Example', requested_strategy: 'auto'
+      )
+    end
+
+    it 'emits every optional draft field with its wire form when given', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- full wire payload
+      outcome = described_class.capture(
+        **base, requested_strategy: :auto, segment_strategy: :rss, selected_strategy: 'html',
+                admission_drops: { 'credit' => 1 }, native_feed: 'https://example.com/feed.xml',
+                suggested_channel_url: 'https://example.com/'
+      )
+
+      expect(outcome.payload).to eq(
+        yaml: base[:yaml], articles_count: 3, has_selectors: true, channel_title: 'Example',
+        requested_strategy: 'auto', segment_strategy: 'rss', selected_strategy: 'html',
+        admission_drops: { 'credit' => 1 }, native_feed: 'https://example.com/feed.xml',
+        suggested_channel_url: 'https://example.com/'
+      )
+    end
+
+    it 'keeps the draft ok and points at test when native_feed is absent', :aggregate_failures do
+      outcome = described_class.capture(**base, articles_count: 1, has_selectors: true)
+
+      expect(outcome).to have_attributes(ok: true, guidance: described_class::NextStep[:test].guidance)
+    end
+  end
+
+  describe 'batch verbs' do
+    {
+      batch_scrape: :scrape, batch_inspect: :inspect, batch_recon: :recon
+    }.each do |verb, failure_step|
+      describe ".#{verb}" do
+        let(:results) { [{ ok: true }, { ok: false }] }
+
+        it 'points at done and echoes the batch wire payload when any item succeeded', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- wire payload
+          batch = Html2rss::Batch::BatchResult.new(total: 2, successful: 1, results:)
+          outcome = described_class.public_send(verb, batch)
+
+          expect(outcome.ok).to be(true)
+          expect(outcome.next_step.name).to eq(:done)
+          expect(outcome.guidance).to eq(described_class::NextStep[:done].guidance)
+          expect(outcome.payload).to eq(batch.to_h)
+        end
+
+        it "points at #{failure_step} when no item succeeded", :aggregate_failures do
+          batch = Html2rss::Batch::BatchResult.new(total: 2, successful: 0, results:)
+          outcome = described_class.public_send(verb, batch)
+
+          expect(outcome.ok).to be(true)
+          expect(outcome.next_step.name).to eq(failure_step)
+          expect(outcome.guidance).to eq(described_class::NextStep[failure_step].guidance)
+        end
+      end
+    end
+  end
+
+  describe 'test guidance' do
+    let(:warned) do
+      Html2rss::Test::QualityReport.new(warnings: %w[thin_titles dup_urls], metrics: {}, native_feed: nil,
+                                        defer_reason: nil)
+    end
+
+    it 'uses the apply guidance on success without warnings' do
+      outcome = described_class.test(test_result(success: true))
+
+      expect(outcome.guidance).to eq(described_class::NextStep[:apply].guidance)
+    end
+
+    it 'appends quality warnings to the apply guidance on success', :aggregate_failures do
+      outcome = described_class.test(test_result(success: true, quality_report: warned))
+
+      expect(outcome.guidance).to eq(
+        "#{described_class::NextStep[:apply].guidance} Review payload.quality_report warnings: thin_titles, dup_urls."
+      )
+      expect(outcome.payload[:quality_report]).to include(warnings: %w[thin_titles dup_urls])
+    end
+
+    it 'uses the test error message as guidance on failure' do
+      outcome = described_class.test(test_result(error_message: 'Feed is empty'))
+
+      expect(outcome.guidance).to eq('Feed is empty')
+    end
+
+    it 'falls back to the next_step guidance when the failure carries no message' do
+      outcome = described_class.test(test_result.with(error_message: nil))
+
+      expect(outcome.guidance).to eq(described_class::NextStep[:capture].guidance)
+    end
   end
 
   describe '.validate' do
@@ -283,6 +376,43 @@ RSpec.describe Html2rss::MCP::Outcome do
 
       expect(outcome).to have_attributes(ok: false, next_step: have_attributes(name: :inspect))
     end
+
+    it 'is not ok when the ship gate reports empty even with items', :aggregate_failures do
+      outcome = described_class.apply(rss: '<rss/>', item_count: 3, empty: true)
+
+      expect(outcome).to have_attributes(ok: false, next_step: have_attributes(name: :inspect))
+      expect(outcome.payload).to eq(rss: '<rss/>', item_count: 3)
+    end
+
+    it 'includes quality_report in the payload only when given', :aggregate_failures do
+      outcome = described_class.apply(rss: '<rss/>', item_count: 1, quality_report: { warnings: [] })
+
+      expect(outcome.payload).to eq(rss: '<rss/>', item_count: 1, quality_report: { warnings: [] })
+    end
+  end
+
+  describe '#initialize' do
+    let(:done) { described_class::NextStep[:done] }
+
+    it 'rejects a next_step that is not a NextStep' do
+      expect { described_class.new(ok: true, next_step: :done, guidance: 'g', payload: {}) }
+        .to raise_error(ArgumentError, 'next_step must be a NextStep')
+    end
+
+    it 'rejects a payload that is not a Hash' do
+      expect { described_class.new(ok: true, next_step: done, guidance: 'g', payload: []) }
+        .to raise_error(ArgumentError, 'payload must be a Hash')
+    end
+
+    it 'coerces ok to a boolean and freezes a copy of the payload', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- envelope invariants
+      source = { a: 1 }
+      outcome = described_class.new(ok: 'yes', next_step: done, guidance: :hint, payload: source)
+
+      expect(outcome).to have_attributes(ok: true, guidance: 'hint')
+      expect(outcome.guidance).to be_frozen
+      expect(outcome.payload).to be_frozen
+      expect(source).not_to be_frozen
+    end
   end
 
   describe '.from_error' do
@@ -318,6 +448,12 @@ RSpec.describe Html2rss::MCP::Outcome do
       outcome = described_class.from_error(error)
 
       expect(outcome.next_step.name).to eq(:validate)
+    end
+
+    it 'maps ArgumentError without the XOR message to inspect' do
+      outcome = described_class.from_error(ArgumentError.new('something else'))
+
+      expect(outcome.next_step.name).to eq(:inspect)
     end
 
     it 'maps other exceptions to inspect' do
