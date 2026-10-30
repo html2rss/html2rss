@@ -110,13 +110,11 @@ module Html2rss
           def normalized_api_path(path)
             segments = path.to_s.split('/').reject(&:empty?)
             normalized_path = "/#{segments.join('/')}"
-            normalized_path = '/' if normalized_path == '/'
             normalized_path.end_with?('/') ? normalized_path : "#{normalized_path}/"
           end
 
           def normalized_rest_route(route)
             value = route.to_s
-            value = '/' if value.empty?
             value = "/#{value}" unless value.start_with?('/')
             trim_trailing_slashes(value)
           end

@@ -22,6 +22,184 @@ RSpec.describe Html2rss::AutoSource::Scraper::WordpressApi do
 
       expect(described_class.articles?(html)).to be(false)
     end
+
+    it 'returns false without a parsed document' do
+      expect(described_class.articles?(nil)).to be(false)
+    end
+  end
+
+  describe '.options_key' do
+    it 'returns the scraper config key' do
+      expect(described_class.options_key).to eq(:wordpress_api)
+    end
+  end
+
+  describe '.request_slots' do
+    it 'needs exactly one follow-up request when called without options' do
+      expect(described_class.request_slots).to eq(1)
+    end
+  end
+
+  describe '#extractable?' do
+    it 'is true when the page advertises the API link' do
+      expect(instance.extractable?).to be(true)
+    end
+
+    it 'is false when the page does not advertise the API link' do
+      html = Nokogiri::HTML('<html><head></head><body></body></html>')
+
+      expect(described_class.new(html, url:, request_session:).extractable?).to be(false)
+    end
+  end
+
+  describe '#initialize' do
+    it 'treats the request session as optional' do
+      expect(described_class.new(parsed_body, url:).each.to_a).to eq([])
+    end
+  end
+
+  describe '#each (WordPress post payloads)' do
+    subject(:articles) { described_class.new(parsed_body, url:, request_session:).each.to_a }
+
+    let(:parsed_body) do
+      Nokogiri::HTML('<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/" /></head></html>')
+    end
+    let(:posts) { [post] }
+    let(:post) do
+      {
+        'id' => 1,
+        'link' => 'https://example.com/hello/',
+        'title' => { 'rendered' => 'Hello' },
+        'content' => { 'rendered' => '<p>Body</p>' },
+        'excerpt' => { 'rendered' => '' },
+        'date' => '2024-01-02T03:04:05',
+        'categories' => []
+      }
+    end
+    let(:response_body) { posts.to_json }
+    let(:content_type) { 'application/json' }
+    let(:api_response) do
+      Html2rss::RequestService::Response.new(
+        body: response_body,
+        url: Html2rss::Url.from_absolute('https://example.com/wp-json/wp/v2/posts'),
+        headers: { 'content-type' => content_type }
+      )
+    end
+
+    before do
+      allow(request_session).to receive(:follow_up).and_return(api_response)
+      allow(Html2rss::Log).to receive(:warn)
+    end
+
+    context 'when the response contains non-post entries' do
+      let(:posts) { [post, 'junk', 42] }
+
+      it 'yields only post hashes' do
+        expect(articles.map { _1.fetch(:id) }).to eq(['/hello/'])
+      end
+    end
+
+    context 'when a post has an empty or unparseable link' do
+      let(:posts) { [post.merge('link' => ''), post.merge('link' => '://bad url'), post] }
+
+      it 'skips those posts', :aggregate_failures do
+        expect(articles.size).to eq(1)
+        expect(articles.first.fetch(:url)).to eq(Html2rss::Url.from_absolute('https://example.com/hello/'))
+      end
+    end
+
+    context 'when a post has only a link' do
+      let(:post) { { 'link' => 'https://example.com/hello/' } }
+
+      it 'omits absent attributes and defaults categories' do
+        expect(articles).to eq(
+          [{ id: '/hello/', url: Html2rss::Url.from_absolute('https://example.com/hello/'), categories: [] }]
+        )
+      end
+    end
+
+    context 'when optional fields are blank' do
+      let(:post) do
+        {
+          'link' => 'https://example.com/hello/',
+          'title' => { 'rendered' => '<p> </p>' },
+          'content' => { 'rendered' => '   ' },
+          'excerpt' => { 'rendered' => '  <p>Lead</p>  ' },
+          'date' => '   ',
+          'categories' => [3, '', 'news']
+        }
+      end
+
+      it 'drops blank values and falls back to the excerpt', :aggregate_failures do
+        expect(articles.first).not_to have_key(:title)
+        expect(articles.first).not_to have_key(:published_at)
+        expect(articles.first).to include(description: '<p>Lead</p>', categories: %w[3 news])
+      end
+    end
+
+    context 'when the link is relative to the source URL' do
+      let(:url) { 'https://example.com/blog' }
+      let(:post) { { 'link' => '/hello/' } }
+
+      it 'resolves the article URL against the source URL' do
+        expect(articles.first.fetch(:url)).to eq(Html2rss::Url.from_absolute('https://example.com/hello/'))
+      end
+    end
+
+    context 'when the permalink is a site-root query URL' do
+      let(:post) { { 'link' => 'https://example.com/?p=12' } }
+
+      it 'uses the query as the article id' do
+        expect(articles.first.fetch(:id)).to eq('/?p=12')
+      end
+    end
+
+    context 'when the permalink has a path and a query' do
+      let(:post) { { 'link' => 'https://example.com/hello/?x=1' } }
+
+      it 'uses the path as the article id' do
+        expect(articles.first.fetch(:id)).to eq('/hello/')
+      end
+    end
+
+    context 'when the posts JSON cannot be parsed' do
+      let(:url) { 'https://example.com/blog' }
+      let(:response_body) { 'not json' }
+      let(:fragments) do
+        ['"event_name":"wordpress_api.parse_failed"', '"host":"example.com"', '"error_class":"JSON::ParserError"',
+         'Html2rss::AutoSource::Scraper::WordpressApi: failed to parse WordPress API posts JSON (']
+      end
+
+      it 'logs a structured parse failure and yields nothing', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(Html2rss::Log).to have_received(:warn).with(a_string_including(*fragments))
+      end
+    end
+
+    context 'when the posts response is not JSON' do
+      let(:content_type) { 'text/plain' }
+      let(:response_body) { 'not-json' }
+      let(:fragments) do
+        ['"event_name":"wordpress_api.unsupported_content_type"', '"host":"example.com"',
+         '"error_class":"Html2rss::RequestService::UnsupportedResponseContentType"']
+      end
+
+      it 'logs a structured unsupported-content-type warning', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(Html2rss::Log).to have_received(:warn).with(a_string_including(*fragments))
+      end
+    end
+
+    context 'when the posts request raises a library error' do
+      let(:fragments) { ['"event_name":"wordpress_api.fetch_failed"', '"error_class":"Html2rss::Error"', '(Html2rss::Error: boom)'] }
+
+      before { allow(request_session).to receive(:follow_up).and_raise(Html2rss::Error, 'boom') }
+
+      it 'logs a structured fetch failure', :aggregate_failures do
+        expect(articles).to eq([])
+        expect(Html2rss::Log).to have_received(:warn).with(a_string_including(*fragments))
+      end
+    end
   end
 
   describe '#each' do

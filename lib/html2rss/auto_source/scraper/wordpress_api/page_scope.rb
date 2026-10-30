@@ -154,7 +154,7 @@ module Html2rss
             end
 
             def archive_like?
-              category_archive? || tag_archive? || author_archive? || date_archive? || body_classes.include?('archive')
+              body_classes.include?('archive')
             end
 
             def singular_like?
