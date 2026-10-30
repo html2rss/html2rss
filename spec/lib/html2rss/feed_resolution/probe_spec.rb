@@ -54,6 +54,22 @@ RSpec.describe Html2rss::FeedResolution::Probe do
     expect(scored).to have_attributes(url: candidate_url, articles_count: be >= 1)
   end
 
+  it 'follows up on the candidate url for the entry-resolution relation' do
+    html_response = Html2rss::RequestService::Response.new(
+      body: '<!DOCTYPE html><html><body></body></html>',
+      headers: { 'content-type' => 'text/html' },
+      url: candidate_url,
+      status: 200
+    )
+    allow(session).to receive(:follow_up).and_return(html_response)
+
+    probe.call(candidate_url)
+
+    expect(session).to have_received(:follow_up).with(
+      hash_including(url: candidate_url, relation: :entry_resolution, origin_url: Html2rss::Url.from_absolute(origin_url))
+    )
+  end
+
   it 'rejects an origin URL that is not absolute' do
     expect do
       described_class.new(request_session: session, origin_url: '/news')

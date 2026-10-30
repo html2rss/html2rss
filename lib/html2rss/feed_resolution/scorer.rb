@@ -16,7 +16,7 @@ module Html2rss
         # @param articles_count [Integer]
         # @return [Integer]
         def score_feed(articles_count:)
-          articles_count.to_i * ARTICLE_WEIGHT
+          articles_count * ARTICLE_WEIGHT
         end
 
         ##
