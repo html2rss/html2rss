@@ -24,7 +24,6 @@ module Html2rss
       def initialize(base_url)
         @base_url = base_url
         @by_href = {}
-        @by_node = {}.compare_by_identity
         @text_classifier = LinkDestination::TextClassifier.new
       end
 
@@ -35,14 +34,10 @@ module Html2rss
       # @param node_or_href [SST::Node, String, #to_s]
       # @return [LinkDestination::DestinationFacts, nil]
       def destination_facts(node_or_href)
-        return @by_node[node_or_href] if node_or_href.is_a?(SST::Node) && @by_node.key?(node_or_href)
-
         href = extract_href(node_or_href)
         return unless href
 
-        facts = (@by_href[href] ||= build_facts(href))
-        @by_node[node_or_href] = facts if node_or_href.is_a?(SST::Node)
-        facts
+        @by_href[href] ||= build_facts(href)
       rescue ArgumentError
         nil
       end
