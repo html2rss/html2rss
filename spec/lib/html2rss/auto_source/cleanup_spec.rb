@@ -67,6 +67,16 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         'different_domain' => 1,
         'bad_scheme' => 1
       )
+      expect(result.drop_tallies).to be_frozen
+    end
+
+    it 'logs article counts before and after cleanup', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:debug)
+      start_count = articles.size
+      described_class.call(articles, url:)
+
+      expect(Html2rss::Log).to have_received(:debug).with("Cleanup: start with #{start_count} articles")
+      expect(Html2rss::Log).to have_received(:debug).with("Cleanup: end with #{articles.size} articles")
     end
 
     context 'with duplicated articles' do
@@ -118,6 +128,13 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     it 'keeps only HTTP and HTTPS articles' do
       expect(cleaned).not_to include(articles[4])
+    end
+
+    it 'drops off-domain articles when keep_different_domain is omitted' do
+      off_domain = Html2rss::Url.from_absolute('https://otherdomain.com/article3')
+      article = instance_double(Html2rss::Article, valid?: true, url: off_domain, title: 'Different Domain Article')
+
+      expect(described_class.call([article], url:).articles).to be_empty
     end
 
     context 'when keep_different_domain is false' do
@@ -408,7 +425,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
   describe '.call excluded destination boundaries' do
     let(:base) { Html2rss::Url.from_absolute('https://example.com/') }
     let(:paths) do
-      %w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now /subscribe]
+      %w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now /subscribe
+         /a/b/newsletters/c /news/newsletters /press/newsletters/some-article-slug]
     end
     let(:articles) do
       paths.map do |path|
@@ -420,7 +438,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     it 'keeps content paths and non-utility paths but drops high-confidence utility routes', :aggregate_failures do
       kept = described_class.call(articles, url: base).articles.map { _1.url.path }
 
-      expect(kept).to eq(%w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now])
+      expect(kept).to eq(%w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now
+                            /news/newsletters /press/newsletters/some-article-slug])
     end
   end
 
@@ -432,6 +451,14 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       expect(audit.metrics[:unique_url_count]).to eq(1)
       expect(audit.warnings).to include(:duplicate_urls)
+    end
+
+    it 'counts three identical URLs as one duplicate violation', :aggregate_failures do
+      items = Array.new(3) { |index| rss_item(title: "Story Number #{index} Title", url: 'https://example.com/same') }
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.metrics[:unique_url_count]).to eq(1)
+      expect(audit.violations).to eq(duplicate_urls: 1)
     end
 
     it 'does not warn for a single item' do
