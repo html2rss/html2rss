@@ -29,9 +29,14 @@ RSpec.describe Html2rss::MCP::Contract do
 
     it 'rejects local_file strategy as symbol or string', :aggregate_failures do
       expect { described_class.assert_published_request!(base.merge(strategy: :local_file)) }
-        .to raise_error(described_class::UnpublishedRequestError, /local_file/)
+        .to raise_error(described_class::UnpublishedRequestError,
+                        'MCP does not accept strategy local_file (published: auto, default, httpx, botasaurus)')
       expect { described_class.assert_published_request!(base.merge(strategy: 'local_file')) }
         .to raise_error(described_class::UnpublishedRequestError, /local_file/)
+    end
+
+    it 'accepts a request block that carries no local_file_path' do
+      expect { described_class.assert_published_request!(base.merge(request: { timeout: 5 })) }.not_to raise_error
     end
 
     it 'rejects request.local_file_path even with a published strategy' do
@@ -106,6 +111,10 @@ RSpec.describe Html2rss::MCP::Contract do
       expect(described_class.catalog_fingerprint).to eq(fingerprint)
     end
 
+    it 'pins the digest of the published tool catalog so client caches notice drift' do
+      expect(described_class.catalog_fingerprint).to eq('61d6176d377fefef')
+    end
+
     it 'changes when the published tool set changes' do # rubocop:disable RSpec/ExampleLength -- Tool construction is the mutation
       baseline = described_class.catalog_fingerprint
       extra_tool = Html2rss::MCP::Server::Tools::Tool.new(
@@ -143,6 +152,71 @@ RSpec.describe Html2rss::MCP::Contract do
 
       expect { schema.validate_result(wire) }.not_to raise_error
     end
+
+    it 'pins the envelope JSON Schema document', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- schema literal
+      expect(described_class.output_schema).to eq(
+        type: 'object',
+        additionalProperties: false,
+        required: %w[ok next_step guidance payload],
+        properties: {
+          ok: { type: 'boolean' },
+          next_step: { type: 'string', enum: Html2rss::MCP::Outcome::NextStep::ALL.keys.map(&:to_s) },
+          guidance: { type: 'string' },
+          payload: { type: 'object' }
+        }
+      )
+    end
+  end
+
+  describe 'batch input schemas' do
+    it 'pins batch_scrape input with limit and the scrape strategy property', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- schema literal
+      schema = described_class.batch_urls_input_schema(
+        urls_description: 'List of page URLs to scrape (1..25)',
+        strategy_property: described_class::STRATEGY_PROPERTY,
+        extra_properties: { limit: { type: 'integer', minimum: 1,
+                                     description: 'Max articles per URL to keep (default 10)', default: 10 } }
+      )
+
+      expect(schema).to eq(
+        type: 'object',
+        properties: {
+          urls: {
+            type: 'array', items: described_class::URL_PROPERTY, minItems: 1, maxItems: 25,
+            description: 'List of page URLs to scrape (1..25)'
+          },
+          strategy: described_class::STRATEGY_PROPERTY,
+          concurrency: {
+            type: 'integer', minimum: 1, maximum: 10,
+            description: 'Max parallel worker threads (1..10, default: 5)', default: 5
+          },
+          limit: { type: 'integer', minimum: 1, description: 'Max articles per URL to keep (default 10)', default: 10 }
+        },
+        required: %w[urls]
+      )
+    end
+
+    it 'pins batch_inspect input without limit and with the inspect strategy property', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- schema literal
+      schema = described_class.batch_urls_input_schema(
+        urls_description: 'List of page URLs to inspect (1..25)',
+        strategy_property: described_class::INSPECT_STRATEGY_PROPERTY
+      )
+
+      expect(schema).to eq(
+        type: 'object',
+        properties: {
+          urls: {
+            type: 'array', items: described_class::URL_PROPERTY, minItems: 1, maxItems: 25,
+            description: 'List of page URLs to inspect (1..25)'
+          },
+          strategy: described_class::INSPECT_STRATEGY_PROPERTY,
+          concurrency: {
+            type: 'integer', minimum: 1, maximum: 10,
+            description: 'Max parallel worker threads (1..10, default: 5)', default: 5
+          }
+        },
+        required: %w[urls]
+      )
+    end
   end
 
   describe 'annotations' do
@@ -174,6 +248,11 @@ RSpec.describe Html2rss::MCP::Contract do
       expect(JSON).to have_received(:generate).once
       expect(response.structured_content).to eq(outcome.to_h)
       expect(JSON.parse(response.content.first[:text], symbolize_names: true)).to eq(outcome.to_h)
+    end
+
+    it 'wraps the envelope as one text content block with the same JSON' do
+      expect(described_class.response(outcome).content)
+        .to eq([{ type: 'text', text: JSON.generate(outcome.to_h) }])
     end
 
     it 'sets isError from !ok' do
