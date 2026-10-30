@@ -11,18 +11,7 @@ module Html2rss
         # @param segmenter [Segmenter]
         # @return [Array<Segment>]
         def self.call(segmenter)
-          primary = PrimaryLink.new(segmenter)
-          pairs = article_pairs(segmenter)
-          seen = {}.compare_by_identity
-
-          pairs.each_with_index.filter_map do |(article_tag, selected_anchor), position|
-            next unless seen[article_tag].nil?
-
-            seen[article_tag] = true
-
-            link = selected_anchor || primary.select(article_tag)
-            next unless link || segmenter.permit_unanchored
-
+          article_pairs(segmenter).each_with_index.map do |(article_tag, link), position|
             Segment.build(root_node: article_tag, primary_link: link, strategy: :list, position:)
           end
         end
@@ -40,28 +29,24 @@ module Html2rss
         end
         private_class_method :top_groups
 
-        def self.cards_by_parent(segmenter) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        def self.cards_by_parent(segmenter)
           index = segmenter.index
           main = main_landmark(index)
           groups = {}.compare_by_identity
 
-          index.each_node do |node|
-            next unless node.link?
-            next if index.ignored_chrome?(node)
-            next unless relevant_anchor?(segmenter, node)
-            next if main && !inside_main?(index, node, main)
-
+          index.each_node.select { |node| card_anchor?(segmenter, index, main, node) }.each do |node|
             card = parent_until_boundary(segmenter, node)
-            next unless card
-
-            parent = index.parent_of(card)
-            next unless parent
-
-            (groups[parent] ||= []) << [card, node]
+            (groups[index.parent_of(card)] ||= []) << [card, node]
           end
           groups
         end
         private_class_method :cards_by_parent
+
+        def self.card_anchor?(segmenter, index, main, node)
+          node.link? && !index.ignored_chrome?(node) && relevant_anchor?(segmenter, node) &&
+            (main.nil? || inside_main?(index, node, main))
+        end
+        private_class_method :card_anchor?
 
         def self.main_landmark(index)
           index.each_node.find { |node| node.name == :main || node.attrs.raw['role'] == 'main' }
@@ -74,12 +59,9 @@ module Html2rss
         private_class_method :inside_main?
 
         def self.relevant_anchor?(segmenter, node)
-          facts = segmenter.link_resolver.destination_facts(node)
-          return false unless facts
-
-          text = node.visible_text.to_s.strip
           !segmenter.noise_policy.noise_anchor?(
-            text:, destination_facts: facts, anchor: node, utility_landmark_ancestor: false
+            text: node.visible_text, destination_facts: segmenter.link_resolver.destination_facts(node),
+            anchor: node
           )
         end
         private_class_method :relevant_anchor?
@@ -93,21 +75,17 @@ module Html2rss
 
           index.parent_until(node, lambda { |curr|
             return true if BOUNDARY_TAGS.include?(curr.name)
-            return false if index.ignored_chrome?(curr)
 
-            parent = index.parent_of(curr)
-            parent && link_counts[parent] > link_counts[curr]
+            link_counts[index.parent_of(curr)] > link_counts[curr]
           })
         end
         private_class_method :parent_until_boundary
 
+        # Walk nodes are relevant anchors or their non-link ancestors, so a link counts as one.
         def self.count_relevant_links(segmenter, node)
-          # Chrome inside a card must not stop the walk before the shared list parent.
-          if node.link?
-            relevant_anchor?(segmenter, node) ? 1 : 0
-          else
-            node.count_descendants { |child| child.link? && relevant_anchor?(segmenter, child) }
-          end
+          return 1 if node.link?
+
+          node.count_descendants { |child| child.link? && relevant_anchor?(segmenter, child) }
         end
         private_class_method :count_relevant_links
       end
