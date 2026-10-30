@@ -15,6 +15,43 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
     it 'sets the title from headline' do
       expect(call).to include(title: 'Baustellen der Nation')
     end
+
+    context 'when the schema object carries every article field' do
+      let(:schema_object) do
+        {
+          '@type': 'NewsArticle',
+          '@id': 'https://example.com/a1',
+          headline: 'Head',
+          description: 'Desc',
+          author: 'Ada',
+          url: 'https://example.com/a1',
+          image: 'https://example.com/i.jpg',
+          datePublished: '2024-01-02',
+          articleSection: 'World'
+        }
+      end
+
+      it 'maps every attribute to its value', :aggregate_failures do
+        expect(call).to include(
+          id: '/a1', title: 'Head', description: 'Desc', author: 'Ada',
+          published_at: '2024-01-02', categories: ['World']
+        )
+      end
+
+      it 'keeps the absolute url and image', :aggregate_failures do
+        expect(call[:url].to_s).to eq('https://example.com/a1')
+        expect(call[:image].to_s).to eq('https://example.com/i.jpg')
+      end
+    end
+
+    context 'when the schema object carries no article fields' do
+      let(:schema_object) { { headline: 'Only title' } }
+
+      it 'returns nil for every absent attribute', :aggregate_failures do
+        expect(call).to include(id: nil, description: nil, author: nil, url: nil, image: nil, published_at: nil)
+        expect(call[:categories]).to eq([])
+      end
+    end
   end
 
   describe '#title' do
@@ -66,6 +103,39 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#id' do
     subject(:id) { instance.id }
 
+    context 'when schema object has no @id but has a url' do
+      let(:schema_object) { { headline: 'No id', url: 'https://example.com/story/1' } }
+
+      it 'uses the url path as the id' do
+        expect(instance.id).to eq('/story/1')
+      end
+    end
+
+    context 'when @id is an empty string' do
+      let(:schema_object) { { '@id': '', url: 'https://example.com/story/2' } }
+
+      it 'falls back to the url path' do
+        expect(instance.id).to eq('/story/2')
+      end
+    end
+
+    context 'when id is requested repeatedly' do
+      let(:schema_object) { { '@id': 'https://example.com/memo' } }
+
+      it 'returns the same memoized id on every call' do
+        instance.id
+        expect(instance.id).to eq('/memo')
+      end
+    end
+
+    context 'when schema object has neither @id nor url' do
+      let(:schema_object) { { headline: 'Bare' } }
+
+      it 'returns nil' do
+        expect(instance.id).to be_nil
+      end
+    end
+
     context 'when schema_object contains an @id' do
       let(:schema_object) do
         { '@type': 'ScholarlyArticle', title: 'Baustellen der Nation', '@id': 'https://example.com/123' }
@@ -107,6 +177,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
   describe '#image' do
     subject(:image) { instance.image }
+
+    context 'when image is a non-ImageObject hash' do
+      let(:schema_object) { { image: { '@type': 'Thing', url: 'https://example.com/not-image.jpg' } } }
+
+      it 'ignores it' do
+        expect(instance.image).to be_nil
+      end
+    end
+
+    context 'when image is an ImageObject without url or contentUrl' do
+      let(:schema_object) { { image: { '@type': 'ImageObject', caption: 'Cap' } } }
+
+      it 'returns nil' do
+        expect(instance.image).to be_nil
+      end
+    end
+
+    context 'when image is relative and the base url is present' do
+      let(:schema_object) { { image: '/relative.jpg' } }
+
+      it 'resolves it against the base url' do
+        expect(instance.image.to_s).to eq('https://example.com/relative.jpg')
+      end
+    end
 
     context 'when image is a string' do
       let(:schema_object) do
@@ -268,6 +362,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#description' do
     subject(:description) { instance.description }
 
+    context 'when only abstract is present' do
+      let(:schema_object) { { abstract: 'Abstract text' } }
+
+      it { expect(description).to eq('Abstract text') }
+    end
+
+    context 'when only schema_object_body is present' do
+      let(:schema_object) { { schema_object_body: 'Body text' } }
+
+      it { expect(description).to eq('Body text') }
+    end
+
+    context 'when description is the longest candidate' do
+      let(:schema_object) { { description: 'A much longer description', articleBody: 'short' } }
+
+      it { expect(description).to eq('A much longer description') }
+    end
+
+    context 'when no description-like field exists' do
+      let(:schema_object) { { headline: 'Nothing else' } }
+
+      it { expect(description).to be_nil }
+    end
+
     context 'when articleBody is longer than description' do
       let(:schema_object) do
         { '@type': 'Article', title: 'Test', description: 'Short', articleBody: 'This is a much longer article body' }
@@ -281,6 +399,54 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
   describe '#author' do
     subject(:author) { instance.author }
+
+    context 'when author is an empty array' do
+      let(:schema_object) { { author: [], publisher: 'Pub Co' } }
+
+      it 'falls back to the publisher' do
+        expect(instance.author).to eq('Pub Co')
+      end
+    end
+
+    context 'when author is an array mixing names, persons and unusable entries' do
+      let(:schema_object) { { author: ['Ada', { name: 'Bob' }, 42, nil] } }
+
+      it 'joins only the usable names' do
+        expect(instance.author).to eq('Ada, Bob')
+      end
+    end
+
+    context 'when author is whitespace-only' do
+      let(:schema_object) { { author: "  \n ", publisher: 'Pub Co' } }
+
+      it 'falls back to the publisher' do
+        expect(instance.author).to eq('Pub Co')
+      end
+    end
+
+    context 'when author is a Person hash without a name' do
+      let(:schema_object) { { author: { '@type': 'Person', url: 'https://example.com/p' }, publisher: 'Pub Co' } }
+
+      it 'falls back to the publisher' do
+        expect(instance.author).to eq('Pub Co')
+      end
+    end
+
+    context 'when author is a Person hash with a blank name' do
+      let(:schema_object) { { author: { name: '   ' }, publisher: 'Pub Co' } }
+
+      it 'falls back to the publisher' do
+        expect(instance.author).to eq('Pub Co')
+      end
+    end
+
+    context 'when author is a Person hash with surrounding whitespace in name' do
+      let(:schema_object) { { author: { name: '  Ada Lovelace  ' } } }
+
+      it 'returns the stripped name' do
+        expect(instance.author).to eq('Ada Lovelace')
+      end
+    end
 
     context 'when author is a string' do
       let(:schema_object) { { '@type': 'Article', title: 'Test', author: ' Jane Doe ' } }

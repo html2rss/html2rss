@@ -1,8 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::AutoSource::Scraper::Schema do
-  let(:script_tag) { ->(json_content) { Nokogiri::HTML("<script type=\"application/ld+json\">#{json_content}</script>") } }
-  let(:simple_article) { ->(type: 'Article', title: 'Sample Title') { { '@type': type, title:, url: 'https://example.com' } } }
+  let(:article_schema_object) do
+    # Legacy `title` (non-schema.org) kept so older pages still extract
+    {
+      '@context': 'https://schema.org',
+      '@id': '4582066',
+      '@type': 'Article',
+      additionalType: 'ArticleTeaser',
+      url: '/news/Google-entlaesst-Python-Team-fuer-billigere-Arbeitskraefte-in-Muenchen-9703029.html',
+      title: 'Für Einsparungen kündigt Google komplettem Python-Team',
+      kicker: 'Ersatz wohl in München',
+      abstract: 'Einem Python-Team wurde offenbar komplett gekündigt.',
+      image: 'https://www.heise.de/imgs/18/4/5/8/2/0/6/6/shutterstock_1777981682-958a1d575a8f5e3e.jpeg'
+    }
+  end
   let(:news_article_schema_object) do
     # src: https://schema.org/NewsArticle (headline is the official property)
     {
@@ -25,24 +37,63 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
       datePublished: '2017-03-20T20:30:54+00:00'
     }
   end
-  let(:article_schema_object) do
-    # Legacy `title` (non-schema.org) kept so older pages still extract
-    {
-      '@context': 'https://schema.org',
-      '@id': '4582066',
-      '@type': 'Article',
-      additionalType: 'ArticleTeaser',
-      url: '/news/Google-entlaesst-Python-Team-fuer-billigere-Arbeitskraefte-in-Muenchen-9703029.html',
-      title: 'Für Einsparungen kündigt Google komplettem Python-Team',
-      kicker: 'Ersatz wohl in München',
-      abstract: 'Einem Python-Team wurde offenbar komplett gekündigt.',
-      image: 'https://www.heise.de/imgs/18/4/5/8/2/0/6/6/shutterstock_1777981682-958a1d575a8f5e3e.jpeg'
-    }
-  end
+  let(:simple_article) { ->(type: 'Article', title: 'Sample Title') { { '@type': type, title:, url: 'https://example.com' } } }
+  let(:script_tag) { ->(json_content) { Nokogiri::HTML("<script type=\"application/ld+json\">#{json_content}</script>") } }
 
   before do
     allow(Html2rss::Log).to receive(:warn)
     allow(Html2rss::Log).to receive(:debug)
+  end
+
+  describe '.request_slots' do
+    it 'reserves no request slots', :aggregate_failures do
+      expect(described_class.request_slots).to eq(0)
+      expect(described_class.request_slots(max_requests: 3)).to eq(0)
+    end
+  end
+
+  describe '.canonicalize_type' do
+    it 'ignores values that are neither strings nor symbols', :aggregate_failures do
+      expect(described_class.canonicalize_type(42)).to be_nil
+      expect(described_class.canonicalize_type(nil)).to be_nil
+    end
+
+    it 'canonicalizes schema.org URLs and case-folded names', :aggregate_failures do
+      expect(described_class.canonicalize_type('https://schema.org/newsarticle')).to eq('NewsArticle')
+      expect(described_class.canonicalize_type(:NewsArticle)).to eq('NewsArticle')
+    end
+
+    it 'returns nil for an empty type name after stripping the schema.org prefix' do
+      expect(described_class.canonicalize_type('https://schema.org/')).to be_nil
+    end
+  end
+
+  describe '#extractable?' do
+    subject(:extractable?) { described_class.new(parsed_body, url: '').extractable? }
+
+    context 'when a JSON-LD script holds a supported article' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":"NewsArticle","headline":"x"}</script>')
+      end
+
+      it { expect(extractable?).to be true }
+    end
+
+    context 'when only unsupported JSON-LD is present' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":"Organization","name":"x"}</script>')
+      end
+
+      it { expect(extractable?).to be false }
+    end
+
+    context 'when a supported article sits in a non JSON-LD script' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/json">{"@type":"NewsArticle","headline":"x"}</script>')
+      end
+
+      it { expect(extractable?).to be false }
+    end
   end
 
   describe '.options_key' do
@@ -51,6 +102,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
 
   describe '.articles?(parsed_body)' do
     subject(:articles?) { described_class.articles?(parsed_body) }
+
+    context 'with an unsupported JSON-LD script followed by a supported one' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <script type="application/ld+json">{"@type":"Organization","name":"x"}</script>
+          <script type="application/ld+json">{"@type":"Article","headline":"y"}</script>
+        HTML
+      end
+
+      it { expect(articles?).to be true }
+    end
+
+    context 'with only unsupported JSON-LD scripts' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/ld+json">{"@type":"Organization","name":"x"}</script>')
+      end
+
+      it { expect(articles?).to be false }
+    end
 
     context 'with a NewsArticle' do
       let(:parsed_body) do
@@ -271,6 +341,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema do
     subject(:new) { described_class.new(parsed_body, url: '') }
 
     let(:parsed_body) { Nokogiri::HTML('') }
+
+    context 'with an article whose url is relative to the page url' do
+      subject(:new) { described_class.new(parsed_body, url: 'https://example.com/list') }
+
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <script type="application/ld+json">{"@type":"NewsArticle","headline":"Rel","url":"/story/9"}</script>
+        HTML
+      end
+
+      it 'resolves the article url against the page url' do
+        expect(new.first[:url].to_s).to eq('https://example.com/story/9')
+      end
+    end
+
+    context 'with a supported article in a non JSON-LD script' do
+      let(:parsed_body) do
+        Nokogiri::HTML('<script type="application/json">{"@type":"NewsArticle","headline":"Hidden"}</script>')
+      end
+
+      it 'does not emit it' do
+        expect(new.to_a).to eq([])
+      end
+    end
 
     context 'without a block' do
       it 'returns an enumerator' do
