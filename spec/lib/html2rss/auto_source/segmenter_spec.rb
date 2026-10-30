@@ -596,5 +596,161 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         expect(cluster_segments.call(html, permit_unanchored: true)).to be_empty
       end
     end
+
+    context 'when a class group sits exactly at the frequency floor' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="tile"><a href="/posts/alpha">Alpha tile headline for the first post</a></div>
+            <div class="tile"><a href="/posts/beta">Beta tile headline for the second post</a></div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'keeps the group at the floor and drops it below a higher floor', :aggregate_failures do
+        expect(cluster_segments.call(html, permit_unanchored: false).map { _1.primary_link.attrs.href })
+          .to eq(%w[/posts/alpha /posts/beta])
+        expect(cluster_segments.call(html, permit_unanchored: false, minimum_selector_frequency: 3)).to be_empty
+      end
+    end
+
+    context 'when classed blocks repeat with different child structures' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="tile"><a href="/posts/alpha">Alpha tile headline for the first post</a><p>Alpha summary text.</p></div>
+            <div class="tile"><p>Beta summary text first in the tile.</p><a href="/posts/beta">Beta tile headline for the second post</a></div>
+            <div class="tile"><span>Gamma detail words</span><a href="/posts/gamma">Gamma tile headline for the third post</a></div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'groups the blocks by class token rather than child structure', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/posts/alpha /posts/beta /posts/gamma])
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('tile'))
+      end
+    end
+
+    context 'when excluded chrome repeats the same class as content cards' do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <nav class="tile"><a href="/home">Home page link</a></nav>
+            <nav class="tile"><a href="/about">About page link</a></nav>
+            <nav class="tile"><a href="/contact">Contact page link</a></nav>
+            <main>
+              <div class="tile"><a href="/posts/alpha">Alpha tile headline for the first post</a></div>
+              <div class="tile"><a href="/posts/beta">Beta tile headline for the second post</a></div>
+            </main>
+          </body></html>
+        HTML
+      end
+
+      it 'keeps only the content cards in the cluster', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/posts/alpha /posts/beta])
+        expect(segments.map { _1.root_node.name }).to all(eq(:div))
+      end
+    end
+
+    context 'when a wrapper holds only one card of a layout group' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="row"><div class="cell"><a href="/posts/alpha">Alpha cell headline words</a></div> Extra row commentary words that make the wrapper heavier than its cell.</div>
+            <div class="row"><div class="cell"><a href="/posts/beta">Beta cell headline words</a></div> Extra row commentary words that make the wrapper heavier than its cell.</div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'does not treat the single-card wrapper as a container', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.size).to eq(2)
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('row'))
+      end
+    end
+
+    context 'when one wrapper holds two cards and another holds one' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <section class="block"><div class="card"><a href="/posts/alpha">Alpha card headline words for the first story in this block set</a></div><div class="card"><a href="/posts/beta">Beta card headline words for the second story in this block set</a></div> #{'Section commentary words here. ' * 5}</section>
+            <section class="block"><div class="card"><a href="/posts/gamma">Gamma card headline words for the third story in this block set</a></div> #{'Section commentary words here. ' * 5}</section>
+          </main></body></html>
+        HTML
+      end
+
+      it 'drops the wrapper that contains several cards', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card'))
+        expect(segments.map { _1.primary_link.attrs.href }).to eq(%w[/posts/alpha /posts/beta /posts/gamma])
+      end
+    end
+
+    context 'when a wrapper holds several non-layout chips' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="wrap"><span class="chip">Alpha chip label with eight words here</span><span class="chip">Beta chip label with eight words here</span> #{'Wrapper commentary words here. ' * 4}</div>
+            <div class="wrap"><span class="chip">Gamma chip label with eight words here</span><span class="chip">Delta chip label with eight words here</span> #{'Wrapper commentary words here. ' * 4}</div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'keeps the wrapper because chips are not layout containers', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: true)
+
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('wrap'))
+        expect(segments.size).to eq(2)
+      end
+    end
+
+    context 'when only some members of a group nest inside their partner group' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="frame"><div class="inner">Alpha inner words for the first frame story here</div></div>
+            <div class="frame"><div class="inner">Beta inner words for the second frame story here</div></div>
+            <div class="frame">Gamma frame words without any inner wrapper here</div>
+            <div class="inner">Gamma inner words stranded outside the frame</div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'keeps both groups when the pairing is not fully nested', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: true)
+
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('frame'))
+        expect(segments.size).to eq(3)
+      end
+    end
+
+    context 'when more class groups repeat than the overlap resolver caps' do
+      let(:filler_groups) do
+        Array.new(40) do |index|
+          %(<div class="s#{index}"><a href="/x/#{index}">Filler #{index} headline words for this group</a></div>) * 3
+        end.join
+      end
+      let(:html) do
+        <<~HTML
+          <html><body><main>#{filler_groups}
+            <div class="special"><a href="/posts/alpha">Alpha special headline for the pair</a><p>#{'Rich descriptive words repeat here. ' * 6}</p></div>
+            <div class="special"><a href="/posts/beta">Beta special headline for the pair</a><p>#{'Rich descriptive words repeat here. ' * 6}</p></div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'drops the smallest group when more than forty groups repeat', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.map { _1.root_node.attrs.class_names }.flatten).not_to include('special')
+        expect(segments.size).to eq(3)
+      end
+    end
   end
 end
