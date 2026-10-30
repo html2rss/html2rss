@@ -5,15 +5,13 @@ module Html2rss
     ##
     # Validate command: file/glob/stdin branching and multi-file reporting.
     module Validate
-      module_function
-
       ##
       # @param files [Array<String>]
       # @param params [Hash]
       # @param quiet [Boolean]
       # @return [void]
       # @raise [Thor::Error]
-      def run(files, params:, quiet:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def self.run(files, params:, quiet:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         if files.size == 2 && File.file?(files[0].to_s) && !File.exist?(files[1].to_s)
           raise Thor::Error, "No such file: #{files[1]}" if path_like_config?(files[1])
 
@@ -45,7 +43,7 @@ module Html2rss
       ##
       # @param files [Array<String>]
       # @return [Array<String>]
-      def resolve_files(files)
+      def self.resolve_files(files)
         return ['-'] if files.empty? || files == ['-']
 
         resolved = []

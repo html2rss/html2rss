@@ -129,265 +129,265 @@ module Html2rss
 
         # Extracts direct Microdata itemprop values for a single item root.
         module ItemParser
-          module_function
-
-          # @param root [Nokogiri::XML::Element] microdata root node
-          # @return [Hash{Symbol => Object}] extracted direct properties
-          def call(root)
-            {}.tap do |properties|
-              direct_properties(root).each { append_properties!(properties, _1) }
-            end
-          end
-
-          # @param properties [Hash{Symbol => Object}] accumulator hash for parsed properties
-          # @param node [Nokogiri::XML::Element] itemprop node
-          # @return [void]
-          def append_properties!(properties, node)
-            value = property_value(node)
-            return if blank_value?(value)
-
-            property_names(node).each do |name|
-              append(properties, name.to_sym, value)
-            end
-          end
-
-          # @param root [Nokogiri::XML::Element] microdata root node
-          # @return [Array<Nokogiri::XML::Element>] direct property nodes for the root
-          def direct_properties(root)
-            root.css('[itemprop]').select { direct_property?(root, _1) }
-          end
-
-          # @param root [Nokogiri::XML::Element] microdata root node
-          # @param node [Nokogiri::XML::Element] candidate itemprop node
-          # @return [Boolean] whether the node belongs directly to the current root item
-          def direct_property?(root, node)
-            return false if node == root
-
-            curr = node.parent
-            while curr && curr != root
-              return false if curr.attribute('itemscope')
-
-              curr = curr.parent
-            end
-            true
-          end
-
-          # @param node [Nokogiri::XML::Element] itemprop node
-          # @return [Array<String>] normalized property names
-          def property_names(node)
-            node['itemprop'].to_s.split.filter_map do |name|
-              stripped = name.strip
-              stripped unless stripped.empty?
-            end
-          end
-
-          # @param node [Nokogiri::XML::Element] itemprop node
-          # @return [Object, nil] parsed property value
-          def property_value(node)
-            value = if node.attribute('itemscope')
-                      nested_item(node)
-                    else
-                      attribute_value(node) || text_value(node)
-                    end
-
-            value unless blank_value?(value)
-          end
-
-          # @param node [Nokogiri::XML::Element] nested itemscope node
-          # @return [Hash{Symbol => Object}] nested parsed microdata item
-          def nested_item(node)
-            item = call(node)
-            itemtype = node['itemtype']
-            itemid = node['itemid']
-            item[:@type] = Microdata.itemtype_type_names(itemtype).first if itemtype
-            item[:@id] = itemid if present?(itemid)
-            item
-          end
-
-          # @param node [Nokogiri::XML::Element] itemprop node
-          # @return [String, nil] first present attribute value
-          def attribute_value(node)
-            VALUE_ATTRIBUTES.each do |attribute|
-              value = node[attribute]
-              return value if present?(value)
+          class << self
+            # @param root [Nokogiri::XML::Element] microdata root node
+            # @return [Hash{Symbol => Object}] extracted direct properties
+            def call(root)
+              {}.tap do |properties|
+                direct_properties(root).each { append_properties!(properties, _1) }
+              end
             end
 
-            nil
-          end
+            # @param properties [Hash{Symbol => Object}] accumulator hash for parsed properties
+            # @param node [Nokogiri::XML::Element] itemprop node
+            # @return [void]
+            def append_properties!(properties, node)
+              value = property_value(node)
+              return if blank_value?(value)
 
-          # @param node [Nokogiri::XML::Element] itemprop node
-          # @return [String, nil] normalized text content
-          def text_value(node)
-            value = node.text.to_s.strip
-            value unless value.empty?
-          end
-
-          # @param properties [Hash{Symbol => Object}] accumulator hash for parsed properties
-          # @param key [Symbol] target property key
-          # @param value [Object] parsed property value to assign for the key
-          # @return [void]
-          def append(properties, key, value)
-            return if blank_value?(value)
-
-            unless properties.key?(key)
-              properties[key] = value
-              return
+              property_names(node).each do |name|
+                append(properties, name.to_sym, value)
+              end
             end
 
-            properties[key] = Array(properties[key]) << value
-          end
-
-          # @param value [Object] candidate value
-          # @return [Boolean] whether value is blank for microdata extraction purposes
-          def blank_value?(value)
-            case value
-            when nil then true
-            when String then value.strip.empty?
-            when Array, Hash then value.empty?
-            else false
+            # @param root [Nokogiri::XML::Element] microdata root node
+            # @return [Array<Nokogiri::XML::Element>] direct property nodes for the root
+            def direct_properties(root)
+              root.css('[itemprop]').select { direct_property?(root, _1) }
             end
-          end
 
-          # @param value [Object] candidate value
-          # @return [Boolean] whether value is present for microdata extraction purposes
-          def present?(value)
-            !blank_value?(value)
+            # @param root [Nokogiri::XML::Element] microdata root node
+            # @param node [Nokogiri::XML::Element] candidate itemprop node
+            # @return [Boolean] whether the node belongs directly to the current root item
+            def direct_property?(root, node)
+              return false if node == root
+
+              curr = node.parent
+              while curr && curr != root
+                return false if curr.attribute('itemscope')
+
+                curr = curr.parent
+              end
+              true
+            end
+
+            # @param node [Nokogiri::XML::Element] itemprop node
+            # @return [Array<String>] normalized property names
+            def property_names(node)
+              node['itemprop'].to_s.split.filter_map do |name|
+                stripped = name.strip
+                stripped unless stripped.empty?
+              end
+            end
+
+            # @param node [Nokogiri::XML::Element] itemprop node
+            # @return [Object, nil] parsed property value
+            def property_value(node)
+              value = if node.attribute('itemscope')
+                        nested_item(node)
+                      else
+                        attribute_value(node) || text_value(node)
+                      end
+
+              value unless blank_value?(value)
+            end
+
+            # @param node [Nokogiri::XML::Element] nested itemscope node
+            # @return [Hash{Symbol => Object}] nested parsed microdata item
+            def nested_item(node)
+              item = call(node)
+              itemtype = node['itemtype']
+              itemid = node['itemid']
+              item[:@type] = Microdata.itemtype_type_names(itemtype).first if itemtype
+              item[:@id] = itemid if present?(itemid)
+              item
+            end
+
+            # @param node [Nokogiri::XML::Element] itemprop node
+            # @return [String, nil] first present attribute value
+            def attribute_value(node)
+              VALUE_ATTRIBUTES.each do |attribute|
+                value = node[attribute]
+                return value if present?(value)
+              end
+
+              nil
+            end
+
+            # @param node [Nokogiri::XML::Element] itemprop node
+            # @return [String, nil] normalized text content
+            def text_value(node)
+              value = node.text.to_s.strip
+              value unless value.empty?
+            end
+
+            # @param properties [Hash{Symbol => Object}] accumulator hash for parsed properties
+            # @param key [Symbol] target property key
+            # @param value [Object] parsed property value to assign for the key
+            # @return [void]
+            def append(properties, key, value)
+              return if blank_value?(value)
+
+              unless properties.key?(key)
+                properties[key] = value
+                return
+              end
+
+              properties[key] = Array(properties[key]) << value
+            end
+
+            # @param value [Object] candidate value
+            # @return [Boolean] whether value is blank for microdata extraction purposes
+            def blank_value?(value)
+              case value
+              when nil then true
+              when String then value.strip.empty?
+              when Array, Hash then value.empty?
+              else false
+              end
+            end
+
+            # @param value [Object] candidate value
+            # @return [Boolean] whether value is present for microdata extraction purposes
+            def present?(value)
+              !blank_value?(value)
+            end
           end
         end
         private_constant :ItemParser
 
         # Shared value normalization helpers for Microdata property conversion.
         module ValueNormalizer
-          module_function
+          class << self
+            # @param values [Array<Object>] value candidates
+            # @return [String, nil] first URL-like value converted to string
+            def url_value(*values)
+              values.each do |value|
+                candidate = extract_nested_value(value, :url, :@id)
+                return candidate.to_s if present?(candidate)
+              end
 
-          # @param values [Array<Object>] value candidates
-          # @return [String, nil] first URL-like value converted to string
-          def url_value(*values)
-            values.each do |value|
-              candidate = extract_nested_value(value, :url, :@id)
-              return candidate.to_s if present?(candidate)
+              nil
             end
 
-            nil
-          end
+            # @param values [Array<Object>] value candidates
+            # @return [String, Hash, nil] first normalized image candidate
+            def image_value(*values)
+              values.each do |value|
+                candidate = normalize_image(value)
+                return candidate if present?(candidate)
+              end
 
-          # @param values [Array<Object>] value candidates
-          # @return [String, Hash, nil] first normalized image candidate
-          def image_value(*values)
-            values.each do |value|
-              candidate = normalize_image(value)
-              return candidate if present?(candidate)
+              nil
             end
 
-            nil
-          end
+            # @param value [Object] image candidate value
+            # @return [String, Hash, nil] normalized image-like value
+            def normalize_image(value)
+              candidate = unwrap(value)
+              return unless present?(candidate)
 
-          # @param value [Object] image candidate value
-          # @return [String, Hash, nil] normalized image-like value
-          def normalize_image(value)
-            candidate = unwrap(value)
-            return unless present?(candidate)
+              return candidate if candidate.is_a?(String) || candidate.is_a?(Hash)
 
-            return candidate if candidate.is_a?(String) || candidate.is_a?(Hash)
-
-            candidate.to_s
-          end
-
-          # @param value [Object] about candidate value
-          # @return [Array<String, Hash>, nil] normalized about values
-          def normalize_about(value)
-            candidate = unwrap(value)
-            items = candidate.is_a?(Array) ? candidate : [candidate]
-            values = items.filter_map { normalize_about_item(_1) }
-            values unless values.empty?
-          end
-
-          # @param item [Object] single about item
-          # @return [String, Hash, nil] normalized about item
-          def normalize_about_item(item)
-            case item
-            when Hash
-              name = item[:name]
-              { name: name.to_s } if name
-            when String then item
-            end
-          end
-
-          # @param value [Object] scalar or array candidate
-          # @return [String, Array<String>, nil] normalized scalar or string array
-          def string_or_array(value)
-            candidate = unwrap(value)
-            return unless present?(candidate)
-
-            return stringify(candidate) unless candidate.is_a?(Array)
-
-            result = string_values(candidate)
-            result unless result.empty?
-          end
-
-          # @param values [Array<Object>] value candidates
-          # @return [Array<String>, nil] normalized unique string values
-          def array_value(*values)
-            result = values.flat_map { string_values(Array(unwrap(_1))) }.uniq
-            result unless result.empty?
-          end
-
-          # @param values [Array<Object>] candidate scalar values collected from microdata arrays
-          # @return [Array<String>] normalized string values
-          def string_values(values)
-            values.filter_map { stringify(_1) }
-          end
-
-          # @param values [Array<Object>] value candidates
-          # @return [String, nil] first present string-like value
-          def first_string(*values)
-            values.each do |value|
-              candidate = stringify(unwrap(value))
-              return candidate if present?(candidate)
+              candidate.to_s
             end
 
-            nil
-          end
-
-          # @param value [Object] nested container or scalar
-          # @param keys [Array<Symbol>] nested keys to probe in order
-          # @return [Object, nil] first matching nested value
-          def extract_nested_value(value, *keys)
-            candidate = unwrap(value)
-            return candidate unless candidate.is_a?(Hash)
-
-            keys.each do |key|
-              nested_value = candidate[key]
-              return nested_value if present?(nested_value)
+            # @param value [Object] about candidate value
+            # @return [Array<String, Hash>, nil] normalized about values
+            def normalize_about(value)
+              candidate = unwrap(value)
+              items = candidate.is_a?(Array) ? candidate : [candidate]
+              values = items.filter_map { normalize_about_item(_1) }
+              values unless values.empty?
             end
 
-            nil
-          end
+            # @param item [Object] single about item
+            # @return [String, Hash, nil] normalized about item
+            def normalize_about_item(item)
+              case item
+              when Hash
+                name = item[:name]
+                { name: name.to_s } if name
+              when String then item
+              end
+            end
 
-          # @param value [Object] scalar or array candidate
-          # @return [Object] first array element or the original value
-          def unwrap(value)
-            value.is_a?(Array) ? value.first : value
-          end
+            # @param value [Object] scalar or array candidate
+            # @return [String, Array<String>, nil] normalized scalar or string array
+            def string_or_array(value)
+              candidate = unwrap(value)
+              return unless present?(candidate)
 
-          # @param value [Object] scalar candidate normalized to string output
-          # @return [String, nil] normalized string representation
-          def stringify(value)
-            return unless present?(value)
-            return value if value.is_a?(String)
-            return if value.is_a?(Hash) || value.is_a?(Array)
+              return stringify(candidate) unless candidate.is_a?(Array)
 
-            value.to_s
-          end
+              result = string_values(candidate)
+              result unless result.empty?
+            end
 
-          # @param value [Object] candidate value
-          # @return [Boolean] whether value is present
-          def present?(value)
-            case value
-            when nil then false
-            when String then !value.strip.empty?
-            when Array, Hash then !value.empty?
-            else true
+            # @param values [Array<Object>] value candidates
+            # @return [Array<String>, nil] normalized unique string values
+            def array_value(*values)
+              result = values.flat_map { string_values(Array(unwrap(_1))) }.uniq
+              result unless result.empty?
+            end
+
+            # @param values [Array<Object>] candidate scalar values collected from microdata arrays
+            # @return [Array<String>] normalized string values
+            def string_values(values)
+              values.filter_map { stringify(_1) }
+            end
+
+            # @param values [Array<Object>] value candidates
+            # @return [String, nil] first present string-like value
+            def first_string(*values)
+              values.each do |value|
+                candidate = stringify(unwrap(value))
+                return candidate if present?(candidate)
+              end
+
+              nil
+            end
+
+            # @param value [Object] nested container or scalar
+            # @param keys [Array<Symbol>] nested keys to probe in order
+            # @return [Object, nil] first matching nested value
+            def extract_nested_value(value, *keys)
+              candidate = unwrap(value)
+              return candidate unless candidate.is_a?(Hash)
+
+              keys.each do |key|
+                nested_value = candidate[key]
+                return nested_value if present?(nested_value)
+              end
+
+              nil
+            end
+
+            # @param value [Object] scalar or array candidate
+            # @return [Object] first array element or the original value
+            def unwrap(value)
+              value.is_a?(Array) ? value.first : value
+            end
+
+            # @param value [Object] scalar candidate normalized to string output
+            # @return [String, nil] normalized string representation
+            def stringify(value)
+              return unless present?(value)
+              return value if value.is_a?(String)
+              return if value.is_a?(Hash) || value.is_a?(Array)
+
+              value.to_s
+            end
+
+            # @param value [Object] candidate value
+            # @return [Boolean] whether value is present
+            def present?(value)
+              case value
+              when nil then false
+              when String then !value.strip.empty?
+              when Array, Hash then !value.empty?
+              else true
+              end
             end
           end
         end
@@ -395,13 +395,9 @@ module Html2rss
 
         # Normalizes raw Microdata properties into the schema-like shape used downstream.
         module SchemaObjectBuilder
-          module_function
-
-          extend ValueNormalizer
-
           # @param root [Nokogiri::XML::Element] supported microdata root node
           # @return [Hash{Symbol => Object, nil}] compact schema-like object
-          def call(root)
+          def self.call(root)
             type = Microdata.supported_type_name(root)
             return unless type
 
@@ -412,7 +408,7 @@ module Html2rss
           # @param root [Nokogiri::XML::Element] supported microdata root node
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @return [Hash{Symbol => Object}] normalized schema-like object
-          def compact_object(type, root, properties)
+          def self.compact_object(type, root, properties)
             object = base_attributes(type, root, properties)
             merge_categories!(object, properties)
             object.compact
@@ -422,8 +418,8 @@ module Html2rss
           # @param root [Nokogiri::XML::Element] supported microdata root node
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @return [Hash{Symbol => Object}] base schema attributes before category merging
-          def base_attributes(type, root, properties)
-            identifier = first_string(root['itemid'], properties.delete(:identifier))
+          def self.base_attributes(type, root, properties)
+            identifier = ValueNormalizer.first_string(root['itemid'], properties.delete(:identifier))
 
             {
               '@type': type,
@@ -435,18 +431,19 @@ module Html2rss
 
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @return [String, nil] normalized title
-          def title(properties)
-            first_string(properties.delete(:headline), properties.delete(:title), properties.delete(:name))
+          def self.title(properties)
+            ValueNormalizer.first_string(properties.delete(:headline), properties.delete(:title),
+                                         properties.delete(:name))
           end
 
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @return [Hash{Symbol => Object}] normalized text attributes
-          def text_attributes(properties)
+          def self.text_attributes(properties)
             {
               title: title(properties),
-              description: first_string(properties.delete(:description)),
-              schema_object_body: first_string(properties.delete(:articleBody)),
-              abstract: first_string(properties.delete(:abstract)),
+              description: ValueNormalizer.first_string(properties.delete(:description)),
+              schema_object_body: ValueNormalizer.first_string(properties.delete(:articleBody)),
+              abstract: ValueNormalizer.first_string(properties.delete(:abstract)),
               datePublished: published_at(properties)
             }
           end
@@ -454,7 +451,7 @@ module Html2rss
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @param identifier [String, nil] identifier candidate for fallback URL handling
           # @return [Hash{Symbol => Object}] normalized link attributes
-          def link_attributes(properties, identifier)
+          def self.link_attributes(properties, identifier)
             {
               url: url(properties, identifier)
             }
@@ -462,17 +459,17 @@ module Html2rss
 
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @return [Hash{Symbol => Object}] normalized media attributes
-          def media_attributes(properties)
+          def self.media_attributes(properties)
             {
-              image: image_value(properties.delete(:image), properties.delete(:thumbnailUrl))
+              image: ValueNormalizer.image_value(properties.delete(:image), properties.delete(:thumbnailUrl))
             }
           end
 
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @param fallback_id [String, nil] identifier candidate for fallback URL handling
           # @return [String, nil] normalized URL candidate
-          def url(properties, fallback_id)
-            url_value(
+          def self.url(properties, fallback_id)
+            ValueNormalizer.url_value(
               properties.delete(:url),
               properties.delete(:mainEntityOfPage),
               url_fallback(fallback_id)
@@ -481,8 +478,8 @@ module Html2rss
 
           # @param fallback_id [String, nil] identifier candidate for fallback URL handling
           # @return [String, nil] fallback URL candidate when identifier looks URL-like
-          def url_fallback(fallback_id)
-            value = first_string(fallback_id)
+          def self.url_fallback(fallback_id)
+            value = ValueNormalizer.first_string(fallback_id)
             return unless value
             return value if value.start_with?('/')
             return value if value.match?(%r{\Ahttps?://})
@@ -492,8 +489,8 @@ module Html2rss
 
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @return [String, nil] normalized published-at value
-          def published_at(properties)
-            first_string(
+          def self.published_at(properties)
+            ValueNormalizer.first_string(
               properties.delete(:datePublished),
               properties.delete(:dateCreated),
               properties.delete(:dateModified),
@@ -504,19 +501,19 @@ module Html2rss
           # @param object [Hash{Symbol => Object}] schema-like output object
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
           # @return [void]
-          def merge_categories!(object, properties)
-            categories = array_value(properties.delete(:categories), properties.delete(:articleSection))
+          def self.merge_categories!(object, properties)
+            categories = ValueNormalizer.array_value(properties.delete(:categories), properties.delete(:articleSection))
             assign_if_present(object, :categories, categories)
-            assign_if_present(object, :keywords, string_or_array(properties.delete(:keywords)))
-            assign_if_present(object, :tags, string_or_array(properties.delete(:tags)))
-            assign_if_present(object, :about, normalize_about(properties.delete(:about)))
+            assign_if_present(object, :keywords, ValueNormalizer.string_or_array(properties.delete(:keywords)))
+            assign_if_present(object, :tags, ValueNormalizer.string_or_array(properties.delete(:tags)))
+            assign_if_present(object, :about, ValueNormalizer.normalize_about(properties.delete(:about)))
           end
 
           # @param object [Hash{Symbol => Object}] schema-like output object
           # @param key [Symbol] target attribute key
           # @param value [Object] value to assign when present
           # @return [void]
-          def assign_if_present(object, key, value)
+          def self.assign_if_present(object, key, value)
             object[key] = value if value
           end
         end

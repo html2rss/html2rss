@@ -7,12 +7,10 @@ module Html2rss
       # Class / structure clustering for anchorless pages
       # (port of Discovery::DomClustering + OverlapResolver; group scoring owned by Scoring::ClusterScorer).
       module Cluster
-        module_function
-
         ##
         # @param segmenter [Segmenter]
         # @return [Array<Segment>]
-        def call(segmenter)
+        def self.call(segmenter)
           primary = PrimaryLink.new(segmenter)
           nodes = best_group_nodes(segmenter)
           nodes.each_with_index.filter_map do |node, position|
@@ -23,7 +21,7 @@ module Html2rss
           end
         end
 
-        def best_group_nodes(segmenter)
+        def self.best_group_nodes(segmenter)
           groups = collect_groups(segmenter)
           return [] if groups.empty?
 
@@ -33,10 +31,9 @@ module Html2rss
           final_groups = resolver.filter_1_to_1_overlap(non_containers)
           scorer.select_best_group(final_groups)
         end
-        module_function :best_group_nodes
         private_class_method :best_group_nodes
 
-        def collect_groups(segmenter) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+        def self.collect_groups(segmenter) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
           class_groups = Hash.new { |hash, key| hash[key] = [] }
           structure_groups = Hash.new { |hash, key| hash[key] = [] }
           min = segmenter.minimum_selector_frequency
@@ -57,24 +54,21 @@ module Html2rss
 
           structure_groups.select { |_, nodes| nodes.size >= min }
         end
-        module_function :collect_groups
         private_class_method :collect_groups
 
-        def normalize_class(class_names)
+        def self.normalize_class(class_names)
           return '' if class_names.empty?
 
           class_names.map { ::Html2rss::Html::Probe.fold(_1) }.sort.join(' ')
         end
-        module_function :normalize_class
         private_class_method :normalize_class
 
-        def structure_signature(node)
+        def self.structure_signature(node)
           kids = node.children
           return '' if kids.empty?
 
           kids.map { |child| child.name.to_s }.join('>')
         end
-        module_function :structure_signature
         private_class_method :structure_signature
 
         ##
