@@ -456,6 +456,13 @@ RSpec.describe Html2rss::MCP::Outcome do
       expect(outcome.next_step.name).to eq(:inspect)
     end
 
+    it 'maps InvalidOption from the MCP edge to the default inspect step', :aggregate_failures do
+      outcome = described_class.from_error(Html2rss::InvalidOption.new('config must be a Hash, got String'))
+
+      expect(outcome.next_step.name).to eq(:inspect)
+      expect(outcome.payload).to eq(class: 'Html2rss::InvalidOption', message: 'config must be a Hash, got String')
+    end
+
     it 'maps other exceptions to inspect' do
       outcome = described_class.from_error(StandardError.new('boom'))
 
