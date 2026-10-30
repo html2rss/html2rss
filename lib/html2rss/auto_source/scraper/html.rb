@@ -34,8 +34,6 @@ module Html2rss
           return false unless parsed_body
 
           new(parsed_body, url: DETECTION_BASE_URL).extractable?
-        rescue ArgumentError
-          false
         end
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
@@ -68,8 +66,6 @@ module Html2rss
         # @return [Boolean]
         def extractable?
           ranked_segments.any?
-        rescue ArgumentError
-          false
         end
 
         private
@@ -83,8 +79,6 @@ module Html2rss
               materialize(ranked)
             end
           end
-        rescue ArgumentError
-          []
         end
 
         def ranked_segments
@@ -96,11 +90,11 @@ module Html2rss
         end
 
         def list_ranked
-          @list_ranked ||= rank_strategy(:list, permit_unanchored: false)
+          @list_ranked ||= document ? rank_strategy(:list, permit_unanchored: false) : []
         end
 
         def cluster_ranked
-          @cluster_ranked ||= rank_strategy(:cluster, permit_unanchored: true)
+          @cluster_ranked ||= document ? rank_strategy(:cluster, permit_unanchored: true) : []
         end
 
         def rank_strategy(strategy, permit_unanchored:)
@@ -131,7 +125,7 @@ module Html2rss
         end
 
         def document
-          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
+          @document ||= @provided_document || Scraper.normalize_sst(@parsed_body)
         end
 
         def minimum_selector_frequency = @opts[:minimum_selector_frequency] || DEFAULT_MINIMUM_SELECTOR_FREQUENCY
