@@ -94,7 +94,7 @@ RSpec.describe Html2rss::FeedResolution do
   it 'rejects a runner entry URL that is not absolute' do
     expect do
       described_class::Runner.new(entry_url: '/news', response:, session:, config:, articles: [])
-    end.to raise_error(ArgumentError, 'URL must be absolute')
+    end.to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
   end
 
   it 'allows omitting the runner surface category' do
@@ -223,10 +223,10 @@ RSpec.describe Html2rss::FeedResolution do
       log = StringIO.new
       Html2rss.logger = Logger.new(log)
       allow(described_class).to receive(:call).and_return(applied_resolution)
-      allow(retry_session).to receive(:fetch_initial_response).and_raise(RuntimeError)
+      allow(retry_session).to receive(:fetch_initial_response).and_raise(Html2rss::Error)
 
       expect(apply_outcome).to be_nil
-      expect(log.string).to include('feed_resolution.retry_failed', 'RuntimeError')
+      expect(log.string).to include('feed_resolution.retry_failed', 'Html2rss::Error')
     ensure
       Html2rss.reset_defaults!
     end

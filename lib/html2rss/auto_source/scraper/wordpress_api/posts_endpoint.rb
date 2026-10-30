@@ -54,7 +54,7 @@ module Html2rss
             return log_missing_api_root if href.empty?
 
             Html2rss::Url.from_relative(href, page_url)
-          rescue ArgumentError => error
+          rescue Html2rss::Url::InvalidUrlError => error
             logger.warn("#{WordpressApi}: invalid WordPress API endpoint #{href.inspect} (#{error.message})")
             nil
           end
@@ -110,13 +110,11 @@ module Html2rss
           def normalized_api_path(path)
             segments = path.to_s.split('/').reject(&:empty?)
             normalized_path = "/#{segments.join('/')}"
-            normalized_path = '/' if normalized_path == '/'
             normalized_path.end_with?('/') ? normalized_path : "#{normalized_path}/"
           end
 
           def normalized_rest_route(route)
             value = route.to_s
-            value = '/' if value.empty?
             value = "/#{value}" unless value.start_with?('/')
             trim_trailing_slashes(value)
           end

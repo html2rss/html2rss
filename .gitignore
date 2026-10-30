@@ -25,3 +25,8 @@ bin/rails
 .byebug_history
 .DS_Store
 
+
+# spec run output
+/index.yml
+/example.com/
+/example.com-*.html

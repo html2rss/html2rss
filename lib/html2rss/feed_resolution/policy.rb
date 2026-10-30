@@ -8,38 +8,36 @@ module Html2rss
       # Minimum admitted articles before the entry URL is considered strong enough.
       ARTICLE_FLOOR = 3
 
-      module_function
+      class << self
+        ##
+        # @param config [Html2rss::Config]
+        # @param articles [Array<Html2rss::Article>] typed extract results (count derived)
+        # @param surface_category [Html2rss::SurfaceCategory, Symbol]
+        # @return [Boolean]
+        def resolve?(config:, articles:, surface_category:)
+          raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
+          return false unless eligible_config?(config)
 
-      ##
-      # @param config [Html2rss::Config]
-      # @param articles [Array<Html2rss::Article>] typed extract results (count derived)
-      # @param surface_category [Html2rss::SurfaceCategory, Symbol]
-      # @return [Boolean]
-      def resolve?(config:, articles:, surface_category:)
-        raise ArgumentError, 'articles must be an Array' unless articles.is_a?(Array)
-        return false unless eligible_config?(config)
+          category = SurfaceCategory[surface_category]
+          return false if category.blocked?
 
-        category = SurfaceCategory[surface_category]
-        return false if category.blocked?
+          articles.size < ARTICLE_FLOOR || category.weak? || native_feed_majority?(articles)
+        end
 
-        articles.size < ARTICLE_FLOOR || category.weak? || native_feed_majority?(articles)
+        private
+
+        def eligible_config?(config)
+          return false unless config.auto_source
+          return false if config.selectors
+
+          Options.from_auto_source(config.auto_source).enabled?
+        end
+
+        def native_feed_majority?(articles)
+          native = articles.count { |article| article.scraper == AutoSource::Scraper::NativeFeed }
+          native * 2 >= articles.size
+        end
       end
-
-      def self.eligible_config?(config)
-        return false unless config.auto_source
-        return false if config.selectors
-
-        Options.from_auto_source(config.auto_source).enabled?
-      end
-      private_class_method :eligible_config?
-
-      def self.native_feed_majority?(articles)
-        return false if articles.empty?
-
-        native = articles.count { |article| article.scraper == AutoSource::Scraper::NativeFeed }
-        native * 2 >= articles.size
-      end
-      private_class_method :native_feed_majority?
     end
   end
 end

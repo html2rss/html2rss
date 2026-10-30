@@ -68,6 +68,45 @@ RSpec.describe Html2rss::RequestService::Context do
       end
     end
 
+    context 'with defaults only' do
+      it 'defaults to frozen empty headers and request, an initial relation and the default policy',
+         :aggregate_failures do
+        expect(instance).to have_attributes(headers: {}, request: {}, relation: :initial)
+        expect(instance.headers).to be_frozen
+        expect(instance.request).to be_frozen
+        expect(instance.policy).to be_a(Html2rss::RequestService::Policy)
+        expect(instance.budget).to equal(budget)
+      end
+
+      it 'uses the request url as its own origin' do
+        expect(instance.origin_url).to eq(instance.url)
+      end
+    end
+
+    context 'with a string origin url' do
+      subject(:instance) { described_class.new(url:, budget:, origin_url: 'http://origin.example.com') }
+
+      it 'normalizes it to an Html2rss::Url' do
+        expect(instance.origin_url).to be_a(Html2rss::Url).and have_attributes(host: 'origin.example.com')
+      end
+    end
+
+    context 'with an explicit relation' do
+      subject(:instance) { described_class.new(url:, budget:, relation: :pagination) }
+
+      it 'keeps the relation' do
+        expect(instance.relation).to eq(:pagination)
+      end
+    end
+
+    context 'with a request that has non-string keys' do
+      let(:request) { { 1 => 'x' } }
+
+      it 'names the request in the error' do
+        expect { instance }.to raise_error(ArgumentError, 'request must use string or symbol keys (found 1)')
+      end
+    end
+
     context 'when policy is explicitly nil' do
       subject(:instance) { described_class.new(url:, policy: nil, budget:) }
 

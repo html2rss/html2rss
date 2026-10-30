@@ -51,6 +51,23 @@ RSpec.describe Html2rss::CLI do
       allow(Html2rss).to receive(:apply).and_raise(Html2rss::NoFeedItemsExtracted.new(attempts: []))
       expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /No feed items extracted/)
     end
+
+    it 'raises Thor::Error for a fractional --max-requests instead of a stack trace', :aggregate_failures do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+
+      expect { cli.invoke(:apply, ['example.yml'], { max_requests: 2.5 }) }
+        .to raise_error(Thor::Error, /max_requests must be an Integer in 1\.\., got 2\.5/)
+      expect(Html2rss).not_to have_received(:apply)
+    end
+
+    it 'raises Thor::Error on malformed options and URLs instead of a stack trace', :aggregate_failures do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::InvalidOption, 'limit must be an Integer in 1.., got 0')
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /limit must be/)
+
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /must be absolute/)
+    end
   end
 
   describe '#inspect' do
@@ -256,6 +273,20 @@ RSpec.describe Html2rss::CLI do
       expect { cli.capture(nil) }.to raise_error(Thor::Error, /URL is required/)
     end
 
+    it 'raises Thor::Error for a fractional --max-requests instead of a stack trace' do
+      allow(Html2rss::Capture).to receive(:build).and_call_original
+
+      expect { cli.invoke(:capture, ['https://example.com'], { max_requests: 2.5 }) }
+        .to raise_error(Thor::Error, /max_requests must be an Integer in 1\.\., got 2\.5/)
+    end
+
+    it 'raises Thor::Error for a non-positive --limit instead of a stack trace' do
+      allow(Html2rss::Capture).to receive(:build).and_call_original
+
+      expect { cli.invoke(:capture, ['https://example.com'], { limit: 0 }) }
+        .to raise_error(Thor::Error, /limit must be an Integer in 1\.\., got 0/)
+    end
+
     it 'captures from local file via --input' do
       expect { cli.invoke(:capture, [nil], { input: 'spec/fixtures/page_1.html' }) }
         .to output(/channel:/).to_stdout
@@ -379,6 +410,14 @@ RSpec.describe Html2rss::CLI do
         expect { cli.invoke(:test, ['config.yml'], { xml: true }) }
           .to output(%r{<rss/>}).to_stdout
         expect(Html2rss).not_to have_received(:feed)
+      end
+
+      it 'reports an invalid --min-items as a Thor::Error instead of a stack trace' do
+        allow(Html2rss).to receive(:test).and_raise(Html2rss::InvalidOption,
+                                                    'min_items must be an Integer in 0.., got 2.5')
+
+        expect { cli.invoke(:test, ['config.yml'], { min_items: 2.5 }) }
+          .to raise_error(Thor::Error, /min_items must be an Integer/)
       end
 
       it 'forwards --min-items 0 to Html2rss.test' do # rubocop:disable RSpec/ExampleLength
@@ -556,6 +595,13 @@ RSpec.describe Html2rss::CLI do
 
       expect { cli.invoke(:scrape, ['https://example.com/news'], { keep_different_domain: true }) }
         .to output("#{rss_xml}\n").to_stdout
+    end
+
+    it 'raises Thor::Error for a fractional --limit instead of truncating it' do
+      allow(Html2rss).to receive(:scrape).and_call_original
+
+      expect { cli.invoke(:scrape, ['https://example.com/news'], { limit: 2.5 }) }
+        .to raise_error(Thor::Error, /limit must be an Integer in 1\.\., got 2\.5/)
     end
 
     it 'defaults --keep-different-domain to false and documents the trust tradeoff', :aggregate_failures do

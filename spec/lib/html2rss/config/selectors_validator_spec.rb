@@ -439,6 +439,243 @@ RSpec.describe Html2rss::Config::SelectorsValidator do
     end
   end
 
+  describe 'exact issue paths and messages' do
+    {
+      'items order outside reverse' => [
+        { items: { selector: 'x', order: 'bad' } },
+        [[%i[items order], 'must be one of: reverse']]
+      ],
+      'items without selector' => [{ items: { order: 'reverse' } }, [[%i[items selector], 'is missing']]],
+      'items enhance as string' => [
+        { items: { selector: 'x', enhance: 'yes' } },
+        [[%i[items enhance], 'must be boolean']]
+      ],
+      'items with valid enhance and order' => [{ items: { selector: 'x', order: 'reverse', enhance: true } }, []],
+      'pagination integer zero' => [
+        { items: { selector: 'x', pagination: 0 } },
+        [[%i[items pagination], 'integer must be greater than 0']]
+      ],
+      'pagination integer negative' => [
+        { items: { selector: 'x', pagination: -1 } },
+        [[%i[items pagination], 'integer must be greater than 0']]
+      ],
+      'pagination positive integer' => [{ items: { selector: 'x', pagination: 2 } }, []],
+      'pagination string' => [
+        { items: { selector: 'x', pagination: 'x' } },
+        [[%i[items pagination], 'must be an integer or a hash']]
+      ],
+      'pagination max_pages string' => [
+        { items: { selector: 'x', pagination: { max_pages: 'x' } } },
+        [[%i[items pagination], '`max_pages` must be an integer greater than 0']]
+      ],
+      'pagination max_pages nil' => [
+        { items: { selector: 'x', pagination: { max_pages: nil } } },
+        [[%i[items pagination], '`max_pages` must be an integer greater than 0']]
+      ],
+      'pagination max_pages negative' => [
+        { items: { selector: 'x', pagination: { max_pages: -1 } } },
+        [[%i[items pagination], '`max_pages` must be an integer greater than 0']]
+      ],
+      'pagination max_pages positive' => [{ items: { selector: 'x', pagination: { max_pages: 3 } } }, []],
+      'pagination unknown strategy' => [
+        { items: { selector: 'x', pagination: { strategy: 'zz' } } },
+        [[%i[items pagination],
+          '`strategy` must be one of: rel_next, custom_selector, url_template, offset, json_cursor']]
+      ],
+      'pagination unknown strategy with string key' => [
+        { items: { selector: 'x', pagination: { 'strategy' => 'zz' } } },
+        [[%i[items pagination],
+          '`strategy` must be one of: rel_next, custom_selector, url_template, offset, json_cursor']]
+      ],
+      'pagination nil strategy defaults to rel_next' => [
+        { items: { selector: 'x', pagination: { strategy: nil } } },
+        []
+      ],
+      'custom_selector without selector' => [
+        { items: { selector: 'x', pagination: { strategy: 'custom_selector' } } },
+        [[%i[items pagination], '`custom_selector` strategy requires `selector` to be specified']]
+      ],
+      'custom_selector with blank selector' => [
+        { items: { selector: 'x', pagination: { strategy: 'custom_selector', selector: ' ' } } },
+        [[%i[items pagination], '`custom_selector` strategy requires `selector` to be specified']]
+      ],
+      'custom_selector with selector' => [
+        { items: { selector: 'x', pagination: { strategy: 'custom_selector', selector: 'a' } } },
+        []
+      ],
+      'json_cursor without cursor fields' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor' } } },
+        [[%i[items pagination], '`json_cursor` strategy requires either `cursor_path` or `next_url_path`']]
+      ],
+      'json_cursor with blank cursor fields' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor', cursor_path: ' ', next_url_path: '' } } },
+        [[%i[items pagination], '`json_cursor` strategy requires either `cursor_path` or `next_url_path`']]
+      ],
+      'json_cursor with next_url_path' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor', next_url_path: 'a' } } },
+        []
+      ],
+      'selector as hash' => [{ title: { selector: {} } }, [[%i[title selector], '`selector` must be a string']]],
+      'blank selector string' => [{ title: { selector: '' } }, []],
+      'unknown extractor' => [
+        { title: { selector: 'h1', extractor: 'nope' } },
+        [[%i[title extractor], 'unknown extractor: nope']]
+      ],
+      'attribute extractor without attribute' => [
+        { title: { selector: '', extractor: 'attribute' } },
+        [[%i[title attribute], '`attribute` is required for extractor `attribute`']]
+      ],
+      'static extractor without static' => [
+        { title: { extractor: 'static' } },
+        [[%i[title static], '`static` is required for extractor `static`']]
+      ],
+      'post_process entry without name' => [
+        { title: { post_process: [{}] } },
+        [[%i[title post_process], 'Missing post_processor `name`']]
+      ],
+      'post_process with nil name' => [
+        { title: { post_process: [{ name: nil }] } },
+        [[%i[title post_process], 'Missing post_processor `name`']]
+      ],
+      'post_process unknown name' => [
+        { title: { post_process: [{ name: 'unknown' }] } },
+        [[%i[title post_process], 'Unknown post_processor `name`: unknown']]
+      ],
+      'post_process not an array' => [{ title: { post_process: 'x' } }, [[%i[title post_process], 'must be an array']]],
+      'post_process entry not a hash' => [
+        { title: { post_process: ['x'] } },
+        [[[:title, :post_process, 0], 'must be a hash']]
+      ],
+      'gsub nil pattern' => [
+        { title: { post_process: [{ name: 'gsub', pattern: nil, replacement: 'b' }] } },
+        [[%i[title pattern], '`pattern` must be a string']]
+      ],
+      'gsub integer pattern' => [
+        { title: { post_process: [{ name: 'gsub', pattern: 1, replacement: 'b' }] } },
+        [[%i[title pattern], '`pattern` must be a string']]
+      ],
+      'gsub invalid regexp' => [
+        { title: { post_process: [{ name: 'gsub', pattern: '[', replacement: 'b' }] } },
+        [[%i[title pattern], 'Premature end of pattern at [']]
+      ],
+      'gsub nested quantifiers' => [
+        { title: { post_process: [{ name: 'gsub', pattern: '(a+)+', replacement: 'x' }] } },
+        [[%i[title pattern], 'pattern contains nested quantifiers']]
+      ],
+      'gsub without replacement' => [
+        { title: { post_process: [{ name: 'gsub', pattern: 'a' }] } },
+        [[%i[title replacement], '`replacement` must be a string or a hash']]
+      ],
+      'gsub empty pattern' => [{ title: { post_process: [{ name: 'gsub', pattern: '', replacement: 'b' }] } }, []],
+      'non-gsub post_process with invalid regexp text' => [
+        { title: { post_process: [{ name: 'substring', start: 0, pattern: '[' }] } },
+        []
+      ],
+      'substring start as string' => [
+        { title: { post_process: [{ name: 'substring', start: '0' }] } },
+        [[%i[title start], '`start` must be an integer']]
+      ],
+      'substring without start' => [
+        { title: { post_process: [{ name: 'substring' }] } },
+        [[%i[title start], '`start` must be an integer']]
+      ],
+      'substring end as string' => [
+        { title: { post_process: [{ name: 'substring', start: 0, end: 'foo' }] } },
+        [[%i[title end], '`end` must be an integer or omitted']]
+      ],
+      'substring with integer end' => [{ title: { post_process: [{ name: 'substring', start: 0, end: 1 }] } }, []],
+      'template without string' => [
+        { title: { post_process: [{ name: 'template' }] } },
+        [[%i[title string], '`string` must be a string']]
+      ],
+      'enclosure content_type without subtype' => [
+        { enclosure: { selector: 'e', content_type: 'audio' } },
+        [[%i[enclosure content_type], 'is in invalid format']]
+      ],
+      'enclosure content_type audio/mp4' => [{ enclosure: { selector: 'e', content_type: 'audio/mp4' } }, []],
+      'guid not an array' => [{ guid: 'x' }, [[%i[guid], '`guid` must be an array']]],
+      'guid empty' => [{ guid: [] }, [[%i[guid], '`guid` must contain at least one element']]],
+      'guid references unspecified selector' => [
+        { guid: ['bar'] },
+        [[%i[guid], '`guid` references unspecified `bar`']]
+      ],
+      'guid with non-name element' => [
+        { guid: [1], foo: { selector: 'x' } },
+        [[%i[guid], '`guid` must contain only selector names']]
+      ],
+      'guid with symbol reference' => [{ guid: [:foo], foo: { selector: 'x' } }, []],
+      'non-hash config is not an error' => [[], []],
+      'categories as a string' => [{ categories: 'x' }, [[%i[categories], '`categories` must be an array']]],
+      'categories references unspecified selector' => [
+        { categories: ['bar'] },
+        [[%i[categories], '`categories` references unspecified `bar`']]
+      ],
+      'guid with one non-name element among names' => [
+        { guid: ['foo', 1], foo: { selector: 'x' } },
+        [[%i[guid], '`guid` must contain only selector names']]
+      ],
+      'guid string reference resolved by string key' => [{ guid: ['foo'], 'foo' => { selector: 'x' } }, []],
+      'guid reports every unspecified reference' => [
+        { guid: %w[bar baz] },
+        [[%i[guid], '`guid` references unspecified `bar`'], [%i[guid], '`guid` references unspecified `baz`']]
+      ],
+      'guid symbol reference resolved by string key' => [{ guid: [:foo], 'foo' => { selector: 'x' } }, []],
+      'string-keyed categories is validated as an array selector' => [
+        { 'categories' => 'x' },
+        [[['categories'], '`categories` must be an array']]
+      ],
+      'custom_selector with empty selector' => [
+        { items: { selector: 'x', pagination: { strategy: 'custom_selector', selector: '' } } },
+        [[%i[items pagination], '`custom_selector` strategy requires `selector` to be specified']]
+      ],
+      'json_cursor with whitespace-only next_url_path' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor', next_url_path: ' ' } } },
+        [[%i[items pagination], '`json_cursor` strategy requires either `cursor_path` or `next_url_path`']]
+      ],
+      'json_cursor with whitespace-only cursor_path' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor', cursor_path: ' ' } } },
+        [[%i[items pagination], '`json_cursor` strategy requires either `cursor_path` or `next_url_path`']]
+      ],
+      'json_cursor with only cursor_path' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor', cursor_path: 'a' } } },
+        []
+      ],
+      'json_cursor with blank cursor_path and next_url_path' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor', cursor_path: ' ', next_url_path: 'a' } } },
+        []
+      ],
+      'json_cursor with blank next_url_path only' => [
+        { items: { selector: 'x', pagination: { strategy: 'json_cursor', cursor_path: 'a', next_url_path: ' ' } } },
+        []
+      ],
+      'pagination offset without extra fields' => [
+        { items: { selector: 'x', pagination: { strategy: 'offset' } } },
+        []
+      ],
+      'pagination explicit rel_next' => [{ items: { selector: 'x', pagination: { strategy: 'rel_next' } } }, []],
+      'pagination zero max_pages with unknown strategy reports both' => [
+        { items: { selector: 'x', pagination: { max_pages: 0, strategy: 'zz' } } },
+        [[%i[items pagination], '`max_pages` must be an integer greater than 0'],
+         [%i[items pagination],
+          '`strategy` must be one of: rel_next, custom_selector, url_template, offset, json_cursor']]
+      ],
+      'non-gsub post_process ignores pattern' => [
+        { title: { post_process: [{ name: 'substring', start: 0, pattern: 1 }] } },
+        []
+      ]
+
+    }.each do |label, (config, expected)|
+      it "reports #{label}" do
+        expect(described_class.call(config).errors.map { [_1.path, _1.text] }).to eq(expected)
+      end
+    end
+
+    it 'exposes failure? as the inverse of success?', :aggregate_failures do
+      expect(described_class.call(items: { order: 'reverse' }).failure?).to be(true)
+      expect(described_class.call(items: { selector: 'x' }).failure?).to be(false)
+    end
+  end
+
   describe 'ValidationReport path preservation' do
     # rubocop:disable-next RSpec/ExampleLength
     it 'keeps nested leaf paths through Config.validate', :aggregate_failures do

@@ -115,11 +115,20 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       { label: 'possessive quantifier', pattern: 'a++', value: 'aaa', replacement: 'b', expected: 'b' },
       { label: 'plus inside a character class', pattern: '[a+]+', value: 'a+', replacement: 'x',
         expected: 'x' },
-      { label: 'overlapping alternation', pattern: '(a|aa)+', value: 'aaa', replacement: 'x', expected: 'x' }
+      { label: 'overlapping alternation', pattern: '(a|aa)+', value: 'aaa', replacement: 'x', expected: 'x' },
+      { label: 'quantifier inside a group', pattern: '(a+)b', value: 'aab', replacement: 'x', expected: 'x' }
     ].freeze
 
     it 'publishes a 256-character pattern cap' do
       expect(described_class::MAX_PATTERN_LENGTH).to eq(256)
+    end
+
+    it 'exports the gsub name, the pattern cap and the description', :aggregate_failures do
+      fragment = described_class.schema_export
+
+      expect(fragment.fetch(:properties).fetch(:name)).to eq(type: 'string', const: 'gsub')
+      expect(fragment.fetch(:properties).fetch(:pattern)).to eq(type: 'string', maxLength: 256)
+      expect(fragment.fetch(:description)).to eq(described_class::DESCRIPTION)
     end
 
     ordinary_patterns.each do |row|
@@ -130,7 +139,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       end
     end
 
-    %w[(a+)+ (a*)* (?:a+)+].each do |pattern|
+    %w[(a+)+ (a*)* (?:a+)+ (a+b)+ (x(a+))+].each do |pattern|
       it "rejects nested quantifiers in #{pattern}" do
         expect { described_class.compiled_pattern(pattern) }
           .to raise_error(ArgumentError, 'pattern contains nested quantifiers')
@@ -143,6 +152,17 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
           expect(error).not_to be_a(Regexp::Parser::Error)
         end
       end
+    end
+
+    it 're-raises the parser message as ArgumentError without a cause', :aggregate_failures do
+      expect { described_class.compiled_pattern('(') }
+        .to raise_error(ArgumentError, /\APremature end of pattern/) do |error|
+          expect(error.cause).to be_nil
+        end
+    end
+
+    it 'accepts String subclasses as patterns' do
+      expect(described_class.compiled_pattern(Class.new(String).new('a'))).to be_a(Regexp)
     end
 
     it 'rejects nested quantifiers before substitution' do
@@ -181,6 +201,26 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       expect(pattern.length).to be <= described_class::MAX_PATTERN_LENGTH
       expect(pattern.bytesize).to be > described_class::MAX_PATTERN_LENGTH
       expect(described_class.compiled_pattern(pattern)).to be_a(Regexp)
+    end
+
+    it 'strips slashes only when both ends of the pattern are slashes', :aggregate_failures do
+      expect('a//b'.gsub(described_class.compiled_pattern('//'), '-')).to eq('a-b')
+      expect('/a'.gsub(described_class.compiled_pattern('/a'), 'X')).to eq('X')
+      expect('a/'.gsub(described_class.compiled_pattern('a/'), 'X')).to eq('X')
+    end
+
+    it 'keeps a leading or trailing slash literal when the other end is missing', :aggregate_failures do
+      expect('/ab'.gsub(described_class.compiled_pattern('/ab'), 'X')).to eq('X')
+      expect('ab/'.gsub(described_class.compiled_pattern('ab/'), 'X')).to eq('X')
+    end
+
+    it 'strips exactly one pair of wrapping slashes', :aggregate_failures do
+      expect('a/b'.gsub(described_class.compiled_pattern('/\/b/'), 'X')).to eq('aX')
+      expect('x//'.gsub(described_class.compiled_pattern('//'), 'X')).to eq('xX')
+    end
+
+    it 'rejects a non-string pattern with the exact message' do
+      expect { described_class.compiled_pattern(1) }.to raise_error(ArgumentError, 'must be a string!')
     end
   end
 end

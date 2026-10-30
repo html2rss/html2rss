@@ -234,8 +234,6 @@ module Html2rss
         end
 
         def excluded_destination?(url)
-          return false unless url
-
           facts = LinkDestination::DestinationFacts.build(url)
           return true if facts.high_confidence_junk_path || facts.high_confidence_utility_destination
 
@@ -286,7 +284,7 @@ module Html2rss
         def item_url(item)
           raw = item.url
           raw.nil? || raw.to_s.empty? ? nil : Html2rss::Url.from_absolute(raw.to_s)
-        rescue ArgumentError
+        rescue Html2rss::Url::InvalidUrlError
           nil
         end
 

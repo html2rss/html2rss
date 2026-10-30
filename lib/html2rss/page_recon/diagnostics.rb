@@ -34,14 +34,12 @@ module Html2rss
       JS_SHELL_MIN_BODY_BYTES = 8_192
       private_constant :JS_SHELL_MIN_BODY_BYTES
 
-      module_function
-
       ##
       # @param url [String]
       # @param strategy [String, Symbol]
       # @param deep [Boolean] when true and strategy is auto, one Botasaurus hop if configured
       # @return [Report]
-      def call(url:, strategy: :auto, deep: false)
+      def self.call(url:, strategy: :auto, deep: false)
         probe = PageRecon.probe(url, strategy: resolve_inspect_strategy(strategy, deep:))
         recon = probe.result
         response = probe.response
@@ -56,10 +54,10 @@ module Html2rss
       # @param strategy [Symbol, String]
       # @param concurrency [Integer]
       # @return [Array<Report>]
-      def batch(urls:, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY)
+      def self.batch(urls:, strategy: :auto, concurrency: Batch::DEFAULT_CONCURRENCY)
         Batch.map(Array(urls), concurrency:) do |url|
           call(url:, strategy:)
-        rescue StandardError => error
+        rescue Html2rss::Error => error
           error_report(url, error)
         end
       end
@@ -67,7 +65,7 @@ module Html2rss
       ##
       # @param response [Html2rss::RequestService::Response]
       # @return [Hash] redacted XHR capture diagnostics (no query strings)
-      def xhr_capture_info(response)
+      def self.xhr_capture_info(response)
         captured = response.captured_responses
         {
           count: captured.size,
@@ -79,7 +77,7 @@ module Html2rss
       ##
       # @param entry [Hash] captured response hash
       # @return [String, nil] scheme+host+path only
-      def redacted_endpoint(entry)
+      def self.redacted_endpoint(entry)
         raw = entry['url'] || entry[:url]
         return unless raw
 
@@ -94,7 +92,7 @@ module Html2rss
       ##
       # @param entry [Hash] captured response hash
       # @return [Boolean]
-      def xhr_candidate_articles?(entry)
+      def self.xhr_candidate_articles?(entry)
         body = entry['body'] || entry[:body]
         return false unless body.is_a?(String)
 
@@ -107,7 +105,7 @@ module Html2rss
       ##
       # @param parsed [Object] parsed response body
       # @return [Array<String>, Hash]
-      def scraper_info(parsed)
+      def self.scraper_info(parsed)
         return { error: 'Response is not HTML' } unless parsed.is_a?(Nokogiri::HTML::Document)
 
         begin

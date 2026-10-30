@@ -132,7 +132,7 @@ module Html2rss
 
       field = @compiled_fields[name]
       return select_compiled(field, scope) if field
-      return select_field(name, scope:, config: nil) if name == :url
+      return select_field(name, scope:) if name == :url
 
       raise InvalidSelectorName, "Selector for '#{name}' is not defined."
     end
@@ -225,15 +225,11 @@ module Html2rss
       value.is_a?(Array) ? value : [value]
     end
 
-    def select_field(selector_key, scope:, config:)
-      return default_item_url(scope.item, scope.base_url) if fallback_url_selector?(selector_key, config, scope.item)
-      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined." if config.nil?
+    # Only reached for +:url+ without a configured selector, so the item must be an anchor.
+    def select_field(selector_key, scope:)
+      return default_item_url(scope.item, scope.base_url) if anchor_element?(scope.item)
 
-      if SPECIAL_ATTRIBUTES.member?(selector_key)
-        select_special(selector_key, scope:, config:)
-      else
-        select_regular(selector_key, scope:, config:)
-      end
+      raise InvalidSelectorName, "Selector for '#{selector_key}' is not defined."
     end
 
     def select_compiled(field, scope)
@@ -375,15 +371,8 @@ module Html2rss
     end
 
     def extract_category_text(category)
-      text = case category
-             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
-               Html2rss::Html::Navigator.extract_visible_text(category)
-             else
-               category&.to_s
-             end
-
-      stripped = text&.strip
-      stripped unless stripped.nil? || stripped.empty?
+      stripped = category.to_s.strip
+      stripped unless stripped.empty?
     end
 
     def node_set_with_multiple_elements?(nodes)

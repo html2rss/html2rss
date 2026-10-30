@@ -50,7 +50,6 @@ module Html2rss
         return unless parsed_html
 
         url = Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).first
-        return unless url
         return unless eligible_url?(url)
 
         url
@@ -86,14 +85,14 @@ module Html2rss
         return [] unless parsed_html
 
         sst = SST::Normalizer.call(parsed_html)
+        return [] unless sst
+
         link_resolver = Scoring::LinkResolver.new(entry_url)
 
         SEGMENT_STRATEGIES.each do |strategy|
           urls = segment_urls_for(sst, strategy, link_resolver)
           return urls if urls.size >= 2
         end
-        []
-      rescue StandardError
         []
       end
 
@@ -120,7 +119,7 @@ module Html2rss
         return if href.nil? || href.empty? || href.start_with?('#', 'mailto:', 'javascript:')
 
         Html2rss::Url.from_relative(href, entry_url)
-      rescue ArgumentError
+      rescue Html2rss::Url::InvalidUrlError
         nil
       end
 

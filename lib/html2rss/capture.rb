@@ -147,7 +147,6 @@ module Html2rss
 
       CaptureResult.new(
         config:,
-        yaml: "#{SCHEMA_MODELINE}\n#{Config.to_yaml(config)}",
         articles_count: outcome.articles.size,
         channel_title: ch_title,
         has_selectors: !selectors.empty?,
@@ -181,7 +180,7 @@ module Html2rss
         parsed_body: (response.parsed_body if response.html_response?),
         html: response.body
       )&.to_s
-    rescue StandardError
+    rescue Html2rss::Error
       nil
     end
 
@@ -270,9 +269,6 @@ module Html2rss
       return [*default_selectors, SelectorCandidates.empty] unless sst
 
       select_enhance_selectors(sst, articles)
-    rescue ArgumentError => error
-      Log.warn("Capture selector derivation failed: #{error.message}")
-      [*default_selectors, SelectorCandidates.empty]
     end
 
     def hint_selectors
@@ -338,22 +334,13 @@ module Html2rss
       end
     end
 
-    def find_matching_article(segment, articles_by_url) # rubocop:disable Metrics/AbcSize
-      href = segment.primary_link.attrs.href.to_s
-      return articles_by_url.values.find { |a| a.title == title_from_segment(segment) } if href.empty?
-
-      resolved = Url.from_relative(href, @url)
+    def find_matching_article(segment, articles_by_url)
+      resolved = Url.from_relative(segment.primary_link.attrs.href.to_s, @url)
       articles_by_url[resolved.to_s] || articles_by_url.values.find { |a| fuzzy_url_match?(a.url, resolved) }
     end
 
     def fuzzy_url_match?(article_url, resolved)
       article_url.to_s.end_with?(resolved.path.to_s)
-    rescue StandardError
-      false
-    end
-
-    def title_from_segment(segment)
-      segment.root_node.visible_text.to_s.strip
     end
 
     def lift_heading_link_roots(roots)
@@ -420,12 +407,7 @@ module Html2rss
     end
 
     def path_items_selector(roots)
-      paths = roots.map(&:tag_path)
-      common = common_path_prefix(paths)
-      tag_path = common.empty? ? paths.first.to_s : common
-      return if tag_path.empty?
-
-      css_from_trimmed_tag_path(tag_path)
+      css_from_trimmed_tag_path(common_path_prefix(roots.map(&:tag_path)))
     end
 
     def css_from_trimmed_tag_path(tag_path)
@@ -443,9 +425,7 @@ module Html2rss
       trimmed.empty? ? [segments.last] : trimmed
     end
 
-    def common_path_prefix(paths) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-      return '' if paths.empty?
-
+    def common_path_prefix(paths)
       segments = paths.map { |p| p.split('/').reject(&:empty?) }
       prefix = segments.first
       segments.each do |seg|
@@ -466,7 +446,7 @@ module Html2rss
 
     def channel_title_from(response)
       Channel.from_response(response).title
-    rescue StandardError
+    rescue Html2rss::Error
       nil
     end
 
@@ -486,7 +466,7 @@ module Html2rss
       return final unless Url.from_absolute(@url).same_document?(Url.from_absolute(final))
 
       nil
-    rescue ArgumentError
+    rescue Html2rss::Url::InvalidUrlError
       nil
     end
   end

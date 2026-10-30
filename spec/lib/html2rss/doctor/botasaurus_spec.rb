@@ -94,7 +94,7 @@ RSpec.describe Html2rss::Doctor::Botasaurus do
       stub_request(:get, 'http://127.0.0.1:4010/health')
         .to_return(status: 200, body: '{"version":"1.2.3"}', headers: { 'Content-Type' => 'application/json' })
       allow(Html2rss::PageRecon::Diagnostics).to receive(:call)
-        .and_raise(StandardError, 'scrape timeout')
+        .and_raise(Html2rss::Error, 'scrape timeout')
 
       ClimateControl.modify(BOTASAURUS_SCRAPER_URL: 'http://127.0.0.1:4010') do
         result = described_class.call(sample_url: 'https://example.com')

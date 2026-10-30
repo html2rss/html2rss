@@ -8,15 +8,11 @@ module Html2rss
     # Typed +auto_source.entry_resolution+ options (one expansion from config Hash).
     class Options
       ##
-      # @param auto_source [Hash, nil]
+      # @param auto_source [Hash, nil] validated +auto_source+ config
       # @return [Options]
       def self.from_auto_source(auto_source)
-        raw = auto_source[:entry_resolution] if auto_source.is_a?(Hash)
-        raw = {} unless raw.is_a?(Hash)
-        new(
-          enabled: raw[:enabled] != false,
-          max_probes: Integer(raw.fetch(:max_probes, DEFAULT_CONFIG[:max_probes]))
-        )
+        raw = auto_source&.dig(:entry_resolution) || {}
+        new(enabled: raw.fetch(:enabled, true), max_probes: raw.fetch(:max_probes, DEFAULT_CONFIG[:max_probes]))
       end
 
       ##

@@ -47,13 +47,13 @@ module Html2rss
                      allow_private_networks: DEFAULTS[:allow_private_networks],
                      allow_cross_origin_followups: DEFAULTS[:allow_cross_origin_followups],
                      resolver: Socket)
-        @connect_timeout_seconds = validate_positive_integer!(:connect_timeout_seconds, connect_timeout_seconds)
-        @read_timeout_seconds = validate_positive_integer!(:read_timeout_seconds, read_timeout_seconds)
-        @total_timeout_seconds = validate_positive_integer!(:total_timeout_seconds, total_timeout_seconds)
-        @max_redirects = validate_non_negative_integer!(:max_redirects, max_redirects)
-        @max_response_bytes = validate_positive_integer!(:max_response_bytes, max_response_bytes)
-        @max_decompressed_bytes = validate_positive_integer!(:max_decompressed_bytes, max_decompressed_bytes)
-        @max_requests = [validate_positive_integer!(:max_requests, max_requests), MAX_REQUESTS_CEILING].min
+        @connect_timeout_seconds = Option.integer(:connect_timeout_seconds, connect_timeout_seconds, min: 1)
+        @read_timeout_seconds = Option.integer(:read_timeout_seconds, read_timeout_seconds, min: 1)
+        @total_timeout_seconds = Option.integer(:total_timeout_seconds, total_timeout_seconds, min: 1)
+        @max_redirects = Option.integer(:max_redirects, max_redirects, min: 0)
+        @max_response_bytes = Option.integer(:max_response_bytes, max_response_bytes, min: 1)
+        @max_decompressed_bytes = Option.integer(:max_decompressed_bytes, max_decompressed_bytes, min: 1)
+        @max_requests = [Option.integer(:max_requests, max_requests, min: 1), MAX_REQUESTS_CEILING].min
         @allow_private_networks = allow_private_networks ? true : false
         @allow_cross_origin_followups = allow_cross_origin_followups ? true : false
         @network_guard = NetworkGuard.new(allow_private_networks: @allow_private_networks, resolver:)
@@ -135,18 +135,6 @@ module Html2rss
 
       attr_reader :network_guard
 
-      def validate_positive_integer!(name, value)
-        raise ArgumentError, "#{name} must be positive" unless value.is_a?(Integer) && value.positive?
-
-        value
-      end
-
-      def validate_non_negative_integer!(name, value)
-        raise ArgumentError, "#{name} must be non-negative" unless value.is_a?(Integer) && !value.negative?
-
-        value
-      end
-
       def enforce_same_origin!(url, origin_url, relation)
         return if relation == :initial || allow_cross_origin_followups?
 
@@ -163,13 +151,7 @@ module Html2rss
       end
 
       def comparable_origin(url)
-        [url.host, normalized_port(url)]
-      end
-
-      def normalized_port(url)
-        return url.port if url.port
-
-        url.scheme == 'https' ? 443 : 80
+        [url.scheme, url.host, url.port]
       end
     end
 

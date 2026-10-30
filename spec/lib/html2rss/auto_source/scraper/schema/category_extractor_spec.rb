@@ -20,6 +20,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::CategoryExtractor do
       end
     end
 
+    context 'when schema object has non-string field values' do
+      let(:schema_object) { { keywords: [1, 2.5], categories: [:news] } }
+
+      it 'stringifies each field item' do
+        expect(categories).to contain_exactly('1', '2.5', 'news')
+      end
+    end
+
+    context 'when an array field holds delimited strings' do
+      let(:schema_object) { { keywords: ['Politics, Europe', 'World'] } }
+
+      it 'splits each element' do
+        expect(categories).to contain_exactly('Politics', 'Europe', 'World')
+      end
+    end
+
+    context 'when about hashes lack a name' do
+      let(:schema_object) { { about: [{ url: 'https://example.com' }, { name: nil }, { name: 'Health' }] } }
+
+      it 'skips nameless about entries without raising' do
+        expect(categories).to contain_exactly('Health')
+      end
+    end
+
     context 'when schema object has articleSection' do
       let(:schema_object) { { articleSection: 'World News' } }
 

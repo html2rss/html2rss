@@ -37,7 +37,7 @@ module Html2rss
           item_maker.title = article.title
           item_maker.author = article.author
           description = ItemPresentation.description_for(article)
-          item_maker.description = description if description && !description.empty?
+          item_maker.description = description if description
           item_maker.link = article.url.to_s if article.url
           item_maker.pubDate = article.published_at&.rfc2822
         end

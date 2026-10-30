@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe '.options_key' do
     specify { expect(described_class.options_key).to eq(:semantic_html) }
@@ -19,6 +21,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     it 'returns false when there are no extractable articles' do
       expect(described_class.articles?(nil)).to be false
     end
+
+    it 'returns false for a parsed document without semantic containers' do
+      expect(described_class.articles?(Nokogiri::HTML(''))).to be false
+    end
+  end
+
+  describe '.request_slots' do
+    it 'reserves no request slots regardless of options', :aggregate_failures do
+      expect(described_class.request_slots).to eq(0)
+      expect(described_class.request_slots(max_pages: 3)).to eq(0)
+    end
+  end
+
+  describe 'with an empty document' do
+    let(:parsed_body) { Nokogiri::HTML('') }
+
+    it 'is not extractable and yields no articles', :aggregate_failures do
+      expect(described_class.articles?(parsed_body)).to be false
+      expect(described_class.new(parsed_body, url: 'https://example.com').to_a).to eq([])
+    end
   end
 
   describe '#initialize' do
@@ -30,6 +52,100 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
     it 'is constructible without raising' do
       expect { described_class.new(parsed_body, url: 'https://example.com') }.not_to raise_error
+    end
+
+    it 'drops anchorless containers unless fallback_anchorless is requested' do
+      anchorless = Nokogiri::HTML.parse <<~HTML
+        <html><body><article><h2>No Link Article</h2><p>Description text</p></article></body></html>
+      HTML
+
+      expect(described_class.new(anchorless, url: 'https://example.com').to_a).to eq([])
+    end
+
+    context 'with a relative story link and a provided document or link resolver' do
+      let(:story_html) do
+        <<~HTML
+          <html><body><article><h2><a href="/news/relative">Relative story</a></h2>
+          <p>Useful context paragraph for readers this week.</p></article></body></html>
+        HTML
+      end
+      let(:provided_document) { Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(story_html)) }
+
+      it 'resolves relative links against the given url' do
+        articles = described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://page.example/').to_a
+
+        expect(articles.map { _1.url.to_s }).to eq(['https://page.example/news/relative'])
+      end
+
+      it 'uses a provided SST document even without a parsed body' do
+        articles = described_class.new(nil, url: 'https://example.com', document: provided_document).to_a
+
+        expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/relative'])
+      end
+
+      it 'uses a provided link resolver' do
+        resolver = Html2rss::Scoring::LinkResolver.new('https://example.com')
+        allow(resolver).to receive(:destination_facts).and_call_original
+
+        described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.com', link_resolver: resolver).to_a
+
+        expect(resolver).to have_received(:destination_facts).at_least(:once)
+      end
+    end
+  end
+
+  describe '#document' do
+    let(:provided_document) do
+      Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(<<~HTML))
+        <html><body><article><h2><a href="/news/provided">Provided story</a></h2>
+        <p>Useful context paragraph for readers this week.</p></article></body></html>
+      HTML
+    end
+
+    it 'uses the provided SST document instead of normalizing the body' do
+      articles = described_class.new(nil, url: 'https://example.com', document: provided_document).to_a
+
+      expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/provided'])
+    end
+
+    it 'normalizes the parsed body when no document is provided' do
+      parsed_body = Nokogiri::HTML.parse(<<~HTML)
+        <html><body><article><h2><a href="/news/parsed">Parsed story</a></h2>
+        <p>Useful context paragraph for readers this week.</p></article></body></html>
+      HTML
+
+      articles = described_class.new(parsed_body, url: 'https://example.com').to_a
+
+      expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/parsed'])
+    end
+  end
+
+  describe '#articles' do
+    let(:parsed_body) do
+      Nokogiri::HTML.parse <<~HTML
+        <html><body><article><h2><a href="/news/tagged">Tagged story</a></h2>
+        <p>Useful context paragraph for readers this week.</p></article></body></html>
+      HTML
+    end
+
+    it 'stamps each article with the semantic scraper class', :aggregate_failures do
+      articles = described_class.new(parsed_body, url: 'https://example.com').to_a
+
+      expect(articles).not_to be_empty
+      expect(articles.map(&:scraper).uniq).to eq([described_class])
+    end
+
+    it 'collapses containers that point at the same destination' do
+      duplicated = Nokogiri::HTML.parse <<~HTML
+        <html><body>
+          <article><h2><a href="/news/dup">Duplicate story</a></h2><p>Useful context paragraph for readers.</p></article>
+          <article><h2><a href="/news/dup">Duplicate story</a></h2></article>
+        </body></html>
+      HTML
+
+      articles = described_class.new(duplicated, url: 'https://example.com').to_a
+
+      expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/dup'])
     end
   end
 
@@ -109,3 +225,5 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

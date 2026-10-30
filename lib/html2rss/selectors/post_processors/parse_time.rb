@@ -67,11 +67,10 @@ module Html2rss
         def self.validate_args!(_value, context)
           time_zone_value = context.time_zone
 
-          if time_zone_value.nil? || time_zone_value.empty?
-            raise ArgumentError, 'time_zone cannot be nil or empty', [], cause: nil
-          end
+          raise ArgumentError, 'time_zone cannot be nil or empty', [], cause: nil if time_zone_value.nil?
 
           assert_type(time_zone_value, String, :time_zone, context:)
+          raise ArgumentError, 'time_zone cannot be nil or empty', [], cause: nil if time_zone_value.empty?
         end
 
         ##
@@ -89,7 +88,7 @@ module Html2rss
         private
 
         def parse_time(string, time_zone)
-          components = Date._parse(string, false)
+          components = Date._parse(string)
           if components[:zone] || components.key?(:offset)
             Time.parse(string)
           else
@@ -104,7 +103,7 @@ module Html2rss
             components[:mday],
             components[:hour] || 0,
             components[:min] || 0,
-            (components[:sec] || 0) + (components[:sec_fraction] || 0)
+            components[:sec] || 0
           )
         end
       end

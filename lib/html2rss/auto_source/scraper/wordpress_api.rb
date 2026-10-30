@@ -132,8 +132,8 @@ module Html2rss
           absolute_link(post[:link])
         end
 
-        def article_id(_post, article_url)
-          root_path_query_id(article_url) || present_string(article_url.path) || article_url.to_s
+        def article_id(article_url)
+          root_path_query_id(article_url) || present_string(article_url.path)
         end
 
         def article_title(post)
@@ -154,7 +154,7 @@ module Html2rss
 
         def article_attributes(post, article_url)
           {
-            id: article_id(post, article_url),
+            id: article_id(article_url),
             title: article_title(post),
             description: article_description(post),
             url: article_url,
@@ -168,7 +168,7 @@ module Html2rss
           return unless value
 
           Html2rss::Url.from_relative(value, url)
-        rescue ArgumentError
+        rescue Html2rss::Url::InvalidUrlError
           nil
         end
 

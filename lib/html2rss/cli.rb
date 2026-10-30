@@ -114,24 +114,26 @@ module Html2rss
     method_option :explain, type: :boolean, desc: 'Print capture diagnostics to stderr', default: false
     # @param target [String, nil] URL or local HTML file
     # @return [void]
-    def capture(target = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity
+    def capture(target = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       strategy, local_file_path, url = prepare_auto_inputs(target, options[:input])
       topics = options[:topics]&.split(',')&.map(&:strip)
 
-      result = Html2rss::Capture.build(
-        url,
-        strategy:,
-        items_selector: options[:items_selector],
-        topics:,
-        title: options[:title],
-        summary: options[:summary],
-        force: options[:force],
-        enhance: options[:enhance],
-        limit: options[:limit]&.to_i,
-        max_redirects: options[:max_redirects],
-        max_requests: options[:max_requests],
-        local_file_path:
-      )
+      result = execute_feed do
+        Html2rss::Capture.build(
+          url,
+          strategy:,
+          items_selector: options[:items_selector],
+          topics:,
+          title: options[:title],
+          summary: options[:summary],
+          force: options[:force],
+          enhance: options[:enhance],
+          limit: options[:limit],
+          max_redirects: options[:max_redirects],
+          max_requests: options[:max_requests],
+          local_file_path:
+        )
+      end
 
       if result.native_feed? && !options[:force]
         $stderr.puts "First-party RSS/Atom feed detected at #{result.native_feed}. Use --force to capture anyway." # rubocop:disable Style/StderrPuts
@@ -158,15 +160,17 @@ module Html2rss
     # @return [void]
     def test(config_input = nil, feed_name = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       raw_content, input_source = read_config_input(config_input)
-      result = Html2rss.test(
-        raw_content,
-        feed_name,
-        min_items: options.fetch(:min_items, 1).to_i,
-        params: options[:params] || {},
-        strategy: options[:strategy],
-        strict_quality: options.fetch(:strict_quality, false),
-        compare_enhance: options.fetch(:compare_enhance, false)
-      )
+      result = execute_feed do
+        Html2rss.test(
+          raw_content,
+          feed_name,
+          min_items: options.fetch(:min_items, 1),
+          params: options[:params] || {},
+          strategy: options[:strategy],
+          strict_quality: options.fetch(:strict_quality, false),
+          compare_enhance: options.fetch(:compare_enhance, false)
+        )
+      end
 
       if options[:json]
         puts JSON.pretty_generate(result.to_h)
@@ -202,7 +206,7 @@ module Html2rss
                  Config.from_yaml(raw_content)
                end
       config[:params] = options[:params] || {}
-      apply_runtime_request_overrides!(config)
+      execute_feed { apply_runtime_request_overrides!(config) }
       apply_local_file_input!(config, options[:input]) if options[:input]
 
       run_feed_command { Html2rss.apply(config) }
@@ -421,7 +425,9 @@ module Html2rss
            Html2rss::RequestService::BotasaurusConnectionFailed,
            Html2rss::RequestService::BotasaurusServiceError,
            Html2rss::RequestService::BlockedSurfaceDetected,
-           Html2rss::NoFeedItemsExtracted => error
+           Html2rss::NoFeedItemsExtracted,
+           Html2rss::InvalidOption,
+           Html2rss::Url::InvalidUrlError => error
       raise Thor::Error, error.message
     end
 
@@ -433,7 +439,7 @@ module Html2rss
         max_redirects: options[:max_redirects],
         max_requests: options[:max_requests],
         local_file_path:,
-        limit: options[:limit]&.to_i,
+        limit: options[:limit],
         keep_different_domain: options[:keep_different_domain]
       )
     end

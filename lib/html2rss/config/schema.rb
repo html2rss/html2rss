@@ -7,8 +7,6 @@ module Html2rss
     ##
     # JSON export adapter from the runtime validators to the packaged schema artifact.
     module Schema
-      module_function
-
       # Canonical filename for the exported config JSON schema artifact.
       SCHEMA_FILENAME = 'html2rss-config.schema.json'
 
@@ -16,7 +14,7 @@ module Html2rss
       # Returns the exported configuration JSON Schema.
       #
       # @return [Hash{String => Object}] JSON Schema represented as a Ruby hash
-      def json_schema
+      def self.json_schema
         load_json_schema_extension!
         Builder.call
       end
@@ -26,7 +24,7 @@ module Html2rss
       #
       # @param pretty [Boolean] whether to pretty-print the JSON output
       # @return [String] serialized JSON Schema
-      def json_schema_json(pretty: true)
+      def self.json_schema_json(pretty: true)
         pretty ? JSON.pretty_generate(json_schema) : JSON.generate(json_schema)
       end
 
@@ -34,7 +32,7 @@ module Html2rss
       # Resolves the packaged schema path used by downstream tools.
       #
       # @return [String] absolute path to the packaged JSON schema file
-      def path
+      def self.path
         search_path = File.expand_path(__dir__)
 
         loop do
@@ -51,7 +49,7 @@ module Html2rss
       end
 
       # @return [void]
-      def load_json_schema_extension!
+      def self.load_json_schema_extension!
         require 'dry/schema/extensions/json_schema'
         Dry::Schema.load_extensions(:json_schema)
       end
@@ -221,7 +219,7 @@ module Html2rss
       #
       # @param schema [Hash] dry-schema JSON schema fragment for a selector
       # @return [Hash] same schema with registry $ref wiring applied
-      def apply_selector_registry_refs!(schema)
+      def self.apply_selector_registry_refs!(schema)
         properties = schema.fetch(:properties)
         properties[:extractor] = extractor_wire_schema
         properties[:post_process] = post_process_wire_schema
@@ -229,7 +227,7 @@ module Html2rss
       end
 
       # @return [Hash{Symbol => Object}]
-      def extractor_wire_schema
+      def self.extractor_wire_schema
         {
           description: 'Extractor used to pull a value from the selected element.',
           oneOf: registry_ref_list('extractors', Selectors::Extractors::NAME_TO_CLASS)
@@ -237,7 +235,7 @@ module Html2rss
       end
 
       # @return [Hash{Symbol => Object}]
-      def post_process_wire_schema
+      def self.post_process_wire_schema
         {
           type: 'array',
           description: 'Ordered transforms applied to the extracted value.',
@@ -251,7 +249,7 @@ module Html2rss
       # @param catalog [String] $defs catalog name (`extractors` or `post_processors`)
       # @param registry [Hash{Symbol => Class}]
       # @return [Array<Hash>] oneOf entries of `{ '$ref' => ... }`
-      def registry_ref_list(catalog, registry)
+      def self.registry_ref_list(catalog, registry)
         registry.keys.sort.map do |name|
           { '$ref' => "#/$defs/#{catalog}/#{name}" }
         end

@@ -172,7 +172,7 @@ module Html2rss
         break if skip_html_padding?(tier, articles)
 
         if Scraper.heuristic_tier?(tier)
-          document ||= Scraper.normalize_sst(parsed_body)
+          document ||= SST::Normalizer.call(parsed_body)
           next unless document
 
           link_resolver ||= ::Html2rss::Scoring::LinkResolver.new(url)

@@ -101,7 +101,7 @@ module Html2rss
 
           source = regexp_source(string)
 
-          expression = Regexp::Parser.parse(source, options: ::Regexp::EXTENDED | ::Regexp::IGNORECASE)
+          expression = Regexp::Parser.parse(source)
           raise ArgumentError, 'pattern contains nested quantifiers' if nested_quantifiers?(expression)
 
           expression.to_re
@@ -161,8 +161,7 @@ module Html2rss
         ##
         # @return [Regexp]
         def pattern
-          raw = @pattern
-          raw.is_a?(String) ? self.class.compiled_pattern(raw) : raw
+          self.class.compiled_pattern(@pattern)
         end
       end
     end

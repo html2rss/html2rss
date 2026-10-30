@@ -35,6 +35,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     Nokogiri::HTML(html)
   end
 
+  let(:anchorless_html) do
+    Nokogiri::HTML.parse <<~HTML
+      <html><body>
+        <article><h2>No Link One</h2><p>Description one.</p></article>
+        <article><h2>No Link Two</h2><p>Description two.</p></article>
+      </body></html>
+    HTML
+  end
+
   describe '.options_key' do
     specify { expect(described_class.options_key).to eq(:html) }
   end
@@ -308,6 +317,110 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
         expect(urls).not_to include('http://example.com/join')
         expect(urls).not_to include('http://example.com/account/settings/security-notifications')
       end
+    end
+  end
+
+  describe '.request_slots' do
+    it 'reserves no request slots regardless of options', :aggregate_failures do
+      expect(described_class.request_slots).to eq(0)
+      expect(described_class.request_slots(max_pages: 2)).to eq(0)
+    end
+  end
+
+  describe '.articles?(parsed_body) with unusable input' do
+    it 'returns false without a parsed body' do
+      expect(described_class.articles?(nil)).to be(false)
+    end
+  end
+
+  describe '#extractable?' do
+    it 'is true for repeated linked cards', :aggregate_failures do
+      expect(described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com')).to be_extractable
+    end
+
+    it 'is false for anchorless cards unless fallback_anchorless is requested', :aggregate_failures do
+      expect(described_class.new(anchorless_html, url: 'https://page.com')).not_to be_extractable
+      expect(described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true))
+        .to be_extractable
+    end
+  end
+
+  describe '#initialize' do
+    it 'drops anchorless cards by default' do
+      expect(described_class.new(anchorless_html, url: 'https://page.com').to_a).to eq([])
+    end
+
+    it 'resolves relative article links against the given url' do
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://page.example/').to_a
+
+      expect(articles.map { _1.url.to_s }).to include('https://page.example/article1/')
+    end
+  end
+
+  describe '#document' do
+    it 'uses a provided SST document without a parsed body' do
+      document = Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(html))
+
+      articles = described_class.new(nil, url: 'http://example.com', document:).to_a
+
+      expect(articles.map(&:title)).to include('Article 1 Headline')
+    end
+
+    it 'normalizes the parsed body when no document is provided' do
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com').to_a
+
+      expect(articles.map(&:title)).to include('Article 1 Headline')
+    end
+  end
+
+  describe '#link_resolver' do
+    it 'uses a provided link resolver' do
+      resolver = Html2rss::Scoring::LinkResolver.new('http://example.com')
+      allow(resolver).to receive(:destination_facts).and_call_original
+
+      described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com', link_resolver: resolver).to_a
+
+      expect(resolver).to have_received(:destination_facts).at_least(:once)
+    end
+  end
+
+  describe '#articles' do
+    it 'stamps extracted articles with the html scraper class', :aggregate_failures do
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com').to_a
+
+      expect(articles).not_to be_empty
+      expect(articles.map(&:scraper).uniq).to eq([described_class])
+    end
+
+    it 'keeps anchorless cards only when fallback_anchorless is requested' do
+      articles = described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a
+
+      expect(articles.map(&:title)).to eq(['No Link One', 'No Link Two'])
+    end
+  end
+
+  describe '#materialize' do
+    it 'stamps the scraper class on fallback anchorless articles' do
+      articles = described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a
+
+      expect(articles.map(&:scraper).uniq).to eq([described_class])
+    end
+  end
+
+  describe '#cluster_ranked' do
+    it 'only supplies anchorless clusters when fallback_anchorless is requested', :aggregate_failures do
+      expect(described_class.new(anchorless_html, url: 'https://page.com').to_a).to be_empty
+      expect(described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a.size)
+        .to eq(2)
+    end
+  end
+
+  describe '#minimum_selector_frequency' do
+    it 'drops selectors that occur less often than the configured floor' do
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com',
+                                                                 minimum_selector_frequency: 3).to_a
+
+      expect(articles).to be_empty
     end
   end
 end

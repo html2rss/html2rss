@@ -101,7 +101,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   #
   # @param config_input [Hash, String] config hash, YAML string, or file path
   # @param feed_name [String, nil] optional feed name in multi-feed file
-  # @param min_items [Integer] minimum required items (default: 1)
+  # @param min_items [Integer] minimum required items, >= 0 (default: 1)
   # @param params [Hash] dynamic feed params
   # @param strategy [Symbol, nil] optional strategy override
   # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
@@ -109,6 +109,7 @@ module Html2rss # rubocop:disable Metrics/ModuleLength
   # @return [Html2rss::Test::Result]
   def self.test(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, # rubocop:disable Metrics/ParameterLists
                 compare_enhance: false)
+    Option.integer(:min_items, min_items, min: 0)
     Test.call(config_input, feed_name, min_items:, params:, strategy:, strict_quality:, compare_enhance:)
   end
 

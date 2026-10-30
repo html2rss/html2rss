@@ -10,16 +10,8 @@ module Html2rss
     # Default worker threads for batch operations.
     DEFAULT_CONCURRENCY = 5
 
+    # Outcome of a batch operation; +to_h+ is provided by Data.
     BatchResult = Data.define(:total, :successful, :results)
-
-    # Value object representing the outcome of a batch operation.
-    class BatchResult
-      ##
-      # @return [Hash{Symbol => Object}]
-      def to_h
-        { total:, successful:, results: }
-      end
-    end
 
     class << self
       ##
@@ -31,11 +23,8 @@ module Html2rss
       # @yieldparam item [Object]
       # @return [Array<Object>]
       def map(items, concurrency: DEFAULT_CONCURRENCY, &)
-        list = Array(items)
-        return [] if list.empty?
-
-        worker_count = worker_pool_size(list.size, concurrency)
-        process_queue(list, worker_count, &)
+        Option.integer(:concurrency, concurrency, min: 1, max: MAX_CONCURRENCY)
+        process_queue(Option.list(:items, items), [concurrency, items.size].min, &)
       end
 
       ##
@@ -46,11 +35,10 @@ module Html2rss
       # @yieldparam item [Object]
       # @return [BatchResult]
       def run(items, concurrency: DEFAULT_CONCURRENCY, &)
-        list = Array(items)
-        results = map(list, concurrency:, &)
+        results = map(items, concurrency:, &)
         successful = results.count { |entry| entry.is_a?(Hash) ? entry[:ok] : !entry.nil? }
 
-        BatchResult.new(total: list.size, successful:, results:)
+        BatchResult.new(total: items.size, successful:, results:)
       end
 
       ##
@@ -62,7 +50,7 @@ module Html2rss
       # @param items_selector [String, nil]
       # @return [Hash{Symbol => Object}] +:strategy+, +:items+, +:channel_title+, +:admission_drops+
       def scrape_wire(url:, strategy:, limit:, items_selector: nil) # rubocop:disable Metrics/MethodLength
-        plan = (strategy || :auto).to_sym
+        plan = Option.strategy(strategy)
         feed_args = { strategy: plan, limit: }
         feed_args[:items_selector] = items_selector unless items_selector.nil?
         feed_result = Html2rss.auto_feed_result(url, **feed_args)
@@ -84,7 +72,9 @@ module Html2rss
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
       def batch_scrape(urls:, strategy: :auto, limit: 10, concurrency: DEFAULT_CONCURRENCY)
-        run(urls, concurrency:) { |url| scrape_single_url(url:, strategy:, limit:) }
+        strategy = Option.strategy(strategy)
+        Option.integer(:limit, limit, min: 1)
+        run(Option.list(:urls, urls), concurrency:) { |url| scrape_single_url(url:, strategy:, limit:) }
       end
 
       ##
@@ -95,7 +85,8 @@ module Html2rss
       # @param concurrency [Integer] number of worker threads (default 5, max 10)
       # @return [BatchResult]
       def batch_inspect(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY)
-        reports = PageRecon::Diagnostics.batch(urls:, strategy:, concurrency:)
+        reports = PageRecon::Diagnostics.batch(urls: Option.list(:urls, urls), strategy: Option.strategy(strategy),
+                                               concurrency:)
         results = reports.map(&:to_wire_h)
         successful = reports.count { |report| diagnostic_success?(report) }
 
@@ -111,7 +102,9 @@ module Html2rss
       # @option options [String, nil] :cache_dir optional HTML cache directory
       # @return [BatchResult]
       def batch_recon(urls:, strategy: :auto, concurrency: DEFAULT_CONCURRENCY, **)
-        results = Recon.batch(urls, strategy: (strategy || :auto).to_sym, max_threads: concurrency, **)
+        Option.integer(:concurrency, concurrency, min: 1, max: MAX_CONCURRENCY)
+        results = Recon.batch(Option.list(:urls, urls), strategy: Option.strategy(strategy),
+                                                        max_threads: concurrency, **)
         successful = results.count { |result| http_success?(result.status) }
         BatchResult.new(total: results.size, successful:, results: results.map(&:to_h))
       end
@@ -132,12 +125,8 @@ module Html2rss
           url: url.to_s, ok: true, items_count: wire[:items].size,
           items: wire[:items], channel_title: wire[:channel_title]
         }
-      rescue StandardError => error
+      rescue Html2rss::Error => error
         { url: url.to_s, ok: false, error: error.message }
-      end
-
-      def worker_pool_size(item_count, requested_concurrency)
-        [[1, requested_concurrency.to_i].max, item_count, MAX_CONCURRENCY].min
       end
 
       def process_queue(items, worker_count, &)
@@ -158,7 +147,7 @@ module Html2rss
       end
 
       def drain_queue(queue, results)
-        until queue.empty?
+        loop do
           begin
             item, index = queue.pop(true)
           rescue ThreadError

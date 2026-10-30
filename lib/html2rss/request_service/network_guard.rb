@@ -68,7 +68,7 @@ module Html2rss
       def validate_remote_ip!(ip:, url:)
         return if allow_private_networks?
 
-        parsed_ip = ip && !ip.to_s.empty? ? parse_ip(ip) : nil
+        parsed_ip = parse_ip(ip.to_s)
         raise PrivateNetworkDenied, "Remote IP could not be validated for #{url}" unless parsed_ip
         return unless blocked_ip?(parsed_ip)
 
@@ -122,7 +122,8 @@ module Html2rss
       end
 
       def blocked_ip?(address)
-        BLOCKED_IP_RANGES.any? { |range| range.include?(address) }
+        native = address.native
+        BLOCKED_IP_RANGES.any? { |range| range.include?(native) }
       end
     end
   end

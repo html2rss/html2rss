@@ -87,6 +87,43 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
       expect { state.raise_failure! }.to raise_error(have_attributes(surface_category: :app_shell))
       expect(Html2rss::PageRecon).to have_received(:surface_category_for).with(response:, url: :listing)
     end
+
+    it 'starts with no attempts, result, or resolution state', :aggregate_failures do
+      expect(state).to have_attributes(
+        attempts: [], result: nil, last_response: nil, last_error: nil,
+        terminal_transport_error: nil, entry_resolution: nil
+      )
+      expect(state).to have_attributes(succeeded?: false, aborted?: false, resolution_tried?: false)
+    end
+
+    it 'ignores a Botasaurus configuration error when choosing the failure to raise', :aggregate_failures do
+      state.record_error(strategy: :botasaurus, error: Html2rss::RequestService::BotasaurusConfigurationError.new('x'))
+
+      expect { state.raise_failure! }.to raise_error(Html2rss::NoFeedItemsExtracted)
+    end
+
+    it 'tracks resolution attempts once marked', :aggregate_failures do
+      expect(state.resolution_tried?).to be(false)
+
+      state.mark_resolution_tried!
+
+      expect(state.resolution_tried?).to be(true)
+    end
+
+    it 'stores the diagnostic built from the entry resolution result' do
+      diag = instance_double(Html2rss::FeedResolution::Diag)
+      allow(Html2rss::FeedResolution::Diag).to receive(:from_result).with(:resolution).and_return(diag)
+
+      state.remember_entry_resolution(:resolution)
+
+      expect(state.entry_resolution).to be(diag)
+    end
+
+    it 'omits elapsed time and transport metadata when they are absent', :aggregate_failures do
+      state.record_items(strategy: :default, items_count: 2, transport_meta: {}, elapsed_ms: nil)
+
+      expect(state.attempts.last).to eq(strategy: :default, items_count: 2, error_class: nil)
+    end
   end
 
   describe 'transport failure preservation through the auto chain' do # rubocop:disable RSpec/MultipleMemoizedHelpers
@@ -145,6 +182,17 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         expect(Html2rss::Log).to have_received(:info).with(a_string_including('auto fallback default -> botasaurus'))
       end
 
+      # rubocop:disable-next RSpec/ExampleLength -- structured payload and no-warn check
+      it 'logs a structured timeout event for the failed hop', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut)
+        expect(Html2rss::Log).to have_received(:info).with(
+          a_string_including('"event_name":"auto_fallback.timeout"', '"strategy":"default"',
+                             '"next_strategy":"botasaurus"',
+                             '"error_class":"Html2rss::RequestService::RequestTimedOut"')
+        )
+        expect(Html2rss::Log).not_to have_received(:warn)
+      end
+
       # rubocop:disable-next RSpec/ExampleLength -- attempts for both hops
       it 're-raises RequestTimedOut with both attempts attached', :aggregate_failures do
         expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::RequestTimedOut) do |error|
@@ -166,6 +214,17 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
           default: Html2rss::RequestService::ConnectionFailed.new('connection refused'),
           botasaurus: empty_response
         }
+      end
+
+      # rubocop:disable-next RSpec/ExampleLength -- structured payload and no-timeout check
+      it 'logs a structured error event for the failed hop', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::RequestService::ConnectionFailed)
+        expect(Html2rss::Log).to have_received(:warn).with(
+          a_string_including('"event_name":"auto_fallback.error"', '"host":"example.com"', '"strategy":"default"',
+                             '"next_strategy":"botasaurus"',
+                             '"error_class":"Html2rss::RequestService::ConnectionFailed"')
+        )
+        expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.timeout'))
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- attempts for both hops
@@ -195,6 +254,15 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         expect(pipeline.to_result.to_rss.items.map(&:title)).to eq(['bota'])
       end
 
+      it 'logs the strategy selected after more than one attempt', :aggregate_failures do
+        pipeline.to_result
+
+        expect(Html2rss::Log).to have_received(:info).with(
+          a_string_including('"event_name":"auto_fallback.selected"', '"strategy":"botasaurus"',
+                             '"attempt_count":2', '"host":"example.com"')
+        )
+      end
+
       it 'passes the effective URL into the request session' do
         allow(pipeline).to receive(:request_session_for).and_call_original
         pipeline.to_result
@@ -210,6 +278,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         { default: item_response, botasaurus: item_response }
       end
 
+      # rubocop:disable-next RSpec/ExampleLength -- positive hop plus silence checks
       it 'stops after the positive hop', :aggregate_failures do
         result = pipeline.to_result
 
@@ -217,6 +286,7 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         expect(result.status).to have_attributes(selected_strategy: :default, admission_drops: {})
         expect(Html2rss::RequestService).not_to have_received(:execute).with(anything, strategy: :botasaurus)
         expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
+        expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.selected'))
       end
     end
 
@@ -239,6 +309,18 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('botasaurus ->'))
         expect(Html2rss::Log).to have_received(:debug).with(
           a_string_including('Html2rss::FeedPipeline::AutoFallback: strategy=default items=0')
+        )
+      end
+
+      # rubocop:disable-next RSpec/ExampleLength -- debug label plus structured payload
+      it 'logs the zero-item hop with its budget remaining', :aggregate_failures do
+        expect { pipeline.to_result }.to raise_error(Html2rss::NoFeedItemsExtracted)
+        expect(Html2rss::Log).to have_received(:debug).with(
+          a_string_matching(/strategy=default items=0 .* budget_remaining=\d+\.\d{3}\z/)
+        )
+        expect(Html2rss::Log).to have_received(:info).with(
+          a_string_including('"event_name":"auto_fallback.zero_items"', '"strategy":"default"',
+                             '"next_strategy":"botasaurus"')
         )
       end
 

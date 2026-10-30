@@ -6,51 +6,51 @@ module Html2rss
       class JsonState
         # Identifies arrays that look like collections of article hashes.
         module CandidateDetector
-          module_function
+          class << self
+            # @param document [Hash, Array, Object] candidate document node
+            # @return [Boolean] whether the node contains article-like arrays
+            def candidate_array?(document)
+              case document
+              when Array
+                return true if array_of_articles?(document)
 
-          # @param document [Hash, Array, Object] candidate document node
-          # @return [Boolean] whether the node contains article-like arrays
-          def candidate_array?(document)
-            case document
-            when Array
-              return true if array_of_articles?(document)
-
-              document.any? { traversable_candidate?(_1) }
-            when Hash then document.each_value.any? { candidate_array?(_1) }
-            else false
+                document.any? { traversable_candidate?(_1) }
+              when Hash then document.each_value.any? { candidate_array?(_1) }
+              else false
+              end
             end
-          end
 
-          # @param value [Hash, Array, Object] candidate nested value
-          # @return [Boolean] whether nested value should be traversed for article candidates
-          def traversable_candidate?(value)
-            case value
-            when Array, Hash then candidate_array?(value)
-            else false
+            # @param value [Hash, Array, Object] candidate nested value
+            # @return [Boolean] whether nested value should be traversed for article candidates
+            def traversable_candidate?(value)
+              case value
+              when Array, Hash then candidate_array?(value)
+              else false
+              end
             end
-          end
 
-          # @param array [Array<Object>] candidate list of entries
-          # @return [Boolean] whether array includes hash entries with title and URL fields
-          def array_of_articles?(array)
-            array.any? do |element|
-              next unless element.is_a?(Hash)
+            # @param array [Array<Object>] candidate list of entries
+            # @return [Boolean] whether array includes hash entries with title and URL fields
+            def array_of_articles?(array)
+              array.any? do |element|
+                next unless element.is_a?(Hash)
 
-              title_from(element) && url_from(element)
+                title_from(element) && url_from(element)
+              end
             end
-          end
 
-          # @param object [Hash] article candidate object
-          # @return [Object, nil] detected title-like value
-          def title_from(object)
-            ValueFinder.fetch(object, ArticleNormalizer::TITLE_KEYS)
-          end
+            # @param object [Hash] article candidate object
+            # @return [Object, nil] detected title-like value
+            def title_from(object)
+              ValueFinder.fetch(object, ArticleNormalizer::TITLE_KEYS)
+            end
 
-          # @param object [Hash] article candidate object
-          # @return [Object, nil] detected URL-like value (including links.self)
-          def url_from(object)
-            ValueFinder.fetch(object, ArticleNormalizer::URL_KEYS) ||
-              ValueFinder.fetch(object[:links], ArticleNormalizer::URL_KEYS)
+            # @param object [Hash] article candidate object
+            # @return [Object, nil] detected URL-like value (including links.self)
+            def url_from(object)
+              ValueFinder.fetch(object, ArticleNormalizer::URL_KEYS) ||
+                ValueFinder.fetch(object[:links], ArticleNormalizer::URL_KEYS)
+            end
           end
         end
       end

@@ -57,11 +57,62 @@ RSpec.describe Html2rss::RequestSession do
 
       expect(Html2rss::RequestService::Context).to have_received(:new).with(hash_including(budget:))
     end
+
+    it 'prefers the scrape_url override over the configured channel url' do
+      session = described_class.build(
+        config:, strategy: :botasaurus, budget: resources.budget, policy: resources.policy,
+        scrape_url: 'https://example.com/feed-source', logger:
+      )
+
+      expect(session.url.to_s).to eq('https://example.com/feed-source')
+    end
+
+    it 'hands the logger to the session for operational warnings', :aggregate_failures do
+      session = described_class.build(
+        config:, strategy: :botasaurus, budget: resources.budget, policy: resources.policy, logger:
+      )
+      session.effective_page_budget(1000)
+
+      expect(logger).to have_received(:warn).with(/pagination max_pages=1000/)
+    end
+
+    it 'executes session requests with the strategy given to build', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      response = Html2rss::RequestService::Response.new(
+        body: '<html></html>', url: Html2rss::Url.from_absolute('https://example.com/blog'),
+        headers: { 'content-type' => 'text/html' }, status: 200
+      )
+      allow(Html2rss::RequestService).to receive(:execute).and_return(response)
+      session = described_class.build(
+        config:, strategy: :default, budget: resources.budget, policy: resources.policy, logger:
+      )
+
+      session.fetch_initial_response
+
+      expect(Html2rss::RequestService).to have_received(:execute).with(anything, strategy: :default)
+    end
+
+    it 'falls back to Html2rss::Log when no logger is given' do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Log).to receive(:warn)
+      session = described_class.build(
+        config:, strategy: :botasaurus, budget: resources.budget, policy: resources.policy
+      )
+      session.effective_page_budget(1000)
+
+      expect(Html2rss::Log).to have_received(:warn).with(/pagination max_pages=1000/)
+    end
   end
 
   describe '#fetch_initial_response' do
     let(:context) { request_session_context }
     let(:session) { described_class.new(context:, strategy: :default, logger:) }
+    let(:redirected_response) do
+      Html2rss::RequestService::Response.new(
+        body: '<html></html>',
+        url: Html2rss::Url.from_absolute('https://example.com/redirected'),
+        headers: { 'content-type' => 'text/html' },
+        status: 200
+      )
+    end
     let(:response) do
       Html2rss::RequestService::Response.new(
         body: '<html></html>',
@@ -81,6 +132,16 @@ RSpec.describe Html2rss::RequestSession do
       expect(logger).to have_received(:debug).with(
         %r{Html2rss::RequestSession: relation=initial request_url=https://example\.com/news final_url=https://example\.com/news status=200 content_type="text/html" bytes=13}
       )
+    end
+
+    it 'tracks the final url after a redirect rather than the requested url', :aggregate_failures do
+      redirected = redirected_response
+      allow(Html2rss::RequestService).to receive(:execute).with(context, strategy: :default).and_return(redirected)
+
+      session.fetch_initial_response
+
+      expect(session.visited?('https://example.com/redirected')).to be(true)
+      expect(session.visited?('https://example.com/news')).to be(false)
     end
   end
 
@@ -128,19 +189,48 @@ RSpec.describe Html2rss::RequestSession do
         %r{relation=pagination.*request_url=https://redirected\.example\.com/news\?page=2}
       )
     end
+
+    it 'tracks the final url of the follow-up response as visited', :aggregate_failures do
+      result
+      expect(session.visited?('https://redirected.example.com/news?page=2')).to be(true)
+      expect(session.visited?('https://example.com/news')).to be(false)
+    end
   end
 
   describe '#effective_page_budget' do
     let(:context) { request_session_context(max_requests: 20) }
     let(:session) { described_class.new(context:, strategy: :default, logger:) }
 
-    it 'returns the requested budget when it fits the policy ceiling' do
+    it 'returns the requested budget without logging when it fits the policy ceiling', :aggregate_failures do
       expect(session.effective_page_budget(3)).to eq(3)
+      expect(logger).not_to have_received(:warn)
     end
 
     it 'logs and clamps the configured budget when it exceeds the policy ceiling', :aggregate_failures do
       expect(session.effective_page_budget(20)).to eq(Html2rss::RequestService::Policy::MAX_REQUESTS_CEILING)
       expect(logger).to have_received(:warn).with(/pagination max_pages=20 exceeds system ceiling=10/)
+    end
+
+    it 'falls back to Html2rss::Log when constructed without a logger' do
+      allow(Html2rss::Log).to receive(:warn)
+      described_class.new(context:, strategy: :default).effective_page_budget(20)
+
+      expect(Html2rss::Log).to have_received(:warn).with(/pagination max_pages=20 exceeds system ceiling=10/)
+    end
+  end
+
+  describe '#remember! and #visited?' do
+    let(:session) { described_class.new(context: request_session_context, strategy: :default, logger:) }
+
+    it 'matches urls by their normalized form', :aggregate_failures do
+      session.remember!('HTTP://Example.COM/news')
+
+      expect(session.visited?('http://example.com/news')).to be(true)
+      expect(session.visited?('http://example.com/other')).to be(false)
+    end
+
+    it 'rejects relative urls' do
+      expect { session.remember!('/news') }.to raise_error(Html2rss::Url::InvalidUrlError)
     end
   end
 

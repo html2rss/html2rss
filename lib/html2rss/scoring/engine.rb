@@ -91,21 +91,17 @@ module Html2rss
 
       private
 
-      def rank_one(segment, hard_junk_mode: :strict) # rubocop:disable Metrics/MethodLength
+      def rank_one(segment, hard_junk_mode: :strict) # rubocop:disable Metrics/AbcSize
         facts = segment.primary_link ? @link_resolver.destination_facts(segment.primary_link) : nil
         obs = @assessor.call(segment.root_node, segment.primary_link, destination_facts: facts)
         return if obs.hard_junk?(mode: hard_junk_mode)
 
         quality, quality_parts = apply_rules(QUALITY_RULES, obs)
         junk, junk_parts = apply_rules(JUNK_RULES, obs)
-        ranked(
+        RankedSegment.new(
           segment:,
-          score: build_score(
-            composite: quality - junk,
-            quality:,
-            junk:,
-            breakdown: quality_parts.merge(junk_parts)
-          )
+          score: Score.new(composite: (quality - junk).to_f, quality: quality.to_f, junk: junk.to_f,
+                           breakdown: quality_parts.merge(junk_parts).freeze)
         )
       end
 
@@ -115,30 +111,6 @@ module Html2rss
           parts[feature_id] = weight if predicate.call(obs)
         end
         [parts.values.sum, parts]
-      end
-
-      def build_score(composite:, quality: nil, junk: nil, breakdown: nil)
-        raise ArgumentError, 'composite must be Numeric' unless composite.is_a?(Numeric)
-
-        Score.new(
-          composite: composite.to_f,
-          quality: (quality.nil? ? composite : quality).to_f,
-          junk: (junk || 0).to_f,
-          breakdown: normalize_breakdown(breakdown)
-        )
-      end
-
-      def normalize_breakdown(breakdown)
-        return Score::EMPTY_BREAKDOWN if breakdown.nil?
-
-        breakdown.transform_keys { |id| self.class.assert_feature_id!(id) }.freeze
-      end
-
-      def ranked(segment:, score:)
-        raise ArgumentError, 'segment must be AutoSource::Segment' unless segment.is_a?(Html2rss::AutoSource::Segment)
-        raise ArgumentError, 'score must be Scoring::Score' unless score.is_a?(Score)
-
-        RankedSegment.new(segment:, score:)
       end
     end
   end

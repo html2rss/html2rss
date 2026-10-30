@@ -103,7 +103,7 @@ module Html2rss
         properties: {
           url: URL_PROPERTY,
           strategy: STRATEGY_PROPERTY,
-          limit: { type: 'integer', description: 'Max articles to keep (default 25)', default: 25 },
+          limit: { type: 'integer', minimum: 1, description: 'Max articles to keep (default 25)', default: 25 },
           items_selector: { type: 'string', description: 'Optional CSS selector hint for items' }
         }.freeze,
         required: %w[url]
@@ -135,9 +135,9 @@ module Html2rss
           title: { type: 'string', description: 'Channel title override' },
           summary: { type: 'string', description: 'Directory summary override' },
           enhance: { type: 'boolean', description: 'Force enhance on or off' },
-          limit: { type: 'integer', description: 'Max articles to keep' },
-          max_redirects: { type: 'integer', description: 'Optional redirect limit override' },
-          max_requests: { type: 'integer', description: 'Optional request budget override' }
+          limit: { type: 'integer', minimum: 1, description: 'Max articles to keep' },
+          max_redirects: { type: 'integer', minimum: 0, description: 'Optional redirect limit override' },
+          max_requests: { type: 'integer', minimum: 1, description: 'Optional request budget override' }
         }.freeze,
         required: %w[url]
       }.freeze
@@ -163,6 +163,8 @@ module Html2rss
             strategy: strategy_property,
             concurrency: {
               type: 'integer',
+              minimum: 1,
+              maximum: 10,
               description: 'Max parallel worker threads (1..10, default: 5)',
               default: 5
             },
@@ -177,7 +179,7 @@ module Html2rss
         urls_description: 'List of page URLs to scrape (1..25)',
         strategy_property: STRATEGY_PROPERTY,
         extra_properties: {
-          limit: { type: 'integer', description: 'Max articles per URL to keep (default 10)', default: 10 }
+          limit: { type: 'integer', minimum: 1, description: 'Max articles per URL to keep (default 10)', default: 10 }
         }
       ).freeze
 

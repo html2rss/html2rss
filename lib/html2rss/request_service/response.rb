@@ -31,15 +31,12 @@ module Html2rss
       # @param status [Integer, nil] the HTTP status code when available
       # @param transport_meta [Hash] allowlisted upstream telemetry (frozen when present)
       # @param captured_responses [Array<Hash>] JSON XHR/fetch bodies captured during browser scrapes
-      # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- transport + capture fields stay co-located
+      # rubocop:disable-next Metrics/ParameterLists -- transport + capture fields stay co-located
       def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META,
                      captured_responses: EMPTY_CAPTURED_RESPONSES)
         @body = body
 
-        headers = (headers || {}).transform_keys(&:to_s)
-        HashUtil.assert_string_keys!(headers, context: 'response headers', deep: false)
-
-        @headers = headers
+        @headers = (headers || {}).transform_keys(&:to_s)
         @status = status
         @url = url
         @transport_meta = transport_meta.nil? || transport_meta.empty? ? EMPTY_TRANSPORT_META : transport_meta.freeze
@@ -165,7 +162,7 @@ module Html2rss
       end
 
       def feed_looking_body?
-        snippet = body.to_s[0, 800].downcase
+        snippet = body.to_s.b[0, 800].downcase
         FEED_BODY_MARKERS.any? { |marker| snippet.include?(marker) }
       end
     end

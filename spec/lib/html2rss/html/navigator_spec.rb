@@ -34,6 +34,17 @@ RSpec.describe Html2rss::Html::Navigator do
     it 'returns the first eligible descendant anchor' do
       expect(described_class.main_anchor_for(article_tag)['href']).to eq('/category/news')
     end
+
+    it 'returns the tag itself when it is an eligible anchor' do
+      anchor = Nokogiri::HTML.fragment('<a href="/article/7">Story</a>').at_css('a')
+
+      expect(described_class.main_anchor_for(anchor)).to be(anchor)
+    end
+
+    it 'returns nil for an ineligible anchor without eligible descendants', :aggregate_failures do
+      expect(described_class.main_anchor_for(Nokogiri::HTML.fragment('<a href="#top">Top</a>').at_css('a'))).to be_nil
+      expect(described_class.main_anchor_for(Nokogiri::HTML.fragment('<a>Plain</a>').at_css('a'))).to be_nil
+    end
   end
 
   describe '.parent_until_condition' do
@@ -68,6 +79,12 @@ RSpec.describe Html2rss::Html::Navigator do
       condition = ->(node) { node.name == 'footer' }
       result = described_class.parent_until_condition(target_node, condition)
       expect(result).to be_nil
+    end
+
+    it 'never returns the html element or the document' do
+      condition = ->(node) { %w[html document].include?(node.name) }
+
+      expect(described_class.parent_until_condition(target_node, condition)).to be_nil
     end
 
     it 'returns nil if target_node is nil' do

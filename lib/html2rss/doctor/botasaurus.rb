@@ -32,15 +32,13 @@ module Html2rss
         end
       end
 
-      module_function
-
       ENV_VAR = 'BOTASAURUS_SCRAPER_URL'
       private_constant :ENV_VAR
 
       ##
       # @param sample_url [String, nil] optional URL for a sample scrape smoke test
       # @return [Result]
-      def call(sample_url: nil) # rubocop:disable Metrics/AbcSize
+      def self.call(sample_url: nil) # rubocop:disable Metrics/AbcSize
         env = env_check
         checks = [env_check_record(env)]
         return missing_env_failure(checks) unless checks.first.ok
@@ -57,7 +55,7 @@ module Html2rss
 
       ##
       # @return [Hash{Symbol => Object}]
-      def env_check
+      def self.env_check
         base = ENV.fetch(ENV_VAR, '').strip
         {
           configured: MCP::Runtime.botasaurus_configured?,
@@ -69,7 +67,7 @@ module Html2rss
       ##
       # @param base_url [String]
       # @return [Hash{Symbol => Object}]
-      def health_check(base_url)
+      def self.health_check(base_url)
         endpoint = "#{Url.for_channel(base_url).to_s.chomp('/')}/health"
         response = health_session.get(endpoint)
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
@@ -80,60 +78,54 @@ module Html2rss
         { ok: false, error: "#{error.class}: #{error.message}" }
       end
 
-      def health_session
+      def self.health_session
         HTTPX.with(timeout: { operation_timeout: 5, request_timeout: 5, total_request_timeout: 5 },
                    resolver_class: :system)
       end
-      module_function :health_session
       private_class_method :health_session
 
       ##
       # @param url [String]
       # @return [Hash{Symbol => Object}]
-      def sample_scrape(url)
+      def self.sample_scrape(url)
         wire = PageRecon::Diagnostics.call(url:, strategy: :botasaurus).to_wire_h
         {
           ok: wire[:status].to_i.between?(200, 399),
           status: wire[:status],
           articles_count: wire[:articles_count]
         }
-      rescue StandardError => error
+      rescue Html2rss::Error => error
         { ok: false, error: "#{error.class}: #{error.message}" }
       end
 
-      def env_check_record(env = env_check)
+      def self.env_check_record(env = env_check)
         Check.new(name: :env, ok: env[:configured], detail: { var: env[:var], base_url_set: !env[:base_url].nil? })
       end
-      module_function :env_check_record
       private_class_method :env_check_record
 
-      def health_check_record(base_url)
+      def self.health_check_record(base_url)
         return Check.new(name: :health, ok: false, detail: { error: 'missing base URL' }) unless base_url
 
         health = health_check(base_url)
         Check.new(name: :health, ok: health[:ok], detail: health)
       end
-      module_function :health_check_record
       private_class_method :health_check_record
 
-      def sample_scrape_record(url)
+      def self.sample_scrape_record(url)
         sample = sample_scrape(url)
         Check.new(name: :sample_scrape, ok: sample[:ok], detail: sample)
       end
-      module_function :sample_scrape_record
       private_class_method :sample_scrape_record
 
-      def missing_env_failure(checks)
+      def self.missing_env_failure(checks)
         Log.info("doctor botasaurus: #{ENV_VAR} unset")
         failure(checks, "Set #{ENV_VAR} to the scrape-api base URL.")
       end
-      module_function :missing_env_failure
       private_class_method :missing_env_failure
 
-      def failure(checks, message)
+      def self.failure(checks, message)
         Result.new(ok: false, checks:, message:)
       end
-      module_function :failure
       private_class_method :failure
     end
   end

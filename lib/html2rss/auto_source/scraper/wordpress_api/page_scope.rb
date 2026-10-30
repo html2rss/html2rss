@@ -154,7 +154,7 @@ module Html2rss
             end
 
             def archive_like?
-              category_archive? || tag_archive? || author_archive? || date_archive? || body_classes.include?('archive')
+              body_classes.include?('archive')
             end
 
             def singular_like?
@@ -178,7 +178,7 @@ module Html2rss
 
               canonical_url = Html2rss::Url.from_relative(href, url)
               same_origin_url?(canonical_url, url) ? canonical_url : url
-            rescue ArgumentError
+            rescue Html2rss::Url::InvalidUrlError
               url
             end
 

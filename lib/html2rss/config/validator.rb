@@ -158,15 +158,15 @@ module Html2rss
         if (url_string = values.dig(:channel, :url)) && !url_string.empty?
           begin
             Html2rss::Url.for_channel(url_string)
-          rescue ArgumentError => error
+          rescue Html2rss::Url::InvalidUrlError => error
             key(%i[channel url]).failure(error.message)
           end
         end
 
         if (image_string = values.dig(:channel, :image)) && !image_string.empty?
           begin
-            Html2rss::Url.from_absolute(image_string)
-          rescue ArgumentError => error
+            Html2rss::Url.from_absolute_web(image_string)
+          rescue Html2rss::Url::InvalidUrlError => error
             key(%i[channel image]).failure(error.message)
           end
         end

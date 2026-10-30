@@ -8,9 +8,6 @@ module Html2rss
     # Sole Nokogiri consumer on the heuristic auto-source path. Builds an
     # immutable SST::Document with parent/depth/chrome indices.
     class Normalizer # rubocop:disable Metrics/ClassLength
-      # Raised when no SST nodes survive normalization for the chosen root.
-      class EmptyTree < ArgumentError; end
-
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
@@ -64,10 +61,10 @@ module Html2rss
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
         #   HTML string or already-parsed node (String is parsed once here)
-        # @return [Document]
-        # @raise [ArgumentError] when input is nil or unsupported
+        # @return [Document, nil] +nil+ when no SST nodes survive normalization
+        # @raise [InvalidOption] when input is nil or unsupported
         def call(input)
-          raise ArgumentError, 'input is required' if input.nil?
+          raise InvalidOption, 'input is required' if input.nil?
 
           new(coerce(input)).call
         end
@@ -81,7 +78,7 @@ module Html2rss
           when String then Nokogiri::HTML(input)
           when Nokogiri::XML::Node then input
           else
-            raise ArgumentError, "expected String or Nokogiri::XML::Node, got #{input.class}"
+            raise InvalidOption, "expected String or Nokogiri::XML::Node, got #{input.class}"
           end
         end
       end
@@ -97,11 +94,11 @@ module Html2rss
       end
 
       ##
-      # @return [Document]
+      # @return [Document, nil] +nil+ when no SST nodes survive normalization
       def call
         root_nk = resolve_root_nk
         root = normalize_element(root_nk, depth: 0, path: '', chrome: false)
-        raise EmptyTree, 'SST Normalizer produced an empty tree' unless root
+        return unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
         Document.build(root:, index:, degraded: @degraded, node_count: @node_count)
@@ -170,14 +167,11 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        own_text = direct_text(nk_node)
         chrome_here = chrome || IGNORED_CONTAINER_TAGS.include?(tag)
 
-        children = nk_node.element_children.filter_map do |child|
-          normalize_element(child, depth: depth + 1, path: tag_path, chrome: chrome_here)
-        end
+        children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, chrome: chrome_here)
 
-        node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:)
+        node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
         @depths[node] = depth
         @ignored_chrome[node] = chrome_here
         children.each { |child| @parents[child] = node }
@@ -210,8 +204,18 @@ module Html2rss
         end
       end
 
-      def direct_text(nk_node)
-        nk_node.children.select(&:text?).map(&:text).join
+      # Walks child nodes once, keeping direct text in the slot of the preceding kept child
+      # (slot 0 is the lead text) so text order survives the element-only tree.
+      def normalize_children(nk_node, depth:, path:, chrome:)
+        children = []
+        slots = [+'']
+        nk_node.children.each do |child|
+          next slots.last << child.text if child.text?
+
+          node = normalize_element(child, depth: depth + 1, path:, chrome:)
+          (children << node) && (slots << +'') if node
+        end
+        [children, slots.first, slots.drop(1)]
       end
     end
   end

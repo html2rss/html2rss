@@ -44,6 +44,53 @@ RSpec.describe Html2rss::FeedResolution::Scorer do
     expect(winner.url.to_s).to eq('https://example.com/b')
   end
 
+  it 'picks the highest score wherever it appears in the list', :aggregate_failures do
+    winner = described_class.pick_winner(
+      scored: [
+        scored(url: 'https://example.com/b', score: 30, articles_count: 5),
+        scored(url: 'https://example.com/a', score: 10, articles_count: 2)
+      ],
+      entry_articles_count: 1
+    )
+
+    expect(winner.url.to_s).to eq('https://example.com/b')
+  end
+
+  it 'subtracts the admission drop share of all admitted and dropped items', :aggregate_failures do
+    score = described_class.score_assessment(
+      assessment(surface_category: :listing, articles_count: 2, admission_drops: { 'junk' => 8 })
+    )
+
+    expect(score).to eq(17)
+  end
+
+  it 'rejects a winner that only matches the entry article count' do
+    winner = described_class.pick_winner(
+      scored: [scored(url: 'https://example.com/a', score: 30, articles_count: 3)],
+      entry_articles_count: 3
+    )
+
+    expect(winner).to be_nil
+  end
+
+  it 'rounds the admission drop share to whole points' do
+    score = described_class.score_assessment(
+      assessment(surface_category: :listing, articles_count: 2, admission_drops: { 'junk' => 1 })
+    )
+
+    expect(score).to eq(22)
+  end
+
+  it 'returns nil when there are no candidates at all' do
+    expect(described_class.pick_winner(scored: [], entry_articles_count: 0)).to be_nil
+  end
+
+  it 'scores an empty surface as zero without dividing by zero' do
+    score = described_class.score_assessment(assessment(surface_category: :app_shell, articles_count: 0))
+
+    expect(score).to eq(0)
+  end
+
   it 'returns nil when no candidate beats the entry count' do
     expect(
       described_class.pick_winner(

@@ -102,10 +102,55 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
 
       it 'has the correct attributes', :aggregate_failures do
         tags.each do |tag, matcher|
-          expect(channel_tag.css(tag).text).to match(matcher), tag
+          expect(channel_tag.xpath(tag).text).to match(matcher), tag
         end
         expect(channel_tag.css('image > url').text).to eq('http://example.com/image.jpg')
         expect(channel_tag.css('image > title').text).to eq('Test Channel')
+      end
+
+      it 'carries the ttl and last build date', :aggregate_failures do
+        expect(channel_tag.css('ttl').text).to eq('12')
+        expect(channel_tag.xpath('pubDate').text).to eq('Tue, 01 Jan 2019 00:00:00 +0000')
+      end
+    end
+
+    context 'when the channel url and image are Html2rss::Url objects' do
+      subject(:channel_tag) { Nokogiri::XML(rss.to_s).css('channel').first }
+
+      let(:channel) do
+        instance_double(Html2rss::Channel,
+                        title: 'Test Channel',
+                        url: Html2rss::Url.from_absolute('http://example.com/'),
+                        description: 'A test channel',
+                        language: 'en',
+                        image: Html2rss::Url.from_absolute('http://example.com/image.jpg'),
+                        author: 'Channel Author',
+                        ttl: nil,
+                        last_build_date: nil)
+      end
+
+      it 'renders the link, image and author as strings', :aggregate_failures do
+        expect(channel_tag.xpath('link').text).to eq('http://example.com/')
+        expect(channel_tag.css('image > url').text).to eq('http://example.com/image.jpg')
+        expect(channel_tag.xpath('managingEditor').text).to eq('Channel Author')
+      end
+    end
+
+    context 'when the channel has no image, author or ttl' do
+      subject(:bare_channel_tag) { Nokogiri::XML(bare_rss.to_s).css('channel').first }
+
+      let(:bare_channel) do
+        instance_double(Html2rss::Channel, title: 'Bare', url: 'http://example.com', description: 'D',
+                                           language: 'en', image: nil, author: nil, ttl: nil, last_build_date: nil)
+      end
+      let(:bare_rss) do
+        described_class.new(channel: bare_channel, articles: [], generator: 'html2rss').call
+      end
+
+      it 'omits the optional channel elements', :aggregate_failures do
+        expect(bare_channel_tag.css('image')).to be_empty
+        expect(bare_channel_tag.css('managingEditor')).to be_empty
+        expect(bare_channel_tag.css('author')).to be_empty
       end
     end
 
@@ -134,6 +179,29 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
 
       it 'omits <enclosure> when the article only has an image' do
         expect(item.css('enclosure')).to be_empty
+      end
+    end
+
+    context 'with an article that has an author, categories and no url' do
+      let(:articles) do
+        [
+          Html2rss::Article.new(
+            id: 1,
+            title: 'Title 1',
+            author: 'Jane Doe',
+            categories: [' news ', 'tech', ''],
+            description: 'Description 1',
+            scraper: RSpec
+          )
+        ]
+      end
+      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
+
+      it 'emits author, trimmed categories, an isPermaLink="false" guid and no link', :aggregate_failures do
+        expect(item.at_css('author').text).to eq('Jane Doe')
+        expect(item.css('category').map(&:text)).to eq(%w[news tech])
+        expect(item.at_css('guid')['isPermaLink']).to eq('false')
+        expect(item.at_css('link')).to be_nil
       end
     end
 

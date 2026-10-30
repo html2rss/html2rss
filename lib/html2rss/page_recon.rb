@@ -158,8 +158,6 @@ module Html2rss
     def self.discover_segments(sst, url)
       link_resolver = Scoring::LinkResolver.new(url)
       AutoSource::Segmenter.call(sst, base_url: url, strategy: :list, link_resolver:)
-    rescue StandardError
-      []
     end
 
     ##
@@ -268,8 +266,6 @@ module Html2rss
 
     def sst_document
       Html2rss::SST::Normalizer.call(response.body)
-    rescue ArgumentError
-      nil
     end
 
     def segment_stats(sst, page_url)

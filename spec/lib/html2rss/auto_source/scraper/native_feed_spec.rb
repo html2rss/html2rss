@@ -50,6 +50,65 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
     it 'does not claim non-document bodies' do
       expect(described_class.articles?(nil)).to be false
     end
+
+    it 'does not claim a raw HTML string that carries a feed hint' do
+      html = '<link rel="alternate" type="application/rss+xml" href="/feed.xml">'
+
+      expect(described_class.articles?(html)).to be false
+    end
+
+    it 'does not claim alternates that are neither feed-typed nor feed-shaped' do
+      doc = Nokogiri::HTML('<html><head><link rel="alternate" type="text/html" href="/about"></head></html>')
+
+      expect(described_class.articles?(doc)).to be false
+    end
+  end
+
+  describe '#extractable?' do
+    it 'delegates to articles? for the parsed body' do
+      expect(described_class.new(parsed_body, url: page_url)).to be_extractable
+    end
+
+    it 'is false for a body without feed hints' do
+      doc = Nokogiri::HTML('<html><body><p>No feeds</p></body></html>')
+
+      expect(described_class.new(doc, url: page_url)).not_to be_extractable
+    end
+  end
+
+  describe '#initialize' do
+    let(:session) { instance_double(Html2rss::RequestSession) }
+
+    it 'forwards the parsed body and an absolute Url to discovery', :aggregate_failures do
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response).and_return(nil)
+
+      described_class.new(parsed_body, url: 'https://example.com/blog/', request_session: session).to_a
+
+      expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_response).with(
+        hash_including(page_url: Html2rss::Url.from_absolute('https://example.com/blog/'), parsed_body:)
+      )
+    end
+  end
+
+  describe '#fetch_articles' do
+    let(:session) { instance_double(Html2rss::RequestSession) }
+
+    it 'passes the session, body, url and request slots to discovery', :aggregate_failures do
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response).and_return(nil)
+
+      described_class.new(parsed_body, url: page_url, request_session: session).to_a
+
+      expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_response).with(
+        page_url:, request_session: session, parsed_body:, max_probes: 1
+      )
+    end
+
+    it 'does not run discovery without a request session', :aggregate_failures do
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response)
+
+      expect(described_class.new(parsed_body, url: page_url).to_a).to eq([])
+      expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_response)
+    end
   end
 
   describe '#each' do
@@ -124,6 +183,36 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
 
     it 'yields nothing without a request session' do
       expect(described_class.new(parsed_body, url: page_url).to_a).to eq([])
+    end
+
+    it 'logs the items event with the discovered item count', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:info)
+      allow(session).to receive(:follow_up).and_return(feed_response)
+
+      described_class.new(parsed_body, url: page_url, request_session: session).to_a
+
+      expect(Html2rss::Log).to have_received(:info).with(
+        {
+          event_name: 'auto_source.native_feed.items',
+          host: 'example.com',
+          message: 'Html2rss::AutoSource::Scraper::NativeFeed: host=example.com item_count=1 fallback=false'
+        }.to_json
+      )
+    end
+
+    it 'logs the empty event when discovery yields no feed', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:info)
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_response).and_return(nil)
+
+      described_class.new(parsed_body, url: page_url, request_session: session).to_a
+
+      expect(Html2rss::Log).to have_received(:info).with(
+        {
+          event_name: 'auto_source.native_feed.empty',
+          host: 'example.com',
+          message: 'Html2rss::AutoSource::Scraper::NativeFeed: host=example.com item_count=0 fallback=true'
+        }.to_json
+      )
     end
   end
 end

@@ -72,4 +72,60 @@ RSpec.describe Html2rss::Selectors::OptionSpec do
       expect(described_class.for(Html2rss::Selectors::PostProcessors::ParseUri)).to eq([])
     end
   end
+
+  describe '.option_for string and symbol keys' do
+    it 'resolves extractor and post-processor names given as strings', :aggregate_failures do
+      expect(described_class.option_for({ 'extractor' => 'attribute' }, :attribute).name).to eq(:attribute)
+      expect(described_class.option_for({ 'name' => 'gsub' }, 'pattern').name).to eq(:pattern)
+    end
+
+    it 'returns nil for an unknown leaf of a known strategy' do
+      expect(described_class.option_for({ name: 'gsub' }, :missing)).to be_nil
+    end
+
+    it 'resolves the post-processor name when the extractor key is absent' do
+      expect(described_class.option_for({ name: 'substring' }, :start).type).to eq(Integer)
+    end
+  end
+
+  describe '.json_type_for' do
+    it 'maps a list of Ruby types to a list of JSON types', :aggregate_failures do
+      expect(described_class.json_type_for([String, Hash])).to eq(%w[string object])
+      expect(described_class.json_type_for(Array)).to eq('array')
+    end
+
+    it 'raises for a Ruby type without a JSON mapping' do
+      expect { described_class.json_type_for(Symbol) }
+        .to raise_error(ArgumentError, 'unsupported OPTIONS type mapping for Symbol')
+    end
+  end
+
+  describe '#json_type and #error_message labels' do
+    it 'exposes the JSON type of a single-type option' do
+      expect(described_class.new(name: :n, type: Integer).json_type).to eq('integer')
+    end
+
+    it 'names every alternative of a multi-type option', :aggregate_failures do
+      expect(described_class.new(name: :x, type: [String, Integer]).error_message)
+        .to eq('`x` must be a string or an integer')
+      expect(described_class.new(name: :x, type: [String, Integer], required: false).error_message)
+        .to eq('`x` must be a string or an integer or omitted')
+    end
+
+    it 'falls back to the class name for unlabelled types' do
+      expect(described_class.new(name: :x, type: Symbol).error_message(optional: false))
+        .to eq('`x` must be a Symbol')
+    end
+
+    it 'labels hash options as a hash' do
+      expect(described_class.new(name: :x, type: Hash).error_message(optional: false)).to eq('`x` must be a hash')
+    end
+  end
+
+  describe '.expectation_for with string leaves' do
+    it 'accepts a leaf given as a string' do
+      expect(described_class.expectation_for(parent: { 'extractor' => 'attribute' }, leaf: 'attribute'))
+        .to eq(type: String, required: true)
+    end
+  end
 end

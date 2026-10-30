@@ -243,13 +243,221 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
       allow(described_class).to receive(:call).with(url: 'https://example.com/ok', strategy: :auto)
                                               .and_return(described_class::Report.new(data: { status: 200 }))
       allow(described_class).to receive(:call).with(url: 'https://example.com/fail', strategy: :auto)
-                                              .and_raise(StandardError, 'Connection failed')
+                                              .and_raise(Html2rss::Error, 'Connection failed')
 
       reports = described_class.batch(urls: ['https://example.com/ok', 'https://example.com/fail'], concurrency: 2)
 
       expect(reports.size).to eq(2)
       expect(reports.first.to_wire_h[:status]).to eq(200)
-      expect(reports.last.to_wire_h[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
+      expect(reports.last.to_wire_h[:scraper_eligibility]).to include(error: 'Html2rss::Error - Connection failed')
+    end
+
+    it 'builds the full error report shape for a failed URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(described_class).to receive(:call).with(url: 'https://example.com/fail', strategy: :auto)
+                                              .and_raise(Html2rss::Error, 'Connection failed')
+
+      report = described_class.batch(urls: ['https://example.com/fail']).first
+
+      expect(report).to be_a(described_class::Report)
+      expect(report.to_wire_h).to eq(
+        requested_url: 'https://example.com/fail',
+        final_url: 'https://example.com/fail',
+        status: nil,
+        scheme_downgrade: false,
+        alternate_feeds: [],
+        surface_category: :unsupported_surface,
+        articles_count: 0,
+        html_response: false,
+        content_type: nil,
+        strategy: nil,
+        scraper_eligibility: { error: 'Html2rss::Error - Connection failed' }
+      )
+    end
+
+    it 'does not mask programmer errors as per-URL reports' do
+      allow(described_class).to receive(:call).and_raise(NoMethodError)
+
+      expect { described_class.batch(urls: ['https://example.com/a']) }.to raise_error(NoMethodError)
+    end
+  end
+
+  describe 'wire payload assembly' do
+    it 'merges recon facts with diagnostic fields', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      wire = described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h
+
+      expect(wire).to include(
+        requested_url: 'https://example.com/blog',
+        strategy: :default,
+        html_present: true,
+        likely_js_shell: false,
+        redirect_summary: { requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog',
+                            status: 200, scheme_downgrade: false }
+      )
+      expect(wire).to have_key(:scraper_eligibility)
+    end
+
+    it 'logs the js shell body size and surface category when flagged', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Log).to receive(:debug)
+      large = Html2rss::RequestService::Response.new(
+        body: 'x' * 9_000, url: response_url, headers: { 'content-type' => 'text/html' }, status: 200
+      )
+      recon = Html2rss::PageRecon::Result.new(
+        requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog', status: 200,
+        scheme_downgrade: false, alternate_feeds: [], surface_category: :high_entropy_surface,
+        articles_count: 0, admission_drops: {}, segment_stats: nil, html_response: true,
+        content_type: 'text/html', blocked_surface: nil, sst: nil
+      )
+      allow(Html2rss::PageRecon).to receive(:probe).and_return(
+        Html2rss::PageRecon::Probe.new(
+          session: instance_double(Html2rss::RequestSession), response: large, result: recon, strategy: :default
+        )
+      )
+
+      described_class.call(url: 'https://example.com/blog', strategy: :auto)
+
+      expect(Html2rss::Log).to have_received(:debug).with(
+        'Diagnostics js_shell: bytesize=9000 surface_category=high_entropy_surface'
+      )
+    end
+  end
+
+  describe 'likely_js_shell flag' do
+    let(:recon_fields) do
+      {
+        requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog', status: 200,
+        scheme_downgrade: false, alternate_feeds: [], surface_category: :high_entropy_surface,
+        articles_count: 0, admission_drops: {}, segment_stats: nil, html_response: true,
+        content_type: 'text/html', blocked_surface: nil, sst: nil
+      }
+    end
+    let(:response_body) { 'x' * 9_000 }
+    let(:recon) { Html2rss::PageRecon::Result.new(**recon_fields) }
+    let(:probe) do
+      Html2rss::PageRecon::Probe.new(
+        session: instance_double(Html2rss::RequestSession), response:, result: recon, strategy: probe_strategy
+      )
+    end
+    let(:js_shell) do
+      described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h[:likely_js_shell]
+    end
+
+    it 'flags a weak surface with a large body and no articles', :aggregate_failures do
+      expect(js_shell).to be(true)
+    end
+
+    it 'treats the body size threshold as inclusive' do
+      response_body.replace('x' * 8_192)
+
+      expect(js_shell).to be(true)
+    end
+
+    it 'does not flag a body one byte below the threshold' do
+      response_body.replace('x' * 8_191)
+
+      expect(js_shell).to be(false)
+    end
+
+    it 'flags app_shell surfaces regardless of body size' do
+      recon_fields[:surface_category] = :app_shell
+      response_body.replace('x' * 10)
+
+      expect(js_shell).to be(true)
+    end
+
+    it 'does not flag a non-weak surface with a large body' do
+      recon_fields[:surface_category] = :listing
+
+      expect(js_shell).to be(false)
+    end
+
+    it 'flags unsupported_surface as weak' do
+      recon_fields[:surface_category] = :unsupported_surface
+
+      expect(js_shell).to be(true)
+    end
+
+    it 'does not flag an empty body' do
+      recon_fields[:surface_category] = :app_shell
+      response_body.replace('')
+
+      expect(js_shell).to be(false)
+    end
+
+    it 'does not flag a response that is not HTML' do
+      recon_fields[:surface_category] = :app_shell
+      recon_fields[:html_response] = false
+
+      expect(js_shell).to be(false)
+    end
+
+    it 'does not flag pages that already yielded articles' do
+      recon_fields[:surface_category] = :app_shell
+      recon_fields[:articles_count] = 1
+
+      expect(js_shell).to be(false)
+    end
+
+    it 'does not flag blocked interstitials by key' do
+      recon_fields[:surface_category] = :app_shell
+      recon_fields[:blocked_surface] = 'cloudflare'
+
+      expect(js_shell).to be(false)
+    end
+
+    it 'does not flag blocked_surface categories' do
+      recon_fields[:surface_category] = :blocked_surface
+
+      expect(js_shell).to be(false)
+    end
+  end
+
+  describe '.redacted_endpoint' do
+    it 'keeps only scheme, host, and path', :aggregate_failures do
+      entry = { 'url' => 'https://user:pass@api.example.com/v1/articles?token=secret#frag' }
+
+      expect(described_class.redacted_endpoint(entry)).to eq('https://api.example.com/v1/articles')
+    end
+
+    it 'accepts symbol-keyed entries' do
+      expect(described_class.redacted_endpoint({ url: 'https://api.example.com/feed?a=1' }))
+        .to eq('https://api.example.com/feed')
+    end
+
+    it 'returns nil without a URL, scheme, or host', :aggregate_failures do
+      expect(described_class.redacted_endpoint({})).to be_nil
+      expect(described_class.redacted_endpoint({ 'url' => '/relative/path?x=1' })).to be_nil
+      expect(described_class.redacted_endpoint({ 'url' => 'http://[bad' })).to be_nil
+    end
+  end
+
+  describe Html2rss::PageRecon::Result do
+    let(:fields) do
+      {
+        requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog', status: 200,
+        scheme_downgrade: false, alternate_feeds: [], surface_category: :listing, articles_count: 2,
+        admission_drops: {}, segment_stats: nil, html_response: true, content_type: 'text/html',
+        blocked_surface: nil, sst: nil
+      }
+    end
+
+    it 'omits empty optional keys', :aggregate_failures do
+      expect(described_class.new(**fields).to_h).to eq(
+        requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog', status: 200,
+        scheme_downgrade: false, alternate_feeds: [], surface_category: :listing, articles_count: 2,
+        html_response: true, content_type: 'text/html'
+      )
+    end
+
+    it 'includes optional keys when present', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- full optional key set
+      optional = fields.merge(
+        admission_drops: { short: 1 }, segment_stats: { found: 1 }, blocked_surface: 'cloudflare',
+        sst: { node_count: 3 }
+      )
+
+      expect(described_class.new(**optional).to_h).to include(
+        admission_drops: { short: 1 }, segment_stats: { found: 1 }, blocked_surface: 'cloudflare',
+        sst: { node_count: 3 }
+      )
     end
   end
 

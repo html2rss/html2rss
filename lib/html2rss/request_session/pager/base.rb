@@ -26,7 +26,7 @@ module Html2rss
         # @yield [RequestService::Response] each page response
         # @return [Enumerator] enumerator when no block is given
         def each
-          return enum_for(:each) unless block_given?
+          return enum_for unless block_given?
 
           yield initial_response
 
@@ -48,14 +48,14 @@ module Html2rss
 
         # @return [Integer] configured maximum pages (always a positive Integer)
         def max_pages
-          value = config.fetch(:max_pages, DEFAULT_MAX_PAGES)
+          value = config[:max_pages]
           value.is_a?(Integer) && value.positive? ? value : DEFAULT_MAX_PAGES
         end
 
         # @param next_url [Html2rss::Url, String, nil]
         # @return [Boolean]
         def follow_up_allowed?(next_url)
-          !next_url.nil? && !next_url.to_s.empty? && !session.visited?(next_url)
+          !next_url.to_s.empty? && !session.visited?(next_url)
         end
 
         # @param next_url [Html2rss::Url, String]

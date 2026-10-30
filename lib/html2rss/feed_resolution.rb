@@ -122,7 +122,7 @@ module Html2rss
         nil
       rescue *NON_FALLBACK_ERRORS
         raise
-      rescue StandardError => error
+      rescue Html2rss::Error => error
         log_retry_failed(error)
         nil
       end
@@ -154,7 +154,7 @@ module Html2rss
       # @return [String, nil]
       def channel_host
         Url.from_absolute(config.url.to_s).host
-      rescue ArgumentError
+      rescue Html2rss::Url::InvalidUrlError
         nil
       end
 

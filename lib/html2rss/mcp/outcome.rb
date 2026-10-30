@@ -194,7 +194,7 @@ module Html2rss
           NextStep[:scrape]
         end
 
-        def capture_next_step(articles_count:, has_selectors:, native_feed: nil)
+        def capture_next_step(articles_count:, has_selectors:, native_feed:)
           return NextStep[:done] if native_feed
 
           articles_count.positive? && has_selectors ? NextStep[:test] : NextStep[:inspect]
@@ -205,7 +205,6 @@ module Html2rss
 
           kind = test_result.failure_kind
           return NextStep[:validate] if kind&.schema?
-          return NextStep[:capture] if kind&.execution? || kind&.min_items? || kind&.quality?
 
           NextStep[:capture]
         end
@@ -223,8 +222,8 @@ module Html2rss
         end
 
         def capture_payload(yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy:, # rubocop:disable Metrics/ParameterLists
-                            segment_strategy:, selected_strategy:, admission_drops:, native_feed: nil,
-                            suggested_channel_url: nil)
+                            segment_strategy:, selected_strategy:, admission_drops:, native_feed:,
+                            suggested_channel_url:)
           {
             yaml:, articles_count:, has_selectors:, channel_title:, requested_strategy: requested_strategy.to_s,
             **(native_feed ? { native_feed: native_feed.to_s } : {}),

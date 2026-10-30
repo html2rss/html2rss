@@ -40,6 +40,13 @@ User/agent surfaces (CLI, MCP, `next_step`, contributor docs) share seven verbs 
 - Keep living module guides at `lib/html2rss/{auto_source,capture,feed_pipeline,mcp,selectors}/README.md`, wired via `{include:file:lib/.../README.md}` on the owning class. Never add them to `.yardopts --files` (all `README.md` extra files emit `file.README.html` and clobber the gem README).
 - Zeitwerk ignores `.md`. `lib/html2rss/capture/` may contain only `README.md`; do not add a nested `capture.rb`.
 
+## Agent Efficiency
+
+- Subagent briefs: name exact files, one command, and a stop condition; point to this file instead of restating its rules. Keep parallel agents on disjoint files. Skip read-only surveys when one `grep` answers it.
+- Model fit: mechanical edits (e.g. `module_function` conversions) on a small model; reserve the strongest for design/boundary audits.
+- Cap output: pipe mutant/RSpec runs through `tail -n 40` or `grep -E 'survivor|alive|failures'`, or write the full log to scratch and read only the summary. Prefer `make quick`/targeted specs; use `--no-fail-fast` only for full runs.
+- Start a fresh session (or `/compact` with a focus hint) between unrelated tasks; context re-reads dominate cost.
+
 ## Release
 
 - After merging a PR to `master` or when shipping, ask whether to bump and which version unless already specified; never invent the version.
