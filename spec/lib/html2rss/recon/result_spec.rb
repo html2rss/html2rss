@@ -3,7 +3,7 @@
 RSpec.describe Html2rss::Recon::Result do
   subject(:result) { recon_result(verdict: :build, native_feed: nil) }
 
-  it 'provides helper predicate methods per verdict', :aggregate_failures do
+  it 'provides helper predicate methods per verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     {
       build: [true, false, false],
       defer: [false, true, false],
@@ -19,7 +19,7 @@ RSpec.describe Html2rss::Recon::Result do
     expect(recon_result(verdict: :defer, native_feed: 'https://example.com/feed').native_feed?).to be(true)
   end
 
-  it 'serializes every field to a plain hash' do
+  it 'serializes every field to a plain hash' do # rubocop:disable RSpec/ExampleLength
     built = recon_result(
       verdict: :defer,
       requested_url: Html2rss::Url.from_absolute('https://example.com/blog'),

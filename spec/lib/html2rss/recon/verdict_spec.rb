@@ -10,7 +10,7 @@ RSpec.describe Html2rss::Recon::Verdict do
     expect(described_class[:build]).to equal(described_class::ALL.fetch(:build))
   end
 
-  it 'answers exactly one predicate per verdict', :aggregate_failures do
+  it 'answers exactly one predicate per verdict', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     {
       build: [true, false, false],
       defer: [false, true, false],
