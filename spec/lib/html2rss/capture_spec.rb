@@ -3,6 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Capture do
+  # rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups -- fixture-driven capture contracts
   let(:url) { 'https://example.com/blog' }
 
   before do
@@ -68,6 +69,114 @@ RSpec.describe Html2rss::Capture do
         yaml: 'y: 1', admission_drops: { a: 1 }, selected_strategy: :default, inferred_topics: %w[tech],
         native_feed: 'f', suggested_channel_url: 'u', candidates: { items: [] }, segment_strategy: :cluster
       )
+    end
+  end
+
+  describe 'items selector derivation' do
+    let(:page) { ->(body) { "<html><body>#{body}</body></html>" } }
+    let(:card) do
+      lambda do |index, tag: 'article', klass: nil, href: "/a#{index}"|
+        attrs = klass ? %( class="#{klass}") : ''
+        "<#{tag}#{attrs}><h2><a href=\"#{href}\">Title Number #{index} Longer</a></h2>" \
+          "<p>Teaser text number #{index} with words</p></#{tag}>"
+      end
+    end
+    let(:articles_for) do
+      lambda do |count, host: 'https://example.com', offset: 0|
+        (1..count).map do |index|
+          Html2rss::Article.new(id: index.to_s, title: "Title Number #{index} Longer",
+                                url: Html2rss::Url.from_absolute("#{host}/a#{index + offset}"))
+        end
+      end
+    end
+    let(:derive) do
+      lambda do |html, articles|
+        stub_outcome(html_response(html), articles:)
+        result = described_class.new(url).build
+        [result.config.dig(:selectors, :items, :selector), result.segment_strategy]
+      end
+    end
+    let(:default_selector) { Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR }
+
+    it 'matches segments to articles by exact url', :aggregate_failures do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(3))).to eq(['article', :list])
+    end
+
+    it 'falls back to a path-suffix match when the article host differs' do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(3, host: 'https://other.example.org'))).to eq(['article', :list])
+    end
+
+    it 'needs two matched segments', :aggregate_failures do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(1))).to eq([default_selector, :default])
+      expect(derive.call(html, articles_for.call(2))).to eq(['article', :list])
+    end
+
+    it 'falls back to the default selector when no article matches' do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(3, offset: 50))).to eq([default_selector, :default])
+    end
+
+    it 'falls back to the default selector for links without an href' do
+      html = page.call((1..2).map { card.call(_1, href: '') }.join)
+
+      expect(derive.call(html, articles_for.call(2))).to eq([default_selector, :default])
+    end
+
+    {
+      'a wrapping section path' =>
+        [->(cards) { "<div><section>#{cards}</section></div>" }, 'section > article', 'article', nil],
+      'a shared class' => [nil, 'article.card', 'article', 'card'],
+      'divs inside divs' => [->(cards) { "<div><div>#{cards}</div></div>" }, 'div', 'div', nil],
+      'list items' => [->(cards) { "<ul>#{cards}</ul>" }, 'ul > li', 'li', nil]
+    }.each do |label, (wrap, expected, tag, klass)|
+      it "derives the selector for #{label}" do
+        cards = (1..3).map { |index| card.call(index, tag:, klass:) }.join
+        html = page.call(wrap ? wrap.call(cards) : cards)
+
+        expect(derive.call(html, articles_for.call(3))).to eq([expected, :list])
+      end
+    end
+
+    it 'unions distinct root tags', :aggregate_failures do
+      html = page.call("<main>#{card.call(1)}#{card.call(2, tag: 'section')}#{card.call(3)}</main>")
+
+      expect(derive.call(html, articles_for.call(3))).to eq(['article, section', :list])
+    end
+
+    it 'keeps wrapping anchors with media as item roots' do
+      body = (1..3).map do |index|
+        %(<a href="/a#{index}"><img src="x.png"><span>Title Number #{index} Longer</span>) +
+          %(<p>Teaser text number #{index} with words</p></a>)
+      end.join
+
+      expect(derive.call(page.call(body), articles_for.call(3))).to eq(['a', :list])
+    end
+
+    it 'derives list items around bare anchors' do
+      body = "<ul>#{(1..3).map { %(<li><a href="/a#{_1}">Title Number #{_1} Longer</a></li>) }.join}</ul>"
+
+      expect(derive.call(page.call(body), articles_for.call(3))).to eq(['ul > li', :list])
+    end
+
+    it 'keeps headings without a usable card parent as item roots' do
+      body = (1..3).map do |index|
+        %(<h3><a href="/a#{index}">Title Number #{index} Longer</a></h3><p>Teaser text number #{index}</p>)
+      end.join
+
+      expect(derive.call(page.call(%(<div class="x">#{body}</div>)), articles_for.call(3))).to eq(['h3', :list])
+    end
+
+    it 'uses the alphabetically first class shared by every root' do
+      body = (1..3).map { card.call(_1, tag: 'div', klass: "c k#{_1}") }.join
+
+      expect(derive.call(page.call("<main>#{body}</main>"), articles_for.call(3))).to eq(['div.c', :list])
     end
   end
 
@@ -213,9 +322,10 @@ RSpec.describe Html2rss::Capture do
 
     context 'with explicit options' do
       subject(:result) do
-        stub_outcome(html_response('<html><head><title>Page Title</title></head></html>'), articles: [],
-                                                                                          admission_drops: { a: 1 },
-                                                                                          selected_strategy: :browserless)
+        stub_outcome(
+          html_response('<html><head><title>Page Title</title></head></html>'),
+          articles: [], admission_drops: { a: 1 }, selected_strategy: :browserless
+        )
         described_class.new(
           url, strategy: :default, items_selector: '.card', topics: %w[jobs tech culture], title: 'Custom Title',
                summary: 'S' * 200, force: true, enhance: false, limit: 9, max_redirects: 7, max_requests: 4
@@ -262,14 +372,14 @@ RSpec.describe Html2rss::Capture do
     end
 
     context 'with default options on an html page' do
-      subject(:result) { described_class.new(url, strategy: strategy).build }
+      subject(:result) { described_class.new(url, strategy:).build }
 
       let(:strategy) { :auto }
       let(:selected) { nil }
 
       before do
         stub_outcome(html_response('<html><head><title>Page Title</title></head></html>'), articles: [],
-                                                                                          selected_strategy: selected)
+                                                                                           selected_strategy: selected)
       end
 
       it 'derives the title, summary and default selector', :aggregate_failures do
@@ -932,4 +1042,5 @@ RSpec.describe Html2rss::Capture do
       expect(result.suggested_channel_url).to eq('https://example.com/blog/list')
     end
   end
+  # rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups
 end
