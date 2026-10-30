@@ -211,5 +211,75 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
         expect(described_class.call(nil)).to eq([])
       end
     end
+
+    context 'when the category element is the article root or a bare anchor' do
+      let(:html_content) do
+        <<~HTML
+          <article class=category-root>Root text should not count</article>
+        HTML
+      end
+
+      it 'ignores the article root class text', :aggregate_failures do
+        expect(described_class.call(article_tag)).to eq([])
+      end
+    end
+
+    context 'when the anchor itself carries the category class' do
+      let(:html_content) do
+        <<~HTML
+          <article>
+            <a class=category-link href=/politics>Politics</a>
+            <a class=category-link href=/tech>Technology</a>
+          </article>
+        HTML
+      end
+
+      it 'uses the anchor text directly', :aggregate_failures do
+        expect(described_class.call(article_tag)).to contain_exactly('Politics', 'Technology')
+      end
+    end
+
+    context 'when the category container wraps block-level children' do
+      let(:html_content) do
+        <<~HTML
+          <article>
+            <div class=post-tags><section>Hidden block</section></div>
+          </article>
+        HTML
+      end
+
+      it 'does not treat the container as a category', :aggregate_failures do
+        expect(described_class.call(article_tag)).to eq([])
+      end
+    end
+
+    context 'when the title is echoed as a category value' do
+      let(:html_content) do
+        <<~HTML
+          <article>
+            <div class=category-news>Election Results Tonight</div>
+            <div class=category-news>Politics</div>
+          </article>
+        HTML
+      end
+
+      it 'drops values equal to the article title', :aggregate_failures do
+        expect(described_class.call(article_tag, title: 'Election Results Tonight')).to eq(['Politics'])
+      end
+    end
+
+    context 'when a data attribute element has no category class' do
+      let(:html_content) do
+        <<~HTML
+          <article>
+            <div data-topic=Economy>Ignored visible text</div>
+          </article>
+        HTML
+      end
+
+      it 'uses only the data attribute value', :aggregate_failures do
+        expect(described_class.call(article_tag)).to eq(['Economy'])
+      end
+    end
   end
 end
