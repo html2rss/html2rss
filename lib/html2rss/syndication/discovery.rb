@@ -92,7 +92,7 @@ module Html2rss
         # @return [Array<String>] relative paths
         def page_dir_paths(page_url)
           path = Html2rss::Url.from_absolute(page_url).path
-          return [] if path.nil? || path.empty? || path == '/'
+          return [] if path == '/'
 
           dir = path.sub(%r{/[^/]*$}, '/')
           ["#{dir}feed", "#{dir}rss.xml", "#{dir}atom.xml"]
