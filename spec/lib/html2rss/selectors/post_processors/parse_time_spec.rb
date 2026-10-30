@@ -74,6 +74,19 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
     expect { described_class.new('10:00', ctx).call }.to raise_error(ArgumentError, 'year must be an Integer')
   end
 
+  it 'completes two-digit years in the channel time_zone' do
+    ctx = Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin')
+
+    expect(described_class.new('01 Jan 26 10:00', ctx).call).to eq('Thu, 01 Jan 2026 10:00:00 +0100')
+  end
+
+  it 'rejects a non-String time_zone without #empty? as InvalidType' do
+    ctx = Html2rss::Selectors::StepEnv.new(time_zone: 42)
+
+    expect { described_class.validate_args!('x', ctx) }
+      .to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /`time_zone`/)
+  end
+
   it 'rejects a non-String time_zone with the option name in the message' do
     ctx = Html2rss::Selectors::StepEnv.new(time_zone: ['Europe/Berlin'])
 
