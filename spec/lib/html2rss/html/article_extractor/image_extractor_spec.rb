@@ -96,4 +96,20 @@ RSpec.describe Html2rss::Html::ArticleExtractor::ImageExtractor do
       end
     end
   end
+
+  describe '.from_style' do
+    subject(:url) { described_class.from_style(article_tag) }
+
+    context 'when a url( token appears outside the style attribute' do
+      let(:article_tag) do
+        Nokogiri::HTML.fragment(
+          '<article><div class="url(decoy.jpg)" style="background: url(real.jpg)"></div></article>'
+        )
+      end
+
+      it 'uses only the style attribute value' do
+        expect(url).to eq('real.jpg')
+      end
+    end
+  end
 end
