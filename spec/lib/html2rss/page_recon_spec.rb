@@ -15,6 +15,24 @@ RSpec.describe Html2rss::PageRecon do
     )
   end
 
+  let(:item_count) { 7 }
+  let(:list_items) do
+    (1..item_count).map do |index|
+      '<li class="post"><h2>' \
+        "<a href=\"/posts/#{index}\">Post title number #{index} with words</a></h2>" \
+        "<p>Description text for post #{index} is long enough to count as content here.</p></li>"
+    end.join
+  end
+  let(:list_response) do
+    Html2rss::RequestService::Response.new(
+      body: '<!DOCTYPE html><html><head><title>Blog</title></head>' \
+            "<body><main><ul>#{list_items}</ul></main></body></html>",
+      url: Html2rss::Url.from_absolute('https://example.com/blog'),
+      headers: { 'content-type' => 'text/html' },
+      status: 200
+    )
+  end
+
   it 'reports alternate feeds, articles_count, and segment stats', :aggregate_failures do
     result = described_class.call(response:, url: 'https://example.com/blog')
 
@@ -70,6 +88,82 @@ RSpec.describe Html2rss::PageRecon do
     expect(result.alternate_feeds).to eq(
       [{ href: 'https://example.com/feed.xml', mime_type: 'application/rss+xml' }]
     )
+  end
+
+  it 'reports exact segment stats for a multi-item list page', :aggregate_failures do
+    result = described_class.call(response: list_response, url: 'https://example.com/blog')
+
+    expect(result.segment_stats).to eq(
+      found: 7,
+      strategies: [:list],
+      sample_paths: Array.new(5, '/html/body/main/ul/li')
+    )
+    expect(result.sst).to include(
+      node_count: be_a(Integer).and(be_positive),
+      degraded: false,
+      segment_stats: result.segment_stats
+    )
+  end
+
+  it 'omits sst and segment stats when the body normalizes to no document', :aggregate_failures do
+    empty = Html2rss::RequestService::Response.new(
+      body: '',
+      url: Html2rss::Url.from_absolute('https://example.com/blog'),
+      headers: { 'content-type' => 'text/html' },
+      status: 200
+    )
+    result = described_class.call(response: empty, url: 'https://example.com/blog')
+
+    expect(result.sst).to be_nil
+    expect(result.segment_stats).to be_nil
+  end
+
+  context 'with more list items than the cheap article limit' do
+    let(:item_count) { 12 }
+
+    it 'caps the cheap article count at the fixed AutoSource limit', :aggregate_failures do
+      assessment = described_class.assess(response: list_response, url: 'https://example.com/blog')
+
+      expect(assessment.articles_count).to eq(10)
+      expect(assessment.html_response).to be(true)
+    end
+  end
+
+  it 'reports no cheap articles or drops for a non-HTML, non-feed body', :aggregate_failures do
+    plain = Html2rss::RequestService::Response.new(
+      body: 'plain text body',
+      url: Html2rss::Url.from_absolute('https://example.com/blog'),
+      headers: { 'content-type' => 'text/plain' },
+      status: 200
+    )
+    assessment = described_class.assess(response: plain, url: 'https://example.com/blog')
+
+    expect(assessment.articles_count).to eq(0)
+    expect(assessment.admission_drops).to eq({})
+  end
+
+  it 'reports found zero when the page has no list segments' do
+    response = Html2rss::RequestService::Response.new(
+      body: '<html><body><p>Just a paragraph.</p></body></html>',
+      url: Html2rss::Url.from_absolute('https://example.com/blog'),
+      headers: { 'content-type' => 'text/html' },
+      status: 200
+    )
+
+    expect(described_class.call(response:, url: 'https://example.com/blog').segment_stats).to eq(found: 0)
+  end
+
+  it 'skips sst and segment stats for non-HTML responses', :aggregate_failures do
+    feed = Html2rss::RequestService::Response.new(
+      body: '<rss version="2.0"><channel></channel></rss>',
+      url: Html2rss::Url.from_absolute('https://example.com/feed.xml'),
+      headers: { 'content-type' => 'application/rss+xml' },
+      status: 200
+    )
+    result = described_class.call(response: feed, url: feed.url.to_s)
+
+    expect(result.sst).to be_nil
+    expect(result.segment_stats).to be_nil
   end
 
   it 'probe builds a session, fetches, and returns Probe', :aggregate_failures do
