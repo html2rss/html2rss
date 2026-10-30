@@ -54,6 +54,26 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
     expect(ENV.fetch('TZ', nil)).to eq(previous_tz)
   end
 
+  context 'with partial local timestamps' do
+    let(:ctx) { Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin') }
+
+    it 'keeps seconds and drops fractional seconds', :aggregate_failures do
+      expect(described_class.new('2019-07-01 12:00:30', ctx).call).to eq('Mon, 01 Jul 2019 12:00:30 +0200')
+      expect(described_class.new('2019-07-01 12:00:30.5', ctx).call).to eq('Mon, 01 Jul 2019 12:00:30 +0200')
+    end
+
+    it 'defaults missing minutes and time of day to zero', :aggregate_failures do
+      expect(described_class.new('2019-07-01 12:34', ctx).call).to eq('Mon, 01 Jul 2019 12:34:00 +0200')
+      expect(described_class.new('2019-07-01', ctx).call).to eq('Mon, 01 Jul 2019 00:00:00 +0200')
+    end
+  end
+
+  it 'uses a zone named in the source string instead of the channel time_zone' do
+    ctx = Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin')
+
+    expect(described_class.new('2019-07-01 12:00 UTC', ctx).call).to eq('Mon, 01 Jul 2019 12:00:00 -0000')
+  end
+
   it 'keeps an explicit offset from the source string' do
     ctx = Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin')
 
