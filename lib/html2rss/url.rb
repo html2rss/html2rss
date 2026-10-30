@@ -26,6 +26,9 @@ module Html2rss
   class Url
     include Comparable
 
+    # Raised when a string cannot be parsed or resolved to a valid URL.
+    class InvalidUrlError < Html2rss::Error; end
+
     # Regular expression for basic URI format validation
     URI_REGEXP = Addressable::URI::URIREGEX
     # Schemes accepted by channel URL validation.
@@ -37,14 +40,14 @@ module Html2rss
     # @param relative_url [String, Html2rss::Url] the relative URL to resolve
     # @param base_url [String, Html2rss::Url] the base URL to resolve against
     # @return [Url] the resolved absolute URL
-    # @raise [ArgumentError] if the URL cannot be parsed
+    # @raise [InvalidUrlError] if the URL cannot be parsed
     def self.from_relative(relative_url, base_url)
       url = Addressable::URI.parse(relative_url.to_s.strip)
       return new(url) if url.absolute?
 
       join_parsed_base(base_url, url)
     rescue Addressable::URI::InvalidURIError
-      raise ArgumentError, 'URL could not be parsed'
+      raise InvalidUrlError, 'URL could not be parsed'
     end
 
     # @param base_url [String, Url]
@@ -74,15 +77,15 @@ module Html2rss
     #
     # @param url_string [String, Html2rss::Url] the absolute URL to parse
     # @return [Url] the parsed and normalized URL
-    # @raise [ArgumentError] if the URL is not absolute or cannot be parsed
+    # @raise [InvalidUrlError] if the URL is not absolute or cannot be parsed
     def self.from_absolute(url_string)
       return url_string if url_string.is_a?(self)
 
       new(Addressable::URI.parse(url_string.to_s.lstrip).normalize).tap do |url|
-        raise ArgumentError, 'URL must be absolute' unless url.absolute?
+        raise InvalidUrlError, 'URL must be absolute' unless url.absolute?
       end
     rescue Addressable::URI::InvalidURIError
-      raise ArgumentError, 'URL must be absolute'
+      raise InvalidUrlError, 'URL must be absolute'
     end
 
     ##
@@ -91,13 +94,13 @@ module Html2rss
     #
     # @param url_string [String] the URL string to validate and parse
     # @return [Url] the validated and parsed URL
-    # @raise [ArgumentError] if the URL doesn't meet channel requirements
+    # @raise [InvalidUrlError] if the URL doesn't meet channel requirements
     # @example Creating a channel URL
     #   Url.for_channel('https://example.com')
     #   # => #<Html2rss::Url:... @uri=#<Addressable::URI:... URI:https://example.com>>
     # @example Invalid channel URL
     #   Url.for_channel('/relative/path')
-    #   # => raises ArgumentError: "URL must be absolute"
+    #   # => raises InvalidUrlError: "URL must be absolute"
     def self.for_channel(url_string)
       stripped = url_string.to_s.lstrip
       return nil if stripped.empty?
@@ -117,7 +120,7 @@ module Html2rss
       tags.each do |sel, attr|
         val = doc.at_css(sel)&.[](attr)
         return from_absolute(val)
-      rescue ArgumentError
+      rescue InvalidUrlError
         nil
       end
       nil
@@ -127,14 +130,14 @@ module Html2rss
     # Validates that a URL meets channel requirements.
     #
     # @param url [Url] the URL to validate
-    # @raise [ArgumentError] if the URL doesn't meet channel requirements
+    # @raise [InvalidUrlError] if the URL doesn't meet channel requirements
     def self.validate_channel_url(url)
       has_forbidden_at = url.user
       has_forbidden_at ||= [url.query, url.fragment].compact.any? { |value| value.include?('@') }
-      raise ArgumentError, 'URL must not contain an @ character' if has_forbidden_at
+      raise InvalidUrlError, 'URL must not contain an @ character' if has_forbidden_at
 
       scheme = url.scheme
-      raise ArgumentError, "URL scheme '#{scheme}' is not supported" unless SUPPORTED_SCHEMES.include?(scheme)
+      raise InvalidUrlError, "URL scheme '#{scheme}' is not supported" unless SUPPORTED_SCHEMES.include?(scheme)
     end
 
     private_class_method :validate_channel_url

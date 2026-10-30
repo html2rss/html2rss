@@ -38,7 +38,7 @@ module Html2rss
         return unless href
 
         @by_href[href] ||= build_facts(href)
-      rescue ArgumentError
+      rescue Html2rss::Url::InvalidUrlError
         nil
       end
 

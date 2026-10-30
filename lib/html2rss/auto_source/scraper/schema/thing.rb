@@ -129,7 +129,7 @@ module Html2rss
 
             norm_url = normalized_id_url(text, reference_url:)
             reference_url && norm_url.host == reference_url.host ? normalized_id_value(norm_url) : text
-          rescue ArgumentError
+          rescue Html2rss::Url::InvalidUrlError
             text
           end
 
@@ -153,7 +153,7 @@ module Html2rss
           # @return [Html2rss::Url, nil] normalized absolute URL for schema resolution
           def normalized_base_url(url)
             Url.from_absolute(url) unless url.to_s.strip.empty?
-          rescue ArgumentError
+          rescue Html2rss::Url::InvalidUrlError
             nil
           end
         end

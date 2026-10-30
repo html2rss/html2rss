@@ -103,7 +103,7 @@ module Html2rss
           return unless str
 
           Url.from_relative(str, @url)
-        rescue ArgumentError
+        rescue Html2rss::Url::InvalidUrlError
           nil
         end
 
@@ -112,7 +112,7 @@ module Html2rss
           return unless str
 
           Url.from_absolute(str)
-        rescue ArgumentError
+        rescue Html2rss::Url::InvalidUrlError
           nil
         end
 

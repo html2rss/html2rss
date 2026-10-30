@@ -118,7 +118,7 @@ module Html2rss
         return if href.nil? || href.empty? || href.start_with?('#', 'mailto:', 'javascript:')
 
         Html2rss::Url.from_relative(href, entry_url)
-      rescue ArgumentError
+      rescue Html2rss::Url::InvalidUrlError
         nil
       end
 

@@ -65,7 +65,7 @@ module Html2rss
         return ctx.url if final_url.nil?
 
         Html2rss::Url.from_absolute(final_url)
-      rescue ArgumentError
+      rescue Html2rss::Url::InvalidUrlError
         ctx.url
       end
 
@@ -117,7 +117,7 @@ module Html2rss
             raise BotasaurusConfigurationError, 'BOTASAURUS_SCRAPER_URL is required for strategy=botasaurus.'
           end
           Html2rss::Url.for_channel(configured)
-        rescue ArgumentError => error
+        rescue Html2rss::Url::InvalidUrlError => error
           raise BotasaurusConfigurationError, "BOTASAURUS_SCRAPER_URL is invalid: #{error.message}"
         end
       end

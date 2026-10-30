@@ -104,7 +104,7 @@ module Html2rss
           else
             Html2rss::Url.from_absolute(value)
           end
-        rescue ArgumentError
+        rescue Html2rss::Url::InvalidUrlError
           nil
         end
 

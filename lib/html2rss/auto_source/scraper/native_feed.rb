@@ -96,7 +96,7 @@ module Html2rss
           return [] unless response
 
           Syndication::Parser.parse_response(response)
-        rescue Html2rss::Error, ArgumentError => error
+        rescue Html2rss::Error => error
           Log.warn({
             event_name: 'auto_source.native_feed.failed',
             host: url.host,

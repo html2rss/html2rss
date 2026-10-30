@@ -51,6 +51,15 @@ RSpec.describe Html2rss::CLI do
       allow(Html2rss).to receive(:apply).and_raise(Html2rss::NoFeedItemsExtracted.new(attempts: []))
       expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /No feed items extracted/)
     end
+
+    it 'raises Thor::Error on malformed options and URLs instead of a stack trace', :aggregate_failures do
+      allow(Html2rss::Config).to receive(:from_yaml).and_return({ url: 'https://example.com' })
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::InvalidOption, 'limit must be an Integer in 1.., got 0')
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /limit must be/)
+
+      allow(Html2rss).to receive(:apply).and_raise(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
+      expect { cli.apply('example.yml') }.to raise_error(Thor::Error, /must be absolute/)
+    end
   end
 
   describe '#inspect' do

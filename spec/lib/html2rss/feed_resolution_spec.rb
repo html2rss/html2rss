@@ -94,7 +94,7 @@ RSpec.describe Html2rss::FeedResolution do
   it 'rejects a runner entry URL that is not absolute' do
     expect do
       described_class::Runner.new(entry_url: '/news', response:, session:, config:, articles: [])
-    end.to raise_error(ArgumentError, 'URL must be absolute')
+    end.to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
   end
 
   it 'allows omitting the runner surface category' do

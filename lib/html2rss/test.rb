@@ -352,7 +352,7 @@ module Html2rss
       return false if configured.empty? || final.empty?
 
       !Url.from_absolute(configured).same_document?(Url.from_absolute(final))
-    rescue ArgumentError
+    rescue Html2rss::Url::InvalidUrlError
       false
     end
     private_class_method :url_mismatch?

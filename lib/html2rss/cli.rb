@@ -421,7 +421,9 @@ module Html2rss
            Html2rss::RequestService::BotasaurusConnectionFailed,
            Html2rss::RequestService::BotasaurusServiceError,
            Html2rss::RequestService::BlockedSurfaceDetected,
-           Html2rss::NoFeedItemsExtracted => error
+           Html2rss::NoFeedItemsExtracted,
+           Html2rss::InvalidOption,
+           Html2rss::Url::InvalidUrlError => error
       raise Thor::Error, error.message
     end
 

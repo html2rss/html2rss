@@ -484,7 +484,7 @@ module Html2rss
       return final unless Url.from_absolute(@url).same_document?(Url.from_absolute(final))
 
       nil
-    rescue ArgumentError
+    rescue Html2rss::Url::InvalidUrlError
       nil
     end
   end

@@ -54,7 +54,7 @@ module Html2rss
             return log_missing_api_root if href.empty?
 
             Html2rss::Url.from_relative(href, page_url)
-          rescue ArgumentError => error
+          rescue Html2rss::Url::InvalidUrlError => error
             logger.warn("#{WordpressApi}: invalid WordPress API endpoint #{href.inspect} (#{error.message})")
             nil
           end

@@ -92,7 +92,7 @@ module Html2rss
               return unless string
 
               Url.from_relative(string, base_url)
-            rescue ArgumentError
+            rescue Html2rss::Url::InvalidUrlError
               Log.debug("#{log_key}: url=#{string}")
               nil
             end

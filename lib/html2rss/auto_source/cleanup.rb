@@ -286,7 +286,7 @@ module Html2rss
         def item_url(item)
           raw = item.url
           raw.nil? || raw.to_s.empty? ? nil : Html2rss::Url.from_absolute(raw.to_s)
-        rescue ArgumentError
+        rescue Html2rss::Url::InvalidUrlError
           nil
         end
 

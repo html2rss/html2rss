@@ -140,7 +140,7 @@ module Html2rss
 
         def absolute_url(base, path)
           Html2rss::Url.from_relative(path, base)
-        rescue ArgumentError
+        rescue Html2rss::Url::InvalidUrlError
           nil
         end
       end

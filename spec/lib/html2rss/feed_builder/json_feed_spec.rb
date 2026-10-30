@@ -100,7 +100,7 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed do
     it 'rejects a relative feed_url' do
       expect do
         described_class.new(channel:, articles:, user_comment:, feed_url: '/relative.json')
-      end.to raise_error(ArgumentError, /absolute/)
+      end.to raise_error(Html2rss::Url::InvalidUrlError, /absolute/)
     end
 
     it 'rejects a non-string feed_url' do

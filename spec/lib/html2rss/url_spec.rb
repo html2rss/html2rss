@@ -14,9 +14,9 @@ RSpec.describe Html2rss::Url do
       end
     end
 
-    it 'raises ArgumentError for malformed URLs' do
+    it 'raises InvalidUrlError for malformed URLs' do
       expect { described_class.from_relative('http://example .com', base_url) }
-        .to raise_error(ArgumentError, 'URL could not be parsed')
+        .to raise_error(Html2rss::Url::InvalidUrlError, 'URL could not be parsed')
     end
 
     it 'resolves against an already-parsed Html2rss::Url without changing the result' do
@@ -86,7 +86,9 @@ RSpec.describe Html2rss::Url do
     end
 
     it 'rejects relative URLs' do
-      expect { described_class.from_absolute('/path') }.to raise_error(ArgumentError, 'URL must be absolute')
+      expect do
+        described_class.from_absolute('/path')
+      end.to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
     end
 
     it 'strips surrounding whitespace' do
@@ -99,11 +101,11 @@ RSpec.describe Html2rss::Url do
 
     it 'rejects an unparsable URL' do
       expect { described_class.from_absolute('http://example .com') }
-        .to raise_error(ArgumentError, 'URL must be absolute')
+        .to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
     end
 
     it 'coerces non-string input with to_s' do
-      expect { described_class.from_absolute(1) }.to raise_error(ArgumentError, 'URL must be absolute')
+      expect { described_class.from_absolute(1) }.to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
     end
 
     it 'returns a subclass instance unchanged' do
@@ -457,9 +459,9 @@ RSpec.describe Html2rss::Url do
         './relative/path',
         '../relative/path'
       ].each do |relative_url|
-        it "raises ArgumentError for relative URL #{relative_url.inspect}" do
+        it "raises InvalidUrlError for relative URL #{relative_url.inspect}" do
           expect { described_class.for_channel(relative_url) }
-            .to raise_error(ArgumentError, 'URL must be absolute')
+            .to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
         end
       end
     end
@@ -471,9 +473,9 @@ RSpec.describe Html2rss::Url do
         'https://example.com?param=value@test',
         'https://example.com/#frag@test'
       ].each do |url_with_at|
-        it "raises ArgumentError for URL with @ character: #{url_with_at.inspect}" do
+        it "raises InvalidUrlError for URL with @ character: #{url_with_at.inspect}" do
           expect { described_class.for_channel(url_with_at) }
-            .to raise_error(ArgumentError, 'URL must not contain an @ character')
+            .to raise_error(Html2rss::Url::InvalidUrlError, 'URL must not contain an @ character')
         end
       end
     end
@@ -485,15 +487,15 @@ RSpec.describe Html2rss::Url do
         'javascript:alert("test")',
         'data:text/plain,test'
       ].each do |unsupported_url|
-        it "raises ArgumentError for unsupported scheme: #{unsupported_url.inspect}" do
+        it "raises InvalidUrlError for unsupported scheme: #{unsupported_url.inspect}" do
           expect { described_class.for_channel(unsupported_url) }
-            .to raise_error(ArgumentError, /URL scheme '[^']+' is not supported/)
+            .to raise_error(Html2rss::Url::InvalidUrlError, /URL scheme '[^']+' is not supported/)
         end
       end
 
-      it 'raises ArgumentError for mailto URL (unsupported scheme)' do
+      it 'raises InvalidUrlError for mailto URL (unsupported scheme)' do
         expect { described_class.for_channel('mailto:test@example.com') }
-          .to raise_error(ArgumentError, "URL scheme 'mailto' is not supported")
+          .to raise_error(Html2rss::Url::InvalidUrlError, "URL scheme 'mailto' is not supported")
       end
     end
 
@@ -516,14 +518,14 @@ RSpec.describe Html2rss::Url do
     end
 
     context 'with malformed URLs' do
-      it 'raises ArgumentError for malformed URL' do
+      it 'raises InvalidUrlError for malformed URL' do
         expect { described_class.for_channel('not-a-url') }
-          .to raise_error(ArgumentError, 'URL must be absolute')
+          .to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
       end
 
-      it 'raises ArgumentError for URL with only scheme' do
+      it 'raises InvalidUrlError for URL with only scheme' do
         expect { described_class.for_channel('https://') }
-          .to raise_error(ArgumentError, 'URL must be absolute')
+          .to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
       end
     end
   end
