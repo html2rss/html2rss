@@ -253,6 +253,23 @@ RSpec.describe Html2rss::Selectors do
         expect(enhanced[:title]).to eq('No Link Article')
         expect(enhanced[:url].to_s).to eq('http://example.com/#no-link-article')
       end
+
+      it 'omits fields the extractor could not fill instead of storing nil' do
+        _baseline, enhanced, = instance.each_enhance_pair.first
+
+        expect(enhanced.compact).to eq(enhanced)
+      end
+    end
+
+    context 'when the item is an anchor with an empty href' do
+      let(:selectors) { { items: { selector: 'a.card', enhance: true }, title: { selector: 'h3' } } }
+      let(:body) { '<html><body><a class="card" href=""><h3>Empty Href Title</h3></a></body></html>' }
+
+      it 'fills the url that the baseline left nil' do
+        _baseline, enhanced, = instance.each_enhance_pair.first
+
+        expect(enhanced[:url]).not_to be_nil
+      end
     end
 
     context 'when all enhanceable fields are already extracted' do
@@ -269,12 +286,13 @@ RSpec.describe Html2rss::Selectors do
         }
       end
 
-      it 'does not call ArticleExtractor' do
+      it 'does not call ArticleExtractor and keeps the baseline', :aggregate_failures do
         allow(Html2rss::Html::ArticleExtractor).to receive(:call)
 
-        instance.each_enhance_pair.to_a
+        _baseline, enhanced, = instance.each_enhance_pair.first
 
         expect(Html2rss::Html::ArticleExtractor).not_to have_received(:call)
+        expect(enhanced).to include(:title, :url, :description)
       end
     end
 
@@ -435,6 +453,46 @@ RSpec.describe Html2rss::Selectors do
 
       it 'returns each resolved url as a string' do
         expect(categories).to eq(['http://example.com/t/ruby', 'http://example.com/t/rss'])
+      end
+    end
+
+    context 'when a multi-node category selector yields raw static values' do
+      subject(:categories) { instance.select(:categories, item) }
+
+      let(:item) { Nokogiri::HTML(body).at('article') }
+      let(:body) do
+        '<html><body><article><div class="tags">' \
+          '<a href="/t/ruby">Ruby</a><a href="/t/rss">RSS</a></div></article></body></html>'
+      end
+      let(:selectors) do
+        {
+          items: { selector: 'article', enhance: false },
+          tags: { selector: '.tags a', extractor: 'static', static: [' News ', nil, ' ', 42, 'Tech '] },
+          categories: %i[tags]
+        }
+      end
+
+      it 'trims each value, drops nil and blank entries, and stringifies the rest' do
+        expect(categories).to eq(%w[News 42 Tech News 42 Tech])
+      end
+    end
+
+    context 'when category selectors are not backed by matched nodes' do
+      subject(:categories) { instance.select(:categories, item) }
+
+      let(:item) { Nokogiri::HTML(body).at('article') }
+      let(:body) { '<html><body><article><h1>x</h1></article></body></html>' }
+      let(:selectors) do
+        {
+          items: { selector: 'article', enhance: false },
+          fallback: { selector: '.nomatch', extractor: 'static', static: 'Fallback' },
+          listed: { extractor: 'static', static: %w[A B] },
+          categories: %i[fallback listed]
+        }
+      end
+
+      it 'keeps the configured static values as-is' do
+        expect(categories).to eq(%w[Fallback A B])
       end
     end
 
