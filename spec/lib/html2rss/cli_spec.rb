@@ -412,6 +412,14 @@ RSpec.describe Html2rss::CLI do
         expect(Html2rss).not_to have_received(:feed)
       end
 
+      it 'reports an invalid --min-items as a Thor::Error instead of a stack trace' do
+        allow(Html2rss).to receive(:test).and_raise(Html2rss::InvalidOption,
+                                                    'min_items must be an Integer in 0.., got 2.5')
+
+        expect { cli.invoke(:test, ['config.yml'], { min_items: 2.5 }) }
+          .to raise_error(Thor::Error, /min_items must be an Integer/)
+      end
+
       it 'forwards --min-items 0 to Html2rss.test' do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss).to receive(:test).and_return(test_result_success)
 

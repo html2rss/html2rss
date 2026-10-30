@@ -160,15 +160,17 @@ module Html2rss
     # @return [void]
     def test(config_input = nil, feed_name = nil) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       raw_content, input_source = read_config_input(config_input)
-      result = Html2rss.test(
-        raw_content,
-        feed_name,
-        min_items: options.fetch(:min_items, 1).to_i,
-        params: options[:params] || {},
-        strategy: options[:strategy],
-        strict_quality: options.fetch(:strict_quality, false),
-        compare_enhance: options.fetch(:compare_enhance, false)
-      )
+      result = execute_feed do
+        Html2rss.test(
+          raw_content,
+          feed_name,
+          min_items: options.fetch(:min_items, 1),
+          params: options[:params] || {},
+          strategy: options[:strategy],
+          strict_quality: options.fetch(:strict_quality, false),
+          compare_enhance: options.fetch(:compare_enhance, false)
+        )
+      end
 
       if options[:json]
         puts JSON.pretty_generate(result.to_h)
