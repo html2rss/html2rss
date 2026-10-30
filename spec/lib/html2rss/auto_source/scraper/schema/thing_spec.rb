@@ -178,6 +178,33 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#image' do
     subject(:image) { instance.image }
 
+    context 'when image is an array of urls' do
+      let(:schema_object) { { image: ['https://example.com/a.jpg', 'https://example.com/b.jpg'] } }
+
+      it 'uses the first entry' do
+        expect(image.to_s).to eq('https://example.com/a.jpg')
+      end
+    end
+
+    context 'when image is an array mixing unusable entries and an ImageObject' do
+      let(:schema_object) do
+        { image: [{ '@type': 'Thing', url: 'https://example.com/no.jpg' },
+                  { '@type': 'ImageObject', url: 'https://example.com/yes.jpg' }] }
+      end
+
+      it 'skips unusable entries' do
+        expect(image.to_s).to eq('https://example.com/yes.jpg')
+      end
+    end
+
+    context 'when image is an empty array and thumbnailUrl is set' do
+      let(:schema_object) { { image: [], thumbnailUrl: 'https://example.com/t.jpg' } }
+
+      it 'falls back to the thumbnail' do
+        expect(image.to_s).to eq('https://example.com/t.jpg')
+      end
+    end
+
     context 'when image is a non-ImageObject hash' do
       let(:schema_object) { { image: { '@type': 'Thing', url: 'https://example.com/not-image.jpg' } } }
 

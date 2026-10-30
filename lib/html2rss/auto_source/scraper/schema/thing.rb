@@ -110,10 +110,11 @@ module Html2rss
             end
           end
 
-          # @param obj [String, Hash, nil] image node
-          # @return [String, nil] image URL string
+          # @param obj [String, Hash, Array, nil] image node or list of image nodes
+          # @return [String, nil] image URL string (first usable entry for lists)
           def image_url_from(obj)
             return obj if obj.is_a?(String)
+            return obj.filter_map { image_url_from(_1) }.first if obj.is_a?(Array)
             return unless obj.is_a?(Hash)
             return unless Schema.normalize_types(obj[:@type]).include?('ImageObject')
 
