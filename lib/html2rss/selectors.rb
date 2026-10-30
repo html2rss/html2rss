@@ -371,15 +371,8 @@ module Html2rss
     end
 
     def extract_category_text(category)
-      text = case category
-             when Nokogiri::XML::Node, Nokogiri::XML::NodeSet
-               Html2rss::Html::Navigator.extract_visible_text(category)
-             else
-               category&.to_s
-             end
-
-      stripped = text&.strip
-      stripped unless stripped.nil? || stripped.empty?
+      stripped = category.to_s.strip
+      stripped unless stripped.empty?
     end
 
     def node_set_with_multiple_elements?(nodes)
