@@ -10,16 +10,8 @@ module Html2rss
     # Default worker threads for batch operations.
     DEFAULT_CONCURRENCY = 5
 
+    # Outcome of a batch operation; +to_h+ is provided by Data.
     BatchResult = Data.define(:total, :successful, :results)
-
-    # Value object representing the outcome of a batch operation.
-    class BatchResult
-      ##
-      # @return [Hash{Symbol => Object}]
-      def to_h
-        { total:, successful:, results: }
-      end
-    end
 
     class << self
       ##
@@ -155,7 +147,7 @@ module Html2rss
       end
 
       def drain_queue(queue, results)
-        until queue.empty?
+        loop do
           begin
             item, index = queue.pop(true)
           rescue ThreadError
