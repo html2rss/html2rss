@@ -29,6 +29,48 @@ RSpec.describe Html2rss::Capture do
     end
   end
 
+  describe 'CaptureResult' do
+    subject(:result) do
+      described_class::CaptureResult.new(
+        config: { channel: { url: 'https://example.com' } }, articles_count: 2, channel_title: 'T',
+        has_selectors: false, segment_strategy: :list
+      )
+    end
+
+    it 'defaults the optional fields', :aggregate_failures do
+      expect(result).to have_attributes(
+        admission_drops: {}, selected_strategy: nil, inferred_topics: [], native_feed: nil,
+        suggested_channel_url: nil, candidates: Html2rss::SelectorCandidates.empty
+      )
+      expect(result.native_feed?).to be(false)
+    end
+
+    it 'renders the yaml behind the schema modeline unless given' do
+      expect(result.yaml).to eq("#{described_class::SCHEMA_MODELINE}\n#{Html2rss::Config.to_yaml(result.config)}")
+    end
+
+    it 'keeps explicit yaml, candidates and native feed', :aggregate_failures do
+      candidates = { items: [{ selector: 'li' }] }
+      explicit = result.with(yaml: 'custom', candidates:, native_feed: 'https://example.com/feed.xml')
+
+      expect(explicit).to have_attributes(yaml: 'custom', candidates:, native_feed: 'https://example.com/feed.xml')
+      expect(explicit.native_feed?).to be(true)
+    end
+
+    it 'honours explicit values passed to the constructor', :aggregate_failures do
+      built = described_class::CaptureResult.new(
+        config: {}, articles_count: 1, channel_title: 'T', has_selectors: true, segment_strategy: :cluster,
+        yaml: 'y: 1', admission_drops: { a: 1 }, selected_strategy: :default, inferred_topics: %w[tech],
+        native_feed: 'f', suggested_channel_url: 'u', candidates: { items: [] }
+      )
+
+      expect(built).to have_attributes(
+        yaml: 'y: 1', admission_drops: { a: 1 }, selected_strategy: :default, inferred_topics: %w[tech],
+        native_feed: 'f', suggested_channel_url: 'u', candidates: { items: [] }, segment_strategy: :cluster
+      )
+    end
+  end
+
   describe '#build' do
     context 'when inferring directory topics from the url and title' do
       before { stub_outcome(html_response('<html></html>'), articles: []) }
@@ -167,6 +209,228 @@ RSpec.describe Html2rss::Capture do
           request_session: kind_of(Html2rss::RequestSession)
         )
       )
+    end
+
+    context 'with explicit options' do
+      subject(:result) do
+        stub_outcome(html_response('<html><head><title>Page Title</title></head></html>'), articles: [],
+                                                                                          admission_drops: { a: 1 },
+                                                                                          selected_strategy: :browserless)
+        described_class.new(
+          url, strategy: :default, items_selector: '.card', topics: %w[jobs tech culture], title: 'Custom Title',
+               summary: 'S' * 200, force: true, enhance: false, limit: 9, max_redirects: 7, max_requests: 4
+        ).build
+      end
+
+      it 'forwards request controls and hints to the pipeline', :aggregate_failures do
+        result
+
+        expect(Html2rss::FeedPipeline).to have_received(:new).with(
+          hash_including(
+            strategy: :default,
+            request: hash_including(max_redirects: 7, max_requests: 4),
+            auto_source: hash_including(limit: 9),
+            selectors: { items: { selector: '.card', enhance: true } },
+            channel: hash_including(url:)
+          )
+        )
+      end
+
+      it 'emits the exact config and result fields', :aggregate_failures do
+        expect(result.config).to eq(
+          directory: { topics: %w[jobs tech], title: 'Custom Title', summary: 'S' * 160 },
+          channel: { url:, title: 'Custom Title', time_zone: 'UTC' },
+          selectors: { items: { selector: '.card', enhance: false } },
+          strategy: :browserless
+        )
+        expect(result).to have_attributes(
+          articles_count: 0, channel_title: 'Custom Title', has_selectors: true, segment_strategy: :hint,
+          admission_drops: { a: 1 }, selected_strategy: :browserless, inferred_topics: %w[jobs tech culture],
+          native_feed: nil, suggested_channel_url: nil
+        )
+      end
+
+      it 'renders the yaml from the config behind the schema modeline' do
+        expect(result.yaml).to eq("#{described_class::SCHEMA_MODELINE}\n#{Html2rss::Config.to_yaml(result.config)}")
+      end
+
+      it 'skips native feed discovery when forced' do
+        result
+
+        expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
+      end
+    end
+
+    context 'with default options on an html page' do
+      subject(:result) { described_class.new(url, strategy: strategy).build }
+
+      let(:strategy) { :auto }
+      let(:selected) { nil }
+
+      before do
+        stub_outcome(html_response('<html><head><title>Page Title</title></head></html>'), articles: [],
+                                                                                          selected_strategy: selected)
+      end
+
+      it 'derives the title, summary and default selector', :aggregate_failures do
+        expect(result.config).to eq(
+          directory: { topics: %w[news], title: 'Page Title', summary: 'Page Title updates and announcements.' },
+          channel: { url:, title: 'Page Title', time_zone: 'UTC' },
+          selectors: { items: { selector: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR, enhance: true } }
+        )
+        expect(result).to have_attributes(segment_strategy: :default, admission_drops: {}, selected_strategy: nil)
+      end
+
+      it 'passes the page body to native feed discovery', :aggregate_failures do
+        result
+
+        expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
+          page_url: url, request_session: kind_of(Html2rss::RequestSession),
+          parsed_body: kind_of(Nokogiri::HTML::Document), html: a_string_including('Page Title')
+        )
+      end
+
+      context 'when a concrete strategy was requested' do
+        let(:strategy) { :default }
+
+        it 'stamps it on the config' do
+          expect(result.config[:strategy]).to eq(:default)
+        end
+      end
+
+      context 'when the pipeline selected a strategy' do
+        let(:selected) { :browserless }
+
+        it 'stamps the selected strategy over the requested one' do
+          expect(result.config[:strategy]).to eq(:browserless)
+        end
+      end
+
+      it 'does not stamp the auto strategy' do
+        expect(result.config).not_to have_key(:strategy)
+      end
+    end
+
+    context 'when the page is not html' do
+      subject(:result) { described_class.new(url).build }
+
+      before do
+        stub_outcome(html_response('{}', content_type: 'application/json'), articles: [])
+      end
+
+      it 'emits no selectors and discovers with a nil parsed body', :aggregate_failures do
+        expect(result.config).not_to have_key(:selectors)
+        expect(result).to have_attributes(has_selectors: false, segment_strategy: nil)
+        expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(hash_including(parsed_body: nil))
+      end
+    end
+
+    context 'when the title cannot be derived' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Channel).to receive(:from_response).and_raise(Html2rss::Error, 'no channel')
+      end
+
+      it 'omits the channel title', :aggregate_failures do
+        result = described_class.new(url).build
+
+        expect(result.channel_title).to be_nil
+        expect(result.config[:channel]).to eq(url:, time_zone: 'UTC')
+      end
+    end
+
+    context 'when native feed discovery fails' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_raise(Html2rss::Error, 'boom')
+      end
+
+      it 'treats it as no native feed', :aggregate_failures do
+        result = described_class.new(url).build
+
+        expect(result.native_feed).to be_nil
+        expect(result.native_feed?).to be(false)
+      end
+    end
+
+    describe 'enhance defaulting' do
+      before { stub_outcome(html_response('<html></html>'), articles: [], admission_drops: drops) }
+
+      let(:drops) { { admission: 2 } }
+
+      it 'keeps enhance on below the chrome drop threshold' do
+        expect(described_class.new(url).build.config.dig(:selectors, :items, :enhance)).to be(true)
+      end
+
+      context 'when drops reach the threshold' do
+        let(:drops) { { a: 1, b: 2 } }
+
+        it 'turns enhance off' do
+          expect(described_class.new(url).build.config.dig(:selectors, :items, :enhance)).to be(false)
+        end
+
+        it 'lets an explicit enhance override the drops' do
+          expect(described_class.new(url, enhance: true).build.config.dig(:selectors, :items, :enhance)).to be(true)
+        end
+      end
+    end
+
+    describe 'suggested channel url' do
+      let(:response_url) { url }
+      let(:target) { Html2rss::ScrapeTarget.new(entry_url: entry, effective_url: effective) }
+      let(:entry) { url }
+      let(:effective) { url }
+
+      before do
+        stub_outcome(html_response('<html></html>', page_url: response_url), articles: [], scrape_target: target)
+      end
+
+      it 'is nil when nothing moved' do
+        expect(described_class.new(url).build.suggested_channel_url).to be_nil
+      end
+
+      context 'when the scrape target moved to another document' do
+        let(:effective) { 'https://example.com/blog/list' }
+
+        it 'suggests the effective url' do
+          expect(described_class.new(url).build.suggested_channel_url).to eq('https://example.com/blog/list')
+        end
+      end
+
+      context 'when only the fetched response url moved' do
+        let(:response_url) { 'https://example.com/moved' }
+
+        it 'suggests the final response url' do
+          expect(described_class.new(url).build.suggested_channel_url).to eq('https://example.com/moved')
+        end
+      end
+
+      context 'when the response url differs only by fragment' do
+        let(:response_url) { 'https://example.com/blog#top' }
+
+        it 'is nil' do
+          expect(described_class.new(url).build.suggested_channel_url).to be_nil
+        end
+      end
+
+      context 'when the url cannot be parsed' do
+        it 'is nil' do
+          expect(described_class.new('not a url').build.suggested_channel_url).to be_nil
+        end
+      end
+    end
+
+    context 'with a local file' do
+      before { stub_outcome(html_response('<html></html>'), articles: []) }
+
+      it 'passes the local file request to the pipeline and the config', :aggregate_failures do
+        result = described_class.new(url, local_file_path: '/tmp/page.html').build
+
+        expect(Html2rss::FeedPipeline).to have_received(:new).with(
+          hash_including(strategy: :local_file, request: hash_including(local_file_path: '/tmp/page.html'))
+        )
+        expect(result.config).to include(strategy: :local_file, request: { local_file_path: '/tmp/page.html' })
+      end
     end
 
     context 'with a list fixture that shares an item class' do

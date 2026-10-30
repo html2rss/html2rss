@@ -147,7 +147,6 @@ module Html2rss
 
       CaptureResult.new(
         config:,
-        yaml: "#{SCHEMA_MODELINE}\n#{Config.to_yaml(config)}",
         articles_count: outcome.articles.size,
         channel_title: ch_title,
         has_selectors: !selectors.empty?,

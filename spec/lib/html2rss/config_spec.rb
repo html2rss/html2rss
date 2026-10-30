@@ -329,6 +329,35 @@ RSpec.describe Html2rss::Config do
     it 'keeps a valid limit' do
       expect(described_class.auto_source_config(url: 'https://example.com', limit: 3)[:auto_source][:limit]).to eq(3)
     end
+
+    it 'accepts the minimum limit of 1 and names the option when rejecting', :aggregate_failures do
+      expect(described_class.auto_source_config(url: 'https://example.com', limit: 1)[:auto_source][:limit]).to eq(1)
+      expect { described_class.auto_source_config(url: 'https://example.com', limit: 0) }
+        .to raise_error(Html2rss::InvalidOption, /limit/)
+    end
+
+    it 'puts only the default time zone and the url on the channel' do
+      expect(described_class.auto_source_config(url: 'https://example.com/x')[:channel])
+        .to eq(time_zone: 'UTC', url: 'https://example.com/x')
+    end
+
+    it 'leaves the auto-source defaults untouched when no overrides are given', :aggregate_failures do
+      config = described_class.auto_source_config(url: 'https://example.com')
+
+      expect(config[:auto_source]).to equal(Html2rss::AutoSource::DEFAULT_CONFIG)
+      expect(config[:auto_source][:limit]).to eq(25)
+    end
+
+    [true, false].each do |value|
+      it "overrides cleanup.keep_different_domain with #{value} without mutating the defaults",
+         :aggregate_failures do
+        config = described_class.auto_source_config(url: 'https://example.com', keep_different_domain: value)
+
+        defaults = Html2rss::AutoSource::DEFAULT_CONFIG
+        expect(config[:auto_source][:cleanup]).to eq(defaults[:cleanup].merge(keep_different_domain: value))
+        expect(config[:auto_source].except(:cleanup)).to eq(defaults.except(:cleanup))
+      end
+    end
   end
 
   describe '.prepare_defaults' do

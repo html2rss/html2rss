@@ -200,7 +200,7 @@ module Html2rss
       enhance_compare = build_enhance_compare(config, pipeline_outcome) if compare_enhance
 
       build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare,
-                        min_items:, strict_quality:, response_body: pipeline_outcome&.response&.body)
+                        min_items:, strict_quality:, response_body: pipeline_outcome.response.body)
     end
     private_class_method :execute_timed_pipeline
 
@@ -271,7 +271,6 @@ module Html2rss
     private_class_method :enhance_enabled?
 
     def self.build_enhance_compare(config, pipeline_outcome)
-      return nil unless pipeline_outcome
       return nil unless config.selectors
 
       EnhanceAudit.compare(
@@ -283,8 +282,7 @@ module Html2rss
     private_class_method :build_enhance_compare
 
     def self.merge_enhance_audit(report, config, pipeline_outcome) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- warning merge + metrics
-      return report unless pipeline_outcome && enhance_enabled?(config)
-      return report unless config.selectors
+      return report unless enhance_enabled?(config)
 
       slice = EnhanceAudit.probe(
         response: pipeline_outcome.response,
@@ -330,9 +328,7 @@ module Html2rss
     private_class_method :append_url_mismatch_warning
 
     def self.url_mismatch?(channel_url, feed_result)
-      status = feed_result&.status
-      return false unless status
-
+      status = feed_result.status
       configured = channel_url.to_s
       final = status.scrape_url.to_s
       final = status.entry_url.to_s if final.empty?

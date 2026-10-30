@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
+
 RSpec.describe Html2rss::Test do
   let(:valid_config) do
     {
@@ -492,4 +494,130 @@ RSpec.describe Html2rss::Test do
       end
     end
   end
+
+  describe '.quality_report_for' do
+    let(:enhance) { true }
+    let(:config) do
+      Html2rss::Config.from_hash(
+        valid_config.merge(
+          selectors: valid_config[:selectors].merge(items: { selector: 'article', enhance: })
+        )
+      )
+    end
+    let(:response) do
+      Html2rss::RequestService::Response.new(url: 'https://example.com/news', headers: {}, body: '<html></html>')
+    end
+    let(:pipeline_outcome) { instance_double(Html2rss::FeedPipeline::PipelineOutcome, response:) }
+    let(:status) { instance_double(Html2rss::Status, scrape_url: 'https://example.com/news', entry_url: '') }
+    let(:feed_result) { instance_double(Html2rss::FeedResult, status:) }
+    let(:slice) do
+      gains = Html2rss::Test::EnhanceAudit::EnhanceGains.new(
+        items_probed: 2, keys_added: { title: 1 }, descriptions_added: 3, no_op: false
+      )
+      Html2rss::Test::EnhanceAudit::AuditSlice.new(enhance_gains: gains, warnings: %i[w_one duplicate_urls])
+    end
+    let(:probed) { slice }
+    let(:channel_url) { 'https://example.com/news' }
+    let(:report) do
+      described_class.quality_report_for(
+        fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:, probe_native_feed: false
+      )
+    end
+
+    before do
+      allow(Html2rss::Test::EnhanceAudit).to receive(:probe).and_return(probed)
+      allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+    end
+
+    it 'merges enhance warnings once and reports the gains', :aggregate_failures do
+      allow(fake_rss_items.last).to receive(:link).and_return(fake_rss_items.first.link)
+
+      expect(report.warnings).to eq(%i[duplicate_urls w_one])
+      expect(report.metrics[:enhance_gains]).to eq(items_probed: 2, keys_added: { title: 1 }, descriptions_added: 3,
+                                                   no_op: false)
+      expect(report.warnings).to be_frozen
+    end
+
+    it 'probes with the response, selectors and time zone', :aggregate_failures do
+      report
+
+      expect(Html2rss::Test::EnhanceAudit).to have_received(:probe).with(
+        response:, selectors: config.selectors, time_zone: 'UTC'
+      )
+      expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
+    end
+
+    context 'when enhance is disabled' do
+      let(:enhance) { false }
+
+      it 'does not probe', :aggregate_failures do
+        expect(report.metrics).not_to have_key(:enhance_gains)
+        expect(Html2rss::Test::EnhanceAudit).not_to have_received(:probe)
+      end
+    end
+
+    context 'when the config has no selectors' do
+      let(:config) do
+        Html2rss::Config.from_hash(valid_config.except(:selectors).merge(auto_source: {}))
+      end
+
+      it 'skips enhance auditing', :aggregate_failures do
+        expect(report.metrics).not_to have_key(:enhance_gains)
+        expect(Html2rss::Test::EnhanceAudit).not_to have_received(:probe)
+      end
+    end
+
+    context 'when the probe yields nothing' do
+      let(:probed) { nil }
+
+      it 'returns the plain report', :aggregate_failures do
+        expect(report.warnings).to eq([])
+        expect(report.metrics).not_to have_key(:enhance_gains)
+      end
+    end
+
+    context 'when a native feed exists and the url mismatches' do
+      let(:native) { Html2rss::Url.from_absolute('https://example.com/feed.xml') }
+
+      before do
+        allow(status).to receive(:scrape_url).and_return('https://example.com/elsewhere')
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(native)
+      end
+
+      it 'keeps the native feed through the url mismatch and enhance merges', :aggregate_failures do
+        result = described_class.quality_report_for(
+          fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:
+        )
+
+        expect(result).to have_attributes(
+          warnings: %i[native_feed_present url_mismatch w_one duplicate_urls],
+          native_feed: 'https://example.com/feed.xml', defer_reason: :native_feed
+        )
+        expect(result.metrics).to include(url_mismatch: true, enhance_gains: hash_including(items_probed: 2))
+      end
+
+      it 'does not duplicate warnings that are already present', :aggregate_failures do
+        allow(Html2rss::Test::EnhanceAudit).to receive(:probe).and_return(
+          slice.with(warnings: %i[native_feed_present url_mismatch])
+        )
+        result = described_class.quality_report_for(
+          fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:
+        )
+
+        expect(result.warnings).to eq(%i[native_feed_present url_mismatch])
+      end
+    end
+
+    context 'when the channel url is empty' do
+      let(:channel_url) { '' }
+
+      it 'skips native feed discovery', :aggregate_failures do
+        described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:, pipeline_outcome:)
+
+        expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
+      end
+    end
+  end
 end
+
+# rubocop:enable RSpec/MultipleMemoizedHelpers, RSpec/ExampleLength
