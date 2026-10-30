@@ -343,5 +343,65 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(described_class.junk_reason(example[:title])).to eq(example[:reason])
       end
     end
+
+    it 'tallies duplicate, short and low-word violations with exact metrics', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      items = [
+        rss_item(title: 'Ok', url: 'https://example.com/a'),
+        rss_item(title: 'Story Two Title Here', url: 'https://example.com/a')
+      ]
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.warnings).to eq(%i[duplicate_urls short_titles low_word_count])
+      expect(audit.metrics).to eq(item_count: 2, unique_url_count: 1, junk_title_count: 0,
+                                  short_title_count: 1, low_word_count: 1)
+      expect(audit.violations).to eq(duplicate_urls: 1, short_title: 1, low_word_count: 1)
+      expect(audit.metrics).to be_frozen
+      expect(audit.violations).to be_frozen
+    end
+
+    it 'does not warn about duplicate URLs for a single item', :aggregate_failures do
+      audit = described_class.audit_feed_items([rss_item(title: 'Single Article Title', url: 'https://example.com/a')])
+
+      expect(audit.warnings).not_to include(:duplicate_urls)
+      expect(audit.metrics[:unique_url_count]).to eq(1)
+    end
+
+    it 'does not count items without a URL as unique', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      items = [
+        Html2rss::Article.new(title: 'First Article Title Here'),
+        Html2rss::Article.new(title: 'Second Article Title Here')
+      ]
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.metrics).to include(item_count: 2, unique_url_count: 0)
+      expect(audit.warnings).to include(:duplicate_urls)
+    end
+
+    it 'tallies a junk title and a low word count separately', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      items = [
+        rss_item(title: 'Read More', url: 'https://example.com/a'),
+        rss_item(title: 'Two Words', url: 'https://example.com/b')
+      ]
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.violations).to eq(cta: 1, low_word_count: 1)
+      expect(audit.metrics).to include(junk_title_count: 1, low_word_count: 1, short_title_count: 0)
+      expect(audit.warnings).to eq(%i[generic_titles low_word_count])
+    end
+  end
+
+  describe '.junk_reason' do
+    it 'returns nil for a missing or blank title', :aggregate_failures do
+      expect(described_class.junk_reason(nil)).to be_nil
+      expect(described_class.junk_reason("   \t ")).to be_nil
+    end
+
+    it 'normalizes whitespace before matching' do
+      expect(described_class.junk_reason("  Read \n more  ")).to eq(:cta)
+    end
+
+    it 'returns nil for an acceptable title' do
+      expect(described_class.junk_reason('A Perfectly Normal Headline')).to be_nil
+    end
   end
 end
