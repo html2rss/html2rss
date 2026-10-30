@@ -232,24 +232,11 @@ module Html2rss
 
     def self.extract_samples(items, limit: 3)
       items.first(limit).map do |item|
-        article = feed_item_as_article(item)
-        {
-          title: article.title.to_s.strip,
-          url: article.url.to_s,
-          published_at: article.published_at
-        }
+        article = Article.new(title: item.title, url: item.link, published_at: item.pubDate)
+        { title: article.title.to_s.strip, url: article.url.to_s, published_at: article.published_at }
       end
     end
     private_class_method :extract_samples
-
-    def self.feed_item_as_article(item)
-      case item
-      when Article then item
-      else
-        Article.new(title: item.title, url: item.link, published_at: item.pubDate)
-      end
-    end
-    private_class_method :feed_item_as_article
 
     ##
     # Builds a ship-quality report for RSS items (shared by test and MCP apply).

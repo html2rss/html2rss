@@ -30,6 +30,128 @@ RSpec.describe Html2rss::Capture do
   end
 
   describe '#build' do
+    context 'when inferring directory topics from the url and title' do
+      before { stub_outcome(html_response('<html></html>'), articles: []) }
+
+      {
+        'tech' => %w[tech],
+        'developer' => %w[tech],
+        'software' => %w[tech],
+        'cloud' => %w[tech],
+        'api' => %w[tech],
+        'compute' => %w[tech],
+        'ai' => %w[tech],
+        'data' => %w[tech],
+        'model' => %w[tech],
+        'hardware' => %w[tech],
+        'cyber' => %w[tech],
+        'security' => %w[security],
+        'vulnerab' => %w[security],
+        'advis' => %w[security],
+        'threat' => %w[security],
+        'breach' => %w[security],
+        'cve' => %w[security],
+        'cert' => %w[security],
+        'patch' => %w[security],
+        'science' => %w[science],
+        'space' => %w[science],
+        'astron' => %w[science],
+        'physics' => %w[science],
+        'bio' => %w[science],
+        'research' => %w[science],
+        'institut' => %w[science],
+        'discover' => %w[science],
+        'nature' => %w[science],
+        'energy' => %w[energy],
+        'wind' => %w[energy],
+        'solar' => %w[energy],
+        'power' => %w[energy],
+        'grid' => %w[energy],
+        'renewab' => %w[energy],
+        'oil' => %w[energy],
+        'gas' => %w[energy],
+        'hydro' => %w[energy],
+        'financ' => %w[finance],
+        'bank' => %w[finance],
+        'invest' => %w[finance],
+        'monetary' => %w[finance],
+        'market' => %w[finance],
+        'regulat' => %w[finance],
+        'treasury' => %w[finance],
+        'econom' => %w[finance],
+        'govern' => %w[civic],
+        'policy' => %w[civic],
+        'council' => %w[civic],
+        'parliament' => %w[civic],
+        'court' => %w[civic],
+        'treaty' => %w[civic],
+        'public' => %w[civic],
+        'climat' => %w[environment],
+        'environ' => %w[environment],
+        'planet' => %w[environment],
+        'sustainab' => %w[tech environment],
+        'carbon' => %w[environment],
+        'ecolog' => %w[environment],
+        'earth' => %w[environment],
+        'consum' => %w[consumer],
+        'recall' => %w[consumer],
+        'safety' => %w[consumer],
+        'rating' => %w[consumer],
+        'test' => %w[consumer],
+        'product' => %w[consumer],
+        'travel' => %w[travel],
+        'touris' => %w[travel],
+        'destination' => %w[travel],
+        'trip' => %w[travel],
+        'flight' => %w[travel],
+        'hotel' => %w[travel],
+        'transit' => %w[travel],
+        'rail' => %w[tech travel],
+        'sport' => %w[sports],
+        'olympic' => %w[sports],
+        'racing' => %w[sports],
+        'football' => %w[sports],
+        'soccer' => %w[sports],
+        'tennis' => %w[sports],
+        'game' => %w[sports],
+        'health' => %w[health],
+        'medic' => %w[health],
+        'pharma' => %w[health],
+        'hospital' => %w[health],
+        'disease' => %w[health],
+        'patient' => %w[health],
+        'educat' => %w[education],
+        'universit' => %w[education],
+        'school' => %w[education],
+        'student' => %w[education],
+        'academi' => %w[education],
+        'learn' => %w[education],
+        'transport' => %w[sports transport],
+        'traffic' => %w[transport],
+        'automotive' => %w[transport],
+        'vehicle' => %w[transport],
+        'train' => %w[tech transport],
+        'bus' => %w[transport],
+        'zzz' => %w[news]
+      }.each do |keyword, topics|
+        it "maps #{keyword.inspect} to #{topics.join('+')}" do
+          result = described_class.new('https://example.org/x', title: keyword).build
+          expect(result.inferred_topics).to eq(topics)
+        end
+      end
+
+      it 'matches case-insensitively against the url as well as the title', :aggregate_failures do
+        result = described_class.new('https://example.org/SOLAR', title: 'zzz').build
+        expect(result.inferred_topics).to eq(%w[energy])
+        expect(result.config.dig(:directory, :topics)).to eq(%w[energy])
+      end
+
+      it 'prefers explicit topics over inference' do
+        result = described_class.new('https://example.org/solar', topics: %w[jobs]).build
+        expect(result.inferred_topics).to eq(%w[jobs])
+      end
+    end
+
     it 'asks Syndication::Discovery for native feed preference with a session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response(File.read('spec/fixtures/local_feed_test.html'))
       articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
