@@ -111,8 +111,6 @@ module Html2rss
         # @return [Hash{Symbol => Object, nil}] normalized article hash
         def article_from(root)
           schema_object = SchemaObjectBuilder.call(root)
-          return unless schema_object
-
           article = Schema::Thing.new(schema_object, url:).call.compact
           return unless valid_article?(article)
 
@@ -160,8 +158,6 @@ module Html2rss
             # @param node [Nokogiri::XML::Element] candidate itemprop node
             # @return [Boolean] whether the node belongs directly to the current root item
             def direct_property?(root, node)
-              return false if node == root
-
               curr = node.parent
               while curr && curr != root
                 return false if curr.attribute('itemscope')
@@ -285,11 +281,7 @@ module Html2rss
             # @return [String, Hash, nil] normalized image-like value
             def normalize_image(value)
               candidate = unwrap(value)
-              return unless present?(candidate)
-
-              return candidate if candidate.is_a?(String) || candidate.is_a?(Hash)
-
-              candidate.to_s
+              candidate.is_a?(Hash) ? candidate : candidate.to_s
             end
 
             # @param value [Object] about candidate value
@@ -313,15 +305,9 @@ module Html2rss
             end
 
             # @param value [Object] scalar or array candidate
-            # @return [String, Array<String>, nil] normalized scalar or string array
+            # @return [String, nil] normalized first scalar value
             def string_or_array(value)
-              candidate = unwrap(value)
-              return unless present?(candidate)
-
-              return stringify(candidate) unless candidate.is_a?(Array)
-
-              result = string_values(candidate)
-              result unless result.empty?
+              stringify(unwrap(value))
             end
 
             # @param values [Array<Object>] value candidates
@@ -373,7 +359,6 @@ module Html2rss
             # @return [String, nil] normalized string representation
             def stringify(value)
               return unless present?(value)
-              return value if value.is_a?(String)
               return if value.is_a?(Hash) || value.is_a?(Array)
 
               value.to_s
@@ -398,10 +383,7 @@ module Html2rss
           # @param root [Nokogiri::XML::Element] supported microdata root node
           # @return [Hash{Symbol => Object, nil}] compact schema-like object
           def self.call(root)
-            type = Microdata.supported_type_name(root)
-            return unless type
-
-            compact_object(type, root, ItemParser.call(root))
+            compact_object(Microdata.supported_type_name(root), root, ItemParser.call(root))
           end
 
           # @param type [String] schema type inferred from itemtype

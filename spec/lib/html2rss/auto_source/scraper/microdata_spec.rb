@@ -9,6 +9,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
     it { expect(described_class.options_key).to eq(:microdata) }
   end
 
+  describe '.request_slots' do
+    it 'reserves no request slots with or without options', :aggregate_failures do
+      expect(described_class.request_slots).to eq(0)
+      expect(described_class.request_slots(max_slots: 5)).to eq(0)
+    end
+  end
+
   describe '.articles?' do
     subject(:articles?) { described_class.articles?(parsed_body) }
 
@@ -68,6 +75,305 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
 
   describe '#each' do
     subject(:articles) { scraper.each.to_a }
+
+    context 'with nested item ids, html ancestors, abstracts, and tags' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <html itemscope itemprop="webPage">
+          <body>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Nested page id</span>
+            <div itemprop="mainEntityOfPage" itemscope itemtype="https://schema.org/WebPage" itemid="/page/nested"></div>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Abstract fallback</span>
+            <span itemprop="abstract">Short abstract</span>
+            <span itemprop="tags">Travel</span>
+            <a itemprop="url" href="/abstract">Open</a>
+          </article>
+          </body>
+          </html>
+        HTML
+      end
+
+      it 'uses nested item ids as urls, keeps html-level items, and reads abstracts and tags', :aggregate_failures do
+        expect(articles.map { _1[:url].to_s }).to eq(['https://example.com/page/nested', 'https://example.com/abstract'])
+        expect(articles.first[:title]).to eq('Nested page id')
+        expect(articles.last).to include(description: 'Short abstract', categories: ['Travel'])
+      end
+    end
+
+    context 'with title-only and description-only articles' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <h1 itemprop="headline">Title only</h1>
+            <a itemprop="url" href="/title-only">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <p itemprop="description">Description only</p>
+            <a itemprop="url" href="/description-only">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <a itemprop="url" href="/neither">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'keeps articles with either a title or a description and drops empty ones', :aggregate_failures do
+        expect(articles.map { _1[:id] }).to eq(%w[/title-only /description-only])
+        expect(articles.first).not_to have_key(:description)
+        expect(articles.last).not_to have_key(:title)
+      end
+    end
+
+    context 'with articles that have no url' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <h1 itemprop="headline">Titled but unlinked</h1>
+            <p itemprop="description">Described but unlinked</p>
+          </article>
+        HTML
+      end
+
+      it { expect(articles).to eq([]) }
+    end
+
+    context 'with competing title properties' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <h1 itemprop="headline">Headline wins</h1><span itemprop="title">Title</span><span itemprop="name">Name</span>
+            <a itemprop="url" href="/headline">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="title">Title wins</span><span itemprop="name">Name</span>
+            <a itemprop="url" href="/title">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="name">Name only</span>
+            <a itemprop="url" href="/name">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'prefers headline, then title, then name' do
+        expect(articles.map { _1[:title] }).to eq(['Headline wins', 'Title wins', 'Name only'])
+      end
+    end
+
+    context 'with competing published date properties' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="datePublished">2024-01-01</span><span itemprop="dateCreated">2023-01-01</span>
+            <span itemprop="dateModified">2022-01-01</span><span itemprop="uploadDate">2021-01-01</span>
+            <span itemprop="headline">Published</span><a itemprop="url" href="/published">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="dateCreated">2023-01-01</span><span itemprop="dateModified">2022-01-01</span>
+            <span itemprop="uploadDate">2021-01-01</span>
+            <span itemprop="headline">Created</span><a itemprop="url" href="/created">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="dateModified">2022-01-01</span><span itemprop="uploadDate">2021-01-01</span>
+            <span itemprop="headline">Modified</span><a itemprop="url" href="/modified">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="uploadDate">2021-01-01</span>
+            <span itemprop="headline">Uploaded</span><a itemprop="url" href="/uploaded">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'prefers datePublished, dateCreated, dateModified, then uploadDate' do
+        expect(articles.map { _1[:published_at] }).to eq(%w[2024-01-01 2023-01-01 2022-01-01 2021-01-01])
+      end
+    end
+
+    context 'with competing image properties' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Image wins</span>
+            <img itemprop="image" src="/first.jpg"><img itemprop="image" src="/second.jpg">
+            <meta itemprop="thumbnailUrl" content="/thumb.jpg">
+            <a itemprop="url" href="/image">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Thumbnail fallback</span>
+            <meta itemprop="thumbnailUrl" content="https://cdn.example.com/thumb.jpg">
+            <a itemprop="url" href="/thumbnail">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'uses the first image, falling back to thumbnailUrl', :aggregate_failures do
+        expect(articles.map { _1[:image].to_s }).to eq(['https://example.com/first.jpg', 'https://cdn.example.com/thumb.jpg'])
+      end
+    end
+
+    context 'with url and identifier fallbacks' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Blank url falls through</span>
+            <span itemprop="url">   </span>
+            <span itemprop="mainEntityOfPage" href="/main-entity"></span>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Nested url item</span>
+            <div itemprop="url" itemscope itemtype="https://schema.org/WebPage">
+              <meta itemprop="url" content="/nested-url">
+            </div>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle" itemid="http://example.com/http-itemid">
+            <span itemprop="headline">Http itemid</span>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle" itemid="foo https://example.com/not-leading">
+            <span itemprop="headline">Itemid with leading text</span>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Identifier fallback</span>
+            <span itemprop="identifier">/identifier/9</span>
+          </article>
+        HTML
+      end
+
+      let(:expected_urls) do
+        %w[
+          https://example.com/main-entity
+          https://example.com/nested-url
+          http://example.com/http-itemid
+          https://example.com/identifier/9
+        ]
+      end
+
+      it 'resolves the url from explicit properties, then URL-like identifiers', :aggregate_failures do
+        expect(articles.map { _1[:url].to_s }).to eq(expected_urls)
+        expect(articles.map { _1[:id] }).to eq(['/main-entity', '/nested-url', '/http-itemid', '/identifier/9'])
+      end
+    end
+
+    context 'with property value attributes and text' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline" content="Attribute wins">Text loses</span>
+            <span itemprop="description" content="   ">  Text   fallback  </span>
+            <data itemprop="keywords" value="data-value"></data>
+            <object itemprop="image" data="/object.jpg"></object>
+            <a itemprop="url" href="/attributes">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">   </span>
+            <span itemprop="description">Description without title</span>
+            <a itemprop="url" href="/blank-headline">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'prefers attribute values, strips text, and ignores blank properties', :aggregate_failures do
+        expect(articles.first).to include(title: 'Attribute wins', description: 'Text   fallback',
+                                          categories: ['data-value'])
+        expect(articles.first[:image].to_s).to eq('https://example.com/object.jpg')
+        expect(articles.last).not_to have_key(:title)
+      end
+    end
+
+    context 'with multi-name, repeated, and padded itemprop values' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline name">Shared name</span>
+            <span itemprop="  description  ">Padded itemprop</span>
+            <a itemprop="url" href="/multi">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <h1 itemprop="headline">First headline</h1><h2 itemprop="headline">Second headline</h2>
+            <a itemprop="url" href="/repeated">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'assigns one value to every name and keeps the first repeated value', :aggregate_failures do
+        expect(articles.first).to include(title: 'Shared name', description: 'Padded itemprop')
+        expect(articles.last[:title]).to eq('First headline')
+      end
+    end
+
+    context 'with nested keyword and about items' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Nested keywords ignored</span>
+            <div itemprop="keywords" itemscope itemtype="https://schema.org/Thing"><span itemprop="name">Hidden</span></div>
+            <div itemprop="about" itemscope itemtype="https://schema.org/Thing"><span itemprop="name">Named topic</span></div>
+            <div itemprop="about" itemscope itemtype="https://schema.org/Thing"></div>
+            <a itemprop="url" href="/nested-keywords">Open</a>
+          </article>
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">String about</span>
+            <span itemprop="about">Plain topic</span>
+            <a itemprop="url" href="/string-about">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'drops nested keyword items and unnamed about items', :aggregate_failures do
+        expect(articles.first[:categories]).to eq(['Named topic'])
+        expect(articles.last[:categories]).to eq(['Plain topic'])
+      end
+    end
+
+    context 'with itemtype variants' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/Thing https://schema.org/NewsArticle">
+            <h1 itemprop="headline">Several types</h1><a itemprop="url" href="/several">Open</a>
+          </article>
+          <article itemscope itemtype="/ https://schema.org/Article">
+            <h1 itemprop="headline">Empty segment</h1><a itemprop="url" href="/empty-segment">Open</a>
+          </article>
+          <article itemscope itemtype="NewsArticle">
+            <h1 itemprop="headline">Bare type</h1><a itemprop="url" href="/bare">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'accepts any supported type among several itemtype values' do
+        expect(articles.map { _1[:title] }).to eq(['Several types', 'Empty segment', 'Bare type'])
+      end
+    end
+
+    context 'with ancestors around top-level items' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <div itemscope itemtype="https://schema.org/Person">
+            <article itemscope itemtype="https://schema.org/NewsArticle">
+              <h1 itemprop="headline">Inside unscoped item</h1><a itemprop="url" href="/inside-item">Open</a>
+            </article>
+          </div>
+          <div itemprop="mainEntity">
+            <article itemscope itemtype="https://schema.org/NewsArticle">
+              <h1 itemprop="headline">Inside itemprop wrapper</h1><a itemprop="url" href="/inside-wrapper">Open</a>
+            </article>
+          </div>
+          <div itemscope itemprop="outer">
+            <div>
+              <article itemscope itemtype="https://schema.org/NewsArticle">
+                <h1 itemprop="headline">Inside nested item</h1><a itemprop="url" href="/inside-nested">Open</a>
+              </article>
+            </div>
+          </div>
+        HTML
+      end
+
+      it 'emits roots unless an itemscope ancestor carries an itemprop' do
+        expect(articles.map { _1[:title] }).to eq(['Inside unscoped item', 'Inside itemprop wrapper'])
+      end
+    end
 
     context 'with article microdata' do
       let(:expected_article) do
