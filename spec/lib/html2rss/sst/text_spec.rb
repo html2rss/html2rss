@@ -5,6 +5,15 @@ require 'spec_helper'
 RSpec.describe Html2rss::SST::Text do
   let(:extract) { ->(node, **kwargs) { described_class.extract(node, **kwargs) } }
 
+  it 'keeps direct text in document order around inline children' do
+    bold = Html2rss::SST::Node.build(name: :b, own_text: 'big')
+    para = Html2rss::SST::Node.build(
+      name: :p, own_text: 'Hello  world', tails: [' world'], children: [bold]
+    )
+
+    expect(extract.call(para)).to eq('Hello big world')
+  end
+
   it 'collapses whitespace, skips chrome, and separates blocks', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     leaf = Html2rss::SST::Node.build(name: :span, own_text: "  hello   world \n ")
     blank = Html2rss::SST::Node.build(name: :span, own_text: '   ')
@@ -33,7 +42,7 @@ RSpec.describe Html2rss::SST::Text do
     expect(extract.call(Html2rss::SST::Node.build(name: :div, children: [hidden, shown]))).to eq('Shown')
     expect(extract.call(Html2rss::SST::Node.build(name: :div, children: [fragment, link]))).to eq('Keep')
     expect(extract.call(Html2rss::SST::Node.build(name: :div, children: [drop, stay]), exclude: [drop])).to eq('Stay')
-    expect(extract.call(headed)).to eq('HeadShown')
+    expect(extract.call(headed)).to eq('Head Shown')
   end
 
   it 'joins nested inline children with a single space', :aggregate_failures do

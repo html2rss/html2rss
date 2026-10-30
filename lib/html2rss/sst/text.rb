@@ -15,34 +15,41 @@ module Html2rss
           raise ArgumentError, 'node is required' unless node
 
           excluded = exclude&.each_with_object({}.compare_by_identity) { |n, h| h[n] = true }
-          parts = collect_parts(node, separator, excluded)
-          own = node.own_text.gsub(/\s+/, ' ').strip
-          parts.unshift(own) unless own.empty?
-          return if parts.empty?
-
-          parts.join
+          join_fragments(fragments(node, separator, excluded), separator)
         end
 
         private
 
-        def collect_parts(node, separator, excluded)
-          last_block = false
-          node.children.each_with_object([]) do |child, parts|
-            next if excluded&.[](child)
-            next unless visible_child?(child)
+        # Ordered [text, block?] pairs: lead text, then each child followed by the text after it.
+        def fragments(node, separator, excluded)
+          pairs = [[squish(node.lead_text), false]]
+          node.children.zip(node.tails).each do |child, tail|
+            pairs << child_text_and_block(child, separator, excluded) if shown?(child, excluded)
+            pairs << [squish(tail), false]
+          end
+          pairs
+        end
 
-            text, block = child_text_and_block(child, separator, excluded)
+        def join_fragments(pairs, separator)
+          parts = []
+          last_block = false
+          pairs.each do |text, block|
             next if text.empty?
 
             append_separator!(parts, separator, block, last_block)
             parts << text
             last_block = block
           end
+          parts.join unless parts.empty?
         end
+
+        def shown?(child, excluded) = !excluded&.[](child) && visible_child?(child)
+
+        def squish(text) = text.to_s.gsub(/\s+/, ' ').strip
 
         def child_text_and_block(child, separator, excluded)
           text = if child.children.empty?
-                   child.own_text.gsub(/\s+/, ' ').strip
+                   squish(child.own_text)
                  else
                    extract(child, separator:, exclude: excluded&.keys).to_s.strip
                  end

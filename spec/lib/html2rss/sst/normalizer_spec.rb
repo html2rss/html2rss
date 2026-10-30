@@ -157,6 +157,16 @@ RSpec.describe Html2rss::SST::Normalizer do
     end
   end
 
+  describe '.call text order' do
+    it 'keeps text between inline children in the visible text', :aggregate_failures do
+      document = described_class.call('<html><body><p>Hello <b>big</b> world<script>x</script>!</p></body></html>')
+      para = document.root.find { _1.name == :p }
+
+      expect(para).to have_attributes(own_text: 'Hello  world!', lead_text: 'Hello ', tails: [' world!'])
+      expect(para.visible_text).to eq('Hello big world!')
+    end
+  end
+
   describe '.call input validation' do
     it 'rejects nil and unsupported input', :aggregate_failures do
       expect { described_class.call(nil) }.to raise_error(Html2rss::InvalidOption, 'input is required')

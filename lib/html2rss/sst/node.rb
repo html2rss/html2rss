@@ -2,7 +2,7 @@
 
 module Html2rss
   module SST
-    Node = Data.define(:name, :attrs, :own_text, :children, :tag_path)
+    Node = Data.define(:name, :attrs, :own_text, :tails, :children, :tag_path)
 
     ##
     # Immutable simplified semantic tree node. Predicates and traversal live on
@@ -11,12 +11,13 @@ module Html2rss
       ##
       # @param name [Symbol, String]
       # @param attrs [Attrs, nil]
-      # @param own_text [String, nil]
+      # @param own_text [String, nil] all direct text, in document order
+      # @param tails [Array<String>, nil] direct text following each child, parallel to +children+
       # @param children [Array<Node>, nil]
       # @param tag_path [String, nil] index-free ancestry path for list clustering
       # @return [Node]
       # @raise [ArgumentError] on invalid name/attrs/children
-      def self.build(name:, attrs: nil, own_text: nil, children: nil, tag_path: nil)
+      def self.build(name:, attrs: nil, own_text: nil, children: nil, tag_path: nil, tails: nil) # rubocop:disable Metrics/ParameterLists
         attrs_value = coerce_attrs(attrs)
         kids = coerce_children(children)
 
@@ -24,6 +25,7 @@ module Html2rss
           name: coerce_name(name),
           attrs: attrs_value,
           own_text: own_text.to_s.freeze,
+          tails: Array(tails).map { _1.to_s.freeze }.freeze,
           children: kids,
           tag_path: tag_path.to_s.freeze
         )
@@ -51,6 +53,10 @@ module Html2rss
         kids
       end
       private_class_method :coerce_children
+
+      ##
+      # @return [String] direct text before the first child
+      def lead_text = own_text.delete_suffix(tails.join)
 
       ##
       # @return [Boolean]

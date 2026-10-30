@@ -167,14 +167,11 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        own_text = direct_text(nk_node)
         chrome_here = chrome || IGNORED_CONTAINER_TAGS.include?(tag)
 
-        children = nk_node.element_children.filter_map do |child|
-          normalize_element(child, depth: depth + 1, path: tag_path, chrome: chrome_here)
-        end
+        children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, chrome: chrome_here)
 
-        node = Node.build(name: tag, attrs:, own_text:, children:, tag_path:)
+        node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
         @depths[node] = depth
         @ignored_chrome[node] = chrome_here
         children.each { |child| @parents[child] = node }
@@ -207,8 +204,18 @@ module Html2rss
         end
       end
 
-      def direct_text(nk_node)
-        nk_node.children.select(&:text?).map(&:text).join
+      # Walks child nodes once, keeping direct text in the slot of the preceding kept child
+      # (slot 0 is the lead text) so text order survives the element-only tree.
+      def normalize_children(nk_node, depth:, path:, chrome:)
+        children = []
+        slots = [+'']
+        nk_node.children.each do |child|
+          next slots.last << child.text if child.text?
+
+          node = normalize_element(child, depth: depth + 1, path:, chrome:)
+          (children << node) && (slots << +'') if node
+        end
+        [children, slots.first, slots.drop(1)]
       end
     end
   end
