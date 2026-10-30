@@ -3,7 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::RequestSession::Pager do
-  let(:logger) { instance_double(Logger, warn: nil, debug: nil) }
+  let(:logger) { instance_double(Logger, warn: true, debug: nil) }
   let(:session) do
     context = Html2rss::RequestService::Context.new(
       url: 'https://example.com/news',
@@ -138,6 +138,139 @@ RSpec.describe Html2rss::RequestSession::Pager do
 
       it 'coerces to DEFAULT_MAX_PAGES without raising' do
         expect(pager.to_a).to eq([initial_response])
+      end
+    end
+
+    subject(:pager) { described_class.new(session:, initial_response:, config:, logger:) }
+
+    let(:config) { { max_pages: 3 } }
+    let(:requested_pages) { [] }
+    let(:initial_response) do
+      Html2rss::RequestService::Response.new(
+        body: '<html><body>page 1</body></html>',
+        url: Html2rss::Url.from_absolute('https://example.com/news'),
+        headers: { 'content-type' => 'text/html' }
+      )
+    end
+
+    before do
+      allow(Html2rss::RequestService).to receive(:execute) do |request_context, **|
+        Html2rss::RequestService::Response.new(
+          body: '<html></html>', url: request_context.url, headers: { 'content-type' => 'text/html' }
+        )
+      end
+    end
+
+    it 'raises NotImplementedError from the abstract next_page_url' do
+      expect { pager.to_a }.to raise_error(
+        NotImplementedError, /Html2rss::RequestSession::Pager::Base#next_page_url must be implemented by subclass/
+      )
+    end
+
+    it 'returns an enumerator when called without a block', :aggregate_failures do
+      allow(pager).to receive(:next_page_url).and_return(nil)
+
+      expect(pager.each).to be_a(Enumerator)
+      expect(pager.each.to_a).to eq([initial_response])
+    end
+
+    context 'when next_page_url yields follow-up urls' do
+      before do
+        allow(pager).to receive(:next_page_url) do |_response, page_number:|
+          requested_pages << page_number
+          Html2rss::Url.from_absolute("https://example.com/news?page=#{page_number}")
+        end
+      end
+
+      it 'requests numbered pages starting at 2 and tags follow-ups as pagination', :aggregate_failures do
+        expect(pager.to_a.size).to eq(3)
+        expect(requested_pages).to eq([2, 3])
+        expect(Html2rss::RequestService).to have_received(:execute).with(
+          satisfy { |follow_up_context| follow_up_context.relation == :pagination }, strategy: :default
+        ).twice
+      end
+
+      context 'when config is an integer page budget' do
+        let(:config) { 2 }
+
+        it 'treats the integer as max_pages' do
+          expect(pager.to_a.size).to eq(2)
+          expect(requested_pages).to eq([2])
+        end
+      end
+
+      context 'when max_pages exceeds the session budget' do
+        let(:config) { { max_pages: 10 } }
+
+        it 'clamps the follow-ups to the session budget' do
+          pager.to_a
+          expect(requested_pages).to eq([2, 3, 4, 5])
+        end
+      end
+
+      context 'when max_pages is zero' do
+        let(:config) { { max_pages: 0 } }
+
+        it 'falls back to DEFAULT_MAX_PAGES' do
+          pager.to_a
+          expect(requested_pages).to eq([2, 3, 4, 5])
+        end
+      end
+
+      context 'when max_pages is not numeric' do
+        let(:config) { { max_pages: 'many' } }
+
+        it 'falls back to DEFAULT_MAX_PAGES' do
+          pager.to_a
+          expect(requested_pages).to eq([2, 3, 4, 5])
+        end
+      end
+
+      context 'when max_pages is missing from the config' do
+        let(:config) { {} }
+
+        it 'falls back to DEFAULT_MAX_PAGES' do
+          pager.to_a
+          expect(requested_pages).to eq([2, 3, 4, 5])
+        end
+      end
+
+      context 'when the next url was already visited' do
+        before do
+          session.remember!(Html2rss::Url.from_absolute('https://example.com/news?page=2'))
+        end
+
+        it 'stops without fetching the visited url', :aggregate_failures do
+          expect(pager.to_a).to eq([initial_response])
+          expect(Html2rss::RequestService).not_to have_received(:execute)
+        end
+      end
+
+      context 'when next_page_url returns an empty string' do
+        before do
+          allow(pager).to receive(:next_page_url).and_return('')
+        end
+
+        it 'stops without fetching' do
+          expect(pager.to_a).to eq([initial_response])
+          expect(Html2rss::RequestService).not_to have_received(:execute)
+        end
+      end
+    end
+
+    context 'when the request budget is exhausted without an explicit logger' do
+      subject(:pager) { described_class.new(session:, initial_response:, config:) }
+
+      before do
+        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::RequestService).to receive(:execute)
+          .and_raise(Html2rss::RequestService::RequestBudgetExceeded.new('Request budget exhausted'))
+        allow(pager).to receive(:next_page_url).and_return(Html2rss::Url.from_absolute('https://example.com/news?page=2'))
+      end
+
+      it 'logs the stop through Html2rss::Log' do
+        expect(pager.to_a).to eq([initial_response])
+        expect(Html2rss::Log).to have_received(:warn).with(/pagination stopped/)
       end
     end
   end
