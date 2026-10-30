@@ -24,9 +24,8 @@ module Html2rss
         # @return [Array<Hash{Symbol => Object}>]
         def parse(body, base_url: nil)
           feed = RSS::Parser.parse(body.to_s, false)
-          return [] unless feed
 
-          items_from(feed, base_url:).filter_map { |item| article_hash(item, base_url:) }
+          items_from(feed).filter_map { |item| article_hash(item, base_url:) }
         rescue RSS::Error => error
           Log.warn({
             event_name: 'syndication.parse_failed',
@@ -38,10 +37,10 @@ module Html2rss
 
         private
 
-        def items_from(feed, base_url:) # rubocop:disable Lint/UnusedMethodArgument -- base reserved for callers
+        def items_from(feed)
           case feed
-          when RSS::Rss then Array(feed.items)
-          when RSS::Atom::Feed then Array(feed.entries)
+          when RSS::Rss then feed.items
+          when RSS::Atom::Feed then feed.entries
           else []
           end
         end
@@ -49,7 +48,7 @@ module Html2rss
         def article_hash(item, base_url:)
           case item
           when RSS::Rss::Channel::Item then rss_item_hash(item, base_url:)
-          when RSS::Atom::Entry, RSS::Atom::Feed::Entry then atom_entry_hash(item, base_url:)
+          when RSS::Atom::Feed::Entry then atom_entry_hash(item, base_url:)
           end
         end
 
@@ -62,9 +61,9 @@ module Html2rss
             title: present(item.title),
             description: present(item.description),
             url:,
-            published_at: item.date || item.pubDate,
+            published_at: item.pubDate,
             author: present(item.author),
-            categories: Array(item.categories).filter_map { |cat| present(cat.content) }
+            categories: item.categories.filter_map { |cat| present(cat.content) }
           }.compact
         end
 
@@ -74,29 +73,23 @@ module Html2rss
 
           {
             id: present(entry.id&.content) || url.to_s,
-            title: present(atom_text(entry.title)),
-            description: present(atom_text(entry.content) || atom_text(entry.summary)),
+            title: present(entry.title&.content),
+            description: present(entry.content&.content || entry.summary&.content),
             url:,
             published_at: entry.published&.content || entry.updated&.content,
-            author: present(atom_author(entry)),
-            categories: Array(entry.categories).filter_map { |cat| present(cat.term) }
+            author: atom_author(entry),
+            categories: entry.categories.filter_map { |cat| present(cat.term) }
           }.compact
         end
 
         def atom_link(entry, base_url:)
-          links = Array(entry.links)
+          links = entry.links
           link = links.find { |node| node.rel.nil? || node.rel == 'alternate' } || links.first
           absolute_url(link&.href, base_url:)
         end
 
-        def atom_text(node)
-          return unless node.is_a?(RSS::Atom::TextConstruct) || node.is_a?(RSS::Atom::Feed::Entry::Content)
-
-          node.content
-        end
-
         def atom_author(entry)
-          author = Array(entry.author).first
+          author = entry.author
           return unless author
 
           present(author.name&.content) || present(author.email&.content)
