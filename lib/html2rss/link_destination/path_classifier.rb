@@ -106,13 +106,13 @@ module Html2rss
       def shallow?
         segment_count = segments.size
 
-        segment_count <= 1 || (segment_count == 2 && high_confidence_junk_at?(segment_count - 1))
+        segment_count <= 1 || (segment_count == 2 && high_confidence_junk_at?(1))
       end
 
       # @return [Boolean] true when the final path segment looks like a post slug
       def strong_post_suffix?
         @strong_post_suffix ||= segments.any? &&
-                                included_last_segment? &&
+                                slug_last_segment? &&
                                 trusted_post_context?(segments.size - 1)
       end
 
@@ -121,13 +121,9 @@ module Html2rss
         (0...segments.size).all? { |i| high_confidence_junk_at?(i) }
       end
 
-      # @return [Boolean] true when the route is shallow and contains high-confidence noise
-      def shallow_high_confidence_route?
-        vanity_segments = SEGMENT_SETS.fetch(:vanity)
-
-        shallow? && (0...segments.size).any? do |i|
-          high_confidence_junk_at?(i) || vanity_segments.include?(@lexicon[i])
-        end
+      # @return [Boolean] true when the route is shallow and names a soft vanity segment
+      def shallow_vanity_route?
+        shallow? && @lexicon.any? { |folded| SEGMENT_SETS.fetch(:vanity).include?(folded) }
       end
 
       # @return [Boolean] true when the leading segments are all utility chrome
@@ -139,11 +135,7 @@ module Html2rss
       def junk_path?
         return false if excluded_content_route?
 
-        any_high_confidence_junk_segment? ||
-          taxonomy_path? ||
-          utility_only_route? ||
-          deep_utility_context_route? ||
-          shallow_high_confidence_route?
+        any_high_confidence_junk_segment? || shallow_vanity_route?
       end
 
       # @return [Boolean] true when the route points at conversion or account chrome
@@ -164,8 +156,7 @@ module Html2rss
       end
 
       def yearish_content_context?
-        segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } &&
-          (strong_post_suffix? || trusted_post_context?(segments.size - 1))
+        segments.any? { |segment| segment.match?(YEARISH_SEGMENT) } && trusted_post_context?(segments.size - 1)
       end
 
       def excluded_content_route?
@@ -206,15 +197,6 @@ module Html2rss
         segments.zip(@lexicon).first(limit.clamp(0..)).any? do |segment, folded|
           content.include?(folded) || segment.match?(YEARISH_SEGMENT) || context.include?(folded)
         end
-      end
-
-      def included_last_segment?
-        !excluded_last_segment? && slug_last_segment?
-      end
-
-      def excluded_last_segment?
-        last_i = segments.size - 1
-        high_confidence_junk_at?(last_i) || SEGMENT_SETS[:vanity].include?(@lexicon[last_i])
       end
 
       def slug_last_segment?
