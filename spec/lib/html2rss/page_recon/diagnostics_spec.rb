@@ -243,13 +243,19 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
       allow(described_class).to receive(:call).with(url: 'https://example.com/ok', strategy: :auto)
                                               .and_return(described_class::Report.new(data: { status: 200 }))
       allow(described_class).to receive(:call).with(url: 'https://example.com/fail', strategy: :auto)
-                                              .and_raise(StandardError, 'Connection failed')
+                                              .and_raise(Html2rss::Error, 'Connection failed')
 
       reports = described_class.batch(urls: ['https://example.com/ok', 'https://example.com/fail'], concurrency: 2)
 
       expect(reports.size).to eq(2)
       expect(reports.first.to_wire_h[:status]).to eq(200)
-      expect(reports.last.to_wire_h[:scraper_eligibility]).to include(error: 'StandardError - Connection failed')
+      expect(reports.last.to_wire_h[:scraper_eligibility]).to include(error: 'Html2rss::Error - Connection failed')
+    end
+
+    it 'does not mask programmer errors as per-URL reports' do
+      allow(described_class).to receive(:call).and_raise(NoMethodError)
+
+      expect { described_class.batch(urls: ['https://example.com/a']) }.to raise_error(NoMethodError)
     end
   end
 

@@ -223,10 +223,10 @@ RSpec.describe Html2rss::FeedResolution do
       log = StringIO.new
       Html2rss.logger = Logger.new(log)
       allow(described_class).to receive(:call).and_return(applied_resolution)
-      allow(retry_session).to receive(:fetch_initial_response).and_raise(RuntimeError)
+      allow(retry_session).to receive(:fetch_initial_response).and_raise(Html2rss::Error)
 
       expect(apply_outcome).to be_nil
-      expect(log.string).to include('feed_resolution.retry_failed', 'RuntimeError')
+      expect(log.string).to include('feed_resolution.retry_failed', 'Html2rss::Error')
     ensure
       Html2rss.reset_defaults!
     end

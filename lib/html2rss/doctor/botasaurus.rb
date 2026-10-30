@@ -94,7 +94,7 @@ module Html2rss
           status: wire[:status],
           articles_count: wire[:articles_count]
         }
-      rescue StandardError => error
+      rescue Html2rss::Error => error
         { ok: false, error: "#{error.class}: #{error.message}" }
       end
 

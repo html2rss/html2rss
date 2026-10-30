@@ -109,7 +109,7 @@ module Html2rss
 
       begin
         probe = PageRecon.probe(url_obj, strategy:, **)
-      rescue StandardError => error
+      rescue Html2rss::Error => error
         return error_result(url_obj, error)
       end
 
@@ -172,7 +172,7 @@ module Html2rss
         html: response.body
       )
       [feed, nil]
-    rescue StandardError => error
+    rescue Html2rss::Error => error
       [nil, "discovery_error=#{error.class}: #{error.message}"]
     end
     private_class_method :find_native_feed
@@ -231,7 +231,7 @@ module Html2rss
       file_path = File.join(cache_dir, "#{host}-#{digest}.html")
       writer = -> { File.write(file_path, body) }
       cache_mutex ? cache_mutex.synchronize(&writer) : writer.call
-    rescue StandardError => error
+    rescue SystemCallError, IOError => error
       Log.debug("Recon cache failed: #{error.message}")
     end
     private_class_method :cache_html_body

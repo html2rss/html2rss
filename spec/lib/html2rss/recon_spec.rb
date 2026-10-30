@@ -117,13 +117,13 @@ RSpec.describe Html2rss::Recon do
 
       before do
         allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url)
-          .and_raise(StandardError.new('timeout'))
+          .and_raise(Html2rss::Error.new('timeout'))
       end
 
       it 'records a discovery_error note and keeps BUILD verdict', :aggregate_failures do
         result = described_class.call(url)
         expect(result.build?).to be(true)
-        expect(result.notes).to include('discovery_error=StandardError: timeout')
+        expect(result.notes).to include('discovery_error=Html2rss::Error: timeout')
       end
     end
 
@@ -258,7 +258,7 @@ RSpec.describe Html2rss::Recon do
 
     context 'when probe raises an error' do
       before do
-        allow(Html2rss::PageRecon).to receive(:probe).and_raise(StandardError.new('connection refused'))
+        allow(Html2rss::PageRecon).to receive(:probe).and_raise(Html2rss::Error.new('connection refused'))
       end
 
       it 'returns DROP verdict with error note', :aggregate_failures do
@@ -266,6 +266,14 @@ RSpec.describe Html2rss::Recon do
         expect(result.drop?).to be(true)
         expect(result.requested_url.to_s).to eq(url)
         expect(result.notes.first).to include('connection refused')
+      end
+    end
+
+    context 'when probe hits a programmer error' do
+      it 'propagates instead of masking it as a DROP verdict' do
+        allow(Html2rss::PageRecon).to receive(:probe).and_raise(NoMethodError)
+
+        expect { described_class.call(url) }.to raise_error(NoMethodError)
       end
     end
   end
@@ -318,7 +326,7 @@ RSpec.describe Html2rss::Recon do
 
     it 'handles cache write failures gracefully' do
       Dir.mktmpdir do |dir|
-        allow(File).to receive(:write).and_raise(StandardError.new('disk full'))
+        allow(File).to receive(:write).and_raise(Errno::ENOSPC)
         expect { described_class.batch([url], cache_dir: dir) }.not_to raise_error
       end
     end

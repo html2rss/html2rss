@@ -181,7 +181,7 @@ module Html2rss
         parsed_body: (response.parsed_body if response.html_response?),
         html: response.body
       )&.to_s
-    rescue StandardError
+    rescue Html2rss::Error
       nil
     end
 
@@ -348,8 +348,6 @@ module Html2rss
 
     def fuzzy_url_match?(article_url, resolved)
       article_url.to_s.end_with?(resolved.path.to_s)
-    rescue StandardError
-      false
     end
 
     def title_from_segment(segment)
@@ -466,7 +464,7 @@ module Html2rss
 
     def channel_title_from(response)
       Channel.from_response(response).title
-    rescue StandardError
+    rescue Html2rss::Error
       nil
     end
 

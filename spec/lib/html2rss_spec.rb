@@ -506,6 +506,8 @@ RSpec.describe Html2rss do
   describe '.auto_source' do
     let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_source('https://www.welt.de/', limit: 10_000) } }
 
+    before { stub_request(:get, %r{\Ahttps://www\.welt\.de/.+}).to_return(status: 404) }
+
     it 'returns a RSS::Rss instance with channel and items', :aggregate_failures, :slow do
       expect(feed_return).to be_a(RSS::Rss)
       expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
@@ -535,6 +537,8 @@ RSpec.describe Html2rss do
 
   describe '.auto_json_feed' do
     let(:feed_return) { VCR.use_cassette('welt') { described_class.auto_json_feed('https://www.welt.de/', limit: 10_000) } }
+
+    before { stub_request(:get, %r{\Ahttps://www\.welt\.de/.+}).to_return(status: 404) }
 
     it 'returns the channel metadata', :aggregate_failures, :slow do
       expect(feed_return).to include(

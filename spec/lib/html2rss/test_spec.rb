@@ -244,7 +244,7 @@ RSpec.describe Html2rss::Test do
     context 'when live extraction raises an error' do
       before do
         pipeline = instance_double(Html2rss::FeedPipeline)
-        allow(pipeline).to receive(:to_outcome_and_result).and_raise(RuntimeError, 'network failure')
+        allow(pipeline).to receive(:to_outcome_and_result).and_raise(Html2rss::Error, 'network failure')
         allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)
       end
 

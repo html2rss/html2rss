@@ -122,7 +122,7 @@ module Html2rss
         nil
       rescue *NON_FALLBACK_ERRORS
         raise
-      rescue StandardError => error
+      rescue Html2rss::Error => error
         log_retry_failed(error)
         nil
       end

@@ -93,8 +93,6 @@ module Html2rss
           return urls if urls.size >= 2
         end
         []
-      rescue StandardError
-        []
       end
 
       def segment_urls_for(sst, strategy, link_resolver)
