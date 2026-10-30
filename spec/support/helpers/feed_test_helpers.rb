@@ -75,4 +75,11 @@ module FeedTestHelpers
     budget = Html2rss::RequestService::Budget.new(max_requests: policy.max_requests)
     Html2rss::RequestService::Context.new(url:, headers: { 'User-Agent' => 'RSpec' }, policy:, budget:)
   end
+
+  def quality_report_with(**overrides)
+    metrics = { item_count: 4, unique_url_count: 4, junk_title_count: 0, short_title_count: 0, low_word_count: 0 }
+    Html2rss::Test::QualityReport.new(
+      warnings: [], metrics: metrics.merge(overrides), native_feed: nil, defer_reason: nil
+    )
+  end
 end

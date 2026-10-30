@@ -3,6 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::Capture do
+  # rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups -- fixture-driven capture contracts
   let(:url) { 'https://example.com/blog' }
 
   before do
@@ -29,7 +30,279 @@ RSpec.describe Html2rss::Capture do
     end
   end
 
+  describe 'CaptureResult' do
+    subject(:result) do
+      described_class::CaptureResult.new(
+        config: { channel: { url: 'https://example.com' } }, articles_count: 2, channel_title: 'T',
+        has_selectors: false, segment_strategy: :list
+      )
+    end
+
+    it 'defaults the optional fields', :aggregate_failures do
+      expect(result).to have_attributes(
+        admission_drops: {}, selected_strategy: nil, inferred_topics: [], native_feed: nil,
+        suggested_channel_url: nil, candidates: Html2rss::SelectorCandidates.empty
+      )
+      expect(result.native_feed?).to be(false)
+    end
+
+    it 'renders the yaml behind the schema modeline unless given' do
+      expect(result.yaml).to eq("#{described_class::SCHEMA_MODELINE}\n#{Html2rss::Config.to_yaml(result.config)}")
+    end
+
+    it 'keeps explicit yaml, candidates and native feed', :aggregate_failures do
+      candidates = { items: [{ selector: 'li' }] }
+      explicit = result.with(yaml: 'custom', candidates:, native_feed: 'https://example.com/feed.xml')
+
+      expect(explicit).to have_attributes(yaml: 'custom', candidates:, native_feed: 'https://example.com/feed.xml')
+      expect(explicit.native_feed?).to be(true)
+    end
+
+    it 'honours explicit values passed to the constructor', :aggregate_failures do
+      built = described_class::CaptureResult.new(
+        config: {}, articles_count: 1, channel_title: 'T', has_selectors: true, segment_strategy: :cluster,
+        yaml: 'y: 1', admission_drops: { a: 1 }, selected_strategy: :default, inferred_topics: %w[tech],
+        native_feed: 'f', suggested_channel_url: 'u', candidates: { items: [] }
+      )
+
+      expect(built).to have_attributes(
+        yaml: 'y: 1', admission_drops: { a: 1 }, selected_strategy: :default, inferred_topics: %w[tech],
+        native_feed: 'f', suggested_channel_url: 'u', candidates: { items: [] }, segment_strategy: :cluster
+      )
+    end
+  end
+
+  describe 'items selector derivation' do
+    let(:page) { ->(body) { "<html><body>#{body}</body></html>" } }
+    let(:card) do
+      lambda do |index, tag: 'article', klass: nil, href: "/a#{index}"|
+        attrs = klass ? %( class="#{klass}") : ''
+        "<#{tag}#{attrs}><h2><a href=\"#{href}\">Title Number #{index} Longer</a></h2>" \
+          "<p>Teaser text number #{index} with words</p></#{tag}>"
+      end
+    end
+    let(:articles_for) do
+      lambda do |count, host: 'https://example.com', offset: 0|
+        (1..count).map do |index|
+          Html2rss::Article.new(id: index.to_s, title: "Title Number #{index} Longer",
+                                url: Html2rss::Url.from_absolute("#{host}/a#{index + offset}"))
+        end
+      end
+    end
+    let(:derive) do
+      lambda do |html, articles|
+        stub_outcome(html_response(html), articles:)
+        result = described_class.new(url).build
+        [result.config.dig(:selectors, :items, :selector), result.segment_strategy]
+      end
+    end
+    let(:default_selector) { Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR }
+
+    it 'matches segments to articles by exact url', :aggregate_failures do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(3))).to eq(['article', :list])
+    end
+
+    it 'falls back to a path-suffix match when the article host differs' do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(3, host: 'https://other.example.org'))).to eq(['article', :list])
+    end
+
+    it 'needs two matched segments', :aggregate_failures do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(1))).to eq([default_selector, :default])
+      expect(derive.call(html, articles_for.call(2))).to eq(['article', :list])
+    end
+
+    it 'falls back to the default selector when no article matches' do
+      html = page.call((1..3).map { card.call(_1) }.join)
+
+      expect(derive.call(html, articles_for.call(3, offset: 50))).to eq([default_selector, :default])
+    end
+
+    it 'falls back to the default selector for links without an href' do
+      html = page.call((1..2).map { card.call(_1, href: '') }.join)
+
+      expect(derive.call(html, articles_for.call(2))).to eq([default_selector, :default])
+    end
+
+    {
+      'a wrapping section path' =>
+        [->(cards) { "<div><section>#{cards}</section></div>" }, 'section > article', 'article', nil],
+      'a shared class' => [nil, 'article.card', 'article', 'card'],
+      'divs inside divs' => [->(cards) { "<div><div>#{cards}</div></div>" }, 'div', 'div', nil],
+      'list items' => [->(cards) { "<ul>#{cards}</ul>" }, 'ul > li', 'li', nil]
+    }.each do |label, (wrap, expected, tag, klass)|
+      it "derives the selector for #{label}" do
+        cards = (1..3).map { |index| card.call(index, tag:, klass:) }.join
+        html = page.call(wrap ? wrap.call(cards) : cards)
+
+        expect(derive.call(html, articles_for.call(3))).to eq([expected, :list])
+      end
+    end
+
+    it 'unions distinct root tags', :aggregate_failures do
+      html = page.call("<main>#{card.call(1)}#{card.call(2, tag: 'section')}#{card.call(3)}</main>")
+
+      expect(derive.call(html, articles_for.call(3))).to eq(['article, section', :list])
+    end
+
+    it 'keeps wrapping anchors with media as item roots' do
+      body = (1..3).map do |index|
+        %(<a href="/a#{index}"><img src="x.png"><span>Title Number #{index} Longer</span>) +
+          %(<p>Teaser text number #{index} with words</p></a>)
+      end.join
+
+      expect(derive.call(page.call(body), articles_for.call(3))).to eq(['a', :list])
+    end
+
+    it 'derives list items around bare anchors' do
+      body = "<ul>#{(1..3).map { %(<li><a href="/a#{_1}">Title Number #{_1} Longer</a></li>) }.join}</ul>"
+
+      expect(derive.call(page.call(body), articles_for.call(3))).to eq(['ul > li', :list])
+    end
+
+    it 'keeps headings without a usable card parent as item roots' do
+      body = (1..3).map do |index|
+        %(<h3><a href="/a#{index}">Title Number #{index} Longer</a></h3><p>Teaser text number #{index}</p>)
+      end.join
+
+      expect(derive.call(page.call(%(<div class="x">#{body}</div>)), articles_for.call(3))).to eq(['h3', :list])
+    end
+
+    it 'uses the alphabetically first class shared by every root' do
+      body = (1..3).map { card.call(_1, tag: 'div', klass: "c k#{_1}") }.join
+
+      expect(derive.call(page.call("<main>#{body}</main>"), articles_for.call(3))).to eq(['div.c', :list])
+    end
+  end
+
   describe '#build' do
+    context 'when inferring directory topics from the url and title' do
+      before { stub_outcome(html_response('<html></html>'), articles: []) }
+
+      {
+        'tech' => %w[tech],
+        'developer' => %w[tech],
+        'software' => %w[tech],
+        'cloud' => %w[tech],
+        'api' => %w[tech],
+        'compute' => %w[tech],
+        'ai' => %w[tech],
+        'data' => %w[tech],
+        'model' => %w[tech],
+        'hardware' => %w[tech],
+        'cyber' => %w[tech],
+        'security' => %w[security],
+        'vulnerab' => %w[security],
+        'advis' => %w[security],
+        'threat' => %w[security],
+        'breach' => %w[security],
+        'cve' => %w[security],
+        'cert' => %w[security],
+        'patch' => %w[security],
+        'science' => %w[science],
+        'space' => %w[science],
+        'astron' => %w[science],
+        'physics' => %w[science],
+        'bio' => %w[science],
+        'research' => %w[science],
+        'institut' => %w[science],
+        'discover' => %w[science],
+        'nature' => %w[science],
+        'energy' => %w[energy],
+        'wind' => %w[energy],
+        'solar' => %w[energy],
+        'power' => %w[energy],
+        'grid' => %w[energy],
+        'renewab' => %w[energy],
+        'oil' => %w[energy],
+        'gas' => %w[energy],
+        'hydro' => %w[energy],
+        'financ' => %w[finance],
+        'bank' => %w[finance],
+        'invest' => %w[finance],
+        'monetary' => %w[finance],
+        'market' => %w[finance],
+        'regulat' => %w[finance],
+        'treasury' => %w[finance],
+        'econom' => %w[finance],
+        'govern' => %w[civic],
+        'policy' => %w[civic],
+        'council' => %w[civic],
+        'parliament' => %w[civic],
+        'court' => %w[civic],
+        'treaty' => %w[civic],
+        'public' => %w[civic],
+        'climat' => %w[environment],
+        'environ' => %w[environment],
+        'planet' => %w[environment],
+        'sustainab' => %w[tech environment],
+        'carbon' => %w[environment],
+        'ecolog' => %w[environment],
+        'earth' => %w[environment],
+        'consum' => %w[consumer],
+        'recall' => %w[consumer],
+        'safety' => %w[consumer],
+        'rating' => %w[consumer],
+        'test' => %w[consumer],
+        'product' => %w[consumer],
+        'travel' => %w[travel],
+        'touris' => %w[travel],
+        'destination' => %w[travel],
+        'trip' => %w[travel],
+        'flight' => %w[travel],
+        'hotel' => %w[travel],
+        'transit' => %w[travel],
+        'rail' => %w[tech travel],
+        'sport' => %w[sports],
+        'olympic' => %w[sports],
+        'racing' => %w[sports],
+        'football' => %w[sports],
+        'soccer' => %w[sports],
+        'tennis' => %w[sports],
+        'game' => %w[sports],
+        'health' => %w[health],
+        'medic' => %w[health],
+        'pharma' => %w[health],
+        'hospital' => %w[health],
+        'disease' => %w[health],
+        'patient' => %w[health],
+        'educat' => %w[education],
+        'universit' => %w[education],
+        'school' => %w[education],
+        'student' => %w[education],
+        'academi' => %w[education],
+        'learn' => %w[education],
+        'transport' => %w[sports transport],
+        'traffic' => %w[transport],
+        'automotive' => %w[transport],
+        'vehicle' => %w[transport],
+        'train' => %w[tech transport],
+        'bus' => %w[transport],
+        'zzz' => %w[news]
+      }.each do |keyword, topics|
+        it "maps #{keyword.inspect} to #{topics.join('+')}" do
+          result = described_class.new('https://example.org/x', title: keyword).build
+          expect(result.inferred_topics).to eq(topics)
+        end
+      end
+
+      it 'matches case-insensitively against the url as well as the title', :aggregate_failures do
+        result = described_class.new('https://example.org/SOLAR', title: 'zzz').build
+        expect(result.inferred_topics).to eq(%w[energy])
+        expect(result.config.dig(:directory, :topics)).to eq(%w[energy])
+      end
+
+      it 'prefers explicit topics over inference' do
+        result = described_class.new('https://example.org/solar', topics: %w[jobs]).build
+        expect(result.inferred_topics).to eq(%w[jobs])
+      end
+    end
+
     it 'asks Syndication::Discovery for native feed preference with a session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       response = html_response(File.read('spec/fixtures/local_feed_test.html'))
       articles = Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
@@ -45,6 +318,229 @@ RSpec.describe Html2rss::Capture do
           request_session: kind_of(Html2rss::RequestSession)
         )
       )
+    end
+
+    context 'with explicit options' do
+      subject(:result) do
+        stub_outcome(
+          html_response('<html><head><title>Page Title</title></head></html>'),
+          articles: [], admission_drops: { a: 1 }, selected_strategy: :browserless
+        )
+        described_class.new(
+          url, strategy: :default, items_selector: '.card', topics: %w[jobs tech culture], title: 'Custom Title',
+               summary: 'S' * 200, force: true, enhance: false, limit: 9, max_redirects: 7, max_requests: 4
+        ).build
+      end
+
+      it 'forwards request controls and hints to the pipeline', :aggregate_failures do
+        result
+
+        expect(Html2rss::FeedPipeline).to have_received(:new).with(
+          hash_including(
+            strategy: :default,
+            request: hash_including(max_redirects: 7, max_requests: 4),
+            auto_source: hash_including(limit: 9),
+            selectors: { items: { selector: '.card', enhance: true } },
+            channel: hash_including(url:)
+          )
+        )
+      end
+
+      it 'emits the exact config and result fields', :aggregate_failures do
+        expect(result.config).to eq(
+          directory: { topics: %w[jobs tech], title: 'Custom Title', summary: 'S' * 160 },
+          channel: { url:, title: 'Custom Title', time_zone: 'UTC' },
+          selectors: { items: { selector: '.card', enhance: false } },
+          strategy: :browserless
+        )
+        expect(result).to have_attributes(
+          articles_count: 0, channel_title: 'Custom Title', has_selectors: true, segment_strategy: :hint,
+          admission_drops: { a: 1 }, selected_strategy: :browserless, inferred_topics: %w[jobs tech culture],
+          native_feed: nil, suggested_channel_url: nil
+        )
+      end
+
+      it 'renders the yaml from the config behind the schema modeline' do
+        expect(result.yaml).to eq("#{described_class::SCHEMA_MODELINE}\n#{Html2rss::Config.to_yaml(result.config)}")
+      end
+
+      it 'skips native feed discovery when forced' do
+        result
+
+        expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_url)
+      end
+    end
+
+    context 'with default options on an html page' do
+      subject(:result) { described_class.new(url, strategy:).build }
+
+      let(:strategy) { :auto }
+      let(:selected) { nil }
+
+      before do
+        stub_outcome(html_response('<html><head><title>Page Title</title></head></html>'), articles: [],
+                                                                                           selected_strategy: selected)
+      end
+
+      it 'derives the title, summary and default selector', :aggregate_failures do
+        expect(result.config).to eq(
+          directory: { topics: %w[news], title: 'Page Title', summary: 'Page Title updates and announcements.' },
+          channel: { url:, title: 'Page Title', time_zone: 'UTC' },
+          selectors: { items: { selector: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR, enhance: true } }
+        )
+        expect(result).to have_attributes(segment_strategy: :default, admission_drops: {}, selected_strategy: nil)
+      end
+
+      it 'passes the page body to native feed discovery', :aggregate_failures do
+        result
+
+        expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
+          page_url: url, request_session: kind_of(Html2rss::RequestSession),
+          parsed_body: kind_of(Nokogiri::HTML::Document), html: a_string_including('Page Title')
+        )
+      end
+
+      context 'when a concrete strategy was requested' do
+        let(:strategy) { :default }
+
+        it 'stamps it on the config' do
+          expect(result.config[:strategy]).to eq(:default)
+        end
+      end
+
+      context 'when the pipeline selected a strategy' do
+        let(:selected) { :browserless }
+
+        it 'stamps the selected strategy over the requested one' do
+          expect(result.config[:strategy]).to eq(:browserless)
+        end
+      end
+
+      it 'does not stamp the auto strategy' do
+        expect(result.config).not_to have_key(:strategy)
+      end
+    end
+
+    context 'when the page is not html' do
+      subject(:result) { described_class.new(url).build }
+
+      before do
+        stub_outcome(html_response('{}', content_type: 'application/json'), articles: [])
+      end
+
+      it 'emits no selectors and discovers with a nil parsed body', :aggregate_failures do
+        expect(result.config).not_to have_key(:selectors)
+        expect(result).to have_attributes(has_selectors: false, segment_strategy: nil)
+        expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(hash_including(parsed_body: nil))
+      end
+    end
+
+    context 'when the title cannot be derived' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Channel).to receive(:from_response).and_raise(Html2rss::Error, 'no channel')
+      end
+
+      it 'omits the channel title', :aggregate_failures do
+        result = described_class.new(url).build
+
+        expect(result.channel_title).to be_nil
+        expect(result.config[:channel]).to eq(url:, time_zone: 'UTC')
+      end
+    end
+
+    context 'when native feed discovery fails' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_raise(Html2rss::Error, 'boom')
+      end
+
+      it 'treats it as no native feed', :aggregate_failures do
+        result = described_class.new(url).build
+
+        expect(result.native_feed).to be_nil
+        expect(result.native_feed?).to be(false)
+      end
+    end
+
+    describe 'enhance defaulting' do
+      before { stub_outcome(html_response('<html></html>'), articles: [], admission_drops: drops) }
+
+      let(:drops) { { admission: 2 } }
+
+      it 'keeps enhance on below the chrome drop threshold' do
+        expect(described_class.new(url).build.config.dig(:selectors, :items, :enhance)).to be(true)
+      end
+
+      context 'when drops reach the threshold' do
+        let(:drops) { { a: 1, b: 2 } }
+
+        it 'turns enhance off' do
+          expect(described_class.new(url).build.config.dig(:selectors, :items, :enhance)).to be(false)
+        end
+
+        it 'lets an explicit enhance override the drops' do
+          expect(described_class.new(url, enhance: true).build.config.dig(:selectors, :items, :enhance)).to be(true)
+        end
+      end
+    end
+
+    describe 'suggested channel url' do
+      let(:response_url) { url }
+      let(:target) { Html2rss::ScrapeTarget.new(entry_url: entry, effective_url: effective) }
+      let(:entry) { url }
+      let(:effective) { url }
+
+      before do
+        stub_outcome(html_response('<html></html>', page_url: response_url), articles: [], scrape_target: target)
+      end
+
+      it 'is nil when nothing moved' do
+        expect(described_class.new(url).build.suggested_channel_url).to be_nil
+      end
+
+      context 'when the scrape target moved to another document' do
+        let(:effective) { 'https://example.com/blog/list' }
+
+        it 'suggests the effective url' do
+          expect(described_class.new(url).build.suggested_channel_url).to eq('https://example.com/blog/list')
+        end
+      end
+
+      context 'when only the fetched response url moved' do
+        let(:response_url) { 'https://example.com/moved' }
+
+        it 'suggests the final response url' do
+          expect(described_class.new(url).build.suggested_channel_url).to eq('https://example.com/moved')
+        end
+      end
+
+      context 'when the response url differs only by fragment' do
+        let(:response_url) { 'https://example.com/blog#top' }
+
+        it 'is nil' do
+          expect(described_class.new(url).build.suggested_channel_url).to be_nil
+        end
+      end
+
+      context 'when the url cannot be parsed' do
+        it 'is nil' do
+          expect(described_class.new('not a url').build.suggested_channel_url).to be_nil
+        end
+      end
+    end
+
+    context 'with a local file' do
+      before { stub_outcome(html_response('<html></html>'), articles: []) }
+
+      it 'passes the local file request to the pipeline and the config', :aggregate_failures do
+        result = described_class.new(url, local_file_path: '/tmp/page.html').build
+
+        expect(Html2rss::FeedPipeline).to have_received(:new).with(
+          hash_including(strategy: :local_file, request: hash_including(local_file_path: '/tmp/page.html'))
+        )
+        expect(result.config).to include(strategy: :local_file, request: { local_file_path: '/tmp/page.html' })
+      end
     end
 
     context 'with a list fixture that shares an item class' do
@@ -546,4 +1042,5 @@ RSpec.describe Html2rss::Capture do
       expect(result.suggested_channel_url).to eq('https://example.com/blog/list')
     end
   end
+  # rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups
 end

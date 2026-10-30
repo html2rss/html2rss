@@ -147,7 +147,6 @@ module Html2rss
 
       CaptureResult.new(
         config:,
-        yaml: "#{SCHEMA_MODELINE}\n#{Config.to_yaml(config)}",
         articles_count: outcome.articles.size,
         channel_title: ch_title,
         has_selectors: !selectors.empty?,
@@ -415,12 +414,7 @@ module Html2rss
     end
 
     def path_items_selector(roots)
-      paths = roots.map(&:tag_path)
-      common = common_path_prefix(paths)
-      tag_path = common.empty? ? paths.first.to_s : common
-      return if tag_path.empty?
-
-      css_from_trimmed_tag_path(tag_path)
+      css_from_trimmed_tag_path(common_path_prefix(roots.map(&:tag_path)))
     end
 
     def css_from_trimmed_tag_path(tag_path)
@@ -438,9 +432,7 @@ module Html2rss
       trimmed.empty? ? [segments.last] : trimmed
     end
 
-    def common_path_prefix(paths) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-      return '' if paths.empty?
-
+    def common_path_prefix(paths)
       segments = paths.map { |p| p.split('/').reject(&:empty?) }
       prefix = segments.first
       segments.each do |seg|
