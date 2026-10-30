@@ -327,7 +327,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
   end
 
-  describe '.articles?(parsed_body)' do
+  describe '.articles?(parsed_body) with unusable input' do
     it 'returns false without a parsed body' do
       expect(described_class.articles?(nil)).to be(false)
     end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength
+
 RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   describe '.options_key' do
     specify { expect(described_class.options_key).to eq(:semantic_html) }
@@ -223,3 +225,5 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 end
+
+# rubocop:enable RSpec/ExampleLength

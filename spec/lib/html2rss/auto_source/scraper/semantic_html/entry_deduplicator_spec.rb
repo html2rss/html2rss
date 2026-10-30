@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
+
 RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
   subject(:deduplicator) { described_class.new('https://example.com', scraper: scraper_class) }
 
@@ -37,7 +39,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
   let(:entry) do
     lambda do |article:, position: 0, final: 65.0, quality: 75.0, href: '/news/story'|
       ranked = build_ranked.call(href:, final:, quality:, position:)
-      allow(deduplicator).to receive(:article_for).with(ranked).and_return(article)
+      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).with(ranked, any_args).and_return(article)
       ranked
     end
   end
@@ -179,8 +181,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
       end
       first = anchorless.call(0)
       second = anchorless.call(1)
-      allow(deduplicator).to receive(:article_for).with(first).and_return(build_article.call)
-      allow(deduplicator).to receive(:article_for).with(second).and_return(build_article.call(description: 'x'))
+      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).with(first, any_args).and_return(build_article.call)
+      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).with(second, any_args)
+                                                                  .and_return(build_article.call(description: 'x'))
 
       expect(deduplicator.call([first, second]).size).to eq(1)
     end
@@ -191,21 +194,23 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
     it 'extracts with the page base url, the scraper class and anchorless fallback', :aggregate_failures do
       ranked = build_ranked.call
-      expect(Html2rss::Html::SstArticleExtractor).to receive(:call).with(
-        ranked,
-        base_url: 'https://example.com',
-        scraper: scraper_class,
-        fallback_anchorless: true
-      ).and_return(article)
+      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
 
       expect(deduplicator.article_for(ranked)).to be(article)
+      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).with(
+        ranked, base_url: 'https://example.com', scraper: scraper_class, fallback_anchorless: true
+      )
     end
 
     it 'extracts each entry only once' do
       ranked = build_ranked.call
-      expect(Html2rss::Html::SstArticleExtractor).to receive(:call).once.and_return(article)
+      allow(Html2rss::Html::SstArticleExtractor).to receive(:call).and_return(article)
 
       2.times { deduplicator.article_for(ranked) }
+
+      expect(Html2rss::Html::SstArticleExtractor).to have_received(:call).once
     end
   end
 end
+
+# rubocop:enable RSpec/ExampleLength, RSpec/MultipleMemoizedHelpers
