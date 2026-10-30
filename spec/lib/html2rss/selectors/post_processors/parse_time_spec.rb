@@ -68,6 +68,26 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseTime do
     end
   end
 
+  it 'rejects a source string without a date' do
+    ctx = Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin')
+
+    expect { described_class.new('10:00', ctx).call }.to raise_error(ArgumentError, 'year must be an Integer')
+  end
+
+  it 'rejects a non-String time_zone with the option name in the message' do
+    ctx = Html2rss::Selectors::StepEnv.new(time_zone: ['Europe/Berlin'])
+
+    expect { described_class.new('2019-07-01 12:00', ctx).call }
+      .to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /`time_zone`/)
+  end
+
+  it 'exports the parse_time name and description', :aggregate_failures do
+    fragment = described_class.schema_export
+
+    expect(fragment.fetch(:properties).fetch(:name)).to eq(type: 'string', const: 'parse_time')
+    expect(fragment.fetch(:description)).to eq(described_class::DESCRIPTION)
+  end
+
   it 'uses a zone named in the source string instead of the channel time_zone' do
     ctx = Html2rss::Selectors::StepEnv.new(time_zone: 'Europe/Berlin')
 
