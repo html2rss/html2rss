@@ -123,4 +123,55 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
       expect(trusted.call(2, 'about', 'blog')).to be(false)
     end
   end
+
+  describe 'route flag matrix' do
+    # Flags are content, utility, vanity, taxonomy, shallow, strong post suffix, junk, utility destination.
+    let(:route_flags) do
+      lambda do |classifier|
+        %i[content_path? utility_path? vanity_path? taxonomy_path? shallow? strong_post_suffix? junk_path?
+           utility_destination?].map { |predicate| classifier.public_send(predicate) ? 't' : 'f' }.join
+      end
+    end
+
+    {
+      %w[news 2026 2027] => 'tfffftff', %w[news 2026 about] => 'ttffffff', %w[news 2026 join] => 'tttfffff',
+      %w[news 2026 Platform] => 'tfffffff', %w[news 2026-x] => 'tfffftff', %w[news 2026 slug-a-b] => 'tfffftff',
+      %w[news slug-a-b-c] => 'tfffftff', %w[news about-us-team] => 'tfffftff', %w[news x-y-z] => 'tfffftff',
+      %w[about news 2026 slug-a-b-c] => 'ftfffftf', %w[misc press big-news-story-here] => 'ffffftff',
+      %w[misc press Big-news-story] => 'ffffftff', %w[misc blog] => 'tfffffff', %w[misc blog about] => 'ttffffff',
+      %w[blog contact-us-today] => 'tfffftff', %w[blog 2026 contact-us-today] => 'tfffftff',
+      %w[blog page-two] => 'tfffffff', %w[misc 2026] => 'ffffffff', %w[misc join plan-a-b] => 'fttfffft',
+      %w[join membership-plan-a] => 'fttfffft', %w[plus] => 'fttftftt', %w[subscribe] => 'fttftftt',
+      %w[premium] => 'fttftftt', %w[pricing] => 'fttftftt', %w[category] => 'ftfttftt',
+      %w[tag foo] => 'ftftfftt', %w[topic x y] => 'ftftfftt', %w[shop] => 'ftfftftt',
+      %w[shop products] => 'ftfffftt', %w[shop products item-a-b-c] => 'ftfffftf', %w[docs guide] => 'ffffffff',
+      %w[docs v2.0] => 'ffffffff', %w[download file.pdf] => 'ffffffff', %w[assets image.jpg] => 'ffffffff',
+      %w[www.example.com] => 'fffftftt', %w[sub.example.co.uk story] => 'fffffftt',
+      %w[www.bild.de energieloesungen photovoltaik] => 'fffffftf', %w[misc www.bild.de] => 'fffftftf',
+      %w[misc casino-bonus.example.com] => 'fffftftf', %w[casino-bonus.example.com angebot] => 'fffffftt',
+      %w[archive 2026 news-slug-a] => 'ftfffftf', %w[archive 2026] => 'ftfffftt',
+      %w[comments 2026 big-news-x] => 'ftfffftf', %w[press 2026-x] => 'tfffftff',
+      %w[politik 2026 gesetz-a-b] => 'tfffftff', %w[politik gesetz-a-b-c] => 'ffffffff',
+      %w[newsroom annual-report-2026] => 'ffffftff', %w[press newsroom news-today-one] => 'ffffftff',
+      %w[datenschutz erklaerung] => 'ftfffftt', %w[nachrichten] => 'tffftfff',
+      %w[nachrichten 2026 neuigkeiten-zum-produkt] => 'tfffftff', %w[artikel 2026 eine-geschichte-b] => 'tfffftff',
+      %w[misc about contact-us-today-x] => 'ftfffftf', %w[about contact] => 'ftfftftt', %w[news about] => 'ttfftfff',
+      %w[news dating] => 'ttfftfff', %w[misc news-tag-1] => 'ffffffff', %w[123 news slug-a-b-c] => 'tfffftff',
+      %w[news 2026 a-b-c 2026] => 'tfffftff', [] => 'fffftfff', %w[widget-xyz-detail] => 'fffftfff',
+      %w[2026] => 'fffftfff', %w[misc 2026 x] => 'tfffffff', %w[misc blog 2026] => 'tfffftff',
+      %w[news about big-story-slug-x] => 'ttffftff', %w[news big-story-slug-x about] => 'ttffffff',
+      %w[news 2026 plans] => 'tttfffff', %w[news 2026 dating] => 'ttffffff', %w[about x-y] => 'ftfffftt',
+      %w[about contact x-y] => 'ftfffftt', %w[dating x-y-z-w] => 'ftfffftt', %w[x-y about z-w] => 'ftfffftf',
+      %w[news 2026 about-x-y] => 'tfffftff', %w[misc about x-y] => 'ftfffftf', %w[docs x-y] => 'ffffffff',
+      %w[archive 2026 x] => 'ftfffftf', %w[x-y category z-w] => 'ftftfftt', %w[x-y about] => 'ftfftftt',
+      %w[x-y plus] => 'fttfffft', %w[misc press dating big-news-story-here] => 'ftffftff'
+    }.each do |segments, flags|
+      it "flags /#{segments.join('/')} as #{flags}", :aggregate_failures do
+        classifier = classifier_for(*segments)
+
+        expect(classifier.segments).to eq(segments)
+        expect(route_flags.call(classifier)).to eq(flags)
+      end
+    end
+  end
 end
