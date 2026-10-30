@@ -216,6 +216,7 @@ module Html2rss
         def array_selector_shape_error(key, selector)
           return "`#{key}` must be an array" unless selector.is_a?(Array)
           return "`#{key}` must contain at least one element" if selector.empty?
+          return "`#{key}` must contain only selector names" unless selector.all? { _1 in String | Symbol }
 
           nil
         end

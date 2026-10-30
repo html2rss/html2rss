@@ -37,4 +37,13 @@ RSpec.describe Html2rss::MCP::Server::Tools do
       )
     end
   end
+
+  describe 'validate tool edge' do
+    let(:validate_tool) { described_class::TOOLS.find { |tool| tool.name == 'validate' } }
+
+    it 'raises InvalidOption for a non-Hash config before the schema check' do
+      expect { validate_tool.call.call(config: 'channel: {}') }
+        .to raise_error(Html2rss::InvalidOption, 'config must be a Hash, got String')
+    end
+  end
 end
