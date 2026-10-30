@@ -114,6 +114,28 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
       end
     end
 
+    context 'when the channel url and image are Html2rss::Url objects' do
+      subject(:channel_tag) { Nokogiri::XML(rss.to_s).css('channel').first }
+
+      let(:channel) do
+        instance_double(Html2rss::Channel,
+                        title: 'Test Channel',
+                        url: Html2rss::Url.from_absolute('http://example.com/'),
+                        description: 'A test channel',
+                        language: 'en',
+                        image: Html2rss::Url.from_absolute('http://example.com/image.jpg'),
+                        author: 'Channel Author',
+                        ttl: nil,
+                        last_build_date: nil)
+      end
+
+      it 'renders the link, image and author as strings', :aggregate_failures do
+        expect(channel_tag.xpath('link').text).to eq('http://example.com/')
+        expect(channel_tag.css('image > url').text).to eq('http://example.com/image.jpg')
+        expect(channel_tag.xpath('managingEditor').text).to eq('Channel Author')
+      end
+    end
+
     context 'when the channel has no image, author or ttl' do
       subject(:bare_channel_tag) { Nokogiri::XML(bare_rss.to_s).css('channel').first }
 
@@ -157,6 +179,29 @@ RSpec.describe Html2rss::FeedBuilder::Rss do
 
       it 'omits <enclosure> when the article only has an image' do
         expect(item.css('enclosure')).to be_empty
+      end
+    end
+
+    context 'with an article that has an author, categories and no url' do
+      let(:articles) do
+        [
+          Html2rss::Article.new(
+            id: 1,
+            title: 'Title 1',
+            author: 'Jane Doe',
+            categories: [' news ', 'tech', ''],
+            description: 'Description 1',
+            scraper: RSpec
+          )
+        ]
+      end
+      let(:item) { Nokogiri::XML(rss.to_s).css('item').first }
+
+      it 'emits author, trimmed categories, an isPermaLink="false" guid and no link', :aggregate_failures do
+        expect(item.at_css('author').text).to eq('Jane Doe')
+        expect(item.css('category').map(&:text)).to eq(%w[news tech])
+        expect(item.at_css('guid')['isPermaLink']).to eq('false')
+        expect(item.at_css('link')).to be_nil
       end
     end
 
