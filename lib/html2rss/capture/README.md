@@ -66,7 +66,7 @@ html2rss capture https://example.com --explain   # quality JSON on stderr; YAML 
 ## Constraints
 
 - Selector quality depends on page structure; treat output as a first draft.
-- When HTML derivation misses (no articles, no SST document, fewer than `MIN_SELECTOR_MATCHES` pairs, or a rescued `ArgumentError`), Capture emits the default items selector with `segment_strategy: :default`. `enhance` still follows admission evidence (false when chrome drops are high). Non-HTML responses still omit selectors.
+- When HTML derivation misses (no articles, no SST document, fewer than `MIN_SELECTOR_MATCHES` pairs), Capture emits the default items selector with `segment_strategy: :default`. `enhance` still follows admission evidence (false when chrome drops are high). Non-HTML responses still omit selectors.
 - Botasaurus hops need `BOTASAURUS_SCRAPER_URL`.
 
 See also {Html2rss::AutoSource} for article discovery and {Html2rss::FeedPipeline} for the `:auto` request chain.

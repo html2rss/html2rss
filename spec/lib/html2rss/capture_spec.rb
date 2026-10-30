@@ -213,7 +213,7 @@ RSpec.describe Html2rss::Capture do
       expect(items[:selector]).to eq('a')
     end
 
-    context 'when selector derivation raises ArgumentError' do
+    context 'when the document normalizes to nothing' do
       subject(:result) { described_class.new(url).build }
 
       let(:articles) do
@@ -226,18 +226,16 @@ RSpec.describe Html2rss::Capture do
       before do
         response = html_response('<html><body></body></html>')
         stub_outcome(response, articles:)
-        allow(Html2rss::SST::Normalizer).to receive(:call).and_raise(ArgumentError, 'bad sst')
-        allow(Html2rss::Log).to receive(:warn)
+        allow(Html2rss::SST::Normalizer).to receive(:call).and_return(nil)
       end
 
       # rubocop:disable-next RSpec/ExampleLength -- default selector plus test next_step
-      it 'emits the default items selector when derivation raises ArgumentError', :aggregate_failures do
+      it 'emits the default items selector when the document normalizes to nothing', :aggregate_failures do
         expect(result.config[:selectors]).to eq(
           items: { selector: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR, enhance: true }
         )
         expect(result.has_selectors).to be true
         expect(result.segment_strategy).to eq(:default)
-        expect(Html2rss::Log).to have_received(:warn).with(/bad sst/)
         next_step = Html2rss::MCP::Outcome.capture(
           yaml: result.yaml,
           articles_count: result.articles_count,

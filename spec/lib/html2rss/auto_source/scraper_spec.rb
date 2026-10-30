@@ -168,7 +168,7 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     end
   end
 
-  describe '.normalize_sst / .build_instance' do
+  describe '.build_instance' do
     let(:parsed_body) do
       Nokogiri::HTML('<html><body><article><a href="/article-1">Article 1</a></article></body></html>')
     end
@@ -181,18 +181,8 @@ RSpec.describe Html2rss::AutoSource::Scraper do
         html: { enabled: true }
       )
     end
-    let(:document) { described_class.normalize_sst(parsed_body) }
+    let(:document) { Html2rss::SST::Normalizer.call(parsed_body) }
     let(:link_resolver) { Html2rss::Scoring::LinkResolver.new(url) }
-
-    it 'returns nil when normalization yields an empty tree' do
-      allow(Html2rss::SST::Normalizer).to receive(:call).and_raise(Html2rss::SST::Normalizer::EmptyTree, 'empty')
-
-      expect(described_class.normalize_sst(parsed_body)).to be_nil
-    end
-
-    it 'propagates non-empty-tree ArgumentError' do
-      expect { described_class.normalize_sst(nil) }.to raise_error(ArgumentError, /input is required/)
-    end
 
     it 'reuses the provided SST::Document without re-normalizing' do # rubocop:disable RSpec/ExampleLength
       shared_document = document

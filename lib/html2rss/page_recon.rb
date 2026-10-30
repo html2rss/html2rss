@@ -266,8 +266,6 @@ module Html2rss
 
     def sst_document
       Html2rss::SST::Normalizer.call(response.body)
-    rescue ArgumentError
-      nil
     end
 
     def segment_stats(sst, page_url)

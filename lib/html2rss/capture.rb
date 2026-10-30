@@ -270,9 +270,6 @@ module Html2rss
       return [*default_selectors, SelectorCandidates.empty] unless sst
 
       select_enhance_selectors(sst, articles)
-    rescue ArgumentError => error
-      Log.warn("Capture selector derivation failed: #{error.message}")
-      [*default_selectors, SelectorCandidates.empty]
     end
 
     def hint_selectors

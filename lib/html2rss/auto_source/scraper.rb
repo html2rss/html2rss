@@ -118,15 +118,6 @@ module Html2rss
       end
 
       ##
-      # @param parsed_body [Nokogiri::HTML::Document]
-      # @return [SST::Document, nil]
-      def self.normalize_sst(parsed_body)
-        SST::Normalizer.call(parsed_body)
-      rescue SST::Normalizer::EmptyTree
-        nil
-      end
-
-      ##
       # Builds a scraper when enabled; returns nil when disabled.
       #
       # @param scraper [Class]

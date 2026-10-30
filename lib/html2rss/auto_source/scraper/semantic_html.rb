@@ -87,7 +87,7 @@ module Html2rss
         end
 
         def document
-          @document ||= @provided_document || Scraper.normalize_sst(@parsed_body)
+          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
         end
       end
     end

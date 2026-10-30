@@ -86,6 +86,8 @@ module Html2rss
         return [] unless parsed_html
 
         sst = SST::Normalizer.call(parsed_html)
+        return [] unless sst
+
         link_resolver = Scoring::LinkResolver.new(entry_url)
 
         SEGMENT_STRATEGIES.each do |strategy|

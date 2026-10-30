@@ -8,9 +8,6 @@ module Html2rss
     # Sole Nokogiri consumer on the heuristic auto-source path. Builds an
     # immutable SST::Document with parent/depth/chrome indices.
     class Normalizer # rubocop:disable Metrics/ClassLength
-      # Raised when no SST nodes survive normalization for the chosen root.
-      class EmptyTree < ArgumentError; end
-
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
@@ -64,10 +61,10 @@ module Html2rss
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
         #   HTML string or already-parsed node (String is parsed once here)
-        # @return [Document]
-        # @raise [ArgumentError] when input is nil or unsupported
+        # @return [Document, nil] +nil+ when no SST nodes survive normalization
+        # @raise [InvalidOption] when input is nil or unsupported
         def call(input)
-          raise ArgumentError, 'input is required' if input.nil?
+          raise InvalidOption, 'input is required' if input.nil?
 
           new(coerce(input)).call
         end
@@ -81,7 +78,7 @@ module Html2rss
           when String then Nokogiri::HTML(input)
           when Nokogiri::XML::Node then input
           else
-            raise ArgumentError, "expected String or Nokogiri::XML::Node, got #{input.class}"
+            raise InvalidOption, "expected String or Nokogiri::XML::Node, got #{input.class}"
           end
         end
       end
@@ -97,11 +94,11 @@ module Html2rss
       end
 
       ##
-      # @return [Document]
+      # @return [Document, nil] +nil+ when no SST nodes survive normalization
       def call
         root_nk = resolve_root_nk
         root = normalize_element(root_nk, depth: 0, path: '', chrome: false)
-        raise EmptyTree, 'SST Normalizer produced an empty tree' unless root
+        return unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
         Document.build(root:, index:, degraded: @degraded, node_count: @node_count)

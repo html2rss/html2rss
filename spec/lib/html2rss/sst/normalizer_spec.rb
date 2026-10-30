@@ -111,7 +111,15 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.ignored_chrome?(article)).to be(false)
 
       text = Nokogiri::HTML.fragment('just text').child
-      expect { described_class.call(text) }.to raise_error(described_class::EmptyTree)
+      expect(described_class.call(text)).to be_nil
+    end
+  end
+
+  describe '.call input validation' do
+    it 'rejects nil and unsupported input', :aggregate_failures do
+      expect { described_class.call(nil) }.to raise_error(Html2rss::InvalidOption, 'input is required')
+      expect { described_class.call(42) }
+        .to raise_error(Html2rss::InvalidOption, 'expected String or Nokogiri::XML::Node, got Integer')
     end
   end
 end
