@@ -28,23 +28,20 @@ module Html2rss
         def self.call(article_tag, title: nil)
           return [] unless article_tag
 
-          extract_all_categories(article_tag, title:)
-            .map(&:strip)
-            .reject(&:empty?)
+          extract_all_categories(article_tag, title:).to_a
         end
 
         ##
         # Optimized single DOM traversal that extracts all category types.
+        # `Node#css` only yields descendants, so the container itself is never visited.
         #
         # @param article_tag [Nokogiri::XML::Element] The article element
         # @param title [String, nil]
         # @return [Set<String>] Set of category strings
-        def self.extract_all_categories(article_tag, title: nil)
+        def self.extract_all_categories(article_tag, title:)
           Set.new.tap do |categories|
             extract_element_data_categories!(categories, article_tag, title:)
             article_tag.css(CATEGORY_SELECTORS.join(',')).each do |element|
-              next if element == article_tag
-
               if ArticleRules::Category.class_match?(element['class'])
                 extract_text_categories!(categories, element, title:)
               end
@@ -60,7 +57,7 @@ module Html2rss
         # @param element [Nokogiri::XML::Element] metadata element that may contain category links
         # @param title [String, nil]
         # @return [void]
-        def self.extract_element_data_categories!(categories, element, title: nil)
+        def self.extract_element_data_categories!(categories, element, title:)
           element.attributes.each_value do |attr|
             next unless ArticleRules::Category.attr_name_match?(attr.name)
 
@@ -75,7 +72,7 @@ module Html2rss
         # @param element [Nokogiri::XML::Element] metadata element whose text may contain delimiters
         # @param title [String, nil]
         # @return [void]
-        def self.extract_text_categories!(categories, element, title: nil)
+        def self.extract_text_categories!(categories, element, title:)
           return if category_container?(element)
 
           anchors = element.name == 'a' ? [element] : element.css('a').to_a
@@ -96,7 +93,7 @@ module Html2rss
         # @param element [Nokogiri::XML::Element] The element to extract text from
         # @param title [String, nil]
         # @return [void]
-        def self.add_text_to_categories!(categories, element, title: nil)
+        def self.add_text_to_categories!(categories, element, title:)
           ArticleRules::Category.add_text!(categories, Navigator.extract_visible_text(element), title:)
         end
 

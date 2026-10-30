@@ -32,7 +32,7 @@ module Html2rss
 
           def parse_id_from_dom(article_tag, url, selected_anchor)
             candidates = [article_tag['id'], article_tag.at_css('[id]')&.attr('id')]
-            candidates += [url&.path, url&.query] if selected_anchor
+            candidates += [url&.path] if selected_anchor
             candidates.compact.reject(&:empty?).first
           end
 

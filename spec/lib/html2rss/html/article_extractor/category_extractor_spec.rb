@@ -172,6 +172,37 @@ RSpec.describe Html2rss::Html::ArticleExtractor::CategoryExtractor do
       end
     end
 
+    context 'when a non-category classed element carries category data' do
+      let(:html_content) do
+        <<~HTML
+          <article>
+            <div class="card-body" data-category="Politics">Read the full story</div>
+          </article>
+        HTML
+      end
+
+      it 'uses only the data attribute value, not the element text' do
+        expect(described_class.call(article_tag)).to eq(['Politics'])
+      end
+    end
+
+    context 'when category values echo the article title at every extraction path' do
+      let(:html_content) do
+        <<~HTML
+          <article data-category="Breaking News">
+            <span data-category="Breaking News">Breaking News</span>
+            <div class="category">Breaking News</div>
+            <div class="category"><a href="/news/breaking">Breaking News</a></div>
+            <div class="category">Politics</div>
+          </article>
+        HTML
+      end
+
+      it 'drops title-echo values from root, nested data, text and anchor paths' do
+        expect(described_class.call(article_tag, title: 'Breaking News')).to eq(['Politics'])
+      end
+    end
+
     context 'when values are chrome rather than categories' do
       let(:html_content) do
         <<~HTML

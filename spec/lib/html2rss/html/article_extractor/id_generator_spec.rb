@@ -87,5 +87,22 @@ RSpec.describe Html2rss::Html::ArticleExtractor::IdGenerator do
 
       expect(id).to be_nil
     end
+
+    it 'ignores text nodes when the heading is blank and fallback is disabled', :aggregate_failures do
+      container = Nokogiri::HTML('<div class="card"><h2>   </h2><p>Body text</p></div>').at_css('.card')
+      heading = container.at_css('h2')
+
+      id = described_class.call(container, heading:, url: nil, selected_anchor: nil, fallback_anchorless: false)
+
+      expect(id).to be_nil
+    end
+
+    it 'uses the first non-blank text node in document order', :aggregate_failures do
+      container = Nokogiri::HTML('<div class="card"><span>First</span><span>Second</span></div>').at_css('.card')
+
+      id = described_class.call(container, heading: nil, url: nil, selected_anchor: nil, fallback_anchorless: true)
+
+      expect(id).to eq('first')
+    end
   end
 end
