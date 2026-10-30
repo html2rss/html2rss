@@ -155,6 +155,159 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
     end
   end
 
+  describe Html2rss::AutoSource::Segmenter::Semantic do
+    let(:hrefs) { segments.map { _1.primary_link.attrs.href } }
+    let(:options) { {} }
+    let(:segments) do
+      Html2rss::AutoSource::Segmenter.call(document_for(html), base_url: 'https://example.com', strategy: :semantic,
+                                                               **options)
+    end
+
+    context 'when a container wraps another article' do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <article>
+              <p>Outer wrapper text that is not the story itself.</p>
+              <article><a href="/news/2024/inner-story">Inner story title</a></article>
+            </article>
+          </body></html>
+        HTML
+      end
+
+      it 'keeps only the leaf container' do
+        expect(hrefs).to eq(%w[/news/2024/inner-story])
+      end
+    end
+
+    context 'when a deeper container appears after a shallow one' do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <article><a href="/news/2024/shallow-story">Shallow story title</a></article>
+            <section><div><article><a href="/news/2024/deep-story">Deep story title</a></article></div></section>
+          </body></html>
+        HTML
+      end
+
+      it 'orders the deeper container first' do
+        expect(hrefs).to eq(%w[/news/2024/deep-story /news/2024/shallow-story])
+      end
+    end
+
+    context 'when a list item wraps an article' do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <ul><li><article><a href="/news/2024/listed-story">Listed story title</a></article></li></ul>
+          </body></html>
+        HTML
+      end
+
+      it 'rejects the wrapping list item' do
+        expect(hrefs).to eq(%w[/news/2024/listed-story])
+      end
+    end
+
+    context 'when a candidate sits inside page chrome' do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <footer><article><a href="/news/2024/footer-story">Footer story title</a></article></footer>
+            <article><a href="/news/2024/main-story">Main story title</a></article>
+          </body></html>
+        HTML
+      end
+
+      it 'skips the chrome candidate' do
+        expect(hrefs).to eq(%w[/news/2024/main-story])
+      end
+    end
+
+    context 'when a container has no link' do
+      let(:html) do
+        <<~HTML
+          <html><body><article><p>Plain paragraph without any link at all here.</p></article></body></html>
+        HTML
+      end
+
+      it 'drops the container by default' do
+        expect(segments).to be_empty
+      end
+
+      it 'keeps the unanchored container when permitted' do
+        options[:permit_unanchored] = true
+        expect(segments.map(&:primary_link)).to eq([nil])
+      end
+    end
+  end
+
+  describe Html2rss::AutoSource::Segmenter::PrimaryLink do
+    let(:document) { document_for(html) }
+    let(:segmenter) { Html2rss::AutoSource::Segmenter.new(document, base_url: 'https://example.com', strategy: :semantic) }
+    let(:container) { document.root.find { |node| node.name == :article } }
+    let(:picked) { described_class.new(segmenter).select(container) }
+
+    context 'when a heading anchor competes with a plain text link' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <a href="/news/2024/read-more-story">Read the full story</a>
+            <h2><a href="/news/2024/headline-story">Headline story title</a></h2>
+          </article></body></html>
+        HTML
+      end
+
+      it 'selects the heading anchor' do
+        expect(picked.attrs.href).to eq('/news/2024/headline-story')
+      end
+    end
+
+    context 'when two anchors share one destination with equal scores' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <p><a href="/news/2024/shared-story">First shared label</a></p>
+            <p><a href="/news/2024/shared-story">Second shared label</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'keeps the first anchor in document order' do
+        expect(picked).to be(container.find(&:link?))
+      end
+    end
+
+    context 'when a higher-scoring anchor sits inside page chrome' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <nav><h2><a href="/news/2024/nav-headline">Nav headline text</a></h2></nav>
+            <p><a href="/news/2024/body-story">Body story text</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'ignores the chrome anchor and selects the body link' do
+        expect(picked.attrs.href).to eq('/news/2024/body-story')
+      end
+    end
+
+    context 'when an anchor has no text and a non-content destination' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <a href="/x/y"><img src="/a.png" alt=""></a>
+          </article></body></html>
+        HTML
+      end
+
+      it 'returns nil' do
+        expect(picked).to be_nil
+      end
+    end
+  end
+
   describe '.call with :cluster' do
     let(:html) do
       <<~HTML
