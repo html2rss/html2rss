@@ -119,15 +119,15 @@ RSpec.describe Html2rss::Defaults do
       expect(config.default_strategy).to be_nil
     end
 
-    it 'raises ArgumentError for unregistered strategy' do
-      expect { config.default_strategy = :invalid_strategy }.to raise_error(ArgumentError, /unknown strategy/)
+    it 'raises InvalidOption for unregistered strategy' do
+      expect do
+        config.default_strategy = :invalid_strategy
+      end.to raise_error(Html2rss::InvalidOption, /strategy must be one of/)
     end
 
-    it 'raises ArgumentError for invalid types', :aggregate_failures do
-      expect { config.default_strategy = 123 }
-        .to raise_error(ArgumentError, /strategy must be a Symbol or String/)
-      expect { config.default_strategy = { strategy: :httpx } }
-        .to raise_error(ArgumentError, /strategy must be a Symbol or String/)
+    it 'raises InvalidOption for invalid types', :aggregate_failures do
+      expect { config.default_strategy = 123 }.to raise_error(Html2rss::InvalidOption, /strategy must be one of/)
+      expect { config.default_strategy = { strategy: :httpx } }.to raise_error(Html2rss::InvalidOption)
     end
   end
 

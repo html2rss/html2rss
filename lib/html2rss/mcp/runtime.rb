@@ -14,31 +14,24 @@ module Html2rss
         :botasaurus_configured
       )
 
-      module_function
+      class << self
+        ##
+        # @return [Boolean] whether Botasaurus transport is configured in this process
+        def botasaurus_configured?
+          !ENV['BOTASAURUS_SCRAPER_URL'].to_s.strip.empty?
+        end
 
-      ##
-      # @return [Boolean] whether Botasaurus transport is configured in this process
-      def botasaurus_configured?
-        !ENV['BOTASAURUS_SCRAPER_URL'].to_s.strip.empty?
-      end
-
-      ##
-      # @return [Snapshot] runtime capabilities and catalog identity for MCP clients
-      def snapshot
-        Snapshot.new(
-          version: Html2rss::VERSION,
-          mcp_contract_version: Contract::MCP_CONTRACT_VERSION,
-          catalog_fingerprint: Contract.catalog_fingerprint,
-          tools: Contract.catalog_tools,
-          botasaurus_configured: botasaurus_configured?
-        )
-      end
-
-      ##
-      # @param strategy [String, Symbol, nil]
-      # @return [Symbol]
-      def coerce_strategy(strategy)
-        (strategy || :auto).to_sym
+        ##
+        # @return [Snapshot] runtime capabilities and catalog identity for MCP clients
+        def snapshot
+          Snapshot.new(
+            version: Html2rss::VERSION,
+            mcp_contract_version: Contract::MCP_CONTRACT_VERSION,
+            catalog_fingerprint: Contract.catalog_fingerprint,
+            tools: Contract.catalog_tools,
+            botasaurus_configured: botasaurus_configured?
+          )
+        end
       end
     end
   end

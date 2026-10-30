@@ -9,8 +9,6 @@ module Html2rss
   # Service that runs reconnaissance on a URL to discover redirect chains,
   # native RSS/Atom feeds, surface categorization, and emit an actionable verdict.
   module Recon # rubocop:disable Metrics/ModuleLength
-    module_function
-
     Verdict = Data.define(:name)
 
     ##
@@ -106,7 +104,7 @@ module Html2rss
     # @option options [Integer, nil] :max_redirects optional maximum redirects
     # @option options [Integer, nil] :max_requests optional request budget
     # @return [Html2rss::Recon::Result]
-    def call(url, strategy: :auto, cache_dir: nil, cache_mutex: nil, **) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+    def self.call(url, strategy: :auto, cache_dir: nil, cache_mutex: nil, **) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       url_obj = Url.from_absolute(url)
 
       begin
@@ -149,7 +147,7 @@ module Html2rss
     # @option options [Integer, nil] :max_redirects optional maximum redirects
     # @option options [Integer, nil] :max_requests optional request budget
     # @return [Array<Html2rss::Recon::Result>]
-    def batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options)
+    def self.batch(urls, strategy: :auto, cache_dir: nil, max_threads: 5, **options)
       url_list = urls.map { |u| u.to_s.strip }.reject(&:empty?)
       return [] if url_list.empty?
 
@@ -166,7 +164,7 @@ module Html2rss
     # @param session [Html2rss::RequestSession]
     # @param response [Html2rss::RequestService::Response]
     # @return [Array(Html2rss::Url, nil), String, nil)] feed URL and optional discovery error note
-    def find_native_feed(url_obj, session, response)
+    def self.find_native_feed(url_obj, session, response)
       feed = Syndication::Discovery.best_feed_url(
         page_url: url_obj,
         request_session: session,
@@ -179,7 +177,7 @@ module Html2rss
     end
     private_class_method :find_native_feed
 
-    def build_notes(recon, native_feed, response)
+    def self.build_notes(recon, native_feed, response)
       notes = []
       notes << "native_rss=#{native_feed}" if native_feed
       if recon.scheme_downgrade
@@ -203,7 +201,7 @@ module Html2rss
     end
     private_class_method :determine_verdict
 
-    def error_result(url_obj, error) # rubocop:disable Metrics/MethodLength
+    def self.error_result(url_obj, error) # rubocop:disable Metrics/MethodLength
       Result.new(
         requested_url: url_obj,
         final_url: url_obj,
@@ -226,7 +224,7 @@ module Html2rss
     # @param cache_dir [String]
     # @param cache_mutex [Mutex, nil]
     # @return [void]
-    def cache_html_body(body, url_obj, cache_dir, cache_mutex)
+    def self.cache_html_body(body, url_obj, cache_dir, cache_mutex)
       host = url_obj.host.to_s.delete_prefix('www.')
       host = 'snapshot' if host.empty?
       digest = Digest::SHA256.hexdigest(url_obj.to_s)[0, 12]

@@ -52,6 +52,8 @@ module Html2rss
       # @param max_requests [Integer, nil]
       # @return [RequestControls]
       def self.from_shortcut(strategy:, max_redirects: nil, max_requests: nil)
+        strategy = Option.strategy(strategy) unless strategy.nil?
+        check_budgets!(max_redirects, max_requests)
         keys = []
         keys << :strategy unless strategy.nil? || strategy == Config.default_strategy_name
         keys << :max_redirects unless max_redirects.nil?
@@ -68,7 +70,8 @@ module Html2rss
       # @param max_requests [Integer, nil]
       # @return [RequestControls]
       def self.from_cli_options(strategy:, max_redirects: nil, max_requests: nil)
-        strategy_sym = strategy&.to_sym
+        strategy_sym = Option.strategy(strategy) if strategy
+        check_budgets!(max_redirects, max_requests)
         keys = []
         keys << :strategy if strategy
         keys << :max_redirects unless max_redirects.nil?
@@ -76,7 +79,12 @@ module Html2rss
         new(strategy: strategy_sym, max_redirects:, max_requests:, explicit_keys: keys)
       end
 
-      private_class_method :explicit_keys_for, :request_value_for, :request_key?
+      def self.check_budgets!(max_redirects, max_requests)
+        Option.integer(:max_redirects, max_redirects, min: 0, optional: true)
+        Option.integer(:max_requests, max_requests, min: 1, optional: true)
+      end
+
+      private_class_method :explicit_keys_for, :request_value_for, :request_key?, :check_budgets!
 
       ##
       # @param strategy [Symbol, nil] effective request strategy

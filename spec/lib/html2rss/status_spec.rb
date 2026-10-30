@@ -52,11 +52,11 @@ RSpec.describe Html2rss::Status do
     it 'rejects negative counters and inconsistent auto summary', :aggregate_failures do
       expect do
         described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: -1)
-      end.to raise_error(ArgumentError, /dedup_dropped/)
+      end.to raise_error(Html2rss::InvalidOption, /dedup_dropped/)
 
       expect do
         described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: 0, attempt_count: -1)
-      end.to raise_error(ArgumentError, /attempt_count/)
+      end.to raise_error(Html2rss::InvalidOption, /attempt_count/)
 
       expect do
         described_class.new(version: '1', scraper_tallies: {}, dedup_dropped: 0, selected_strategy: 'default')

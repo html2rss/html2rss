@@ -6,12 +6,12 @@ RSpec.describe Html2rss::RequestService::Budget do
   describe '.new' do
     it 'rejects non-positive request slot limits' do
       expect { described_class.new(max_requests: 0) }
-        .to raise_error(ArgumentError, 'max_requests must be positive')
+        .to raise_error(Html2rss::InvalidOption, /max_requests must be an Integer in 1\.\./)
     end
 
     it 'rejects non-integer request slot limits' do
       expect { described_class.new(max_requests: 1.5) }
-        .to raise_error(ArgumentError, 'max_requests must be positive')
+        .to raise_error(Html2rss::InvalidOption, /max_requests must be an Integer in 1\.\./)
     end
   end
 

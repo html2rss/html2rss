@@ -12,43 +12,34 @@ RSpec.describe Html2rss::Batch do
       expect(results).to eq([2, 4, 6, 8])
     end
 
-    it 'handles an empty list' do
-      expect(described_class.map([])).to eq([])
+    it 'rejects an empty or non-Array item list', :aggregate_failures do
+      [[], nil, 'ab', 1..2].each do |items|
+        expect { described_class.map(items) { |x| x } }.to raise_error(Html2rss::InvalidOption, /items/)
+      end
     end
 
-    it 'bounds concurrency between 1 and MAX_CONCURRENCY', :aggregate_failures do
-      expect(described_class.map([1], concurrency: 0) { |x| x }).to eq([1])
-      expect(described_class.map([1, 2], concurrency: 100) { |x| x }).to eq([1, 2])
+    it 'rejects concurrency outside 1..MAX_CONCURRENCY or not an Integer', :aggregate_failures do
+      [0, -1, described_class::MAX_CONCURRENCY + 1, nil, '3', 2.5].each do |concurrency|
+        expect { described_class.map([1], concurrency:) { |x| x } }
+          .to raise_error(Html2rss::InvalidOption, /concurrency must be an Integer in 1\.\.10/)
+      end
     end
 
-    it 'uses one worker when the requested concurrency is below 1' do
-      allow(Thread).to receive(:new).and_call_original
-      described_class.map([1, 2], concurrency: 0) { |item| item }
-      expect(Thread).to have_received(:new).once
+    it 'accepts the concurrency bounds', :aggregate_failures do
+      expect(described_class.map([1], concurrency: 1) { |x| x }).to eq([1])
+      expect(described_class.map([1], concurrency: described_class::MAX_CONCURRENCY) { |x| x }).to eq([1])
     end
 
     it 'caps workers at the item count' do
       allow(Thread).to receive(:new).and_call_original
-      described_class.map([1, 2, 3, 4], concurrency: 100) { |item| item }
+      described_class.map([1, 2, 3, 4], concurrency: 10) { |item| item }
       expect(Thread).to have_received(:new).exactly(4).times
-    end
-
-    it 'caps workers at MAX_CONCURRENCY' do
-      allow(Thread).to receive(:new).and_call_original
-      described_class.map((1..20).to_a, concurrency: 100) { |item| item }
-      expect(Thread).to have_received(:new).exactly(described_class::MAX_CONCURRENCY).times
     end
 
     it 'uses the requested concurrency when it is inside the bounds' do
       allow(Thread).to receive(:new).and_call_original
       described_class.map((1..8).to_a, concurrency: 3) { |item| item }
       expect(Thread).to have_received(:new).exactly(3).times
-    end
-
-    it 'treats a missing concurrency as a single worker' do
-      allow(Thread).to receive(:new).and_call_original
-      described_class.map((1..8).to_a, concurrency: nil) { |item| item }
-      expect(Thread).to have_received(:new).once
     end
   end
 
@@ -83,9 +74,8 @@ RSpec.describe Html2rss::Batch do
       expect(described_class).to have_received(:map).with([1], concurrency: described_class::DEFAULT_CONCURRENCY)
     end
 
-    it 'wraps a single value as one item' do
-      result = described_class.run('ab') { |item| item }
-      expect(result.total).to eq(1)
+    it 'rejects a bare value instead of wrapping it' do
+      expect { described_class.run('ab') { |item| item } }.to raise_error(Html2rss::InvalidOption)
     end
 
     it 'counts present non-hash results and ignores a false ok flag' do
@@ -109,7 +99,7 @@ RSpec.describe Html2rss::Batch do
       allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/a', strategy: :auto, limit: 10)
                                                    .and_return(feed_result_a)
       allow(Html2rss).to receive(:auto_feed_result).with('https://example.com/b', strategy: :auto, limit: 10)
-                                                   .and_raise(StandardError, 'Scrape timed out')
+                                                   .and_raise(Html2rss::Error, 'Scrape timed out')
     end
 
     # rubocop:disable-next RSpec/ExampleLength

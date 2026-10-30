@@ -8,72 +8,72 @@ module Html2rss
     # Each registry class owns +DESCRIPTION+, +EXAMPLES+, and optional +OPTIONS+;
     # this module is the export adapter only.
     module SchemaExport
-      module_function
-
-      ##
-      # @param name [Symbol, String] registry key
-      # @param klass [Class] post-processor class
-      # @return [Hash{Symbol => Object}] JSON Schema object for one post-processor
-      def for_post_processor(name:, klass:)
-        name = name.to_s
-        {
-          type: 'object',
-          title: name,
-          description: klass::DESCRIPTION,
-          examples: klass::EXAMPLES,
-          properties: post_processor_properties(name, klass),
-          required: post_processor_required(klass),
-          additionalProperties: true
-        }
-      end
-
-      ##
-      # @param name [Symbol, String] registry key
-      # @param klass [Class] extractor class
-      # @return [Hash{Symbol => Object}] JSON Schema for one extractor name
-      def for_extractor(name:, klass:)
-        name = name.to_s
-        {
-          type: 'string',
-          const: name,
-          title: name,
-          description: klass::DESCRIPTION,
-          examples: klass::EXAMPLES
-        }
-      end
-
-      ##
-      # @param name [String] registry key
-      # @param klass [Class]
-      # @return [Hash{Symbol => Hash}]
-      def post_processor_properties(name, klass)
-        properties = { name: { type: 'string', const: name } }
-        OptionSpec.for(klass).each do |spec|
-          properties[spec.name] = property_schema_for(spec.type)
+      class << self
+        ##
+        # @param name [Symbol, String] registry key
+        # @param klass [Class] post-processor class
+        # @return [Hash{Symbol => Object}] JSON Schema object for one post-processor
+        def for_post_processor(name:, klass:)
+          name = name.to_s
+          {
+            type: 'object',
+            title: name,
+            description: klass::DESCRIPTION,
+            examples: klass::EXAMPLES,
+            properties: post_processor_properties(name, klass),
+            required: post_processor_required(klass),
+            additionalProperties: true
+          }
         end
-        properties
-      end
 
-      ##
-      # @param klass [Class]
-      # @return [Array<String>]
-      def post_processor_required(klass)
-        required = ['name']
-        required + OptionSpec.for(klass).select(&:required).map { |spec| spec.name.to_s }
-      end
+        ##
+        # @param name [Symbol, String] registry key
+        # @param klass [Class] extractor class
+        # @return [Hash{Symbol => Object}] JSON Schema for one extractor name
+        def for_extractor(name:, klass:)
+          name = name.to_s
+          {
+            type: 'string',
+            const: name,
+            title: name,
+            description: klass::DESCRIPTION,
+            examples: klass::EXAMPLES
+          }
+        end
 
-      ##
-      # @param ruby_type [Class, Array<Class>]
-      # @return [Hash{Symbol => String, Array<String>}]
-      def property_schema_for(ruby_type)
-        { type: json_type_for(ruby_type) }
-      end
+        ##
+        # @param name [String] registry key
+        # @param klass [Class]
+        # @return [Hash{Symbol => Hash}]
+        def post_processor_properties(name, klass)
+          properties = { name: { type: 'string', const: name } }
+          OptionSpec.for(klass).each do |spec|
+            properties[spec.name] = property_schema_for(spec.type)
+          end
+          properties
+        end
 
-      ##
-      # @param ruby_type [Class, Array<Class>]
-      # @return [String, Array<String>]
-      def json_type_for(ruby_type)
-        OptionSpec.json_type_for(ruby_type)
+        ##
+        # @param klass [Class]
+        # @return [Array<String>]
+        def post_processor_required(klass)
+          required = ['name']
+          required + OptionSpec.for(klass).select(&:required).map { |spec| spec.name.to_s }
+        end
+
+        ##
+        # @param ruby_type [Class, Array<Class>]
+        # @return [Hash{Symbol => String, Array<String>}]
+        def property_schema_for(ruby_type)
+          { type: json_type_for(ruby_type) }
+        end
+
+        ##
+        # @param ruby_type [Class, Array<Class>]
+        # @return [String, Array<String>]
+        def json_type_for(ruby_type)
+          OptionSpec.json_type_for(ruby_type)
+        end
       end
     end
   end

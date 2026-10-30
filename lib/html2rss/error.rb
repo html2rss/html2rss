@@ -59,6 +59,9 @@ module Html2rss
     end
   end
 
+  # Raised when a caller-supplied option value is malformed or out of range.
+  class InvalidOption < Error; end
+
   # Raised when auto fallback exhausts all concrete tiers and extractors find no feed items.
   class NoFeedItemsExtracted < Error
     # Categories that append shared surface guidance to the empty-feed message.

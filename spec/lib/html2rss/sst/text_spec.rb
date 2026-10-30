@@ -3,11 +3,7 @@
 require 'spec_helper'
 
 RSpec.describe Html2rss::SST::Text do
-  let(:extract) do
-    lambda do |node, **kwargs|
-      Object.new.extend(described_class).instance_eval { extract(node, **kwargs) }
-    end
-  end
+  let(:extract) { ->(node, **kwargs) { described_class.extract(node, **kwargs) } }
 
   it 'collapses whitespace, skips chrome, and separates blocks', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     leaf = Html2rss::SST::Node.build(name: :span, own_text: "  hello   world \n ")

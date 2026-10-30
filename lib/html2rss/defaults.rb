@@ -114,20 +114,9 @@ module Html2rss
     #
     # @param strategy [Symbol, String, nil] the strategy plan name
     # @return [Symbol, nil] the normalized strategy plan name
-    # @raise [ArgumentError] if the strategy plan is unknown
+    # @raise [InvalidOption] if the strategy plan is unknown
     def default_strategy=(strategy)
-      if strategy.nil?
-        @default_strategy = nil
-      else
-        unless strategy.is_a?(Symbol) || strategy.is_a?(String)
-          raise ArgumentError, 'strategy must be a Symbol or String'
-        end
-
-        normalized = strategy.to_sym
-        raise ArgumentError, "unknown strategy: #{strategy}" unless FeedPipeline::StrategyPlan.valid?(normalized)
-
-        @default_strategy = normalized
-      end
+      @default_strategy = (Option.strategy(strategy) unless strategy.nil?)
     end
 
     ##

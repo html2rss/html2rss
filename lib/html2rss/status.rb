@@ -13,6 +13,10 @@ module Html2rss
   # Stable telemetry payload for cross-repo consumers (e.g. html2rss-web observability).
   # Tallies and counters are validated and frozen at construction (including Marshal load).
   class Status
+    # Keys kept in {#to_h} even when zero or empty.
+    ALWAYS_REPORTED = %i[version dedup_dropped].freeze
+    private_constant :ALWAYS_REPORTED
+
     class << self
       ##
       # Builds status from extracted articles and scrape telemetry.
@@ -71,9 +75,9 @@ module Html2rss
       version:, scraper_tallies:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
       strategy_attempts: [], admission_drops: {}, entry_url: nil, scrape_url: nil, entry_resolution: nil
     )
-      dedup = Integer(dedup_dropped)
-      attempts = Integer(attempt_count)
-      validate_counters!(dedup:, attempts:, selected_strategy:)
+      dedup = Option.integer(:dedup_dropped, dedup_dropped, min: 0)
+      attempts = Option.integer(:attempt_count, attempt_count, min: 0)
+      validate_selected_strategy!(selected_strategy, attempts)
 
       super(
         version: version.to_s.dup.freeze,
@@ -93,20 +97,8 @@ module Html2rss
     # Observability hash for web (+scraper_status+). Omits empty/absent optional keys.
     #
     # @return [Hash{Symbol => Object}]
-    # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity -- omit-empty optional keys stay explicit
     def to_h
-      {
-        version:,
-        dedup_dropped:,
-        **(scraper_tallies.any? ? { scraper_tallies: } : {}),
-        **(selected_strategy.nil? ? {} : { selected_strategy: }),
-        **(attempt_count.positive? ? { attempt_count: } : {}),
-        **(strategy_attempts.any? ? { strategy_attempts: } : {}),
-        **(admission_drops.any? ? { admission_drops: } : {}),
-        **(entry_url ? { entry_url: } : {}),
-        **(scrape_url ? { scrape_url: } : {}),
-        **(entry_resolution ? { entry_resolution: } : {})
-      }
+      super.reject { |key, value| !ALWAYS_REPORTED.include?(key) && omit?(value) }
     end
 
     ##
@@ -124,6 +116,14 @@ module Html2rss
 
     private
 
+    def omit?(value)
+      case value
+      when nil then true
+      when Integer then value.zero?
+      else value.empty?
+      end
+    end
+
     def marshal_dump
       [version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count, strategy_attempts,
        admission_drops, entry_url, scrape_url, entry_resolution]
@@ -133,16 +133,16 @@ module Html2rss
       version, scraper_tallies, dedup_dropped, selected_strategy, attempt_count,
         strategy_attempts, admission_drops, entry_url, scrape_url, entry_resolution = payload
       initialize(version:, scraper_tallies:, dedup_dropped:, selected_strategy:, attempt_count:,
-                 strategy_attempts:, admission_drops: admission_drops || {}, entry_url:, scrape_url:,
+                 strategy_attempts:, admission_drops:, entry_url:, scrape_url:,
                  entry_resolution:)
     end
 
     def freeze_tallies(tallies)
-      tallies.to_h.transform_keys(&:to_s).transform_values { |count| Integer(count) }.freeze
+      tallies.to_h { |name, count| [name.to_s, count] }.freeze
     end
 
     def freeze_attempts(attempts)
-      Array(attempts).map { |attempt| attempt.to_h.freeze }.freeze
+      attempts.map { |attempt| attempt.dup.freeze }.freeze
     end
 
     def freeze_optional_string(value)
@@ -161,17 +161,10 @@ module Html2rss
       end.transform_keys(&:to_sym).freeze
     end
 
-    def validate_counters!(dedup:, attempts:, selected_strategy:)
-      raise ArgumentError, 'dedup_dropped must be >= 0' if dedup.negative?
-      raise ArgumentError, 'attempt_count must be >= 0' if attempts.negative?
-
-      unless selected_strategy.nil? || selected_strategy.is_a?(Symbol)
-        raise ArgumentError, 'selected_strategy must be a Symbol or nil'
-      end
-
-      return unless selected_strategy && attempts < 1
-
-      raise ArgumentError, 'attempt_count must be >= 1 when selected_strategy is set'
+    def validate_selected_strategy!(selected_strategy, attempts)
+      return if selected_strategy.nil?
+      raise ArgumentError, 'selected_strategy must be a Symbol or nil' unless selected_strategy.is_a?(Symbol)
+      raise ArgumentError, 'attempt_count must be >= 1 when selected_strategy is set' if attempts < 1
     end
   end
 end
