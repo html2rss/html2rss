@@ -34,8 +34,6 @@ module Html2rss
         end
 
         def native_feed_majority?(articles)
-          return false if articles.empty?
-
           native = articles.count { |article| article.scraper == AutoSource::Scraper::NativeFeed }
           native * 2 >= articles.size
         end

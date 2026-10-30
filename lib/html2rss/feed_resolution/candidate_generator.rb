@@ -50,7 +50,6 @@ module Html2rss
         return unless parsed_html
 
         url = Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).first
-        return unless url
         return unless eligible_url?(url)
 
         url

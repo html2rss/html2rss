@@ -91,4 +91,76 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     )
     expect(urls.grep(/javascript:|mailto:/)).to be_empty
   end
+
+  context 'when the response is not HTML' do
+    let(:response) do
+      Html2rss::RequestService::Response.new(
+        body: '{"items":[]}',
+        url: Html2rss::Url.from_absolute(entry_url),
+        headers: { 'content-type' => 'application/json' },
+        status: 200
+      )
+    end
+
+    it 'offers only listing paths without a feed slot or nav seeds' do
+      urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+
+      expect(urls).to eq(%w[https://example.com/news https://example.com/blog
+                            https://example.com/releases https://example.com/changelog])
+    end
+  end
+
+  context 'with ranked navigation, duplicates and foreign links' do
+    let(:html) do
+      <<~HTML
+        <!DOCTYPE html>
+        <html>
+        <body>
+          <header>
+            <a href="/stories/launch-party">Launch party</a>
+            <a href="#top">Top</a>
+            <a href="/about-us">About</a>
+            <a href="https://other.example.net/category/elsewhere">Elsewhere</a>
+          </header>
+          <nav>
+            <a href="/category/tech">Tech</a>
+            <a href="/category/tech">Tech again</a>
+          </nav>
+        </body>
+        </html>
+      HTML
+    end
+
+    it 'orders destinations by rank, drops unranked and foreign links, and dedupes', :aggregate_failures do
+      urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+
+      expect(urls).to eq(%w[https://example.com/feed https://example.com/category/tech
+                            https://example.com/stories/launch-party https://example.com/news
+                            https://example.com/blog])
+    end
+
+    it 'caps listing seeds at max minus the feed slot' do
+      urls = described_class.call(entry_url:, response:, max: 3).map(&:to_s)
+
+      expect(urls).to eq(%w[https://example.com/feed https://example.com/category/tech
+                            https://example.com/stories/launch-party])
+    end
+
+    it 'defaults the candidate budget to DEFAULT_MAX when max is omitted', :aggregate_failures do
+      expected = described_class.call(entry_url:, response:, max: 5)
+
+      expect(described_class.call(entry_url:, response:)).to eq(expected)
+      expect(described_class.new(entry_url:, response:).call).to eq(expected)
+    end
+
+    context 'when the entry page is itself linked with a fragment' do
+      let(:entry_url) { 'https://example.com/category/tech' }
+
+      it 'does not offer the entry document as a candidate' do
+        urls = described_class.call(entry_url:, response:, max: 5).map(&:to_s)
+
+        expect(urls.grep(%r{category/tech(#|\z)})).to be_empty
+      end
+    end
+  end
 end
