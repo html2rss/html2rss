@@ -68,6 +68,10 @@ RSpec.describe Html2rss::Config::Validator do
         { channel: { url: 'https://example.com', image: 'not a uri' } },
         [[%i[channel image], 'URL must be absolute']]
       ],
+      'non-http channel image' => [
+        { channel: { url: 'https://example.com', image: 'ftp://example.com/i.png' } },
+        [[%i[channel image], "URL scheme 'ftp' is not supported"]]
+      ],
       'absolute channel image' => [{ channel: { url: 'https://example.com', image: 'https://example.com/i.png' } }, []],
       'non-positive channel ttl' => [
         { channel: { url: 'https://example.com', ttl: 0 } },

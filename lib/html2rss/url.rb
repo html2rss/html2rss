@@ -109,6 +109,16 @@ module Html2rss
     end
 
     ##
+    # Creates an absolute http(s) URL, for example for a channel image.
+    #
+    # @param url_string [String, Html2rss::Url] the URL to validate and parse
+    # @return [Url] the validated and parsed URL
+    # @raise [InvalidUrlError] if the URL is not absolute or not http(s)
+    def self.from_absolute_web(url_string)
+      from_absolute(url_string).tap { validate_scheme(_1) }
+    end
+
+    ##
     # Extracts a base URL from HTML metadata tags.
     #
     # @param html [String] raw HTML content
@@ -136,11 +146,15 @@ module Html2rss
       has_forbidden_at ||= [url.query, url.fragment].compact.any? { |value| value.include?('@') }
       raise InvalidUrlError, 'URL must not contain an @ character' if has_forbidden_at
 
+      validate_scheme(url)
+    end
+
+    def self.validate_scheme(url)
       scheme = url.scheme
       raise InvalidUrlError, "URL scheme '#{scheme}' is not supported" unless SUPPORTED_SCHEMES.include?(scheme)
     end
 
-    private_class_method :validate_channel_url
+    private_class_method :validate_channel_url, :validate_scheme
 
     ##
     # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)

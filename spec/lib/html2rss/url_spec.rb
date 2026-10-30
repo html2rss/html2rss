@@ -429,6 +429,23 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '.from_absolute_web' do
+    it 'accepts http and https URLs', :aggregate_failures do
+      expect(described_class.from_absolute_web('http://example.com/i.png').to_s).to eq('http://example.com/i.png')
+      expect(described_class.from_absolute_web('https://example.com/i.png').to_s).to eq('https://example.com/i.png')
+    end
+
+    it 'rejects other schemes' do
+      expect { described_class.from_absolute_web('ftp://example.com/i.png') }
+        .to raise_error(Html2rss::Url::InvalidUrlError, "URL scheme 'ftp' is not supported")
+    end
+
+    it 'rejects relative URLs' do
+      expect { described_class.from_absolute_web('/i.png') }
+        .to raise_error(Html2rss::Url::InvalidUrlError, 'URL must be absolute')
+    end
+  end
+
   describe '.for_channel' do
     context 'with valid absolute URLs' do
       {
