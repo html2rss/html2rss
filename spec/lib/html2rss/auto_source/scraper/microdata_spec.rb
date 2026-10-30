@@ -318,11 +318,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
         HTML
       end
 
-      it 'keeps every value', :aggregate_failures do
-        expect(articles.first[:categories]).to eq(%w[S1 S2])
-        expect(articles.first[:keywords]).to eq(%w[K1 K2])
-        expect(articles.first[:tags]).to eq(%w[T1 T2])
-        expect(articles.first[:about]).to eq([{ name: 'A1' }, { name: 'A2' }])
+      it 'keeps every value' do
+        expect(articles.first[:categories]).to contain_exactly('S1', 'S2', 'K1', 'K2', 'T1', 'T2', 'A1', 'A2')
       end
     end
 
