@@ -302,4 +302,146 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
       )
     end
   end
+
+  describe '.call with :cluster grouping' do
+    let(:entry) do
+      lambda do |slug, label|
+        <<~HTML
+          <div class="entry"><h2><a href="/posts/#{slug}">#{label} release notes for the entry</a></h2>
+          <p>Description text for the #{slug} entry goes here.</p></div>
+        HTML
+      end
+    end
+
+    let(:cluster_segments) do
+      lambda do |html, **opts|
+        described_class.call(document_for(html), base_url: 'https://example.com', strategy: :cluster, **opts)
+      end
+    end
+
+    context 'when layout wrappers hold several cluster cards' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="row">#{entry.call('alpha', 'Alpha')}#{entry.call('beta', 'Beta')}</div>
+            <div class="row">#{entry.call('gamma', 'Gamma')}#{entry.call('delta', 'Delta')}</div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'drops the wrappers and keeps the cards', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('entry'))
+        expect(segments.map { _1.primary_link.attrs.href })
+          .to eq(%w[/posts/alpha /posts/beta /posts/gamma /posts/delta])
+      end
+    end
+
+    context 'when a layout wrapper holds exactly one card body' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="card-wrap"><div class="card-body"><h2><a href="/posts/alpha">Alpha release notes for the first card</a></h2><p>Description text for alpha card goes here.</p></div></div>
+            <div class="card-wrap"><div class="card-body"><h2><a href="/posts/beta">Beta release notes for the second card</a></h2><p>Description text for beta card goes here.</p></div></div>
+            <div class="card-wrap"><div class="card-body"><h2><a href="/posts/gamma">Gamma release notes for the third card</a></h2><p>Description text for gamma card goes here.</p></div></div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'keeps the nested card body as the cluster root', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.size).to eq(3)
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card-body'))
+      end
+    end
+
+    context 'when a layout wrapper holds a single non-layout inner node' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="card-wrap"><span class="card-body"><a href="/posts/alpha">Alpha release notes for the first card</a> extra words here</span></div>
+            <div class="card-wrap"><span class="card-body"><a href="/posts/beta">Beta release notes for the second card</a> extra words here</span></div>
+            <div class="card-wrap"><span class="card-body"><a href="/posts/gamma">Gamma release notes for the third card</a> extra words here</span></div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'keeps the outer wrapper as the cluster root', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: true)
+
+        expect(segments.size).to eq(3)
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card-wrap'))
+      end
+    end
+
+    context 'when blocks are unclassed but share a structure' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div><h2><a href="/posts/alpha">Alpha release notes for the first entry</a></h2><p>Description text for alpha goes here.</p></div>
+            <div><h2><a href="/posts/beta">Beta release notes for the second entry</a></h2><p>Description text for beta goes here.</p></div>
+            <div><h2><a href="/posts/gamma">Gamma release notes for the third entry</a></h2><p>Description text for gamma goes here.</p></div>
+          </main></body></html>
+        HTML
+      end
+
+      it 'emits one segment per block and honours the frequency floor', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.map { _1.root_node.name }).to eq(%i[div div div])
+        expect(cluster_segments.call(html, permit_unanchored: false, minimum_selector_frequency: 4)).to be_empty
+      end
+    end
+
+    context 'when class tokens repeat in a different order' do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <div class="card b-x"><p>Description text for the first card goes here extra.</p></div>
+            <div class="b-x card"><p>Description text for the second card goes here extra.</p></div>
+            <div class="card b-x"><p>Description text for the third card goes here extra.</p></div>
+          </body></html>
+        HTML
+      end
+
+      it 'groups them into one cluster', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: true, minimum_selector_frequency: 3)
+
+        expect(segments.size).to eq(3)
+      end
+    end
+
+    context 'when classed cards and unclassed blocks both repeat' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="card"><h2><a href="/posts/alpha">Alpha release notes for the first card</a></h2><p>Description text for alpha card goes here.</p></div>
+            <div class="card"><h2><a href="/posts/beta">Beta release notes for the second card</a></h2><p>Description text for beta card goes here.</p></div>
+            <div class="card"><h2><a href="/posts/gamma">Gamma release notes for the third card</a></h2><p>Description text for gamma card goes here.</p></div>
+            <section><p>Unclassed structure block one with words.</p></section>
+            <section><p>Unclassed structure block two with words.</p></section>
+          </main></body></html>
+        HTML
+      end
+
+      it 'selects the classed card group', :aggregate_failures do
+        segments = cluster_segments.call(html, permit_unanchored: false)
+
+        expect(segments.map { _1.root_node.attrs.class_names }).to all(include('card'))
+        expect(segments.size).to eq(3)
+      end
+    end
+
+    context 'when no group repeats' do
+      let(:html) do
+        '<html><body><main><div><p>Only one unique block of descriptive text here.</p></div></main></body></html>'
+      end
+
+      it 'returns no cluster segments' do
+        expect(cluster_segments.call(html, permit_unanchored: true)).to be_empty
+      end
+    end
+  end
 end

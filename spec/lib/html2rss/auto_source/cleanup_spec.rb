@@ -404,4 +404,40 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       expect(described_class.junk_reason('A Perfectly Normal Headline')).to be_nil
     end
   end
+
+  describe '.call excluded destination boundaries' do
+    let(:base) { Html2rss::Url.from_absolute('https://example.com/') }
+    let(:paths) do
+      %w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now /subscribe]
+    end
+    let(:articles) do
+      paths.map do |path|
+        instance_double(Html2rss::Article, valid?: true, url: Html2rss::Url.from_absolute("https://example.com#{path}"),
+                                           title: 'Boundary Article Title Words')
+      end
+    end
+
+    it 'keeps content paths and non-utility paths but drops high-confidence utility routes', :aggregate_failures do
+      kept = described_class.call(articles, url: base).articles.map { _1.url.path }
+
+      expect(kept).to eq(%w[/news/login /store/item-slug-name-here /video/some-title-goes-here-now])
+    end
+  end
+
+  describe '.audit_feed_items URL diversity' do
+    it 'counts fragment-only variants of one URL as a duplicate', :aggregate_failures do
+      items = [rss_item(title: 'Story One Title Here', url: 'https://example.com/same#top'),
+               rss_item(title: 'Story Two Title Here', url: 'https://example.com/same')]
+      audit = described_class.audit_feed_items(items)
+
+      expect(audit.metrics[:unique_url_count]).to eq(1)
+      expect(audit.warnings).to include(:duplicate_urls)
+    end
+
+    it 'does not warn for a single item' do
+      audit = described_class.audit_feed_items([rss_item(title: 'Only Story Title Here', url: 'https://example.com/a')])
+
+      expect(audit.warnings).not_to include(:duplicate_urls)
+    end
+  end
 end
