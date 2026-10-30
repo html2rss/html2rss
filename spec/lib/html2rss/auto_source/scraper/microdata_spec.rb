@@ -303,6 +303,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
       end
     end
 
+    context 'with repeated category properties' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <span itemprop="headline">Many categories</span>
+            <span itemprop="articleSection">S1</span><span itemprop="articleSection">S2</span>
+            <meta itemprop="keywords" content="K1"><meta itemprop="keywords" content="K2">
+            <span itemprop="tags">T1</span><span itemprop="tags">T2</span>
+            <div itemprop="about" itemscope itemtype="https://schema.org/Thing"><span itemprop="name">A1</span></div>
+            <div itemprop="about" itemscope itemtype="https://schema.org/Thing"><span itemprop="name">A2</span></div>
+            <a itemprop="url" href="/many">Open</a>
+          </article>
+        HTML
+      end
+
+      it 'keeps every value', :aggregate_failures do
+        expect(articles.first[:categories]).to eq(%w[S1 S2])
+        expect(articles.first[:keywords]).to eq(%w[K1 K2])
+        expect(articles.first[:tags]).to eq(%w[T1 T2])
+        expect(articles.first[:about]).to eq([{ name: 'A1' }, { name: 'A2' }])
+      end
+    end
+
     context 'with nested keyword and about items' do
       let(:parsed_body) do
         Nokogiri::HTML(<<~HTML)

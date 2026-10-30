@@ -26,10 +26,14 @@ module Html2rss
             def add_field(categories, value)
               case value
               when Array
-                value.each { |item| add_string(categories, item.to_s) }
+                value.each { |item| add_item(categories, item) }
               when String
                 split_string(categories, value)
               end
+            end
+
+            def add_item(categories, item)
+              item.is_a?(String) ? split_string(categories, item) : add_string(categories, item.to_s)
             end
 
             def add_about(categories, about)

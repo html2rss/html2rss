@@ -28,6 +28,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::CategoryExtractor do
       end
     end
 
+    context 'when an array field holds delimited strings' do
+      let(:schema_object) { { keywords: ['Politics, Europe', 'World'] } }
+
+      it 'splits each element' do
+        expect(categories).to contain_exactly('Politics', 'Europe', 'World')
+      end
+    end
+
     context 'when about hashes lack a name' do
       let(:schema_object) { { about: [{ url: 'https://example.com' }, { name: nil }, { name: 'Health' }] } }
 

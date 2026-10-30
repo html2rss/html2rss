@@ -229,7 +229,8 @@ module Html2rss
                 return
               end
 
-              properties[key] = Array(properties[key]) << value
+              existing = properties[key]
+              properties[key] = existing.is_a?(Array) ? existing + [value] : [existing, value]
             end
 
             # @param value [Object] candidate value
@@ -287,8 +288,7 @@ module Html2rss
             # @param value [Object] about candidate value
             # @return [Array<String, Hash>, nil] normalized about values
             def normalize_about(value)
-              candidate = unwrap(value)
-              items = candidate.is_a?(Array) ? candidate : [candidate]
+              items = value.is_a?(Array) ? value : [value]
               values = items.filter_map { normalize_about_item(_1) }
               values unless values.empty?
             end
@@ -304,16 +304,10 @@ module Html2rss
               end
             end
 
-            # @param value [Object] scalar or array candidate
-            # @return [String, nil] normalized first scalar value
-            def string_or_array(value)
-              stringify(unwrap(value))
-            end
-
             # @param values [Array<Object>] value candidates
             # @return [Array<String>, nil] normalized unique string values
             def array_value(*values)
-              result = values.flat_map { string_values(Array(unwrap(_1))) }.uniq
+              result = values.flat_map { string_values(Array(_1)) }.uniq
               result unless result.empty?
             end
 
@@ -486,8 +480,8 @@ module Html2rss
           def self.merge_categories!(object, properties)
             categories = ValueNormalizer.array_value(properties.delete(:categories), properties.delete(:articleSection))
             assign_if_present(object, :categories, categories)
-            assign_if_present(object, :keywords, ValueNormalizer.string_or_array(properties.delete(:keywords)))
-            assign_if_present(object, :tags, ValueNormalizer.string_or_array(properties.delete(:tags)))
+            assign_if_present(object, :keywords, ValueNormalizer.array_value(properties.delete(:keywords)))
+            assign_if_present(object, :tags, ValueNormalizer.array_value(properties.delete(:tags)))
             assign_if_present(object, :about, ValueNormalizer.normalize_about(properties.delete(:about)))
           end
 
