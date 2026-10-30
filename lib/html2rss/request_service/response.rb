@@ -162,7 +162,7 @@ module Html2rss
       end
 
       def feed_looking_body?
-        snippet = body.to_s[0, 800].downcase
+        snippet = body.to_s.b[0, 800].downcase
         FEED_BODY_MARKERS.any? { |marker| snippet.include?(marker) }
       end
     end

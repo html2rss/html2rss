@@ -331,6 +331,13 @@ RSpec.describe Html2rss::RequestService::Response do
     it 'treats a nil body as an empty unlabeled body' do
       expect(build_response.call(nil, nil).feed_response?).to be(false)
     end
+
+    it 'does not raise on an unlabeled body with invalid UTF-8', :aggregate_failures do
+      response = build_response.call("\xFF<rss>".dup.force_encoding('UTF-8'), nil)
+
+      expect(response.feed_response?).to be(true)
+      expect(response.html_response?).to be(false)
+    end
   end
 
   describe '#html_looking_body?' do
