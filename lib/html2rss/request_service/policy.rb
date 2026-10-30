@@ -151,13 +151,7 @@ module Html2rss
       end
 
       def comparable_origin(url)
-        [url.host, normalized_port(url)]
-      end
-
-      def normalized_port(url)
-        return url.port if url.port
-
-        url.scheme == 'https' ? 443 : 80
+        [url.scheme, url.host, url.port]
       end
     end
 
