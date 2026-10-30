@@ -252,10 +252,72 @@ RSpec.describe Html2rss::PageRecon::Diagnostics do
       expect(reports.last.to_wire_h[:scraper_eligibility]).to include(error: 'Html2rss::Error - Connection failed')
     end
 
+    it 'builds the full error report shape for a failed URL', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(described_class).to receive(:call).with(url: 'https://example.com/fail', strategy: :auto)
+                                              .and_raise(Html2rss::Error, 'Connection failed')
+
+      report = described_class.batch(urls: ['https://example.com/fail']).first
+
+      expect(report).to be_a(described_class::Report)
+      expect(report.to_wire_h).to eq(
+        requested_url: 'https://example.com/fail',
+        final_url: 'https://example.com/fail',
+        status: nil,
+        scheme_downgrade: false,
+        alternate_feeds: [],
+        surface_category: :unsupported_surface,
+        articles_count: 0,
+        html_response: false,
+        content_type: nil,
+        strategy: nil,
+        scraper_eligibility: { error: 'Html2rss::Error - Connection failed' }
+      )
+    end
+
     it 'does not mask programmer errors as per-URL reports' do
       allow(described_class).to receive(:call).and_raise(NoMethodError)
 
       expect { described_class.batch(urls: ['https://example.com/a']) }.to raise_error(NoMethodError)
+    end
+  end
+
+  describe 'wire payload assembly' do
+    it 'merges recon facts with diagnostic fields', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      wire = described_class.call(url: 'https://example.com/blog', strategy: :auto).to_wire_h
+
+      expect(wire).to include(
+        requested_url: 'https://example.com/blog',
+        strategy: :default,
+        html_present: true,
+        likely_js_shell: false,
+        redirect_summary: { requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog',
+                            status: 200, scheme_downgrade: false }
+      )
+      expect(wire).to have_key(:scraper_eligibility)
+    end
+
+    it 'logs the js shell body size and surface category when flagged', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      allow(Html2rss::Log).to receive(:debug)
+      large = Html2rss::RequestService::Response.new(
+        body: 'x' * 9_000, url: response_url, headers: { 'content-type' => 'text/html' }, status: 200
+      )
+      recon = Html2rss::PageRecon::Result.new(
+        requested_url: 'https://example.com/blog', final_url: 'https://example.com/blog', status: 200,
+        scheme_downgrade: false, alternate_feeds: [], surface_category: :high_entropy_surface,
+        articles_count: 0, admission_drops: {}, segment_stats: nil, html_response: true,
+        content_type: 'text/html', blocked_surface: nil, sst: nil
+      )
+      allow(Html2rss::PageRecon).to receive(:probe).and_return(
+        Html2rss::PageRecon::Probe.new(
+          session: instance_double(Html2rss::RequestSession), response: large, result: recon, strategy: :default
+        )
+      )
+
+      described_class.call(url: 'https://example.com/blog', strategy: :auto)
+
+      expect(Html2rss::Log).to have_received(:debug).with(
+        'Diagnostics js_shell: bytesize=9000 surface_category=high_entropy_surface'
+      )
     end
   end
 
