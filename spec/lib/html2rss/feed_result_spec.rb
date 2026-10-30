@@ -66,6 +66,22 @@ RSpec.describe Html2rss::FeedResult do
       expect { described_class.new(channel:, articles:, status:, stylesheets: nil) }
         .to raise_error(ArgumentError, 'stylesheets must be an Array')
     end
+
+    it 'rejects String lists for articles and stylesheets', :aggregate_failures do
+      expect { described_class.new(channel:, articles: 'hello', status:) }
+        .to raise_error(ArgumentError, 'articles must be an Array')
+      expect { described_class.new(channel:, articles:, status:, stylesheets: 'rss.xsl') }
+        .to raise_error(ArgumentError, 'stylesheets must be an Array')
+    end
+
+    it 'accepts Array subclasses for articles and stylesheets', :aggregate_failures do
+      article_list = Class.new(Array).new(articles)
+      sheet_list = Class.new(Array).new([{ href: 'rss.xsl', type: 'text/xsl' }])
+      built = described_class.new(channel:, articles: article_list, status:, stylesheets: sheet_list)
+
+      expect(built.empty?).to be(false)
+      expect(built.to_rss.to_s).to include('rss.xsl')
+    end
   end
 
   describe 'public API surface' do
