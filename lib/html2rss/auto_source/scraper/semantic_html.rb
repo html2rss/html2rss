@@ -26,8 +26,6 @@ module Html2rss
           return false unless parsed_body
 
           new(parsed_body, url: 'https://example.com').extractable?
-        rescue ArgumentError
-          false
         end
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML (when +document:+ omitted)
@@ -57,8 +55,6 @@ module Html2rss
         # @return [Boolean]
         def extractable?
           ranked_segments.any?
-        rescue ArgumentError
-          false
         end
 
         private
@@ -69,21 +65,21 @@ module Html2rss
             entries = deduplicator.call(ranked_segments)
             entries.filter_map { |ranked| deduplicator.article_for(ranked) }
           end
-        rescue ArgumentError
-          []
         end
 
         def ranked_segments
-          @ranked_segments ||= begin
-            segments = Segmenter.call(
-              document,
-              base_url: @url,
-              strategy: :semantic,
-              permit_unanchored: @permit_unanchored,
-              link_resolver:
-            )
-            Scoring::Engine.new(link_resolver:).rank_top(segments, limit: TOP_K)
-          end
+          @ranked_segments ||= document ? rank_document : []
+        end
+
+        def rank_document
+          segments = Segmenter.call(
+            document,
+            base_url: @url,
+            strategy: :semantic,
+            permit_unanchored: @permit_unanchored,
+            link_resolver:
+          )
+          Scoring::Engine.new(link_resolver:).rank_top(segments, limit: TOP_K)
         end
 
         def link_resolver
@@ -91,7 +87,7 @@ module Html2rss
         end
 
         def document
-          @document ||= @provided_document || SST::Normalizer.call(@parsed_body)
+          @document ||= @provided_document || Scraper.normalize_sst(@parsed_body)
         end
       end
     end

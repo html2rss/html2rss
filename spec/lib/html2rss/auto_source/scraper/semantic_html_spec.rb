@@ -21,6 +21,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
   end
 
+  describe 'with an empty document' do
+    let(:parsed_body) { Nokogiri::HTML('') }
+
+    it 'is not extractable and yields no articles', :aggregate_failures do
+      expect(described_class.articles?(parsed_body)).to be false
+      expect(described_class.new(parsed_body, url: 'https://example.com').to_a).to eq([])
+    end
+  end
+
   describe '#initialize' do
     let(:parsed_body) do
       Nokogiri::HTML.parse <<~HTML
