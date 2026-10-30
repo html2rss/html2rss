@@ -334,20 +334,13 @@ module Html2rss
       end
     end
 
-    def find_matching_article(segment, articles_by_url) # rubocop:disable Metrics/AbcSize
-      href = segment.primary_link.attrs.href.to_s
-      return articles_by_url.values.find { |a| a.title == title_from_segment(segment) } if href.empty?
-
-      resolved = Url.from_relative(href, @url)
+    def find_matching_article(segment, articles_by_url)
+      resolved = Url.from_relative(segment.primary_link.attrs.href.to_s, @url)
       articles_by_url[resolved.to_s] || articles_by_url.values.find { |a| fuzzy_url_match?(a.url, resolved) }
     end
 
     def fuzzy_url_match?(article_url, resolved)
       article_url.to_s.end_with?(resolved.path.to_s)
-    end
-
-    def title_from_segment(segment)
-      segment.root_node.visible_text.to_s.strip
     end
 
     def lift_heading_link_roots(roots)
