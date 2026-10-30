@@ -47,7 +47,6 @@ module Html2rss
         # @return [Enumerator, void] article enumerator when no block is given
         def each(&block)
           return enum_for(:each) unless block
-          return unless extractable?
 
           if json_feed?
             each_json_feed_item(&block)

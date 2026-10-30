@@ -5,7 +5,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonDocument do
 
   describe '.articles?' do
     it 'is never detectable from HTML alone' do
-      expect(described_class).not_to be_articles(Nokogiri::HTML('<html></html>'))
+      expect(described_class.articles?(Nokogiri::HTML('<html></html>'))).to be(false)
     end
   end
 
@@ -28,6 +28,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonDocument do
 
     it 'is true for an Array body' do
       expect(described_class.new([], url: base_url)).to be_extractable
+    end
+
+    it 'accepts Hash and Array subclasses', :aggregate_failures do
+      expect(described_class.new(Class.new(Hash).new, url: base_url)).to be_extractable
+      expect(described_class.new(Class.new(Array).new, url: base_url)).to be_extractable
     end
 
     it 'is false for a Nokogiri document' do
@@ -208,6 +213,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonDocument do
       end
     end
 
+    context 'with an array entry that normalises to nothing' do
+      let(:parsed_body) { [{ title: 'Kept', url: '/kept' }, { title: 'Dropped' }] }
+
+      it 'yields only usable articles' do
+        expect(articles).to contain_exactly(a_hash_including(title: 'Kept'))
+      end
+    end
+
     context 'with WordPress-style rendered title on a non-feed document' do
       let(:parsed_body) do
         [
@@ -244,6 +257,274 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonDocument do
 
       it 'yields nothing' do
         expect(articles).to be_empty
+      end
+    end
+  end
+
+  describe '#json_feed?' do
+    subject(:articles) { described_class.new(parsed_body, url: base_url).each.to_a }
+
+    context 'with a JSON Feed 1.1 document' do
+      let(:parsed_body) do
+        { version: 'https://jsonfeed.org/version/1.1', items: [{ url: 'https://example.com/f', content_text: 'Feed body' }] }
+      end
+
+      it 'maps the item through the JSON Feed path' do
+        expect(articles).to contain_exactly(a_hash_including(description: 'Feed body', id: 'https://example.com/f'))
+      end
+    end
+
+    context 'with a Hash body that has no JSON Feed version' do
+      let(:parsed_body) { { items: [{ title: 'Plain', url: 'https://example.com/f', content_text: 'Feed body' }] } }
+
+      it 'does not map content_text as a JSON Feed item', :aggregate_failures do
+        expect(articles.size).to eq(1)
+        expect(articles.first).not_to include(:description)
+      end
+    end
+
+    context 'with an Array body' do
+      let(:parsed_body) { [{ title: 'Listed', url: 'https://example.com/listed' }] }
+
+      it 'walks the listing without treating it as a feed' do
+        expect(articles).to contain_exactly(a_hash_including(title: 'Listed'))
+      end
+    end
+
+    context 'when items is not an array' do
+      let(:parsed_body) do
+        { version: 'https://jsonfeed.org/version/1.1', title: 'Broken', items: 'not-a-list' }
+      end
+
+      it 'falls back to article discovery instead of mapping items' do
+        expect(articles).to be_empty
+      end
+    end
+  end
+
+  describe '#resolve_json_feed_url' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) { { version: 'https://jsonfeed.org/version/1.1', items: [item] } }
+
+    context 'with a relative url and no id' do
+      let(:item) { { url: '/only-url' } }
+
+      it 'resolves the url against the base' do
+        expect(articles.first).to include(url: Html2rss::Url.from_absolute('https://example.com/only-url'))
+      end
+    end
+
+    context 'with a url that differs from the id' do
+      let(:item) { { url: 'https://example.com/url-wins', id: 'https://example.com/other' } }
+
+      it 'prefers the item url over the id' do
+        expect(articles.first).to include(url: Html2rss::Url.from_absolute('https://example.com/url-wins'))
+      end
+    end
+
+    context 'with an absolute id and no url' do
+      let(:item) { { id: 'https://example.com/id-only', title: 'Id only' } }
+
+      it 'falls back to the id as the article url' do
+        expect(articles.first).to include(url: Html2rss::Url.from_absolute('https://example.com/id-only'))
+      end
+    end
+
+    context 'with neither url nor id' do
+      let(:item) { { title: 'Orphan' } }
+
+      it 'skips the item' do
+        expect(articles).to be_empty
+      end
+    end
+  end
+
+  describe '#absolute_url' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) { { version: 'https://jsonfeed.org/version/1.1', items: [item] } }
+
+    context 'with an absolute id and no url' do
+      let(:item) { { id: 'https://example.com/id-only', title: 'Id only' } }
+
+      it 'uses the id as the article url' do
+        expect(articles.first).to include(url: Html2rss::Url.from_absolute('https://example.com/id-only'))
+      end
+    end
+
+    context 'with neither url nor id' do
+      let(:item) { { title: 'Orphan' } }
+
+      it 'skips the item' do
+        expect(articles).to be_empty
+      end
+    end
+  end
+
+  describe '#resolve_optional_url' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) { { version: 'https://jsonfeed.org/version/1.1', items: [{ url: 'https://example.com/a', image: '/img/cover.jpg' }] } }
+
+    it 'resolves a relative image against the base url' do
+      expect(articles.first).to include(image: Html2rss::Url.from_absolute('https://example.com/img/cover.jpg'))
+    end
+  end
+
+  describe '#string' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) do
+      { version: 'https://jsonfeed.org/version/1.1',
+        items: [{ url: 'https://example.com/s', title: 42, id: '  padded-id  ' }] }
+    end
+
+    it 'coerces numbers to trimmed strings', :aggregate_failures do
+      expect(articles.first).to include(title: '42', id: 'padded-id')
+    end
+  end
+
+  describe '#map_json_feed_item' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) do
+      {
+        version: 'https://jsonfeed.org/version/1.1',
+        items: [nil, 'junk', 42, { url: 'https://example.com/valid', title: 'Valid' }]
+      }
+    end
+
+    it 'skips entries that are not objects' do
+      expect(articles).to contain_exactly(a_hash_including(title: 'Valid'))
+    end
+
+    context 'with an object that has no resolvable url' do
+      let(:feed) do
+        {
+          version: 'https://jsonfeed.org/version/1.1',
+          items: [{ title: 'Orphan' }, { url: 'https://example.com/ok', title: 'Ok' }]
+        }
+      end
+
+      it 'skips the orphan and keeps the valid item' do
+        expect(articles).to contain_exactly(a_hash_including(title: 'Ok'))
+      end
+    end
+  end
+
+  describe '#json_feed_article_hash' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) { { version: 'https://jsonfeed.org/version/1.1', items: [item] } }
+
+    context 'with only a url' do
+      let(:item) { { url: 'https://example.com/min' } }
+
+      it 'omits absent fields instead of emitting nil values' do
+        expect(articles).to eq(
+          [{ url: Html2rss::Url.from_absolute('https://example.com/min'), id: 'https://example.com/min' }]
+        )
+      end
+    end
+
+    context 'with an id that differs from the url and a numeric title' do
+      let(:item) { { id: 'urn:example:42', url: 'https://example.com/a', title: 42 } }
+
+      it 'keeps the item id and stringifies the title', :aggregate_failures do
+        expect(articles.first).to include(id: 'urn:example:42', title: '42')
+      end
+    end
+
+    context 'with a relative image' do
+      let(:item) { { url: 'https://example.com/a', image: '/img/cover.jpg' } }
+
+      it 'resolves the image against the base url' do
+        expect(articles.first).to include(image: Html2rss::Url.from_absolute('https://example.com/img/cover.jpg'))
+      end
+    end
+
+    context 'with a relative url and a different id' do
+      let(:item) { { url: '/rel/1', id: 'https://example.com/other' } }
+
+      it 'prefers the resolved item url over the id' do
+        expect(articles.first).to include(url: Html2rss::Url.from_absolute('https://example.com/rel/1'))
+      end
+    end
+
+    context 'with neither url nor id' do
+      let(:item) { { title: 'Orphan', content_text: 'No link' } }
+
+      it 'skips the item' do
+        expect(articles).to be_empty
+      end
+    end
+  end
+
+  describe '#json_feed_description' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) { { version: 'https://jsonfeed.org/version/1.1', items: [item] } }
+
+    context 'with blank content_text and HTML content' do
+      let(:item) { { url: 'https://example.com/d', content_text: '   ', content_html: '<p>Fallback</p>' } }
+
+      it 'falls back to content_html' do
+        expect(articles.first).to include(description: '<p>Fallback</p>')
+      end
+    end
+
+    context 'with only padded content_html' do
+      let(:item) { { url: 'https://example.com/d', content_html: '  <p>Only HTML</p>  ' } }
+
+      it 'trims the HTML description' do
+        expect(articles.first).to include(description: '<p>Only HTML</p>')
+      end
+    end
+
+    context 'with no content fields' do
+      let(:item) { { url: 'https://example.com/d' } }
+
+      it 'omits the description' do
+        expect(articles.first).not_to include(:description)
+      end
+    end
+
+    context 'with numeric content_text' do
+      let(:item) { { url: 'https://example.com/d', content_text: 42 } }
+
+      it 'stringifies the description' do
+        expect(articles.first).to include(description: '42')
+      end
+    end
+  end
+
+  describe '#json_feed_tags' do
+    subject(:articles) { described_class.new(feed, url: base_url).each.to_a }
+
+    let(:feed) { { version: 'https://jsonfeed.org/version/1.1', items: [item] } }
+
+    context 'with blank, non-string and repeated tags' do
+      let(:item) { { url: 'https://example.com/t', tags: ['news', '', nil, 42, 'news'] } }
+
+      it 'keeps unique non-blank strings' do
+        expect(articles.first).to include(categories: %w[news 42])
+      end
+    end
+
+    context 'with only blank tags' do
+      let(:item) { { url: 'https://example.com/t', tags: ['', nil] } }
+
+      it 'omits categories' do
+        expect(articles.first).not_to include(:categories)
+      end
+    end
+
+    context 'with a non-array tags value' do
+      let(:item) { { url: 'https://example.com/t', tags: 'news' } }
+
+      it 'omits categories without raising' do
+        expect(articles.first).not_to include(:categories)
       end
     end
   end
