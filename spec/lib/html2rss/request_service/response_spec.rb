@@ -254,6 +254,13 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(response).to have_attributes(body: 'b', url:, status: 204, headers: {})
     end
 
+    it 'stringifies header names but keeps header values as given', :aggregate_failures do
+      response = described_class.new(body: 'b', url:, headers: { key: 42 })
+
+      expect(response.headers).to eq('key' => 42)
+      expect(response.headers.keys).to all(be_a(String))
+    end
+
     it 'defaults status to nil and shares the frozen empty telemetry', :aggregate_failures do
       response = described_class.new(body: 'b', url:)
 
@@ -309,7 +316,8 @@ RSpec.describe Html2rss::RequestService::Response do
     {
       '<rss version="2.0">' => true, '<feed xmlns="x">' => true, '<feed version="1">' => true,
       '<RSS>' => true, "#{' ' * 790}<rss" => true, "#{' ' * 800}<rss" => false,
-      '<feed>' => false, 'plain text' => false, '<!DOCTYPE html><rss>' => false, "<html>\n<feed xmlns" => false
+      '<feed>' => false, 'plain text' => false, '<!DOCTYPE html><rss>' => false, "<html>\n<feed xmlns" => false,
+      "#{' ' * 796}<rss" => true, "#{' ' * 797}<rss" => false
     }.each do |body, expected|
       it "makes feed_response? #{expected} for unlabeled body #{body[0, 30].inspect}" do
         expect(build_response.call(body, nil).feed_response?).to be(expected)
@@ -318,6 +326,10 @@ RSpec.describe Html2rss::RequestService::Response do
 
     it 'does not sniff a feed body when the response is JSON' do
       expect(build_response.call('<rss>', 'application/json').feed_response?).to be(false)
+    end
+
+    it 'treats a nil body as an empty unlabeled body' do
+      expect(build_response.call(nil, nil).feed_response?).to be(false)
     end
   end
 
@@ -329,6 +341,12 @@ RSpec.describe Html2rss::RequestService::Response do
       it "makes html_response? #{expected} for unlabeled body #{body.inspect}" do
         expect(build_response.call(body, nil).html_response?).to be(expected)
       end
+    end
+
+    it 'sniffs an HTML body that carries invalid UTF-8 bytes' do
+      response = build_response.call("<html>\xFF".dup.force_encoding(Encoding::UTF_8), nil)
+
+      expect(response.html_response?).to be(true)
     end
   end
 
@@ -351,7 +369,18 @@ RSpec.describe Html2rss::RequestService::Response do
       response = build_response.call('', 'application/rss+xml')
 
       expect(response.feed_response?).to be(true)
+
+      response.headers['content-type'] = 'text/html'
       expect(response.feed_response?).to be(true)
+    end
+
+    it 'memoizes a negative feed detection too', :aggregate_failures do
+      response = build_response.call('<rss>', 'application/json')
+
+      expect(response.feed_response?).to be(false)
+
+      response.headers['content-type'] = 'application/rss+xml'
+      expect(response.feed_response?).to be(false)
     end
   end
 
@@ -369,6 +398,13 @@ RSpec.describe Html2rss::RequestService::Response do
                                      url: Html2rss::Url.from_absolute('https://example.com'))
 
       expect(response.content_type).to eq('')
+    end
+
+    it 'prefers an exact-case header key over a case-insensitive match', :aggregate_failures do
+      headers = { 'Content-Type' => 'text/plain', 'content-type' => 'application/rss+xml' }
+      response = described_class.new(body: '', headers:, url: Html2rss::Url.from_absolute('https://example.com'))
+
+      expect(response.content_type).to eq('application/rss+xml')
     end
   end
 
@@ -410,6 +446,12 @@ RSpec.describe Html2rss::RequestService::Response do
     end
 
     describe '#meta_charset' do
+      it 'scans from the first byte of the body' do
+        response = described_class.new(body: "charset=iso-8859-1 Caff\xE8".b, headers:, url:)
+
+        expect(response.parsed_body.text).to include('Caffè')
+      end
+
       it 'reads a meta charset inside the first 2048 bytes only', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         early = described_class.new(body: "<meta charset=iso-8859-1><p>Caff\xE8</p>".b, headers:, url:)
         late = described_class.new(

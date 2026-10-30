@@ -332,6 +332,14 @@ RSpec.describe Html2rss::RequestService::Policy do
         .to have_received(:new).with(allow_private_networks: true, resolver:)
     end
 
+    it 'defaults the network guard resolver to Socket', :aggregate_failures do
+      allow(Html2rss::RequestService::NetworkGuard).to receive(:new).and_call_original
+      described_class.new(allow_private_networks: false)
+
+      expect(Html2rss::RequestService::NetworkGuard)
+        .to have_received(:new).with(allow_private_networks: false, resolver: Socket)
+    end
+
     it 'is frozen' do
       expect(policy).to be_frozen
     end
