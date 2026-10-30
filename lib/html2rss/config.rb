@@ -131,7 +131,7 @@ module Html2rss
       def auto_source_config(url:, items_selector: nil, request_controls: nil, limit: nil,
                              keep_different_domain: nil)
         auto_source = AutoSource::DEFAULT_CONFIG
-        auto_source = auto_source.merge(limit:) unless limit.nil?
+        auto_source = auto_source.merge(limit: Option.integer(:limit, limit, min: 1)) unless limit.nil?
         unless keep_different_domain.nil?
           auto_source = auto_source.merge(
             cleanup: auto_source[:cleanup].merge(keep_different_domain:)
