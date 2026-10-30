@@ -112,6 +112,57 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
       end
     end
 
+    context 'when itemListElement holds only non-hash scalars' do
+      let(:schema_object) { { '@type': 'ItemList', itemListElement: ['junk', 42, nil] } }
+
+      it 'skips them without raising' do
+        expect(call).to eq([])
+      end
+    end
+
+    context 'when ListItem wraps a non-hash item' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: [
+            { '@type': 'ListItem', item: 'https://www.example.com/string-item', url: 'https://www.example.com/x' }
+          ]
+        }
+      end
+
+      it 'falls back to the ListItem itself as the article' do
+        expect(call).to contain_exactly(hash_including(id: '/x'))
+      end
+    end
+
+    context 'when ListItem wraps an item of an unsupported type' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: [
+            { '@type': 'ListItem', item: { '@type': 'WebPage', headline: 'Wrapped', url: 'https://www.example.com/wp' } }
+          ]
+        }
+      end
+
+      it 'emits the unwrapped item regardless of its type' do
+        expect(call).to contain_exactly(hash_including(title: 'Wrapped', id: '/wp'))
+      end
+    end
+
+    context 'when itemListElement holds a bare unsupported type' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: [{ '@type': 'WebPage', headline: 'Not an article', url: 'https://www.example.com/page' }]
+        }
+      end
+
+      it 'does not emit it' do
+        expect(call).to eq([])
+      end
+    end
+
     context 'when itemListElement contains NewsArticle directly' do
       let(:schema_object) do
         {
