@@ -25,14 +25,8 @@ module Html2rss
         # @return [Html2rss::Url]
         def next_page_url(page_response, page_number:)
           param = config.fetch(:param, DEFAULT_PARAM)
-          target_offset_val = target_offset_for(page_number)
           url = Html2rss::Url.from_absolute(page_response.url)
-
-          if url.to_s.include?('{offset}')
-            Html2rss::Url.from_absolute(url.to_s.gsub('{offset}', target_offset_val.to_s))
-          else
-            url.with_query_values(url.query_values.merge(param.to_s => target_offset_val.to_s))
-          end
+          url.with_query_values(url.query_values.merge(param.to_s => target_offset_for(page_number).to_s))
         end
 
         # @param page_number [Integer]

@@ -11,7 +11,7 @@ module Html2rss
         # @param page_response [RequestService::Response]
         # @param page_number [Integer]
         # @return [String, nil]
-        def next_page_url(page_response, page_number: nil) # rubocop:disable Lint/UnusedMethodArgument
+        def next_page_url(page_response, page_number:) # rubocop:disable Lint/UnusedMethodArgument
           href = page_response.parsed_body.at_css('link[rel~="next"][href], a[rel~="next"][href]')&.[]('href')
           return nil if href.nil? || href.empty?
 

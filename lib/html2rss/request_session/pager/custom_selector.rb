@@ -11,7 +11,7 @@ module Html2rss
         # @param page_response [RequestService::Response]
         # @param page_number [Integer]
         # @return [String, nil]
-        def next_page_url(page_response, page_number: nil) # rubocop:disable Lint/UnusedMethodArgument
+        def next_page_url(page_response, page_number:) # rubocop:disable Lint/UnusedMethodArgument
           selector = config[:selector]
           return nil if selector.nil? || selector.empty?
 
@@ -19,16 +19,16 @@ module Html2rss
           return nil unless node
 
           href = node['href'] || node.text
-          return nil if href.nil? || href.strip.empty?
+          return nil if href.strip.empty?
 
-          Html2rss::Url.from_relative(href.strip, page_response.url)
+          Html2rss::Url.from_relative(href, page_response.url)
         end
 
         # @param parsed_body [Nokogiri::HTML::Document]
         # @param selector [String]
         # @return [Nokogiri::XML::Node, nil]
         def extract_node(parsed_body, selector)
-          parsed_body.at_css(selector) || parsed_body.at_xpath(selector)
+          parsed_body.at_css(selector)
         rescue Nokogiri::CSS::SyntaxError, Nokogiri::XML::XPath::SyntaxError
           # Pure XPath like `descendant::a` fails LOOKS_LIKE_XPATH / at_css; fall back explicitly.
           parsed_body.at_xpath(selector)
