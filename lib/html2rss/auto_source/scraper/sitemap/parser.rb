@@ -149,10 +149,7 @@ module Html2rss
           def stale_date?(published_at)
             return false unless published_at
 
-            time = Time.parse(published_at)
-            (Time.now.utc - time) > (max_age_days * 86_400)
-          rescue ArgumentError
-            false
+            (Time.now.utc - Time.parse(published_at)) > (max_age_days * 86_400)
           end
         end
       end
