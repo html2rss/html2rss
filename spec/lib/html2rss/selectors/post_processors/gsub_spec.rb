@@ -182,5 +182,20 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Gsub do
       expect(pattern.bytesize).to be > described_class::MAX_PATTERN_LENGTH
       expect(described_class.compiled_pattern(pattern)).to be_a(Regexp)
     end
+
+    it 'strips slashes only when both ends of the pattern are slashes', :aggregate_failures do
+      expect('a//b'.gsub(described_class.compiled_pattern('//'), '-')).to eq('a-b')
+      expect('/a'.gsub(described_class.compiled_pattern('/a'), 'X')).to eq('X')
+      expect('a/'.gsub(described_class.compiled_pattern('a/'), 'X')).to eq('X')
+    end
+
+    it 'strips exactly one pair of wrapping slashes', :aggregate_failures do
+      expect('a/b'.gsub(described_class.compiled_pattern('/\/b/'), 'X')).to eq('aX')
+      expect('x//'.gsub(described_class.compiled_pattern('//'), 'X')).to eq('xX')
+    end
+
+    it 'rejects a non-string pattern with the exact message' do
+      expect { described_class.compiled_pattern(1) }.to raise_error(ArgumentError, 'must be a string!')
+    end
   end
 end

@@ -43,5 +43,37 @@ RSpec.describe Html2rss::SST::Attrs do
     it 'rejects non-Hash raw' do
       expect { described_class.build(raw: []) }.to raise_error(ArgumentError)
     end
+
+    it 'maps every blank scalar field to nil', :aggregate_failures do
+      %i[href src id datetime itemprop style srcset type].each do |field|
+        expect(described_class.build(field => " \t\n ").public_send(field)).to be_nil
+      end
+    end
+
+    it 'strips surrounding whitespace from scalar fields and stringifies them', :aggregate_failures do
+      attrs = described_class.build(href: "\n /x \t", id: 42, type: :png)
+
+      expect(attrs.href).to eq('/x')
+      expect(attrs.id).to eq('42')
+      expect(attrs.type).to eq('png')
+      expect(attrs.href).to be_frozen
+    end
+
+    it 'defaults class names and raw to empty frozen collections', :aggregate_failures do
+      attrs = described_class.build
+
+      expect(attrs.class_names).to eq([])
+      expect(attrs.raw).to eq({})
+      expect(attrs.raw).to be_frozen
+    end
+
+    it 'stringifies and freezes class names and raw values', :aggregate_failures do
+      attrs = described_class.build(class_names: [:x, 3], raw: { 'data-n' => 1 })
+
+      expect(attrs.class_names).to eq(%w[x 3])
+      expect(attrs.class_names.first).to be_frozen
+      expect(attrs.raw).to eq('data-n' => '1')
+      expect(attrs.raw['data-n']).to be_frozen
+    end
   end
 end

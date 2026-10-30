@@ -24,6 +24,48 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(article.attrs.class_names).to include('card', 'teaser')
     end
 
+    it 'maps typed attributes and keeps only allowlisted raw attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      html = '<html><body><div id="i" class=" a  b " datetime="2020" itemprop="x" style="c:d" srcset="s 1x" ' \
+             'type="t" data-k="v" aria-label="L" role="r" width="3" onclick="x">q</div></body></html>'
+      div = described_class.call(html).root.find { |n| n.name == :div }
+
+      expect(div.attrs.to_h).to eq(
+        href: nil, src: nil, id: 'i', class_names: %w[a b], datetime: '2020', itemprop: 'x', style: 'c:d',
+        srcset: 's 1x', type: 't', raw: { 'data-k' => 'v', 'aria-label' => 'L', 'role' => 'r' }
+      )
+    end
+
+    it 'does not copy typed attributes into the raw hash' do
+      link = described_class.call('<html><body><a href="/x" id="y">q</a></body></html>').root
+                            .find { |n| n.name == :a }
+
+      expect(link.attrs.raw).to eq({})
+    end
+
+    it 'logs which root fallback was used', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:warn)
+
+      described_class.call(Nokogiri::XML('<root><body><p>x</p></body></root>'))
+      expect(Html2rss::Log).to have_received(:warn).with(a_string_including('"reason":"body"'))
+
+      described_class.call(Nokogiri::XML('<root><div>x</div></root>'))
+      expect(Html2rss::Log).to have_received(:warn).with(a_string_including('"reason":"first_element_child"'))
+    end
+
+    it 'returns nil when the parsed input has no element to root the tree', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:warn)
+
+      expect(described_class.call(Nokogiri::XML('<!-- c -->'))).to be_nil
+      expect(Html2rss::Log).to have_received(:warn).with(a_string_including('"reason":"self"'))
+    end
+
+    it 'does not log a root fallback for a regular html document' do
+      allow(Html2rss::Log).to receive(:warn)
+
+      described_class.call('<html><body><p>x</p></body></html>')
+      expect(Html2rss::Log).not_to have_received(:warn)
+    end
+
     it 'indexes parent relationships' do
       doc = described_class.call(simple_html)
       article = doc.root.find { |n| n.name == :article }

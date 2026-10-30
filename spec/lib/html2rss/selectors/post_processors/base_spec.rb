@@ -42,6 +42,17 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
                          /The `key1` option is missing in:/)
     end
 
+    it 'accepts an explicit nil for an optional option' do
+      context = Html2rss::Selectors::StepEnv.new(step_config: { key1: 'ok', key2: nil })
+      expect { processor.validate_options!(context) }.not_to raise_error
+    end
+
+    it 'rejects an explicit nil for a required option' do
+      context = Html2rss::Selectors::StepEnv.new(step_config: { key1: nil })
+      expect { processor.validate_options!(context) }
+        .to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /type of `key1`/)
+    end
+
     it 'raises when an optional option has the wrong type' do
       context = Html2rss::Selectors::StepEnv.new(step_config: { key1: 'ok', key2: 1 })
       expect do
@@ -62,6 +73,11 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
         described_class.assert_type(123, String, 'test', context:)
       end.to raise_error(Html2rss::Selectors::PostProcessors::InvalidType,
                          /The type of `test` must be String, but is: Integer in: \{.*name.*gsub/)
+    end
+
+    it 'names every accepted type in the failure message' do
+      expect { described_class.assert_type(1, [String, Symbol], 'test', context:) }
+        .to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /must be String or Symbol, but is: Integer/)
     end
 
     it 'supports multiple types', :aggregate_failures do
@@ -98,6 +114,31 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Base do
         Html2rss::Selectors::PostProcessors::InvalidType,
         /type of `context` must be Html2rss::Selectors::StepEnv/
       )
+    end
+  end
+
+  describe '#initialize with a typed subclass' do
+    let(:typed) { Class.new(described_class) { const_set(:VALUE_TYPE, String) } }
+
+    let(:context) { Html2rss::Selectors::StepEnv.new(step_config: {}) }
+
+    it 'exposes the value and context of an accepted value', :aggregate_failures do
+      instance = typed.new('text', context)
+
+      expect(instance.value).to eq('text')
+      expect(instance.context).to be(context)
+    end
+
+    it 'rejects a value that does not match VALUE_TYPE' do
+      expect { typed.new(1, context) }
+        .to raise_error(Html2rss::Selectors::PostProcessors::InvalidType, /must be String/)
+    end
+
+    it 'validates the step options against the given context' do
+      allow(typed).to receive(:validate_options!)
+      typed.new('text', context)
+
+      expect(typed).to have_received(:validate_options!).with(context)
     end
   end
 

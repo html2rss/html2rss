@@ -69,6 +69,45 @@ RSpec.describe Html2rss::Selectors::PostProcessors::SanitizeHtml do
       expect(described_class.call(dirty, 'http://example.com')).to eq('<p>Styled text</p>')
     end
 
+    it 'keeps audio and video elements and adds their safe defaults', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      dirty = '<audio controls src="/a.mp3"></audio><video src="/v.mp4"></video>'
+
+      expect(described_class.call(dirty, 'http://example.com')).to eq(
+        '<audio referrerpolicy="no-referrer" crossorigin="anonymous" preload="none"></audio>' \
+        '<video referrerpolicy="no-referrer" crossorigin="anonymous" preload="none" ' \
+        'playsinline="true" controls="true"></video>'
+      )
+    end
+
+    it 'keeps only the allowlisted global attributes', :aggregate_failures do
+      dirty = '<p dir="rtl" lang="en" title="t" alt="a" translate="no" data-x="1">x</p>'
+
+      expect(described_class.call(dirty, 'http://example.com')).to eq(
+        '<p dir="rtl" lang="en" title="t" alt="a" translate="no">x</p>'
+      )
+    end
+
+    it 'keeps line breaks, collapses tabs and runs of spaces, and caps blank lines', :aggregate_failures do
+      expect(described_class.call("<p>one\ntwo</p>", 'http://example.com')).to eq("<p>one\ntwo</p>")
+      expect(described_class.call("<p>a\t\t b</p>", 'http://example.com')).to eq('<p>a b</p>')
+      expect(described_class.call("<p>a</p>\n\n\n<p>b</p>", 'http://example.com')).to eq("<p>a</p>\n\n<p>b</p>")
+    end
+
+    it 'returns nil when only whitespace or removed content remains', :aggregate_failures do
+      expect(described_class.call('   ', 'http://example.com')).to be_nil
+      expect(described_class.call('<script>x</script>', 'http://example.com')).to be_nil
+      expect(described_class.call('', 'http://example.com')).to be_nil
+    end
+
+    it 'returns the same result for a repeated call and a different result for another base url', :aggregate_failures do
+      html = '<a href="/x">x</a>'
+      expected = '<a href="http://a.example/x" rel="nofollow noopener noreferrer" target="_blank">x</a>'
+
+      expect(described_class.call(html, 'http://a.example')).to eq(expected)
+      expect(described_class.call(html, 'http://a.example')).to eq(expected)
+      expect(described_class.call(html, 'http://b.example')).to include('http://b.example/x')
+    end
+
     context 'with html being nil' do
       let(:html) { nil }
 
