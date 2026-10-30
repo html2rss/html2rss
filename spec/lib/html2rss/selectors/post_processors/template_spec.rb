@@ -18,6 +18,15 @@ RSpec.describe Html2rss::Selectors::PostProcessors::Template do
 
   it { expect(described_class).to be < Html2rss::Selectors::PostProcessors::Base }
 
+  describe '.schema_export' do
+    it 'exports the template name and description', :aggregate_failures do
+      fragment = described_class.schema_export
+
+      expect(fragment.fetch(:properties).fetch(:name)).to eq(type: 'string', const: 'template')
+      expect(fragment.fetch(:description)).to eq(described_class::DESCRIPTION)
+    end
+  end
+
   context 'when the string is empty' do
     it 'raises an error' do
       expect do
