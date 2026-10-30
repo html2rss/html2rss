@@ -308,6 +308,183 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
     end
   end
 
+  describe Html2rss::AutoSource::Segmenter::PrimaryLink, 'scoring and ordering' do
+    let(:document) { document_for(html) }
+    let(:segmenter) { Html2rss::AutoSource::Segmenter.new(document, base_url: 'https://example.com', strategy: :semantic) }
+    let(:container) { document.root.find { |node| node.name == :article } }
+    let(:picked) { described_class.new(segmenter).select(container) }
+
+    context 'when a higher-scoring anchor comes first and a lower-scoring one last' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <h2><a href="/news/2024/headline">Headline text</a></h2>
+            <p><a href="/news/2024/body">Body text here</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'selects the highest-scoring anchor regardless of order' do
+        expect(picked.attrs.href).to eq('/news/2024/headline')
+      end
+    end
+
+    context 'when an unscoreable anchor precedes a valid one' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <a href="javascript:void(0)"></a>
+            <p><a href="/news/2024/body">Body text here</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'skips the unscoreable anchor and selects the valid one' do
+        expect(picked.attrs.href).to eq('/news/2024/body')
+      end
+    end
+
+    context 'when a heading anchor and a plain anchor share a destination' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <p><a href="/news/2024/shared">Plain label</a></p>
+            <h2><a href="/news/2024/shared">Headline label</a></h2>
+          </article></body></html>
+        HTML
+      end
+
+      it 'keeps the heading anchor as the destination winner', :aggregate_failures do
+        expect(picked.visible_text.to_s.strip).to eq('Headline label')
+        expect(picked.attrs.href).to eq('/news/2024/shared')
+      end
+    end
+
+    context 'when a heading anchor precedes a lower-scoring anchor to the same destination' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <h2><a href="/news/2024/shared">Headline label</a></h2>
+            <p><a href="/news/2024/shared">Plain label</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'keeps the heading anchor' do
+        expect(picked.visible_text.to_s.strip).to eq('Headline label')
+      end
+    end
+
+    context 'when a heading anchor sits in a heading whose text differs from the anchor' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <a href="/news/2024/read-more">Read the full story</a>
+            <h2>Lead: <a href="/news/2024/headline">Headline</a></h2>
+          </article></body></html>
+        HTML
+      end
+
+      it 'selects the heading anchor by its heading position' do
+        expect(picked.attrs.href).to eq('/news/2024/headline')
+      end
+    end
+
+    context 'when an anchor with a missing destination sits in a heading' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <h2><a href="javascript:void(0)">Headline text</a></h2>
+            <p><a href="/news/2024/body">Body text here</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'ignores the unresolved destination' do
+        expect(picked.attrs.href).to eq('/news/2024/body')
+      end
+    end
+
+    context 'when an empty heading anchor has a non-content destination' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <h2><a href="/x/y"></a></h2>
+          </article></body></html>
+        HTML
+      end
+
+      it 'keeps the heading anchor' do
+        expect(picked.attrs.href).to eq('/x/y')
+      end
+    end
+
+    context 'when a plain anchor matches the heading text exactly after trimming' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <h2>
+              Title
+            </h2>
+            <p><a href="/news/2024/other">Other words</a></p>
+            <p><a href="/news/2024/title-link">
+              Title
+            </a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'prefers the anchor whose text matches the heading' do
+        expect(picked.attrs.href).to eq('/news/2024/title-link')
+      end
+    end
+
+    context 'when an icon-only content anchor precedes a text anchor' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <p><a href="/news/2024/icon-only"><img src="/a.png" alt=""></a></p>
+            <p><a href="/x/y">Plain words</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'rejects the icon-only anchor as noise' do
+        expect(picked.attrs.href).to eq('/x/y')
+      end
+    end
+
+    context 'when a navigation landmark anchor precedes a body anchor' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <nav><a href="/news/2024/nav-story">Nav story words</a></nav>
+            <p><a href="/x/y">Body words</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'rejects the landmark anchor as noise' do
+        expect(picked.attrs.href).to eq('/x/y')
+      end
+    end
+
+    context 'when a content-like destination competes with a non-content one' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <p><a href="/x/y">Plain words</a></p>
+            <p><a href="/news/2024/story">Story words</a></p>
+          </article></body></html>
+        HTML
+      end
+
+      it 'prefers the content-like destination' do
+        expect(picked.attrs.href).to eq('/news/2024/story')
+      end
+    end
+  end
+
   describe '.call with :cluster' do
     let(:html) do
       <<~HTML
