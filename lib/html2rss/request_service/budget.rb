@@ -11,7 +11,7 @@ module Html2rss
       # @param max_requests [Integer] maximum HTTP request slots
       # @param total_timeout_seconds [Integer, nil] wall-clock timeout for the feed build
       def initialize(max_requests:, total_timeout_seconds: nil)
-        validate_slot_limits!(max_requests:)
+        Option.integer(:max_requests, max_requests, min: 1)
 
         @remaining_requests = max_requests
         @start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -77,14 +77,6 @@ module Html2rss
       # @raise [RequestTimedOut] when no time remains
       def effective_timeout_ms(fallback:)
         (effective_timeout_seconds(fallback:) * 1000).to_i
-      end
-
-      private
-
-      def validate_slot_limits!(max_requests:)
-        return if max_requests.is_a?(Integer) && max_requests.positive?
-
-        raise ArgumentError, 'max_requests must be positive'
       end
     end
   end

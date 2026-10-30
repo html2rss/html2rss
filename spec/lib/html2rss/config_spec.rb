@@ -318,6 +318,17 @@ RSpec.describe Html2rss::Config do
       expect(config).not_to have_key(:request)
       expect(config[:selectors]).to be_nil
     end
+
+    it 'rejects a malformed limit', :aggregate_failures do
+      [0, -1, '5', 2.5].each do |limit|
+        expect { described_class.auto_source_config(url: 'https://example.com', limit:) }
+          .to raise_error(Html2rss::InvalidOption, /limit/)
+      end
+    end
+
+    it 'keeps a valid limit' do
+      expect(described_class.auto_source_config(url: 'https://example.com', limit: 3)[:auto_source][:limit]).to eq(3)
+    end
   end
 
   describe '.prepare_defaults' do

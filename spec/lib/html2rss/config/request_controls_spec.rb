@@ -40,6 +40,30 @@ RSpec.describe Html2rss::Config::RequestControls do
     end
   end
 
+  describe 'option validation' do
+    {
+      from_shortcut: { max_requests: 0, max_redirects: -1 },
+      from_cli_options: { max_requests: 1.5, max_redirects: '3' }
+    }.each do |factory, bad|
+      it "#{factory} rejects malformed budgets", :aggregate_failures do
+        bad.each do |name, value|
+          expect { described_class.public_send(factory, strategy: nil, name => value) }
+            .to raise_error(Html2rss::InvalidOption, /#{name}/)
+        end
+      end
+
+      it "#{factory} rejects an unknown strategy" do
+        expect { described_class.public_send(factory, strategy: 'nope') }
+          .to raise_error(Html2rss::InvalidOption, /strategy/)
+      end
+    end
+
+    it 'accepts a zero redirect limit and a one-request budget' do
+      expect(described_class.from_shortcut(strategy: nil, max_redirects: 0, max_requests: 1).explicit?(:max_redirects))
+        .to be(true)
+    end
+  end
+
   describe '.from_cli_options' do
     it 'marks strategy explicit when the CLI option is present', :aggregate_failures do
       controls = described_class.from_cli_options(strategy: 'botasaurus', max_requests: nil)
