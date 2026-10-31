@@ -541,6 +541,14 @@ RSpec.describe Html2rss::Selectors do
       expect(instance.select(:title, item)).to eq('post1')
     end
 
+    it 'lets a post_process step follow the href extractor' do
+      selectors[:link] = {
+        selector: 'a', extractor: 'href', post_process: { name: 'gsub', pattern: 'article', replacement: 'post' }
+      }
+
+      expect(instance.select(:link, item)).to eq('http://example.com/post1')
+    end
+
     it 'applies an array of post_process steps in order' do # rubocop:disable RSpec/ExampleLength
       selectors[:title] = {
         selector: 'h1',
