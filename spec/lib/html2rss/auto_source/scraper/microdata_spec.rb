@@ -516,5 +516,25 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
         expect(articles).to eq([])
       end
     end
+
+    context 'with a nested VideoObject' do
+      let(:parsed_body) do
+        Nokogiri::HTML(<<~HTML)
+          <article itemscope itemtype="https://schema.org/NewsArticle">
+            <h1 itemprop="headline">Story</h1>
+            <a itemprop="url" href="/stories/s">Read</a>
+            <div itemprop="video" itemscope itemtype="https://schema.org/VideoObject">
+              <meta itemprop="contentUrl" content="/media/s.mp4">
+              <meta itemprop="encodingFormat" content="video/mp4">
+            </div>
+          </article>
+        HTML
+      end
+
+      it 'emits a video enclosure' do
+        enclosure = articles.first[:enclosures].first
+        expect([enclosure[:url].to_s, enclosure[:type]]).to eq(['https://example.com/media/s.mp4', 'video/mp4'])
+      end
+    end
   end
 end
