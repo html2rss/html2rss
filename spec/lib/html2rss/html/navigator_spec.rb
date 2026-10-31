@@ -19,6 +19,19 @@ RSpec.describe Html2rss::Html::Navigator do
 
       expect(described_class.extract_visible_text(text_node)).to eq('Hello World')
     end
+
+    it 'joins block fragments with a newline by default and with a custom separator', :aggregate_failures do
+      list = Nokogiri::HTML.fragment('<div><p>A</p><p>B</p></div>').at_css('div')
+
+      expect(described_class.extract_visible_text(list)).to eq("A\nB")
+      expect(described_class.extract_visible_text(list, separator: '|')).to eq('A|B')
+    end
+
+    it 'skips the excluded nodes' do
+      list = Nokogiri::HTML.fragment('<div><p>A</p><p id="x">B</p></div>').at_css('div')
+
+      expect(described_class.extract_visible_text(list, exclude_nodes: [list.at_css('#x')])).to eq('A')
+    end
   end
 
   describe '.main_anchor_for' do
@@ -91,6 +104,13 @@ RSpec.describe Html2rss::Html::Navigator do
       condition = ->(node) { node.name == 'article' }
       result = described_class.parent_until_condition(nil, condition)
       expect(result).to be_nil
+    end
+
+    it 'never climbs into the XML document', :aggregate_failures do
+      xml_target = Nokogiri::XML('<root><p id="t">x</p></root>').at_css('#t')
+      document_named = ->(node) { node.name == 'document' }
+
+      expect(described_class.parent_until_condition(xml_target, document_named)).to be_nil
     end
   end
 
@@ -168,6 +188,12 @@ RSpec.describe Html2rss::Html::Navigator do
     let(:document) { Nokogiri::HTML(html) }
     let(:current_tag) { document.at_css('#link') }
 
+    it 'matches the current node case-insensitively' do
+      article = Nokogiri::HTML.fragment('<article><p>x</p></article>').at_css('article')
+
+      expect(described_class.find_tag_in_ancestors(article, 'ARTICLE')).to be(article)
+    end
+
     context 'when the anchor is inside the specified tag' do
       it 'returns the specified tag' do
         article_tag = described_class.find_tag_in_ancestors(current_tag, 'article')
@@ -222,6 +248,13 @@ RSpec.describe Html2rss::Html::Navigator do
       child = document.at_css('#child')
       expect(described_class.descendant_of?(document.at_css('#parent'), child)).to be(false)
       expect(described_class.descendant_of?(document.at_css('#other'), child)).to be(false)
+    end
+
+    it 'returns false for the node itself and for the document', :aggregate_failures do
+      parent = document.at_css('#parent')
+
+      expect(described_class.descendant_of?(parent, parent)).to be(false)
+      expect(described_class.descendant_of?(document, parent)).to be(false)
     end
   end
 end
