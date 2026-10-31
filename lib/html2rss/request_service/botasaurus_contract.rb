@@ -345,7 +345,7 @@ module Html2rss
       def merge_cookies!(payload)
         configured = (options[:cookies] || {}).transform_keys(&:to_s)
         merged = stored_cookies.merge(configured)
-        payload[:cookies] = merged if merged.any?
+        merged.any? ? payload[:cookies] = merged : payload.delete(:cookies)
       end
 
       def cap_wait_timeout!(payload)

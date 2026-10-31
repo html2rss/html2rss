@@ -266,6 +266,11 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
       expect(described_class.new(url:).request_payload).not_to have_key(:cookies)
     end
 
+    it 'drops an empty or nil configured cookies option', :aggregate_failures do
+      expect(described_class.new(url:, options: { cookies: {} }).request_payload).not_to have_key(:cookies)
+      expect(described_class.new(url:, options: { cookies: nil }).request_payload).not_to have_key(:cookies)
+    end
+
     it 'merges stored cookies under configured ones', :aggregate_failures do
       contract = described_class.new(
         url:, options: { cookies: { a: 'cfg' } }, stored_cookies: { 'a' => 'old', 'b' => 'stored' }
