@@ -576,5 +576,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         expect(url).to be_nil
       end
     end
+
+    {
+      'mainEntityOfPage string' => [{ mainEntityOfPage: 'https://example.com/m#top' }, 'https://example.com/m'],
+      'mainEntityOfPage @id' => [{ mainEntityOfPage: { '@id': 'https://example.com/m' } }, 'https://example.com/m'],
+      'mainEntityOfPage url' => [{ mainEntityOfPage: { url: 'https://example.com/m' } }, 'https://example.com/m'],
+      'absolute @id' => [{ '@id': 'https://example.com/i#article' }, 'https://example.com/i'],
+      'mainEntityOfPage over @id' => [{ mainEntityOfPage: 'https://example.com/m', '@id': 'https://example.com/i' },
+                                      'https://example.com/m'],
+      'explicit url over fallbacks' => [{ url: 'https://example.com/u#frag', mainEntityOfPage: 'https://e.com/m' },
+                                        'https://example.com/u#frag'],
+      'non-http mainEntityOfPage' => [{ mainEntityOfPage: 'urn:uuid:1', '@id': 'ftp://example.com/x' }, nil],
+      'relative @id' => [{ '@id': '/relative' }, nil]
+    }.each do |name, (object, expected)|
+      context "when falling back with #{name}" do
+        let(:schema_object) { object }
+
+        it 'resolves the expected url' do
+          expect(url&.to_s).to eq(expected)
+        end
+      end
+    end
   end
 end
