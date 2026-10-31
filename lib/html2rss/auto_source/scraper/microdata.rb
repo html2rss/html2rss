@@ -403,6 +403,13 @@ module Html2rss
             }.merge(text_attributes(properties))
               .merge(link_attributes(properties, identifier))
               .merge(media_attributes(properties))
+              .merge(people_attributes(properties))
+          end
+
+          # @param properties [Hash{Symbol => Object}] parsed microdata properties
+          # @return [Hash{Symbol => Object}] author and publisher (text or nested Person/Organization `{name:}`)
+          def self.people_attributes(properties)
+            { author: properties.delete(:author), publisher: properties.delete(:publisher) }
           end
 
           # @param properties [Hash{Symbol => Object}] parsed microdata properties
