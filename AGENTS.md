@@ -15,6 +15,7 @@ Architecture and seam ownership map: `CONTEXT.md`.
 - Do not define methods inside `*_spec.rb` files; use helpers or shared examples when needed.
 - Never use `send(:method_name)` in specs.
 - Tag multi-expectation examples with `:aggregate_failures` (`RSpec/MultipleExpectations`).
+- **Mutation testing (not a `make ready` gate: wall time is too long):** after adding or substantially changing `lib/` code, run `make mutant SUBJECT='Html2rss::X#method'` (per class or method, never the whole tree) and kill or justify survivors before the PR. Add examples inside the existing `describe` for that method; a new per-method `describe` can shadow stronger specs under expression selection, so compare alive counts before and after. Use `MUTANT_JOBS=4` on an idle machine. Prefer deleting dead defensive code over testing it. Cheap-model hands may do this with a disjoint file list.
 
 ## Description & HTML Processing
 
