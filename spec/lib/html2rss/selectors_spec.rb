@@ -660,4 +660,233 @@ RSpec.describe Html2rss::Selectors do
         .to raise_error(described_class::InvalidSelectorName, "Attribute selector 'items' is reserved for items.")
     end
   end
+
+  describe '#each and #each_enhance_pair without a block' do
+    it 'returns enumerators that iterate every item', :aggregate_failures do
+      expect(instance.each.to_a.size).to eq(2)
+      expect(instance.each_enhance_pair.to_a.size).to eq(2)
+    end
+  end
+
+  describe '#articles ordering' do
+    it 'keeps document order when the order is not reverse' do
+      selectors[:items][:order] = 'normal'
+
+      expect(instance.articles.map(&:title)).to eq(%w[article1 article2])
+    end
+  end
+
+  describe '#items_selector and #enhance?' do
+    let(:selectors) { { title: { selector: 'h1' } } }
+
+    it 'falls back to the default items selector when the items config is absent' do
+      expect { instance.articles }.not_to raise_error
+    end
+  end
+
+  describe '#items_selector' do
+    let(:body) do
+      '<html><body><a href="/posts/real">Real story</a><a href="javascript:void(0)">Popup</a></body></html>'
+    end
+    let(:selectors) { { items: { selector: ' a[href] ', enhance: false } } }
+
+    it 'treats a padded default spelling as the default items selector' do
+      expect(instance.articles.map { |article| article.url.to_s }).to eq(['http://example.com/posts/real'])
+    end
+  end
+
+  describe '#default_item_url' do
+    let(:item) { Nokogiri::HTML('<html><body><a href="/target">x</a></body></html>').at('a') }
+
+    it 'resolves an anchor without a url selector against the per-call base_url' do
+      expect(instance.select(:url, item, base_url: 'https://other.example/section/').to_s)
+        .to eq('https://other.example/target')
+    end
+
+    it 'returns nil for an anchor whose href is blank' do
+      blank = Nokogiri::HTML('<html><body><a href="   ">x</a></body></html>').at('a')
+
+      expect(instance.select(:url, blank)).to be_nil
+    end
+  end
+
+  describe '#select_compiled and #fallback_url_selector?' do
+    let(:item) { Nokogiri::HTML('<html><body><a href="/target">x</a></body></html>').at('a') }
+
+    it 'uses a configured url selector even when the item is an anchor' do
+      selectors[:url] = { extractor: 'static', static: 'https://static.example/x' }
+
+      expect(instance.select(:url, item).to_s).to eq('https://static.example/x')
+    end
+
+    it 'raises for an explicit nil url selector on a non-anchor item' do
+      selectors[:url] = nil
+      article = Nokogiri::HTML('<html><body><article>x</article></body></html>').at('article')
+
+      expect { instance.select(:url, article) }
+        .to raise_error(described_class::InvalidSelectorName, "Selector for 'url' is not defined.")
+    end
+
+    it 'raises for an explicit nil non-url selector even on an anchor item' do
+      selectors[:title] = nil
+
+      expect { instance.select(:title, item) }
+        .to raise_error(described_class::InvalidSelectorName, "Selector for 'title' is not defined.")
+    end
+
+    it 'resolves an explicit nil url selector against the per-call base_url' do
+      selectors[:url] = nil
+
+      expect(instance.select(:url, item, base_url: 'https://other.example/section/').to_s)
+        .to eq('https://other.example/target')
+    end
+  end
+
+  describe '#select_regular_compiled' do
+    let(:item) { Nokogiri::HTML(body).at('article:first') }
+
+    it 'reads the configured attribute of the selected element' do
+      selectors[:title] = { selector: 'a', extractor: 'attribute', attribute: 'href' }
+
+      expect(instance.select(:title, item)).to eq('/article1')
+    end
+
+    it 'returns the configured static value' do
+      selectors[:title] = { extractor: 'static', static: 'Configured' }
+
+      expect(instance.select(:title, item)).to eq('Configured')
+    end
+  end
+
+  describe '#select_in_scope' do
+    it 'accepts a string attribute name' do
+      expect(instance.select('title', Nokogiri::HTML(body).at('article:first'))).to eq('article1')
+    end
+  end
+
+  describe '#apply_compiled_post_process' do
+    it 'skips post_process steps when the selector yields nothing' do
+      selectors[:title] = {
+        extractor: 'static', static: nil, post_process: { name: 'gsub', pattern: 'a', replacement: 'b' }
+      }
+
+      expect(instance.select(:title, Nokogiri::HTML(body).at('article:first'))).to be_nil
+    end
+  end
+
+  describe '#compile_post_process_steps' do
+    it 'ignores a post_process key whose value is nil' do
+      selectors[:title] = { selector: 'h1', post_process: nil }
+
+      expect(instance.select(:title, Nokogiri::HTML(body).at('article:first'))).to eq('article1')
+    end
+  end
+
+  describe '#initialize' do
+    it 'ignores selector keys that are not article attributes' do
+      selectors[:custom] = { selector: 'h1' }
+
+      expect(instance.articles.map(&:title)).to eq(%w[article1 article2])
+    end
+  end
+
+  describe '#select_categories and #select_special' do
+    let(:item) { Nokogiri::HTML(body).at('article') }
+    let(:body) do
+      '<html><body><article><div class="tags"><a href="/t/ruby">Ruby</a><a href="/t/rss">RSS</a></div>' \
+        '<span class="single">News</span></article></body></html>'
+    end
+    let(:selectors) do
+      {
+        items: { selector: 'article', enhance: false },
+        tags: { selector: '.tags a', extractor: 'text' },
+        single: { selector: '.single' }
+      }
+    end
+
+    it 'accepts a single category name, not only a list' do
+      selectors[:categories] = :tags
+
+      expect(instance.select(:categories, item)).to eq(%w[Ruby RSS])
+    end
+
+    it 'keeps the value of a single-node category' do
+      selectors[:categories] = %i[single]
+
+      expect(instance.select(:categories, item)).to eq(%w[News])
+    end
+
+    it 'accepts a single guid selector name' do
+      selectors[:guid] = :single
+
+      expect(instance.select(:guid, item)).to eq(%w[News])
+    end
+  end
+
+  describe '#extract_category_values' do
+    it 'yields no categories when a single category selector matches nothing' do
+      selectors[:nolink] = { extractor: 'static', static: nil }
+      selectors[:categories] = %i[nolink]
+
+      expect(instance.select(:categories, Nokogiri::HTML(body).at('article:first'))).to eq([])
+    end
+  end
+
+  describe '#select_regular and #enclosure' do
+    let(:item) { Nokogiri::HTML('<html><body><article><a href="/a.mp3">mp3</a></article></body></html>').at('article') }
+
+    it 'applies the enclosure post_process steps before resolving the url' do
+      selectors[:enclosure] = {
+        selector: 'a', extractor: 'attribute', attribute: 'href',
+        post_process: { name: 'gsub', pattern: 'mp3', replacement: 'ogg' }
+      }
+
+      expect(instance.select(:enclosure, item)[:url].to_s).to eq('http://example.com/a.ogg')
+    end
+
+    it 'returns nil without running post_process when the enclosure selector yields nothing' do
+      selectors[:enclosure] = {
+        extractor: 'static', static: nil, post_process: { name: 'gsub', pattern: 'mp3', replacement: 'ogg' }
+      }
+
+      expect(instance.select(:enclosure, item)).to be_nil
+    end
+  end
+
+  describe '#wrap_enclosure_value' do
+    let(:body) { '<html><body><article><h1>x</h1><a href="/a.mp3">mp3</a></article></body></html>' }
+
+    it 'wraps the enclosure in a list on the article' do
+      selectors[:enclosure] = { selector: 'a', extractor: 'href', content_type: 'audio/mpeg' }
+      selectors[:items] = { selector: 'article', enhance: false }
+
+      expect(instance.articles.first.enclosures.map(&:type)).to eq(%w[audio/mpeg])
+    end
+  end
+
+  describe '#extract_article' do
+    let(:body) { '<html><body><article><h1>article1</h1><a href="/article1">More</a></article></body></html>' }
+
+    it 'keeps extracting later fields when an earlier field yields nothing' do
+      selectors.replace(items: { selector: 'article', enhance: false }, title: { extractor: 'static', static: nil },
+                        description: { selector: 'h1' })
+
+      expect(instance.articles.first.description).to eq('article1')
+    end
+
+    it 'sets the url from an anchor item when no url selector is configured' do
+      selectors.replace(items: { selector: 'a', enhance: false })
+
+      expect(instance.articles.first.url.to_s).to eq('http://example.com/article1')
+    end
+  end
+
+  describe '#enhance_article_hash' do
+    it 'keeps a configured value instead of the extracted one' do
+      selectors[:items][:enhance] = true
+      selectors[:title] = { extractor: 'static', static: 'Given' }
+
+      expect(instance.articles.first.title).to eq('Given')
+    end
+  end
 end
