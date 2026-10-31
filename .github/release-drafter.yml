@@ -1,6 +1,16 @@
 name-template: 'v$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
 target-branch: master
+autolabeler:
+  - label: 'enhancement'
+    title:
+      - '/^feat(\([^)]+\))?!?:/i'
+  - label: 'bug'
+    title:
+      - '/^fix(\([^)]+\))?!?:/i'
+  - label: 'chore'
+    title:
+      - '/^(chore|test|refactor|docs|ci|build|deps)(\([^)]+\))?!?:/i'
 categories:
   - title: '🚀 Features'
     labels:
