@@ -598,4 +598,28 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       end
     end
   end
+
+  describe '#enclosures' do
+    subject(:enclosures) { instance.call[:enclosures]&.map { |enc| { url: enc[:url].to_s, type: enc[:type] } } }
+
+    {
+      'video with encodingFormat' => [{ video: { '@type': 'VideoObject', contentUrl: 'https://example.com/v.mp4',
+                                                 encodingFormat: 'video/mp4' } },
+                                      [{ url: 'https://example.com/v.mp4', type: 'video/mp4' }]],
+      'audio without encodingFormat' => [{ audio: { '@type': 'AudioObject', contentUrl: '/a.mp3' } },
+                                         [{ url: 'https://example.com/a.mp3', type: nil }]],
+      'video and audio lists' => [{ video: [{ contentUrl: 'https://example.com/1.mp4' }],
+                                    audio: [{ contentUrl: 'https://example.com/2.mp3' }, 'junk'] },
+                                  [{ url: 'https://example.com/1.mp4', type: nil },
+                                   { url: 'https://example.com/2.mp3', type: nil }]],
+      'embedUrl only' => [{ video: { embedUrl: 'https://example.com/embed' } }, nil],
+      'no media' => [{}, nil]
+    }.each do |name, (extra, expected)|
+      context "with #{name}" do
+        let(:schema_object) { extra }
+
+        it { is_expected.to eq(expected) }
+      end
+    end
+  end
 end

@@ -28,7 +28,7 @@ module Html2rss
 
           # @return [Hash{Symbol => Object}] scraped article attributes
           def call
-            { id:, title:, description:, author:, url:, image:, published_at:, categories: }
+            { id:, title:, description:, author:, url:, image:, published_at:, categories:, enclosures: }
           end
 
           # @return [String, nil] stable schema object identifier
@@ -86,6 +86,12 @@ module Html2rss
             @categories ||= CategoryExtractor.call(schema_object)
           end
 
+          # @return [Array<Hash{Symbol => Object}>, nil] enclosures from VideoObject/AudioObject `contentUrl`
+          def enclosures
+            found = Array(schema_object.values_at(:video, :audio)).flatten.filter_map { media_enclosure(_1) }
+            found unless found.empty?
+          end
+
           attr_reader :schema_object, :base_url
 
           # @return [Array<String>] normalized image URL candidates
@@ -94,6 +100,25 @@ module Html2rss
           end
 
           private
+
+          # @param node [Object] VideoObject/AudioObject node
+          # @return [Hash{Symbol => Object}, nil] enclosure attributes, or nil without a usable absolute contentUrl
+          def media_enclosure(node)
+            return unless node.is_a?(Hash) && node[:contentUrl].is_a?(String)
+
+            build_media_enclosure(node[:contentUrl], node[:encodingFormat])
+          end
+
+          # @param src [String] contentUrl
+          # @param type [Object] encodingFormat (used when a String)
+          # @return [Hash{Symbol => Object}, nil] enclosure attributes with an absolute url
+          def build_media_enclosure(src, type)
+            found = ::Html2rss::Html::ArticleRules::Enclosure.from_media(src, (type if type.is_a?(String)),
+                                                                         base_url || src)
+            found if found&.dig(:url)&.absolute?
+          rescue Url::InvalidUrlError
+            nil
+          end
 
           # @param value [Object] url candidate
           # @return [Html2rss::Url, nil] absolute url, or nil when missing or unusable
