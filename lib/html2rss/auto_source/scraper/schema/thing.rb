@@ -10,7 +10,7 @@ module Html2rss
         # A Thing is kind of the 'base class' for Schema.org schema_objects.
         #
         # @see https://schema.org/Thing
-        class Thing
+        class Thing # rubocop:disable Metrics/ClassLength -- one accessor per schema.org field
           # Supported Schema.org `@type` values mapped to article extraction.
           SUPPORTED_TYPES = %w[
             AdvertiserContentArticle AnalysisNewsArticle APIReference Article
@@ -43,13 +43,15 @@ module Html2rss
           def title
             schema_object.values_at(:headline, :name, :alternativeHeadline, :title)
                          .lazy
-                         .map { _1.to_s.strip }
+                         .map { first_scalar(_1).to_s.strip }
                          .find { !_1.empty? }
           end
 
           # @return [String, nil] longest available description field
           def description
-            schema_object.values_at(:description, :articleBody, :abstract, :schema_object_body).max_by { _1.to_s.size }
+            schema_object.values_at(:description, :articleBody, :abstract, :schema_object_body)
+                         .map { first_scalar(_1) }
+                         .max_by { _1.to_s.size }
           end
 
           # @return [String, nil] extracted author or publisher name
@@ -61,13 +63,7 @@ module Html2rss
           def url
             return @url if defined?(@url)
 
-            url = schema_object[:url]
-            if url.to_s.empty?
-              Log.debug("Schema#Thing.url: no url in schema_object: #{schema_object.inspect}")
-              return @url = nil
-            end
-
-            @url = Url.from_relative(url, base_url || url)
+            @url = build_url(first_scalar(schema_object[:url]))
           end
 
           # @return [Html2rss::Url, nil] normalized article image URL
@@ -78,10 +74,11 @@ module Html2rss
             @image = img_url ? Url.from_relative(img_url, base_url || img_url) : nil
           end
 
-          # @return [String, nil] published-at timestamp (datePublished, else dateModified)
+          # @return [String, nil] first non-empty of datePublished, dateCreated, dateModified, uploadDate
           def published_at
-            value = schema_object[:datePublished] || schema_object[:dateModified]
-            value.to_s.empty? ? nil : value
+            schema_object.values_at(:datePublished, :dateCreated, :dateModified, :uploadDate)
+                         .map { first_scalar(_1) }
+                         .find { !_1.to_s.empty? }
           end
 
           # @return [Array<String>, nil] extracted category labels
@@ -97,6 +94,26 @@ module Html2rss
           end
 
           private
+
+          # @param value [Object] url candidate
+          # @return [Html2rss::Url, nil] absolute url, or nil when missing or unusable
+          def build_url(value)
+            return Url.from_relative(value, base_url || value) if value.is_a?(String) && !value.empty?
+
+            Log.debug("Schema#Thing.url: no usable url in schema_object: #{schema_object.inspect}")
+            nil
+          rescue Url::InvalidUrlError
+            Log.debug("Schema#Thing.url: unusable url #{value.inspect}")
+            nil
+          end
+
+          # @param value [Object] schema value that may be wrapped in a list (multilingual or multi-valued fields)
+          # @return [Object, nil] the value, or the first non-empty String of a list
+          def first_scalar(value)
+            return value unless value.is_a?(Array)
+
+            value.find { _1.is_a?(String) && !_1.strip.empty? }
+          end
 
           # @param obj [String, Hash, Array, nil] schema author or publisher field
           # @return [String, nil] extracted author name

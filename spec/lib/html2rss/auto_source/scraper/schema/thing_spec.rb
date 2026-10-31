@@ -57,6 +57,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#title' do
     subject(:title) { instance.title }
 
+    context 'when the headline is a list' do
+      let(:schema_object) { { headline: ['', 'First', 'Second'] } }
+
+      it 'uses the first non-empty entry' do
+        expect(title).to eq('First')
+      end
+    end
+
     context 'when headline is present' do
       let(:schema_object) { { '@type': 'Article', headline: 'From Headline', name: 'From Name', title: 'Legacy' } }
 
@@ -84,6 +92,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
   describe '#published_at' do
     subject(:published_at) { instance.published_at }
+
+    context 'when only dateCreated is present' do
+      let(:schema_object) { { dateCreated: '2024-03-01', dateModified: '2024-04-01' } }
+
+      it 'prefers dateCreated over dateModified' do
+        expect(published_at).to eq('2024-03-01')
+      end
+    end
+
+    context 'when only uploadDate is present' do
+      let(:schema_object) { { uploadDate: '2024-05-01' } }
+
+      it 'falls back to uploadDate' do
+        expect(published_at).to eq('2024-05-01')
+      end
+    end
+
+    context 'when datePublished is blank' do
+      let(:schema_object) { { datePublished: '', dateModified: '2024-04-01' } }
+
+      it 'falls back to the next date' do
+        expect(published_at).to eq('2024-04-01')
+      end
+    end
 
     context 'when datePublished is present' do
       let(:schema_object) do
@@ -389,6 +421,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#description' do
     subject(:description) { instance.description }
 
+    context 'when the description is a list' do
+      let(:schema_object) { { description: ['', 'Listed summary'] } }
+
+      it 'uses the first non-empty entry' do
+        expect(description).to eq('Listed summary')
+      end
+    end
+
     context 'when only abstract is present' do
       let(:schema_object) { { abstract: 'Abstract text' } }
 
@@ -507,6 +547,34 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       let(:schema_object) { { '@type': 'Article', title: 'Test' } }
 
       it { is_expected.to be_nil }
+    end
+  end
+
+  describe '#url' do
+    subject(:url) { instance.url }
+
+    context 'when the url is a list' do
+      let(:schema_object) { { url: ['https://example.com/a'] } }
+
+      it 'uses the first entry' do
+        expect(url.to_s).to eq('https://example.com/a')
+      end
+    end
+
+    context 'when the url is not a string' do
+      let(:schema_object) { { url: { '@id': 'https://example.com/a' } } }
+
+      it 'returns nil instead of raising' do
+        expect(url).to be_nil
+      end
+    end
+
+    context 'when the url cannot be parsed' do
+      let(:schema_object) { { url: 'http://' } }
+
+      it 'returns nil instead of raising' do
+        expect(url).to be_nil
+      end
     end
   end
 end
