@@ -179,7 +179,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         expect(url).to be_nil
         expect(instance.url).to be_nil
         expect(Html2rss::Log).to have_received(:debug)
-          .with('Schema#Thing.url: no url in schema_object: {headline: "Bare"}').once
+          .with('Schema#Thing.url: no usable url in schema_object: {headline: "Bare"}').once
       end
     end
   end
@@ -694,7 +694,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
     end
   end
 
-  describe '#url' do
+  describe '#url with malformed values' do
     subject(:url) { instance.url }
 
     context 'when the url is a list' do
