@@ -8,7 +8,7 @@ module Html2rss
         # Extracts categories from Schema.org structured data.
         module CategoryExtractor
           # Schema.org fields checked for category-like string values.
-          CATEGORY_FIELDS = %i[articleSection keywords categories tags].freeze
+          CATEGORY_FIELDS = %i[articleSection keywords categories tags occupationalCategory industry].freeze
 
           ##
           # @param schema_object [Hash] The schema object
