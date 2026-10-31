@@ -210,6 +210,24 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
   describe '#image' do
     subject(:image) { instance.image }
 
+    {
+      'untyped object with url' => [{ image: { url: 'https://example.com/u.jpg' } }, 'https://example.com/u.jpg'],
+      'untyped object with contentUrl' => [{ image: { contentUrl: 'https://example.com/c.jpg' } },
+                                           'https://example.com/c.jpg'],
+      'typed non-ImageObject' => [{ image: { '@type': 'Thing', url: 'https://example.com/no.jpg' } }, nil],
+      'thumbnail string' => [{ thumbnail: 'https://example.com/t.jpg' }, 'https://example.com/t.jpg'],
+      'thumbnail ImageObject' => [{ thumbnail: { '@type': 'ImageObject', url: 'https://example.com/t.jpg' } },
+                                  'https://example.com/t.jpg'],
+      'image wins over thumbnail' => [{ image: 'https://example.com/i.jpg', thumbnail: 'https://example.com/t.jpg' },
+                                      'https://example.com/i.jpg']
+    }.each do |name, (object, expected)|
+      context "with #{name}" do
+        let(:schema_object) { object }
+
+        it { expect(image&.to_s).to eq(expected) }
+      end
+    end
+
     context 'when image is an array of urls' do
       let(:schema_object) { { image: ['https://example.com/a.jpg', 'https://example.com/b.jpg'] } }
 
