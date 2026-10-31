@@ -18,19 +18,28 @@ module Html2rss
 
       private
 
-      # Replays stored clearance cookies; a block while holding them evicts the jar and retries once without.
+      # With a stored jar, tries the cheap HTTP tier first; cookies never reach the browser tier,
+      # so a block falls back to a plain scrape without them.
       def fetch
         stored = jar.stored
-        scrape(stored)
-      rescue BlockedSurfaceDetected
-        raise if stored.empty?
+        return scrape({}) unless replay?(stored)
 
-        jar.evict(stored)
+        replay(stored)
+      end
+
+      def replay?(stored) = botasaurus_options[:execution_mode] != 'browser' && jar.replayable?(stored)
+
+      def replay(stored)
+        response = scrape(stored, execution_mode: 'request')
+        jar.replayed(:pass, stored)
+        response
+      rescue BlockedSurfaceDetected
+        jar.replayed(:block, stored)
         scrape({})
       end
 
-      def scrape(stored)
-        parsed_response = post_scrape_request(stored)
+      def scrape(stored, overrides = {})
+        parsed_response = post_scrape_request(stored, overrides)
         raise_from_error!(parsed_response) if parsed_response.is_a?(BotasaurusContract::Error)
 
         response = build_response(parsed_response)
@@ -48,10 +57,10 @@ module Html2rss
 
       def botasaurus_options = ctx.request.fetch(:botasaurus, {})
 
-      def post_scrape_request(stored)
+      def post_scrape_request(stored, overrides)
         request_id = SecureRandom.uuid
         Log.debug("#{self.class}: POST /scrape #{REQUEST_ID_HEADER}=#{request_id}")
-        contract = contract(stored)
+        contract = contract(stored, overrides)
         payload = JSON.generate(contract.request_payload)
         response = client.post(scrape_endpoint, body: payload, headers: post_headers(request_id))
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
@@ -94,8 +103,10 @@ module Html2rss
         ctx.url
       end
 
-      def contract(stored)
-        BotasaurusContract.new(url: ctx.url, headers: ctx.headers, options: botasaurus_options, stored_cookies: stored)
+      def contract(stored, overrides)
+        BotasaurusContract.new(
+          url: ctx.url, headers: ctx.headers, options: botasaurus_options.merge(overrides), stored_cookies: stored
+        )
       end
 
       def client

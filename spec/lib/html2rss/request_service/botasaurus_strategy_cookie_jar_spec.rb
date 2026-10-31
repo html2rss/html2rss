@@ -47,6 +47,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
   end
 
   before do
+    stub_const('Html2rss::RequestService::CookieJar::BREAKER', Html2rss::RequestService::ReplayBreaker.new)
+    stub_const('Html2rss::RequestService::CookieJar::HOLDOUT_RATE', 0.0)
     stub_request(:post, 'http://localhost:4010/scrape')
       .to_return(*responses.map { |reply| ->(req) { posted << JSON.parse(req.body) and reply } })
   end
@@ -63,6 +65,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
 
       expect(first.cookies).to eq('datadome' => 'v1')
       expect(run_cookies).to eq([nil, { 'datadome' => 'v1' }])
+      expect(posted.map { |payload| payload['execution_mode'] }).to eq([nil, 'request'])
       expect(Html2rss::RequestService.cookie_store.fetch(stored_key))
         .to eq('datadome' => 'v2', 'extra' => 'x')
     end
@@ -72,12 +75,65 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
     let(:botasaurus) { { cookies: { 'datadome' => 'config' }, execution_mode: 'request' } }
     let(:responses) { [success.call('datadome' => 'v1', 'other' => 'o'), success.call({})] }
 
-    it 'lets the config win and sends cookies in every execution_mode', :aggregate_failures do
+    it 'lets the config win over stored cookies on the replay', :aggregate_failures do
       run
       run
 
       expect(posted.last).to include('execution_mode' => 'request')
       expect(posted.last['cookies']).to eq('datadome' => 'config', 'other' => 'o')
+    end
+  end
+
+  context 'when the feed asks for the browser tier explicitly' do
+    let(:botasaurus) { { execution_mode: 'browser' } }
+    let(:responses) { [success.call('datadome' => 'v1'), success.call({})] }
+
+    it 'never replays stored cookies into it', :aggregate_failures do
+      run
+      run
+
+      expect(posted.map { |payload| payload['cookies'] }).to eq([nil, nil])
+      expect(posted.last).to include('execution_mode' => 'browser')
+    end
+  end
+
+  context 'when the HTTP-tier replay is blocked in auto mode' do
+    let(:responses) { [success.call('datadome' => 'v1'), blocked, success.call('datadome' => 'browser')] }
+
+    it 'falls back to the original mode without cookies', :aggregate_failures do
+      run
+      run
+
+      expect(posted.last).not_to include('cookies', 'execution_mode')
+      expect(Html2rss::RequestService.cookie_store.fetch(stored_key)).to eq('datadome' => 'browser')
+    end
+  end
+
+  context 'when replays keep being blocked' do
+    let(:max) { Html2rss::RequestService::ReplayBreaker::MAX_BLOCKS }
+    let(:responses) do
+      [success.call('datadome' => 'v')] + Array.new(max) { [blocked, success.call('datadome' => 'v')] }.flatten(1) +
+        [success.call({})]
+    end
+
+    it 'stops replaying once the breaker trips', :aggregate_failures do
+      (max + 2).times { run }
+
+      replayed = posted.map { |payload| payload['cookies'] }
+      expect(replayed.count { |cookies| cookies }).to eq(max)
+      expect(replayed.last).to be_nil
+    end
+  end
+
+  context 'when the request falls into the holdout' do
+    let(:responses) { [success.call('datadome' => 'v1'), success.call({})] }
+
+    it 'scrapes without cookies', :aggregate_failures do
+      stub_const('Html2rss::RequestService::CookieJar::HOLDOUT_RATE', 1.0)
+      run
+      run
+
+      expect(posted.last).not_to have_key('cookies')
     end
   end
 
@@ -89,6 +145,7 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
       response = run
 
       expect(posted.map { |payload| payload['cookies'] }).to eq([nil, { 'datadome' => 'stale' }, nil])
+      expect(posted.map { |payload| payload['execution_mode'] }).to eq([nil, 'request', nil])
       expect(response.cookies).to eq('datadome' => 'fresh')
       expect(Html2rss::RequestService.cookie_store.fetch(stored_key)).to eq('datadome' => 'fresh')
     end
