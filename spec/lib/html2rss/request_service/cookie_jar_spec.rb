@@ -72,8 +72,36 @@ RSpec.describe Html2rss::RequestService::CookieJar do
       expect(logs).to be_empty
     end
 
-    it 'is true for stored cookies outside the holdout' do
+    it 'is true for stored cookies outside the holdout without logging', :aggregate_failures do
       expect(jar.replayable?({ 'a' => '1' })).to be true
+      expect(logs).to be_empty
+    end
+
+    it 'replays when the draw equals the holdout rate', :aggregate_failures do
+      stub_const('Html2rss::RequestService::CookieJar::HOLDOUT_RATE', 0.5)
+      drawn = described_class.new(host: 'a.test', scraper_base_url: 'http://s', proxy: nil, user_agent: 'UA', store:)
+      allow(drawn).to receive(:rand).and_return(0.5)
+
+      expect(drawn.replayable?({ 'a' => '1' })).to be true
+      expect(logs).to be_empty
+    end
+
+    it 'holds out when the draw falls just below the holdout rate', :aggregate_failures do
+      stub_const('Html2rss::RequestService::CookieJar::HOLDOUT_RATE', 0.5)
+      drawn = described_class.new(host: 'a.test', scraper_base_url: 'http://s', proxy: nil, user_agent: 'UA', store:)
+      allow(drawn).to receive(:rand).and_return(0.4999)
+
+      expect(drawn.replayable?({ 'a' => '1' })).to be false
+      expect(logs.map { |line| line['action'] }).to eq(['holdout'])
+    end
+
+    it 'checks the open breaker before the holdout draw', :aggregate_failures do
+      stub_const('Html2rss::RequestService::CookieJar::HOLDOUT_RATE', 1.0)
+      Html2rss::RequestService::ReplayBreaker::MAX_BLOCKS.times { breaker.record_block(key, ttl: 60) }
+
+      expect(jar.replayable?({ 'a' => '1' })).to be false
+      expect(logs.map { |line| line['action'] }).to eq(['breaker_open'])
+      expect(logs.first).to include('cookie_count' => 0)
     end
 
     it 'skips and logs a holdout when the draw falls under the rate', :aggregate_failures do
@@ -89,7 +117,8 @@ RSpec.describe Html2rss::RequestService::CookieJar do
       Html2rss::RequestService::ReplayBreaker::MAX_BLOCKS.times { breaker.record_block(key, ttl: 60) }
 
       expect(jar.replayable?({ 'a' => '1' })).to be false
-      expect(logs.map { |line| line['action'] }).to eq(['breaker_open'])
+      expect(logs).to eq([{ 'event_name' => 'botasaurus.cookie_jar', 'action' => 'breaker_open', 'host' => 'a.test',
+                            'cookie_count' => 0 }])
     end
   end
 
@@ -123,6 +152,32 @@ RSpec.describe Html2rss::RequestService::CookieJar do
 
       expect(logs.count { |line| line['action'] == 'breaker_open' }).to eq(1)
       expect(breaker.open?(key)).to be true
+    end
+
+    it 'logs breaker_open with no cookie count only when the block trips it', :aggregate_failures do
+      (Html2rss::RequestService::ReplayBreaker::MAX_BLOCKS - 1).times { jar.replayed(:block, { 'a' => '1' }) }
+      expect(logs.map { |line| line['action'] }).not_to include('breaker_open')
+
+      jar.replayed(:block, { 'a' => '1' })
+      expect(logs.last).to include('action' => 'breaker_open', 'cookie_count' => 0)
+    end
+
+    it 'passes the default cookie ttl to the breaker on a block', :aggregate_failures do
+      allow(breaker).to receive(:record_block).and_call_original
+
+      jar.replayed(:block, { 'a' => '1' })
+
+      expect(breaker).to have_received(:record_block).with(
+        key, ttl: Html2rss::RequestService::CookieStore::DEFAULT_TTL_SECONDS
+      )
+    end
+
+    it 'does not record a block on a pass', :aggregate_failures do
+      allow(breaker).to receive(:record_block).and_call_original
+
+      jar.replayed(:pass, { 'a' => '1' })
+
+      expect(breaker).not_to have_received(:record_block)
     end
   end
 
