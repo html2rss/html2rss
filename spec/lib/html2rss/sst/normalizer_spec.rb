@@ -35,6 +35,13 @@ RSpec.describe Html2rss::SST::Normalizer do
       )
     end
 
+    it 'maps href and src onto typed attrs', :aggregate_failures do
+      doc = described_class.call('<html><body><a href="/post">Post</a><img src="/cover.png"></body></html>')
+
+      expect(doc.root.find { |n| n.name == :a }.attrs.href).to eq('/post')
+      expect(doc.root.find { |n| n.name == :img }.attrs.src).to eq('/cover.png')
+    end
+
     it 'does not copy typed attributes into the raw hash' do
       link = described_class.call('<html><body><a href="/x" id="y">q</a></body></html>').root
                             .find { |n| n.name == :a }
@@ -42,21 +49,38 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(link.attrs.raw).to eq({})
     end
 
-    it 'logs which root fallback was used', :aggregate_failures do
+    it 'logs which root fallback was used', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Log).to receive(:warn)
+      fallback = lambda do |reason, message|
+        { event_name: 'sst.normalizer.root_fallback', reason:, message: }.to_json
+      end
 
       described_class.call(Nokogiri::XML('<root><body><p>x</p></body></root>'))
-      expect(Html2rss::Log).to have_received(:warn).with(a_string_including('"reason":"body"'))
+      expect(Html2rss::Log).to have_received(:warn)
+        .with(fallback.call('body', 'sst.normalizer root fallback: body'))
 
       described_class.call(Nokogiri::XML('<root><div>x</div></root>'))
-      expect(Html2rss::Log).to have_received(:warn).with(a_string_including('"reason":"first_element_child"'))
+      expect(Html2rss::Log).to have_received(:warn)
+        .with(fallback.call('first_element_child', 'sst.normalizer root fallback: first element child'))
     end
 
-    it 'returns nil when the parsed input has no element to root the tree', :aggregate_failures do
+    it 'returns nil when the parsed input has no element to root the tree', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Log).to receive(:warn)
 
       expect(described_class.call(Nokogiri::XML('<!-- c -->'))).to be_nil
-      expect(Html2rss::Log).to have_received(:warn).with(a_string_including('"reason":"self"'))
+      expect(Html2rss::Log).to have_received(:warn).with(
+        { event_name: 'sst.normalizer.root_fallback', reason: 'self',
+          message: 'sst.normalizer root fallback: self' }.to_json
+      )
+    end
+
+    it 'indexes the exact parent instance even for structurally identical siblings', :aggregate_failures do
+      doc = described_class.call('<html><body><div><p>x</p></div><div><p>x</p></div></body></html>')
+      body = doc.root.find { |n| n.name == :body }
+      first_div, second_div = body.children
+
+      expect(doc.index.parent_of(first_div.children.first)).to equal(first_div)
+      expect(doc.index.parent_of(second_div.children.first)).to equal(second_div)
     end
 
     it 'does not log a root fallback for a regular html document' do
