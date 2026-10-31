@@ -63,7 +63,7 @@ module Html2rss
           def url
             return @url if defined?(@url)
 
-            @url = build_url(first_scalar(schema_object[:url]))
+            @url = build_url(first_scalar(schema_object[:url])) || fallback_url
           end
 
           # @return [Html2rss::Url, nil] normalized article image URL
@@ -129,6 +129,23 @@ module Html2rss
             nil
           rescue Url::InvalidUrlError
             Log.debug("Schema#Thing.url: unusable url #{value.inspect}")
+            nil
+          end
+
+          # @return [Html2rss::Url, nil] first absolute http(s) mainEntityOfPage or @id, without fragment
+          def fallback_url
+            main = schema_object[:mainEntityOfPage]
+            candidates = main.is_a?(Hash) ? [main[:@id], main[:url]] : [main]
+            (candidates + [schema_object[:@id]]).lazy.filter_map { web_url(_1) }.first
+          end
+
+          # @param value [Object] url candidate
+          # @return [Html2rss::Url, nil] fragment-free url when value is an absolute http(s) string
+          def web_url(value)
+            return unless value.is_a?(String) && value.match?(%r{\Ahttps?://}i)
+
+            Url.from_absolute(value.strip).without_fragment
+          rescue Url::InvalidUrlError
             nil
           end
 
