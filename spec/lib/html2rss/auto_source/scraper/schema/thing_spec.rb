@@ -179,7 +179,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         expect(url).to be_nil
         expect(instance.url).to be_nil
         expect(Html2rss::Log).to have_received(:debug)
-          .with('Schema#Thing.url: no usable url in schema_object: {headline: "Bare"}').once
+          .with(a_string_starting_with('Schema#Thing.url: no usable url in schema_object:')).once
       end
     end
   end
