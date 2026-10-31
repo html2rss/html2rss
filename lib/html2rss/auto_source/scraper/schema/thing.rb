@@ -19,6 +19,12 @@ module Html2rss
             ReviewNewsArticle SatiricalArticle ScholarlyArticle SocialMediaPosting TechArticle
           ].to_set.freeze
 
+          # Schema.org types emitted only as elements of an ItemList (never standalone).
+          ITEM_LIST_TYPES = Set['Event', 'JobPosting', 'VideoObject', 'PodcastEpisode'].freeze
+
+          # Schema.org types whose own `contentUrl` is the media enclosure.
+          MEDIA_TYPES = Set['VideoObject'].freeze
+
           # @param schema_object [Hash{Symbol => Object}] parsed schema.org object
           # @param url [String, Html2rss::Url, nil] base URL used for relative normalization
           def initialize(schema_object, url:)
@@ -56,7 +62,9 @@ module Html2rss
 
           # @return [String, nil] extracted author or publisher name
           def author
-            extract_author_name(schema_object[:author]) || extract_author_name(schema_object[:publisher])
+            extract_author_name(schema_object[:author]) || extract_author_name(schema_object[:publisher]) ||
+              extract_author_name(schema_object[:hiringOrganization]) ||
+              extract_author_name(schema_object[:organizer])
           end
 
           # @return [Html2rss::Url, nil] the URL of the schema object
@@ -74,9 +82,9 @@ module Html2rss
             @image = img_url ? Url.from_relative(img_url, base_url || img_url) : nil
           end
 
-          # @return [String, nil] first non-empty of datePublished, dateCreated, dateModified, uploadDate
+          # @return [String, nil] first non-empty of datePublished, datePosted, dateCreated, dateModified, uploadDate
           def published_at
-            schema_object.values_at(:datePublished, :dateCreated, :dateModified, :uploadDate)
+            schema_object.values_at(:datePublished, :datePosted, :dateCreated, :dateModified, :uploadDate)
                          .map { first_scalar(_1) }
                          .find { !_1.to_s.empty? }
           end
@@ -88,7 +96,9 @@ module Html2rss
 
           # @return [Array<Hash{Symbol => Object}>, nil] enclosures from VideoObject/AudioObject `contentUrl`
           def enclosures
-            found = Array(schema_object.values_at(:video, :audio)).flatten.filter_map { media_enclosure(_1) }
+            nodes = Array(schema_object.values_at(:video, :audio)).flatten
+            nodes << schema_object if own_media?
+            found = nodes.filter_map { media_enclosure(_1) }
             found unless found.empty?
           end
 
@@ -100,6 +110,11 @@ module Html2rss
           end
 
           private
+
+          # @return [Boolean] whether the object itself is a media object carrying its own `contentUrl`
+          def own_media?
+            Schema.normalize_types(schema_object[:@type]).intersect?(MEDIA_TYPES)
+          end
 
           # @param node [Object] VideoObject/AudioObject node
           # @return [Hash{Symbol => Object}, nil] enclosure attributes, or nil without a usable absolute contentUrl

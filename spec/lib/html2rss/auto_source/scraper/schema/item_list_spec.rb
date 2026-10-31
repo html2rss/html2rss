@@ -182,4 +182,36 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
       end
     end
   end
+
+  context 'with Event, JobPosting and video items' do
+    subject(:call) { instance.call }
+
+    let(:schema_object) do
+      {
+        '@type': 'ItemList',
+        itemListElement: [
+          { '@type': 'Event', name: 'Concert', url: '/e/1', startDate: '2026-12-01', organizer: { name: 'Hall' } },
+          { '@type': 'JobPosting', title: 'Engineer', url: '/j/1', datePosted: '2026-11-01',
+            hiringOrganization: { name: 'Acme' }, occupationalCategory: 'Software' },
+          { '@type': 'VideoObject', name: 'Clip', url: '/v/1', uploadDate: '2026-10-01',
+            contentUrl: 'https://cdn.example.com/c.mp4', encodingFormat: 'video/mp4' },
+          { '@type': 'Product', name: 'Shoe', url: '/p/1' }
+        ]
+      }
+    end
+
+    it 'maps the new item types and skips bare unsupported types', :aggregate_failures do
+      expect(call.map { _1[:title] }).to eq(%w[Concert Engineer Clip])
+      expect(call.map { _1[:published_at] }).to eq([nil, '2026-11-01', '2026-10-01'])
+      expect(call.map { _1[:author] }).to eq(['Hall', 'Acme', nil])
+      expect(call[1][:categories]).to eq(['Software'])
+      expect(call[2][:enclosures].first[:url].to_s).to eq('https://cdn.example.com/c.mp4')
+    end
+
+    it 'ignores standalone Event and VideoObject objects', :aggregate_failures do
+      schema = Html2rss::AutoSource::Scraper::Schema
+      expect(schema.supported_schema_object?({ '@type': 'Event' })).to be(false)
+      expect(schema.supported_schema_object?({ '@type': 'VideoObject' })).to be(false)
+    end
+  end
 end

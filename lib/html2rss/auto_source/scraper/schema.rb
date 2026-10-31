@@ -25,7 +25,8 @@ module Html2rss
 
         # Canonical Schema.org type names keyed by folded wire forms (case-insensitive lookup).
         CANONICAL_BY_DOWNCASE = begin
-          canonical_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES | DENIED_CONTAINER_TYPES | Set['Product']
+          canonical_types = Thing::SUPPORTED_TYPES | ItemList::SUPPORTED_TYPES | Thing::ITEM_LIST_TYPES |
+                            DENIED_CONTAINER_TYPES | Set['Product']
           canonical_types.to_h { |type| [::Html2rss::Html::Probe.fold(type), type] }.freeze
         end.freeze
 

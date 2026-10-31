@@ -49,11 +49,11 @@ module Html2rss
 
           # @param object [Hash] candidate schema object
           # @param from_list_item [Boolean] whether object came from a ListItem unwrap
-          # @return [Boolean] whether to emit this object as an article
+          # @return [Boolean] whether to emit this object as an article (also bare Event, JobPosting and video items)
           def emit?(object, from_list_item:)
             return true if from_list_item
 
-            Schema.normalize_types(object[:@type]).intersect?(Thing::SUPPORTED_TYPES)
+            Schema.normalize_types(object[:@type]).intersect?(Thing::SUPPORTED_TYPES | Thing::ITEM_LIST_TYPES)
           end
         end
       end
