@@ -286,6 +286,25 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(response.captured_responses).to eq([{ b: 2 }])
       expect(response.captured_responses).to be_frozen
     end
+
+    it 'defaults cookies to the shared frozen empty map', :aggregate_failures do
+      response = described_class.new(body: 'b', url:)
+
+      expect(described_class::EMPTY_COOKIES).to be_frozen
+      expect(response.cookies).to equal(described_class::EMPTY_COOKIES)
+    end
+
+    it 'freezes provided cookies', :aggregate_failures do
+      response = described_class.new(body: 'b', url:, cookies: { 'datadome' => 'abc' })
+
+      expect(response.cookies).to eq('datadome' => 'abc')
+      expect(response.cookies).to be_frozen
+    end
+
+    it 'treats nil and empty cookies as the shared empty map', :aggregate_failures do
+      expect(described_class.new(body: 'b', url:, cookies: nil).cookies).to equal(described_class::EMPTY_COOKIES)
+      expect(described_class.new(body: 'b', url:, cookies: {}).cookies).to equal(described_class::EMPTY_COOKIES)
+    end
   end
 
   describe '#json_response?' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
