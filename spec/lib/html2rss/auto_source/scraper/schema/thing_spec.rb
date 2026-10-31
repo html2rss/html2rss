@@ -283,21 +283,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       it { is_expected.to eq('/p') }
     end
 
-    context 'when the @id is on another host' do
-      let(:schema_object) { { '@id': 'https://other.example.net/post/1' } }
+    context 'when the @id is on another host and an explicit url is present' do
+      let(:schema_object) { { '@id': 'https://other.example.net/post/1', url: 'https://example.com/story' } }
 
       it 'keeps the original identifier' do
         expect(id).to eq('https://other.example.net/post/1')
       end
     end
 
-    context 'when there is no reference url at all' do
-      subject(:instance) { described_class.new(schema_object, url: nil) }
+    context 'when only an absolute @id is present' do
+      let(:schema_object) { { '@id': 'https://other.example.net/post/1' } }
 
-      let(:schema_object) { { '@id': 'https://example.com/a1' } }
-
-      it 'keeps the original identifier' do
-        expect(id).to eq('https://example.com/a1')
+      it 'derives the id from the @id fallback url path' do
+        expect(id).to eq('/post/1')
       end
     end
 
@@ -387,7 +385,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
     context 'when image is an object without any @type' do
       let(:schema_object) { { image: { url: 'https://example.com/i.jpg' } } }
 
-      it { is_expected.to be_nil }
+      it { expect(image.to_s).to eq('https://example.com/i.jpg') }
     end
 
     context 'when image is neither a string nor an object' do
