@@ -43,7 +43,7 @@ module Html2rss
           def discover_articles(document, base_url:, &block)
             case document
             when Array then handle_array(document, base_url:, &block)
-            when Hash then document.each_value { discover_articles(_1, base_url:, &block) if traversable?(_1) }
+            when Hash then document.each_value { discover_articles(_1, base_url:, &block) }
             end
           end
 
@@ -55,12 +55,8 @@ module Html2rss
                 yield(ArticleNormalizer.normalise(entry, base_url:))
               end
             else
-              array.each { discover_articles(_1, base_url:, &block) if traversable?(_1) }
+              array.each { discover_articles(_1, base_url:, &block) }
             end
-          end
-
-          def traversable?(value)
-            value.is_a?(Array) || value.is_a?(Hash)
           end
         end
 

@@ -130,6 +130,58 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
       it { is_expected.to eq('2024-02-01') }
     end
+
+    context 'when neither date is present' do
+      let(:schema_object) { { '@type': 'Article', headline: 'T' } }
+
+      it { is_expected.to be_nil }
+    end
+
+    context 'when datePublished is an empty string and no dateModified exists' do
+      let(:schema_object) { { '@type': 'Article', headline: 'T', datePublished: '' } }
+
+      it { is_expected.to be_nil }
+    end
+  end
+
+  describe '#url' do
+    subject(:url) { instance.url }
+
+    context 'when url is absolute' do
+      let(:schema_object) { { headline: 'T', url: 'https://example.com/a1' } }
+
+      it 'returns the absolute url', :aggregate_failures do
+        expect(url.to_s).to eq('https://example.com/a1')
+        expect(instance.url).to be(url)
+      end
+    end
+
+    context 'when url is relative' do
+      let(:schema_object) { { headline: 'T', url: '/story/1' } }
+
+      it { expect(url.to_s).to eq('https://example.com/story/1') }
+    end
+
+    context 'when no page url is given' do
+      subject(:instance) { described_class.new(schema_object, url: nil) }
+
+      let(:schema_object) { { headline: 'T', url: 'https://example.com/a1' } }
+
+      it { expect(url.to_s).to eq('https://example.com/a1') }
+    end
+
+    context 'when url is absent' do
+      let(:schema_object) { { headline: 'Bare' } }
+
+      before { allow(Html2rss::Log).to receive(:debug) }
+
+      it 'returns nil and logs the missing url once', :aggregate_failures do
+        expect(url).to be_nil
+        expect(instance.url).to be_nil
+        expect(Html2rss::Log).to have_received(:debug)
+          .with(a_string_starting_with('Schema#Thing.url: no usable url in schema_object:')).once
+      end
+    end
   end
 
   describe '#id' do
@@ -158,6 +210,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         instance.id
         expect(instance.id).to eq('/memo')
       end
+
+      it 'returns the very same object on every call' do
+        first = instance.id
+        expect(instance.id).to be(first)
+      end
     end
 
     context 'when schema object has neither @id nor url' do
@@ -185,6 +242,60 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
       it 'preserves the distinguishing query permalink' do
         expect(id).to eq('/?p=123')
+      end
+    end
+
+    context 'when a same-origin @id is only the root path' do
+      let(:schema_object) { { '@id': 'https://example.com/' } }
+
+      it { is_expected.to eq('/') }
+    end
+
+    context 'when a same-origin @id has a path and a query' do
+      let(:schema_object) { { '@id': 'https://example.com/a?x=1' } }
+
+      it 'drops the query when the path identifies the article' do
+        expect(id).to eq('/a')
+      end
+    end
+
+    context 'when a same-origin @id has only a query' do
+      let(:schema_object) { { '@id': 'https://example.com?p=7' } }
+
+      it { is_expected.to eq('/?p=7') }
+    end
+
+    context 'when a relative @id contains dot segments' do
+      let(:schema_object) { { '@id': '/news/../story/7' } }
+
+      it { is_expected.to eq('/story/7') }
+    end
+
+    context 'when the @id is on the article host, which differs from the page host' do
+      let(:schema_object) { { '@id': 'https://other.test/p/1', url: 'https://other.test/a' } }
+
+      it { is_expected.to eq('/p/1') }
+    end
+
+    context 'when the url is absent and the @id is on the page host' do
+      let(:schema_object) { { '@id': 'https://example.com/p' } }
+
+      it { is_expected.to eq('/p') }
+    end
+
+    context 'when the @id is on another host and an explicit url is present' do
+      let(:schema_object) { { '@id': 'https://other.example.net/post/1', url: 'https://example.com/story' } }
+
+      it 'keeps the original identifier' do
+        expect(id).to eq('https://other.example.net/post/1')
+      end
+    end
+
+    context 'when only an absolute @id is present' do
+      let(:schema_object) { { '@id': 'https://other.example.net/post/1' } }
+
+      it 'derives the id from the @id fallback url path' do
+        expect(id).to eq('/post/1')
       end
     end
 
@@ -271,12 +382,32 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       end
     end
 
+    context 'when image is an object without any @type' do
+      let(:schema_object) { { image: { url: 'https://example.com/i.jpg' } } }
+
+      it { expect(image.to_s).to eq('https://example.com/i.jpg') }
+    end
+
+    context 'when image is neither a string nor an object' do
+      let(:schema_object) { { image: 42 } }
+
+      it { is_expected.to be_nil }
+    end
+
     context 'when image is relative and the base url is present' do
       let(:schema_object) { { image: '/relative.jpg' } }
 
       it 'resolves it against the base url' do
         expect(instance.image.to_s).to eq('https://example.com/relative.jpg')
       end
+    end
+
+    context 'when image is absolute and no page url is given' do
+      subject(:instance) { described_class.new(schema_object, url: nil) }
+
+      let(:schema_object) { { image: 'https://cdn.example.org/i.jpg' } }
+
+      it { expect(image.to_s).to eq('https://cdn.example.org/i.jpg') }
     end
 
     context 'when image is a string' do
@@ -286,6 +417,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
       it 'returns the absolute image URL' do
         expect(image.to_s).to eq('https://example.com/image.jpg')
+      end
+
+      it 'returns the same object on repeated calls' do
+        first = instance.image
+        expect(instance.image).to be(first)
       end
     end
 
@@ -525,6 +661,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       end
     end
 
+    context 'when author is a Person hash with a non-string name' do
+      let(:schema_object) { { author: { name: 42 } } }
+
+      it { is_expected.to eq('42') }
+    end
+
     context 'when author is a Person hash with surrounding whitespace in name' do
       let(:schema_object) { { author: { name: '  Ada Lovelace  ' } } }
 
@@ -568,7 +710,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
     end
   end
 
-  describe '#url' do
+  describe '#url with malformed values' do
     subject(:url) { instance.url }
 
     context 'when the url is a list' do

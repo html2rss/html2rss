@@ -35,7 +35,7 @@ module Html2rss
 
         # @return [Boolean] true when any captured body contains article-like arrays
         def extractable?
-          parsed_bodies.any? { |doc| JsonState::CandidateDetector.candidate_array?(doc) }
+          parsed_bodies.any?
         end
 
         # @yield [Hash{Symbol => Object}] normalized article hash

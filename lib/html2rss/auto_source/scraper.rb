@@ -211,8 +211,6 @@ module Html2rss
       private_class_method :app_shell_surface?
 
       def self.high_entropy_surface?(parsed_body)
-        return false if parsed_body.nil?
-
         parsed_body.css('body a[href]').size >= HIGH_ENTROPY_MIN_ANCHORS
       end
       private_class_method :high_entropy_surface?

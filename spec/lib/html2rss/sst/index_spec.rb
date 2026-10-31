@@ -54,11 +54,31 @@ RSpec.describe Html2rss::SST::Index do
     it 'returns nil when no ancestor before html satisfies the condition' do
       expect(index.parent_until(nav_link, ->(node) { node.name == :table })).to be_nil
     end
+
+    it 'returns nil at a root that has no parent and no html element' do
+      body_root = Html2rss::SST::Normalizer.call(Nokogiri::HTML('<html><body><p>x</p></body></html>').at_css('body'))
+      paragraph = body_root.root.find { |node| node.name == :p }
+
+      expect(body_root.index.parent_until(paragraph, ->(node) { node.name == :table })).to be_nil
+    end
+
+    it 'never climbs to or returns the html element', :aggregate_failures do
+      html_node = ->(node) { node.name == :html }
+
+      expect(index.parent_until(nav_link, html_node)).to be_nil
+      expect(index.parent_until(document.root, html_node)).to be_nil
+    end
   end
 
   describe '#memo_visible_text' do
     it 'returns the same visible text as the node' do
-      expect(index.memo_visible_text(wrapper)).to eq(wrapper.visible_text)
+      expect(index.memo_visible_text(wrapper)).to eq("Hello big world\nNav")
+    end
+
+    it 'returns the cached text object on repeated calls' do
+      first = index.memo_visible_text(wrapper)
+
+      expect(index.memo_visible_text(wrapper)).to equal(first)
     end
   end
 
@@ -66,11 +86,38 @@ RSpec.describe Html2rss::SST::Index do
     it 'counts alphanumeric words in the visible text' do
       expect(index.memo_word_count(nav_link)).to eq(1)
     end
+
+    it 'ignores punctuation and counts numbers as words' do
+      parsed = Html2rss::SST::Normalizer.call('<html><body><p>Hello, 42 world!</p></body></html>')
+      paragraph = parsed.root.find { |node| node.name == :p }
+
+      expect(parsed.index.memo_word_count(paragraph)).to eq(3)
+    end
+
+    it 'counts zero words for a node without visible text' do
+      parsed = Html2rss::SST::Normalizer.call('<html><body><p></p></body></html>')
+      paragraph = parsed.root.find { |node| node.name == :p }
+
+      expect(parsed.index.memo_word_count(paragraph)).to eq(0)
+    end
+
+    it 'returns the same count on repeated calls' do
+      expect([index.memo_word_count(nav_link), index.memo_word_count(nav_link)]).to eq([1, 1])
+    end
   end
 
   describe '#each_node' do
     it 'walks the tree depth-first starting at the root' do
       expect(index.each_node.first).to be(document.root)
+    end
+
+    it 'yields every node of the tree when given a block', :aggregate_failures do
+      visited = []
+      index.each_node { visited << _1 }
+
+      expect(visited.first).to be(document.root)
+      expect(visited).to include(nav_link)
+      expect(visited.size).to eq(document.node_count)
     end
   end
 
