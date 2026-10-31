@@ -36,6 +36,14 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::CategoryExtractor do
       end
     end
 
+    context 'when about is a single hash' do
+      let(:schema_object) { { about: { name: 'Cats' } } }
+
+      it 'uses its name' do
+        expect(categories).to contain_exactly('Cats')
+      end
+    end
+
     context 'when about hashes lack a name' do
       let(:schema_object) { { about: [{ url: 'https://example.com' }, { name: nil }, { name: 'Health' }] } }
 

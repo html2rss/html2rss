@@ -39,6 +39,7 @@ module Html2rss
             def add_about(categories, about)
               case about
               when Array then add_about_items(categories, about)
+              when Hash then add_about_items(categories, [about])
               when String then split_string(categories, about)
               end
             end
