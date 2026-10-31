@@ -194,4 +194,25 @@ RSpec.describe Html2rss::RequestService do
       end
     end
   end
+
+  describe '.cookie_store / .cookie_store=' do
+    after { described_class.cookie_store = nil }
+
+    it 'defaults to one memoized in-memory store', :aggregate_failures do
+      described_class.cookie_store = nil
+
+      first = described_class.cookie_store
+
+      expect(first).to be_a(described_class::CookieStore)
+      expect(described_class.cookie_store).to be(first)
+    end
+
+    it 'swaps in a custom store and restores a fresh default on nil', :aggregate_failures do
+      custom = described_class::CookieStore.new
+      described_class.cookie_store = custom
+      expect(described_class.cookie_store).to be(custom)
+      described_class.cookie_store = nil
+      expect(described_class.cookie_store).not_to be(custom)
+    end
+  end
 end
