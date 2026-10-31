@@ -29,13 +29,21 @@ RSpec.describe Html2rss::Selectors::Extractors::Href do
     let(:xml) { Nokogiri.HTML('<div><a href="/posts/latest-findings">...</a></div>') }
     let(:options) { { selector: 'span', base_url: 'https://example.com' } }
 
-    it { is_expected.to eq Html2rss::Url.from_absolute('https://example.com') }
+    it { is_expected.to be_nil }
   end
 
   context 'when the element has no href attribute' do
     let(:xml) { Nokogiri.HTML('<div><a>...</a></div>') }
+    let(:options) { { selector: 'a', base_url: 'https://example.com' } }
 
-    it { is_expected.to eq Html2rss::Url.from_absolute('https://example.com') }
+    it { is_expected.to be_nil }
+  end
+
+  context 'when the href is blank' do
+    let(:xml) { Nokogiri.HTML('<div><a href="  ">...</a></div>') }
+    let(:options) { { selector: 'a', base_url: 'https://example.com' } }
+
+    it { is_expected.to be_nil }
   end
 
   it 'accepts omitted selector and base url' do
