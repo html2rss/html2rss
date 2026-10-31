@@ -8,7 +8,7 @@ module Html2rss
   class RequestService
     ##
     # Strategy to delegate fetching to a Botasaurus scrape API.
-    class BotasaurusStrategy < Strategy
+    class BotasaurusStrategy < Strategy # rubocop:disable Metrics/ClassLength -- transport + cookie-jar retry stay co-located
       # Content-Type negotiation for the scrape API transport hop.
       TRANSPORT_ACCEPT = 'application/json'
       # Disable compressed bodies so HTTPX returns raw JSON without implicit decoding surprises.
@@ -18,16 +18,49 @@ module Html2rss
 
       private
 
+      # With a stored jar, tries the cheap HTTP tier first; cookies never reach the browser tier,
+      # so a block falls back to a plain scrape without them.
       def fetch
-        parsed_response = post_scrape_request
-        raise_from_error!(parsed_response) if parsed_response.is_a?(BotasaurusContract::Error)
+        stored = jar.stored
+        return scrape({}) unless replay?(stored)
 
-        build_response(parsed_response)
+        replay(stored)
       end
 
-      def post_scrape_request
+      def replay?(stored) = botasaurus_options[:execution_mode] != 'browser' && jar.replayable?(stored)
+
+      def replay(stored)
+        response = scrape(stored, execution_mode: 'request')
+        jar.replayed(:pass, stored)
+        response
+      rescue BlockedSurfaceDetected
+        jar.replayed(:block, stored)
+        scrape({})
+      end
+
+      def scrape(stored, overrides = {})
+        parsed_response = post_scrape_request(stored, overrides)
+        raise_from_error!(parsed_response) if parsed_response.is_a?(BotasaurusContract::Error)
+
+        response = build_response(parsed_response)
+        ResponseGuard.new(policy: ctx.policy).inspect_body!(response.body)
+        jar.refresh(stored, response.cookies)
+        response
+      end
+
+      def jar
+        @jar ||= CookieJar.new(
+          host: ctx.url.host, scraper_base_url: scraper_base_url.to_s, proxy: botasaurus_options[:proxy],
+          user_agent: botasaurus_options[:user_agent] || ctx.headers['User-Agent']
+        )
+      end
+
+      def botasaurus_options = ctx.request.fetch(:botasaurus, {})
+
+      def post_scrape_request(stored, overrides)
         request_id = SecureRandom.uuid
         Log.debug("#{self.class}: POST /scrape #{REQUEST_ID_HEADER}=#{request_id}")
+        contract = contract(stored, overrides)
         payload = JSON.generate(contract.request_payload)
         response = client.post(scrape_endpoint, body: payload, headers: post_headers(request_id))
         raise response.error if response.is_a?(HTTPX::ErrorResponse)
@@ -44,7 +77,8 @@ module Html2rss
           url: response_url(parsed_response.final_url),
           status: parsed_response.status,
           transport_meta: parsed_response.transport_meta,
-          captured_responses: parsed_response.xhr_responses
+          captured_responses: parsed_response.xhr_responses,
+          cookies: parsed_response.cookies
         )
       end
 
@@ -69,11 +103,9 @@ module Html2rss
         ctx.url
       end
 
-      def contract
-        @contract ||= BotasaurusContract.new(
-          url: ctx.url,
-          headers: ctx.headers,
-          options: ctx.request.fetch(:botasaurus, {})
+      def contract(stored, overrides)
+        BotasaurusContract.new(
+          url: ctx.url, headers: ctx.headers, options: botasaurus_options.merge(overrides), stored_cookies: stored
         )
       end
 

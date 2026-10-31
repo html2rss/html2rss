@@ -219,6 +219,96 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
   end
 
+  describe 'Success#cookies' do
+    let(:base) { { 'html' => '<p/>', 'diagnostics' => { 'request_id' => 'r' } } }
+
+    def cookies_for(extra) = described_class::Success.new(payload: base.merge(extra)).cookies
+
+    it 'returns the name/value map', :aggregate_failures do
+      expect(cookies_for('cookies' => { 'datadome' => 'abc' })).to eq('datadome' => 'abc')
+      expect(cookies_for('cookies' => { 'a' => 1, 'b' => 'ok' })).to eq('b' => 'ok')
+    end
+
+    it 'is {} when absent, null or not a hash', :aggregate_failures do
+      expect(cookies_for({})).to eq({})
+      expect(cookies_for('cookies' => nil)).to eq({})
+      expect(cookies_for('cookies' => ['datadome=abc'])).to eq({})
+    end
+
+    it 'drops entries whose name or value is not a String, one entry at a time', :aggregate_failures do
+      expect(cookies_for('cookies' => { 1 => 'x' })).to eq({})
+      expect(cookies_for('cookies' => { 'a' => nil })).to eq({})
+      expect(cookies_for('cookies' => { 'a' => 'x', nil => 'y', 'z' => ['q'] })).to eq('a' => 'x')
+    end
+
+    it 'accepts a Hash subclass and returns a new Hash', :aggregate_failures do
+      raw = Class.new(Hash).new.merge!('datadome' => 'abc')
+      cookies = cookies_for('cookies' => raw)
+
+      expect(cookies).to eq('datadome' => 'abc')
+      expect(cookies).not_to equal(raw)
+    end
+
+    it 'accepts String subclasses as names and values', :aggregate_failures do
+      expect(cookies_for('cookies' => { Class.new(String).new('sub') => 'abc' }).keys.first).to eq('sub')
+      expect(cookies_for('cookies' => { 'sub' => Class.new(String).new('abc') })).to eq('sub' => 'abc')
+    end
+
+    it 'does not leak into transport_meta' do
+      payload = base.merge('cookies' => { 'datadome' => 'abc' })
+
+      expect(described_class::Success.new(payload:).transport_meta.to_s).not_to include('abc')
+    end
+  end
+
+  describe '#request_payload cookies' do
+    it 'omits cookies when none are stored or configured' do
+      expect(described_class.new(url:).request_payload).not_to have_key(:cookies)
+    end
+
+    it 'drops an empty or nil configured cookies option', :aggregate_failures do
+      expect(described_class.new(url:, options: { cookies: {} }).request_payload).not_to have_key(:cookies)
+      expect(described_class.new(url:, options: { cookies: nil }).request_payload).not_to have_key(:cookies)
+    end
+
+    it 'merges stored cookies under configured ones', :aggregate_failures do
+      contract = described_class.new(
+        url:, options: { cookies: { a: 'cfg' } }, stored_cookies: { 'a' => 'old', 'b' => 'stored' }
+      )
+
+      expect(contract.request_payload[:cookies]).to eq('a' => 'cfg', 'b' => 'stored')
+      expect(contract.inspect).not_to include('stored')
+    end
+
+    it 'sends only stored cookies when none are configured' do
+      contract = described_class.new(url:, stored_cookies: { 'b' => 'stored' })
+
+      expect(contract.request_payload[:cookies]).to eq('b' => 'stored')
+    end
+
+    it 'sends only configured cookies with symbol keys stringified', :aggregate_failures do
+      contract = described_class.new(url:, options: { cookies: { a: 'cfg' } })
+
+      expect(contract.request_payload[:cookies]).to eq('a' => 'cfg')
+      expect(contract.request_payload[:cookies].keys).to all(be_a(String))
+    end
+
+    it 'treats a nil configured cookies map as none and keeps stored cookies' do
+      contract = described_class.new(url:, options: { cookies: nil }, stored_cookies: { 'b' => 'stored' })
+
+      expect(contract.request_payload[:cookies]).to eq('b' => 'stored')
+    end
+
+    it 'inspects as the class and url only, without options or cookie values', :aggregate_failures do
+      contract = described_class.new(
+        url:, options: { cookies: { a: 'cfg-secret' }, scroll: true }, stored_cookies: { 'b' => 'stored-secret' }
+      )
+
+      expect(contract.inspect).to eq('#<Html2rss::RequestService::BotasaurusContract url=https://example.com/>')
+      expect(contract.inspect).not_to include('secret')
+    end
+  end
+
   describe 'Success#status' do
     subject(:parsed) { described_class::Success.new(payload:) }
 

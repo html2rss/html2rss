@@ -95,6 +95,7 @@ paths:
                   content-type: text/html; charset=utf-8
                 html: <!doctype html><html><body>Example Domain</body></html>
                 xhr_responses: []
+                cookies: {}
                 diagnostics:
                   request_id: b01ef2f8-f641-4e75-8ef2-0b73f7b4f372
                   attempts: 1
@@ -277,7 +278,6 @@ components:
       - get
       - google_get
       - google_get_bypass
-      - organic_get
       title: NavigationMode
     ScrapeDiagnostics:
       properties:
@@ -615,6 +615,17 @@ components:
           title: Xhr Responses
           description: JSON XHR/fetch sub-resource bodies captured on the browser
             tier (empty on the HTTP-request tier).
+        cookies:
+          additionalProperties:
+            type: string
+          type: object
+          title: Cookies
+          description: Cookies set for the target host during this scrape (for example
+            an anti-bot clearance cookie), as a name/value map. Send them back in
+            the `cookies` request field to reuse the session; the service keeps no
+            state between requests.
+          examples:
+          - datadome: abc123
         diagnostics:
           $ref: '#/components/schemas/ScrapeDiagnostics'
           description: Per-request tracing, strategy, timing, and challenge signals.

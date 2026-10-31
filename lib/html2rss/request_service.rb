@@ -82,9 +82,22 @@ module Html2rss
     MAX_DEPRECATION_WARNINGS = 256
     # Mutex guarding process-local deprecation warning deduplication.
     DEPRECATION_MUTEX = Mutex.new
-    private_constant :DEPRECATION_MUTEX
+    # Mutex guarding the process-wide cookie store reference.
+    COOKIE_STORE_MUTEX = Mutex.new
+    private_constant :DEPRECATION_MUTEX, :COOKIE_STORE_MUTEX
 
     class << self
+      # @param store [#fetch, #write, #evict, nil] replacement cookie store (nil restores the in-memory default)
+      # @return [void]
+      def cookie_store=(store)
+        COOKIE_STORE_MUTEX.synchronize { @cookie_store = store }
+      end
+
+      # @return [#fetch, #write, #evict] the configured cookie store (in-memory by default)
+      def cookie_store
+        COOKIE_STORE_MUTEX.synchronize { @cookie_store ||= CookieStore.new }
+      end
+
       # @return [Symbol] the default strategy name
       def default_strategy_name = DEFAULT_STRATEGY_NAME
 

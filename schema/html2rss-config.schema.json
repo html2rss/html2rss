@@ -726,8 +726,7 @@
                 "auto",
                 "get",
                 "google_get",
-                "google_get_bypass",
-                "organic_get"
+                "google_get_bypass"
               ]
             },
             "max_retries": {

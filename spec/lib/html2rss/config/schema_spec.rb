@@ -159,7 +159,7 @@ RSpec.describe Html2rss::Config::Schema do
       expect(botasaurus.fetch('execution_mode').fetch('enum'))
         .to contain_exactly('auto', 'request', 'browser')
       expect(botasaurus.fetch('navigation_mode').fetch('enum'))
-        .to contain_exactly('auto', 'get', 'google_get', 'google_get_bypass', 'organic_get')
+        .to contain_exactly('auto', 'get', 'google_get', 'google_get_bypass')
       expect(botasaurus.dig('max_retries', 'minimum')).to eq(0)
       expect(botasaurus.dig('max_retries', 'maximum')).to eq(3)
       expect(botasaurus.dig('wait_timeout_seconds', 'minimum')).to eq(1)

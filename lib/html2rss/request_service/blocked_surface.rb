@@ -34,7 +34,8 @@ module Html2rss
             /interstitial/i
           ],
           message: 'Blocked surface detected: DataDome anti-bot challenge page. ' \
-                   'Target a direct listing URL, or scrape via a session with resolved DataDome cookies.'
+                   'Target a direct listing URL. Clearance cookies from a successful Botasaurus scrape ' \
+                   'are reused automatically; to supply your own, set request.botasaurus.cookies.'
         },
         {
           key: :vercel_security_checkpoint,
