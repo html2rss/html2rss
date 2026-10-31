@@ -219,6 +219,44 @@ RSpec.describe Html2rss::RequestService::BotasaurusContract do
     end
   end
 
+  describe 'Success#cookies' do
+    let(:base) { { 'html' => '<p/>', 'diagnostics' => { 'request_id' => 'r' } } }
+
+    def cookies_for(extra) = described_class::Success.new(payload: base.merge(extra)).cookies
+
+    it 'returns the name/value map', :aggregate_failures do
+      expect(cookies_for('cookies' => { 'datadome' => 'abc' })).to eq('datadome' => 'abc')
+      expect(cookies_for('cookies' => { 'a' => 1, 'b' => 'ok' })).to eq('b' => 'ok')
+    end
+
+    it 'is {} when absent, null or not a hash', :aggregate_failures do
+      expect(cookies_for({})).to eq({})
+      expect(cookies_for('cookies' => nil)).to eq({})
+      expect(cookies_for('cookies' => ['datadome=abc'])).to eq({})
+    end
+
+    it 'does not leak into transport_meta' do
+      payload = base.merge('cookies' => { 'datadome' => 'abc' })
+
+      expect(described_class::Success.new(payload:).transport_meta.to_s).not_to include('abc')
+    end
+  end
+
+  describe '#request_payload cookies' do
+    it 'omits cookies when none are stored or configured' do
+      expect(described_class.new(url:).request_payload).not_to have_key(:cookies)
+    end
+
+    it 'merges stored cookies under configured ones', :aggregate_failures do
+      contract = described_class.new(
+        url:, options: { cookies: { a: 'cfg' } }, stored_cookies: { 'a' => 'old', 'b' => 'stored' }
+      )
+
+      expect(contract.request_payload[:cookies]).to eq('a' => 'cfg', 'b' => 'stored')
+      expect(contract.inspect).not_to include('stored')
+    end
+  end
+
   describe 'Success#status' do
     subject(:parsed) { described_class::Success.new(payload:) }
 

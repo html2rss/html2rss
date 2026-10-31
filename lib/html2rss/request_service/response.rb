@@ -11,6 +11,8 @@ module Html2rss
       EMPTY_TRANSPORT_META = {}.freeze
       # Default when a strategy does not capture sub-resource responses.
       EMPTY_CAPTURED_RESPONSES = [].freeze
+      # Default when a strategy returns no cookies.
+      EMPTY_COOKIES = {}.freeze
 
       # Bodies that look like HTML even when Content-Type is missing, empty, or wrong.
       HTML_BODY_SNIFF = /\A\s*(?:<!DOCTYPE\s+html|<html)/i
@@ -31,20 +33,18 @@ module Html2rss
       # @param status [Integer, nil] the HTTP status code when available
       # @param transport_meta [Hash] allowlisted upstream telemetry (frozen when present)
       # @param captured_responses [Array<Hash>] JSON XHR/fetch bodies captured during browser scrapes
+      # @param cookies [Hash{String => String}] cookies earned during the scrape (session credentials; never log)
       # rubocop:disable-next Metrics/ParameterLists -- transport + capture fields stay co-located
       def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META,
-                     captured_responses: EMPTY_CAPTURED_RESPONSES)
+                     captured_responses: EMPTY_CAPTURED_RESPONSES, cookies: EMPTY_COOKIES)
         @body = body
 
         @headers = (headers || {}).transform_keys(&:to_s)
         @status = status
         @url = url
-        @transport_meta = transport_meta.nil? || transport_meta.empty? ? EMPTY_TRANSPORT_META : transport_meta.freeze
-        @captured_responses = if captured_responses.nil? || captured_responses.empty?
-                                EMPTY_CAPTURED_RESPONSES
-                              else
-                                captured_responses.freeze
-                              end
+        @transport_meta = freeze_or(transport_meta, EMPTY_TRANSPORT_META)
+        @cookies = freeze_or(cookies, EMPTY_COOKIES)
+        @captured_responses = freeze_or(captured_responses, EMPTY_CAPTURED_RESPONSES)
       end
 
       # @return [String] the raw body of the response
@@ -64,6 +64,9 @@ module Html2rss
 
       # @return [Array<Hash>] captured JSON XHR/fetch responses (empty when unsupported)
       attr_reader :captured_responses
+
+      # @return [Hash{String => String}] cookies earned during the scrape (empty when unsupported)
+      attr_reader :cookies
 
       # @return [String] normalized content type header value
       def content_type = header('content-type').to_s
@@ -100,6 +103,8 @@ module Html2rss
       end
 
       private
+
+      def freeze_or(value, default) = value.nil? || value.empty? ? default : value.freeze
 
       # @param name [String] canonical header name
       # @return [Object, nil] header value when present

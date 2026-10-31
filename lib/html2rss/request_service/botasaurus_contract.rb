@@ -11,7 +11,7 @@ module Html2rss
       # Closed set from OpenAPI ExecutionMode.
       EXECUTION_MODES = Set['auto', 'request', 'browser'].freeze
       # Closed set from OpenAPI NavigationMode.
-      NAVIGATION_MODES = Set['auto', 'get', 'google_get', 'google_get_bypass', 'organic_get'].freeze
+      NAVIGATION_MODES = Set['auto', 'get', 'google_get', 'google_get_bypass'].freeze
       # Closed set from OpenAPI ErrorCategory.
       ERROR_CATEGORIES = Set['timeout', 'challenge_block', 'navigation_error', 'metadata_error', 'validation'].freeze
 
@@ -83,6 +83,15 @@ module Html2rss
 
         # @return [String, nil] final URL reported by upstream
         def final_url = payload['final_url']
+
+        # Session credentials: keep out of logs, transport_meta and feed output.
+        # @return [Hash{String => String}] cookies earned for the target host (absent or malformed → {})
+        def cookies
+          raw = payload['cookies']
+          return {} unless raw.is_a?(Hash)
+
+          raw.select { |name, value| name.is_a?(String) && value.is_a?(String) }
+        end
 
         # @return [Hash{String => Object}] diagnostics plus success-only metadata_error (frozen)
         def transport_meta
@@ -275,11 +284,16 @@ module Html2rss
       # @option options [String] :lang
       # @option options [Hash] :cookies
       # @option options [Hash] :headers
-      def initialize(url:, headers: {}, options: {})
+      # @param stored_cookies [Hash{String => String}] cookies replayed from the cookie store
+      def initialize(url:, headers: {}, options: {}, stored_cookies: {})
         @url = url
         @headers = headers
         @options = options
+        @stored_cookies = stored_cookies
       end
+
+      # @return [String] omits options and stored cookies (session credentials)
+      def inspect = "#<#{self.class} url=#{url}>"
 
       # @return [Hash] payload for POST /scrape (explicit options plus wait cap)
       def request_payload
@@ -287,6 +301,7 @@ module Html2rss
         forwarded_headers = merged_headers
         payload[:headers] = forwarded_headers if forwarded_headers&.any?
         cap_wait_timeout!(payload)
+        merge_cookies!(payload)
         payload
       end
 
@@ -302,7 +317,7 @@ module Html2rss
 
       private
 
-      attr_reader :url, :headers, :options
+      attr_reader :url, :headers, :options, :stored_cookies
 
       def json_object(body)
         payload = JSON.parse(body)
@@ -324,6 +339,13 @@ module Html2rss
         REQUEST_OPTION_KEYS.each_with_object({}) do |key, normalized|
           normalized[key] = options[key] if options.key?(key)
         end
+      end
+
+      # Stored cookies are replayed in every execution_mode; cookies from the feed config win.
+      def merge_cookies!(payload)
+        configured = (options[:cookies] || {}).transform_keys(&:to_s)
+        merged = stored_cookies.merge(configured)
+        payload[:cookies] = merged if merged.any?
       end
 
       def cap_wait_timeout!(payload)
