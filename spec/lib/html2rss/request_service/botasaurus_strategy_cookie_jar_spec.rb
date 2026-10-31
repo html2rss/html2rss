@@ -213,6 +213,103 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
     end
   end
 
+  context 'when replaying in auto mode with further botasaurus options' do
+    let(:botasaurus) { { execution_mode: 'auto', wait_for_selector: '.item' } }
+    let(:responses) { [success.call('datadome' => 'v1'), success.call('datadome' => 'v2')] }
+    let(:jars) { [] }
+
+    before do
+      allow(Html2rss::RequestService::CookieJar).to receive(:new).and_wrap_original do |original, **args|
+        original.call(**args).tap do |jar|
+          allow(jar).to receive(:replayable?).and_call_original
+          allow(jar).to receive(:replayed).and_call_original
+          jars << jar
+        end
+      end
+    end
+
+    it 'overrides only the mode, records the pass with the exact cookies', :aggregate_failures do
+      run
+      response = run
+
+      expect(response.cookies).to eq('datadome' => 'v2')
+      expect(posted.last).to include('execution_mode' => 'request', 'wait_for_selector' => '.item')
+      expect(jars.last).to have_received(:replayed).with(:pass, { 'datadome' => 'v1' }).once
+      expect(jars.last).not_to have_received(:replayed).with(:block, anything)
+    end
+  end
+
+  context 'when the replay is blocked in auto mode with further botasaurus options' do
+    let(:botasaurus) { { execution_mode: 'auto', wait_for_selector: '.item' } }
+    let(:responses) { [success.call('datadome' => 'v1'), blocked, success.call({})] }
+    let(:jars) { [] }
+
+    before do
+      allow(Html2rss::RequestService::CookieJar).to receive(:new).and_wrap_original do |original, **args|
+        original.call(**args).tap do |jar|
+          allow(jar).to receive(:replayed).and_call_original
+          jars << jar
+        end
+      end
+    end
+
+    it 'records the block and falls back with the original options and no cookies', :aggregate_failures do
+      run
+      run
+
+      expect(posted[1]).to include('execution_mode' => 'request', 'wait_for_selector' => '.item')
+      expect(posted.last).to include('execution_mode' => 'auto', 'wait_for_selector' => '.item')
+      expect(posted.last).not_to have_key('cookies')
+      expect(jars.last).to have_received(:replayed).with(:block, { 'datadome' => 'v1' }).once
+      expect(jars.last).not_to have_received(:replayed).with(:pass, anything)
+    end
+  end
+
+  context 'when the replay fails with a non-block error' do
+    let(:timeout) do
+      { status: 504, body: { error: 'slow', error_category: 'timeout', diagnostics: }.to_json }
+    end
+    let(:responses) { [success.call('datadome' => 'v1'), timeout, success.call({})] }
+
+    it 'propagates it without fallback or block record', :aggregate_failures do
+      run
+
+      expect { run }.to raise_error(Html2rss::RequestService::RequestTimedOut)
+      expect(posted.size).to eq(2)
+      expect(Html2rss::RequestService.cookie_store.fetch(stored_key)).to eq('datadome' => 'v1')
+    end
+  end
+
+  context 'when the mode is browser' do
+    let(:botasaurus) { { execution_mode: 'browser' } }
+    let(:jars) { [] }
+    let(:responses) { [success.call('datadome' => 'v1'), success.call({})] }
+
+    it 'does not even consult the jar for replayability', :aggregate_failures do
+      run
+      allow(Html2rss::RequestService::CookieJar).to receive(:new).and_wrap_original do |original, **args|
+        original.call(**args).tap { |jar| allow(jar).to receive(:replayable?).and_call_original }
+                .tap { |jar| jars << jar }
+      end
+      run
+
+      expect(jars.last).not_to have_received(:replayable?)
+      expect(posted.last).not_to have_key('cookies')
+    end
+  end
+
+  context 'when the browser mode is a freshly built string' do
+    let(:botasaurus) { { execution_mode: 'browser'.dup } }
+    let(:responses) { [success.call('datadome' => 'v1'), success.call({})] }
+
+    it 'still never replays', :aggregate_failures do
+      run
+      run
+
+      expect(posted.last).not_to have_key('cookies')
+    end
+  end
+
   context 'when keying the jar by user agent' do
     let(:responses) do
       [success.call('datadome' => 'header'), success.call('datadome' => 'option'), success.call({}), success.call({})]
