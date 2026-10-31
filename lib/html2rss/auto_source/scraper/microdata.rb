@@ -444,7 +444,8 @@ module Html2rss
           # @return [Hash{Symbol => Object}] normalized media attributes
           def self.media_attributes(properties)
             {
-              image: ValueNormalizer.image_value(properties.delete(:image), properties.delete(:thumbnailUrl)),
+              image: ValueNormalizer.image_value(properties.delete(:image), properties.delete(:thumbnailUrl),
+                                                 properties.delete(:thumbnail)),
               video: properties.delete(:video),
               audio: properties.delete(:audio)
             }

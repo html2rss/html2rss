@@ -96,7 +96,7 @@ module Html2rss
 
           # @return [Array<String>] normalized image URL candidates
           def image_urls
-            @image_urls ||= schema_object.values_at(:image, :thumbnailUrl).filter_map { image_url_from(_1) }
+            @image_urls ||= schema_object.values_at(:image, :thumbnailUrl, :thumbnail).filter_map { image_url_from(_1) }
           end
 
           private
@@ -175,7 +175,9 @@ module Html2rss
             return obj if obj.is_a?(String)
             return obj.filter_map { image_url_from(_1) }.first if obj.is_a?(Array)
             return unless obj.is_a?(Hash)
-            return unless Schema.normalize_types(obj[:@type]).include?('ImageObject')
+
+            types = Schema.normalize_types(obj[:@type])
+            return unless types.empty? || types.include?('ImageObject')
 
             obj[:url] || obj[:contentUrl]
           end
