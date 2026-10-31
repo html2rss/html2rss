@@ -323,6 +323,7 @@ module Html2rss
     end
 
     def post_process(scope, value, post_process_steps)
+      value = step_input(value)
       post_process_steps.each do |step_config|
         value = PostProcessors.call(step_config[:name], value, scope.context_for(step_config:))
       end
@@ -330,9 +331,15 @@ module Html2rss
       value
     end
 
+    # Post-processors work on text, so a URL value (from the href extractor) enters them as a String.
+    def step_input(value)
+      value.is_a?(Url) ? value.to_s : value
+    end
+
     def apply_compiled_post_process(scope, value, steps)
       return value unless value && steps
 
+      value = step_input(value)
       steps.each do |klass, step_config|
         value = klass.new(value, scope.context_for(step_config:)).call
       end
