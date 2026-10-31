@@ -23,7 +23,15 @@ module Html2rss
           'og:image' => :image,
           'twitter:image' => :image,
           'article:published_time' => :published_at,
-          'article:author' => :author
+          'article:author' => :author,
+          'og:video' => :video,
+          'og:video:url' => :video,
+          'og:video:secure_url' => :video,
+          'og:video:type' => :video_type,
+          'og:audio' => :audio,
+          'og:audio:url' => :audio,
+          'og:audio:secure_url' => :audio,
+          'og:audio:type' => :audio_type
         }.freeze
         private_constant :META_MAP
 
@@ -167,8 +175,30 @@ module Html2rss
             description: meta_data[:description] || oembed_data[:html],
             author: oembed_data[:author] || meta_data[:author],
             published_at: meta_data[:published_at],
-            image: oembed_data[:thumbnail] || meta_data[:image]
+            image: oembed_data[:thumbnail] || meta_data[:image],
+            enclosures: media_enclosures(meta_data)
           }.compact
+        end
+
+        # @param meta_data [Hash{Symbol => Object}] extracted OpenGraph meta tags
+        # @return [Array<Hash{Symbol => Object}>, nil] og:video / og:audio enclosures (page-type embeds skipped)
+        def media_enclosures(meta_data)
+          found = %i[video audio].filter_map do |kind|
+            type = meta_data[:"#{kind}_type"]
+            next if type && !type.start_with?("#{kind}/")
+
+            media_enclosure(meta_data[kind], type)
+          end
+          found unless found.empty?
+        end
+
+        # @param src [String, nil] raw media URL
+        # @param type [String, nil] declared MIME type
+        # @return [Hash{Symbol => Object}, nil] enclosure attributes
+        def media_enclosure(src, type)
+          ::Html2rss::Html::ArticleRules::Enclosure.from_media(src, type, url)
+        rescue Html2rss::Url::InvalidUrlError
+          nil
         end
 
         # @param raw_url [String, nil] raw relative or absolute URL string

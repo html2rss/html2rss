@@ -594,5 +594,50 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         expect(url).to be_nil
       end
     end
+
+    {
+      'mainEntityOfPage string' => [{ mainEntityOfPage: 'https://example.com/m#top' }, 'https://example.com/m'],
+      'mainEntityOfPage @id' => [{ mainEntityOfPage: { '@id': 'https://example.com/m' } }, 'https://example.com/m'],
+      'mainEntityOfPage url' => [{ mainEntityOfPage: { url: 'https://example.com/m' } }, 'https://example.com/m'],
+      'absolute @id' => [{ '@id': 'https://example.com/i#article' }, 'https://example.com/i'],
+      'mainEntityOfPage over @id' => [{ mainEntityOfPage: 'https://example.com/m', '@id': 'https://example.com/i' },
+                                      'https://example.com/m'],
+      'explicit url over fallbacks' => [{ url: 'https://example.com/u#frag', mainEntityOfPage: 'https://e.com/m' },
+                                        'https://example.com/u#frag'],
+      'non-http mainEntityOfPage' => [{ mainEntityOfPage: 'urn:uuid:1', '@id': 'ftp://example.com/x' }, nil],
+      'relative @id' => [{ '@id': '/relative' }, nil]
+    }.each do |name, (object, expected)|
+      context "when falling back with #{name}" do
+        let(:schema_object) { object }
+
+        it 'resolves the expected url' do
+          expect(url&.to_s).to eq(expected)
+        end
+      end
+    end
+  end
+
+  describe '#enclosures' do
+    subject(:enclosures) { instance.call[:enclosures]&.map { |enc| { url: enc[:url].to_s, type: enc[:type] } } }
+
+    {
+      'video with encodingFormat' => [{ video: { '@type': 'VideoObject', contentUrl: 'https://example.com/v.mp4',
+                                                 encodingFormat: 'video/mp4' } },
+                                      [{ url: 'https://example.com/v.mp4', type: 'video/mp4' }]],
+      'audio without encodingFormat' => [{ audio: { '@type': 'AudioObject', contentUrl: '/a.mp3' } },
+                                         [{ url: 'https://example.com/a.mp3', type: nil }]],
+      'video and audio lists' => [{ video: [{ contentUrl: 'https://example.com/1.mp4' }],
+                                    audio: [{ contentUrl: 'https://example.com/2.mp3' }, 'junk'] },
+                                  [{ url: 'https://example.com/1.mp4', type: nil },
+                                   { url: 'https://example.com/2.mp3', type: nil }]],
+      'embedUrl only' => [{ video: { embedUrl: 'https://example.com/embed' } }, nil],
+      'no media' => [{}, nil]
+    }.each do |name, (extra, expected)|
+      context "with #{name}" do
+        let(:schema_object) { extra }
+
+        it { is_expected.to eq(expected) }
+      end
+    end
   end
 end
