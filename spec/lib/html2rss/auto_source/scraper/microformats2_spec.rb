@@ -225,6 +225,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microformats2 do
       it { expect(scraper.first[:image]).to eq('https://example.com/photos/p.jpg') }
     end
 
+    {
+      'author avatar before the photo' => [
+        '<span class="p-author h-card"><img class="u-photo" src="/avatar.png"><span class="p-name">Jane</span></span>' \
+        '<img class="u-photo" src="/hero.jpg">', 'https://example.com/hero.jpg'
+      ],
+      'avatar in a nested h-card only' => [
+        '<div class="h-card"><img class="u-photo" src="/avatar.png"></div>', nil
+      ],
+      'photo after the avatar and a featured image' => [
+        '<span class="p-author"><img class="u-photo" src="/avatar.png"></span><img class="u-featured" src="/f.jpg">',
+        'https://example.com/f.jpg'
+      ]
+    }.each do |name, (markup, expected)|
+      context "with #{name}" do
+        let(:parsed_body) do
+          Nokogiri::HTML(%(<html><body><div class="h-entry"><span class="p-name">T</span>#{markup}</div></body></html>))
+        end
+
+        it 'never uses the author avatar as article image' do
+          expect(scraper.first[:image]).to eq(expected)
+        end
+      end
+    end
+
     context 'when image has an empty src' do
       let(:parsed_body) do
         Nokogiri::HTML(<<~HTML)

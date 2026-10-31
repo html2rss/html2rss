@@ -111,9 +111,17 @@ module Html2rss
         # @param entry [Nokogiri::XML::Element] entry DOM node
         # @return [String, nil] image URL
         def extract_image(entry)
-          node = entry.at_css('.u-featured, .u-photo')
+          node = entry.css('.u-featured, .u-photo').find { !author_node?(_1, entry) }
           raw_src = node&.attr('src')&.strip || node&.attr('href')&.strip
           resolve_url(raw_src)&.to_s
+        end
+
+        # @param node [Nokogiri::XML::Element] candidate node
+        # @param entry [Nokogiri::XML::Element] entry DOM node
+        # @return [Boolean] whether the node is, or sits inside, an author card within the entry
+        def author_node?(node, entry)
+          chain = [node, *node.ancestors.take_while { _1 != entry }]
+          chain.any? { _1['class'].to_s.split.intersect?(%w[p-author h-card]) }
         end
 
         # @param entry [Nokogiri::XML::Element] entry DOM node
