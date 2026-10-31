@@ -43,6 +43,9 @@ module Html2rss
         # Shared empty type set for nil/unsupported wire forms (avoids per-call Set.new).
         EMPTY_TYPES = Set.new.freeze
 
+        # Keys whose `{"@id": ...}` stubs are resolved against sibling nodes of the same JSON-LD document.
+        REFERENCE_KEYS = %i[author publisher image].freeze
+
         # @return [Symbol] scraper config key
         def self.options_key = :schema
 
@@ -82,6 +85,18 @@ module Html2rss
             when Array then object.flat_map { |item| from(item) }
             else []
             end
+          end
+
+          ##
+          # Like {from} for a script tag, but resolves `@id` stubs for {REFERENCE_KEYS} against the same document.
+          #
+          # @param script [Nokogiri::XML::Element] schema JSON-LD script tag
+          # @return [Array<Hash>] the schema_objects with resolved references
+          # @api private
+          def from_script(script)
+            document = parse_script_tag(script)
+            index = node_index(document)
+            from(document).map { |object| resolve_references(object, index) }
           end
 
           # @param object [Hash{Symbol => Object}] schema candidate object
@@ -138,6 +153,37 @@ module Html2rss
           end
 
           private
+
+          # @param object [Hash, Array, Object] parsed JSON-LD value
+          # @param index [Hash{String => Hash}] accumulator of nodes (more than just `@id`) keyed by `@id`
+          # @return [Hash{String => Hash}] nodes keyed by `@id`
+          def node_index(object, index = {})
+            case object
+            when Hash
+              index[object[:@id]] ||= object if object[:@id].is_a?(String) && object.size > 1
+              object.each_value { node_index(_1, index) }
+            when Array then object.each { node_index(_1, index) }
+            end
+            index
+          end
+
+          # @param object [Hash{Symbol => Object}] schema object
+          # @param index [Hash{String => Hash}] nodes keyed by `@id`
+          # @return [Hash{Symbol => Object}] object with reference stubs replaced where a sibling node exists
+          def resolve_references(object, index)
+            object.to_h { |key, value| [key, REFERENCE_KEYS.include?(key) ? resolve_stub(value, index) : value] }
+          end
+
+          # @param value [Object] author, publisher or image value
+          # @param index [Hash{String => Hash}] nodes keyed by `@id`
+          # @return [Object] the referenced node for an `{"@id": ...}` stub, else the value unchanged
+          def resolve_stub(value, index)
+            case value
+            when Array then value.map { resolve_stub(_1, index) }
+            when Hash then value.keys == [:@id] ? index.fetch(value[:@id], value) : value
+            else value
+            end
+          end
 
           # @param hash [Hash] candidate schema object
           # @return [Array<Hash>] the object itself or nested supported objects
@@ -200,7 +246,7 @@ module Html2rss
 
         def schema_objects
           ::Html2rss::Html::Probe.scripts(@parsed_body, ::Html2rss::Html::Probe::APPLICATION_LD_JSON)
-                                 .flat_map { |tag| Schema.from(tag) }
+                                 .flat_map { |tag| Schema.from_script(tag) }
         end
 
         attr_reader :parsed_body, :url

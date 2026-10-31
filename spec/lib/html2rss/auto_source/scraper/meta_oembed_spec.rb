@@ -564,5 +564,28 @@ RSpec.describe Html2rss::AutoSource::Scraper::MetaOembed do
         expect(scraper.to_a).to be_empty
       end
     end
+
+    {
+      'og:video with type' => ['<meta property="og:video" content="/v/a.mp4">' \
+                               '<meta property="og:video:type" content="video/mp4">',
+                               [{ url: 'https://example.com/v/a.mp4', type: 'video/mp4' }]],
+      'og:audio without type' => ['<meta property="og:audio" content="https://cdn.example.com/a.mp3">',
+                                  [{ url: 'https://cdn.example.com/a.mp3', type: nil }]],
+      'og:video page embed' => ['<meta property="og:video" content="https://e.com/embed">' \
+                                '<meta property="og:video:type" content="text/html">',
+                                nil],
+      'none' => ['', nil]
+    }.each do |name, (markup, expected)|
+      context "with media meta tags: #{name}" do
+        subject(:article) { described_class.new(parsed_body, url:).each.first }
+
+        let(:parsed_body) { Nokogiri::HTML(%(<html><head><meta property="og:title" content="T">#{markup}</head></html>)) }
+
+        it 'maps to enclosures' do
+          actual = article[:enclosures]&.map { |enc| { url: enc[:url].to_s, type: enc[:type] } }
+          expect(actual).to eq(expected)
+        end
+      end
+    end
   end
 end
