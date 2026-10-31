@@ -23,7 +23,7 @@ module Html2rss
         stored = jar.stored
         scrape(stored)
       rescue BlockedSurfaceDetected
-        raise if stored.nil? || stored.empty?
+        raise if stored.empty?
 
         jar.evict(stored)
         scrape({})

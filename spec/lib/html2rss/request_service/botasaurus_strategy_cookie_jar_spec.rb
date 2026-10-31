@@ -32,8 +32,10 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
   end
   let(:posted) { [] }
 
-  def run(target = url, options = botasaurus)
-    ctx = Html2rss::RequestService::Context.new(url: target, request: { botasaurus: options }, policy:, budget:)
+  def run(target = url, options = botasaurus, headers = {})
+    ctx = Html2rss::RequestService::Context.new(
+      url: target, headers:, request: { botasaurus: options }, policy:, budget:
+    )
     described_class.new(ctx).execute
   end
 
@@ -141,6 +143,67 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
     end
   end
 
+  context 'when the retry is blocked too and eviction is observed' do
+    let(:responses) { [success.call('datadome' => 'stale'), blocked, blocked] }
+
+    it 'evicts exactly once', :aggregate_failures do
+      run
+      store = Html2rss::RequestService.cookie_store
+      allow(store).to receive(:evict).and_call_original
+
+      expect { run }.to raise_error(Html2rss::RequestService::BlockedSurfaceDetected)
+      expect(store).to have_received(:evict).once
+    end
+  end
+
+  context 'when keying the jar by user agent' do
+    let(:responses) do
+      [success.call('datadome' => 'header'), success.call('datadome' => 'option'), success.call({}), success.call({})]
+    end
+
+    it 'uses the botasaurus user_agent, falling back to the User-Agent header', :aggregate_failures do
+      run(url, {}, { 'User-Agent' => 'Header UA' })
+      run(url, { user_agent: 'Option UA' }, { 'User-Agent' => 'Header UA' })
+      run(url, {}, { 'User-Agent' => 'Header UA' })
+      run(url, { user_agent: 'Option UA' })
+
+      store = Html2rss::RequestService.cookie_store
+      expect(store.fetch(stored_key(user_agent: 'Header UA'))).to eq('datadome' => 'header')
+      expect(store.fetch(stored_key(user_agent: 'Option UA'))).to eq('datadome' => 'option')
+      expect(posted.last(2).map { |payload| payload['cookies'] })
+        .to eq([{ 'datadome' => 'header' }, { 'datadome' => 'option' }])
+    end
+  end
+
+  context 'when keying the jar by proxy' do
+    let(:responses) { [success.call('datadome' => 'p1'), success.call({})] }
+
+    it 'stores and replays under the proxy key only', :aggregate_failures do
+      proxy = 'http://proxy.test:8080'
+      run(url, { proxy: })
+      run(url, { proxy: })
+
+      expect(Html2rss::RequestService.cookie_store.fetch(stored_key(proxy:))).to eq('datadome' => 'p1')
+      expect(posted.last['cookies']).to eq('datadome' => 'p1')
+    end
+  end
+
+  context 'when the strategy builds its jar' do
+    let(:responses) { [success.call('datadome' => 'v1')] }
+
+    it 'builds the jar once per strategy and passes the host, scraper url, proxy and UA', :aggregate_failures do
+      allow(Html2rss::RequestService::CookieJar).to receive(:new).and_call_original
+      ctx = Html2rss::RequestService::Context.new(
+        url:, headers: { 'User-Agent' => 'H' }, request: { botasaurus: { proxy: 'http://p:1' } }, policy:, budget:
+      )
+      described_class.new(ctx).execute
+
+      expect(Html2rss::RequestService::CookieJar).to have_received(:new).once.with(
+        host: 'example.com', scraper_base_url: 'http://localhost:4010/', proxy: 'http://p:1', user_agent: 'H'
+      )
+    end
+  end
+
   context 'when cookie reuse is logged' do
     let(:responses) { [success.call('datadome' => 'secret-value')] }
 
@@ -153,9 +216,9 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy, 'cookie jar' do
     end
   end
 
-  def stored_key
+  def stored_key(proxy: nil, user_agent: nil)
     Html2rss::RequestService::CookieStore.key(
-      host: 'example.com', scraper_base_url: 'http://localhost:4010/', proxy: nil, user_agent: nil
+      host: 'example.com', scraper_base_url: 'http://localhost:4010/', proxy:, user_agent:
     )
   end
 end
