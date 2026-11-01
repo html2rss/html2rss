@@ -343,28 +343,51 @@ module Html2rss
     end
 
     def lift_heading_link_roots(roots)
-      roots.map { |root| lift_heading_link_root(root, roots) }
+      enclosed = enclosed_root_counts(roots)
+      roots.map { |root| lift_heading_link_root(root, enclosed) }
     end
 
-    def lift_heading_link_root(root, all_roots)
+    def lift_heading_link_root(root, enclosed)
       return root unless heading_or_inner_title_link?(root)
 
       index = SST::Index.for_node(root)
       return root unless index
 
-      walk_usable_card(root, index, all_roots)
+      walk_usable_card(root, index, enclosed)
     end
 
-    def walk_usable_card(root, index, all_roots)
+    def walk_usable_card(root, index, enclosed)
       candidate = root
       parent = index.parent_of(root)
-      while parent && Html::Navigator.usable_card_parent?(parent)
-        break if contains_other_root?(parent, root, all_roots)
+      while Html::Navigator.usable_card_parent?(parent)
+        break if contains_other_root?(parent, enclosed)
 
         candidate = parent
         parent = index.parent_of(parent)
       end
       candidate
+    end
+
+    # Identity-keyed tally of how many distinct roots each node is, or strictly encloses, so the
+    # card walk answers "does this ancestor hold another root?" without rescanning all roots.
+    def enclosed_root_counts(roots)
+      tally = Hash.new(0).compare_by_identity
+      roots.uniq(&:object_id).each do |root|
+        tally[root] += 1
+        count_enclosing_ancestors(root, tally)
+      end
+      tally
+    end
+
+    def count_enclosing_ancestors(root, tally)
+      index = SST::Index.for_node(root)
+      return unless index
+
+      ancestor = index.parent_of(root)
+      while ancestor
+        tally[ancestor] += 1
+        ancestor = index.parent_of(ancestor)
+      end
     end
 
     def heading_or_inner_title_link?(node)
@@ -381,16 +404,9 @@ module Html2rss
       node.find { |child| !child.equal?(node) && tags.include?(child.name.to_s) }
     end
 
-    def contains_other_root?(parent, root, all_roots)
-      all_roots.any? do |other|
-        next if other.equal?(root)
-
-        other.equal?(parent) || sst_descendant?(other, parent)
-      end
-    end
-
-    def sst_descendant?(child, ancestor)
-      SST::Index.for_node(child)&.descendant_of?(child, ancestor)
+    # The walked-from root is itself tallied under every ancestor, so more than one means another root.
+    def contains_other_root?(parent, enclosed)
+      enclosed[parent] > 1
     end
 
     def shared_class_items_selector(roots)
