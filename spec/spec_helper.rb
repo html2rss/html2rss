@@ -43,6 +43,7 @@ require_relative 'support/helpers/fixture_helpers'
 require_relative 'support/helpers/sst_test_helpers'
 require_relative 'support/helpers/mcp_test_helpers'
 require_relative 'support/helpers/feed_test_helpers'
+require_relative 'support/helpers/thread_helpers'
 
 # Load shared examples
 Dir.glob('**/*.rb', base: File.join(__dir__, 'support/shared_examples')).each do |f|

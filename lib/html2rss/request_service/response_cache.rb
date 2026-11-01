@@ -33,27 +33,53 @@ module Html2rss
         @entries = {}
         @bytes = 0
         @mutex = Mutex.new
+        @flight_done = ConditionVariable.new
+        @inflight = Set.new
       end
 
       ##
+      # Concurrent callers missing the same key share one fetch: the first builds the response while
+      # the others wait, then each is served its own replica. A raising or uncacheable fetch is not
+      # stored; waiters then retry in turn so none is left blocked.
       # @param key [Object] hashable cache key
       # @yieldreturn [Response] the freshly fetched response, built only on a miss
       # @return [Response] a cache-aged replica on a hit, otherwise the freshly built response
-      def fetch(key)
-        cached = lookup(key)
+      def fetch(key, &)
+        cached = claim(key)
         return cached if cached
 
-        yield.tap { |response| store(key, response) if cacheable?(response) }
+        lead(key, &)
       end
 
       private
 
-      def lookup(key)
+      # Returns a fresh replica, or nil after registering the caller as the key's fetcher.
+      def claim(key)
         @mutex.synchronize do
-          entry = @entries[key]
-          age = entry && (@clock.call - entry.stored_at)
-          entry.response.replica(cache_age: age.floor) if age && age < @ttl
+          loop do
+            hit = lookup(key)
+            break hit if hit
+            break @inflight.add(key) && nil unless @inflight.include?(key)
+
+            @flight_done.wait(@mutex)
+          end
         end
+      end
+
+      def lead(key)
+        yield.tap { |response| store(key, response) if cacheable?(response) }
+      ensure
+        @mutex.synchronize do
+          @inflight.delete(key)
+          @flight_done.broadcast
+        end
+      end
+
+      # Callers must hold @mutex.
+      def lookup(key)
+        entry = @entries[key]
+        age = entry && (@clock.call - entry.stored_at)
+        entry.response.replica(cache_age: age.floor) if age && age < @ttl
       end
 
       def store(key, response)
