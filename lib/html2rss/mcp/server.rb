@@ -99,6 +99,7 @@ module Html2rss
           raise ArgumentError, "Unknown transport: #{transport.inspect}" unless TRANSPORTS.include?(transport)
 
           configure_daemon_logging!
+          Runtime.install_response_cache!
           app = build
           Log.info(start_banner(transport:, port:))
           return start_http(app, port:) if transport == :http

@@ -132,6 +132,8 @@ Shared wall-clock and HTTP request meters for one feed build. Constructed via `R
 
 ## HTML-ness
 
+`RequestService.response_cache=` is an opt-in seam for initial fetches (`RequestService::ResponseCache`: TTL, bounded, 2xx only; key is a digest incl. `Policy#cache_key`). Only the MCP process installs it, via `HTML2RSS_RESPONSE_CACHE_TTL`.
+
 Whether a response document is HTML is owned by `RequestService::Response#html_response?` (Content-Type `text/html`, or a non-JSON body matching `Response::HTML_BODY_SNIFF`). `content_type` stays the wire header. Capture, Channel, and curation inspect all call that one predicate. Gzip/brotli inflate stays on `CompressedBody`, called only from the HTTPX adapter.
 
 ## Botasaurus scrape contract

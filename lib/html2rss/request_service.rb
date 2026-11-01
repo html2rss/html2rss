@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 module Html2rss
   ##
   # Requests website URLs to retrieve their HTML for further processing.
@@ -98,9 +100,13 @@ module Html2rss
       # Opts in to reusing initial page fetches, e.g. while a person iterates on selectors for one page.
       # The cache is consulted only for +relation == :initial+ requests; follow-ups always hit the network.
       #
-      # @param cache [#fetch, nil] receives +fetch(key) { response }+, where +key+ is
-      #   +[url, strategy, headers, request]+, and returns the cached or freshly built {Response};
-      #   +nil+ (the default) disables caching. A raising block must not be cached.
+      # The key is a SHA256 digest of the URL, strategy, headers, request options and the policy fields
+      # that shape a response, so credentials never reach the cache and a response fetched under a
+      # permissive {Policy} is never served to a stricter one. Cookie-store state is not part of the key.
+      #
+      # @param cache [#fetch, nil] receives +fetch(key) { response }+ and returns the cached or freshly
+      #   built {Response}, e.g. {ResponseCache}; +nil+ (the default) disables caching.
+      #   A raising block must not be cached.
       # @return [void]
       def response_cache=(cache)
         RESPONSE_CACHE_MUTEX.synchronize { @response_cache = cache }
@@ -166,7 +172,12 @@ module Html2rss
         cache = response_cache
         return yield unless cache && ctx.relation == :initial
 
-        cache.fetch([ctx.url.to_s, strategy, ctx.headers, ctx.request], &).replica
+        cache.fetch(response_cache_key(ctx, strategy), &).replica
+      end
+
+      def response_cache_key(ctx, strategy)
+        parts = [ctx.url.to_s, strategy, ctx.headers.sort, ctx.request, ctx.policy.cache_key]
+        Digest::SHA256.hexdigest(parts.inspect)
       end
 
       ##

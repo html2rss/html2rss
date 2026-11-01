@@ -81,6 +81,12 @@ module Html2rss
       end
 
       ##
+      # @return [Array] the policy fields that shape a fetched response (for response caching)
+      def cache_key
+        [allow_private_networks?, max_redirects, max_response_bytes, max_decompressed_bytes]
+      end
+
+      ##
       # Returns the default request policy.
       #
       # @return [Policy] a default, frozen policy instance

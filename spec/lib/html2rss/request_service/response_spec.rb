@@ -611,6 +611,10 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(fields.map { |field| copy.public_send(field) }).to eq(fields.map { |field| original.public_send(field) })
     end
 
+    it 'does not share the body string with the original' do
+      expect(original.replica.body).not_to be(original.body)
+    end
+
     it 'shares no parsed document with the original' do
       expect(original.replica.parsed_body).not_to be(original.parsed_body)
     end

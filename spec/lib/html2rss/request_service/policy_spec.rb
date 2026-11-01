@@ -532,4 +532,18 @@ RSpec.describe Html2rss::RequestService::Policy do
       end
     end
   end
+
+  describe '#cache_key' do
+    {
+      allow_private_networks: true, max_redirects: 1, max_response_bytes: 10, max_decompressed_bytes: 10
+    }.each do |option, value|
+      it "differs when #{option} differs" do
+        expect(described_class.new(option => value).cache_key).not_to eq(described_class.default.cache_key)
+      end
+    end
+
+    it 'is equal for equal policies' do
+      expect(described_class.new.cache_key).to eq(described_class.default.cache_key)
+    end
+  end
 end

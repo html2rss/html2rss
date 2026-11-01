@@ -73,6 +73,10 @@ Do not duplicate playbook prose in `server.rb`.
 | `scrape-webpage`      | One `scrape` call; `inspect` only if weak or recon needed    |
 | `capture-feed-config` | Capture YAML → test → apply; catalog rewrite; strive enhance |
 
+## Response cache
+
+The MCP process is long-lived, so an agent iterating `inspect → capture → validate → test` on one URL can skip refetching. Set `HTML2RSS_RESPONSE_CACHE_TTL` (seconds; unset = off) to install `RequestService::ResponseCache` at server start. Only initial 2xx fetches are cached, keyed by a digest of URL, strategy, headers, request options, and policy limits. Follow-ups and block pages always hit the network. The one-shot CLI has no use for it; use `capture` or `--input -` for offline iteration.
+
 ## Strategy note
 
 `scrape` / `capture` with `strategy: "auto"` run the full AutoFallback chain. `inspect` maps `auto` to default (HTTPX) for cheap diagnostics; pin `botasaurus` when you need browser rendering for inspect.

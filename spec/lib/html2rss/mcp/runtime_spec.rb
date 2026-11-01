@@ -42,4 +42,24 @@ RSpec.describe Html2rss::MCP::Runtime do
       expect(described_class.botasaurus_configured?).to be(false)
     end
   end
+
+  describe '.install_response_cache!' do
+    after { Html2rss::RequestService.response_cache = nil }
+
+    it 'stays off when HTML2RSS_RESPONSE_CACHE_TTL is unset' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('HTML2RSS_RESPONSE_CACHE_TTL').and_return(nil)
+      described_class.install_response_cache!
+
+      expect(Html2rss::RequestService.response_cache).to be_nil
+    end
+
+    it 'installs a ResponseCache when a ttl is configured' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('HTML2RSS_RESPONSE_CACHE_TTL').and_return(" 300\n")
+      described_class.install_response_cache!
+
+      expect(Html2rss::RequestService.response_cache).to be_a(Html2rss::RequestService::ResponseCache)
+    end
+  end
 end

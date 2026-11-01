@@ -22,6 +22,20 @@ module Html2rss
         end
 
         ##
+        # Opts the long-lived MCP process in to reusing initial page fetches, so an agent iterating
+        # +inspect -> capture -> validate -> test+ on one URL fetches it once per TTL window.
+        #
+        # Configured by +HTML2RSS_RESPONSE_CACHE_TTL+ seconds; unset leaves caching off.
+        #
+        # @return [void]
+        def install_response_cache!
+          ttl = ENV['HTML2RSS_RESPONSE_CACHE_TTL'].to_s.strip
+          return if ttl.empty?
+
+          RequestService.response_cache = RequestService::ResponseCache.new(ttl: Integer(ttl))
+        end
+
+        ##
         # @return [Snapshot] runtime capabilities and catalog identity for MCP clients
         def snapshot
           Snapshot.new(

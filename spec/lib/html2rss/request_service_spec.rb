@@ -218,44 +218,102 @@ RSpec.describe Html2rss::RequestService do
 
   describe '.response_cache / .response_cache=' do
     let(:strategy_instance) { instance_double(described_class::HttpxStrategy) }
-    let(:fetched) { described_class::Response.new(body: '<html></html>', url: 'https://example.com/', status: 200) }
-    let(:cache) { Class.new { def fetch(key) = (@store ||= {})[key] ||= yield }.new }
-
-    def context_for(relation:)
+    let(:relation) { :initial }
+    let(:context) do
       instance_double(
         Html2rss::RequestService::Context,
-        relation:, headers: { 'accept' => 'text/html' }, request: {},
+        relation:, headers: { 'accept' => 'text/html' }, request: {}, policy: Html2rss::RequestService::Policy.default,
         url: instance_double(Html2rss::Url, host: 'example.com', to_s: 'https://example.com/')
       )
     end
 
     before do
       allow(described_class::HttpxStrategy).to receive(:new).and_return(strategy_instance)
-      allow(strategy_instance).to receive(:execute).and_return(fetched)
+      allow(strategy_instance).to receive(:execute).and_return(
+        described_class::Response.new(body: '<html></html>', url: 'https://example.com/', status: 200)
+      )
     end
 
     after { described_class.response_cache = nil }
 
     it 'is off by default and fetches every time', :aggregate_failures do
-      2.times { described_class.execute(context_for(relation: :initial), strategy: :default) }
+      2.times { described_class.execute(context, strategy: :default) }
 
       expect(described_class.response_cache).to be_nil
       expect(strategy_instance).to have_received(:execute).twice
     end
 
     it 'fetches an initial request once and hands out independent replicas', :aggregate_failures do
-      described_class.response_cache = cache
-      first, second = Array.new(2) { described_class.execute(context_for(relation: :initial), strategy: :default) }
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+      first, second = Array.new(2) { described_class.execute(context, strategy: :default) }
 
       expect(strategy_instance).to have_received(:execute).once
       expect([second.body, second.equal?(first)]).to eq([first.body, false])
     end
 
-    it 'never caches follow-up requests', :aggregate_failures do
-      described_class.response_cache = cache
-      2.times { described_class.execute(context_for(relation: :pagination), strategy: :default) }
+    it 'never serves a response fetched under a different policy', :aggregate_failures do
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+      described_class.execute(context, strategy: :default)
+      allow(context).to receive(:policy).and_return(Html2rss::RequestService::Policy.new(allow_private_networks: true))
+      described_class.execute(context, strategy: :default)
 
       expect(strategy_instance).to have_received(:execute).twice
+    end
+
+    describe 'cache key' do
+      let(:keys) { [] }
+
+      before do
+        recorder = instance_double(Html2rss::RequestService::ResponseCache)
+        allow(recorder).to receive(:fetch) { |key, &fetch| fetch.call.tap { keys << key } }
+        described_class.response_cache = recorder
+      end
+
+      it 'is a digest that hides credentials' do
+        allow(context).to receive(:headers).and_return({ 'authorization' => 'Bearer secret' })
+        described_class.execute(context, strategy: :default)
+
+        expect(keys.first).to match(/\A\h{64}\z/)
+      end
+
+      it 'is stable for identical requests' do
+        2.times { described_class.execute(context, strategy: :default) }
+
+        expect(keys.uniq.size).to eq(1)
+      end
+
+      it 'varies with the strategy' do
+        allow(described_class::BotasaurusStrategy).to receive(:new).and_return(strategy_instance)
+        %i[default botasaurus].each { |strategy| described_class.execute(context, strategy:) }
+
+        expect(keys.uniq.size).to eq(2)
+      end
+
+      {
+        headers: { 'accept' => 'x/y' },
+        request: { 'wait' => 1 },
+        url: Html2rss::Url.from_absolute('https://a.test/'),
+        policy: Html2rss::RequestService::Policy.new(max_redirects: 1)
+      }.each do |field, value|
+        it "varies with #{field}" do
+          described_class.execute(context, strategy: :default)
+          allow(context).to receive(field).and_return(value)
+          described_class.execute(context, strategy: :default)
+
+          expect(keys.uniq.size).to eq(2)
+        end
+      end
+    end
+
+    context 'with a follow-up request' do
+      let(:relation) { :pagination }
+
+      it 'never caches', :aggregate_failures do
+        described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+        2.times { described_class.execute(context, strategy: :default) }
+
+        expect(strategy_instance).to have_received(:execute).twice
+      end
     end
   end
 end
