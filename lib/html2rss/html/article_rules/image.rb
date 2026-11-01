@@ -63,7 +63,7 @@ module Html2rss
           # Scans bytes: every separator, digit and unit is ASCII, and UTF-8
           # continuation bytes (0x80+) never equal an ASCII byte, so byte offsets are safe.
           # `getbyte` returns nil past the end, which every predicate treats as no match.
-          def each_srcset_pair(string) # rubocop:disable Metrics/MethodLength
+          def each_srcset_pair(string) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
             i = 0
             len = string.bytesize
             while i < len
