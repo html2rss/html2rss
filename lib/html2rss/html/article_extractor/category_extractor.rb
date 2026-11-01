@@ -42,7 +42,7 @@ module Html2rss
           Set.new.tap do |categories|
             extract_element_data_categories!(categories, article_tag, title:)
             article_tag.css(CATEGORY_SELECTORS.join(',')).each do |element|
-              if ArticleRules::Category.class_match?(element['class'])
+              if ArticleRules::Category.class_match?(element['class'].to_s.split)
                 extract_text_categories!(categories, element, title:)
               end
               extract_element_data_categories!(categories, element, title:)

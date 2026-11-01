@@ -27,10 +27,10 @@ module Html2rss
           end
 
           ##
-          # @param class_attr [String, nil]
+          # @param class_names [Array<String>] individual class tokens
           # @return [Boolean]
-          def class_match?(class_attr)
-            class_attr.to_s.split(/\s+/).any? { |token| class_token_match?(token) }
+          def class_match?(class_names)
+            class_names.any? { |token| class_token_match?(token) }
           end
 
           ##
