@@ -12,26 +12,63 @@ module Html2rss
 
     # Raised when an unknown request strategy is requested.
     class UnknownStrategy < Html2rss::Error; end
+
     # Raised when a URL cannot be parsed or validated.
-    class InvalidUrl < Html2rss::Error; end
+    class InvalidUrl < Html2rss::Error
+      # @return [Symbol]
+      def kind = :invalid_url
+    end
+
     # Raised when a URL uses an unsupported scheme.
-    class UnsupportedUrlScheme < Html2rss::Error; end
+    class UnsupportedUrlScheme < Html2rss::Error
+      # @return [Symbol]
+      def kind = :invalid_url
+    end
+
     # Raised when a response type cannot be parsed.
     class UnsupportedResponseContentType < Html2rss::Error; end
+
     # Raised when HTTP request slot limits are exceeded.
-    class RequestBudgetExceeded < Html2rss::Error; end
+    class RequestBudgetExceeded < Html2rss::Error
+      # @return [Symbol]
+      def kind = :budget
+    end
+
     # Raised when policy denies private-network access.
-    class PrivateNetworkDenied < Html2rss::Error; end
+    class PrivateNetworkDenied < Html2rss::Error
+      # @return [Symbol]
+      def kind = :blocked
+    end
+
     # Raised when cross-origin follow-up requests are denied.
-    class CrossOriginFollowUpDenied < Html2rss::Error; end
+    class CrossOriginFollowUpDenied < Html2rss::Error
+      # @return [Symbol]
+      def kind = :blocked
+    end
+
     # Raised when a response exceeds configured size limits.
-    class ResponseTooLarge < Html2rss::Error; end
+    class ResponseTooLarge < Html2rss::Error
+      # @return [Symbol]
+      def kind = :budget
+    end
+
     # Raised when HTTP redirect limits are exceeded.
-    class RedirectLimitReached < Html2rss::Error; end
+    class RedirectLimitReached < Html2rss::Error
+      # @return [Symbol]
+      def kind = :budget
+    end
+
     # Raised when blocked content surfaces are detected.
-    class BlockedSurfaceDetected < Html2rss::Error; end
+    class BlockedSurfaceDetected < Html2rss::Error
+      # @return [Symbol]
+      def kind = :blocked
+    end
+
     # Raised when the target connection fails before a response document exists.
-    class ConnectionFailed < Html2rss::Error; end
+    class ConnectionFailed < Html2rss::Error
+      # @return [Symbol]
+      def kind = :connection
+    end
 
     # Raised when a request times out.
     class RequestTimedOut < Html2rss::Error
@@ -45,6 +82,9 @@ module Html2rss
 
       # @return [String, nil] scrape-api timeout stage, or nil for transport/budget timeouts
       attr_reader :timeout_phase
+
+      # @return [Symbol]
+      def kind = :timeout
     end
 
     # Raised when Botasaurus configuration is missing or invalid.
@@ -54,7 +94,11 @@ module Html2rss
     end
 
     # Raised when the Botasaurus service cannot be reached (network / DNS / SSL).
-    class BotasaurusConnectionFailed < Html2rss::Error; end
+    class BotasaurusConnectionFailed < Html2rss::Error
+      # @return [Symbol]
+      def kind = :connection
+    end
+
     # Raised when Botasaurus responds but the scrape fails (upstream error, bad payload).
     class BotasaurusServiceError < Html2rss::Error; end
 

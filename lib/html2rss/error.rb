@@ -39,6 +39,16 @@ module Html2rss
     # @return [Hash{String => Object}, nil] allowlisted upstream transport telemetry when attached
     attr_accessor :transport_meta
 
+    ##
+    # Stable failure classification, overridden per error class.
+    #
+    # @return [Symbol] one of +:timeout+, +:blocked+, +:connection+, +:invalid_url+, +:budget+, +:other+
+    def kind = :other
+
+    ##
+    # @return [Boolean] whether repeating the same request may succeed (derived from {#kind})
+    def retryable? = ErrorKind[kind].retryable?
+
     # @return [String, nil] scrape-api timeout stage when known (overridden by RequestTimedOut)
     def timeout_phase; end
 
