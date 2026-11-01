@@ -600,6 +600,12 @@ RSpec.describe Html2rss::Capture do
           Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR
         )
       end
+
+      it 'lists per-item buckets whose first entry mirrors the top-level buckets', :aggregate_failures do
+        first = result.candidates[:candidates_by_item].first
+        expect(first).to include(selector: 'div.item', title: result.candidates[:title])
+        expect(first).to include(link: result.candidates[:link], published: result.candidates[:published])
+      end
     end
 
     context 'when HTML is labeled octet-stream' do
