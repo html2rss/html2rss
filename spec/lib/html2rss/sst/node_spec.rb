@@ -120,6 +120,13 @@ RSpec.describe Html2rss::SST::Node do
       expect(div.find(&:image?)).to be_nil
     end
 
+    it 'finds in document order including self, without enumerators', :aggregate_failures do
+      expect(div.find_all { |n| n.name == :div }).to eq([div])
+      expect(div.find_all(&:link?).map { |n| n.attrs.href }).to eq(%w[/a /b])
+      expect(div.find { |n| n.name == :p }).to be(div.children.first)
+      expect(div.find { true }).to be(div)
+    end
+
     it 'renders visible text with the default, custom and excluded variants', :aggregate_failures do
       expect(div.visible_text).to eq("one two\na b")
       expect(div.visible_text(separator: ' | ')).to eq('one two | a b')
