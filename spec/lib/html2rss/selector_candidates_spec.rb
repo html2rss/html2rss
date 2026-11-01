@@ -5,7 +5,7 @@ require 'spec_helper'
 RSpec.describe Html2rss::SelectorCandidates do
   describe '.empty' do
     it 'returns frozen empty buckets for all keys', :aggregate_failures do
-      expect(described_class.empty).to eq(items: [], title: [], link: [], published: [])
+      expect(described_class.empty).to eq(items: [], title: [], link: [], published: [], candidates_by_item: [])
       expect(described_class.empty).to be_frozen
     end
   end
@@ -63,6 +63,48 @@ RSpec.describe Html2rss::SelectorCandidates do
       expect(buckets[:title]).to eq([{ selector: 'h2', sample: 'Post 0' }])
       expect(buckets[:link]).to eq([{ selector: 'h2 > a', sample: 'Post 0' }])
       expect(buckets[:published]).to eq([{ selector: 'time', sample: 'Jan' }])
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- two item candidates with different title nodes
+    it 'derives field buckets per item candidate when title selectors differ', :aggregate_failures do
+      build_roots = lambda do |tag, title_tag|
+        Array.new(2) do |index|
+          title = Html2rss::SST::Node.build(
+            name: title_tag, attrs: Html2rss::SST::Attrs.empty, own_text: "#{tag} #{index}",
+            tag_path: "/html/body/#{tag}/#{title_tag}"
+          )
+          Html2rss::SST::Node.build(
+            name: tag, attrs: Html2rss::SST::Attrs.empty, children: [title], tag_path: "/html/body/#{tag}"
+          )
+        end
+      end
+      evidence = [
+        { selector: 'div.item', enhance: true, strategy: :list, kind: :shared_class, match_count: 2,
+          roots: build_roots.call(:div, :h2) },
+        { selector: 'article', enhance: true, strategy: :cluster, kind: :unique_tag, match_count: 2,
+          roots: build_roots.call(:article, :h3) }
+      ]
+
+      buckets = described_class.call(items_evidence: evidence)
+      expect(buckets.keys).to eq(%i[items title link published candidates_by_item])
+      expect(buckets[:title]).to eq([{ selector: 'h2', sample: 'div 0' }])
+      expect(buckets[:candidates_by_item]).to eq(
+        [
+          { selector: 'div.item', title: [{ selector: 'h2', sample: 'div 0' }], link: [], published: [] },
+          { selector: 'article', title: [{ selector: 'h3', sample: 'article 0' }], link: [], published: [] }
+        ]
+      )
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- seven evidence rows built inline
+    it 'caps candidates_by_item at the by-item limit', :aggregate_failures do
+      evidence = Array.new(7) do |index|
+        { selector: "s#{index}", enhance: true, strategy: :list, kind: :path, match_count: 2, roots: [] }
+      end
+
+      buckets = described_class.call(items_evidence: evidence)
+      expect(buckets[:items].size).to eq(7)
+      expect(buckets[:candidates_by_item].map { |c| c[:selector] }).to eq(%w[s0 s1 s2 s3 s4])
     end
 
     # rubocop:disable-next RSpec/ExampleLength -- min_matches gate for published vs title
