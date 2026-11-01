@@ -10,6 +10,35 @@ RSpec.describe Html2rss::Capture do
     allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
   end
 
+  describe 'total_timeout_seconds across the auto fallback chain' do
+    let(:empty_page) do
+      Html2rss::RequestService::Response.new(
+        body: '<html><body><div>empty</div></body></html>', url: Html2rss::Url.from_absolute(url),
+        headers: { 'content-type' => 'text/html' }, status: 200
+      )
+    end
+    let(:hops) { [] }
+
+    before do
+      allow(Html2rss::Log).to receive(:info)
+      allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+        ctx.budget.consume!
+        ctx.budget.effective_timeout_seconds(fallback: ctx.policy.total_timeout_seconds)
+        hops << strategy
+        sleep(1.1) if strategy == :default
+        empty_page
+      end
+    end
+
+    it 'shares one deadline between hops and raises RequestTimedOut', :aggregate_failures do
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      expect { described_class.build(url, strategy: :auto, total_timeout_seconds: 1, max_requests: 3) }
+        .to raise_error(Html2rss::RequestService::RequestTimedOut)
+      expect(hops).to eq(%i[default])
+      expect(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).to be < 3
+    end
+  end
+
   describe '.build' do
     it 'defaults the strategy to auto' do
       stub_outcome(html_response('<html></html>'), articles: [])

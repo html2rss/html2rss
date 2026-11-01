@@ -72,6 +72,31 @@ RSpec.describe Html2rss::Config::RequestControls do
       expect(controls.explicit?(:max_redirects)).to be(false)
       expect(controls.explicit?(:max_requests)).to be(false)
     end
+
+    it 'applies an explicit total_timeout_seconds', :aggregate_failures do
+      controls = described_class.from_shortcut(strategy: nil, total_timeout_seconds: 20)
+
+      expect(controls).to have_attributes(total_timeout_seconds: 20)
+      expect(controls.explicit?(:total_timeout_seconds)).to be(true)
+      expect(controls.apply_to({})).to eq(request: { total_timeout_seconds: 20 })
+    end
+
+    it 'leaves total_timeout_seconds implicit when omitted' do
+      expect(described_class.from_shortcut(strategy: nil).explicit?(:total_timeout_seconds)).to be(false)
+    end
+
+    it 'validates each budget by name', :aggregate_failures do
+      { max_redirects: -1, max_requests: 0, total_timeout_seconds: 0 }.each do |name, bad|
+        expect { described_class.from_shortcut(strategy: nil, name => bad) }
+          .to raise_error(Html2rss::InvalidOption, /#{name}/)
+      end
+    end
+
+    it 'rejects a fractional and accepts a one-second total_timeout_seconds', :aggregate_failures do
+      expect { described_class.from_shortcut(strategy: nil, total_timeout_seconds: 1.5) }
+        .to raise_error(Html2rss::InvalidOption, /\Atotal_timeout_seconds must be/)
+      expect(described_class.from_shortcut(strategy: nil, total_timeout_seconds: 1).total_timeout_seconds).to eq(1)
+    end
   end
 
   describe 'option validation' do

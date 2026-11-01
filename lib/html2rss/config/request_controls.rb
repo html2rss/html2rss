@@ -50,15 +50,18 @@ module Html2rss
       # @param strategy [Symbol, nil]
       # @param max_redirects [Integer, nil]
       # @param max_requests [Integer, nil]
+      # @param total_timeout_seconds [Integer, nil] wall-clock bound for the whole request chain
       # @return [RequestControls]
-      def self.from_shortcut(strategy:, max_redirects: nil, max_requests: nil)
+      def self.from_shortcut(strategy:, max_redirects: nil, max_requests: nil, total_timeout_seconds: nil)
         strategy = Option.strategy(strategy) unless strategy.nil?
         check_budgets!(max_redirects, max_requests)
+        Option.integer(:total_timeout_seconds, total_timeout_seconds, min: 1, optional: true)
         keys = []
         keys << :strategy unless strategy.nil? || strategy == Config.default_strategy_name
         keys << :max_redirects unless max_redirects.nil?
         keys << :max_requests unless max_requests.nil?
-        new(strategy:, max_redirects:, max_requests:, explicit_keys: keys)
+        keys << :total_timeout_seconds unless total_timeout_seconds.nil?
+        new(strategy:, max_redirects:, max_requests:, total_timeout_seconds:, explicit_keys: keys)
       end
 
       ##

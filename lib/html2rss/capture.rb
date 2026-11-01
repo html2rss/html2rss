@@ -89,6 +89,8 @@ module Html2rss
       # @option options [Boolean, nil] :enhance whether to force enhance: true
       # @option options [Integer, nil] :max_redirects optional redirect limit override
       # @option options [Integer, nil] :max_requests optional request budget override
+      # @option options [Integer, nil] :total_timeout_seconds optional wall-clock bound (seconds) for the whole
+      #   request chain, including every +:auto+ fallback hop (shared budget, not per hop)
       # @option options [Integer, nil] :limit max articles to keep
       # @option options [String, nil] :local_file_path optional local HTML file path
       # @return [CaptureResult]
@@ -108,6 +110,8 @@ module Html2rss
     # @option options [Boolean, nil] :enhance whether to force enhance: true
     # @option options [Integer, nil] :max_redirects optional redirect limit override
     # @option options [Integer, nil] :max_requests optional request budget override
+    # @option options [Integer, nil] :total_timeout_seconds optional wall-clock bound (seconds) for the whole
+    #   request chain, including every +:auto+ fallback hop (shared budget, not per hop)
     # @option options [Integer, nil] :limit max articles to keep
     # @option options [String, nil] :local_file_path optional local HTML file path
     def initialize(url, strategy: :auto, **options) # rubocop:disable Metrics/MethodLength
@@ -119,8 +123,7 @@ module Html2rss
       @summary = options.delete(:summary)
       @force = options.delete(:force) || false
       @enhance_option = options.delete(:enhance)
-      @max_redirects = options.delete(:max_redirects)
-      @max_requests = options.delete(:max_requests)
+      @request_options = options.slice(:max_redirects, :max_requests, :total_timeout_seconds)
       @limit = options.delete(:limit)
       @local_file_path = options.delete(:local_file_path)
     end
@@ -236,11 +239,7 @@ module Html2rss
       Config.auto_source_config(
         url: @url,
         items_selector: @items_selector_hint,
-        request_controls: Config::RequestControls.from_shortcut(
-          strategy: @strategy,
-          max_redirects: @max_redirects,
-          max_requests: @max_requests
-        ),
+        request_controls: Config::RequestControls.from_shortcut(strategy: @strategy, **@request_options),
         limit: @limit
       ).tap { |config| apply_local_file_path!(config) }
     end

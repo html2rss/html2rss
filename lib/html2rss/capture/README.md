@@ -40,7 +40,10 @@ Html2rss.capture('https://spa-site.com', strategy: :botasaurus)
 Html2rss.capture('https://example.com', items_selector: '.article-card')
 Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: './page.html')
 Html2rss.capture('https://example.com', max_redirects: 8, max_requests: 4)
+Html2rss.capture('https://example.com', total_timeout_seconds: 20)
 ```
+
+`total_timeout_seconds:` (positive Integer, default 30) bounds the **whole** request chain: the `:auto` fallback hops (`default` → `botasaurus`) share one budget, so the bound is not per hop. When it elapses, capture raises `RequestService::RequestTimedOut`. Use it to stay under a host's own request deadline.
 
 `strategy: :auto` uses the same AutoFallback chain as scrape (`default` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.apply(config)` replays the same transport.
 
