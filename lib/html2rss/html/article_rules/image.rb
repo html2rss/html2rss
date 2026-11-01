@@ -14,10 +14,16 @@ module Html2rss
         MAX_ATTR_CHARS = 4_096
         # Optional quoting around a CSS `url(...)` value.
         QUOTES = ['"', "'"].freeze
-        # Srcset width/height descriptor suffixes.
-        UNITS = %w[w h].freeze
-        # HTML/CSS whitespace treated as srcset token separators.
-        WS = [' ', "\t", "\n", "\r", "\f"].freeze
+        # Srcset width/height descriptor suffix bytes (`w`, `h`).
+        UNIT_BYTES = [119, 104].freeze
+        # HTML/CSS whitespace bytes (space, tab, LF, CR, FF) treated as srcset token separators.
+        WS_BYTES = [32, 9, 10, 13, 12].freeze
+        # ASCII `,`.
+        COMMA = 44
+        # ASCII `0`.
+        ZERO = 48
+        # ASCII `9`.
+        NINE = 57
 
         class << self
           ##
@@ -54,23 +60,24 @@ module Html2rss
 
           # URL token + `Nw`/`Nh` pairs. Commas may appear inside URLs; a candidate
           # boundary is whitespace before a width/height descriptor.
+          # Scans bytes: every separator, digit and unit is ASCII, and UTF-8
+          # continuation bytes (0x80+) never equal an ASCII byte, so byte offsets are safe.
+          # `getbyte` returns nil past the end, which every predicate treats as no match.
           def each_srcset_pair(string) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
             i = 0
-            len = string.length
+            len = string.bytesize
             while i < len
-              i += 1 while i < len && sep?(string[i])
-              break if i >= len
-
+              i += 1 while sep?(string.getbyte(i))
               start = i
-              i += 1 while i < len && !ws?(string[i])
-              url = string[start, i - start]
+              i += 1 until ws?(string.getbyte(i)) || i >= len
+              url = string.byteslice(start, i - start)
 
-              i += 1 while i < len && ws?(string[i])
+              i += 1 while ws?(string.getbyte(i))
               size_start = i
-              i += 1 while i < len && string[i].between?('0', '9')
-              next unless i > size_start && i < len && UNITS.include?(string[i])
+              i += 1 while digit?(string.getbyte(i))
+              next unless i > size_start && UNIT_BYTES.include?(string.getbyte(i))
 
-              yield url, string[size_start, i - size_start].to_i
+              yield url, string.byteslice(size_start, i - size_start).to_i
               i += 1
             end
           end
@@ -99,9 +106,11 @@ module Html2rss
             string[start, close - start] if close
           end
 
-          def sep?(char) = ws?(char) || char == ','
+          def sep?(byte) = ws?(byte) || byte == COMMA
 
-          def ws?(char) = WS.include?(char)
+          def ws?(byte) = WS_BYTES.include?(byte)
+
+          def digit?(byte) = byte&.between?(ZERO, NINE)
         end
       end
     end

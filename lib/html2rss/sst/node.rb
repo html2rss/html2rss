@@ -123,15 +123,23 @@ module Html2rss
       end
 
       ##
-      # @return [Array<Node>]
+      # @yieldparam node [Node]
+      # @return [Array<Node>] self and descendants (depth-first) for which the block is truthy
       def find_all(&)
-        each_node.select(&)
+        collect_matching([], &)
       end
 
       ##
-      # @return [Node, nil]
-      def find(&)
-        each_node.find(&)
+      # @yieldparam node [Node]
+      # @return [Node, nil] first self-or-descendant (depth-first) for which the block is truthy
+      def find(&block)
+        return self if yield(self)
+
+        children.each do |child|
+          hit = child.find(&block)
+          return hit if hit
+        end
+        nil
       end
 
       ##
@@ -166,6 +174,14 @@ module Html2rss
         words = word_count
         links = count_descendants(&:link?)
         links.zero? ? words.to_f : words.to_f / links
+      end
+
+      protected
+
+      def collect_matching(found, &block)
+        found << self if yield(self)
+        children.each { |child| child.collect_matching(found, &block) }
+        found
       end
     end
   end

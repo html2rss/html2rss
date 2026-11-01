@@ -357,12 +357,12 @@ module Html2rss
       end
 
       def category_candidate?(node)
-        ArticleRules::Category.class_match?(node.attrs.class_attr) ||
-          node.attrs.raw.keys.any? { |k| ArticleRules::Category.attr_name_match?(k) }
+        ArticleRules::Category.class_match?(node.attrs.class_names) ||
+          node.attrs.raw.any? { |k, _| ArticleRules::Category.attr_name_match?(k) }
       end
 
       def category_text_node?(element, root)
-        !element.equal?(root) && ArticleRules::Category.class_match?(element.attrs.class_attr)
+        !element.equal?(root) && ArticleRules::Category.class_match?(element.attrs.class_names)
       end
 
       def add_category_text!(categories, element, title:)

@@ -14,9 +14,14 @@ RSpec.describe Html2rss::Html::ArticleRules::Category do
 
   describe '.class_match?' do
     it 'matches hyphenated class tokens, not layout substrings', :aggregate_failures do
-      expect(described_class.class_match?('category-news post-tag')).to be(true)
-      expect(described_class.class_match?('p-section__news__teaser')).to be(false)
-      expect(described_class.class_match?('label-health')).to be(false)
+      expect(described_class.class_match?(%w[category-news post-tag])).to be(true)
+      expect(described_class.class_match?(%w[p-section__news__teaser])).to be(false)
+      expect(described_class.class_match?(%w[label-health])).to be(false)
+    end
+
+    it 'is case-insensitive and false for no classes', :aggregate_failures do
+      expect(described_class.class_match?(%w[Post-TAGS])).to be(true)
+      expect(described_class.class_match?([])).to be(false)
     end
   end
 
