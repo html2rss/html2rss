@@ -64,6 +64,9 @@ RSpec.configure do |config|
   config.include McpTestHelpers
   config.include FeedTestHelpers
 
+  # The MCP server installs a process-wide response cache at start; never let it leak across examples.
+  config.after { Html2rss::RequestService.response_cache = nil }
+
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end

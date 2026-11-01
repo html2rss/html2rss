@@ -215,4 +215,147 @@ RSpec.describe Html2rss::RequestService do
       expect(described_class.cookie_store).not_to be(custom)
     end
   end
+
+  describe '.response_cache / .response_cache=' do
+    let(:strategy_instance) { instance_double(described_class::HttpxStrategy) }
+    let(:relation) { :initial }
+    let(:context) do
+      instance_double(
+        Html2rss::RequestService::Context,
+        relation:, headers: { 'accept' => 'text/html' }, request: {}, policy: Html2rss::RequestService::Policy.default,
+        url: instance_double(Html2rss::Url, host: 'example.com', to_s: 'https://example.com/')
+      )
+    end
+
+    before do
+      allow(described_class::HttpxStrategy).to receive(:new).and_return(strategy_instance)
+      allow(strategy_instance).to receive(:execute).and_return(
+        described_class::Response.new(body: '<html></html>', url: 'https://example.com/', status: 200)
+      )
+    end
+
+    after { described_class.response_cache = nil }
+
+    it 'is off by default and fetches every time', :aggregate_failures do
+      2.times { described_class.execute(context, strategy: :default) }
+
+      expect(described_class.response_cache).to be_nil
+      expect(strategy_instance).to have_received(:execute).twice
+    end
+
+    it 'fetches an initial request once and hands out independent replicas', :aggregate_failures do
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+      first, second = Array.new(2) { described_class.execute(context, strategy: :default) }
+
+      expect(strategy_instance).to have_received(:execute).once
+      expect([second.body, second.equal?(first)]).to eq([first.body, false])
+    end
+
+    it 'hands the first caller a copy too, not the strategy response' do
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+      live = strategy_instance.execute
+      returned = described_class.execute(context, strategy: :default)
+
+      expect(returned).not_to be(live)
+    end
+
+    it 'never serves a response fetched under a different policy', :aggregate_failures do
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+      described_class.execute(context, strategy: :default)
+      allow(context).to receive(:policy).and_return(Html2rss::RequestService::Policy.new(allow_private_networks: true))
+      described_class.execute(context, strategy: :default)
+
+      expect(strategy_instance).to have_received(:execute).twice
+    end
+
+    describe 'cache key' do
+      let(:keys) { [] }
+
+      before do
+        recorder = instance_double(Html2rss::RequestService::ResponseCache)
+        allow(recorder).to receive(:fetch) { |key, &fetch| fetch.call.tap { keys << key } }
+        described_class.response_cache = recorder
+      end
+
+      it 'is a digest that hides credentials' do
+        allow(context).to receive(:headers).and_return({ 'authorization' => 'Bearer secret' })
+        described_class.execute(context, strategy: :default)
+
+        expect(keys.first).to match(/\A\h{64}\z/)
+      end
+
+      it 'is stable for identical requests' do
+        2.times { described_class.execute(context, strategy: :default) }
+
+        expect(keys.uniq.size).to eq(1)
+      end
+
+      it 'varies with the strategy' do
+        allow(described_class::BotasaurusStrategy).to receive(:new).and_return(strategy_instance)
+        %i[default botasaurus].each { |strategy| described_class.execute(context, strategy:) }
+
+        expect(keys.uniq.size).to eq(2)
+      end
+
+      {
+        headers: { 'accept' => 'x/y' },
+        request: { 'wait' => 1 },
+        url: Html2rss::Url.from_absolute('https://a.test/'),
+        policy: Html2rss::RequestService::Policy.new(max_redirects: 1)
+      }.each do |field, value|
+        it "varies with #{field}" do
+          described_class.execute(context, strategy: :default)
+          allow(context).to receive(field).and_return(value)
+          described_class.execute(context, strategy: :default)
+
+          expect(keys.uniq.size).to eq(2)
+        end
+      end
+    end
+
+    context 'with a follow-up request' do
+      let(:relation) { :pagination }
+
+      it 'never caches', :aggregate_failures do
+        described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+        2.times { described_class.execute(context, strategy: :default) }
+
+        expect(strategy_instance).to have_received(:execute).twice
+      end
+    end
+  end
+
+  describe '.observe_cache_hits' do
+    let(:strategy_instance) { instance_double(described_class::HttpxStrategy) }
+    let(:context) do
+      Html2rss::RequestService::Context.new(
+        url: 'https://example.com/', budget: Html2rss::RequestService::Budget.new(max_requests: 1)
+      )
+    end
+
+    before do
+      allow(described_class::HttpxStrategy).to receive(:new).and_return(strategy_instance)
+      allow(strategy_instance).to receive(:execute).and_return(
+        described_class::Response.new(body: '<html></html>', url: 'https://example.com/', status: 200)
+      )
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+    end
+
+    after { described_class.response_cache = nil }
+
+    it 'returns the result and the ages of cached fetches, including on spawned threads' do
+      described_class.execute(context)
+      thread = -> { Thread.new { described_class.execute(context) }.join } # rubocop:disable ThreadSafety/NewThread -- proves inheritance
+
+      expect(described_class.observe_cache_hits { thread.call && :done }).to eq([:done, [0]])
+    end
+
+    it 'reports nothing for live fetches and stops observing afterwards', :aggregate_failures do
+      _result, ages = described_class.observe_cache_hits { described_class.execute(context) }
+      described_class.execute(context)
+
+      expect(ages).to eq([])
+      expect(Fiber[:html2rss_cache_hits]).to be_nil
+    end
+  end
 end

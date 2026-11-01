@@ -8,6 +8,8 @@ module Html2rss
   # Feed-level +:auto+ is not registered here — {FeedPipeline::StrategyPlan} resolves
   # it to a concrete strategy (or {FeedPipeline::AutoFallback} chain) before execute.
   class RequestService
+    extend ResponseCaching
+
     # Raised when an unknown request strategy is requested.
     class UnknownStrategy < Html2rss::Error; end
     # Raised when a URL cannot be parsed or validated.
@@ -125,7 +127,7 @@ module Html2rss
                 "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
         end
 
-        strategy_class.new(ctx).execute
+        fetch_initial_through_cache(ctx, strategy_sym) { strategy_class.new(ctx).execute }
       end
 
       ##

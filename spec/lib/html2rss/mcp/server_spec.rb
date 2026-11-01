@@ -765,7 +765,8 @@ RSpec.describe Html2rss::MCP::Server do
           'mcp_contract_version' => Html2rss::MCP::Contract::MCP_CONTRACT_VERSION,
           'catalog_fingerprint' => Html2rss::MCP::Contract.catalog_fingerprint,
           'tools' => Html2rss::MCP::Contract.catalog_tools,
-          'botasaurus_configured' => true
+          'botasaurus_configured' => true,
+          'response_cache_ttl' => nil
         )
         expect(text).not_to include('127.0.0.1')
         expect(text).not_to include('secret-token')

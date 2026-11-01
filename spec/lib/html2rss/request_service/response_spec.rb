@@ -594,4 +594,36 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(response.captured_responses).to be_frozen
     end
   end
+
+  describe '#replica' do
+    let(:original) do
+      described_class.new(
+        body: '<p>x</p>', headers: { 'Content-Type' => 'text/html' }, status: 200,
+        url: Html2rss::Url.from_absolute('https://example.com'),
+        transport_meta: { 'k' => 1 }, captured_responses: [{ 'u' => 2 }], cookies: { 'a' => 'b' }
+      )
+    end
+
+    it 'copies every field' do
+      fields = %i[body headers status url transport_meta captured_responses cookies]
+      copy = original.replica
+
+      expect(fields.map { |field| copy.public_send(field) }).to eq(fields.map { |field| original.public_send(field) })
+    end
+
+    it 'carries cache_age unless overridden', :aggregate_failures do
+      aged = original.replica(cache_age: 9)
+
+      expect(original.cache_age).to be_nil
+      expect([aged.cache_age, aged.replica.cache_age, aged.replica(cache_age: 1).cache_age]).to eq([9, 9, 1])
+    end
+
+    it 'does not share the body string with the original' do
+      expect(original.replica.body).not_to be(original.body)
+    end
+
+    it 'shares no parsed document with the original' do
+      expect(original.replica.parsed_body).not_to be(original.parsed_body)
+    end
+  end
 end

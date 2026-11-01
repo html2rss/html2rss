@@ -16,7 +16,7 @@ module Html2rss
       ALL_ACCEPTED_STRATEGIES = (STRATEGIES + MIGRATION_STRATEGIES).freeze
 
       # Bump when tool names, required inputs, or envelope semantics change (independent of gem +VERSION+).
-      MCP_CONTRACT_VERSION = 3
+      MCP_CONTRACT_VERSION = 4
       public_constant :MCP_CONTRACT_VERSION
 
       # Raised when apply/validate config uses an unpublished MCP request adapter.
@@ -244,7 +244,14 @@ module Html2rss
               ok: { type: 'boolean' },
               next_step: { type: 'string', enum: Outcome::NextStep::ALL.keys.map(&:to_s) },
               guidance: { type: 'string' },
-              payload: { type: 'object' }
+              payload: { type: 'object' },
+              cache: {
+                type: 'object',
+                description: 'Present when part of this result came from the response cache instead of the live page',
+                additionalProperties: false,
+                required: %w[hits max_age_seconds],
+                properties: { hits: { type: 'integer' }, max_age_seconds: { type: 'integer' } }
+              }
             }
           }
         end
@@ -253,9 +260,11 @@ module Html2rss
         # One envelope Hash, one compact JSON body, no +_meta+.
         #
         # @param outcome [Outcome]
+        # @param cache_ages [Array<Integer>] ages in seconds of cached page fetches behind this result
         # @return [::MCP::Tool::Response]
-        def response(outcome)
+        def response(outcome, cache_ages: [])
           wire = outcome.to_h
+          wire[:cache] = { hits: cache_ages.size, max_age_seconds: cache_ages.max } unless cache_ages.empty?
           ::MCP::Tool::Response.new(
             [{ type: 'text', text: JSON.generate(wire) }],
             error: !outcome.ok,
