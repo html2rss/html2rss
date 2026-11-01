@@ -33,9 +33,10 @@ module Html2rss
           index = segmenter.index
           main = main_landmark(index)
           groups = {}.compare_by_identity
+          link_counts = relevant_link_counts(segmenter)
 
           index.each_node.select { |node| card_anchor?(segmenter, index, main, node) }.each do |node|
-            card = parent_until_boundary(segmenter, node)
+            card = parent_until_boundary(segmenter, node, link_counts)
             (groups[index.parent_of(card)] ||= []) << [card, node]
           end
           groups
@@ -69,9 +70,8 @@ module Html2rss
         BOUNDARY_TAGS = Set[:body, :html].freeze
         private_constant :BOUNDARY_TAGS
 
-        def self.parent_until_boundary(segmenter, node)
+        def self.parent_until_boundary(segmenter, node, link_counts)
           index = segmenter.index
-          link_counts = Hash.new { |hash, curr| hash[curr] = count_relevant_links(segmenter, curr) }
 
           index.parent_until(node, lambda { |curr|
             return true if BOUNDARY_TAGS.include?(curr.name)
@@ -81,11 +81,19 @@ module Html2rss
         end
         private_class_method :parent_until_boundary
 
+        # Node-keyed counts shared across every anchor of one run, so shared ancestors are counted once.
+        # Keyed by identity: SST nodes are Data, whose structural +#hash+ walks the whole subtree.
+        def self.relevant_link_counts(segmenter)
+          relevant = Hash.new { |hash, node| hash[node] = relevant_anchor?(segmenter, node) }.compare_by_identity
+          Hash.new { |hash, node| hash[node] = count_relevant_links(node, relevant) }.compare_by_identity
+        end
+        private_class_method :relevant_link_counts
+
         # Walk nodes are relevant anchors or their non-link ancestors, so a link counts as one.
-        def self.count_relevant_links(segmenter, node)
+        def self.count_relevant_links(node, relevant)
           return 1 if node.link?
 
-          node.count_descendants { |child| child.link? && relevant_anchor?(segmenter, child) }
+          node.count_descendants { |child| child.link? && relevant[child] }
         end
         private_class_method :count_relevant_links
       end
