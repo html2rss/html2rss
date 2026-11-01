@@ -77,6 +77,33 @@ RSpec.describe Html2rss::Article do
       expect(url.to_s).to eq('http://example.com/')
     end
 
+    it 'passes an http(s) Url through without re-parsing' do
+      url = Html2rss::Url.from_absolute('https://example.com/a')
+
+      expect(described_class.new(url:, title: 'T').url).to equal(url)
+    end
+
+    it 'still sanitizes a non-http Url so it is not passed through', :aggregate_failures do
+      ftp = Html2rss::Url.from_absolute('ftp://example.com/a')
+
+      expect(described_class.new(url: ftp, title: 'T').url.scheme).to eq('ftp')
+      expect(described_class.new(url: Html2rss::Url.from_absolute('mailto:a@example.com'), title: 'T').url.scheme)
+        .to eq('mailto')
+    end
+
+    it 'memoizes the sanitized url', :aggregate_failures do
+      article = described_class.new(url: ' https://example.com/a ', title: 'T')
+
+      expect(article.url).to equal(article.url)
+      expect(article.url.to_s).to eq('https://example.com/a')
+    end
+
+    it 'sanitizes only the url option, not other options' do
+      article = described_class.new(url: 'https://example.com/a', description: 'https://other.test/x', title: 'T')
+
+      expect(article.url.to_s).to eq('https://example.com/a')
+    end
+
     it 'returns nil if no url is present' do
       instance = described_class.new(title: 'Sample instance')
       expect(instance.url).to be_nil

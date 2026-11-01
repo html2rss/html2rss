@@ -162,6 +162,7 @@ module Html2rss
       return extract_json_document_articles if json_response?
 
       articles = []
+      @cleanup_memo = nil
       matched = false
       document = nil
       link_resolver = nil
@@ -231,7 +232,7 @@ module Html2rss
 
     def finish_articles(articles)
       captured_count = articles.size
-      result = Cleanup.call(articles, url:, **cleanup_options)
+      result = cleanup_result(articles)
       @admission_drops = result.drop_tallies
       log_admission_emptied(captured_count, result) if captured_count.positive? && result.articles.empty?
       result.articles.first(article_limit)
@@ -264,8 +265,16 @@ module Html2rss
       tier == [Scraper::Html]
     end
 
+    # Cleanup is deterministic and +articles+ only grows, so one result per size is reused
+    # by the tier checks and by {#finish_articles}.
+    def cleanup_result(articles)
+      return @cleanup_memo.last if @cleanup_memo&.first == articles.size
+
+      Cleanup.call(articles.dup, url:, **cleanup_options).tap { @cleanup_memo = [articles.size, _1] }
+    end
+
     def admitted_articles(articles)
-      Cleanup.call(articles.dup, url:, **cleanup_options).articles.select do |article|
+      cleanup_result(articles).articles.select do |article|
         article.url && !article.title.to_s.empty?
       end
     end

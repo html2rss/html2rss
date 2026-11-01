@@ -27,7 +27,7 @@ RSpec.describe Html2rss::Url do
     end
 
     it 'strips whitespace and keeps an absolute URL instead of joining it to the base' do
-      absolute = described_class.new(Addressable::URI.parse('HTTP://Example.COM/a/../b'))
+      absolute = described_class.new(Addressable::URI.parse('HTTP://Example.COM/a/../b').normalize)
       resolved = described_class.from_relative('  HTTP://Example.COM/a/../b  ', 'https://example.com/base/')
 
       expect(resolved).to eq(absolute)
@@ -209,7 +209,7 @@ RSpec.describe Html2rss::Url do
       expect(url.without_fragment).to equal(url)
     end
 
-    it 'normalizes when dropping a fragment from an unnormalized absolute URL' do
+    it 'normalizes when dropping a fragment from an absolute URL built by from_relative' do
       url = described_class.from_relative('HTTP://Example.COM/a/../b#top', 'https://example.com/')
 
       expect(url.without_fragment).to eq(described_class.from_absolute('http://example.com/b'))
@@ -604,12 +604,21 @@ RSpec.describe Html2rss::Url do
       expect(url).to be_frozen
     end
 
-    it 'freezes the wrapped URI' do
-      uri = Addressable::URI.parse('https://example.com/a')
+    it 'leaves the wrapped URI unfrozen so Addressable keeps its normalized memo', :aggregate_failures do
+      uri = Addressable::URI.parse('https://example.com/a').normalize
 
       described_class.new(uri)
 
-      expect(uri).to be_frozen
+      expect(uri).not_to be_frozen
+    end
+
+    it 'does not mutate its wrapped URI through with_path or with_query_values', :aggregate_failures do
+      base = described_class.from_absolute('https://example.com/a')
+
+      base.with_path('/b')
+      base.with_query_values('q' => '1')
+
+      expect(base.to_s).to eq('https://example.com/a')
     end
 
     it 'freezes path segments' do

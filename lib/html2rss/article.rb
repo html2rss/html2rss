@@ -59,7 +59,7 @@ module Html2rss
     def url
       return @url unless @url == NOT_SET
 
-      @url = Url.sanitize(@to_h[:url])
+      @url = http_url(@to_h[:url]) || Url.sanitize(@to_h[:url])
     end
 
     # @return [Url, nil]
@@ -125,6 +125,11 @@ module Html2rss
     end
 
     private
+
+    # A {Url} is always normalized; http(s) ones need no re-parse. Others go through +Url.sanitize+.
+    def http_url(value)
+      value if value.is_a?(Url) && Url::SUPPORTED_SCHEMES.include?(value.scheme)
+    end
 
     ##
     # Marshal only the constructor payload so lazy +NOT_SET+ sentinels do not break

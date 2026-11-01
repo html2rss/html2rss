@@ -115,21 +115,23 @@ module Html2rss
             groups.sort_by { |_key, nodes| -nodes.size }.first(MAX_GROUPS).to_h
           end
 
-          # rubocop:disable-next Metrics/MethodLength
+          # A group is a container of +nodes_b+ when one of its nodes strictly encloses two or more of them.
           def container_of?(nodes_a, nodes_b)
             return false unless @layout_tags.include?(nodes_b.first.name)
 
-            nodes_a.any? do |node_a|
-              count = 0
-              nodes_b.each do |node_b|
-                next if node_a.equal?(node_b)
+            counts = enclosed_counts(nodes_b)
+            nodes_a.any? { |node_a| counts[node_a] > 1 }
+          end
 
-                if @index.descendant_of?(node_b, node_a)
-                  count += 1
-                  break if count > 1
-                end
+          # Number of +nodes+ strictly beneath each ancestor, tallied once per group instead of per pair.
+          def enclosed_counts(nodes)
+            @enclosed_counts ||= {}.compare_by_identity
+            @enclosed_counts[nodes] ||= nodes.each_with_object(Hash.new(0).compare_by_identity) do |node, tally|
+              ancestor = @index.parent_of(node)
+              while ancestor
+                tally[ancestor] += 1
+                ancestor = @index.parent_of(ancestor)
               end
-              count > 1
             end
           end
 
