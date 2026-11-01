@@ -168,6 +168,12 @@ module Html2rss
       text.empty? || text == DEFAULT_ITEMS_SELECTOR
     end
 
+    ##
+    # Whether +selectors.items.enhance+ is on: each matched item node fills fields that explicit
+    # selectors left empty (see {ENHANCEABLE_KEYS}) via {Html::ArticleExtractor}, using only the
+    # item's own markup and making no extra requests.
+    #
+    # @return [Boolean]
     def enhance? = !!@selectors.dig(ITEMS_SELECTOR_KEY, :enhance)
 
     def parsed_body

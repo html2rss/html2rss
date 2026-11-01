@@ -465,7 +465,7 @@
               "not": {
                 "type": "null"
               },
-              "description": "List-card enrichment: run Html::ArticleExtractor on each matched item node to fill missing fields from the card HTML."
+              "description": "Fills missing title, link, description, date, image and categories from each item's own markup via Html::ArticleExtractor. Explicit selectors win; no extra requests are made."
             },
             "pagination": {
               "description": "Pagination configuration or maximum page count integer.",
