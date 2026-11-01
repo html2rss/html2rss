@@ -8,7 +8,12 @@ module Html2rss
   # Does not emit the default +a[href]+ fallback — that remains Capture's YAML path only.
   class SelectorCandidates # rubocop:disable Metrics/ClassLength -- ranking + field CSS stay co-located
     # Empty candidate buckets (no discovered evidence).
-    EMPTY = { items: [].freeze, title: [].freeze, link: [].freeze, published: [].freeze }.freeze
+    EMPTY = {
+      items: [].freeze, title: [].freeze, link: [].freeze, published: [].freeze, candidates_by_item: [].freeze
+    }.freeze
+
+    # How many top-ranked item candidates get their own field buckets in +:candidates_by_item+.
+    BY_ITEM_LIMIT = 5
 
     # Ranking preference for items selector derivation kind (lower is better).
     KIND_RANK = { shared_class: 0, unique_tag: 1, path: 2 }.freeze
@@ -37,7 +42,8 @@ module Html2rss
       # @param items_evidence [Array<Hash>] each with +:selector+, +:enhance+, +:strategy+,
       #   +:kind+, +:match_count+, and +:roots+ (SST nodes under the items selector)
       # @param min_matches [Integer] minimum repeated field evidence across roots
-      # @return [Hash{Symbol=>Array<Hash>}] +:items+, +:title+, +:link+, +:published+
+      # @return [Hash{Symbol=>Array<Hash>}] +:items+, +:title+, +:link+, +:published+ (buckets for the
+      #   top item) and +:candidates_by_item+ (per-item buckets for the top {BY_ITEM_LIMIT} items)
       def call(items_evidence:, min_matches: DEFAULT_MIN_MATCHES)
         new(items_evidence:, min_matches:).call
       end
@@ -57,16 +63,21 @@ module Html2rss
       items = rank_items(@items_evidence)
       return EMPTY if items.empty?
 
-      roots = roots_for(items.first, @items_evidence)
+      by_item = items.first(BY_ITEM_LIMIT).map { |item| item_buckets(item) }
+      { items:, **by_item.first.slice(:title, :link, :published), candidates_by_item: by_item }
+    end
+
+    private
+
+    def item_buckets(item)
+      roots = roots_for(item, @items_evidence)
       {
-        items:,
+        selector: item.fetch(:selector),
         title: field_bucket(roots, :title),
         link: field_bucket(roots, :link),
         published: field_bucket(roots, :published)
       }
     end
-
-    private
 
     def rank_items(evidence)
       evidence

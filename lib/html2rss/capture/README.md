@@ -29,7 +29,7 @@ rss = Html2rss.apply(result.config)
 
 `Html2rss.capture` and `Capture.build` both return a `CaptureResult` with YAML (`#yaml`, includes the schema modeline) and quality meta (`has_selectors`, `segment_strategy`, `admission_drops`, `selected_strategy`, `native_feed`, `candidates`).
 
-`#candidates` is ranked discovery evidence: `{ items:, title:, link:, published: }` arrays (best-first, deduplicated). Items entries are `{ selector:, enhance:, sample: }`; field entries are `{ selector:, sample: }`. `sample` stays on `#candidates` only — emitted YAML is still `items` + `enhance`. Buckets may be empty when evidence is missing. The default `a[href]` YAML fallback is not listed as discovered evidence.
+`#candidates` is ranked discovery evidence: `{ items:, title:, link:, published: }` arrays (best-first, deduplicated). Items entries are `{ selector:, enhance:, sample: }`; field entries are `{ selector:, sample: }`. `sample` stays on `#candidates` only — emitted YAML is still `items` + `enhance`. `#candidates[:candidates_by_item]` is additive: for each of the top 5 item candidates (same order as `items`) it holds `{ selector:, title:, link:, published: }`, where the field buckets are computed from that item candidate's own matched nodes (reusing the discovery evidence, no refetch). Use it when the top-level `title` / `link` / `published` (which describe the first item candidate only) do not match the item selector you choose. Its first entry equals the top-level buckets. Buckets may be empty when evidence is missing. The default `a[href]` YAML fallback is not listed as discovered evidence.
 
 **Wire vs internal:** user-facing **`Html2rss.apply`** ships RSS from a config Hash. Pipeline internals **`Html2rss.feed` / `feed_result`** stay unchanged — use `apply` in CLI/MCP/docs examples, not `feed`.
 
@@ -40,7 +40,10 @@ Html2rss.capture('https://spa-site.com', strategy: :botasaurus)
 Html2rss.capture('https://example.com', items_selector: '.article-card')
 Html2rss.capture('https://example.com', strategy: :local_file, local_file_path: './page.html')
 Html2rss.capture('https://example.com', max_redirects: 8, max_requests: 4)
+Html2rss.capture('https://example.com', total_timeout_seconds: 20)
 ```
+
+`total_timeout_seconds:` (positive Integer, default 30) bounds the **whole** request chain: the `:auto` fallback hops (`default` → `botasaurus`) share one budget, so the bound is not per hop. When it elapses, capture raises `RequestService::RequestTimedOut`. Use it to stay under a host's own request deadline.
 
 `strategy: :auto` uses the same AutoFallback chain as scrape (`default` → `botasaurus`). When AutoFallback selects a concrete strategy (or you pin one), Capture **stamps** `strategy:` into the emitted config so later `Html2rss.apply(config)` replays the same transport.
 
