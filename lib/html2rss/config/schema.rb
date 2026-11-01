@@ -127,8 +127,9 @@ module Html2rss
             default: Html2rss::Selectors::DEFAULT_ITEMS_SELECTOR
           )
           items_schema[:properties][:enhance] = items_schema.fetch(:properties).fetch(:enhance).merge(
-            description: 'List-card enrichment: run Html::ArticleExtractor on each matched item node ' \
-                         'to fill missing fields from the card HTML.'
+            description: 'Fills missing title, link, description, date, image and categories from each ' \
+                         "item's own markup via Html::ArticleExtractor. Explicit selectors win; no extra " \
+                         'requests are made.'
           )
           items_schema[:properties][:pagination] = {
             description: 'Pagination configuration or maximum page count integer.',
