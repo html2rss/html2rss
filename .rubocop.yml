@@ -45,6 +45,14 @@ Naming/RescuedExceptionsVariableName:
 
 Layout/ClassStructure:
   Enabled: true
+  ExpectedOrder:
+    - module_inclusion
+    - constants
+    - public_class_methods
+    - initializer
+    - public_methods
+    - protected_methods
+    - private_methods
 
 Html2rss/NoMetaprogramming:
   Include:
