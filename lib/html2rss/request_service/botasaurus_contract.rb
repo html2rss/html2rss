@@ -267,6 +267,7 @@ module Html2rss
       # @param url [Html2rss::Url] canonical URL to scrape
       # @param headers [Hash] request headers from context
       # @param options [Hash] validated request.botasaurus options
+      # @param stored_cookies [Hash{String => String}] cookies replayed from the cookie store
       # @option options [String] :execution_mode
       # @option options [String] :navigation_mode
       # @option options [Integer] :max_retries
@@ -284,7 +285,6 @@ module Html2rss
       # @option options [String] :lang
       # @option options [Hash] :cookies
       # @option options [Hash] :headers
-      # @param stored_cookies [Hash{String => String}] cookies replayed from the cookie store
       def initialize(url:, headers: {}, options: {}, stored_cookies: {})
         @url = url
         @headers = headers

@@ -24,6 +24,7 @@ module Html2rss
 
         class << self
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
+          # @return [Boolean] whether any supported Microdata root exists
           def articles?(parsed_body)
             supported_roots(parsed_body).any?
           end
@@ -37,6 +38,7 @@ module Html2rss
           end
 
           # @param node [Nokogiri::XML::Element] itemscope candidate node
+          # @return [Boolean] whether the node is a supported top-level root
           def supported_root?(node)
             supported_type_name(node) && top_level_item?(node)
           end
@@ -59,6 +61,7 @@ module Html2rss
           end
 
           # @param node [Nokogiri::XML::Element] itemscope candidate node
+          # @return [Boolean] whether the node is not nested in another item property
           def top_level_item?(node)
             return false if node.attribute('itemprop')
 

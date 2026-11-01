@@ -21,6 +21,7 @@ module Html2rss
 
         class << self
           # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
+          # @return [Boolean] whether any embedded JSON document holds candidate articles
           def articles?(parsed_body)
             return false unless parsed_body
 
