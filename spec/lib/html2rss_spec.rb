@@ -609,13 +609,23 @@ RSpec.describe Html2rss do
       expect(Html2rss::Test).not_to have_received(:call)
     end
 
+    it 'rejects a malformed sample_limit and forwards a valid one', :aggregate_failures do
+      allow(Html2rss::Test).to receive(:call)
+
+      [-1, 1.5, '2', nil].each { |limit| expect { described_class.test('x.yml', sample_limit: limit) }.to raise_error(Html2rss::InvalidOption, /\Asample_limit must be/) }
+      described_class.test('x.yml', sample_limit: 0)
+      expect(Html2rss::Test).to have_received(:call).with('x.yml', nil, hash_including(sample_limit: 0)).once
+    end
+
     it 'delegates to Test.call' do # rubocop:disable RSpec/ExampleLength
       allow(Html2rss::Test).to receive(:call).with(
-        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false
+        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
+                           sample_limit: 3
       )
       described_class.test('config.yml')
       expect(Html2rss::Test).to have_received(:call).with(
-        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false
+        'config.yml', nil, min_items: 1, params: {}, strategy: nil, strict_quality: false, compare_enhance: false,
+                           sample_limit: 3
       )
     end
 
@@ -624,7 +634,7 @@ RSpec.describe Html2rss do
       described_class.test('config.yml', 'named', strategy: :default)
       expect(Html2rss::Test).to have_received(:call).with(
         'config.yml', 'named',
-        min_items: 1, params: {}, strategy: :default, strict_quality: false, compare_enhance: false
+        min_items: 1, params: {}, strategy: :default, strict_quality: false, compare_enhance: false, sample_limit: 3
       )
     end
   end
