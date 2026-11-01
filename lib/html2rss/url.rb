@@ -27,7 +27,10 @@ module Html2rss
     include Comparable
 
     # Raised when a string cannot be parsed or resolved to a valid URL.
-    class InvalidUrlError < Html2rss::Error; end
+    class InvalidUrlError < Html2rss::Error
+      # @return [Symbol]
+      def kind = :invalid_url
+    end
 
     # Regular expression for basic URI format validation
     URI_REGEXP = Addressable::URI::URIREGEX

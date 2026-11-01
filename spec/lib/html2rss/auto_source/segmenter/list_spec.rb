@@ -362,4 +362,29 @@ RSpec.describe Html2rss::AutoSource::Segmenter::List do
       end
     end
   end
+
+  describe 'scaling' do
+    let(:noise_checks_for) do
+      lambda do |cards|
+        card = ->(i) { %(<article><h3><a href="/p/#{i}">Post #{i} headline</a></h3></article>) }
+        html = "<html><body><main>#{Array.new(cards, &card).join}</main></body></html>"
+        calls = 0
+        policy = Html2rss::LinkDestination::NoisePolicy
+        allow_any_instance_of(policy).to receive(:noise_anchor?).and_wrap_original do |orig, *args, **kwargs| # rubocop:disable RSpec/AnyInstance
+          calls += 1
+          orig.call(*args, **kwargs)
+        end
+        segments_for.call(html)
+        calls
+      end
+    end
+
+    it 'evaluates noise per anchor a bounded number of times as cards double', :aggregate_failures do
+      small = noise_checks_for.call(30)
+      large = noise_checks_for.call(60)
+
+      expect(small).to be <= 30 * 3
+      expect(large.fdiv(small)).to be < 2.5
+    end
+  end
 end

@@ -722,6 +722,83 @@ RSpec.describe Html2rss::Capture do
       expect(items[:selector]).to eq('article.research-card')
     end
 
+    context 'when lifting list-strategy heading roots with a stubbed segmenter' do
+      let(:card) do
+        <<~HTML
+          <article class="research-card">
+            <h3><a href="/pub/1">Title of the first publication about research</a></h3>
+            <p>Sibling teaser about the first research paper with extra words.</p>
+          </article>
+        HTML
+      end
+      let(:second_card) { card.gsub('/pub/1', '/pub/2').gsub('first', 'second') }
+      let(:articles) do
+        response = html_response("<html><body>#{card}#{second_card}</body></html>")
+        Html2rss::AutoSource.new(response, Html2rss::AutoSource::DEFAULT_CONFIG).articles
+      end
+      let(:stub_roots) do
+        lambda do |body, extra_tag = nil, duplicate: false|
+          stub_outcome(html_response("<html><body>#{body}</body></html>"), articles:)
+          allow(Html2rss::AutoSource::Segmenter).to receive(:call) do |sst, strategy:, **|
+            next [] unless strategy == :list
+
+            roots = sst.index.each_node.select { |node| [extra_tag, 'h3'].include?(node.name.to_s) }
+            roots += roots if duplicate
+            roots.map do |root|
+              anchor = root.children.find { |child| child.name.to_s == 'a' } || root.children.first.children.first
+              instance_double(Html2rss::AutoSource::Segment, primary_link: anchor, root_node: root)
+            end
+          end
+        end
+      end
+      let(:selector) { described_class.new(url).build.config.dig(:selectors, :items, :selector) }
+
+      it 'lifts structurally identical heading roots independently' do
+        stub_roots.call(card * 2)
+
+        expect(selector).to eq('article.research-card')
+      end
+
+      it 'stops at a wrapper holding several roots' do
+        stub_roots.call("<div class=\"grid\">#{card}#{second_card}</div>")
+
+        expect(selector).to eq('article.research-card')
+      end
+
+      it 'counts duplicate segments on one node as a single root' do
+        stub_roots.call(card + second_card, nil, duplicate: true)
+
+        expect(selector).to eq('article.research-card')
+      end
+
+      it 'stops at a wrapper holding several structurally identical roots' do
+        stub_roots.call("<div class=\"grid\">#{card * 2}</div>")
+
+        expect(selector).to eq('article.research-card')
+      end
+
+      it 'keeps lifting through nested wrappers until a stop tag' do
+        wrapped = "<section class=\"outer\">#{card}</section><section class=\"outer\">#{second_card}</section>"
+        stub_roots.call(wrapped)
+
+        expect(selector).to eq('section.outer')
+      end
+
+      it 'does not lift out of a utility landmark' do
+        slot = ->(inner) { %(<div class="slot"><aside>#{inner}</aside></div>) }
+        landmarked = slot.call(card) + slot.call(second_card)
+        stub_roots.call(landmarked)
+
+        expect(selector).to eq('article.research-card')
+      end
+
+      it 'stops at an ancestor that is itself another root' do
+        stub_roots.call("#{card}#{second_card}", 'article')
+
+        expect(selector).not_to eq('article.research-card')
+      end
+    end
+
     it 'keeps Equinor-style wrapping anchors as the item root', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       html = <<~HTML
         <html><body>
