@@ -270,7 +270,7 @@ module Html2rss
         end
 
         def url_identity(url)
-          url&.without_fragment&.to_s
+          url.to_s.partition('#').first if url
         end
 
         def feed_item_as_article(item)

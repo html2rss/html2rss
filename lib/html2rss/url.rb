@@ -42,11 +42,11 @@ module Html2rss
     #
     # @param relative_url [String, Html2rss::Url] the relative URL to resolve
     # @param base_url [String, Html2rss::Url] the base URL to resolve against
-    # @return [Url] the resolved absolute URL
+    # @return [Url] the resolved, normalized absolute URL
     # @raise [InvalidUrlError] if the URL cannot be parsed
     def self.from_relative(relative_url, base_url)
       url = Addressable::URI.parse(relative_url.to_s.strip)
-      return new(url) if url.absolute?
+      return new(url.normalize) if url.absolute?
 
       join_parsed_base(base_url, url)
     rescue Addressable::URI::InvalidURIError
@@ -160,9 +160,12 @@ module Html2rss
     private_class_method :validate_channel_url, :validate_scheme
 
     ##
-    # @param uri [Addressable::URI] the underlying Addressable::URI object (internal use only)
+    # The wrapped URI stays unfrozen and private: freezing makes Addressable recompute every
+    # normalized part that +normalize+ just produced. Mutating operations dup first.
+    #
+    # @param uri [Addressable::URI] the normalized Addressable::URI (internal use only)
     def initialize(uri)
-      @uri = uri.freeze
+      @uri = uri
       @path_segments = path.split('/').reject(&:empty?).freeze
       freeze
     end

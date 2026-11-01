@@ -655,5 +655,39 @@ RSpec.describe Html2rss::AutoSource do
       it_behaves_like 'scalar JSON unsupported_surface', '"not-a-document"'
     end
   end
+
+  describe 'URL identity cost (non-wall-clock regression guard)' do
+    let(:body) { File.read('spec/fixtures/page_1.html') }
+
+    let(:counts) { Hash.new(0) }
+
+    before do
+      allow(Addressable::URI).to receive(:parse).and_wrap_original do |method, *args|
+        method.call(*args).tap do |uri|
+          allow(uri).to receive(:normalize).and_wrap_original do |m|
+            counts[:normalize] += 1
+            m.call
+          end
+        end
+      end
+      allow(Html2rss::AutoSource::Cleanup).to receive(:call).and_wrap_original do |method, *args, **kwargs|
+        counts[:cleanup] += 1
+        method.call(*args, **kwargs)
+      end
+    end
+
+    it 'normalizes each URL once and reuses one Cleanup result', :aggregate_failures do
+      expect(auto_source.articles.size).to eq(13)
+      expect(counts[:cleanup]).to eq(1)
+      expect(counts[:normalize]).to be <= 260 # master: 358
+    end
+
+    it 'keeps drop tallies stable', :aggregate_failures do
+      auto_source.articles
+
+      expect(auto_source.admission_drops)
+        .to eq('invalid' => 1, 'duplicate_url' => 47, 'self_link' => 1, 'different_domain' => 4)
+    end
+  end
 end
 # rubocop:enable RSpec/MultipleMemoizedHelpers

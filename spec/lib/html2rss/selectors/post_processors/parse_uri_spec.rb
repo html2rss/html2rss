@@ -23,7 +23,7 @@ RSpec.describe Html2rss::Selectors::PostProcessors::ParseUri do
     context 'with an absolute url containing a trailing space' do
       let(:url) { 'http://example.com ' }
 
-      it { is_expected.to eq 'http://example.com' }
+      it { is_expected.to eq 'http://example.com/' }
     end
 
     context 'with relative url' do
