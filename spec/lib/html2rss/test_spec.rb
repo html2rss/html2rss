@@ -74,6 +74,15 @@ RSpec.describe Html2rss::Test do
     end
 
     context 'when schema is valid and items are extracted' do
+      let(:outcome_articles) do
+        [
+          Html2rss::Article.new(title: 'First Example Article Title', url: 'https://example.com/news/1',
+                                description: '<p>First <b>body</b></p>', image: 'https://example.com/1.jpg',
+                                categories: ['a'], published_at: '2024-01-02T03:04:05Z'),
+          Html2rss::Article.new(title: 'Second Example Article Title', url: 'https://example.com/news/2')
+        ]
+      end
+
       before do
         outcome = Html2rss::FeedPipeline::PipelineOutcome.new(
           response: Html2rss::RequestService::Response.new(
@@ -81,7 +90,7 @@ RSpec.describe Html2rss::Test do
             headers: { 'content-type' => 'text/html' },
             body: '<html></html>'
           ),
-          articles: [],
+          articles: outcome_articles,
           dedup_dropped: 0,
           selected_strategy: :default,
           attempt_count: 0,
@@ -102,6 +111,36 @@ RSpec.describe Html2rss::Test do
         expect(result.sample_items.size).to eq(2)
         expect(result.rss).to be_a(String)
         expect(result.failure_kind).to be_nil
+      end
+
+      it 'returns items with all fields and nil/empty for missing ones', :aggregate_failures do
+        first, second = described_class.call(valid_config).items
+
+        expect(first).to eq(title: 'First Example Article Title', url: 'https://example.com/news/1',
+                            published_at: '2024-01-02T03:04:05+00:00', description: 'First body',
+                            image: 'https://example.com/1.jpg', categories: ['a'])
+        expect(second).to include(published_at: nil, image: nil, description: '', categories: [])
+      end
+
+      it 'caps items at sample_limit while sample_items stays at its own bound', :aggregate_failures do
+        result = described_class.call(valid_config, sample_limit: 1)
+
+        expect(result.items.size).to eq(1)
+        expect(result.sample_items.size).to eq(2)
+      end
+
+      it 'returns three items by default', :aggregate_failures do
+        expect(described_class.call(valid_config).items.size).to eq(2)
+        expect(described_class.call(valid_config, sample_limit: 0).items).to eq([])
+      end
+
+      it 'still returns items when min_items fails the quality gate', :aggregate_failures do
+        result = described_class.call(valid_config, min_items: 5)
+
+        expect(result.success).to be(false)
+        expect(result.rss).to be_nil
+        expect(result.items.map { |item| item[:url] }).to eq(%w[https://example.com/news/1 https://example.com/news/2])
+        expect(result.to_h[:items].size).to eq(2)
       end
 
       it 'keeps the fetched page body in-process and off the public test hash', :aggregate_failures do

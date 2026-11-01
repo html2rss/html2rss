@@ -78,6 +78,7 @@ module Html2rss
       :success,
       :item_count,
       :sample_items,
+      :items,
       :channel_title,
       :channel_url,
       :strategy_used,
@@ -100,6 +101,8 @@ module Html2rss
       # @param success [Boolean]
       # @param item_count [Integer]
       # @param sample_items [Array<Hash>]
+      # @param items [Array<Hash>] up to +sample_limit+ items (title, url, published_at, description, image,
+      #   categories) built from extracted articles regardless of the quality gate
       # @param channel_title [String, nil]
       # @param channel_url [String, nil]
       # @param strategy_used [Symbol, nil]
@@ -113,7 +116,7 @@ module Html2rss
       # @param response_body [String, nil] fetched page HTML copied from the pipeline response
       def initialize(success:, item_count:, sample_items:, channel_title:, channel_url:, # rubocop:disable Metrics/ParameterLists
                      strategy_used:, duration_seconds:, validation_issues:, error_message:,
-                     failure_kind:, rss:, quality_report: nil, enhance_compare: nil, response_body: nil)
+                     failure_kind:, rss:, items: [], quality_report: nil, enhance_compare: nil, response_body: nil)
         super
       end
 
@@ -136,6 +139,7 @@ module Html2rss
           success:,
           item_count:,
           sample_items:,
+          items:,
           channel_title:,
           channel_url:,
           strategy_used:,
@@ -160,15 +164,16 @@ module Html2rss
     # @param strategy [Symbol, nil] optional strategy override
     # @param strict_quality [Boolean] when true, fail on ship-quality audit thresholds
     # @param compare_enhance [Boolean] diagnostic enhance off vs on comparison on cached HTML
+    # @param sample_limit [Integer] maximum number of {Result#items} (default 3)
     # @return [Html2rss::Test::Result]
     def self.call(config_input, feed_name = nil, min_items: 1, params: {}, strategy: nil, # rubocop:disable Metrics/ParameterLists
-                  strict_quality: false, compare_enhance: false)
+                  strict_quality: false, compare_enhance: false, sample_limit: 3)
       raw_config, validation = Config.resolve_and_validate(config_input, feed_name:, params:)
       return validation_failure_result(validation, raw_config) unless validation.success?
 
       config = build_test_config(raw_config, strategy, params)
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, compare_enhance:)
+      execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, compare_enhance:, sample_limit:)
     rescue Html2rss::Error => error
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       execution_failure_result(error, raw_config, duration)
@@ -193,19 +198,20 @@ module Html2rss
     private_class_method :compile_quality_report
 
     def self.execute_timed_pipeline(raw_config, config, started, min_items:, strict_quality:, # rubocop:disable Metrics/ParameterLists
-                                    compare_enhance:)
+                                    compare_enhance:, sample_limit:)
       feed_result, pipeline_outcome = extract_feed(raw_config)
       duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       quality_report = compile_quality_report(raw_config, config, feed_result, pipeline_outcome)
       enhance_compare = build_enhance_compare(config, pipeline_outcome) if compare_enhance
 
       build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare,
-                        min_items:, strict_quality:, response_body: pipeline_outcome.response.body)
+                        min_items:, strict_quality:, response_body: pipeline_outcome.response.body,
+                        items: ItemSample.call(pipeline_outcome.articles, limit: sample_limit))
     end
     private_class_method :execute_timed_pipeline
 
     def self.build_test_result(raw_config, feed_result, duration, quality_report, enhance_compare, # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
-                               min_items:, strict_quality:, response_body:)
+                               min_items:, strict_quality:, response_body:, items:)
       rss_doc = feed_result.to_rss
       outcome = Policy.evaluate(item_count: rss_doc.items.size, min_items:, strict_quality:, quality_report:)
       strategy_used = feed_result.status.selected_strategy || raw_config[:strategy] ||
@@ -215,6 +221,7 @@ module Html2rss
         success: outcome.passed,
         item_count: rss_doc.items.size,
         sample_items: extract_samples(rss_doc.items),
+        items:,
         channel_title: feed_result.channel_title,
         channel_url: raw_config.dig(:channel, :url).to_s,
         strategy_used:,

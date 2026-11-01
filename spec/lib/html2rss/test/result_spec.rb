@@ -47,14 +47,22 @@ RSpec.describe Html2rss::Test::Result do
       )
 
       expect(full.to_h).to eq(
-        success: false, item_count: 0, sample_items: [], channel_title: 'T', channel_url: 'https://e.test',
+        success: false, item_count: 0, sample_items: [], items: [], channel_title: 'T', channel_url: 'https://e.test',
         strategy_used: :default, duration_seconds: 1.5, validation_issues: [issue.to_h], error_message: 'bad',
         failure_kind: :schema, rss: 'rss', quality_report: report.to_h, enhance_compare: { delta: 1 }
       )
     end
 
+    it 'includes items in the public hash', :aggregate_failures do
+      with_items = described_class.new(**result.to_h, items: [{ title: 'A' }], validation_issues: nil,
+                                                      error_message: nil, failure_kind: nil)
+
+      expect(with_items.to_h[:items]).to eq([{ title: 'A' }])
+      expect(result.items).to eq([])
+    end
+
     it 'drops nil fields' do
-      expect(result.to_h.keys).to eq(%i[success item_count sample_items channel_title channel_url strategy_used
+      expect(result.to_h.keys).to eq(%i[success item_count sample_items items channel_title channel_url strategy_used
                                         duration_seconds rss])
     end
   end
