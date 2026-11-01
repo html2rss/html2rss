@@ -6,7 +6,7 @@ module Html2rss
   class RequestService
     ##
     # To be used by strategies to provide their response.
-    class Response
+    class Response # rubocop:disable Metrics/ClassLength -- transport + capture + cache fields stay co-located
       # Default when a strategy does not attach transport telemetry.
       EMPTY_TRANSPORT_META = {}.freeze
       # Default when a strategy does not capture sub-resource responses.
@@ -34,10 +34,12 @@ module Html2rss
       # @param transport_meta [Hash] allowlisted upstream telemetry (frozen when present)
       # @param captured_responses [Array<Hash>] JSON XHR/fetch bodies captured during browser scrapes
       # @param cookies [Hash{String => String}] cookies earned during the scrape (session credentials; never log)
+      # @param cache_age [Integer, nil] seconds since fetch when served from {ResponseCache}; nil when fetched live
       # rubocop:disable-next Metrics/ParameterLists -- transport + capture fields stay co-located
       def initialize(body:, url:, headers: {}, status: nil, transport_meta: EMPTY_TRANSPORT_META,
-                     captured_responses: EMPTY_CAPTURED_RESPONSES, cookies: EMPTY_COOKIES)
+                     captured_responses: EMPTY_CAPTURED_RESPONSES, cookies: EMPTY_COOKIES, cache_age: nil)
         @body = body
+        @cache_age = cache_age
 
         @headers = (headers || {}).transform_keys(&:to_s)
         @status = status
@@ -68,9 +70,14 @@ module Html2rss
       # @return [Hash{String => String}] cookies earned during the scrape (empty when unsupported)
       attr_reader :cookies
 
+      # @return [Integer, nil] seconds since fetch when served from {ResponseCache}; nil when fetched live
+      attr_reader :cache_age
+
+      # @param cache_age [Integer, nil] cache age of the copy (defaults to this response's)
       # @return [Response] an independent copy that shares no parsed document with this one
-      def replica
-        self.class.new(body: body.dup, url:, headers:, status:, transport_meta:, captured_responses:, cookies:)
+      def replica(cache_age: @cache_age)
+        self.class.new(body: body.dup, url:, headers:, status:, transport_meta:, captured_responses:, cookies:,
+                       cache_age:)
       end
 
       # @return [String] normalized content type header value

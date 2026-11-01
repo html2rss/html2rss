@@ -92,7 +92,7 @@ RSpec.describe Html2rss::MCP::Contract do
   describe 'MCP_CONTRACT_VERSION' do
     it 'is independent of the gem version constant', :aggregate_failures do
       expect(described_class::MCP_CONTRACT_VERSION).to be_a(Integer)
-      expect(described_class::MCP_CONTRACT_VERSION).to eq(3)
+      expect(described_class::MCP_CONTRACT_VERSION).to eq(4)
     end
   end
 
@@ -162,7 +162,14 @@ RSpec.describe Html2rss::MCP::Contract do
           ok: { type: 'boolean' },
           next_step: { type: 'string', enum: Html2rss::MCP::Outcome::NextStep::ALL.keys.map(&:to_s) },
           guidance: { type: 'string' },
-          payload: { type: 'object' }
+          payload: { type: 'object' },
+          cache: {
+            type: 'object',
+            description: 'Present when part of this result came from the response cache instead of the live page',
+            additionalProperties: false,
+            required: %w[hits max_age_seconds],
+            properties: { hits: { type: 'integer' }, max_age_seconds: { type: 'integer' } }
+          }
         }
       )
     end
@@ -248,6 +255,16 @@ RSpec.describe Html2rss::MCP::Contract do
       expect(JSON).to have_received(:generate).once
       expect(response.structured_content).to eq(outcome.to_h)
       expect(JSON.parse(response.content.first[:text], symbolize_names: true)).to eq(outcome.to_h)
+    end
+
+    it 'omits cache when nothing was served from the response cache' do
+      expect(described_class.response(outcome).structured_content).not_to have_key(:cache)
+    end
+
+    it 'reports cache hits and the oldest age' do
+      wire = described_class.response(outcome, cache_ages: [3, 40, 7]).structured_content
+
+      expect(wire[:cache]).to eq(hits: 3, max_age_seconds: 40)
     end
 
     it 'wraps the envelope as one text content block with the same JSON' do

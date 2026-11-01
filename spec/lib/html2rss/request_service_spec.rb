@@ -251,6 +251,14 @@ RSpec.describe Html2rss::RequestService do
       expect([second.body, second.equal?(first)]).to eq([first.body, false])
     end
 
+    it 'hands the first caller a copy too, not the strategy response' do
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+      live = strategy_instance.execute
+      returned = described_class.execute(context, strategy: :default)
+
+      expect(returned).not_to be(live)
+    end
+
     it 'never serves a response fetched under a different policy', :aggregate_failures do
       described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
       described_class.execute(context, strategy: :default)
@@ -314,6 +322,40 @@ RSpec.describe Html2rss::RequestService do
 
         expect(strategy_instance).to have_received(:execute).twice
       end
+    end
+  end
+
+  describe '.observe_cache_hits' do
+    let(:strategy_instance) { instance_double(described_class::HttpxStrategy) }
+    let(:context) do
+      Html2rss::RequestService::Context.new(
+        url: 'https://example.com/', budget: Html2rss::RequestService::Budget.new(max_requests: 1)
+      )
+    end
+
+    before do
+      allow(described_class::HttpxStrategy).to receive(:new).and_return(strategy_instance)
+      allow(strategy_instance).to receive(:execute).and_return(
+        described_class::Response.new(body: '<html></html>', url: 'https://example.com/', status: 200)
+      )
+      described_class.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 60)
+    end
+
+    after { described_class.response_cache = nil }
+
+    it 'returns the result and the ages of cached fetches, including on spawned threads' do
+      described_class.execute(context)
+      thread = -> { Thread.new { described_class.execute(context) }.join } # rubocop:disable ThreadSafety/NewThread -- proves inheritance
+
+      expect(described_class.observe_cache_hits { thread.call && :done }).to eq([:done, [0]])
+    end
+
+    it 'reports nothing for live fetches and stops observing afterwards', :aggregate_failures do
+      _result, ages = described_class.observe_cache_hits { described_class.execute(context) }
+      described_class.execute(context)
+
+      expect(ages).to eq([])
+      expect(Fiber[:html2rss_cache_hits]).to be_nil
     end
   end
 end

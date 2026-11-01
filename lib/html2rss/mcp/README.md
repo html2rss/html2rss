@@ -39,6 +39,7 @@ Every tool result is one JSON object (text body and `structuredContent`):
 | `next_step` | Bare verb name or `done` / `read_runtime`                    |
 | `guidance`  | Agent instruction (from `Outcome::Playbook`)                 |
 | `payload`   | Tool-specific data (`yaml`, `rss`, `items`, recon fields, …) |
+| `cache`     | Optional: `{ hits, max_age_seconds }` when cached pages fed the result |
 
 `Contract.response` builds the wire body; `Outcome` owns `next_step` policy.
 
@@ -64,7 +65,7 @@ Do not duplicate playbook prose in `server.rb`.
 | `html2rss://schema`     | Full JSON Schema for feed configurations                   |
 | `html2rss://extractors` | Registered extractor names                                 |
 | `html2rss://strategies` | Published MCP strategies (`auto`, `default`, `httpx`, `botasaurus`) |
-| `html2rss://runtime`    | `version`, `mcp_contract_version`, `catalog_fingerprint`, `tools`, `botasaurus_configured` (never the scraper URL). Fingerprint covers tool names, required keys, and `oneOf` branches; bump `mcp_contract_version` for envelope semantics. |
+| `html2rss://runtime`    | `version`, `mcp_contract_version`, `catalog_fingerprint`, `tools`, `botasaurus_configured`, `response_cache_ttl` (never the scraper URL). Fingerprint covers tool names, required keys, and `oneOf` branches; bump `mcp_contract_version` for envelope semantics. |
 
 ## Prompts
 
@@ -75,7 +76,14 @@ Do not duplicate playbook prose in `server.rb`.
 
 ## Response cache
 
-The MCP process is long-lived, so an agent iterating `inspect → capture → validate → test` on one URL can skip refetching. Set `HTML2RSS_RESPONSE_CACHE_TTL` (seconds; unset = off) to install `RequestService::ResponseCache` at server start. Only initial 2xx fetches are cached, keyed by a digest of URL, strategy, headers, request options, and policy limits. Follow-ups and block pages always hit the network. The one-shot CLI has no use for it; use `capture` or `--input -` for offline iteration.
+The MCP process is long-lived, so an agent iterating `inspect → capture → validate → test` on one URL should not refetch it. `RequestService::ResponseCache` is installed at server start, **on by default with a 300s TTL**. Set `HTML2RSS_RESPONSE_CACHE_TTL=<seconds>` to change it, or `0` / `off` / `false` to disable; an unusable value logs a warning and uses the default.
+
+- Only initial 2xx fetches are cached, keyed by a digest of URL, strategy, headers, request options, and policy limits. Follow-ups and block pages always hit the network.
+- Memory is bounded: at most 32 entries and 32 MiB of bodies, oldest evicted first.
+- When a result was built from cached pages, the envelope carries `cache: { hits, max_age_seconds }`; absent means everything was fetched live. Wait out the TTL or restart with the cache off to force a refetch.
+- `html2rss://runtime` publishes `response_cache_ttl` (`null` when off).
+
+The one-shot CLI has no use for it; use `capture` or `--input -` for offline iteration.
 
 ## Strategy note
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'climate_control'
 
 RSpec.describe Html2rss::MCP::Runtime do
   describe '.snapshot' do
@@ -12,7 +13,8 @@ RSpec.describe Html2rss::MCP::Runtime do
         mcp_contract_version: Html2rss::MCP::Contract::MCP_CONTRACT_VERSION,
         catalog_fingerprint: Html2rss::MCP::Contract.catalog_fingerprint,
         tools: Html2rss::MCP::Contract.catalog_tools,
-        botasaurus_configured: false
+        botasaurus_configured: false,
+        response_cache_ttl: nil
       )
     end
 
@@ -46,20 +48,40 @@ RSpec.describe Html2rss::MCP::Runtime do
   describe '.install_response_cache!' do
     after { Html2rss::RequestService.response_cache = nil }
 
-    it 'stays off when HTML2RSS_RESPONSE_CACHE_TTL is unset' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('HTML2RSS_RESPONSE_CACHE_TTL').and_return(nil)
-      described_class.install_response_cache!
+    {
+      nil => 300, '' => 300, ' 120 ' => 120, '1' => 1,
+      '0' => nil, ' off ' => nil, 'off' => nil, 'OFF' => nil, 'false' => nil,
+      '010' => 10, '0x10' => 300, 'abc' => 300, '-5' => 300, '1.5' => 300
+    }.each do |value, expected|
+      it "installs ttl #{expected.inspect} for HTML2RSS_RESPONSE_CACHE_TTL=#{value.inspect}" do
+        ClimateControl.modify(HTML2RSS_RESPONSE_CACHE_TTL: value) do
+          described_class.install_response_cache!
 
-      expect(Html2rss::RequestService.response_cache).to be_nil
+          expect(Html2rss::RequestService.response_cache&.ttl).to eq(expected)
+        end
+      end
     end
 
-    it 'installs a ResponseCache when a ttl is configured' do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with('HTML2RSS_RESPONSE_CACHE_TTL').and_return(" 300\n")
-      described_class.install_response_cache!
+    it 'stays silent when the variable is unset or blank', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:warn)
+      [nil, '  '].each do |value|
+        ClimateControl.modify(HTML2RSS_RESPONSE_CACHE_TTL: value) { described_class.install_response_cache! }
+      end
 
-      expect(Html2rss::RequestService.response_cache).to be_a(Html2rss::RequestService::ResponseCache)
+      expect(Html2rss::Log).not_to have_received(:warn)
+    end
+
+    it 'warns and falls back to the default for an unusable value', :aggregate_failures do
+      allow(Html2rss::Log).to receive(:warn)
+      ClimateControl.modify(HTML2RSS_RESPONSE_CACHE_TTL: 'abc') { described_class.install_response_cache! }
+
+      expect(Html2rss::Log).to have_received(:warn).with(/"abc" is not a positive integer; using 300s/)
+    end
+
+    it 'publishes the installed ttl in the snapshot' do
+      Html2rss::RequestService.response_cache = Html2rss::RequestService::ResponseCache.new(ttl: 42)
+
+      expect(described_class.snapshot.response_cache_ttl).to eq(42)
     end
   end
 end

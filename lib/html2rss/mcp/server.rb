@@ -219,8 +219,9 @@ module Html2rss
           Contract.response(Outcome.from_error(error))
         end
 
-        def handle_tool_call
-          Contract.response(yield)
+        def handle_tool_call(&)
+          outcome, cache_ages = RequestService.observe_cache_hits(&)
+          Contract.response(outcome, cache_ages:)
         rescue StandardError => error
           tool_error_response(error)
         end

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'digest'
-
 module Html2rss
   ##
   # Requests website URLs to retrieve their HTML for further processing.
@@ -10,6 +8,8 @@ module Html2rss
   # Feed-level +:auto+ is not registered here — {FeedPipeline::StrategyPlan} resolves
   # it to a concrete strategy (or {FeedPipeline::AutoFallback} chain) before execute.
   class RequestService
+    extend ResponseCaching
+
     # Raised when an unknown request strategy is requested.
     class UnknownStrategy < Html2rss::Error; end
     # Raised when a URL cannot be parsed or validated.
@@ -86,35 +86,13 @@ module Html2rss
     DEPRECATION_MUTEX = Mutex.new
     # Mutex guarding the process-wide cookie store reference.
     COOKIE_STORE_MUTEX = Mutex.new
-    # Mutex guarding the process-wide response cache reference.
-    RESPONSE_CACHE_MUTEX = Mutex.new
-    private_constant :DEPRECATION_MUTEX, :COOKIE_STORE_MUTEX, :RESPONSE_CACHE_MUTEX
+    private_constant :DEPRECATION_MUTEX, :COOKIE_STORE_MUTEX
 
     class << self
       # @param store [#fetch, #write, #evict, nil] replacement cookie store (nil restores the in-memory default)
       # @return [void]
       def cookie_store=(store)
         COOKIE_STORE_MUTEX.synchronize { @cookie_store = store }
-      end
-
-      # Opts in to reusing initial page fetches, e.g. while a person iterates on selectors for one page.
-      # The cache is consulted only for +relation == :initial+ requests; follow-ups always hit the network.
-      #
-      # The key is a SHA256 digest of the URL, strategy, headers, request options and the policy fields
-      # that shape a response, so credentials never reach the cache and a response fetched under a
-      # permissive {Policy} is never served to a stricter one. Cookie-store state is not part of the key.
-      #
-      # @param cache [#fetch, nil] receives +fetch(key) { response }+ and returns the cached or freshly
-      #   built {Response}, e.g. {ResponseCache}; +nil+ (the default) disables caching.
-      #   A raising block must not be cached.
-      # @return [void]
-      def response_cache=(cache)
-        RESPONSE_CACHE_MUTEX.synchronize { @response_cache = cache }
-      end
-
-      # @return [#fetch, nil] the configured initial-response cache, if any
-      def response_cache
-        RESPONSE_CACHE_MUTEX.synchronize { @response_cache }
       end
 
       # @return [#fetch, #write, #evict] the configured cookie store (in-memory by default)
@@ -160,25 +138,6 @@ module Html2rss
       end
 
       private
-
-      ##
-      # Runs +fetch+ directly, or through {.response_cache} for initial requests.
-      # Callers always receive their own {Response} so parsed documents are never shared.
-      # @param ctx [Context] the request context
-      # @param strategy [Symbol] the resolved strategy name
-      # @yieldreturn [Response] the freshly fetched response
-      # @return [Response]
-      def fetch_initial_through_cache(ctx, strategy, &)
-        cache = response_cache
-        return yield unless cache && ctx.relation == :initial
-
-        cache.fetch(response_cache_key(ctx, strategy), &).replica
-      end
-
-      def response_cache_key(ctx, strategy)
-        parts = [ctx.url.to_s, strategy, ctx.headers.sort, ctx.request, ctx.policy.cache_key]
-        Digest::SHA256.hexdigest(parts.inspect)
-      end
 
       ##
       # Resolves deprecated migration aliases to their replacement strategy name.

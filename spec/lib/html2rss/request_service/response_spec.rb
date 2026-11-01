@@ -611,6 +611,13 @@ RSpec.describe Html2rss::RequestService::Response do
       expect(fields.map { |field| copy.public_send(field) }).to eq(fields.map { |field| original.public_send(field) })
     end
 
+    it 'carries cache_age unless overridden', :aggregate_failures do
+      aged = original.replica(cache_age: 9)
+
+      expect(original.cache_age).to be_nil
+      expect([aged.cache_age, aged.replica.cache_age, aged.replica(cache_age: 1).cache_age]).to eq([9, 9, 1])
+    end
+
     it 'does not share the body string with the original' do
       expect(original.replica.body).not_to be(original.body)
     end

@@ -11,8 +11,15 @@ module Html2rss
         :mcp_contract_version,
         :catalog_fingerprint,
         :tools,
-        :botasaurus_configured
+        :botasaurus_configured,
+        :response_cache_ttl
       )
+
+      # Seconds an initial page fetch is reused when +HTML2RSS_RESPONSE_CACHE_TTL+ is unset.
+      DEFAULT_RESPONSE_CACHE_TTL = 300
+      # Values of +HTML2RSS_RESPONSE_CACHE_TTL+ that disable the cache.
+      CACHE_OFF_VALUES = %w[0 off false].freeze
+      private_constant :CACHE_OFF_VALUES
 
       class << self
         ##
@@ -22,17 +29,15 @@ module Html2rss
         end
 
         ##
-        # Opts the long-lived MCP process in to reusing initial page fetches, so an agent iterating
+        # Installs the initial-fetch cache for the long-lived MCP process, so an agent iterating
         # +inspect -> capture -> validate -> test+ on one URL fetches it once per TTL window.
-        #
-        # Configured by +HTML2RSS_RESPONSE_CACHE_TTL+ seconds; unset leaves caching off.
+        # +HTML2RSS_RESPONSE_CACHE_TTL+ sets the seconds ({DEFAULT_RESPONSE_CACHE_TTL} when unset);
+        # +0+, +off+ or +false+ disables caching. An unusable value logs a warning and uses the default.
         #
         # @return [void]
         def install_response_cache!
-          ttl = ENV['HTML2RSS_RESPONSE_CACHE_TTL'].to_s.strip
-          return if ttl.empty?
-
-          RequestService.response_cache = RequestService::ResponseCache.new(ttl: Integer(ttl))
+          ttl = response_cache_ttl
+          RequestService.response_cache = ttl && RequestService::ResponseCache.new(ttl:)
         end
 
         ##
@@ -43,8 +48,26 @@ module Html2rss
             mcp_contract_version: Contract::MCP_CONTRACT_VERSION,
             catalog_fingerprint: Contract.catalog_fingerprint,
             tools: Contract.catalog_tools,
-            botasaurus_configured: botasaurus_configured?
+            botasaurus_configured: botasaurus_configured?,
+            response_cache_ttl: RequestService.response_cache&.ttl
           )
+        end
+
+        private
+
+        def response_cache_ttl
+          raw = ENV['HTML2RSS_RESPONSE_CACHE_TTL'].to_s.strip.downcase
+          return DEFAULT_RESPONSE_CACHE_TTL if raw.empty?
+          return if CACHE_OFF_VALUES.include?(raw)
+
+          ttl = Integer(raw, 10, exception: false)
+          ttl&.positive? ? ttl : invalid_cache_ttl(raw)
+        end
+
+        def invalid_cache_ttl(raw)
+          Log.warn("HTML2RSS_RESPONSE_CACHE_TTL=#{raw.inspect} is not a positive integer; " \
+                   "using #{DEFAULT_RESPONSE_CACHE_TTL}s")
+          DEFAULT_RESPONSE_CACHE_TTL
         end
       end
     end
