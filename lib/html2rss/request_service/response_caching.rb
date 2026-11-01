@@ -17,7 +17,9 @@ module Html2rss
       RESPONSE_CACHE_MUTEX = Mutex.new
       # Fiber-storage key for the active {#observe_cache_hits} collector.
       CACHE_HITS_KEY = :html2rss_cache_hits
-      private_constant :RESPONSE_CACHE_MUTEX, :CACHE_HITS_KEY
+      # Fiber-storage key for the cache installed by {#with_response_cache}.
+      SCOPED_CACHE_KEY = :html2rss_scoped_response_cache
+      private_constant :RESPONSE_CACHE_MUTEX, :CACHE_HITS_KEY, :SCOPED_CACHE_KEY
 
       # @param cache [#fetch, nil] receives +fetch(key) { response }+ and returns the cached or freshly
       #   built {Response} (tagged with {Response#cache_age} on a hit), e.g. {ResponseCache};
@@ -27,9 +29,28 @@ module Html2rss
         RESPONSE_CACHE_MUTEX.synchronize { @response_cache = cache }
       end
 
-      # @return [#fetch, nil] the configured initial-response cache, if any
+      # @return [#fetch, nil] the scoped cache from {#with_response_cache} if one is active, otherwise
+      #   the globally configured initial-response cache, if any
       def response_cache
+        scoped = Fiber[SCOPED_CACHE_KEY]
+        return scoped.first if scoped
+
         RESPONSE_CACHE_MUTEX.synchronize { @response_cache }
+      end
+
+      # Runs the block with +cache+ as the initial-response cache for the current fiber (and fibers or
+      # threads it spawns), taking precedence over {#response_cache=}. The previous scope is restored
+      # when the block exits, even by raising.
+      #
+      # @param cache [#fetch, nil] cache for the block; +nil+ disables caching inside it
+      # @yieldreturn [Object] the block's result
+      # @return [Object] the block's result
+      def with_response_cache(cache)
+        previous = Fiber[SCOPED_CACHE_KEY]
+        Fiber[SCOPED_CACHE_KEY] = [cache]
+        yield
+      ensure
+        Fiber[SCOPED_CACHE_KEY] = previous
       end
 
       # Runs the block and reports the cache ages of every initial fetch it served from {#response_cache},
