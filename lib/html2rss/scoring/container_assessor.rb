@@ -7,6 +7,8 @@ module Html2rss
     class ContainerAssessor
       # Microdata itemprop values treated as publish/update markers.
       PUBLISH_ITEMPROPS = %w[datePublished dateModified].freeze
+      # Words beyond the title that make a container descriptive.
+      DESCRIPTIVE_WORDS = 8
 
       # @param text_classifier [LinkDestination::TextClassifier]
       # @param content_token_regexp [Regexp]
@@ -25,11 +27,12 @@ module Html2rss
       # @param destination_facts [LinkDestination::DestinationFacts, nil]
       # @return [Observation]
       def call(container, selected_anchor, destination_facts:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-        title = entry_title(container, selected_anchor)
+        source = container.find(&:heading?) || selected_anchor
+        title = source ? source.visible_text.to_s.strip : ''
         tokens = "#{container.attrs.class_attr} #{container.attrs.id}"
 
         Observation.new(
-          title_word_count: word_count(title),
+          title_word_count: source ? source.word_count : 0,
           path_length: destination_facts&.url&.path.to_s.length,
           content_path: destination_facts&.content_path,
           publish_marker: publish_marker?(container),
@@ -59,20 +62,22 @@ module Html2rss
       end
 
       def descriptive_context?(container_text, title)
-        snippet = container_text.to_s.sub(/\A#{Regexp.escape(title.to_s)}/i, '')
-        snippet.length > 30 && word_count(snippet) >= 8
+        snippet = without_title_prefix(container_text.to_s, title)
+        snippet.length > 30 && words_at_least?(snippet, DESCRIPTIVE_WORDS)
       end
 
-      def entry_title(container, selected_anchor)
-        heading = container.find(&:heading?)
-        source = heading || selected_anchor
-        source ? source.visible_text.to_s.strip : ''
+      # Case-insensitive prefix strip compared by character count, so multi-character
+      # case folds (e.g. "ß" vs "ss") do not match; the title is then left in the snippet.
+      def without_title_prefix(text, title)
+        return text unless text[0, title.length].casecmp?(title)
+
+        text[title.length..]
       end
 
-      def word_count(text)
+      def words_at_least?(text, limit)
         count = 0
-        text.to_s.scan(/\p{Alnum}+/) { count += 1 }
-        count
+        text.scan(/\p{Alnum}+/) { return true if (count += 1) >= limit }
+        false
       end
     end
   end

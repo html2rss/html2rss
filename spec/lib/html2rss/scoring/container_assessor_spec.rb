@@ -79,6 +79,36 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
       expect(assessor.call(root, nil, destination_facts: nil).descriptive_context).to be(false)
     end
 
+    it 'strips a case-insensitive title prefix before judging descriptive context', :aggregate_failures do
+      title = build_node(name: :a, href: '/x', text: 'Platform launch notes')
+      long = build_node(name: :div, text: 'PLATFORM launch notes one two three four five six seven eight nine ten')
+      short = build_node(name: :div, text: 'PLATFORM launch notes one two three four five six seven eight nine ten',
+                         children: [])
+
+      expect(assessor.call(long, title, destination_facts: nil).descriptive_context).to be(true)
+      expect(assessor.call(short, build_node(name: :a, href: '/x', text: 'PLATFORM launch notes one two three'),
+                           destination_facts: nil).descriptive_context).to be(false)
+    end
+
+    it 'trims whitespace around the entry title before classification and prefix stripping', :aggregate_failures do
+      padded = build_node(name: :a, href: '/x', text: "  Subscribe to newsletter\n ")
+      body = build_node(name: :div, text: 'Subscribe to newsletter one two three four five six seven')
+      lead = build_node(name: :a, href: '/x', text: "\n  Subscribe to newsletter")
+
+      expect(assessor.call(body, padded, destination_facts: nil)).to have_attributes(utility_prefix_title: true,
+                                                                                     descriptive_context: false)
+      expect(assessor.call(body, lead, destination_facts: nil).utility_prefix_title).to be(true)
+    end
+
+    it 'does not strip multi-character case folds (ss vs sharp s) from the prefix', :aggregate_failures do
+      title = build_node(name: :a, href: '/x', text: 'Straße')
+      folded = build_node(name: :div, text: 'STRASSE one two three four five six seven')
+      exact = build_node(name: :div, text: 'STRAßE one two three four five six seven')
+
+      expect(assessor.call(folded, title, destination_facts: nil).descriptive_context).to be(true)
+      expect(assessor.call(exact, title, destination_facts: nil).descriptive_context).to be(false)
+    end
+
     it 'counts destination path length from the facts URL' do
       shallow = resolver.destination_facts('/a')
 
@@ -136,7 +166,7 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
   describe '#descriptive_context?' do
     it 'requires more than 30 characters of context', :aggregate_failures do
       exactly_thirty = build_node(name: :p, text: 'abc abc abc abc abc abc abc ab')
-      just_over = build_node(name: :p, text: 'abc abc abc abc abc abc abc abcd')
+      just_over = build_node(name: :p, text: 'abc abc abc abc abc abc abc abc')
 
       expect(assessor.call(exactly_thirty, nil, destination_facts: nil).descriptive_context).to be(false)
       expect(assessor.call(just_over, nil, destination_facts: nil).descriptive_context).to be(true)
