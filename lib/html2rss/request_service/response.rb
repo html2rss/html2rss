@@ -68,6 +68,11 @@ module Html2rss
       # @return [Hash{String => String}] cookies earned during the scrape (empty when unsupported)
       attr_reader :cookies
 
+      # @return [Response] an independent copy that shares no parsed document with this one
+      def replica
+        self.class.new(body:, url:, headers:, status:, transport_meta:, captured_responses:, cookies:)
+      end
+
       # @return [String] normalized content type header value
       def content_type = header('content-type').to_s
 

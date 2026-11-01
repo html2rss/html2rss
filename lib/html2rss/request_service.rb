@@ -84,13 +84,31 @@ module Html2rss
     DEPRECATION_MUTEX = Mutex.new
     # Mutex guarding the process-wide cookie store reference.
     COOKIE_STORE_MUTEX = Mutex.new
-    private_constant :DEPRECATION_MUTEX, :COOKIE_STORE_MUTEX
+    # Mutex guarding the process-wide response cache reference.
+    RESPONSE_CACHE_MUTEX = Mutex.new
+    private_constant :DEPRECATION_MUTEX, :COOKIE_STORE_MUTEX, :RESPONSE_CACHE_MUTEX
 
     class << self
       # @param store [#fetch, #write, #evict, nil] replacement cookie store (nil restores the in-memory default)
       # @return [void]
       def cookie_store=(store)
         COOKIE_STORE_MUTEX.synchronize { @cookie_store = store }
+      end
+
+      # Opts in to reusing initial page fetches, e.g. while a person iterates on selectors for one page.
+      # The cache is consulted only for +relation == :initial+ requests; follow-ups always hit the network.
+      #
+      # @param cache [#fetch, nil] receives +fetch(key) { response }+, where +key+ is
+      #   +[url, strategy, headers, request]+, and returns the cached or freshly built {Response};
+      #   +nil+ (the default) disables caching. A raising block must not be cached.
+      # @return [void]
+      def response_cache=(cache)
+        RESPONSE_CACHE_MUTEX.synchronize { @response_cache = cache }
+      end
+
+      # @return [#fetch, nil] the configured initial-response cache, if any
+      def response_cache
+        RESPONSE_CACHE_MUTEX.synchronize { @response_cache }
       end
 
       # @return [#fetch, #write, #evict] the configured cookie store (in-memory by default)
@@ -125,7 +143,7 @@ module Html2rss
                 "The strategy '#{strategy}' is not known. Available strategies: #{strategy_names.join(', ')}"
         end
 
-        strategy_class.new(ctx).execute
+        fetch_initial_through_cache(ctx, strategy_sym) { strategy_class.new(ctx).execute }
       end
 
       ##
@@ -136,6 +154,20 @@ module Html2rss
       end
 
       private
+
+      ##
+      # Runs +fetch+ directly, or through {.response_cache} for initial requests.
+      # Callers always receive their own {Response} so parsed documents are never shared.
+      # @param ctx [Context] the request context
+      # @param strategy [Symbol] the resolved strategy name
+      # @yieldreturn [Response] the freshly fetched response
+      # @return [Response]
+      def fetch_initial_through_cache(ctx, strategy, &)
+        cache = response_cache
+        return yield unless cache && ctx.relation == :initial
+
+        cache.fetch([ctx.url.to_s, strategy, ctx.headers, ctx.request], &).replica
+      end
 
       ##
       # Resolves deprecated migration aliases to their replacement strategy name.

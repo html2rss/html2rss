@@ -215,4 +215,47 @@ RSpec.describe Html2rss::RequestService do
       expect(described_class.cookie_store).not_to be(custom)
     end
   end
+
+  describe '.response_cache / .response_cache=' do
+    let(:strategy_instance) { instance_double(described_class::HttpxStrategy) }
+    let(:fetched) { described_class::Response.new(body: '<html></html>', url: 'https://example.com/', status: 200) }
+    let(:cache) { Class.new { def fetch(key) = (@store ||= {})[key] ||= yield }.new }
+
+    def context_for(relation:)
+      instance_double(
+        Html2rss::RequestService::Context,
+        relation:, headers: { 'accept' => 'text/html' }, request: {},
+        url: instance_double(Html2rss::Url, host: 'example.com', to_s: 'https://example.com/')
+      )
+    end
+
+    before do
+      allow(described_class::HttpxStrategy).to receive(:new).and_return(strategy_instance)
+      allow(strategy_instance).to receive(:execute).and_return(fetched)
+    end
+
+    after { described_class.response_cache = nil }
+
+    it 'is off by default and fetches every time', :aggregate_failures do
+      2.times { described_class.execute(context_for(relation: :initial), strategy: :default) }
+
+      expect(described_class.response_cache).to be_nil
+      expect(strategy_instance).to have_received(:execute).twice
+    end
+
+    it 'fetches an initial request once and hands out independent replicas', :aggregate_failures do
+      described_class.response_cache = cache
+      first, second = Array.new(2) { described_class.execute(context_for(relation: :initial), strategy: :default) }
+
+      expect(strategy_instance).to have_received(:execute).once
+      expect([second.body, second.equal?(first)]).to eq([first.body, false])
+    end
+
+    it 'never caches follow-up requests', :aggregate_failures do
+      described_class.response_cache = cache
+      2.times { described_class.execute(context_for(relation: :pagination), strategy: :default) }
+
+      expect(strategy_instance).to have_received(:execute).twice
+    end
+  end
 end
