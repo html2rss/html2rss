@@ -397,7 +397,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
       let(:untitled) do
         [nil, '', " \n "].each_with_index.map do |title, index|
-          instance_double(Html2rss::Article, valid?: true, title:, url: Html2rss::Url.from_absolute("http://example.com/u#{index}"))
+          instance_double(Html2rss::Article, valid?: true, title:, scraper: Html2rss::AutoSource::Scraper::Html,
+                                             url: Html2rss::Url.from_absolute("http://example.com/u#{index}"))
         end
       end
 
@@ -451,10 +452,22 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(described_class.junk_reason(nil)).to be_nil
       end
 
-      it 'drops untitled items as blank_title', :aggregate_failures do
+      it 'drops untitled page-derived items as blank_title', :aggregate_failures do
         call_result = described_class.call(untitled, url:)
         expect(call_result.articles).to be_empty
         expect(call_result.drop_tallies['blank_title']).to eq(3)
+      end
+
+      # rubocop:disable-next RSpec/ExampleLength -- one untitled item per source kind + tally
+      it 'keeps an untitled publisher feed item and drops an untitled heuristic one', :aggregate_failures do
+        scraper = Html2rss::AutoSource::Scraper
+        feed_post, card = { 'feed-post' => scraper::NativeFeed, 'card' => scraper::SemanticHtml }.map do |id, source|
+          Html2rss::Article.new(id:, description: 'A short microblog post body', scraper: source,
+                                url: Html2rss::Url.from_absolute("http://example.com/#{id}"))
+        end
+        call_result = described_class.call([feed_post, card], url:)
+        expect(call_result.articles).to eq([feed_post])
+        expect(call_result.drop_tallies).to eq('blank_title' => 1)
       end
     end
 
