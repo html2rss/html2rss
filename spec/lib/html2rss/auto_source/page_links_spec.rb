@@ -245,6 +245,13 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
           </article>
           <div><span>Werbung</span><a href="http://example.com:abc/">Unresolvable</a></div>
           <article><h3><a href="/news/after-unresolvable">After unresolvable</a></h3></article>
+          <div class="row">
+            <div class="ad-slot"><span>Anzeige</span></div>
+            <article><h3><a href="/news/beside-slot">Beside an empty ad slot</a></h3></article>
+          </div>
+          <div class="row"><p>Advertisement</p><article><h3><a href="/news/beside-label">Beside a label</a></h3></article></div>
+          <div class="row"><article><span>Sponsored</span></article><a href="/news/after-empty-card">After an empty card</a></div>
+          <div data-sponsored><article><h3><a href="/news/wrapped">Wrapped card</a></h3></article></div>
         </main></body></html>
       HTML
     end
@@ -267,6 +274,19 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
     it 'keeps a marker over unresolvable anchors from reaching later cards' do
       expect(page_links.sponsored?(url_at['/news/after-unresolvable'])).to be(false)
+    end
+
+    it 'never binds a marker to a sibling card it is not inside of', :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/beside-slot'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/beside-label'])).to be(false)
+    end
+
+    it 'stops a marker at its own card boundary when that card holds no anchor' do
+      expect(page_links.sponsored?(url_at['/news/after-empty-card'])).to be(false)
+    end
+
+    it 'marks the single card inside a marked wrapper' do
+      expect(page_links.sponsored?(url_at['/news/wrapped'])).to be(true)
     end
 
     it 'is false for unmarked, unrendered, and nil URLs', :aggregate_failures do

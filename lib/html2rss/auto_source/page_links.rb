@@ -154,13 +154,23 @@ module Html2rss
       ##
       # Article identities of sponsored cards, from one marker walk. Only anchors inside a
       # marked subtree are resolved, so a page without markers resolves nothing.
+      #
+      # A marker binds only a card it is inside of: a marker with no anchor of its own climbs
+      # to its nearest card boundary ({CARD_BOUNDARY_NAMES}) and stops there, and it never
+      # climbs into an ancestor that also holds another card boundary (an empty ad slot beside
+      # an editorial teaser marks nothing).
       class SponsoredCards
+        # Elements that delimit one card: sectioning elements and list items.
+        CARD_BOUNDARY_NAMES = (SST::Tags::SECTIONING_NAMES | Set[:li]).freeze
+
         # @param document [SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
         def initialize(document, link_resolver)
           @keys = Set.new
+          @anchors = []
+          @boundary_count = 0
           @link_resolver = link_resolver
-          walk(document.root, []) if document
+          climbs?(document.root) if document
           @keys.freeze
           freeze
         end
@@ -171,23 +181,29 @@ module Html2rss
 
         private
 
-        # Returns true while a marker in +node+'s subtree still waits for its card.
-        def walk(node, anchors)
-          start = anchors.size
-          anchors << node if node.link?
-          pending = node.children.reduce(LinkDestination::Sponsorship.marker?(node)) do |marked, child|
-            walk(child, anchors) | marked
-          end
-          pending && still_pending?(anchors.drop(start))
+        # Walks +node+'s subtree; true while a marker climbing out of it still waits for its card.
+        def climbs?(node)
+          start = @anchors.size
+          boundaries = @boundary_count
+          @anchors << node if node.link?
+          climbing = node.children.reduce(false) { |pending, child| climbs?(child) | pending }
+          enclosed = @boundary_count > boundaries
+          @boundary_count += 1 if boundary?(node)
+          return false unless LinkDestination::Sponsorship.marker?(node) || (climbing && !enclosed)
+
+          unbound?(node, @anchors.drop(start))
         end
 
         # The subtree's resolvable anchors form the marker's card once it holds any; a card
-        # with one destination marks it sponsored. True while the card holds no anchor yet.
-        def still_pending?(card)
+        # with one destination marks it sponsored. True while the card holds no anchor yet
+        # and +node+ is no card boundary.
+        def unbound?(node, card)
           keys = card.filter_map { @link_resolver.destination_facts(_1)&.url&.article_identity }.uniq
           @keys << keys.first if keys.one?
-          keys.empty?
+          keys.empty? && !boundary?(node)
         end
+
+        def boundary?(node) = CARD_BOUNDARY_NAMES.include?(node.name)
       end
       private_constant :SponsoredCards
     end
