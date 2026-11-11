@@ -5,18 +5,11 @@ module Html2rss
     ##
     # Picks the kicker and the headline text of one teaser card: the one rule shared by
     # {ArticleExtractor} (Nokogiri) and {SstArticleExtractor} (SST), so both give one title for the same
-    # markup. The noise vocabulary and composition stay on {Article::Title}.
+    # markup. The noise vocabulary and composition stay on {Article::Title}; rules: CONTEXT.md § Article title.
     #
     # The kicker is the outermost kicker-marked element beside the headline that carries kicker text and
-    # holds no text besides its kicker-marked parts: +kicker__topic+ and +kicker__sub+ in a +kicker+ give
-    # one kicker, while an +eyebrow-row+ holding a status beside its +eyebrow+ gives the eyebrow. An
-    # element carries kicker text when it holds a letter or digit outside its noise pieces and is no noise
-    # element itself, so an icon, a clock or a +time+ leaf is never the kicker. It is beside the headline
-    # when it neither wraps the headline source nor holds all of its text, so +kicker-group+,
-    # +headline__inner--has-kicker+ and a +teaser--with-kicker+ card are never the kicker.
-    #
-    # Headline text leaves out a nested kicker and the noise elements that open it (+time+, clock-only or
-    # label-only); after the first headline word noise stays, as in +leaves at <strong>20:15</strong>+.
+    # holds no word besides its noise and kicker-marked parts (+kicker__topic+ and +kicker__sub+ join).
+    # Headline text leaves out a nested kicker and the noise elements before its first word.
     class TitlePieces
       # Class-token marks of kicker / eyebrow text.
       KICKER_CLASS = /kicker|eyebrow|pre-title|pretitle|overline/i
