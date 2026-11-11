@@ -1,0 +1,7 @@
+---
+case: 'JSON-LD items are page-checked against the rendered cards: the item whose only
+  card carries an ad label is dropped, while the item an ad-labelled promo aside also
+  links stays, because its editorial card is unmarked.'
+expected:
+- https://example.com/news/2026/11/structured-cycle-lanes
+- https://example.com/news/2026/11/structured-podcast

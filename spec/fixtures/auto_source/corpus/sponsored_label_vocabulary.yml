@@ -1,0 +1,18 @@
+---
+case: Only clearly paid labels mark a card ("Sponsored by", "Gesponsert von", "Contenido
+  patrocinado", "Publicité"); attribution that states no payment ("Presented by",
+  "In Kooperation mit", "En partenariat avec") does not (Q2). Labels hidden by a hidden
+  attribute, display:none, a d-none utility class or a template are ignored; aria-hidden
+  (visual) and sr-only (spoken) labels count. Paywall markers are no sponsorship.
+  Only the editorial and paywalled cards are expected.
+expected:
+- https://example.com/news/2026/11/winter-concert-season
+- https://example.com/news/2026/11/photo-exhibition-century
+- https://example.com/news/2026/11/book-fair-returns
+- https://example.com/news/2026/11/cycle-lanes-approved
+- https://example.com/news/2026/11/library-hours-extended
+- https://example.com/news/2026/11/water-prices-rise
+- https://example.com/news/2026/11/northern-school-opens
+- https://example.com/news/2026/11/harbor-cycle-path
+- https://example.com/news/2026/11/budget-vote-delayed
+- https://example.com/news/2026/11/night-trains-return

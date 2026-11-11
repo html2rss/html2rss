@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Structured items and page markers</title>
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="/">Example Daily</a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="/news/">Latest local news</a></li>
+        <li><a href="/culture/">Culture and the arts</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"ItemList","itemListElement":[
+    {"@type":"ListItem","position":1,"item":{"@type":"NewsArticle","headline":"Council approves the new cycle lanes downtown","url":"https://example.com/news/2026/11/structured-cycle-lanes","datePublished":"2026-11-10"}},
+    {"@type":"ListItem","position":2,"item":{"@type":"NewsArticle","headline":"Our new climate podcast launches this week","url":"https://example.com/news/2026/11/structured-podcast?utm_source=ld","datePublished":"2026-11-10"}},
+    {"@type":"ListItem","position":3,"item":{"@type":"NewsArticle","headline":"Smart heating saves money this winter season","url":"https://example.com/news/2026/11/structured-heating","datePublished":"2026-11-10"}}]}</script>
+    <article class="card">
+      <h3 class="headline"><a href="/news/2026/11/structured-cycle-lanes">Council approves the new cycle lanes downtown</a></h3>
+      <p>A short summary of the story for readers.</p>
+    </article>
+    <article class="card">
+      <h3 class="headline"><a href="/news/2026/11/structured-podcast">Our new climate podcast launches this week</a></h3>
+      <p>A short summary of the story for readers.</p>
+    </article>
+    <article class="card">
+      <span class="ad-label">Anzeige</span><h3 class="headline"><a href="/news/2026/11/structured-heating">Smart heating saves money this winter season</a></h3>
+      <p>A short summary of the story for readers.</p>
+    </article>
+    <aside class="promo"><span class="ad-label">Anzeige</span><a href="/news/2026/11/structured-podcast?utm_medium=promo">Jetzt reinhören</a></aside>
+  </main>
+  <footer class="site-footer">
+    <ul>
+      <li><a href="/about/">About our newsroom team</a></li>
+      <li><a href="/contact/">Contact the editors desk</a></li>
+      <li><a href="/privacy/">Privacy and cookie policy</a></li>
+    </ul>
+  </footer>
+</body>
+</html>

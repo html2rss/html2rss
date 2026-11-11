@@ -51,14 +51,14 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     end
 
     it 'ignores class markers on empty or hidden elements' do
-      hidden = [{ text: ' ' }, { text: '', class_names: %w[sponsored] }, { raw: { 'aria-hidden' => 'True' } },
+      hidden = [{ text: ' ' }, { text: '', class_names: %w[sponsored] }, { class_names: %w[d-none] },
                 { style: 'color: red; display : none' }, { raw: { 'hidden' => '' } },
-                { raw: { 'hidden' => '1' }, class_names: %w[sponsored] }].map { node[class_names: %w[ad-label], **_1] }
-      expect(hidden.filter_map { marker[_1] }).to be_empty
+                { raw: { 'hidden' => '1' }, class_names: %w[sponsored] }]
+      expect(hidden.filter_map { marker[node[**_1, class_names: ['ad-label', *_1[:class_names]]]] }).to be_empty
     end
 
     it 'keeps class markers on visible elements with text or children', :aggregate_failures do
-      expect(marker[node[raw: { 'aria-hidden' => 'false' }, class_names: %w[ad-label]]]).to eq(:label)
+      expect(marker[node[raw: { 'aria-hidden' => 'true' }, class_names: %w[ad-label]]]).to eq(:label)
       expect(marker[node[style: 'color: red', class_names: %w[ad-label]]]).to eq(:label)
       expect(marker[node[text: '', class_names: %w[ad-labels], children: [node[]]]]).to eq(:label)
     end
@@ -83,11 +83,16 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
       expect(label['Advertising']).to be_nil
     end
 
-    it 'ignores text labels on hidden elements', :aggregate_failures do
+    it 'ignores text labels on unrendered elements', :aggregate_failures do
       expect(label['Anzeige', raw: { 'hidden' => '' }]).to be_nil
-      expect(label['Anzeige', raw: { 'aria-hidden' => 'true' }]).to be_nil
       expect(label['Anzeige', style: 'display:none']).to be_nil
-      expect(label['Anzeige', raw: { 'aria-hidden' => 'false' }]).to eq(:label)
+      expect(%w[hidden d-none is-hidden hide].filter_map { label['Anzeige', class_names: ['label', _1]] }).to be_empty
+    end
+
+    it 'keeps visual-only and screen-reader-only text labels', :aggregate_failures do
+      expect(label['Anzeige', raw: { 'aria-hidden' => 'true' }]).to eq(:label)
+      expect(label['Sponsored', class_names: %w[sr-only]]).to eq(:label)
+      expect(label['Anzeige', class_names: %w[label hidden-xs]]).to eq(:label)
     end
 
     it 'marks the closed multilingual label set with surrounding punctuation or separators' do
@@ -98,15 +103,21 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
       expect(labels.reject { label[_1] == :label }).to be_empty
     end
 
-    it 'marks attribution labels naming a sponsor in up to five words' do
-      labels = ['Sponsored by Acme Heating', 'Presented by', 'Präsentiert von Acme', 'In Kooperation mit Acme',
-                'Sponsorisé par Acme', 'En partenariat avec', 'Patrocinado por Acme Hogar', 'Presented by a b c d e']
+    it 'marks paid attribution naming a sponsor in up to five words' do
+      labels = ['Sponsored by Acme Heating', 'Gesponsert von Acme', 'Sponsorisé par Acme', 'Patrocinado por Acme Hogar',
+                'Sponsored by a b c d e', 'Sponsored by']
       expect(labels.reject { label[_1] == :label }).to be_empty
+    end
+
+    it 'ignores attribution that states no payment' do
+      rejected = ['Presented by Acme', 'Präsentiert von Acme', 'In Kooperation mit Acme', 'En partenariat avec Acme',
+                  'In partnership with Acme']
+      expect(rejected.filter_map { label[_1] }).to be_empty
     end
 
     it 'ignores text that only contains or starts with a label' do
       rejected = ['Advertising', 'Anzeigenmarkt', 'Adventure', 'Ad hoc', 'Sponsored posts dominate the feed',
-                  'Presented by a b c d e f', 'Paid', 'Partner', 'Werbung im Wandel', 'by Acme']
+                  'Sponsored by a b c d e f', 'Paid', 'Partner', 'Werbung im Wandel', 'by Acme']
       expect(rejected.filter_map { label[_1] }).to be_empty
     end
 

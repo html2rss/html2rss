@@ -11,10 +11,9 @@ module Html2rss
     # (+aside+, +menu+, sectioned +footer+) are peripheral.
     # A URL rendered several times keeps its strongest placement.
     #
-    # Each {LinkDestination::Sponsorship} marker is scoped to its card: the smallest element
-    # holding the marker and at least one anchor. The card's URL is sponsored when all its
-    # anchors share one destination; a marker whose card spans several destinations (an ad
-    # slot between list items) marks nothing. PageLinks owns no keep or drop rule;
+    # Each {LinkDestination::Sponsorship} marker is scoped to its card ({SponsoredCards}): a
+    # container marks every destination inside it, a label only the dominant destination of the
+    # +article+, +section+, +aside+ or +li+ it sits in. PageLinks owns no keep or drop rule;
     # {Corroboration} and {Cleanup} read it.
     #
     # Both facts are walked lazily, once, on first use: a sponsorship check walks markers and
@@ -152,22 +151,20 @@ module Html2rss
       private_constant :Placements
 
       ##
-      # Article identities of sponsored cards, from one marker walk. Only anchors inside a
-      # marked subtree are resolved until a marker binds; a page without markers resolves nothing.
+      # Article identities of sponsored cards, from one marker walk. Anchors are resolved only once
+      # a marker binds; a page without markers resolves nothing.
       #
       # A +:container+ marker holding anchors marks every destination inside it. A +:label+ (or an
-      # anchorless container marker) binds only a card it is inside of: it climbs to the smallest
-      # ancestor holding anchors other than its own, stopping at its card boundary
-      # ({CARD_BOUNDARY_NAMES}), and never climbs into an ancestor that also holds another card
-      # boundary (an empty ad slot beside an editorial teaser marks nothing). That card marks its
-      # dominant destination: its only one, else its only headline destination (an anchor in or
-      # around a heading); several headlines (a label between list items) mark nothing.
+      # anchorless container marker) marks the card it sits in: its nearest {CARD_NAMES} element,
+      # itself included. That card marks its dominant destination: its only one, else its only
+      # headline destination (an anchor in or around a heading); a card with several headlines marks
+      # nothing, and so does a label outside every card (bare +div+ layouts).
       #
       # Marking is per card: a URL is sponsored only when every anchor to it sits in a marked card,
       # so a promo slot never hides the editorial card linking the same story.
       class SponsoredCards
-        # Elements that delimit one card: sectioning elements and list items.
-        CARD_BOUNDARY_NAMES = (SST::Tags::SECTIONING_NAMES | Set[:li]).freeze
+        # Elements that delimit one card. +main+ is a page region, never a card.
+        CARD_NAMES = Set[:article, :section, :aside, :li].freeze
 
         # @param document [SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
@@ -176,10 +173,11 @@ module Html2rss
           @link_resolver = link_resolver
           @anchors = []
           @headline = []
-          @roles = []
+          @claimed = []
           @ancestors = []
-          @boundary_count = 0
+          @labelled = []
           walk(document.root) if document
+          release_unclaimed_keys unless @keys.empty?
           freeze
         end
 
@@ -189,41 +187,21 @@ module Html2rss
 
         private
 
-        def walk(root)
-          climb(root)
-          release_unclaimed_keys unless @keys.empty?
-        end
-
-        # Walks +node+'s subtree. Returns true while a label climbing out of it still waits for its
-        # card, a bound card's article identity (an Array) while its claim still widens, else false.
-        def climb(node)
+        # +@labelled+ holds one flag per open card, innermost last.
+        def walk(node)
           start = @anchors.size
-          boundaries = @boundary_count
-          pending = descend(node)
-          enclosed = @boundary_count > boundaries
-          @boundary_count += 1 if boundary?(node)
-          marker = LinkDestination::Sponsorship.marker(node, @ancestors)
-          return marker_climb(node, marker, start) if marker
-          return bind(node, start) if pending == true && !enclosed
-
-          pending && pending != true && widen(pending, start)
+          card = CARD_NAMES.include?(node.name)
+          @labelled << false if card
+          descend(node)
+          mark(node, start)
+          bind(start) if card && @labelled.pop
         end
 
         def descend(node)
           record(node) if node.link?
           @ancestors << node
-          pending = node.children.reduce(false) { |merged, child| merge(merged, climb(child)) }
+          node.children.each { walk(_1) }
           @ancestors.pop
-          pending
-        end
-
-        # Children's states: a waiting label wins; two different widening cards stop widening. A falsy
-        # state (no label, no card) is neutral.
-        def merge(pending, result)
-          return result unless pending
-          return pending if !result || result == pending
-
-          pending == true || result == true
         end
 
         def record(anchor)
@@ -231,31 +209,19 @@ module Html2rss
           @headline << @ancestors.any?(&:heading?)
         end
 
-        # A container marker holding anchors marks all of them. A label, or an anchorless container,
-        # starts climbing; a label's own anchors ("what is this?", a linked label) are never its
-        # card's destination.
-        def marker_climb(node, marker, start)
-          range = start...@anchors.size
-          return claim(start, card_keys(range)) if marker == :container && range.any?
+        def mark(node, start)
+          marker = LinkDestination::Sponsorship.marker(node, @ancestors)
+          return unless marker
+          return claim(start, card_keys(start...@anchors.size)) if marker == :container && @anchors.size > start
 
-          @roles.fill(:label, range)
-          !boundary?(node)
+          @labelled[-1] = true unless @labelled.empty?
         end
 
-        # True while the subtree holds no card destination yet and +node+ is no card boundary.
-        def bind(node, start)
-          indexes = (start...@anchors.size).reject { @roles[_1] == :label }
+        def bind(start)
+          indexes = start...@anchors.size
           keys = card_keys(indexes)
-          return !boundary?(node) if keys.empty?
-
           key = keys.one? ? keys.first : headline_key(indexes)
-          key && claim(start, [key])
-        end
-
-        # Widens a bound card over an ancestor whose other anchors all link the card's destination
-        # (an image link and a headline link in sibling wrappers of one teaser).
-        def widen(key, start)
-          (card_keys((start...@anchors.size).reject { @roles[_1] }) - [key]).empty? && claim(start, [key])
+          claim(start, [key]) if key
         end
 
         def headline_key(indexes)
@@ -270,20 +236,16 @@ module Html2rss
 
         def key_at(index) = @link_resolver.destination_facts(@anchors.fetch(index))&.url&.article_identity
 
-        # Marks +keys+ and every anchor from +start+ as inside a marked card. Returns the card's only
-        # destination, whose claim may still widen, else false.
+        # Marks +keys+ and every anchor from +start+ as inside a marked card.
         def claim(start, keys)
           @keys.merge(keys)
-          @roles.fill(:claimed, start...@anchors.size)
-          keys.one? && keys.first
+          @claimed.fill(true, start...@anchors.size)
         end
 
         # A URL also rendered outside every marked card is editorial there.
         def release_unclaimed_keys
-          @anchors.each_index { @keys.delete(key_at(_1)) unless @roles[_1] == :claimed }
+          @anchors.each_index { @keys.delete(key_at(_1)) unless @claimed[_1] }
         end
-
-        def boundary?(node) = CARD_BOUNDARY_NAMES.include?(node.name)
       end
       private_constant :SponsoredCards
     end

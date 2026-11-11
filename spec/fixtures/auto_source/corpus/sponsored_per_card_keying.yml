@@ -1,0 +1,10 @@
+---
+case: 'Marking is per card: a promo slot or ad-labelled card linking a story the page
+  also shows in an editorial card (beside it, in an aside, or further down the page)
+  never hides that story; only the ad whose every copy is labelled is dropped.'
+expected:
+- https://example.com/news/2026/11/climate-podcast-launch
+- https://example.com/news/2026/11/city-orchestra-season
+- https://example.com/news/2026/11/newsletter-relaunch
+- https://example.com/news/2026/11/tram-stops-renamed
+- https://example.com/news/2026/11/ferry-timetable-change

@@ -121,9 +121,15 @@ sponsored_ad_label_card.html:
   title_misses: 0
   sst_built: true
 sponsored_container_and_attribution.html:
-  junk: 0
+  junk: 1
   real: 4
   expected: 4
+  title_misses: 0
+  sst_built: true
+sponsored_container_markers.html:
+  junk: 0
+  real: 9
+  expected: 9
   title_misses: 0
   sst_built: true
 sponsored_empty_ad_slot_row.html:
@@ -132,16 +138,34 @@ sponsored_empty_ad_slot_row.html:
   expected: 6
   title_misses: 0
   sst_built: true
+sponsored_label_binding.html:
+  junk: 0
+  real: 10
+  expected: 10
+  title_misses: 0
+  sst_built: true
 sponsored_label_precision.html:
   junk: 0
   real: 12
   expected: 12
   title_misses: 0
   sst_built: true
+sponsored_label_vocabulary.html:
+  junk: 0
+  real: 10
+  expected: 10
+  title_misses: 0
+  sst_built: true
 sponsored_paywall_markers.html:
   junk: 0
   real: 6
   expected: 6
+  title_misses: 0
+  sst_built: true
+sponsored_per_card_keying.html:
+  junk: 0
+  real: 5
+  expected: 5
   title_misses: 0
   sst_built: true
 sponsored_rel_link.html:
@@ -154,6 +178,12 @@ sponsored_story_about_ads.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
+  sst_built: true
+sponsored_structured_shared_url.html:
+  junk: 0
+  real: 2
+  expected: 2
   title_misses: 0
   sst_built: true
 structured_small_merge.html:

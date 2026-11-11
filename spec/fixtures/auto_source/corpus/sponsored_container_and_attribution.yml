@@ -1,5 +1,7 @@
 ---
-case: Attribution labels ("Sponsored by …", "Partner content", "Ad", "Anzeige |", Spanish and French forms), BEM sponsored class tokens, a labelled card with image, label and sponsor links, an ARIA-labelled partner rail, and a data-sponsored ad container all mark their cards; only the editorial cards are expected.
+# Known junk (1): insurance-comparison. Its "Anzeige" badge sits in a bare div teaser outside every
+# article/section/aside/li card, so the label binds nothing (Q1 accepted miss: no label climbing).
+case: Paid attribution labels ("Sponsored by …", "Partner content", "Ad", "Anzeige |", Spanish and French forms), BEM sponsored class tokens, a labelled card with image, label and sponsor links, an ARIA-labelled partner rail, and a data-sponsored ad container all mark their cards; only the editorial cards are expected.
 expected:
 - https://example.com/news/2026/11/tram-line-extends-east
 - https://example.com/news/2026/11/museum-reopens-north-wing

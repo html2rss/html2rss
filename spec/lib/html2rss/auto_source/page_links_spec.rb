@@ -329,8 +329,8 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       expect(page_links.sponsored?(url_at['/news/house-story'])).to be(false)
     end
 
-    it 'widens a bound card over sibling wrappers linking only its destination' do
-      expect(page_links.sponsored?(url_at['/news/split-teaser'])).to be(true)
+    it 'binds nothing for a label outside every card, even beside a single teaser' do
+      expect(page_links.sponsored?(url_at['/news/split-teaser'])).to be(false)
     end
 
     it 'marks only the sponsored link itself for rel, never its card', :aggregate_failures do
@@ -374,7 +374,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       expect(page_links.placement(url_at['/news/rel-paid'])).to eq(:content)
     end
 
-    context 'when markers meet bound cards inside one wrapper' do
+    context 'when labels meet cards' do
       let(:html) do
         <<~HTML
           <html><body><main>
@@ -382,75 +382,40 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
               <a href="/culture/wrapped">Culture</a></article>
             <article><span>Sponsored</span><a href="/news/only-link">Only link</a>
               <div href="/news/stray-href"><p>Stray box</p></div></article>
-            <article><span>Sponsored</span><a href="/news/duplicate"><img src="/d.jpg"></a>
-              <a href="/news/duplicate">Duplicate</a></article>
+            <li><div><div><span class="ad-label" aria-hidden="true">Anzeige</span></div></div>
+              <a href="/news/deep-label"><img src="/d.jpg"></a><a href="/news/deep-label">Deep label</a></li>
             <article><span>Sponsored</span><a href="/news/beside-bad">Beside bad</a>
               <a href="http://example.com:abc/">Bad</a></article>
             <article><div data-sponsored="true"><img src="/i.jpg"></div>
               <h3><a href="/news/anchorless-container">Anchorless container</a></h3></article>
+            <section class="ad-label">Anzeige<h3><a href="/news/labelled-card">Labelled card</a></h3></section>
+            <article><span class="label">Sponsored</span><h3><a href="/news/tagged-ad">Tagged ad</a></h3>
+              <ul><li><a href="/tag/travel/">Travel</a></li></ul></article>
             <article><a class="ad-label" href="/news/ads-info">Anzeige</a><a href="/news/linked-label">Linked label</a></article>
-            <article><div class="grid"><a href="/news/grid-paid">Grid paid</a><span>Anzeige</span>
-              <a href="/news/grid-free">Grid free</a></div><h3><a href="/news/grid-outer">Grid outer</a></h3></article>
-            <p><a rel="sponsored" href="/news/grid-paid">Grid paid copy</a></p>
-            <div><article><p><a class="ad-label" href="/news/own-label">Anzeige</a></p></article></div>
-            <p><a rel="sponsored" href="/news/own-label">Own label copy</a></p>
-            <div><div><span>Anzeige</span><a href="/news/twin"><img src="/t.jpg"></a></div>
-              <div><span>Anzeige</span><h3><a href="/news/twin">Twin</a></h3></div><a href="/news/twin">Twin again</a></div>
-            <div><div><div><span>Anzeige</span><a href="/news/two-level">Two level</a></div>
-              <a href="/news/two-level">Inner copy</a></div><a href="/news/two-level">Outer copy</a></div>
-            <div><div><span>Anzeige</span><a href="/news/narrow">Narrow</a></div>
-              <a href="/news/narrow-other">Other</a><a href="/news/narrow">Narrow again</a></div>
-            <div><section aria-label="Anzeige"><a href="/news/rail-a">Rail A</a><a href="/news/rail-b">Rail B</a></section>
-              <a href="/news/rail-a">Rail A again</a></div>
-            <div><div><span>Anzeige</span><a href="/news/pair-one">Pair one</a></div>
-              <div><span>Anzeige</span><a href="/news/pair-two">Pair two</a></div>
-              <h3><a href="/news/pair-head">Pair head</a></h3></div>
-            <div><div><span>Sponsored</span></div><div><span>Anzeige</span><a href="/news/label-first-card">Card</a></div>
-              <h3><a href="/news/label-first-head">Label first head</a></h3></div>
-            <div><div><span>Anzeige</span><a href="/news/card-first-card">Card</a></div><div><span>Sponsored</span></div>
-              <h3><a href="/news/card-first-head">Card first head</a></h3></div>
-            <div><article><span>Sponsored</span></article><div><span>Anzeige</span><a href="/news/empty-card">Card</a></div>
-              <a href="/news/empty-card">Card again</a></div>
-            <div><section class="ad-label">Anzeige</section><div><span>Anzeige</span><a href="/news/label-card">Card</a></div>
-              <a href="/news/label-card">Card again</a></div>
-            <div><div><p>Advertisement</p><article><p>Not a card</p></article></div>
-              <div><span>Anzeige</span><a href="/news/enclosed-label">Card</a></div>
-              <a href="/news/enclosed-label">Card again</a></div>
+            <div class="row"><div class="teaser"><h3><a href="/news/row-story">Row story</a></h3></div>
+              <div class="ad-box"><span class="ad-label">Anzeige</span><div class="slot"></div></div></div>
+            <div class="pair"><div><h2><a href="/news/promoted-story">Promoted story</a></h2></div>
+              <div class="promo"><span class="ad-label">Anzeige</span><a href="/news/promoted-story">Listen</a></div></div>
+            <article><h3><a href="/news/outer">Outer</a></h3>
+              <article><span>Anzeige</span><h3><a href="/news/inner">Inner</a></h3></article></article>
+            <span>Anzeige</span>
           </main></body></html>
         HTML
       end
 
       let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
 
-      it 'binds a label to its single card destination, ignoring stray, duplicate and unresolvable hrefs' do
-        paths = %w[/news/wrapped-heading /news/only-link /news/duplicate /news/beside-bad /news/anchorless-container
-                   /news/linked-label]
-        expect(sponsored[*paths, '/culture/wrapped', '/news/ads-info']).to eq(
-          paths.to_h { [_1, true] }.merge('/culture/wrapped' => false, '/news/ads-info' => false)
+      it 'marks the dominant destination of the card a label sits in, at any depth' do
+        paths = %w[/news/wrapped-heading /news/only-link /news/deep-label /news/beside-bad /news/anchorless-container
+                   /news/labelled-card /news/tagged-ad /news/inner]
+        expect(sponsored[*paths, '/culture/wrapped', '/tag/travel/', '/news/outer']).to eq(
+          paths.to_h { [_1, true] }.merge('/culture/wrapped' => false, '/tag/travel/' => false, '/news/outer' => false)
         )
       end
 
-      it 'releases a URL whose other copy sits in an unbound card or a label' do
-        paths = %w[/news/grid-paid /news/grid-outer /news/own-label]
+      it 'binds nothing for a label outside every card or holding the only other link' do
+        paths = %w[/news/row-story /news/promoted-story /news/linked-label /news/ads-info]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
-      end
-
-      it 'widens a bound card only over copies of its own destination' do
-        expect(sponsored['/news/twin', '/news/two-level', '/news/narrow', '/news/rail-a', '/news/rail-b']).to eq(
-          '/news/twin' => true, '/news/two-level' => true, '/news/narrow' => false,
-          '/news/rail-a' => false, '/news/rail-b' => true
-        )
-      end
-
-      it 'lets a waiting label beside a bound card bind the shared headline' do
-        expect(sponsored['/news/label-first-head', '/news/card-first-head', '/news/pair-head']).to eq(
-          '/news/label-first-head' => true, '/news/card-first-head' => true, '/news/pair-head' => false
-        )
-      end
-
-      it 'keeps a label stopped at its card boundary from blocking a sibling card that widens' do
-        paths = %w[/news/empty-card /news/label-card /news/enclosed-label]
-        expect(sponsored[*paths]).to eq(paths.to_h { [_1, true] })
       end
     end
 

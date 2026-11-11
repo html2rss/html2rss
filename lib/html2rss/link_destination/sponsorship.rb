@@ -9,13 +9,16 @@ module Html2rss
     #   +data-advertorial+, a sponsored or advertorial class token (BEM variants included), or an
     #   ARIA label that is an ad label. The publisher states that the element is paid content.
     # - +:label+: an ad-label class token (+ad-label+, +ad-badge__item+), or a standalone element
-    #   whose whole text is an ad label from a small closed multilingual set (en, de, fr, es).
+    #   whose whole text is a paid-content label from a small closed multilingual set (en, de, fr,
+    #   es). Attribution alone ("Presented by", "In Kooperation mit") states no payment and is no label.
     #
-    # A class or text label counts only on a rendered element: one without a +hidden+ attribute,
-    # +aria-hidden="true"+ or an inline +display: none+. A class marker also needs content (an empty
-    # template slot is not a label). A text label never counts inside running text: anchor text and headings are never
-    # read, nor are words inside an anchor, a heading, a topic chip (category, tag or kicker class)
-    # or an inline element of text-bearing prose. A headline about advertising is not a marker.
+    # A class or text label counts only on a rendered element: one without a +hidden+ attribute, an
+    # inline +display: none+ or a hiding utility class ({HIDDEN_CLASSES}). +aria-hidden="true"+ and
+    # screen-reader-only classes still count: one is a visual label, the other a spoken one. A class
+    # marker also needs content (an empty template slot is not a label). A text label never counts
+    # inside running text: anchor text and headings are never read, nor are words inside an anchor, a
+    # heading, a topic chip (category, tag or kicker class) or an inline element of text-bearing
+    # prose. A headline about advertising is not a marker.
     #
     # Markers only; {AutoSource::PageLinks} scopes a marker to the card that holds it.
     module Sponsorship
@@ -37,14 +40,14 @@ module Html2rss
       # Ad-label class token family, with an optional BEM element or modifier: +ad-label+,
       # +ad-labels__item+, +ad-badge+, +ad-marker--small+. Ad slots (+ad-container+) are not labels.
       AD_LABEL_CLASS = /\Aad-(?:labels?|badge|marker)(?:(?:__|--)[a-z0-9-]+)?\z/
-      # Literal prefix every {AD_LABEL_CLASS} token starts with; checked before the regex.
-      AD_LABEL_PREFIX = 'ad-'
       # ARIA attributes read as labels.
       ARIA_NAMES = %w[aria-label aria-roledescription].freeze
       # Inline style that hides an element.
       HIDDEN_STYLE = /display\s*:\s*none/i
       # Raw attribute that keeps an element from rendering, whatever its value.
       HIDDEN_ATTRIBUTE = 'hidden'
+      # Utility class tokens that keep an element from rendering.
+      HIDDEN_CLASSES = Set['hidden', 'd-none', 'is-hidden', 'hide'].freeze
       # Class-token words (split on +-+/+_+) of topic chips, whose text names a topic, not a sale.
       CHIP_WORDS = Set['category', 'categories', 'tag', 'tags', 'kicker', 'topic', 'topics', 'rubric', 'rubrik',
                        'eyebrow'].freeze
@@ -52,7 +55,7 @@ module Html2rss
       PHRASING_NAMES = Set[:span, :em, :strong, :b, :i, :q, :small, :mark, :u, :s, :cite, :abbr, :time, :sup,
                            :sub, :label, :font].freeze
       # A whole label, optionally wrapped in punctuation or separators ("Anzeige |", "[Sponsored]",
-      # "Publicité:"). Attribution forms may name the sponsor in up to five words.
+      # "Publicité:"). Paid attribution ("Sponsored by …") may name the sponsor in up to five words.
       LABEL_PATTERN = /
         \A[\s\u00A0\p{P}|]*(?:
           # English
@@ -64,12 +67,8 @@ module Html2rss
           publicit[eé]|(?:contenu\s+)?sponsoris[eé]|publireportage|
           # Spanish
           publicidad|(?:contenido\s+)?patrocinado|publirreportaje|
-          # Attribution: "Sponsored by …", "Präsentiert von …", "En partenariat avec …"
-          (?:
-            (?:sponsored|presented)\s+by|pr[äa]sentiert\s+von|
-            in\s+kooperation\s+mit|sponsoris[eé]\s+par|
-            en\s+partenariat\s+avec|patrocinado\s+por
-          )(?:\s+\S+){0,5}
+          # Paid attribution: "Sponsored by …", "Gesponsert von …"
+          (?:sponsored\s+by|gesponsert\s+von|sponsoris[eé]\s+par|patrocinado\s+por)(?:\s+\S+){0,5}
         )[\s\u00A0\p{P}|]*\z
       /ix
 
@@ -96,7 +95,7 @@ module Html2rss
           class_names.each do |token|
             return :container if sponsored_class?(token)
 
-            kind ||= :label if token.start_with?(AD_LABEL_PREFIX) && token.match?(AD_LABEL_CLASS)
+            kind ||= :label if token.start_with?('ad-') && token.match?(AD_LABEL_CLASS)
           end
           kind
         end
@@ -109,8 +108,8 @@ module Html2rss
 
         def hidden?(node)
           attrs = node.attrs
-          attrs.raw.key?(HIDDEN_ATTRIBUTE) || attrs.raw['aria-hidden']&.casecmp?('true') ||
-            attrs.style&.match?(HIDDEN_STYLE)
+          attrs.raw.key?(HIDDEN_ATTRIBUTE) || attrs.style&.match?(HIDDEN_STYLE) ||
+            attrs.class_names.any? { HIDDEN_CLASSES.include?(_1) }
         end
 
         # Most nodes carry no raw attributes, so the empty check skips every lookup.

@@ -1,0 +1,17 @@
+---
+case: 'Explicit container markers mark every card inside them: truthy data-sponsored/data-advertorial
+  (any case, padded), sponsored class tokens, an ARIA-labelled partner rail, a data-sponsored
+  ad container, rel="sponsored" on the headline link and an anchorless advertorial
+  flag inside a card. Switched-off or blank attributes, look-alike class tokens and
+  an affiliate link inside an editorial review mark nothing; only the unmarked cards
+  are expected.'
+expected:
+- https://example.com/news/2026/11/library-weekend-hours
+- https://example.com/news/2026/11/water-meter-rollout
+- https://example.com/news/2026/11/school-garden-award
+- https://example.com/news/2026/11/night-buses-return
+- https://example.com/news/2026/11/museum-north-wing
+- https://example.com/news/2026/11/school-lunch-plan
+- https://example.com/news/2026/11/park-volunteers
+- https://example.com/news/2026/11/ad-hoc-committee
+- https://example.com/news/2026/11/headphones-review
