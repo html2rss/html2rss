@@ -21,6 +21,8 @@ module Html2rss
       # Ad-label class token family, with an optional BEM element or modifier: +ad-label+,
       # +ad-labels__item+, +ad-badge+, +ad-marker--small+. Ad slots (+ad-container+) are not labels.
       AD_LABEL_CLASS = /\Aad-(?:labels?|badge|marker)(?:(?:__|--)[a-z0-9-]+)?\z/
+      # Literal prefix every {AD_LABEL_CLASS} token starts with; checked before the regex.
+      AD_LABEL_PREFIX = 'ad-'
       # ARIA attributes read as labels.
       ARIA_NAMES = %w[aria-label aria-roledescription].freeze
       # A whole label, optionally wrapped in punctuation ("Anzeige", "[Sponsored]", "Publicité:").
@@ -42,16 +44,25 @@ module Html2rss
         # @param node [SST::Node]
         # @return [Boolean] true when +node+ itself carries an explicit sponsorship marker
         def marker?(node)
-          attribute_marker?(node.attrs) || (node.name != :a && label?(node.own_text))
+          attrs = node.attrs
+          class_marker?(attrs.class_names) || raw_marker?(attrs.raw) ||
+            (node.name != :a && label?(node.own_text))
         end
 
         private
 
-        def attribute_marker?(attrs)
-          raw = attrs.raw
+        def class_marker?(class_names)
+          class_names.any? do |token|
+            CLASS_NAMES.include?(token) || (token.start_with?(AD_LABEL_PREFIX) && token.match?(AD_LABEL_CLASS))
+          end
+        end
+
+        # Most nodes carry no raw attributes, so the empty check skips every lookup.
+        def raw_marker?(raw)
+          return false if raw.empty?
+
           sponsored_rel?(raw['rel']) ||
             ATTRIBUTE_NAMES.any? { switched_on?(raw[_1]) } ||
-            attrs.class_names.any? { CLASS_NAMES.include?(_1) || _1.match?(AD_LABEL_CLASS) } ||
             ARIA_NAMES.any? { label?(raw[_1]) }
         end
 
