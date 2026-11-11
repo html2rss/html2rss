@@ -395,6 +395,11 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     context 'with junk and acceptable titles' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
+      let(:untitled) do
+        [nil, '', " \n "].each_with_index.map do |title, index|
+          instance_double(Html2rss::Article, valid?: true, title:, url: Html2rss::Url.from_absolute("http://example.com/u#{index}"))
+        end
+      end
 
       # Table-driven keep/reject via public junk_reason + Cleanup.call (not private send).
       [
@@ -403,7 +408,6 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         { title: 'Photo: Reuters', reason: :credit },
         { title: 'lucy.smith.token', reason: :cms_token },
         { title: 'methode-article-slug', reason: :cms_token },
-        { title: nil, reason: nil },
         { title: 'Reuters reports major breakthrough today', reason: nil },
         { title: 'Courtesy Casie Ellison via pool camera', reason: :credit },
         { title: 'Courtesy Call Yields Breakthrough Deal', reason: nil },
@@ -441,6 +445,16 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
           expect(call_result.drop_tallies[example[:reason].to_s]).to eq(1)
         end
+      end
+
+      it 'has no junk reason for a missing title' do
+        expect(described_class.junk_reason(nil)).to be_nil
+      end
+
+      it 'drops untitled items as blank_title', :aggregate_failures do
+        call_result = described_class.call(untitled, url:)
+        expect(call_result.articles).to be_empty
+        expect(call_result.drop_tallies['blank_title']).to eq(3)
       end
     end
 

@@ -288,24 +288,20 @@ module Html2rss
           facts.utility_path && !facts.content_path && !facts.strong_post_suffix
         end
 
-        # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
-        # blanking them would hide bad extraction as "unknown" and inflate empty items.
-        def reject_low_quality_titles!(articles, tallies) # rubocop:disable Metrics/MethodLength -- junk vs word-count reasons
+        # Drops untitled items and junk/unnatural titles — blanking a bad title would hide bad
+        # extraction as "unknown" and admit empty items.
+        def reject_low_quality_titles!(articles, tallies)
           articles.reject! do |article|
-            title = article.title
-            next false if title.nil?
-
-            reason = junk_reason(title)
-            if reason
-              tallies[reason.to_s] += 1
-              next true
-            end
-
-            next false if word_count_at_least?(title, MIN_WORDS)
-
-            tallies['low_word_count'] += 1
-            true
+            reason = title_reject_reason(article.title)
+            tallies[reason] += 1 if reason
+            reason
           end
+        end
+
+        def title_reject_reason(title)
+          return 'blank_title' if title.nil? || title.strip.empty?
+
+          junk_reason(title)&.to_s || ('low_word_count' unless word_count_at_least?(title, MIN_WORDS))
         end
 
         def tally_reject!(articles, tallies, reason)

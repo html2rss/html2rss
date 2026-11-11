@@ -59,6 +59,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
 
     it 'keeps class markers on visible elements with text or children', :aggregate_failures do
       expect(marker[node[raw: { 'aria-hidden' => 'false' }, class_names: %w[ad-label]]]).to eq(:label)
+      expect(marker[node[style: 'color: red', class_names: %w[ad-label]]]).to eq(:label)
       expect(marker[node[text: '', class_names: %w[ad-labels], children: [node[]]]]).to eq(:label)
     end
 
@@ -102,13 +103,14 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
       expect(rejected.filter_map { label[_1] }).to be_empty
     end
 
-    it 'reads the whole element text, so a label word beside other text is no label' do
+    it 'reads the whole element text, so a label word beside other text is no label', :aggregate_failures do
       meta_line = node[name: :div, text: ' · Werbung', children: [node[name: :time, text: '10.11.2026']]]
       expect(marker[meta_line]).to be_nil
+      expect(marker[node[name: :div, text: '', children: [node[text: 'Anzeige']]]]).to be_nil
     end
 
     it 'ignores labels on topic chips', :aggregate_failures do
-      chips = %w[category post-category tag tags__item kicker teaser__kicker topic eyebrow rubrik]
+      chips = %w[category Post-Category tag tags__item kicker teaser__kicker topic eyebrow rubrik]
       expect(chips.filter_map { marker[node[text: 'Werbung', class_names: [_1]]] }).to be_empty
       expect(marker[node[text: 'Werbung', class_names: %w[tagline]]]).to eq(:label)
     end
