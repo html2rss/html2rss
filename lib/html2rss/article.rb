@@ -6,8 +6,9 @@ module Html2rss
   ##
   # Article is a simple data object representing an article extracted from a page.
   #
-  # Article owns the title: it composes +kicker+ and +title+ (the headline) at construction via
-  # {Article::Title}, so scrapers pass both parts separately and never join them.
+  # Article owns the title via {Article::Title}. Every title is whitespace-collapsed; callers that extract titles
+  # from page markup opt in with +compose_title: true+ to join +kicker+ to +title+ (the headline) and strip noise.
+  # Configured selector titles and publisher feed titles keep the default and stay verbatim.
   #
   # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
   class Article
@@ -23,7 +24,8 @@ module Html2rss
 
     # @param id [String, nil] stable article identifier
     # @param title [String, nil] article headline
-    # @param kicker [String, nil] kicker / eyebrow text composed into the title (not stored)
+    # @param kicker [String, nil] kicker / eyebrow text composed into the title (not stored); used only with
+    #   +compose_title+
     # @param description [String, nil] raw extracted description/content (not feed-rendered HTML)
     # @param url [String, Html2rss::Url, nil] canonical article URL
     # @param image [String, Html2rss::Url, nil] image URL for description / JSON Feed +image+
@@ -33,10 +35,12 @@ module Html2rss
     # @param enclosures [Array<Hash{Symbol => Object}>, nil] enclosure attribute hashes
     # @param categories [Array<String>, nil] category labels
     # @param scraper [Class, nil] scraper class that produced the article
-    # rubocop:disable-next Metrics/ParameterLists -- twelve article inputs stay explicit
+    # @param compose_title [Boolean] opt in to kicker joining and noise stripping; default keeps the title verbatim
+    # rubocop:disable-next Metrics/ParameterLists -- thirteen article inputs stay explicit
     def initialize(id: nil, title: nil, kicker: nil, description: nil, url: nil, image: nil, author: nil, guid: nil,
-                   published_at: nil, enclosures: nil, categories: nil, scraper: nil)
-      @to_h = { id:, title: Title.compose(title, kicker:), description:, url:, image:, author:, guid:, published_at:,
+                   published_at: nil, enclosures: nil, categories: nil, scraper: nil, compose_title: false)
+      title = compose_title ? Title.compose(title, kicker:) : Title.collapse(title)
+      @to_h = { id:, title:, description:, url:, image:, author:, guid:, published_at:,
                 enclosures:, categories:, scraper: }.compact.transform_values { freeze_option(_1) }.freeze
 
       @url = @image = @guid = @enclosures = @categories = @published_at = NOT_SET
@@ -55,7 +59,7 @@ module Html2rss
     # @return [String, nil] stable article identifier
     def id = blank_string_to_nil(@to_h[:id])
 
-    # @return [String, nil] composed title: +Kicker: Headline+ or the headline, without noise
+    # @return [String, nil] whitespace-collapsed title; +Kicker: Headline+ without noise when composed
     def title = @to_h[:title]
 
     # Raw extracted description — feed HTML enrichment is {FeedBuilder::ItemPresentation.description_for}.

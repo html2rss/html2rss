@@ -17,12 +17,21 @@ RSpec.describe Html2rss::Article do
       expect { described_class.new(**attrs) }.not_to raise_error
     end
 
-    it 'composes the kicker and headline into the title' do
-      expect(described_class.new(title: "Ferry\nreturns", kicker: 'Harbor :').title).to eq('Harbor: Ferry returns')
+    it 'composes the kicker and headline into the title when the caller opts in' do
+      article = described_class.new(title: "Ferry\nreturns", kicker: 'Harbor :', compose_title: true)
+
+      expect(article.title).to eq('Harbor: Ferry returns')
+    end
+
+    it 'keeps the title verbatim apart from whitespace by default', :aggregate_failures do
+      expect(described_class.new(title: '10:00 Budget vote').title).to eq('10:00 Budget vote')
+      expect(described_class.new(title: 'Video: Harbor tour').title).to eq('Video: Harbor tour')
+      expect(described_class.new(title: "  Ferry\n returns ", kicker: 'Harbor').title).to eq('Ferry returns')
     end
 
     it 'keeps the composed title across copies and Marshal round-trips', :aggregate_failures do
-      article = described_class.new(title: '12:30 Ferry returns', kicker: 'Harbor', url: 'https://example.com/a')
+      article = described_class.new(title: '12:30 Ferry returns', kicker: 'Harbor', url: 'https://example.com/a',
+                                    compose_title: true)
 
       expect(article.with_url('https://example.com/b').title).to eq('Harbor: Ferry returns')
       expect(Marshal.load(Marshal.dump(article)).title).to eq('Harbor: Ferry returns')

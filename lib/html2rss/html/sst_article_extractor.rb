@@ -71,7 +71,8 @@ module Html2rss
           published_at:,
           enclosures: extract_enclosures,
           categories: extract_categories(title, root:),
-          scraper: @scraper
+          scraper: @scraper,
+          compose_title: true
         }
         article = Article.new(**attrs)
         article.valid? ? article : nil

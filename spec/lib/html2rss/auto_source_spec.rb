@@ -367,6 +367,37 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when titles carry leading noise' do
+      let(:feed_item) do
+        { title: '10:00 Video: Native feed story title', url: 'https://example.com/news/feed-1', id: 'feed-1' }
+      end
+      let(:body) do
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => [
+          { '@type' => 'NewsArticle', 'headline' => '10:00 Schema story one words', 'url' => '/news/s-1' },
+          { '@type' => 'NewsArticle', 'headline' => '10:00 Schema story two words', 'url' => '/news/s-2' }
+        ] }
+        cards = %w[1 2].map do |index|
+          %(<article><h2><a href="/news/s-#{index}">Schema story #{index} words</a></h2></article>)
+        end
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{cards.join}</main></body></html>)
+      end
+
+      it 'strips noise from structured scraper titles' do
+        schema_titles = articles.select { _1.scraper == Html2rss::AutoSource::Scraper::Schema }.map(&:title)
+
+        expect(schema_titles).to eq(['Schema story one words', 'Schema story two words'])
+      end
+
+      it 'keeps a publisher feed title verbatim' do
+        feed = Html2rss::AutoSource::Scraper::NativeFeed.allocate
+        allow(feed).to receive(:extractable?).and_return(true)
+        allow(feed).to receive(:map) { |&block| [feed_item].map(&block) }
+        allow(Html2rss::AutoSource::Scraper::NativeFeed).to receive(:new).and_return(feed)
+
+        expect(articles.first.title).to eq('10:00 Video: Native feed story title')
+      end
+    end
+
     context 'when SemanticHtml is sufficient before Html' do
       let(:articles_html) do
         Array.new(5) do |index|
@@ -623,6 +654,13 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'propagates StandardError instead of quarantining it' do
         expect { articles }.to raise_error(StandardError, 'boom')
+      end
+
+      it 'rejects a scraper item that is neither Article nor Hash' do
+        stub_const('FakeScraper', Class.new { def map = [yield('not an item')] })
+
+        expect { auto_source.send(:run_scraper, FakeScraper.new) }
+          .to raise_error(TypeError, 'FakeScraper yielded String; expected Article or Hash')
       end
     end
 

@@ -5,7 +5,10 @@ module Html2rss
     ##
     # Owns article title composition and the one title-noise vocabulary.
     #
-    # Every title takes the form +Kicker: Headline+ (or just +Headline+). Both parts are
+    # Whitespace collapse ({.collapse}) is universal. Composition ({.compose}) is opt-in per caller
+    # (see {Article#initialize}): configured selector titles and publisher feed titles stay verbatim.
+    #
+    # A composed title takes the form +Kicker: Headline+ (or just +Headline+). Both parts are
     # whitespace-collapsed, trimmed of stray separators, and stripped of leading noise: clock
     # times, screen-reader field labels (+Section:+) and type labels with their marker
     # (+Article type: Video+). The label and marker sets are small, closed and multilingual
@@ -40,6 +43,14 @@ module Html2rss
 
       class << self
         ##
+        # @param text [String, nil] title text as extracted
+        # @return [String, nil] +text+ with whitespace runs (newlines included) collapsed and trimmed, or nil when blank
+        def collapse(text)
+          collapsed = text.to_s.gsub(/[[:space:]]+/, ' ').strip
+          collapsed unless collapsed.empty?
+        end
+
+        ##
         # @param headline [String, nil] headline text as extracted
         # @param kicker [String, nil] kicker / eyebrow text, when the source exposes one
         # @return [String, nil] +Kicker: Headline+, the clean headline, or nil when it is blank
@@ -54,8 +65,8 @@ module Html2rss
         private
 
         def clean(text)
-          cleaned = text.to_s.gsub(/[[:space:]]+/, ' ').sub(NOISE_PREFIX, '').sub(STRAY_SUFFIX, '')
-          cleaned unless cleaned.empty?
+          cleaned = collapse(text)&.sub(NOISE_PREFIX, '')&.sub(STRAY_SUFFIX, '')
+          cleaned unless cleaned.to_s.empty?
         end
 
         def noise_kicker?(kicker) = TYPE_MARKERS.include?(kicker.downcase)

@@ -313,7 +313,8 @@ module Html2rss
       when Article
         item
       when Hash
-        Article.new(**item, scraper: instance.class)
+        # Page-derived titles opt in to composition; a publisher's own feed titles stay verbatim.
+        Article.new(**item, scraper: instance.class, compose_title: !instance.is_a?(Scraper::NativeFeed))
       else
         raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
       end

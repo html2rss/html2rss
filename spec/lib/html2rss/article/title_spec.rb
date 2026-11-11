@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe Html2rss::Article::Title do
+  describe '.collapse' do
+    {
+      "  Tram line\n extends\t" => 'Tram line extends',
+      '10:00 Budget vote' => '10:00 Budget vote',
+      'Video: Harbor tour' => 'Video: Harbor tour',
+      "  \n " => nil,
+      nil => nil
+    }.each do |text, expected|
+      it "collapses #{text.inspect} to #{expected.inspect}" do
+        expect(described_class.collapse(text)).to eq(expected)
+      end
+    end
+  end
+
   describe '.compose' do
     {
       ['Storm ahead', 'Weather'] => 'Weather: Storm ahead',

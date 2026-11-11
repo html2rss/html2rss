@@ -206,6 +206,32 @@ RSpec.describe Html2rss::Selectors do
     end
   end
 
+  describe 'configured titles' do
+    let(:body) do
+      '<article><h1>  10:00 Budget vote </h1><a href="/budget">More</a></article>'
+    end
+
+    [true, false].each do |enhance|
+      it "keeps a selected title verbatim apart from whitespace with enhance: #{enhance}" do
+        selectors[:items][:enhance] = enhance
+
+        expect(instance.articles.map(&:title)).to eq(['10:00 Budget vote'])
+      end
+    end
+
+    context 'when the item also carries a kicker' do
+      let(:body) do
+        '<article><span class="kicker">Council</span><h1>10:00 Budget vote</h1><a href="/budget">More</a></article>'
+      end
+
+      it 'does not prefix the selected title with the kicker the enhance pass finds' do
+        selectors[:items][:enhance] = true
+
+        expect(instance.articles.map(&:title)).to eq(['10:00 Budget vote'])
+      end
+    end
+  end
+
   describe '#each_enhance_pair' do
     before { selectors[:items][:enhance] = true }
 
