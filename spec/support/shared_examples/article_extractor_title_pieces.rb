@@ -11,6 +11,15 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<span class="kicker"><span>Thema:</span> Verkehr</span><h2><a href="/news/story">Tram line extends</a></h2>',
       'Verkehr: Tram line extends'
     ],
+    'a kicker child ending in a colon' => [
+      '<span class="kicker"><strong>Conflict:</strong></span><h2><a href="/news/story">Headline</a></h2>',
+      'Conflict: Headline'
+    ],
+    'field-label kicker children in de, fr and es' => [
+      '<span class="kicker"><span>Thème :</span><span>Tema:</span> Port</span>' \
+      '<h2><a href="/news/story">Tax vote</a></h2>',
+      'Port: Tax vote'
+    ],
     'clock, time and type-marker kicker children' => [
       '<span class="kicker"><span>09:05</span><time>Oct 20</time><span>Video</span><span>Harbor</span></span>' \
       '<h2><a href="/news/story">Ferry route returns</a></h2>',

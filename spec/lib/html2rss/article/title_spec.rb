@@ -165,7 +165,7 @@ RSpec.describe Html2rss::Article::Title do
   describe '.headline_noise_piece?' do
     {
       '19:47' => true, '10:00 Uhr' => true, ' Section: ' => true, 'Rubrique :' => true, 'Article type: Video' => true,
-      'Artikeltyp:' => true, 'Video' => false, 'Thema:' => false, 'Section: Harbor' => false,
+      'Artikeltyp:' => true, 'Thema:' => true, 'Video' => false, 'Conflict:' => false, 'Section: Harbor' => false,
       '10:00 Budget vote' => false, '' => false, nil => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
@@ -176,8 +176,9 @@ RSpec.describe Html2rss::Article::Title do
 
   describe '.noise_piece?' do
     {
-      'Thema:' => true, ' Section: ' => true, '19:47' => true, 'Video' => true, 'Live Blog' => true, ' ' => true,
-      nil => true, 'Verkehr' => false, 'Thema: Verkehr' => false, '28:25' => false, 'Video tour' => false
+      'Thema:' => true, 'Thème :' => true, 'Tema:' => true, 'Topic:' => true, ' Section: ' => true, '19:47' => true,
+      'Video' => true, 'Live Blog' => true, ' ' => true, nil => true, 'Verkehr' => false, 'Conflict:' => false,
+      'Ukraine-Krieg:' => false, 'Thema: Verkehr' => false, '28:25' => false, 'Video tour' => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.noise_piece?(text)).to be(expected)

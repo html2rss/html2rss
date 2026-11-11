@@ -46,7 +46,8 @@ module Html2rss
       SEPARATOR_MARK = %r{(?:[:|•·–—/»›→-]|>(?![[:space:]]*\d))(?=[[:space:]]|\z)}
       # Screen-reader field labels (+Section:+) and type labels with their marker (+Article type: Video+).
       LABEL = /
-        (?:section|category|rubrik|ressort|kategorie|rubrique|cat[ée]gorie|secci[óo]n|categor[íi]a)\s*:
+        (?:section|category|topic|rubrik|ressort|kategorie|thema|rubrique|cat[ée]gorie|th[èe]me|secci[óo]n
+          |categor[íi]a|tema)\s*:
         | (?:article\s+type|content\s+type|artikeltyp|beitragstyp|inhaltstyp|type\s+d['’]article
             |type\s+de\s+contenu|tipo\s+de\s+art[íi]culo|tipo\s+de\s+contenido)\s*:
           (?:\s*(?:#{Regexp.union(TYPE_MARKERS.sort_by { -_1.length }).source})(?![[:alnum:]]))?
@@ -117,14 +118,15 @@ module Html2rss
         end
 
         ##
-        # Whether one child element of a kicker is noise on its own: blank, a clock time, a field
-        # label (+Thema:+, +Section:+) or a type marker. {Html::TitlePieces} drops such kicker pieces.
+        # Whether one child element of a kicker is noise on its own: blank, a clock time, a closed field
+        # label (+Thema:+, +Section:+) or a type marker. Any other piece ending in a colon is kicker text
+        # (+Conflict:+); {.compose} trims that colon. {Html::TitlePieces} drops noise kicker pieces.
         #
         # @param text [String, nil] visible text of one kicker child element
         # @return [Boolean]
         def noise_piece?(text)
           piece = collapse(text)
-          piece.nil? || piece.end_with?(':') || piece.match?(CLOCK_PIECE) || TYPE_MARKERS.include?(piece.downcase)
+          piece.nil? || piece.match?(LABEL_PIECE) || piece.match?(CLOCK_PIECE) || TYPE_MARKERS.include?(piece.downcase)
         end
 
         private
