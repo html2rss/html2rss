@@ -51,11 +51,9 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     end
 
     it 'ignores class markers on empty or hidden elements' do
-      hidden = [node[text: ' ', class_names: %w[ad-label]], node[text: '', class_names: %w[sponsored]],
-                node[raw: { 'aria-hidden' => 'True' }, class_names: %w[ad-badge]],
-                node[style: 'color: red; display : none', class_names: %w[ad-label]],
-                node[raw: { 'hidden' => '' }, class_names: %w[ad-label]],
-                node[raw: { 'hidden' => 'until-found' }, class_names: %w[sponsored]]]
+      hidden = [{ text: ' ' }, { text: '', class_names: %w[sponsored] }, { raw: { 'aria-hidden' => 'True' } },
+                { style: 'color: red; display : none' }, { raw: { 'hidden' => '' } },
+                { raw: { 'hidden' => '1' }, class_names: %w[sponsored] }].map { node[class_names: %w[ad-label], **_1] }
       expect(hidden.filter_map { marker[_1] }).to be_empty
     end
 
