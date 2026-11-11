@@ -20,12 +20,14 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
    3. Heuristic: SemanticHtml
    4. Heuristic: Html (skipped when earlier tiers already admitted at least one clean article)
 
-4. **Structured / API scrapers** — Schema, Microdata, MF2, JSON state, XHR JSON, oEmbed, WordPress REST, and Sitemap work on Nokogiri CSS/XPath or JSON/XML parsers. They do not use SST. `JsonDocument` walks a JSON response body (JSON Feed mapping or `JsonState.discover_articles`).
-5. **Heuristic scrapers** — `SemanticHtml` and `Html` normalize once into an `SST::Document`, then:
+4. **Structured / API scrapers** — Schema, Microdata, MF2, JSON state, XHR JSON, oEmbed, WordPress REST, and Sitemap work on Nokogiri CSS/XPath or JSON/XML parsers. They do not extract from SST. `JsonDocument` walks a JSON response body (JSON Feed mapping or `JsonState.discover_articles`).
+5. **Heuristic scrapers** — `SemanticHtml` and `Html` share the page `SST::Document` (built lazily, at most once per page, by the first consumer: a heuristic tier or the page check), then:
 
    `SST::Normalizer` → `AutoSource::Segmenter` → `Scoring::Engine` → extractor / article materialization.
 
-6. **Cleanup** — Merge, dedupe, hard-exclude non-article destinations (via `PathClassifier` facts), drop junk titles, and trim to `limit`. Html is skipped when earlier tiers already admitted clean items.
+6. **Cleanup** — Page-check structured items, merge, dedupe, hard-exclude non-article destinations (via `PathClassifier` facts), drop junk titles, and trim to `limit`. Html is skipped when earlier tiers already admitted clean items.
+
+   Page check: items from `Scraper::CORROBORATED_SCRAPERS` go through `Corroboration#verdict` before dedupe. `PageLinks` places each URL on the rendered page (content, peripheral, chrome, absent). Content keeps; chrome-only drops as `chrome_only`; unrendered drops as `not_on_page`; peripheral items, and any item on a sparse page or a JSON response (no page), keep only on a private article-likeness score, else `unlikely`. Dropped items never count toward tier stop, so the heuristic tiers run and merge; for a shared URL the kept structured copy wins dedupe.
 
 7. **Entry URL resolution** (pipeline, not this class) — when AutoFallback sees a weak homepage extract, `FeedResolution` may rewrite the scrape URL to a listing/feed before escalating strategies. See {Html2rss::FeedPipeline} and {Html2rss::FeedResolution}.
 
@@ -37,13 +39,13 @@ Segmenter strategies: `:semantic` (leaf containers + primary link), `:list` (car
 | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `Response#parsed_body`                                                                        | HTML document, or Hash/Array for JSON bodies                     |
 | `JsonDocument`                                                                                | Parsed JSON Hash/Array (no Nokogiri)                             |
-| Schema / Microdata / MF2 / JsonState / XhrArticles / MetaOembed / app-shell detection         | Nokogiri                                                         |
+| Schema / Microdata / MF2 / JsonState / XhrArticles / MetaOembed / app-shell detection         | Nokogiri (items page-checked against SST anchors via `PageLinks`) |
 | Sitemap detection (CSS/XPath)                                                                 | Nokogiri; URL list parsing uses raw `response.body` (XML string) |
 | Selectors path / Sanitize transformers                                                        | Nokogiri (unchanged)                                             |
 | `SST::Normalizer`                                                                             | Sole Nokogiri consumer on the heuristic auto-source path         |
 | Segmenter, Scoring, `Html::SstArticleExtractor`, heuristic chrome (`SST::Tags` / `SST::Text`) | SST only                                                         |
 
-Production heuristic scrapers should reuse one `SST::Document` memoized from `parsed_body` (or a shared Document passed in), not re-parse HTML strings.
+Production heuristic scrapers and the page check reuse one `SST::Document` and one page `Scoring::LinkResolver` memoized by `AutoSource`, not re-parse HTML strings.
 
 ## Constraints
 

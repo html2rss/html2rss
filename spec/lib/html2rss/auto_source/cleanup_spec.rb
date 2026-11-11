@@ -96,6 +96,48 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- verdict stub + two scraper cohorts
+    context 'with a corroboration page check' do
+      subject(:result) { described_class.call(articles, url:, corroboration:) }
+
+      let(:corroboration) { instance_double(Html2rss::AutoSource::Corroboration) }
+      let(:structured) { Html2rss::AutoSource::Scraper::JsonState }
+      let(:heuristic) { Html2rss::AutoSource::Scraper::SemanticHtml }
+      let(:verdicts) do
+        { '/menu' => :chrome_only, '/hidden' => :not_on_page, '/thin' => :unlikely, '/story-one' => :chrome_only }
+      end
+      let(:articles) do
+        [
+          ['/story-one', structured], ['/menu', structured], ['/hidden', structured], ['/thin', structured],
+          ['/story-two', structured], ['/story-one', heuristic], ['/broken', structured]
+        ].map do |path, scraper|
+          instance_double(Html2rss::Article, valid?: path != '/broken', scraper:, title: "Story title for #{path}",
+                                             url: Html2rss::Url.from_absolute("http://example.com#{path}"))
+        end
+      end
+
+      before do
+        allow(corroboration).to receive(:verdict) do |article, **|
+          article.scraper == structured ? verdicts.fetch(article.url.path, :keep) : :keep
+        end
+      end
+
+      it 'tallies each drop verdict under its own reason', :aggregate_failures do
+        expect(result.drop_tallies).to eq('invalid' => 1, 'chrome_only' => 2, 'not_on_page' => 1, 'unlikely' => 1)
+        expect(result.articles.map { [_1.url.path, _1.scraper] })
+          .to eq([['/story-two', structured], ['/story-one', heuristic]])
+      end
+
+      it 'checks valid items only, each with its scraper cohort', :aggregate_failures do
+        given = articles.dup
+        result
+
+        expect(corroboration).to have_received(:verdict).exactly(6).times
+        expect(corroboration).to have_received(:verdict).with(given[1], cohort: given.first(5))
+        expect(corroboration).to have_received(:verdict).with(given[5], cohort: [given[5]])
+      end
+    end
+
     context 'when URLs differ only by fragment' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/news') }
       let(:articles) do

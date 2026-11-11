@@ -1,0 +1,9 @@
+---
+case: Rendered teaser grid; JSON state wraps each story in content{} and one entry also
+  holds an author {name,url} node (competing nodes, entry skipped). The heuristic tier merges
+  the skipped story; the author URL is never admitted.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/council-votes-on-parking

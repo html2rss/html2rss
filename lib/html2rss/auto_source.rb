@@ -126,7 +126,8 @@ module Html2rss
     # Extracts articles by running scraper tiers until a sufficient set is found.
     #
     # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
-    # SST is built only when a heuristic tier runs. Later tiers are skipped once
+    # SST is built at most once, lazily, by the first consumer: a heuristic tier or the
+    # {Corroboration} page check of structured-tier items. Later tiers are skipped once
     # +limit+ articles with url+title remain after Cleanup; the result is capped to +limit+.
     # Html is skipped when earlier tiers already admitted at least one clean article
     # below +limit+ — quality over padding with weaker heuristic junk.
@@ -162,22 +163,12 @@ module Html2rss
       return extract_json_document_articles if json_response?
 
       articles = []
-      @cleanup_memo = nil
       matched = false
-      document = nil
-      link_resolver = nil
       scraper_opts = @opts.fetch(:scraper, {})
 
       Scraper::SCRAPER_TIERS.each do |tier|
         break if enough_articles?(articles)
         break if skip_html_padding?(tier, articles)
-
-        if Scraper.heuristic_tier?(tier)
-          document ||= SST::Normalizer.call(parsed_body)
-          next unless document
-
-          link_resolver ||= ::Html2rss::Scoring::LinkResolver.new(url)
-        end
 
         tier.each do |scraper_class|
           instance = Scraper.build_instance(
@@ -187,7 +178,7 @@ module Html2rss
             url:,
             request_session:,
             body:,
-            document:,
+            document: (page_document if Scraper.heuristic_tier?(tier)),
             link_resolver:,
             captured_responses:
           )
@@ -270,7 +261,23 @@ module Html2rss
     def cleanup_result(articles)
       return @cleanup_memo.last if @cleanup_memo&.first == articles.size
 
-      Cleanup.call(articles.dup, url:, **cleanup_options).tap { @cleanup_memo = [articles.size, _1] }
+      Cleanup.call(articles.dup, url:, corroboration:, **cleanup_options).tap { @cleanup_memo = [articles.size, _1] }
+    end
+
+    # Page SST shared by the heuristic tiers and the page check; nil for a JSON response
+    # or a page without SST nodes.
+    def page_document
+      return @page_document if defined?(@page_document)
+
+      @page_document = (SST::Normalizer.call(parsed_body) unless json_response?)
+    end
+
+    def link_resolver
+      @link_resolver ||= Scoring::LinkResolver.new(url)
+    end
+
+    def corroboration
+      @corroboration ||= Corroboration.new { PageLinks.build(page_document, link_resolver:) }
     end
 
     def admitted_articles(articles)

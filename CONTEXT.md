@@ -100,7 +100,7 @@ Shared path lexicon for native feed discovery and entry-resolution listing guess
 
 ## URL document identity
 
-Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it. Differs from `Url#==` (slash-sensitive).
+Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`; `Url#document_identity` is the matching hash key. `FeedResolution::CandidateGenerator` filters with it; `AutoSource::PageLinks` keys rendered anchors by it. Differs from `Url#==` (slash-sensitive) and from Cleanup's fragment-only dedupe identity.
 
 ## Feed resolution policy
 
@@ -160,7 +160,11 @@ Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::Lin
 
 ## Feed-item admission
 
-Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoSource::Cleanup` (scheme/domain/self-link/title floor **and** destination-class hard exclude). Destination facts come from `LinkDestination::DestinationFacts` / `PathClassifier` — Cleanup does not own path lexicon Sets. Title string backstop stays `Cleanup.junk_reason` only. Scoring may demote or rank-time drop for heuristic discovery; it does not admit feed items. `AutoSource` short-circuits Html when earlier tiers already admitted ≥1 clean article below `limit` (quality over padding).
+Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoSource::Cleanup` (scheme/domain/self-link/title floor, destination-class hard exclude, **and** the structured-tier page check). Destination facts come from `LinkDestination::DestinationFacts` / `PathClassifier` — Cleanup does not own path lexicon Sets. Title string backstop stays `Cleanup.junk_reason` only. Scoring may demote or rank-time drop for heuristic discovery; it does not admit feed items. `AutoSource` short-circuits Html when earlier tiers already admitted ≥1 clean article below `limit` (quality over padding). Tier stop counts Cleanup-admitted items only, so items the page check drops never stop later tiers.
+
+## Structured-tier corroboration
+
+Whether an in-page structured item is backed by the rendered page. Which scrapers are checked: `AutoSource::Scraper::CORROBORATED_SCRAPERS` (Schema, Microdata, Microformats2, JsonState, XhrArticles, JsonDocument); native feed, CMS REST API, sitemap, and oEmbed items are publisher-declared and exempt. Where a URL is rendered: `AutoSource::PageLinks` (one pass over SST anchors keyed by `Url#document_identity`; `:content`, `:peripheral` for aside/menu/sectioned-footer landmarks, `:chrome` from `SST::Index#ignored_chrome?`, else `:absent`; `#sparse?` for no page, a degraded SST, or at most two content URLs). The keep/drop verdict and its private article-likeness score (dates, image, description, URL shape, scraper-cohort size and parent-path cohesion): `AutoSource::Corroboration#verdict`. Content placement keeps; chrome-only and unrendered URLs drop (`chrome_only`, `not_on_page`) unless the page is sparse; peripheral and sparse-page items keep on score, else drop as `unlikely`. Cleanup runs the check before dedupe and tallies the reasons, so a dropped structured copy leaves its URL to a heuristic tier and a kept one wins dedupe. `AutoSource` memoizes the SST and page `LinkResolver` lazily: the first consumer (page check or heuristic tier) builds them, at most once per page. JsonState keeps no chrome rules of its own beyond its legacy menu filter.
 
 ## Auto-source corpus
 

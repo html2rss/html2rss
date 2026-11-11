@@ -21,12 +21,22 @@ json_response_articles.json:
   expected: 4
   sst_built: false
 json_response_menu.json:
-  junk: 4
+  junk: 0
   real: 0
   expected: 0
   sst_built: false
+json_state_comment_list.html:
+  junk: 0
+  real: 3
+  expected: 3
+  sst_built: true
+json_state_competing_nodes.html:
+  junk: 0
+  real: 4
+  expected: 4
+  sst_built: true
 json_state_menu_unrendered.html:
-  junk: 3
+  junk: 0
   real: 5
   expected: 5
   sst_built: true
@@ -41,17 +51,17 @@ kicker_heading_teaser.html:
   expected: 5
   sst_built: true
 menu_cms_timestamped.html:
-  junk: 4
+  junk: 0
   real: 5
   expected: 5
   sst_built: true
 menu_icon.html:
-  junk: 4
+  junk: 0
   real: 5
   expected: 5
   sst_built: true
 menu_mixed_top_level.html:
-  junk: 4
+  junk: 0
   real: 5
   expected: 5
   sst_built: true
@@ -61,7 +71,7 @@ plain_listing.html:
   expected: 6
   sst_built: true
 schema_footer_extras.html:
-  junk: 1
+  junk: 0
   real: 4
   expected: 4
   sst_built: true

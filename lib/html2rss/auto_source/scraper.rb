@@ -40,6 +40,9 @@ module Html2rss
 
       # Heuristic scrapers that share one memoized SST::Document per page.
       HEURISTIC_SCRAPERS = Set[SemanticHtml, Html].freeze
+      # In-page structured scrapers whose items {Corroboration} checks against the rendered page.
+      # Publisher-declared sources (NativeFeed, WordpressApi, Sitemap, MetaOembed) stay exempt.
+      CORROBORATED_SCRAPERS = Set[Schema, Microdata, Microformats2, JsonState, XhrArticles, JsonDocument].freeze
       # Scrapers that accept a shared follow-up +request_session+.
       REQUEST_SESSION_SCRAPERS = Set[NativeFeed, WordpressApi, Sitemap, MetaOembed].freeze
       # Scrapers that consume browser-captured XHR/fetch JSON bodies.

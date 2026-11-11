@@ -85,12 +85,17 @@ module Html2rss
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
         # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
         #   different domain than +url+ (source-controlled off-domain links; default false)
+        # @param corroboration [Corroboration, nil] page check for structured-tier items, run
+        #   before dedupe so a dropped structured copy leaves the URL to a later tier
         # @return [Result] cleaned articles and frozen drop tallies
-        def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain)) # rubocop:disable Metrics/MethodLength -- ordered reject pipeline
+        # rubocop:disable-next Metrics/MethodLength -- ordered reject pipeline
+        def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
+                 corroboration: nil)
           Log.debug "Cleanup: start with #{articles.size} articles"
           tallies = Hash.new(0)
 
           reject_invalid!(articles, tallies)
+          reject_uncorroborated!(articles, corroboration, tallies) if corroboration
           deduplicate_by_url!(articles, tallies)
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies)
@@ -195,6 +200,18 @@ module Html2rss
 
         def reject_invalid!(articles, tallies)
           tally_reject!(articles, tallies, 'invalid') { |article| !article.valid? }
+        end
+
+        # Tallies each non-keep verdict (+chrome_only+, +not_on_page+, +unlikely+) as its reason;
+        # the truthy tally count rejects the item.
+        def reject_uncorroborated!(articles, corroboration, tallies)
+          cohorts = articles.group_by(&:scraper)
+          articles.reject! do |article|
+            verdict = corroboration.verdict(article, cohort: cohorts.fetch(article.scraper))
+            next if verdict == :keep
+
+            tallies[verdict.to_s] += 1
+          end
         end
 
         def deduplicate_by_url!(articles, tallies)
