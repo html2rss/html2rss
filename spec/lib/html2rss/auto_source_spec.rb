@@ -302,6 +302,26 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'with ad-labelled cards' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/sponsored_ad_label_card.html') }
+      let(:sponsored_paths) do
+        %w[mattress-sale-ends-friday smart-thermostat-bundle-offer].map { "/news/2026/11/#{_1}" }
+      end
+
+      it 'drops the sponsored items and tallies them', :aggregate_failures do
+        expect(articles.map { _1.url.path }).not_to include(*sponsored_paths)
+        expect(articles.size).to eq(4)
+        expect(auto_source.admission_drops).to include('sponsored' => 2)
+      end
+
+      it 'admits the sponsored items when cleanup keeps them', :aggregate_failures do
+        kept = described_class.new(response, described_class::DEFAULT_CONFIG.merge(cleanup: { keep_sponsored: true }))
+
+        expect(kept.articles.map { _1.url.path }).to include(*sponsored_paths)
+        expect(kept.admission_drops).not_to have_key('sponsored')
+      end
+    end
+
     context 'when structured items and a heuristic tier share one page' do
       let(:counts) { Hash.new(0) }
       let(:native_feed) do

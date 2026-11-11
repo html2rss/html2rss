@@ -35,6 +35,10 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     it 'denies off-domain article URLs by default' do
       expect(described_class::DEFAULT_CONFIG.fetch(:keep_different_domain)).to be(false)
     end
+
+    it 'drops sponsored items by default' do
+      expect(described_class::DEFAULT_CONFIG.fetch(:keep_sponsored)).to be(false)
+    end
   end
 
   describe '.admission_hint' do
@@ -136,6 +140,51 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(corroboration).to have_received(:verdict).exactly(6).times
         expect(corroboration).to have_received(:verdict).with(given[1], cohort: given.first(5))
         expect(corroboration).to have_received(:verdict).with(given[5], cohort: [given[5]])
+      end
+    end
+
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- page links stub + scraper articles
+    context 'with sponsored items on the page' do
+      subject(:result) { described_class.call(articles, url:, keep_sponsored:, page_links: -> { page_links }) }
+
+      let(:keep_sponsored) { false }
+      let(:page_links) { instance_double(Html2rss::AutoSource::PageLinks) }
+      let(:sponsored_paths) { %w[/paid-one /paid-two /paid-feed] }
+      let(:articles) do
+        [
+          ['/story-one', Html2rss::AutoSource::Scraper::SemanticHtml], ['/paid-one', Html2rss::AutoSource::Scraper::Html],
+          ['/paid-two', Html2rss::AutoSource::Scraper::Schema], ['/paid-feed', Html2rss::AutoSource::Scraper::NativeFeed]
+        ].map do |path, scraper|
+          instance_double(Html2rss::Article, valid?: true, scraper:, title: "Story title for #{path}",
+                                             url: Html2rss::Url.from_absolute("http://example.com#{path}"))
+        end
+      end
+
+      before do
+        allow(page_links).to receive(:sponsored?) { sponsored_paths.include?(_1.path) }
+      end
+
+      it 'drops page-derived sponsored items under the sponsored tally', :aggregate_failures do
+        expect(result.articles.map { _1.url.path }).to eq(%w[/story-one /paid-feed])
+        expect(result.drop_tallies).to eq('sponsored' => 2)
+      end
+
+      it 'never asks the page about publisher-declared items' do
+        result
+        expect(page_links).not_to have_received(:sponsored?).with(articles.last.url)
+      end
+
+      it 'admits sponsored items unchanged when keep_sponsored is on, without reading the page',
+         :aggregate_failures do
+        kept = described_class.call(articles, url:, keep_sponsored: true, page_links: -> { page_links })
+
+        expect(kept.articles.map { _1.url.path }).to eq(%w[/story-one /paid-one /paid-two /paid-feed])
+        expect(kept.drop_tallies).to be_empty
+        expect(page_links).not_to have_received(:sponsored?)
+      end
+
+      it 'admits every item without page links' do
+        expect(described_class.call(articles, url:).articles.size).to eq(4)
       end
     end
 

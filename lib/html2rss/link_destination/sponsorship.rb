@@ -34,37 +34,37 @@ module Html2rss
         )[\s\p{P}]*\z
       /ix
 
-      module_function
+      class << self
+        ##
+        # @param node [SST::Node]
+        # @return [Boolean] true when +node+ itself carries an explicit sponsorship marker
+        def marker?(node)
+          attribute_marker?(node.attrs) || (node.name != :a && label?(node.own_text))
+        end
 
-      ##
-      # @param node [SST::Node]
-      # @return [Boolean] true when +node+ itself carries an explicit sponsorship marker
-      def marker?(node)
-        attrs = node.attrs
-        raw = attrs.raw
-        sponsored_rel?(raw['rel']) ||
-          ATTRIBUTE_NAMES.any? { |name| raw.key?(name) && !OFF_VALUES.include?(raw[name].downcase) } ||
-          attrs.class_names.any? { CLASS_NAMES.include?(_1) } ||
-          ARIA_NAMES.any? { |name| label?(raw[name]) } ||
-          (node.name != :a && label?(node.own_text))
-      end
+        private
 
-      ##
-      # @param text [String, nil] element text or attribute value
-      # @return [Boolean] true when +text+ is exactly one ad label
-      def label?(text)
-        return false if text.nil? || text.empty?
+        def attribute_marker?(attrs)
+          raw = attrs.raw
+          sponsored_rel?(raw['rel']) ||
+            ATTRIBUTE_NAMES.any? { switched_on?(raw[_1]) } ||
+            attrs.class_names.any? { CLASS_NAMES.include?(_1) } ||
+            ARIA_NAMES.any? { label?(raw[_1]) }
+        end
 
-        text.match?(LABEL_PATTERN)
-      end
+        def sponsored_rel?(rel)
+          return false unless rel
 
-      ##
-      # @param rel [String, nil] +rel+ attribute value
-      # @return [Boolean]
-      def sponsored_rel?(rel)
-        return false unless rel
+          rel.downcase.split.include?(REL_TOKEN)
+        end
 
-        rel.downcase.split.include?(REL_TOKEN)
+        def switched_on?(value) = !value.nil? && !OFF_VALUES.include?(value.downcase)
+
+        def label?(text)
+          return false if text.nil? || text.empty?
+
+          text.match?(LABEL_PATTERN)
+        end
       end
     end
   end

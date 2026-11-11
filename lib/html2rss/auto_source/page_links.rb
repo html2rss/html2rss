@@ -98,16 +98,15 @@ module Html2rss
         pending = node.children.reduce(LinkDestination::Sponsorship.marker?(node)) do |marked, child|
           walk(child, peripheral) | marked
         end
-        pending && !settle_card(start)
+        pending && still_pending?(start)
       end
 
-      # The subtree's anchors from +start+ form the marker's card once it holds any.
-      def settle_card(start)
+      # The subtree's anchors from +start+ form the marker's card once it holds any; a card
+      # with one destination marks it sponsored. True while the card holds no anchor yet.
+      def still_pending?(start)
         keys = @card_keys.drop(start).uniq
-        return false if keys.empty?
-
         @sponsored << keys.first if keys.one?
-        true
+        keys.empty?
       end
 
       def record(anchor, peripheral)

@@ -215,4 +215,62 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       end
     end
   end
+
+  describe '#sponsored?' do
+    let(:html) do
+      <<~HTML
+        <html><body><main>
+          <article><h3><a href="/news/plain">Plain story</a></h3></article>
+          <article><h3><a href="/news/rel-paid" rel="nofollow sponsored">Paid link</a></h3></article>
+          <article>
+            <a href="/news/labelled"><img src="/a.jpg"></a>
+            <h3><a href="/news/labelled#top">Labelled card</a></h3>
+            <div><span class="ad-label">Anzeige</span></div>
+          </article>
+          <article data-advertorial><h3><a href="/news/attributed">Attributed card</a></h3></article>
+          <ul>
+            <li><a href="/news/listed-one">Listed one</a></li>
+            <li class="slot"><span>Advertisement</span></li>
+            <li><a href="/news/listed-two">Listed two</a></li>
+          </ul>
+          <article>
+            <h3><a href="/news/mixed-headline">Mixed card</a></h3>
+            <a href="/culture/">Culture</a>
+            <span>Sponsored</span>
+          </article>
+          <div><span>Werbung</span><a href="http://example.com:abc/">Unresolvable</a></div>
+          <article><h3><a href="/news/after-unresolvable">After unresolvable</a></h3></article>
+        </main></body></html>
+      HTML
+    end
+
+    it 'marks the URL of an anchor whose rel contains sponsored' do
+      expect(page_links.sponsored?(url_at['/news/rel-paid'])).to be(true)
+    end
+
+    it 'marks the single destination of a card holding an ad label or attribute', :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/labelled'])).to be(true)
+      expect(page_links.sponsored?(url_at['/news/attributed'])).to be(true)
+    end
+
+    it 'marks nothing when the marker card spans several destinations', :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/listed-one'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/listed-two'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/mixed-headline'])).to be(false)
+    end
+
+    it 'keeps a marker over unresolvable anchors from reaching later cards' do
+      expect(page_links.sponsored?(url_at['/news/after-unresolvable'])).to be(false)
+    end
+
+    it 'is false for unmarked, unrendered, and nil URLs', :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/plain'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/never-rendered'])).to be(false)
+      expect(page_links.sponsored?(nil)).to be(false)
+    end
+
+    it 'leaves placement unchanged for sponsored URLs' do
+      expect(page_links.placement(url_at['/news/rel-paid'])).to eq(:content)
+    end
+  end
 end

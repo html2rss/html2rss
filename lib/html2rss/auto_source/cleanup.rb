@@ -97,7 +97,7 @@ module Html2rss
         # @param page_links [#call, nil] lazy source of the page's {PageLinks}; called only when
         #   a page-derived item is checked for sponsorship
         # @return [Result] cleaned articles and frozen drop tallies
-        # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
+        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
         def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
                  keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil)
           Log.debug "Cleanup: start with #{articles.size} articles"
@@ -109,7 +109,7 @@ module Html2rss
             canonicalize_urls!(articles, corroboration)
           end
           deduplicate_by_url!(articles, tallies)
-          reject_sponsored!(articles, page_links, tallies) if page_links && !keep_sponsored
+          reject_sponsored!(articles, page_links, tallies) unless keep_sponsored
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies)
           reject_different_domain!(articles, url, tallies) unless keep_different_domain
@@ -243,6 +243,8 @@ module Html2rss
 
         # Explicitly sponsored items ({PageLinks#sponsored?}); item text and URL paths are never read.
         def reject_sponsored!(articles, page_links, tallies)
+          return unless page_links
+
           tally_reject!(articles, tallies, 'sponsored') do |article|
             PAGE_SCRAPERS.include?(article.scraper) && page_links.call.sponsored?(article.url)
           end
