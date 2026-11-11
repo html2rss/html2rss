@@ -160,6 +160,28 @@ RSpec.describe Html2rss::Html::Navigator do
       expect(usable).to eq('ph' => false, 'pf' => false, 'ah' => true, 'af' => true, 'mh' => true, 'nh' => false)
     end
 
+    describe 'chrome-scope parity between Nokogiri and SST nodes' do
+      let(:html) do
+        '<body><header id="page"></header>' \
+          '<section><header id="sectioned"></header></section>' \
+          '<nav><section><header id="inherited"></header></section></nav>' \
+          '<footer><article><footer id="in_footer"></footer></article></footer></body>'
+      end
+      let(:ids) { %w[page sectioned inherited in_footer] }
+      let(:expected) { { 'page' => false, 'sectioned' => true, 'inherited' => false, 'in_footer' => false } }
+
+      let(:document) { Nokogiri::HTML(html) }
+      let(:sst_root) { Html2rss::SST::Normalizer.call(html).root }
+
+      it 'agrees on page-level, sectioned and chrome-inherited headers', :aggregate_failures do
+        nokogiri = ids.to_h { |id| [id, described_class.usable_card_parent?(document.at_css("##{id}"))] }
+        sst = ids.to_h { |id| [id, described_class.usable_card_parent?(sst_root.find_all { _1.attrs.id == id }.first)] }
+
+        expect(nokogiri).to eq(expected)
+        expect(sst).to eq(expected)
+      end
+    end
+
     it 'follows the SST chrome index for header and footer nodes', :aggregate_failures do
       doc = Html2rss::SST::Normalizer.call('<html><body><header>H</header><article><header>A</header></article></body></html>')
       page_header, card_header = doc.root.find_all { _1.name == :header }

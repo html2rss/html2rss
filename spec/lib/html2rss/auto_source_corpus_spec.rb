@@ -4,8 +4,10 @@ require_relative '../../support/auto_source_corpus'
 
 RSpec.describe Html2rss::AutoSource do
   describe 'labeled corpus ratchet' do
-    subject(:rows) { AutoSourceCorpus.run }
+    # The corpus run is expensive; compute it once for all examples.
+    before(:context) { @rows = AutoSourceCorpus.run } # rubocop:disable RSpec/BeforeAfterAll
 
+    let(:rows) { @rows } # rubocop:disable RSpec/InstanceVariable
     let(:baseline) { AutoSourceCorpus.baseline }
     let(:rerecord) { "re-record with `#{AutoSourceCorpus::RECORD_COMMAND}` when the change is intended" }
 
@@ -24,6 +26,14 @@ RSpec.describe Html2rss::AutoSource do
       rows.each do |row|
         recorded = baseline.dig(row.page, 'real')
         expect(row.real).to be >= recorded, "#{row.page}: real #{row.real} < baseline #{recorded}"
+      end
+    end
+
+    it 'builds no SST on pages whose baseline built none', :aggregate_failures do
+      rows.each do |row|
+        next if baseline.dig(row.page, 'sst_built')
+
+        expect(row.sst_built).to be(false), "#{row.page}: SST built but baseline built none (perf regression)"
       end
     end
   end

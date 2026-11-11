@@ -516,6 +516,13 @@ RSpec.describe Html2rss do
       expect(feed_return.items.size).to eq(85)
     end
 
+    it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
+      titles = feed_return.items.map { _1.title.to_s }
+
+      expect(titles.grep(/\A[^:]{0,40}\d{1,2}:\d{2}/)).to be_empty
+      expect(titles.grep(/\A\p{L}+:\s+\p{L}+:\s/)).to be_empty
+    end
+
     it_behaves_like 'auto source option forwarding', method: :auto_source
 
     it 'forwards strategy and local_file_path', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -550,6 +557,13 @@ RSpec.describe Html2rss do
 
     it 'returns items', :slow do
       expect(feed_return[:items].size).to eq(85)
+    end
+
+    it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
+      titles = feed_return[:items].map { _1[:title].to_s }
+
+      expect(titles.grep(/\A[^:]{0,40}\d{1,2}:\d{2}/)).to be_empty
+      expect(titles.grep(/\A\p{L}+:\s+\p{L}+:\s/)).to be_empty
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_json_feed
