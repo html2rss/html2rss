@@ -39,7 +39,11 @@ module Html2rss
       /ix
       # Trailing stray separators (a kicker that already ends in +:+ or + :+).
       STRAY_SUFFIX = /[[:space:]:|•·–—]+\z/
-      private_constant :NOISE_PREFIX, :STRAY_SUFFIX
+      # A whitespace-preceded colon: the inline kicker boundary of +Kicker : Headline+ (first one only).
+      SPACED_COLON = /(?<=[^[:space:]])[[:space:]]+:[[:space:]]*/
+      # A kicker that already ends a sentence (+Kicker?+) joins its headline with a space, not a colon.
+      TERMINAL_PUNCTUATION = /[?!…‽]\z/
+      private_constant :NOISE_PREFIX, :STRAY_SUFFIX, :SPACED_COLON, :TERMINAL_PUNCTUATION
 
       class << self
         ##
@@ -59,14 +63,18 @@ module Html2rss
           return unless head
 
           top = clean(kicker)
-          top.nil? || noise_kicker?(top) || prefixed?(head, top) ? head : "#{top}#{SEPARATOR}#{head}"
+          return head if top.nil? || noise_kicker?(top) || prefixed?(head, top)
+
+          "#{top}#{top.match?(TERMINAL_PUNCTUATION) ? ' ' : SEPARATOR}#{head}"
         end
 
         private
 
         def clean(text)
-          cleaned = collapse(text)&.sub(NOISE_PREFIX, '')&.sub(STRAY_SUFFIX, '')
-          cleaned unless cleaned.to_s.empty?
+          return unless (collapsed = collapse(text))
+
+          cleaned = collapsed.sub(NOISE_PREFIX, '').sub(STRAY_SUFFIX, '').sub(SPACED_COLON, SEPARATOR)
+          cleaned unless cleaned.empty?
         end
 
         def noise_kicker?(kicker) = TYPE_MARKERS.include?(kicker.downcase)

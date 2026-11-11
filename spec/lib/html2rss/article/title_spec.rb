@@ -38,7 +38,12 @@ RSpec.describe Html2rss::Article::Title do
       ['Storm: ahead', 'Storm'] => 'Storm: ahead',
       ['Big storm ahead', 'Storm'] => 'Storm: Big storm ahead',
       ['Stormy weather', 'Storm'] => 'Storm: Stormy weather',
-      %w[St Storm] => 'Storm: St'
+      %w[St Storm] => 'Storm: St',
+      ['Storm ahead', 'Weather?'] => 'Weather? Storm ahead',
+      ['Storm ahead', 'Weather!'] => 'Weather! Storm ahead',
+      ['Storm ahead', 'Weather…'] => 'Weather… Storm ahead',
+      ['Storm ahead', 'Weather? :'] => 'Weather? Storm ahead',
+      ['Storm : ahead', 'Weather'] => 'Weather: Storm: ahead'
     }.each do |(headline, kicker), expected|
       it "composes #{headline.inspect} with kicker #{kicker.inspect} as #{expected.inspect}" do
         expect(described_class.compose(headline, kicker:)).to eq(expected)
@@ -64,7 +69,11 @@ RSpec.describe Html2rss::Article::Title do
       'Category: Council votes' => 'Council votes',
       'Video shows the new tram line' => 'Video shows the new tram line',
       'Council approves:' => 'Council approves',
-      '2:1 win for the home side' => '2:1 win for the home side'
+      '2:1 win for the home side' => '2:1 win for the home side',
+      %(Transit :\nTram line extends) => 'Transit: Tram line extends',
+      'Transit :Tram line extends' => 'Transit: Tram line extends',
+      'Transit : Tram line : east' => 'Transit: Tram line : east',
+      'Ratio 3:2 for the east line' => 'Ratio 3:2 for the east line'
     }.each do |headline, expected|
       it "cleans #{headline.inspect} to #{expected.inspect}" do
         expect(described_class.compose(headline)).to eq(expected)
