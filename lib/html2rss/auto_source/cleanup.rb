@@ -290,7 +290,7 @@ module Html2rss
 
         # Drops untitled page-derived items and junk/unnatural titles — blanking a bad title would
         # hide bad extraction as "unknown" and admit empty items. A publisher-declared item may be
-        # untitled (microblog feed posts) and is kept.
+        # untitled (microblog feed posts) and is kept. {Article} collapses a blank title to nil.
         def reject_low_quality_titles!(articles, tallies)
           articles.reject! do |article|
             reason = title_reject_reason(article)
@@ -301,7 +301,7 @@ module Html2rss
 
         def title_reject_reason(article)
           title = article.title
-          if title.nil? || title.strip.empty?
+          if title.nil?
             'blank_title' if Scraper::PAGE_SCRAPERS.include?(article.scraper)
           else
             junk_reason(title)&.to_s || ('low_word_count' unless word_count_at_least?(title, MIN_WORDS))

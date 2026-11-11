@@ -45,9 +45,17 @@ RSpec.describe Html2rss::SST::Index do
 
   describe '.descendant_or_self?' do
     it 'walks parent pointers for indexed nodes, self included', :aggregate_failures do
+      allow(index).to receive(:descendant_of?).and_call_original
       expect(described_class.descendant_or_self?(nav_link, wrapper)).to be(true)
       expect(described_class.descendant_or_self?(wrapper, wrapper)).to be(true)
       expect(described_class.descendant_or_self?(wrapper, nav_link)).to be(false)
+      expect(index).to have_received(:descendant_of?).twice
+    end
+
+    it 'tells identical-looking siblings apart' do
+      first, second = Html2rss::SST::Normalizer.call('<html><body><p>Same</p><p>Same</p></body></html>')
+                                               .root.find_all { _1.name == :p }
+      expect(described_class.descendant_or_self?(first, second)).to be(false)
     end
 
     it 'scans the subtree for unindexed nodes', :aggregate_failures do

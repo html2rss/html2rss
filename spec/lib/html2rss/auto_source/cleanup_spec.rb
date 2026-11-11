@@ -397,8 +397,8 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
       let(:untitled) do
         [nil, '', " \n "].each_with_index.map do |title, index|
-          instance_double(Html2rss::Article, valid?: true, title:, scraper: Html2rss::AutoSource::Scraper::Html,
-                                             url: Html2rss::Url.from_absolute("http://example.com/u#{index}"))
+          Html2rss::Article.new(id: "u#{index}", title:, description: 'Card text', scraper: Html2rss::AutoSource::Scraper::Html,
+                                url: Html2rss::Url.from_absolute("http://example.com/u#{index}"))
         end
       end
 
