@@ -1,5 +1,5 @@
 ---
-case: Cards whose kicker text, or the heading itself, starts with a clock time; titles must carry no time of day.
+case: Cards whose kicker or heading opens with a teaser clock element (time or clock-only span); titles must carry no time of day.
 expected:
 - https://example.com/news/2026/11/tram-line-extends-east
 - https://example.com/news/2026/11/museum-reopens-north-wing

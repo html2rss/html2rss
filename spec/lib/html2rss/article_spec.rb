@@ -30,7 +30,7 @@ RSpec.describe Html2rss::Article do
     end
 
     it 'keeps the composed title across copies and Marshal round-trips', :aggregate_failures do
-      article = described_class.new(title: '12:30 Ferry returns', kicker: 'Harbor', url: 'https://example.com/a',
+      article = described_class.new(title: '12:30 | Ferry returns', kicker: 'Harbor', url: 'https://example.com/a',
                                     compose_title: true)
 
       expect(article.with_url('https://example.com/b').title).to eq('Harbor: Ferry returns')

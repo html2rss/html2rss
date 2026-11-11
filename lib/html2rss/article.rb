@@ -7,8 +7,8 @@ module Html2rss
   # Article is a simple data object representing an article extracted from a page.
   #
   # Article owns the title via {Article::Title}. Every title is whitespace-collapsed; callers that extract titles
-  # from page markup opt in with +compose_title: true+ to join +kicker+ to +title+ (the headline) and strip noise.
-  # Configured selector titles and publisher feed titles keep the default and stay verbatim.
+  # from heuristic card markup opt in with +compose_title: true+ to join +kicker+ to +title+ (the headline) and strip
+  # noise. Configured selector titles and publisher-declared headlines (feeds, structured data) stay verbatim.
   #
   # Description and enclosure wire presentation live in {FeedBuilder::ItemPresentation}.
   class Article
