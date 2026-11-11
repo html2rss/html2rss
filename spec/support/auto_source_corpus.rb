@@ -106,12 +106,16 @@ module AutoSourceCorpus
 
     def run_page(page)
       sidecar = YAML.load_file(File.join(ROOT, "#{File.basename(page, '.*')}.yml"))
-      expected = sidecar.fetch('expected').map { normalize(_1) }
       articles, sst_calls = with_sst_count { page_articles(page) }
+      score(page, sidecar, articles, sst_calls.positive?)
+    end
+
+    def score(page, sidecar, articles, sst_built)
+      expected = sidecar.fetch('expected').map { normalize(_1) }
       admitted = articles.map { _1.url.to_s }.uniq
       real = (admitted & expected).size
-      Row.new(page:, junk: admitted.size - real, real:, expected: expected.size,
-              title_misses: title_misses(articles, sidecar.fetch('titles', {})), sst_built: sst_calls.positive?)
+      Row.new(page:, junk: admitted.size - real, real:, expected: expected.size, sst_built:,
+              title_misses: title_misses(articles, sidecar.fetch('titles', {})))
     end
 
     def title_misses(articles, expected_titles)

@@ -32,7 +32,7 @@ RSpec.describe Html2rss::AutoSource do
     it 'misses no more exact titles than the recorded baseline', :aggregate_failures do
       rows.each do |row|
         recorded = baseline.dig(row.page, 'title_misses')
-        expect(row.title_misses).to be <= recorded, "#{row.page}: title misses #{row.title_misses} > baseline #{recorded}"
+        expect(row.title_misses).to be <= recorded, "#{row.page}: title misses #{row.title_misses} > #{recorded}"
       end
     end
 
