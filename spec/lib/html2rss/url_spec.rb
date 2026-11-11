@@ -279,6 +279,25 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#document_identity' do
+    it 'is equal for URLs differing only by trailing slash or fragment', :aggregate_failures do
+      bare = described_class.from_absolute('https://example.com/blog')
+
+      expect(described_class.from_absolute('https://example.com/blog/#top').document_identity)
+        .to eq(bare.document_identity)
+      expect(bare.document_identity).to eq("https\0example.com\0/blog\0")
+    end
+
+    it 'differs by scheme, authority, path, and query', :aggregate_failures do
+      identity = described_class.from_absolute('https://example.com/a?x=1').document_identity
+
+      %w[http://example.com/a?x=1 https://example.com:8443/a?x=1 https://example.com/b?x=1
+         https://example.com/a?x=2].each do |other|
+        expect(described_class.from_absolute(other).document_identity).not_to eq(identity)
+      end
+    end
+  end
+
   describe '#with_query_values' do
     it 'returns a new url with the provided query values' do
       url = described_class.from_absolute('https://example.com/index.php?rest_route=%2F')

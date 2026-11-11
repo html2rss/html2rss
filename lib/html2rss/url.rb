@@ -334,9 +334,9 @@ module Html2rss
       self.class.new(@uri.join(relative_uri).normalize)
     end
 
-    protected
-
-    # Scheme, authority, slash-stripped path, and query (fragment omitted).
+    ##
+    # Same-document key: scheme, authority, slash-stripped path, and query (fragment omitted).
+    # Two URLs share it exactly when {#same_document?} holds, so it keys per-document indexes.
     #
     # @return [String]
     def document_identity
