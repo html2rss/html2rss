@@ -1,16 +1,16 @@
 # Auto-source performance baseline
 
-Captured: 2026-11-11T19:43:46Z
+Captured: 2026-11-11T20:35:58Z
 Ruby: 4.0.0
 Fixtures: spec/fixtures/page_1.html, spec/fixtures/multi_link_block.html, spec/fixtures/local_feed_test.html, spec/fixtures/auto_source/corpus/menu_mixed_top_level.html, spec/fixtures/auto_source/corpus/schema_footer_extras.html, spec/fixtures/auto_source/corpus/structured_small_merge.html
 Warmup runs: 1; measured runs: 5 (median reported)
 
 | Metric | Value |
 | --- | --- |
-| wall_time_s (median) | 0.146095 |
-| allocations (median) | 626261 |
-| wall_budget_1_1x | 0.160704 |
-| alloc_budget_1_15x | 720201 |
+| wall_time_s (median) | 0.153902 |
+| allocations (median) | 608471 |
+| wall_budget_1_1x | 0.169292 |
+| alloc_budget_1_15x | 699742 |
 
 Article counts per fixture (semantic, html | AutoSource#articles):
 - spec/fixtures/page_1.html: semantic=65, html=21, auto_source=13
