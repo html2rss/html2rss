@@ -23,6 +23,94 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     it_behaves_like 'article extractor leftover hygiene'
   end
 
+  describe 'in-heading kickers' do
+    let(:title_for) do
+      ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com')&.title }
+    end
+
+    it 'takes the single title-classed child of a multi-span heading', :aggregate_failures do
+      html = File.read(File.expand_path('../../../fixtures/auto_source/teaser_card_kicker_heading.html', __dir__))
+
+      expect(title_for.call(html)).to eq('Evening bulletin 15:00')
+    end
+
+    it 'keeps the full text of a single-span heading' do
+      html = '<article><h2><a href="/news/story"><span class="Teaser_title">Story Title</span></a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Story Title')
+    end
+
+    it 'keeps the full text of a heading with inline emphasis' do
+      html = '<article><h2><a href="/news/story">Story <em>Title</em> here</a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Story Title here')
+    end
+
+    it 'keeps the full text when the heading mixes plain text with a title-classed child' do
+      html = '<article><h2>Plain <span class="title">Story Title</span><span>tail</span></h2>' \
+             '<a href="/news/story">Read</a></article>'
+
+      expect(title_for.call(html)).to eq('Plain Story Title tail')
+    end
+
+    it 'keeps the full text when several children carry a title class' do
+      html = '<article><h2><span class="title">One</span><span class="title">Two</span></h2>' \
+             '<a href="/news/story">Read</a></article>'
+
+      expect(title_for.call(html)).to eq('One Two')
+    end
+
+    it 'keeps the full text when the only title-like class is a subtitle' do
+      html = '<article><h2><span class="headline">Main headline here</span>' \
+             '<span class="subtitle">Longer subtitle text</span></h2>' \
+             '<a href="/news/story">Read</a></article>'
+
+      expect(title_for.call(html)).to eq('Main headline here Longer subtitle text')
+    end
+
+    it 'keeps the full text when the only title-like class is a hyphen- or underscore-delimited sub-title',
+       :aggregate_failures do
+      %w[sub-title sub_title Sub-Title].each do |klass|
+        html = "<article><h2><span class=\"headline\">Main headline here</span><span class=\"#{klass}\">Longer " \
+               'subtitle text</span></h2><a href="/news/story">Read</a></article>'
+
+        expect(title_for.call(html)).to eq('Main headline here Longer subtitle text')
+      end
+    end
+
+    it 'keeps the full text when a pre-title kicker precedes a headline without a title class' do
+      html = '<article><h2><span class="pre-title">Weekend kicker text</span>' \
+             '<span class="headline">Main headline here</span></h2>' \
+             '<a href="/news/story">Read</a></article>'
+
+      expect(title_for.call(html)).to eq('Weekend kicker text Main headline here')
+    end
+
+    it 'takes the title child when a pre-title kicker precedes it' do
+      html = '<article><h2><span class="pre-title">Weekend kicker text</span>' \
+             '<span class="title">Main headline here</span></h2>' \
+             '<a href="/news/story">Read</a></article>'
+
+      expect(title_for.call(html)).to eq('Main headline here')
+    end
+
+    it 'keeps the full text when the only emphasised child carries a font-weight class' do
+      html = '<article><h2><span class="font-bold">Live blog update:</span> <span>Rest of headline</span></h2>' \
+             '<a href="/news/story">Read</a></article>'
+
+      expect(title_for.call(html)).to eq('Live blog update: Rest of headline')
+    end
+
+    it 'takes a hyphen- or underscore-delimited title token', :aggregate_failures do
+      %w[card-title Teaser_title__Ye3Ku title title-lg Card-Title].each do |klass|
+        html = "<article><h2><span class=\"kicker\">K</span><span class=\"#{klass}\">Real Title</span></h2>" \
+               '<a href="/news/story">Read</a></article>'
+
+        expect(title_for.call(html)).to eq('Real Title')
+      end
+    end
+  end
+
   it 'extracts core article fields from an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>

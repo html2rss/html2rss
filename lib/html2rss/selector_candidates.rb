@@ -27,8 +27,8 @@ module Html2rss
     DEFAULT_MIN_MATCHES = 2
     private_constant :DEFAULT_MIN_MATCHES
 
-    # Class token that identifies a non-heading title node. Same pattern title_node matches.
-    TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
+    # Class token that identifies a non-heading title node. Owned by the extractor so both match the same nodes.
+    TITLE_CLASS_PATTERN = Html::SstArticleExtractor::TITLE_CLASS_PATTERN
     private_constant :TITLE_CLASS_PATTERN
 
     class << self

@@ -11,6 +11,13 @@ module Html2rss
     class SstArticleExtractor
       # CSS class tokens that mark kicker / eyebrow text (excluded from titles).
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
+      # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
+      # {Html2rss::SelectorCandidates}, which owns no copy of it.
+      TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
+      # A standalone "title" class token (+card-title+, +Teaser_title__x+), never +subtitle+, +sub-title+,
+      # +sub_title+ or weight utilities. Used only to split a kicker-plus-title heading.
+      HEADING_TITLE_TOKEN_PATTERN = /(?<![[:alnum:]])(?<!sub[-_])title(?![[:alnum:]])/i
+      private_constant :HEADING_TITLE_TOKEN_PATTERN
       # Inline emphasis tags used as title fallbacks when no heading exists.
       FALLBACK_HEADING_NAMES = Set[:strong, :b].freeze
       # Nested blocks that mean a category node is actually a content container.
@@ -113,7 +120,7 @@ module Html2rss
       # @return [Array<String>] ordered in-card title candidates (heading → anchor → fallback)
       def title_candidates
         [].tap do |candidates|
-          add_title_candidate!(candidates, heading&.visible_text)
+          add_title_candidate!(candidates, heading_title_text)
           add_title_candidate!(candidates, @selected_anchor&.visible_text)
           next unless candidates.empty? && @fallback_anchorless && @selected_anchor.nil?
 
@@ -129,6 +136,27 @@ module Html2rss
         return if stripped.empty? || candidates.include?(stripped)
 
         candidates << stripped
+      end
+
+      # @return [String, nil] the title child's text when the heading splits kicker and title, else the whole heading
+      def heading_title_text
+        (title_child_of_heading || heading)&.visible_text
+      end
+
+      # A heading made only of child elements (no stray text) where exactly one carries a title
+      # class (and no kicker class) is a kicker-plus-title split; that child alone is the title.
+      #
+      # @return [SST::Node, nil]
+      def title_child_of_heading
+        return if heading.nil? || heading.own_text.match?(/\S/)
+
+        titled = heading.children.select { |child| title_token_child?(child) }
+        titled.first if titled.one?
+      end
+
+      def title_token_child?(child)
+        classes = child.attrs.class_names
+        classes.any?(HEADING_TITLE_TOKEN_PATTERN) && classes.none?(KICKER_CLASS_PATTERN)
       end
 
       def heading
@@ -159,7 +187,7 @@ module Html2rss
         @root.find do |n|
           next true if FALLBACK_HEADING_NAMES.include?(n.name)
 
-          n.attrs.class_names.any? { |c| c.match?(/title|font-bold|font-semibold/) } &&
+          n.attrs.class_names.any?(TITLE_CLASS_PATTERN) &&
             !n.visible_text.to_s.strip.empty?
         end
       end
