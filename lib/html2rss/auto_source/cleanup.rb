@@ -14,10 +14,6 @@ module Html2rss
         keep_sponsored: false
       }.freeze
 
-      # Scrapers whose items are read off the rendered page, so the page shows their
-      # sponsorship markers. Publisher-declared sources are exempt, as in {Corroboration}.
-      PAGE_SCRAPERS = (Scraper::CORROBORATED_SCRAPERS | Scraper::HEURISTIC_SCRAPERS).freeze
-
       # Minimum alphanumeric word count for present titles.
       MIN_WORDS = 3
 
@@ -253,7 +249,7 @@ module Html2rss
           return unless page_links
 
           tally_reject!(articles, tallies, 'sponsored') do |article|
-            PAGE_SCRAPERS.include?(article.scraper) && page_links.call.sponsored?(article.url)
+            Scraper::PAGE_SCRAPERS.include?(article.scraper) && page_links.call.sponsored?(article.url)
           end
         end
 

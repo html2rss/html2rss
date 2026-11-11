@@ -388,13 +388,20 @@ RSpec.describe Html2rss::AutoSource do
         expect(schema_titles).to eq(['Schema story one words', 'Schema story two words'])
       end
 
-      it 'keeps a publisher feed title verbatim' do
-        feed = Html2rss::AutoSource::Scraper::NativeFeed.allocate
-        allow(feed).to receive(:extractable?).and_return(true)
-        allow(feed).to receive(:map) { |&block| [feed_item].map(&block) }
-        allow(Html2rss::AutoSource::Scraper::NativeFeed).to receive(:new).and_return(feed)
+      def stub_declared_scraper(klass)
+        scraper = klass.allocate
+        allow(scraper).to receive(:extractable?).and_return(true)
+        allow(scraper).to receive(:map) { |&block| [feed_item].map(&block) }
+        allow(klass).to receive(:new).and_return(scraper)
+      end
 
-        expect(articles.first.title).to eq('10:00 Video: Native feed story title')
+      %w[NativeFeed WordpressApi Sitemap MetaOembed].each do |name|
+        it "keeps a #{name} title verbatim" do
+          klass = Html2rss::AutoSource::Scraper.const_get(name)
+          stub_declared_scraper(klass)
+
+          expect(articles.find { _1.scraper == klass }.title).to eq('10:00 Video: Native feed story title')
+        end
       end
     end
 
