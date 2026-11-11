@@ -252,6 +252,11 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
           <div class="row"><p>Advertisement</p><article><h3><a href="/news/beside-label">Beside a label</a></h3></article></div>
           <div class="row"><article><span>Sponsored</span></article><a href="/news/after-empty-card">After an empty card</a></div>
           <div data-sponsored><article><h3><a href="/news/wrapped">Wrapped card</a></h3></article></div>
+          <article>
+            <span>Sponsored</span>
+            <h3><a href="/news/beside-skipped">Beside skipped hrefs</a></h3>
+            <a href="mailto:ads@example.com">Mail</a><a href="http://example.com:abc/">Unresolvable</a>
+          </article>
         </main></body></html>
       HTML
     end
@@ -287,6 +292,10 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
     it 'marks the single card inside a marked wrapper' do
       expect(page_links.sponsored?(url_at['/news/wrapped'])).to be(true)
+    end
+
+    it 'ignores skipped and unresolvable hrefs when counting card destinations' do
+      expect(page_links.sponsored?(url_at['/news/beside-skipped'])).to be(true)
     end
 
     it 'is false for unmarked, unrendered, and nil URLs', :aggregate_failures do
