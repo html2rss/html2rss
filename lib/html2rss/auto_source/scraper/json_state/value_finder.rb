@@ -19,14 +19,13 @@ module Html2rss
 
             # @param hash [Hash] hash candidate traversed during key lookup
             # @param keys [Array<Symbol>] keys to probe in order
-            # @return [Object, nil] first matching value from hash or nested metadata
+            # @return [Object, nil] value of the first present key
             def fetch_from_hash(hash, keys)
               keys.each do |key|
                 return hash[key] if hash.key?(key)
               end
 
-              fetch_nested(hash[:attributes], keys) ||
-                fetch_nested(hash[:data], keys)
+              nil
             end
 
             # @param array [Array] array whose entries may contain target keys
@@ -39,13 +38,6 @@ module Html2rss
               end
 
               nil
-            end
-
-            # @param value [Hash, Array, nil] nested value to recurse into
-            # @param keys [Array<Symbol>] keys to probe in order
-            # @return [Object, nil] matching nested value
-            def fetch_nested(value, keys)
-              fetch(value, keys) if value
             end
           end
         end

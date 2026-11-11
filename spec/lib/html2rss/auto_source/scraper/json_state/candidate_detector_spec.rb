@@ -71,6 +71,17 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::CandidateDetector do
       expect(described_class.array_of_articles?([entry])).to be(true)
     end
 
+    it 'accepts entries whose title and url sit in one wrapper object', :aggregate_failures do
+      expect(described_class.array_of_articles?([{ node: { title: 'T', url: '/a' } }])).to be(true)
+      expect(described_class.array_of_articles?([{ data: { attributes: { title: 'T', url: '/a' } } }])).to be(true)
+    end
+
+    it 'rejects entries whose author and content objects compete for the article' do
+      entry = { author: { name: 'N', url: '/authors/n' }, content: { title: 'T', url: '/a' } }
+
+      expect(described_class.array_of_articles?([entry])).to be(false)
+    end
+
     it 'is false unless a single element has both a title and a url', :aggregate_failures do
       expect(described_class.array_of_articles?([{ title: 'T' }, { url: '/a' }])).to be(false)
       expect(described_class.array_of_articles?([{ title: 'T' }, 'x'])).to be(false)
@@ -120,32 +131,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::CandidateDetector do
     it 'is false when an image marks a teaser', :aggregate_failures do
       expect(described_class.navigation_link?({ title: 'T', url: '/a', target: '_self', image: '/a.jpg' })).to be(false)
       expect(described_class.navigation_link?({ title: 'T', url: '/a', rel: 'x', thumbnailUrl: '/a.jpg' })).to be(false)
-    end
-  end
-
-  describe '.title_from' do
-    it 'reads title-like keys, including nested attributes', :aggregate_failures do
-      expect(described_class.title_from({ title: 'T' })).to eq('T')
-      expect(described_class.title_from({ name: 'N' })).to eq('N')
-      expect(described_class.title_from({ attributes: { headline: 'H' } })).to eq('H')
-    end
-
-    it 'returns nil when no title-like key exists' do
-      expect(described_class.title_from({ url: '/a' })).to be_nil
-    end
-  end
-
-  describe '.url_from' do
-    it 'reads url-like keys' do
-      expect(described_class.url_from({ url: '/a' })).to eq('/a')
-    end
-
-    it 'falls back to url-like keys inside links' do
-      expect(described_class.url_from({ links: { href: '/b' } })).to eq('/b')
-    end
-
-    it 'returns nil when no url-like value exists' do
-      expect(described_class.url_from({ title: 'x' })).to be_nil
     end
   end
 end

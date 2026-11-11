@@ -61,23 +61,10 @@ module Html2rss
                 ArticleNormalizer.published_at(entry))
             end
 
-            # @param object [Hash] article candidate object
-            # @return [Object, nil] detected title-like value
-            def title_from(object)
-              ValueFinder.fetch(object, ArticleNormalizer::TITLE_KEYS)
-            end
-
-            # @param object [Hash] article candidate object
-            # @return [Object, nil] detected URL-like value (including links.self)
-            def url_from(object)
-              ValueFinder.fetch(object, ArticleNormalizer::URL_KEYS) ||
-                ValueFinder.fetch(object[:links], ArticleNormalizer::URL_KEYS)
-            end
-
             private
 
             def linked_entry?(element)
-              element.is_a?(Hash) && title_from(element) && url_from(element)
+              ArticleNormalizer.linked?(ArticleNormalizer.article_sources(element))
             end
           end
         end

@@ -70,6 +70,98 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       expect(Html2rss::Log).to have_received(:debug)
         .with('JsonState: invalid image URL encountered: url=ht tp://x')
     end
+
+    %i[node fields content item model].each do |wrapper|
+      it "reads the article fields from a #{wrapper} wrapper", :aggregate_failures do
+        entry = { wrapper => { title: 'T', url: '/a', description: 'D', publishedAt: '2026-01-01', id: '9' } }
+        result = described_class.normalise(entry, base_url:)
+
+        expect(result).to include(title: 'T', description: 'D', published_at: '2026-01-01', id: '9')
+        expect(result[:url].to_s).to eq('https://example.com/a')
+      end
+    end
+
+    it 'skips an entry whose author and content objects both carry a title and url' do
+      entry = { author: { name: 'Staff', url: '/authors/staff' }, content: { title: 'T', url: '/a' } }
+
+      expect(described_class.normalise(entry, base_url:)).to be_nil
+    end
+
+    it 'reads a JSON:API envelope with attributes and sibling links', :aggregate_failures do
+      entry = { id: '7', attributes: { title: 'T', createdAt: '2026-02-02' }, links: { self: '/a' } }
+      result = described_class.normalise(entry, base_url:)
+
+      expect(result).to include(title: 'T', published_at: '2026-02-02', id: '7')
+      expect(result[:url].to_s).to eq('https://example.com/a')
+    end
+  end
+
+  describe '.article_sources' do
+    it 'returns nil for non-hash entries' do
+      expect(described_class.article_sources([{ title: 'T', url: '/a' }])).to be_nil
+    end
+
+    it 'accepts Hash subclasses as entries and nodes', :aggregate_failures do
+      node = Class.new(Hash)[title: 'T', url: '/a']
+      entry = Class.new(Hash)[node:, flag: true]
+
+      expect(described_class.article_sources(entry)).to eq([node, entry])
+    end
+
+    it 'keeps an entry with its own title or description as the article node', :aggregate_failures do
+      author = { name: 'N', url: '/authors/n' }
+
+      expect(described_class.article_sources({ title: 'T', author: })).to eq([{ title: 'T', author: }])
+      expect(described_class.article_sources({ description: 'D', author: })).to eq([{ description: 'D', author: }])
+    end
+
+    it 'prefers the only nested node with title and url over title-only siblings' do
+      node = { title: 'T', url: '/a' }
+      entry = { author: { name: 'N' }, node: }
+
+      expect(described_class.article_sources(entry)).to eq([node, entry])
+    end
+
+    it 'finds a node two levels down but not three', :aggregate_failures do
+      node = { title: 'T', url: '/a' }
+      two = { data: { attributes: node } }
+
+      expect(described_class.article_sources(two)).to eq([node, two])
+      expect(described_class.article_sources({ a: { b: { c: node } } })).to eq([{ a: { b: { c: node } } }])
+    end
+
+    it 'does not search inside a titled node' do
+      node = { title: 'T', url: '/a', image: { title: 'Alt', url: '/i.jpg' } }
+
+      expect(described_class.article_sources({ node: })).to eq([node, { node: }])
+    end
+
+    it 'falls back to the only titled node when none carries a url' do
+      attributes = { title: 'T' }
+      entry = { attributes:, links: { self: '/a' } }
+
+      expect(described_class.article_sources(entry)).to eq([attributes, entry])
+    end
+
+    it 'returns nil when titled nodes compete without urls' do
+      expect(described_class.article_sources({ a: { title: 'A' }, b: { name: 'B' } })).to be_nil
+    end
+
+    it 'keeps the bare entry when no nested node has a title' do
+      entry = { url: '/a', meta: { url: '/b' } }
+
+      expect(described_class.article_sources(entry)).to eq([entry])
+    end
+  end
+
+  describe '.linked?' do
+    it 'requires title and url values across the sources', :aggregate_failures do
+      expect(described_class.linked?([{ title: 'T' }, { url: '/a' }])).to be(true)
+      expect(described_class.linked?({ title: '', links: { self: '/a' } })).to be(true)
+      expect(described_class.linked?({ title: nil, url: '/a' })).to be(false)
+      expect(described_class.linked?({ title: 'T', url: nil })).to be(false)
+      expect(described_class.linked?({ title: 'T' })).to be(false)
+    end
   end
 
   describe '.string' do
@@ -170,6 +262,17 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       expect(described_class.unwrap_url({ self: { href: { href: '/x' } } }, described_class::URL_KEYS)).to eq('/x')
     end
 
+    it 'unwraps array-form links and Hash subclasses', :aggregate_failures do
+      links = [{ rel: 'author', title: 'x' }, { rel: 'self', href: '/x' }]
+
+      expect(described_class.unwrap_url(links, described_class::URL_KEYS)).to eq('/x')
+      expect(described_class.unwrap_url(Class.new(Hash)[href: '/y'], described_class::URL_KEYS)).to eq('/y')
+    end
+
+    it 'returns nil when an array is left after three unwraps' do
+      expect(described_class.unwrap_url({ self: { href: { href: ['/x'] } } }, described_class::URL_KEYS)).to be_nil
+    end
+
     it 'returns nil when the nesting exceeds three levels' do
       deep = { self: { href: { href: { href: '/x' } } } }
 
@@ -184,6 +287,11 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
 
     it 'prefers the published timestamp key over date-suffixed keys' do
       expect(described_class.published_at({ publishedAt: '2026-01-02', updatedOn: '2020' })).to eq('2026-01-02')
+    end
+
+    it 'reads published keys without a date suffix before date-suffixed keys', :aggregate_failures do
+      expect(described_class.published_at({ updatedOn: '2020', date: '2026-01-02' })).to eq('2026-01-02')
+      expect(described_class.published_at([{ title: 'x' }, { updatedOn: '2020' }, { date: '2026' }])).to eq('2026')
     end
 
     it 'falls back to date-suffixed keys' do
@@ -204,10 +312,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
   end
 
   describe '.suffix_date_value' do
-    it 'returns nil for non-hash input', :aggregate_failures do
+    it 'returns nil for input that is neither a hash nor sources', :aggregate_failures do
       expect(described_class.suffix_date_value(nil)).to be_nil
       expect(described_class.suffix_date_value('x')).to be_nil
-      expect(described_class.suffix_date_value([{ createdAt: '2020' }])).to be_nil
+      expect(described_class.suffix_date_value([])).to be_nil
     end
 
     it 'returns the first date-suffixed key even after non-date keys' do
@@ -222,10 +330,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       expect(described_class.suffix_date_value({ createdAt: { x: 1 }, updatedOn: '2021' })).to eq('2021')
     end
 
-    it 'searches attributes before data', :aggregate_failures do
-      expect(described_class.suffix_date_value({ attributes: { createdAt: 'a' }, data: { createdAt: 'd' } }))
-        .to eq('a')
-      expect(described_class.suffix_date_value({ data: { createdAt: 'd' } })).to eq('d')
+    it 'searches field sources in order', :aggregate_failures do
+      expect(described_class.suffix_date_value([{ title: 'x' }, { createdAt: 'a' }, { createdAt: 'd' }])).to eq('a')
+      expect(described_class.suffix_date_value({ data: { createdAt: 'd' } })).to be_nil
     end
 
     it 'returns nil when no date-suffixed key exists' do

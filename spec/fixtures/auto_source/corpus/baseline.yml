@@ -27,7 +27,7 @@ json_state_menu_unrendered.html:
   sst_built: true
 json_state_wrapped_entries.html:
   junk: 0
-  real: 2
+  real: 11
   expected: 12
   sst_built: true
 kicker_heading_teaser.html:

@@ -166,6 +166,10 @@ Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoS
 
 Labeled synthetic pages under `spec/fixtures/auto_source/corpus/` (hosts `example.com` only); each page (`.html` or `.json`) has a `.yml` sidecar listing its expected article URLs. `AutoSourceCorpus` (`spec/support/auto_source_corpus.rb`) is the sole runner: fixed base URL, no request session, no network. It scores admitted URLs per page as junk (not in the sidecar) and real (in the sidecar), and reports whether `SST::Normalizer` ran (observed by a spec-side probe, not a `lib/` hook). `bin/auto-source-corpus` prints the table. `auto_source_corpus_spec.rb` ratchets against `corpus/baseline.yml`: it fails only when a page's junk rises or real-found drops. Re-record intended changes only via `make corpus-baseline`. Adding a page means adding its sidecar and re-recording.
 
+## JSON state article node
+
+Which hashes of a JSON state entry hold its article fields. Owned by `JsonState::ArticleNormalizer.article_sources` (detector and normaliser both consult it; `ValueFinder` reads only the keys of the hashes it is given). An entry with its own title or description is the node; a wrapper entry delegates to the only nested Hash (up to two levels) with title and URL, else the only titled one, keeping the entry as fallback source; competing nodes skip the entry. No wrapper-key list.
+
 ## Enhance leftover fields
 
 Visible leftover after excluding heading/anchor/kicker/`time` is split once on block newlines. Keep/drop (CTA, date-shaped, field labels, type chips, title echo, listing section names) is owned only by `Html2rss::Html::ArticleRules::Description`. Dates stay on `ArticleRules::Date` (datetime attrs + date-shaped leftover lines, channel `time_zone`; invalid identifiers fall back to UTC so extract does not raise). Categories stay on `ArticleRules::Category` (class tokens, not layout `label`/`section` substrings) and reject Description keepers except type chips, which are leftover chrome rather than taxonomy. Both `Html::ArticleExtractor` and `Html::SstArticleExtractor` call those modules.
