@@ -178,7 +178,7 @@ RSpec.describe Html2rss::Article::Title do
     {
       'Thema:' => true, 'Thème :' => true, 'Tema:' => true, 'Topic:' => true, ' Section: ' => true, '19:47' => true,
       'Video' => true, 'Live Blog' => true, ' ' => true, nil => true, 'Verkehr' => false, 'Conflict:' => false,
-      'Ukraine-Krieg:' => false, 'Thema: Verkehr' => false, '28:25' => false, 'Video tour' => false
+      'Hafen-Streit:' => false, 'Thema: Verkehr' => false, '28:25' => false, 'Video tour' => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.noise_piece?(text)).to be(expected)
