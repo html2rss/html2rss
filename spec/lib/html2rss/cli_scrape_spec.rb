@@ -11,11 +11,12 @@ RSpec.describe Html2rss::CLI, '#scrape' do
 
   before { allow(Html2rss).to receive(:scrape).and_return(feed_res) }
 
-  it 'forwards the documented defaults and prints the rss', :aggregate_failures do
+  it 'forwards the documented defaults and prints the rss', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     expect { run_scrape.call(['https://a.test']) }.to output("<rss/>\n").to_stdout
     expect(Html2rss).to have_received(:scrape).with(
       'https://a.test', strategy: :auto, items_selector: nil, max_redirects: nil, max_requests: nil,
-                        local_file_path: nil, limit: nil, keep_different_domain: false
+                        local_file_path: nil, limit: nil, keep_different_domain: false,
+                        keep_sponsored: false
     )
   end
 
@@ -24,12 +25,13 @@ RSpec.describe Html2rss::CLI, '#scrape' do
       run_scrape.call(
         ['https://a.test'],
         { strategy: 'default', items_selector: '.x', max_redirects: 2, max_requests: 3, limit: 4,
-          keep_different_domain: true }
+          keep_different_domain: true, keep_sponsored: true }
       )
     end.to output.to_stdout
     expect(Html2rss).to have_received(:scrape).with(
       'https://a.test', strategy: :default, items_selector: '.x', max_redirects: 2, max_requests: 3,
-                        local_file_path: nil, limit: 4, keep_different_domain: true
+                        local_file_path: nil, limit: 4, keep_different_domain: true,
+                        keep_sponsored: true
     )
   end
 

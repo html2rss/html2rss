@@ -51,6 +51,15 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       expect(hint).to include('any domain supplied by the source')
     end
 
+    it 'names keep_sponsored when sponsored drops emptied admission' do
+      expect(described_class.admission_hint('sponsored' => 1)).to eq(described_class::SPONSORED_HINT)
+    end
+
+    it 'names both flags when both reasons dropped items' do
+      expect(described_class.admission_hint('sponsored' => 1, 'different_domain' => 1))
+        .to include('--keep-different-domain').and include('--keep-sponsored')
+    end
+
     it 'returns nil when different_domain was not the emptying reason' do
       expect(described_class.admission_hint('short_title' => 1)).to be_nil
     end

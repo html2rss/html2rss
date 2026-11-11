@@ -597,6 +597,30 @@ RSpec.describe Html2rss::CLI do
         .to output("#{rss_xml}\n").to_stdout
     end
 
+    context 'with a local page carrying sponsored links' do
+      let(:input) { 'spec/fixtures/auto_source/corpus/sponsored_rel_link.html' }
+      let(:sponsored_url) { 'https://example.com/news/2026/11/travel-insurance-family-plan' }
+
+      before { allow(Html2rss).to receive(:scrape).and_call_original }
+
+      it 'drops sponsored items by default' do
+        expect { cli.invoke(:scrape, ['https://example.com/news'], { input: }) }
+          .not_to output(/#{Regexp.escape(sponsored_url)}/).to_stdout
+      end
+
+      it 'admits sponsored items with --keep-sponsored' do
+        expect { cli.invoke(:scrape, ['https://example.com/news'], { input:, keep_sponsored: true }) }
+          .to output(/#{Regexp.escape(sponsored_url)}/).to_stdout
+      end
+    end
+
+    it 'defaults --keep-sponsored to false and documents it', :aggregate_failures do
+      option = described_class.commands['scrape'].options[:keep_sponsored]
+
+      expect(option.default).to be(false)
+      expect(option.description).to include('sponsored')
+    end
+
     it 'raises Thor::Error for a fractional --limit instead of truncating it' do
       allow(Html2rss).to receive(:scrape).and_call_original
 

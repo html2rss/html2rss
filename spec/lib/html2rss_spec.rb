@@ -501,6 +501,13 @@ RSpec.describe Html2rss do
       config = described_class.auto_feed_result('https://example.com', keep_different_domain: true)
       expect(config.dig(:auto_source, :cleanup, :keep_different_domain)).to be true
     end
+
+    it 'forwards keep_sponsored' do
+      allow(described_class).to receive(:feed_result) { |config| config }
+
+      config = described_class.auto_feed_result('https://example.com', keep_sponsored: true)
+      expect(config.dig(:auto_source, :cleanup, :keep_sponsored)).to be true
+    end
   end
 
   describe '.auto_source' do
@@ -671,7 +678,7 @@ RSpec.describe Html2rss do
 
     it 'forwards every scrape option', :aggregate_failures do
       options = { strategy: :default, items_selector: '.card', max_redirects: 2, max_requests: 8,
-                  local_file_path: '/tmp/p.html', limit: 3, keep_different_domain: true }
+                  local_file_path: '/tmp/p.html', limit: 3, keep_different_domain: true, keep_sponsored: true }
 
       expect(described_class.scrape('https://example.com', **options)).to eq(feed_result)
       expect(described_class).to have_received(:auto_feed_result).with('https://example.com', **options)
@@ -688,7 +695,8 @@ RSpec.describe Html2rss do
         max_requests: 4,
         local_file_path: nil,
         limit: nil,
-        keep_different_domain: nil
+        keep_different_domain: nil,
+        keep_sponsored: nil
       )
     end
   end

@@ -220,6 +220,8 @@ module Html2rss
     method_option :keep_different_domain, type: :boolean, default: false,
                                           desc: 'Allow published items to link to any domain ' \
                                                 'supplied by the source (no affiliation/safety check)'
+    method_option :keep_sponsored, type: :boolean, default: false,
+                                   desc: 'Keep items the page marks as sponsored (rel="sponsored" or ad labels)'
     # @param url [String, nil]
     # @return [void]
     def scrape(url = nil)
@@ -440,8 +442,12 @@ module Html2rss
         max_requests: options[:max_requests],
         local_file_path:,
         limit: options[:limit],
-        keep_different_domain: options[:keep_different_domain]
+        **cleanup_overrides
       )
+    end
+
+    def cleanup_overrides
+      { keep_different_domain: options[:keep_different_domain], keep_sponsored: options[:keep_sponsored] }
     end
 
     def explain_json!(payload)

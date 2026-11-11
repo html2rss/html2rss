@@ -110,7 +110,10 @@ RSpec.describe Html2rss::CLI do
             limit: { type: :numeric, default: nil, enum: nil, aliases: [], description: 'Max articles (auto-source)' },
             keep_different_domain: { type: :boolean, default: false, enum: nil, aliases: [],
                                      description: 'Allow published items to link to any domain ' \
-                                                  'supplied by the source (no affiliation/safety check)' }
+                                                  'supplied by the source (no affiliation/safety check)' },
+            keep_sponsored: { type: :boolean, default: false, enum: nil, aliases: [],
+                              description: 'Keep items the page marks as sponsored ' \
+                                           '(rel="sponsored" or ad labels)' }
           }
         },
         'validate' => {

@@ -74,16 +74,23 @@ module Html2rss
         'auto_source.cleanup.keep_different_domain: true (or --keep-different-domain); ' \
         'allows published items to link to any domain supplied by the source'
 
+      # Config key / CLI flag named when sponsored drops emptied admission.
+      SPONSORED_HINT =
+        'auto_source.cleanup.keep_sponsored: true (or --keep-sponsored); ' \
+        'keeps items the page marks as sponsored'
+
+      ADMISSION_HINTS = { 'different_domain' => DIFFERENT_DOMAIN_HINT, 'sponsored' => SPONSORED_HINT }.freeze
+      private_constant :ADMISSION_HINTS
+
       class << self
-        # Mitigating config hint when admission drops emptied a non-empty capture.
+        # Mitigating config hints when admission drops emptied a non-empty capture.
         # Other drop reasons remain counts only.
         #
         # @param drop_tallies [Hash{String => Integer}]
         # @return [String, nil]
         def admission_hint(drop_tallies)
-          return unless drop_tallies.fetch('different_domain', 0).positive?
-
-          DIFFERENT_DOMAIN_HINT
+          hints = ADMISSION_HINTS.select { |reason, _| drop_tallies.fetch(reason, 0).positive? }.values
+          hints.join(' | ') unless hints.empty?
         end
 
         # @param articles [Array<Article>] extracted article candidates
