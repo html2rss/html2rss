@@ -60,11 +60,7 @@ module Html2rss
 
         def switched_on?(value) = !value.nil? && !OFF_VALUES.include?(value.downcase)
 
-        def label?(text)
-          return false if text.nil? || text.empty?
-
-          text.match?(LABEL_PATTERN)
-        end
+        def label?(text) = text&.match?(LABEL_PATTERN)
       end
     end
   end

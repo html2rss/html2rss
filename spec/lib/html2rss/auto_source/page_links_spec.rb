@@ -228,6 +228,11 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
             <div><span class="ad-label">Anzeige</span></div>
           </article>
           <article data-advertorial><h3><a href="/news/attributed">Attributed card</a></h3></article>
+          <article>
+            <div><span>Sponsored</span></div>
+            <div><span aria-label="Anzeige"></span></div>
+            <h3><a href="/news/twice-labelled">Twice labelled card</a></h3>
+          </article>
           <ul>
             <li><a href="/news/listed-one">Listed one</a></li>
             <li class="slot"><span>Advertisement</span></li>
@@ -251,6 +256,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
     it 'marks the single destination of a card holding an ad label or attribute', :aggregate_failures do
       expect(page_links.sponsored?(url_at['/news/labelled'])).to be(true)
       expect(page_links.sponsored?(url_at['/news/attributed'])).to be(true)
+      expect(page_links.sponsored?(url_at['/news/twice-labelled'])).to be(true)
     end
 
     it 'marks nothing when the marker card spans several destinations', :aggregate_failures do

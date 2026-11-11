@@ -43,7 +43,6 @@ module Html2rss
         @link_resolver = link_resolver
         walk(document.root, false) if document
         @sparse = document.nil? || document.degraded || content_link_count <= SPARSE_MAX_CONTENT_LINKS
-        @card_keys = nil
         freeze
       end
 

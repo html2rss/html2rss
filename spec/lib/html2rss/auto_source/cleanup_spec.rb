@@ -183,6 +183,11 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(page_links).not_to have_received(:sponsored?)
       end
 
+      it 'drops sponsored items when keep_sponsored is omitted' do
+        omitted = described_class.call(articles, url:, page_links: -> { page_links })
+        expect(omitted.drop_tallies).to eq('sponsored' => 2)
+      end
+
       it 'admits every item without page links' do
         expect(described_class.call(articles, url:).articles.size).to eq(4)
       end
