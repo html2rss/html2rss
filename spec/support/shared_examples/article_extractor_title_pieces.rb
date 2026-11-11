@@ -57,6 +57,27 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<h2><a href="/news/story"><span class="kicker">Transit</span> / Tram line extends</a></h2>',
       'Transit: Tram line extends'
     ],
+    'a kicker-marked row holding the kicker and a status' => [
+      '<div class="eyebrow-row"><span class="eyebrow">Transit</span> <span>Updated</span></div>' \
+      '<h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a kicker-marked heading' => [
+      '<h2 class="headline--with-kicker"><a href="/news/story">20:15 | Krimi im Ersten</a></h2>',
+      '20:15 | Krimi im Ersten'
+    ],
+    'a has-kicker modifier holding the heading text beside a read-more link' => [
+      '<h2><span class="headline--has-kicker">20:15 | Krimi im Ersten</span></h2><a href="/news/story">Read more</a>',
+      '20:15 | Krimi im Ersten'
+    ],
+    'a kicker beside an image-only heading' => [
+      '<span class="kicker">Weather</span><h2><a href="/news/story"><img src="/a.jpg" alt=""></a></h2>',
+      'Weather'
+    ],
+    'a dated time element in the headline' => [
+      '<h2><a href="/news/story"><time datetime="2026-10-20">Oct 20</time> Tram line extends</a></h2>',
+      'Tram line extends'
+    ],
     'a kicker ending in a separator' => [
       '<span class="kicker">Transit &gt;</span><h2><a href="/news/story">Tram line extends</a></h2>',
       'Transit: Tram line extends'

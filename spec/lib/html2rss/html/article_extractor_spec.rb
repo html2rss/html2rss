@@ -737,6 +737,13 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
   describe '#kicker_node' do
     it_behaves_like 'kicker title'
+
+    it 'keeps the kicker of a card without heading or anchor as its title' do
+      article_tag = Nokogiri::HTML.fragment('<article><span class="kicker">Weather</span><p>Storm ahead.</p></article>')
+                                  .at_css('article')
+
+      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Weather')
+    end
   end
 
   describe '#fallback_anchorless_title' do

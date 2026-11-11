@@ -177,6 +177,16 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(title_for.call(html)).to eq('Tram line extends')
     end
 
+    it 'keeps the kicker of an anchorless card without a heading' do
+      html = '<div id="storm-card">Storm ahead tonight <span class="kicker">Weather</span></div>'
+      root = document_for(html).root.find { |n| n.name == :div }
+      segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :semantic, position: 0)
+
+      article = described_class.call(segment, base_url: 'https://example.com', fallback_anchorless: true)
+
+      expect(article&.title).to eq('Weather: Storm ahead tonight')
+    end
+
     it 'titles a kicker-only card with the kicker alone' do
       html = '<article><span class="eyebrow">Weather</span><a href="/news/story"><img src="/a.jpg"></a></article>'
 
