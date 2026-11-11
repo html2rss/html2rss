@@ -16,9 +16,9 @@ module Html2rss
     # (en, de, fr, es), matching {LinkDestination::TextClassifier}.
     #
     # Headline text is never noise-stripped: +20:15 Uhr: Neuer Krimi+ or +9:41 is the time+ is a real
-    # headline. Teaser noise in a headline is told apart by structure instead: the extractors drop
-    # +time+ elements and elements that are only a clock or a label ({.headline_noise_piece?}), and
-    # judge kicker child elements with {.noise_piece?}.
+    # headline. Teaser noise in a headline is told apart by structure instead ({Html::TitlePieces}):
+    # +time+ elements and elements that are only a clock or a label ({.headline_noise_piece?}) are
+    # dropped only before the first headline word, and kicker pieces are judged with {.noise_piece?}.
     module Title
       # Joins a kicker to its headline.
       SEPARATOR = ': '
@@ -40,9 +40,10 @@ module Html2rss
         'vidéo', 'diaporama', 'en direct', 'communiqué de presse',
         'vídeo', 'galería', 'en directo', 'nota de prensa'
       ].freeze
-      # One separator between a kicker and its headline: +: | • · – —+, or a space-delimited +- / > »+
-      # (so a minus sign, a path or a German »quote« is not one).
-      SEPARATOR_MARK = %r{[:|•·–—]|[-/>»](?=[[:space:]]|\z)}
+      # One separator between a kicker and its headline: +: | • · – — - / > » › →+, each only when
+      # followed by whitespace, so a sign (+–5 Grad+), a path (+/e/+) or a German »quote« is not one, nor
+      # a comparison before a number (+> 50 Prozent+).
+      SEPARATOR_MARK = %r{(?:[:|•·–—/»›→-]|>(?![[:space:]]*\d))(?=[[:space:]]|\z)}
       # Screen-reader field labels (+Section:+) and type labels with their marker (+Article type: Video+).
       LABEL = /
         (?:section|category|rubrik|ressort|kategorie|rubrique|cat[ée]gorie|secci[óo]n|categor[íi]a)\s*:
@@ -61,8 +62,9 @@ module Html2rss
           | #{CLOCK}(?:\s*Uhr)?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
         )+
       /x
-      # Trailing stray separators (+Kicker :+, +Kicker -+). A trailing +»+ closes a French quote, so it stays.
-      TRAILING_SEPARATORS = %r{(?:[[:space:]]|[:|•·–—]|(?<=[[:space:]])[-/>])+\z}
+      # Trailing stray separators (+Kicker :+, +Kicker -+, +Kicker ›+). A trailing +»+ closes a French
+      # quote, so it stays.
+      TRAILING_SEPARATORS = %r{(?:[[:space:]]|[:|•·–—]|(?<=[[:space:]])[-/>›→])+\z}
       # The inline kicker boundary of +Kicker : Headline+: a whitespace-preceded colon after at most
       # eight words ending in a letter or closing quote/bracket, so a score (+16 : 9+) keeps its colon.
       SPACED_COLON = /\A((?:[^[:space:]]+[[:space:]]+){0,7}?[^[:space:]]*[\p{L}"'“”’»›)\]])[[:space:]]+:[[:space:]]*/
@@ -104,8 +106,8 @@ module Html2rss
 
         ##
         # Whether one element inside a headline is teaser noise on its own: only a clock time or only a
-        # label (+Section:+, +Article type: Video+). Extractors drop such elements, and +time+ elements,
-        # from headline text before it is joined; the headline text itself is never noise-stripped.
+        # label (+Section:+, +Article type: Video+). {Html::TitlePieces} drops such elements, and +time+
+        # elements, when they open the headline; the headline text itself is never noise-stripped.
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @return [Boolean]
@@ -116,7 +118,7 @@ module Html2rss
 
         ##
         # Whether one child element of a kicker is noise on its own: blank, a clock time, a field
-        # label (+Thema:+, +Section:+) or a type marker. Extractors drop such children from the kicker.
+        # label (+Thema:+, +Section:+) or a type marker. {Html::TitlePieces} drops such kicker pieces.
         #
         # @param text [String, nil] visible text of one kicker child element
         # @return [Boolean]

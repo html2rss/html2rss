@@ -9,8 +9,6 @@ module Html2rss
     # Port of Html::ArticleExtractor field logic onto SST::Node.
     # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated for parity with ArticleExtractor
     class SstArticleExtractor
-      # CSS class tokens that mark kicker / eyebrow text (passed to {Article} apart from the headline).
-      KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::SelectorCandidates}, which owns no copy of it.
       TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
@@ -63,7 +61,7 @@ module Html2rss
         root, lines, published_at = parent_card_fields(title, lines, published_at)
         attrs = {
           title:,
-          kicker: kicker_text,
+          kicker: title_pieces.kicker_text,
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
@@ -98,20 +96,8 @@ module Html2rss
         Url.from_relative("##{id}", @base_url) if id
       end
 
-      # Kicker text without its +time+ and noise pieces ({Article::Title.noise_piece?}: clocks,
-      # field labels such as a screen-reader "Section:" prefix), so only the topic prefixes the title.
-      #
-      # @return [String, nil]
-      def kicker_text
-        return unless kicker_node
-
-        kicker_node.visible_text(exclude: kicker_node.descendants.select { |node| kicker_noise?(node) })
-      end
-
-      def kicker_noise?(node) = node.name == :time || Article::Title.noise_piece?(node.visible_text)
-
-      # Teaser noise elements (+time+, or text that is only a clock or a label) are not headline text.
-      def headline_noise?(node) = node.name == :time || Article::Title.headline_noise_piece?(node.visible_text)
+      # Kicker and headline text ({TitlePieces}) of this card.
+      def title_pieces = @title_pieces ||= TitlePieces.new(@root, heading || @selected_anchor)
 
       # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). Credit-only cards
       # may blank to nil (description can carry the item). Other junk shapes must stay present so
@@ -130,7 +116,7 @@ module Html2rss
       def title_candidates
         [].tap do |candidates|
           add_title_candidate!(candidates, heading_title_text)
-          add_title_candidate!(candidates, text_without_kicker(@selected_anchor))
+          add_title_candidate!(candidates, title_pieces.headline_text(@selected_anchor))
           next unless candidates.empty? && @fallback_anchorless && @selected_anchor.nil?
 
           add_title_candidate!(candidates, first_nonempty_own_text)
@@ -148,19 +134,7 @@ module Html2rss
       end
 
       # @return [String, nil] the title child's text when the heading splits kicker and title, else the whole heading
-      def heading_title_text = text_without_kicker(title_child_of_heading || heading)
-
-      # A kicker nested in a heading or anchor is the kicker, not headline text; nor is a teaser noise element.
-      #
-      # @param node [SST::Node, nil]
-      # @return [String, nil]
-      def text_without_kicker(node)
-        return unless node
-
-        excluded = node.descendants.select { headline_noise?(_1) }
-        excluded << kicker_node if kicker_node && descendant_of?(kicker_node, node)
-        excluded.empty? ? node.visible_text : node.visible_text(exclude: excluded)
-      end
+      def heading_title_text = title_pieces.headline_text(title_child_of_heading || heading)
 
       # A heading made only of child elements (no stray text) where exactly one carries a title
       # class (and no kicker class) is a kicker-plus-title split; that child alone is the title.
@@ -175,7 +149,7 @@ module Html2rss
 
       def title_token_child?(child)
         classes = child.attrs.class_names
-        classes.any?(HEADING_TITLE_TOKEN_PATTERN) && classes.none?(KICKER_CLASS_PATTERN)
+        classes.any?(HEADING_TITLE_TOKEN_PATTERN) && classes.none?(TitlePieces::KICKER_CLASS)
       end
 
       def heading
@@ -211,29 +185,6 @@ module Html2rss
         end
       end
 
-      # The first leaf-most kicker-marked node that leaves headline text beside it. A marked wrapper
-      # (+kicker-group+, +headline--has-kicker+, a +teaser--with-kicker+ card) holds the kicker or the
-      # headline; it is not the kicker. Memoized even when nil.
-      def kicker_node
-        return @kicker_node if defined?(@kicker_node)
-
-        marked = @root.find_all { kicker_marked?(_1) }
-        @kicker_node = marked.find do |node|
-          marked.none? { |other| !other.equal?(node) && descendant_of?(other, node) } && kicker_beside_headline?(node)
-        end
-      end
-
-      def kicker_marked?(node)
-        node.attrs.raw.key?('data-tb-kicker') || node.attrs.class_names.any?(KICKER_CLASS_PATTERN)
-      end
-
-      def kicker_beside_headline?(node)
-        return true unless (source = heading || @selected_anchor)
-        return false if descendant_of?(source, node)
-
-        !descendant_of?(node, source) || source.visible_text(exclude: [node]).to_s.match?(/[[:alnum:]]/)
-      end
-
       def descendant_of?(child, ancestor)
         return true if child.equal?(ancestor)
 
@@ -250,7 +201,7 @@ module Html2rss
 
       def leftover_lines_from(node)
         times = node.find_all { |n| n.name == :time }
-        exclude = [heading, @selected_anchor, kicker_node, *times].compact
+        exclude = [heading, @selected_anchor, title_pieces.kicker, *times].compact
         ArticleRules::Description.lines_from(node.visible_text(exclude:))
       end
 

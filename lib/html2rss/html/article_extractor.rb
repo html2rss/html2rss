@@ -7,10 +7,6 @@ module Html2rss
     # from an article_tag DOM node. DOM chrome helpers live on {Navigator}.
     # rubocop:disable-next Metrics/ClassLength -- leftover re-extract stays with field extractors
     class ArticleExtractor
-      # Kicker / eyebrow markers; the kicker is composed into the title by {Article::Title}.
-      KICKER_SELECTOR = '[data-tb-kicker], [class*="kicker"], [class*="eyebrow"], ' \
-                        '[class*="pre-title"], [class*="pretitle"], [class*="overline"]'
-
       class << self
         ##
         # Extracts article attributes from a DOM element.
@@ -51,7 +47,7 @@ module Html2rss
         {
           # Composed here, not passed as a +kicker:+ key: Selectors' enhance merges keys one by one,
           # so a separate kicker would prefix an explicitly selected title.
-          title: Article::Title.compose(title, kicker: kicker_text),
+          title: Article::Title.compose(title, kicker: title_pieces.kicker_text),
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
@@ -85,28 +81,14 @@ module Html2rss
         Url.from_relative("##{id}", base_url) if id
       end
 
-      # A kicker nested in the heading or anchor is the kicker, not headline text; nor is a teaser
-      # noise element. Excluding a kicker outside +source+ is a no-op, so no descendant check is needed.
       def extract_headline
         return fallback_anchorless_title unless headline_source
 
-        noise = headline_source.css('*').select { headline_noise?(_1) }
-        Navigator.extract_visible_text(headline_source, exclude_nodes: [kicker_node, *noise].compact)
+        title_pieces.headline_text(headline_source)
       end
 
-      # Kicker text without its +time+ and noise pieces ({Article::Title.noise_piece?}).
-      def kicker_text
-        return unless kicker_node
-
-        noise = kicker_node.css('*').select { kicker_noise?(_1) }
-        Navigator.extract_visible_text(kicker_node, exclude_nodes: noise)
-      end
-
-      def kicker_noise?(node) = node.name == 'time' || Article::Title.noise_piece?(Navigator.extract_visible_text(node))
-
-      def headline_noise?(node)
-        node.name == 'time' || Article::Title.headline_noise_piece?(Navigator.extract_visible_text(node))
-      end
+      # Kicker and headline text ({TitlePieces}) of this card.
+      def title_pieces = @title_pieces ||= TitlePieces.new(article_tag, headline_source)
 
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?
@@ -125,24 +107,6 @@ module Html2rss
 
       def headline_source = heading || selected_anchor
 
-      # The first leaf-most kicker-marked node that leaves headline text beside it. A marked wrapper
-      # (+kicker-group+, +headline--has-kicker+, a +teaser--with-kicker+ card) holds the kicker or the
-      # headline; it is not the kicker. Memoized even when nil.
-      def kicker_node
-        return @kicker_node if defined?(@kicker_node)
-
-        @kicker_node = article_tag.css(KICKER_SELECTOR).find { |node| kicker_leaf?(node) }
-      end
-
-      def kicker_leaf?(node)
-        return false if node.at_css(KICKER_SELECTOR)
-        return true unless (source = headline_source)
-        return false if node == source || Navigator.descendant_of?(source, node)
-
-        !Navigator.descendant_of?(node, source) ||
-          Navigator.extract_visible_text(source, exclude_nodes: [node]).to_s.match?(/[[:alnum:]]/)
-      end
-
       def leftover_lines
         leftover_lines_from(article_tag)
       end
@@ -154,7 +118,7 @@ module Html2rss
       end
 
       def leftover_exclude_nodes_for(node)
-        [heading, selected_anchor, kicker_node, *node.css('time')].compact
+        [heading, selected_anchor, title_pieces.kicker, *node.css('time')].compact
       end
 
       def heading_or_anchor_item?
