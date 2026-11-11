@@ -18,8 +18,22 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::CandidateDetector do
       expect(described_class.candidate_array?(document)).to be(true)
     end
 
-    it 'detects a candidate array nested inside another array' do
+    it 'detects a candidate array nested inside another array', :aggregate_failures do
       expect(described_class.candidate_array?([[{ title: 'T', url: '/a' }]])).to be(true)
+      expect(described_class.candidate_array?(['x', [{ title: 'T', url: '/a' }]])).to be(true)
+    end
+
+    it 'does not treat a single title and url hash outside an array as a candidate' do
+      expect(described_class.candidate_array?({ item: { title: 'T', url: '/a' } })).to be(false)
+    end
+
+    it 'does not search menu arrays for submenu link arrays' do
+      menu = [
+        { title: 'World', url: '/world/', children: [{ title: 'Domestic', url: '/world/domestic/' }] },
+        { title: 'Sport', url: '/sport/', children: [{ title: 'Football', url: '/sport/football/' }] }
+      ]
+
+      expect(described_class.candidate_array?({ menu: })).to be(false)
     end
 
     it 'returns false for scalars and hashes without candidate arrays', :aggregate_failures do
@@ -51,13 +65,61 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::CandidateDetector do
       expect(described_class.array_of_articles?(['x', { title: 'T', url: '/a' }])).to be(true)
     end
 
+    it 'accepts Hash subclasses as entries' do
+      entry = Class.new(Hash)[title: 'T', url: '/a']
+
+      expect(described_class.array_of_articles?([entry])).to be(true)
+    end
+
     it 'is false unless a single element has both a title and a url', :aggregate_failures do
       expect(described_class.array_of_articles?([{ title: 'T' }, { url: '/a' }])).to be(false)
       expect(described_class.array_of_articles?([{ title: 'T' }, 'x'])).to be(false)
     end
 
-    it 'is false for arrays without hash elements' do
+    it 'is false for arrays without hash elements', :aggregate_failures do
       expect(described_class.array_of_articles?(%w[a b])).to be(false)
+      expect(described_class.array_of_articles?([[{ title: 'T', url: '/a' }]])).to be(false)
+    end
+
+    it 'is false when most title and url hashes are menu links', :aggregate_failures do
+      menu = { title: 'Imprint', url: '/imprint', target: '_self' }
+      article = { title: 'T', url: '/a' }
+
+      expect(described_class.array_of_articles?([menu, menu, article])).to be(false)
+      expect(described_class.array_of_articles?([menu, { title: 'T' }, 'x'])).to be(false)
+    end
+
+    it 'is true when at most half of the title and url hashes are menu links', :aggregate_failures do
+      menu = { title: 'Imprint', url: '/imprint', target: '_self' }
+      article = { title: 'T', url: '/a' }
+
+      expect(described_class.array_of_articles?([menu, article])).to be(true)
+      expect(described_class.array_of_articles?([menu, article, { title: 'T' }, { url: '/b' }])).to be(true)
+    end
+  end
+
+  describe '.navigation_link?' do
+    it 'is true for title and url hashes carrying any link-presentation key', :aggregate_failures do
+      described_class::NAVIGATION_KEYS.each do |key|
+        expect(described_class.navigation_link?({ title: 'Sections', url: '/sections/', key => 'x' })).to be(true)
+      end
+    end
+
+    it 'is false without link-presentation keys' do
+      expect(described_class.navigation_link?({ title: 'T', url: '/a', type: 'link' })).to be(false)
+    end
+
+    it 'is false when a description or publication date marks an article', :aggregate_failures do
+      expect(described_class.navigation_link?({ title: 'T', url: '/a', target: '_blank', summary: 'S' })).to be(false)
+      expect(described_class.navigation_link?({ title: 'T', url: '/a', target: '_blank', date: '2024-01-01' }))
+        .to be(false)
+      expect(described_class.navigation_link?({ title: 'T', url: '/a', target: '_blank', posted_on: '2024-01-01' }))
+        .to be(false)
+    end
+
+    it 'is false when an image marks a teaser', :aggregate_failures do
+      expect(described_class.navigation_link?({ title: 'T', url: '/a', target: '_self', image: '/a.jpg' })).to be(false)
+      expect(described_class.navigation_link?({ title: 'T', url: '/a', rel: 'x', thumbnailUrl: '/a.jpg' })).to be(false)
     end
   end
 

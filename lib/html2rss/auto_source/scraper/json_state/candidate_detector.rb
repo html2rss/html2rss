@@ -6,6 +6,9 @@ module Html2rss
       class JsonState
         # Identifies arrays that look like collections of article hashes.
         module CandidateDetector
+          # Serialized anchor/menu attributes (link target, rel, nofollow flag, submenu) marking menu links.
+          NAVIGATION_KEYS = %i[target rel noFollow children].freeze
+
           class << self
             # @param document [Hash, Array, Object] candidate document node
             # @return [Boolean] whether the node contains article-like arrays
@@ -13,6 +16,7 @@ module Html2rss
               case document
               when Array
                 return true if array_of_articles?(document)
+                return false if menu_array?(document)
 
                 document.any? { traversable_candidate?(_1) }
               when Hash then document.each_value.any? { candidate_array?(_1) }
@@ -29,14 +33,32 @@ module Html2rss
               end
             end
 
+            # Accepts arrays of title+url hashes unless they form a menu (see {menu_array?}).
+            #
             # @param array [Array<Object>] candidate list of entries
-            # @return [Boolean] whether array includes hash entries with title and URL fields
+            # @return [Boolean] whether array holds title+url hashes that are mostly not menu links
             def array_of_articles?(array)
-              array.any? do |element|
-                next unless element.is_a?(Hash)
+              array.any? { linked_entry?(_1) } && !menu_array?(array)
+            end
 
-                title_from(element) && url_from(element)
-              end
+            # Most title+url hashes are serialized menu links (see {navigation_link?}), so the array is an
+            # SSR header/footer menu. Callers skip its whole subtree, including submenu `children` arrays.
+            #
+            # @param array [Array<Object>] candidate list of entries
+            # @return [Boolean] whether more than half of the title+url hashes are menu links
+            def menu_array?(array)
+              linked = array.select { linked_entry?(_1) }
+              linked.count { navigation_link?(_1) } * 2 > linked.size
+            end
+
+            # @param entry [Hash] entry with title and URL fields
+            # @return [Boolean] whether the entry carries link-presentation keys and no description, image, or date
+            def navigation_link?(entry)
+              return false unless NAVIGATION_KEYS.any? { entry.key?(_1) }
+
+              !(ValueFinder.fetch(entry, ArticleNormalizer::DESCRIPTION_KEYS) ||
+                ValueFinder.fetch(entry, ArticleNormalizer::IMAGE_KEYS) ||
+                ArticleNormalizer.published_at(entry))
             end
 
             # @param object [Hash] article candidate object
@@ -50,6 +72,12 @@ module Html2rss
             def url_from(object)
               ValueFinder.fetch(object, ArticleNormalizer::URL_KEYS) ||
                 ValueFinder.fetch(object[:links], ArticleNormalizer::URL_KEYS)
+            end
+
+            private
+
+            def linked_entry?(element)
+              element.is_a?(Hash) && title_from(element) && url_from(element)
             end
           end
         end
