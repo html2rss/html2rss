@@ -51,6 +51,10 @@ Production heuristic scrapers should reuse one `SST::Document` memoized from `pa
 - **Top-K** — `Scoring::Engine::TOP_K` (99) caps ranked segments materialized into articles; list strategy also budgets `use_top_selectors`.
 - **Typed stages** — Pipeline stages take `SST::Document` / `Segment` / `RankedSegment`, not ad-hoc Hash bags. Internal scraper APIs may change; the public gem surface is `lib/html2rss.rb`.
 
+## Measuring changes
+
+Precision and recall changes are measured on the labeled corpus (`bin/auto-source-corpus`, ratchet spec, `make corpus-baseline`); see `CONTEXT.md` § Auto-source corpus. Wall/alloc budgets: `make perf-baseline`.
+
 ## Non-goals
 
 - Replacing Selectors, Schema, Microdata, MF2, JsonState, JsonDocument, or XhrArticles with SST.

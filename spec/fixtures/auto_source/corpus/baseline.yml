@@ -1,0 +1,67 @@
+# Auto-source corpus ratchet baseline. Re-record only via `mise exec -- make corpus-baseline`.
+---
+app_shell_state_dated.html:
+  junk: 0
+  real: 4
+  expected: 4
+  sst_built: true
+card_article_header_link.html:
+  junk: 0
+  real: 0
+  expected: 5
+  sst_built: true
+json_response_articles.json:
+  junk: 0
+  real: 4
+  expected: 4
+  sst_built: false
+json_response_menu.json:
+  junk: 4
+  real: 0
+  expected: 0
+  sst_built: false
+json_state_menu_unrendered.html:
+  junk: 3
+  real: 5
+  expected: 5
+  sst_built: true
+json_state_wrapped_entries.html:
+  junk: 0
+  real: 2
+  expected: 12
+  sst_built: true
+kicker_heading_teaser.html:
+  junk: 0
+  real: 5
+  expected: 5
+  sst_built: true
+menu_cms_timestamped.html:
+  junk: 4
+  real: 5
+  expected: 5
+  sst_built: true
+menu_icon.html:
+  junk: 4
+  real: 5
+  expected: 5
+  sst_built: true
+menu_mixed_top_level.html:
+  junk: 4
+  real: 5
+  expected: 5
+  sst_built: true
+plain_listing.html:
+  junk: 0
+  real: 6
+  expected: 6
+  sst_built: true
+schema_footer_extras.html:
+  junk: 1
+  real: 4
+  expected: 4
+  sst_built: true
+structured_small_merge.html:
+  junk: 0
+  real: 6
+  expected: 6
+  sst_built: true

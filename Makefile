@@ -9,7 +9,7 @@ SHELL_SCRIPTS = \
 	bin/ready \
 	bin/setup
 
-.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors mutant-test mutant
+.PHONY: help lint-changed test-fast test lint lint-yard shellcheck schema validate-fixtures docs quick ready clean perf-baseline perf-baseline-selectors corpus-baseline mutant-test mutant
 
 help: ## Show available commands
 	@echo "Available commands:"
@@ -23,6 +23,7 @@ help: ## Show available commands
 	@echo "  make docs    - Generate documentation"
 	@echo "  make perf-baseline - Record auto-source wall/alloc baseline"
 	@echo "  make perf-baseline-selectors - Record selectors wall/alloc baseline"
+	@echo "  make corpus-baseline - Re-record the auto-source corpus ratchet baseline"
 	@echo "  make ready   - Run the local PR readiness checks"
 	@echo "  make mutant-test - Run the suite through mutant's test runner"
 	@echo "  make mutant  - Run mutation analysis for SUBJECT"
@@ -69,6 +70,9 @@ perf-baseline: ## Record auto-source wall/alloc baseline markdown
 
 perf-baseline-selectors: ## Record selectors wall/alloc baseline markdown
 	$(RUBY_RUNNER)bin/selectors-perf-baseline --write spec/perf/baseline-selectors.md
+
+corpus-baseline: ## Re-record the auto-source corpus ratchet baseline
+	$(RUBY_RUNNER)bin/auto-source-corpus --write-baseline
 
 ready: ## Run the local PR readiness checks
 	bin/ready

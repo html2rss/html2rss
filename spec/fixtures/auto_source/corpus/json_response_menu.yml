@@ -1,0 +1,3 @@
+---
+case: JSON response body (no page) holding only an icon menu; admits nothing.
+expected: []
