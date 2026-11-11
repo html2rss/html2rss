@@ -273,6 +273,11 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
             <span>Anzeige</span>
             <div><h3><a href="/news/grid-two">Grid two</a></h3></div>
           </div>
+          <div class="teaser">
+            <div class="media"><a href="/news/split-teaser"><img src="/s.jpg"></a><div><span>Anzeige</span></div></div>
+            <header><h3><a href="/news/split-teaser">Split teaser</a></h3></header>
+            <section><a href="/news/split-teaser">Teaser text</a></section>
+          </div>
           <article><h3><a href="/news/house-story">House story</a></h3></article>
           <aside><span class="ad-label">Anzeige</span><a href="/news/house-story">Listen to our podcast</a></aside>
           <article><h3><a href="/news/in-heading">Why <em>sponsored</em> posts win</a></h3></article>
@@ -322,6 +327,10 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
     it 'keeps a URL that an unmarked card also links' do
       expect(page_links.sponsored?(url_at['/news/house-story'])).to be(false)
+    end
+
+    it 'widens a bound card over sibling wrappers linking only its destination' do
+      expect(page_links.sponsored?(url_at['/news/split-teaser'])).to be(true)
     end
 
     it 'marks only the sponsored link itself for rel, never its card', :aggregate_failures do

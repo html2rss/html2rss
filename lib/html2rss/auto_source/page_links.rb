@@ -184,36 +184,46 @@ module Html2rss
           freeze
         end
 
-        # @param key [String] article identity
+        # @param key [Array] article identity
         # @return [Boolean]
         def include?(key) = @keys.include?(key)
 
         private
 
         def walk(root)
-          climbs?(root)
+          climb(root)
           release_unclaimed_keys unless @keys.empty?
         end
 
-        # Walks +node+'s subtree; true while a marker climbing out of it still waits for its card.
-        def climbs?(node)
+        # Walks +node+'s subtree. Returns true while a label climbing out of it still waits for its
+        # card, a bound card's article identity (an Array) while its claim still widens, else false.
+        def climb(node)
           start = @anchors.size
           boundaries = @boundary_count
-          climbing = descend?(node)
+          pending = descend(node)
           enclosed = @boundary_count > boundaries
           @boundary_count += 1 if boundary?(node)
           marker = LinkDestination::Sponsorship.marker(node, @ancestors)
-          return marker_climbs?(node, marker, start) if marker
+          return marker_climb(node, marker, start) if marker
+          return bind(node, start) if pending == true && !enclosed
 
-          climbing && !enclosed && unbound?(node, start)
+          pending && pending != true && widen(pending, start)
         end
 
-        def descend?(node)
+        def descend(node)
           record(node) if node.link?
           @ancestors << node
-          climbing = node.children.reduce(false) { |pending, child| climbs?(child) | pending }
+          pending = node.children.reduce(false) { |merged, child| merge(merged, climb(child)) }
           @ancestors.pop
-          climbing
+          pending
+        end
+
+        # Children's states: a waiting label wins; two different widening cards stop widening.
+        def merge(pending, result)
+          return result if pending == false
+          return pending if result == false || result == pending
+
+          pending == true || result == true
         end
 
         def record(anchor)
@@ -224,26 +234,28 @@ module Html2rss
         # A container marker holding anchors marks all of them. A label, or an anchorless container,
         # starts climbing; a label's own anchors ("what is this?", a linked label) are never its
         # card's destination.
-        def marker_climbs?(node, marker, start)
+        def marker_climb(node, marker, start)
           range = start...@anchors.size
-          if marker == :container && range.any?
-            claim(start, card_keys(range))
-            return false
-          end
+          return claim(start, card_keys(range)) if marker == :container && range.any?
 
           @roles.fill(:label, range)
           !boundary?(node)
         end
 
         # True while the subtree holds no card destination yet and +node+ is no card boundary.
-        def unbound?(node, start)
+        def bind(node, start)
           indexes = (start...@anchors.size).reject { @roles[_1] == :label }
           keys = card_keys(indexes)
           return !boundary?(node) if keys.empty?
 
           key = keys.one? ? keys.first : headline_key(indexes)
-          claim(start, [key]) if key
-          false
+          key ? claim(start, [key]) : false
+        end
+
+        # Widens a bound card over an ancestor whose other anchors all link the card's destination
+        # (an image link and a headline link in sibling wrappers of one teaser).
+        def widen(key, start)
+          (card_keys((start...@anchors.size).reject { @roles[_1] }) - [key]).empty? && claim(start, [key])
         end
 
         def headline_key(indexes)
@@ -258,10 +270,12 @@ module Html2rss
 
         def key_at(index) = @link_resolver.destination_facts(@anchors[index])&.url&.article_identity
 
-        # Marks +keys+ and every anchor from +start+ as inside a marked card.
+        # Marks +keys+ and every anchor from +start+ as inside a marked card. Returns the card's only
+        # destination, whose claim may still widen, else false.
         def claim(start, keys)
           @keys.merge(keys)
           @roles.fill(:claimed, start...@anchors.size)
+          keys.one? && keys.first
         end
 
         # A URL also rendered outside every marked card is editorial there.
