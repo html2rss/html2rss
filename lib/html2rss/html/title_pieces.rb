@@ -18,37 +18,9 @@ module Html2rss
       # Text that holds a word.
       WORD = /[[:alnum:]]/
 
-      # SST reads of the rule.
-      module SstNodes
-        def self.marked(root)
-          root.find_all { |node| node.attrs.raw.key?(KICKER_ATTRIBUTE) || node.attrs.class_names.any?(KICKER_CLASS) }
-        end
-
-        def self.elements(node) = node.descendants
-        def self.text(node, exclude = []) = node.visible_text(exclude: (exclude unless exclude.empty?))
-        def self.time?(node) = node.name == :time
-
-        def self.inside?(node, ancestor)
-          return true if node.equal?(ancestor)
-
-          index = SST::Index.for_node(node)
-          index ? index.descendant_of?(node, ancestor) : !ancestor.find { _1.equal?(node) }.nil?
-        end
-      end
-
-      # Nokogiri reads of the rule.
-      module DomNodes
-        def self.marked(root)
-          root.xpath('descendant-or-self::*[@class or @data-tb-kicker]')
-              .select { |node| node.key?(KICKER_ATTRIBUTE) || node['class'].match?(KICKER_CLASS) }
-        end
-
-        def self.elements(node) = node.css('*')
-        def self.text(node, exclude = nil) = Navigator.extract_visible_text(node, exclude_nodes: exclude)
-        def self.time?(node) = node.name == 'time'
-        def self.inside?(node, ancestor) = node == ancestor || Navigator.descendant_of?(node, ancestor)
-      end
-      private_constant :WORD, :SstNodes, :DomNodes
+      # +time+ element names of both node kinds.
+      TIME_NAMES = Set['time', :time].freeze
+      private_constant :WORD, :TIME_NAMES
 
       ##
       # @param root [Nokogiri::XML::Node, SST::Node] card root
@@ -56,7 +28,7 @@ module Html2rss
       def initialize(root, source)
         @root = root
         @source = source
-        @nodes = root.instance_of?(SST::Node) ? SstNodes : DomNodes
+        @sst = root.instance_of?(SST::Node)
       end
 
       ##
@@ -64,7 +36,7 @@ module Html2rss
       def kicker
         return @kicker if defined?(@kicker)
 
-        candidates = @nodes.marked(@root).select { kicker_text?(_1) && beside_headline?(_1) }
+        candidates = marked.select { kicker_text?(_1) && beside_headline?(_1) }
         @kicker = candidates.find { |node| parts_only?(node, candidates) }
       end
 
@@ -79,44 +51,69 @@ module Html2rss
         return unless node
 
         dropped = [kicker].compact
-        @nodes.elements(node).each do |element|
+        elements(node).each do |element|
           next unless noise_element?(element)
           break unless opening?(node, dropped, element)
 
           dropped << element
         end
-        @nodes.text(node, dropped)
+        text(node, dropped)
       end
 
       private
 
-      def noise_element?(node) = @nodes.time?(node) || Article::Title.headline_noise_piece?(@nodes.text(node))
+      # Node reads: SST nodes or Nokogiri nodes.
+      def marked
+        return @root.find_all { _1.attrs.raw.key?(KICKER_ATTRIBUTE) || _1.attrs.class_names.any?(KICKER_CLASS) } if @sst
+
+        @root.xpath('descendant-or-self::*[@class or @data-tb-kicker]')
+             .select { _1.key?(KICKER_ATTRIBUTE) || _1['class'].match?(KICKER_CLASS) }
+      end
+
+      def elements(node) = @sst ? node.descendants : node.css('*')
+      def time?(node) = TIME_NAMES.include?(node.name)
+
+      # SST memoizes text read without exclusions.
+      def text(node, exclude = nil)
+        return Navigator.extract_visible_text(node, exclude_nodes: exclude) unless @sst
+
+        exclude&.any? ? node.visible_text(exclude:) : node.visible_text
+      end
+
+      # Whether +node+ is +ancestor+ or inside it.
+      def inside?(node, ancestor)
+        return !ancestor.find { _1.equal?(node) }.nil? if @sst
+
+        node == ancestor || Navigator.descendant_of?(node, ancestor)
+      end
+
+      def noise_element?(node) = time?(node) || Article::Title.headline_noise_piece?(text(node))
 
       # Whether +element+ opens the text of +node+ left after +dropped+.
-      def opening?(node, dropped, element) = @nodes.text(node, dropped).to_s.start_with?(@nodes.text(element).to_s)
+      def opening?(node, dropped, element) = text(node, dropped).to_s.start_with?(text(element).to_s)
 
       def kicker_text?(node) = !noise_element?(node) && text_without_noise(node).to_s.match?(WORD)
 
-      def text_without_noise(node) = @nodes.text(node, kicker_noise(node))
+      def text_without_noise(node) = text(node, kicker_noise(node))
 
       # Kicker pieces that are noise on their own: +time+ elements and {Article::Title.noise_piece?}.
       def kicker_noise(node)
-        @nodes.elements(node).select { @nodes.time?(_1) || Article::Title.noise_piece?(@nodes.text(_1)) }
+        elements(node).select { time?(_1) || Article::Title.noise_piece?(text(_1)) }
       end
 
       def beside_headline?(node)
         return true unless @source
-        return false if @nodes.inside?(@source, node)
+        return false if inside?(@source, node)
 
-        !@nodes.inside?(node, @source) || @nodes.text(@source, [node]).to_s.match?(WORD)
+        !inside?(node, @source) || text(@source, [node]).to_s.match?(WORD)
       end
 
       # Whether +node+ holds no word outside its noise and its nested kicker candidates.
       def parts_only?(node, candidates)
-        parts = candidates.select { |other| !other.equal?(node) && @nodes.inside?(other, node) }
+        parts = candidates.select { |other| !other.equal?(node) && inside?(other, node) }
         return true if parts.empty?
 
-        !@nodes.text(node, kicker_noise(node) + parts).to_s.match?(WORD)
+        !text(node, kicker_noise(node) + parts).to_s.match?(WORD)
       end
     end
   end
