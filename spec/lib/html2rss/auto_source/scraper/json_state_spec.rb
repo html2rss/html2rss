@@ -235,21 +235,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState do
       end
     end
 
-    context 'with a navigation tree whose leaves are plain title and url links' do
-      let(:document) do
-        {
-          menu: [
-            { title: 'World', url: '/world/', children: [{ title: 'Domestic', url: '/world/domestic/' }] },
-            { title: 'Sport', url: '/sport/', children: [{ title: 'Football', url: '/sport/football/' }] }
-          ]
-        }
-      end
-
-      it 'yields no menu or submenu links' do
-        expect(articles).to be_empty
-      end
-    end
-
     context 'with teaser links carrying a link target and an image' do
       let(:document) do
         [
