@@ -160,7 +160,7 @@ module Html2rss
 
       def self.category_only_description?(description, enhanced)
         normalized = description.downcase
-        return true if Html2rss::Html::ArticleRules::Description::TYPE_CHIPS.include?(normalized)
+        return true if Html2rss::Article::Title::TYPE_MARKERS.include?(normalized)
 
         categories = Array(enhanced[:categories]).map { |category| category.to_s.strip }
         categories.any? { |category| category.casecmp?(description) }

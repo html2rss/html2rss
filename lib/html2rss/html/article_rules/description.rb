@@ -9,8 +9,6 @@ module Html2rss
       module Description
         # CTA lines dropped by whole-line equality (case-insensitive).
         CTA = Set['read more', 'learn more'].freeze
-        # Type-chip lines dropped when the whole leftover line is one of these ({Article::Title} owns the set).
-        TYPE_CHIPS = Article::Title::TYPE_MARKERS
         # Listing section names that are chrome, not a dek.
         SECTION_NAMES = Set['press releases'].freeze
         # Skip date detection / DateTime.parse above this length.
@@ -92,13 +90,13 @@ module Html2rss
             nil
           end
 
-          def type_chip?(text) = TYPE_CHIPS.include?(text.downcase)
+          def type_chip?(text) = Article::Title::TYPE_MARKERS.include?(text.downcase)
 
           def clock_zone?(text) = Article::Title.clock_piece?(text)
 
           def chrome?(normalized, title:, type_chips:)
             key = normalized.downcase
-            CTA.include?(key) || (type_chips && TYPE_CHIPS.include?(key)) ||
+            CTA.include?(key) || (type_chips && Article::Title::TYPE_MARKERS.include?(key)) ||
               SECTION_NAMES.include?(key) || normalized.end_with?(':') ||
               date_shaped?(normalized) || title_echo?(key, title)
           end
