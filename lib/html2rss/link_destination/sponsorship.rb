@@ -4,7 +4,7 @@ module Html2rss
   module LinkDestination
     ##
     # Explicit sponsorship markers on SST nodes: a +rel+ containing +sponsored+, an advertorial
-    # attribute or class, or an ARIA label or element text that is exactly an ad label from a
+    # attribute or class, an ad-label class token, or an ARIA label or element text that is exactly an ad label from a
     # small closed multilingual set (en, de, fr, es). Anchor text is never read, so a headline
     # about advertising is not a marker.
     #
@@ -18,6 +18,9 @@ module Html2rss
       OFF_VALUES = Set['false', '0'].freeze
       # Class tokens that mark a sponsored card.
       CLASS_NAMES = Set['advertorial', 'sponsored', 'sponsored-content', 'is-sponsored'].freeze
+      # Ad-label class token family, with an optional BEM element or modifier: +ad-label+,
+      # +ad-labels__item+, +ad-badge+, +ad-marker--small+. Ad slots (+ad-container+) are not labels.
+      AD_LABEL_CLASS = /\Aad-(?:labels?|badge|marker)(?:(?:__|--)[a-z0-9-]+)?\z/
       # ARIA attributes read as labels.
       ARIA_NAMES = %w[aria-label aria-roledescription].freeze
       # A whole label, optionally wrapped in punctuation ("Anzeige", "[Sponsored]", "Publicité:").
@@ -48,7 +51,7 @@ module Html2rss
           raw = attrs.raw
           sponsored_rel?(raw['rel']) ||
             ATTRIBUTE_NAMES.any? { switched_on?(raw[_1]) } ||
-            attrs.class_names.any? { CLASS_NAMES.include?(_1) } ||
+            attrs.class_names.any? { CLASS_NAMES.include?(_1) || _1.match?(AD_LABEL_CLASS) } ||
             ARIA_NAMES.any? { label?(raw[_1]) }
         end
 

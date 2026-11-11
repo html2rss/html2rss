@@ -26,7 +26,25 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     it 'marks advertorial class tokens only when whole', :aggregate_failures do
       expect(described_class.marker?(node[class_names: %w[card advertorial]])).to be(true)
       expect(described_class.marker?(node[class_names: %w[is-sponsored]])).to be(true)
-      expect(described_class.marker?(node[class_names: %w[card sponsored-by-line ad-label]])).to be(false)
+      expect(described_class.marker?(node[class_names: %w[card sponsored-by-line]])).to be(false)
+    end
+
+    it 'marks ad-label class tokens on their own, without label text' do
+      tokens = %w[ad-label ad-labels ad-labels__item ad-badge ad-marker ad-label--small]
+      expect(tokens).to all(satisfy { described_class.marker?(node[class_names: ['teaser__meta', _1]]) })
+    end
+
+    it 'ignores ad-slot and look-alike class tokens' do
+      rejected = %w[ad-container ad-tag-container adress head shadow badge ad-labeled teaser__ad-labels
+                    ad-label__ ad-labelsx Ad-label]
+      expect(rejected.select { described_class.marker?(node[class_names: [_1]]) }).to be_empty
+    end
+
+    it 'never reads paywall markers as sponsorship' do
+      paywall = [{ 'data-paid-category' => 'plus' }, { 'data-testid' => 'paid-teaser' },
+                 { 'data-tracking-paid-category' => 'paid' }]
+      expect(paywall.select { described_class.marker?(node[raw: _1, class_names: %w[paywall-badge plus-badge]]) })
+        .to be_empty
     end
 
     it 'marks ARIA labels that are exactly an ad label', :aggregate_failures do

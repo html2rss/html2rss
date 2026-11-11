@@ -1,0 +1,9 @@
+---
+case: Cards carrying paywall markers (paid-category attributes, a paid-teaser test id, a paywall badge) and empty ad slots stay; only the card whose ad-label element has a class but no text is dropped as sponsored.
+expected:
+- https://example.com/news/2026/11/tram-line-extends-east
+- https://example.com/news/2026/11/museum-reopens-north-wing
+- https://example.com/news/2026/11/school-lunch-program-expands
+- https://example.com/news/2026/11/park-planting-volunteers
+- https://example.com/news/2026/11/council-approves-housing-plan
+- https://example.com/news/2026/11/harbor-ferry-adds-night-service
