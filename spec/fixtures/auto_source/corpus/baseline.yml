@@ -120,6 +120,12 @@ sponsored_ad_label_card.html:
   expected: 4
   title_misses: 0
   sst_built: true
+sponsored_paywall_markers.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  sst_built: true
 sponsored_rel_link.html:
   junk: 0
   real: 4
@@ -150,6 +156,12 @@ title_clock_prefix.html:
   expected: 5
   title_misses: 0
   sst_built: true
+title_inline_spaced_colon.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 title_localized_labels.html:
   junk: 0
   real: 6
@@ -163,6 +175,12 @@ title_newline_heading.html:
   title_misses: 0
   sst_built: true
 title_spaced_colon_kicker.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+title_terminal_punctuation_kicker.html:
   junk: 0
   real: 5
   expected: 5
