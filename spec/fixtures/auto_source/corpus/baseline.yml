@@ -35,6 +35,11 @@ json_state_competing_nodes.html:
   real: 4
   expected: 4
   sst_built: true
+json_state_entry_url.html:
+  junk: 0
+  real: 4
+  expected: 4
+  sst_built: true
 json_state_menu_unrendered.html:
   junk: 0
   real: 5

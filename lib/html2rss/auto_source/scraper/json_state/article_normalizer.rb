@@ -8,6 +8,8 @@ module Html2rss
         module ArticleNormalizer # rubocop:disable Metrics/ModuleLength -- field keys + URL/scalar unwrap stay co-located
           # Preferred keys when extracting title-like values from state payloads.
           TITLE_KEYS = %i[title headline name text].freeze
+          # Title keys that mark an article; a bare +name+ also labels people and other entities.
+          ARTICLE_TITLE_KEYS = (TITLE_KEYS - %i[name]).freeze
           # Preferred keys when extracting URL-like values from state payloads.
           URL_KEYS = %i[url link href permalink slug path canonicalUrl shortUrl alias self links].freeze
           # Preferred keys when extracting description-like values from state payloads.
@@ -62,8 +64,10 @@ module Html2rss
             # An entry with its own title or description is its own article node. A wrapper entry
             # delegates to the only nested Hash (up to {MAX_NODE_DEPTH} levels down) carrying a title
             # and URL, else to the only nested Hash carrying a title; the entry stays the fallback
-            # source (e.g. an envelope's sibling +links+). Competing nested nodes skip the entry, so
-            # an author object holding a name and URL never becomes the article.
+            # source (e.g. an envelope's sibling +links+). A wrapper entry with its own URL is the
+            # link: it delegates only to the only nested Hash carrying an article title (never a bare
+            # +name+), and its URL wins over the node's. Competing nested nodes skip the entry, so an
+            # author object holding a name and URL never becomes the article.
             #
             # @param entry [Object] raw article entry candidate
             # @return [Array<Hash>, nil] field sources in lookup order; nil when not a Hash or ambiguous
@@ -71,12 +75,12 @@ module Html2rss
               return unless entry.is_a?(Hash)
               return [entry] if text?(entry)
 
-              titled = titled_nodes(entry, MAX_NODE_DEPTH)
-              linked = titled.select { url?(_1) }
-              nodes = linked.empty? ? titled : linked
+              nodes = candidate_nodes(entry)
               return [entry] if nodes.empty?
+              return unless nodes.one?
 
-              [nodes.first, entry] if nodes.one?
+              node = nodes.first
+              url?(entry) && url?(node) ? [entry, node] : [node, entry]
             end
 
             # @param sources [Hash, Array<Hash>, nil] entry or field sources from {article_sources}
@@ -210,6 +214,15 @@ module Html2rss
 
             def url?(object)
               !ValueFinder.fetch(object, URL_KEYS).nil?
+            end
+
+            # Nested nodes that may hold the article fields of a wrapper entry.
+            def candidate_nodes(entry)
+              titled = titled_nodes(entry, MAX_NODE_DEPTH)
+              return titled.reject { ValueFinder.fetch(_1, ARTICLE_TITLE_KEYS).nil? } if url?(entry)
+
+              linked = titled.select { url?(_1) }
+              linked.empty? ? titled : linked
             end
 
             # Titled Hash values up to +depth+ levels down; a titled node's children are its own fields.

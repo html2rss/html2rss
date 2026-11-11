@@ -87,6 +87,30 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       expect(described_class.normalise(entry, base_url:)).to be_nil
     end
 
+    it 'uses the entry own url and the content title when an author object holds a name and url',
+       :aggregate_failures do
+      entry = { url: '/a', content: { title: 'T' }, author: { name: 'Staff', url: '/authors/staff' } }
+      result = described_class.normalise(entry, base_url:)
+
+      expect(result).to include(title: 'T')
+      expect(result[:url].to_s).to eq('https://example.com/a')
+    end
+
+    it 'prefers the entry own url over the url of its content node', :aggregate_failures do
+      entry = { url: '/a', content: { title: 'T', url: '/node' }, author: { name: 'Staff', url: '/authors/staff' } }
+      result = described_class.normalise(entry, base_url:)
+
+      expect(result).to include(title: 'T')
+      expect(result[:url].to_s).to eq('https://example.com/a')
+    end
+
+    it 'never turns an author-only entry into an article', :aggregate_failures do
+      author = { name: 'Staff', url: '/authors/staff' }
+
+      expect(described_class.normalise({ url: '/a', author: }, base_url:)).to be_nil
+      expect(described_class.normalise({ author: }, base_url:)).to include(title: 'Staff')
+    end
+
     it 'reads a JSON:API envelope with attributes and sibling links', :aggregate_failures do
       entry = { id: '7', attributes: { title: 'T', createdAt: '2026-02-02' }, links: { self: '/a' } }
       result = described_class.normalise(entry, base_url:)
@@ -113,6 +137,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
 
       expect(described_class.article_sources({ title: 'T', author: })).to eq([{ title: 'T', author: }])
       expect(described_class.article_sources({ description: 'D', author: })).to eq([{ description: 'D', author: }])
+    end
+
+    it 'ignores bare-name nodes when the entry has its own url', :aggregate_failures do
+      content = { title: 'T' }
+      entry = { url: '/a', content:, author: { name: 'N', url: '/authors/n' } }
+
+      expect(described_class.article_sources(entry)).to eq([content, entry])
+      name_only = { url: '/a', author: { name: 'N' } }
+
+      expect(described_class.article_sources(name_only)).to eq([name_only])
+    end
+
+    it 'lists the entry before a node that carries its own url' do
+      content = { title: 'T', url: '/node' }
+      entry = { url: '/a', content: }
+
+      expect(described_class.article_sources(entry)).to eq([entry, content])
+    end
+
+    it 'skips an entry with its own url when article-titled nodes compete', :aggregate_failures do
+      entry = { url: '/a', content: { title: 'T' }, related: { headline: 'R', url: '/r' } }
+
+      expect(described_class.article_sources(entry)).to be_nil
     end
 
     it 'prefers the only nested node with title and url over title-only siblings' do
