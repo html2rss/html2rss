@@ -4,104 +4,167 @@ app_shell_consent_links.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
   sst_built: true
 app_shell_state_dated.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
   sst_built: true
 card_article_header_link.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
   sst_built: true
 card_header_time_kicker.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
   sst_built: true
 json_response_articles.json:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
   sst_built: false
 json_response_menu.json:
   junk: 0
   real: 0
   expected: 0
+  title_misses: 0
   sst_built: false
 json_response_thin.json:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
   sst_built: false
 json_state_comment_list.html:
   junk: 0
   real: 3
   expected: 3
+  title_misses: 0
   sst_built: true
 json_state_competing_nodes.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
   sst_built: true
 json_state_entry_url.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
   sst_built: true
 json_state_envelope_links.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
   sst_built: true
 json_state_menu_unrendered.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
   sst_built: true
 json_state_wrapped_entries.html:
   junk: 0
   real: 11
   expected: 12
+  title_misses: 0
   sst_built: true
 kicker_heading_teaser.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
   sst_built: true
 menu_cms_timestamped.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
   sst_built: true
 menu_icon.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
   sst_built: true
 menu_mixed_top_level.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
   sst_built: true
 plain_listing.html:
   junk: 0
   real: 6
   expected: 6
+  title_misses: 0
   sst_built: true
 schema_footer_extras.html:
   junk: 0
   real: 4
   expected: 4
+  title_misses: 0
+  sst_built: true
+sponsored_ad_label_card.html:
+  junk: 2
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
+sponsored_rel_link.html:
+  junk: 2
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
+sponsored_story_about_ads.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
   sst_built: true
 structured_small_merge.html:
   junk: 0
   real: 6
   expected: 6
+  title_misses: 0
   sst_built: true
 structured_tracked_urls.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
+  sst_built: true
+title_clock_prefix.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 5
+  sst_built: true
+title_localized_labels.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 3
+  sst_built: true
+title_newline_heading.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 5
+  sst_built: true
+title_spaced_colon_kicker.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 5
   sst_built: true
