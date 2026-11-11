@@ -99,9 +99,9 @@ module Html2rss
       # Kicker and headline text ({TitlePieces}) of this card.
       def title_pieces = @title_pieces ||= TitlePieces.new(@root, heading || @selected_anchor)
 
-      # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). Credit-only cards
-      # may blank to nil (description can carry the item). Other junk shapes must stay present so
-      # Cleanup can hard-reject them — blanking slug/CMS/template text would admit titleless cards.
+      # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). A credit-only card
+      # blanks to nil, and Cleanup drops the untitled item as +blank_title+. Other junk shapes stay
+      # present so Cleanup rejects them under their own reason (slug, CMS, template).
       #
       # @return [String, nil]
       def title_from_in_card_sources
@@ -185,16 +185,6 @@ module Html2rss
         end
       end
 
-      def descendant_of?(child, ancestor)
-        return true if child.equal?(ancestor)
-
-        if (index = SST::Index.for_node(child))
-          return index.descendant_of?(child, ancestor)
-        end
-
-        !ancestor.find { |d| d.equal?(child) }.nil?
-      end
-
       def leftover_lines
         leftover_lines_from(@root)
       end
@@ -245,7 +235,7 @@ module Html2rss
         CardWalk.thin_wrapper?(
           children: node.children,
           item: @root,
-          descendant_of: ->(item, child) { descendant_of?(item, child) }
+          descendant_of: ->(item, child) { SST::Index.descendant_or_self?(item, child) }
         )
       end
 

@@ -43,6 +43,22 @@ RSpec.describe Html2rss::SST::Index do
     end
   end
 
+  describe '.descendant_or_self?' do
+    it 'walks parent pointers for indexed nodes, self included', :aggregate_failures do
+      expect(described_class.descendant_or_self?(nav_link, wrapper)).to be(true)
+      expect(described_class.descendant_or_self?(wrapper, wrapper)).to be(true)
+      expect(described_class.descendant_or_self?(wrapper, nav_link)).to be(false)
+    end
+
+    it 'scans the subtree for unindexed nodes', :aggregate_failures do
+      leaf = Html2rss::SST::Node.build(name: :span)
+      tree = Html2rss::SST::Node.build(name: :div, children: [Html2rss::SST::Node.build(name: :p, children: [leaf])])
+      expect(described_class.descendant_or_self?(leaf, tree)).to be(true)
+      expect(described_class.descendant_or_self?(tree, leaf)).to be(false)
+      expect(described_class.descendant_or_self?(Html2rss::SST::Node.build(name: :span), tree)).to be(false)
+    end
+  end
+
   describe '#parent_until' do
     it 'returns the first node, self included, that satisfies the condition', :aggregate_failures do
       div = ->(node) { node.name == :div }

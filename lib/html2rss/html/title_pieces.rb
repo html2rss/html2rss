@@ -82,7 +82,7 @@ module Html2rss
 
       # Whether +node+ is +ancestor+ or inside it.
       def inside?(node, ancestor)
-        return !ancestor.find { _1.equal?(node) }.nil? if @sst
+        return SST::Index.descendant_or_self?(node, ancestor) if @sst
 
         node == ancestor || Navigator.descendant_of?(node, ancestor)
       end
