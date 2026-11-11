@@ -59,6 +59,7 @@ module Html2rss
 
       optional(:cleanup).hash do
         optional(:keep_different_domain).filled(:bool)
+        optional(:keep_sponsored).filled(:bool)
       end
     end
   end

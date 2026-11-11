@@ -32,6 +32,7 @@ module Html2rss
           style |
           datetime |
           itemprop |
+          rel\z |
           role |
           type |
           category |

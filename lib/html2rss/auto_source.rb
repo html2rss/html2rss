@@ -261,7 +261,8 @@ module Html2rss
     def cleanup_result(articles)
       return @cleanup_memo.last if @cleanup_memo&.first == articles.size
 
-      Cleanup.call(articles.dup, url:, corroboration:, **cleanup_options).tap { @cleanup_memo = [articles.size, _1] }
+      Cleanup.call(articles.dup, url:, corroboration:, page_links: -> { page_links }, **cleanup_options)
+             .tap { @cleanup_memo = [articles.size, _1] }
     end
 
     # Page SST shared by the heuristic tiers and the page check; nil for a JSON response
@@ -277,7 +278,12 @@ module Html2rss
     end
 
     def corroboration
-      @corroboration ||= Corroboration.new { PageLinks.build(page_document, link_resolver:) }
+      @corroboration ||= Corroboration.new { page_links }
+    end
+
+    # Rendered links of the page, built once for the page check and sponsorship.
+    def page_links
+      @page_links ||= PageLinks.build(page_document, link_resolver:)
     end
 
     def admitted_articles(articles)

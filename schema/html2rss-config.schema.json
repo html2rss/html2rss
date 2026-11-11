@@ -380,6 +380,12 @@
               "not": {
                 "type": "null"
               }
+            },
+            "keep_sponsored": {
+              "type": "boolean",
+              "not": {
+                "type": "null"
+              }
             }
           },
           "required": []
@@ -437,7 +443,8 @@
           }
         },
         "cleanup": {
-          "keep_different_domain": false
+          "keep_different_domain": false,
+          "keep_sponsored": false
         }
       }
     },

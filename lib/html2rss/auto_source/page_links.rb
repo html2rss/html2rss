@@ -9,8 +9,13 @@ module Html2rss
     # slashes and fragments do not split a URL; other query params stay significant. Chrome
     # comes from the SST chrome flag ({SST::Normalizer}); utility landmarks that are not chrome
     # (+aside+, +menu+, sectioned +footer+) are peripheral.
-    # A URL rendered several times keeps its strongest placement. PageLinks owns no keep
-    # or drop rule; {Corroboration} reads it.
+    # A URL rendered several times keeps its strongest placement.
+    #
+    # The same pass scopes each {LinkDestination::Sponsorship} marker to its card: the smallest
+    # element holding the marker and at least one anchor. The card's URL is sponsored when all
+    # its anchors share one destination; a marker whose card spans several destinations (an ad
+    # slot between list items) marks nothing. PageLinks owns no keep or drop rule;
+    # {Corroboration} and {Cleanup} read it.
     class PageLinks
       # Placement strength, strongest first; a URL missing from the page is +:absent+.
       RANKS = { content: 0, peripheral: 1, chrome: 2 }.freeze
@@ -32,10 +37,13 @@ module Html2rss
       def initialize(document, link_resolver)
         @placements = {}
         @hrefs = {}
+        @card_keys = []
+        @sponsored = Set.new
         @index = document&.index
         @link_resolver = link_resolver
         walk(document.root, false) if document
         @sparse = document.nil? || document.degraded || content_link_count <= SPARSE_MAX_CONTENT_LINKS
+        @card_keys = nil
         freeze
       end
 
@@ -69,12 +77,37 @@ module Html2rss
       # @return [Boolean]
       def sparse? = @sparse
 
+      ##
+      # True when +url+ is rendered inside a card carrying a sponsorship marker.
+      #
+      # @param url [Html2rss::Url, nil] candidate item URL
+      # @return [Boolean]
+      def sponsored?(url)
+        return false unless url
+
+        @sponsored.include?(url.article_identity)
+      end
+
       private
 
+      # Returns true while a marker in +node+'s subtree still waits for its card.
       def walk(node, peripheral)
         peripheral ||= node.utility_landmark?
+        start = @card_keys.size
         record(node, peripheral) if node.link?
-        node.children.each { walk(_1, peripheral) }
+        pending = node.children.reduce(LinkDestination::Sponsorship.marker?(node)) do |marked, child|
+          walk(child, peripheral) | marked
+        end
+        pending && !settle_card(start)
+      end
+
+      # The subtree's anchors from +start+ form the marker's card once it holds any.
+      def settle_card(start)
+        keys = @card_keys.drop(start).uniq
+        return false if keys.empty?
+
+        @sponsored << keys.first if keys.one?
+        true
       end
 
       def record(anchor, peripheral)
@@ -82,6 +115,7 @@ module Html2rss
         return unless url
 
         key = url.article_identity
+        @card_keys << key
         placement = anchor_placement(anchor, peripheral)
         current = @placements[key]
         return unless current.nil? || RANKS.fetch(placement) < RANKS.fetch(current)

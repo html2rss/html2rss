@@ -10,8 +10,13 @@ module Html2rss
     class Cleanup # rubocop:disable Metrics/ClassLength -- reject steps + tallies stay co-located
       # Default cleanup behavior for auto-sourced article lists.
       DEFAULT_CONFIG = {
-        keep_different_domain: false
+        keep_different_domain: false,
+        keep_sponsored: false
       }.freeze
+
+      # Scrapers whose items are read off the rendered page, so the page shows their
+      # sponsorship markers. Publisher-declared sources are exempt, as in {Corroboration}.
+      PAGE_SCRAPERS = (Scraper::CORROBORATED_SCRAPERS | Scraper::HEURISTIC_SCRAPERS).freeze
 
       # Minimum alphanumeric word count for present titles.
       MIN_WORDS = 3
@@ -85,12 +90,16 @@ module Html2rss
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
         # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
         #   different domain than +url+ (source-controlled off-domain links; default false)
+        # @param keep_sponsored [Boolean] when true, keep items the page marks as sponsored
+        #   (default false)
         # @param corroboration [Corroboration, nil] page check for structured-tier items, run
         #   before dedupe so a dropped structured copy leaves the URL to a later tier
+        # @param page_links [#call, nil] lazy source of the page's {PageLinks}; called only when
+        #   a page-derived item is checked for sponsorship
         # @return [Result] cleaned articles and frozen drop tallies
-        # rubocop:disable-next Metrics/MethodLength -- ordered reject pipeline
+        # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
         def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
-                 corroboration: nil)
+                 keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil)
           Log.debug "Cleanup: start with #{articles.size} articles"
           tallies = Hash.new(0)
 
@@ -100,6 +109,7 @@ module Html2rss
             canonicalize_urls!(articles, corroboration)
           end
           deduplicate_by_url!(articles, tallies)
+          reject_sponsored!(articles, page_links, tallies) if page_links && !keep_sponsored
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies)
           reject_different_domain!(articles, url, tallies) unless keep_different_domain
@@ -229,6 +239,13 @@ module Html2rss
         def deduplicate_by_url!(articles, tallies)
           seen = Set.new
           tally_reject!(articles, tallies, 'duplicate_url') { |article| seen.add?(article.url.article_identity).nil? }
+        end
+
+        # Explicitly sponsored items ({PageLinks#sponsored?}); item text and URL paths are never read.
+        def reject_sponsored!(articles, page_links, tallies)
+          tally_reject!(articles, tallies, 'sponsored') do |article|
+            PAGE_SCRAPERS.include?(article.scraper) && page_links.call.sponsored?(article.url)
+          end
         end
 
         def keep_only_http_urls!(articles, tallies)

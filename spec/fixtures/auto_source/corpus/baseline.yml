@@ -115,13 +115,13 @@ schema_footer_extras.html:
   title_misses: 0
   sst_built: true
 sponsored_ad_label_card.html:
-  junk: 2
+  junk: 0
   real: 4
   expected: 4
   title_misses: 0
   sst_built: true
 sponsored_rel_link.html:
-  junk: 2
+  junk: 0
   real: 4
   expected: 4
   title_misses: 0

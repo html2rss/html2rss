@@ -962,7 +962,8 @@ RSpec.describe Html2rss::Config do
             wordpress_api: { enabled: true } # wasn't explicitly set -> default
           },
           cleanup: {
-            keep_different_domain: false # wasn't explicitly set -> default
+            keep_different_domain: false, # wasn't explicitly set -> default
+            keep_sponsored: false # wasn't explicitly set -> default
           }
         }
       end
