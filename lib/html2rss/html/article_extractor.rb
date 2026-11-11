@@ -7,6 +7,10 @@ module Html2rss
     # from an article_tag DOM node. DOM chrome helpers live on {Navigator}.
     # rubocop:disable-next Metrics/ClassLength -- leftover re-extract stays with field extractors
     class ArticleExtractor
+      # Kicker / eyebrow markers; the kicker is composed into the title by {Article::Title}.
+      KICKER_SELECTOR = '[data-tb-kicker], [class*="kicker"], [class*="eyebrow"], ' \
+                        '[class*="pre-title"], [class*="pretitle"], [class*="overline"]'
+
       class << self
         ##
         # Extracts article attributes from a DOM element.
@@ -40,12 +44,14 @@ module Html2rss
 
       # @return [Hash{Symbol => Object}] extracted article attributes
       def call # rubocop:disable Metrics/MethodLength
-        title = extract_title
+        title = extract_headline
         lines = leftover_lines
         published_at = extract_published_at(lines)
         source, lines, published_at = parent_card_fields(title, lines, published_at)
         {
-          title:,
+          # Composed here, not passed as a +kicker:+ key: Selectors' enhance merges keys one by one,
+          # so a separate kicker would prefix an explicitly selected title.
+          title: Article::Title.compose(title, kicker: kicker_text),
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
@@ -79,15 +85,16 @@ module Html2rss
         Url.from_relative("##{id}", base_url) if id
       end
 
-      # rubocop:disable-next Metrics/CyclomaticComplexity
-      def extract_title
+      # A kicker nested in the heading or anchor is the kicker, not headline text. Excluding a
+      # kicker outside +source+ is a no-op, so no descendant check is needed.
+      def extract_headline
         source = heading || selected_anchor
-        title_text = source ? Navigator.extract_visible_text(source) : fallback_anchorless_title
-        return unless title_text
+        return fallback_anchorless_title unless source
 
-        kicker = kicker_node ? Navigator.extract_visible_text(kicker_node).to_s.strip : nil
-        kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
+        Navigator.extract_visible_text(source, exclude_nodes: kicker_node && [kicker_node])
       end
+
+      def kicker_text = kicker_node && Navigator.extract_visible_text(kicker_node)
 
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?
@@ -104,13 +111,12 @@ module Html2rss
         )
       end
 
+      # The first kicker-marked node, unless it is or wraps the heading. Memoized even when nil.
       def kicker_node
-        @kicker_node ||= begin
-          selector = '[data-tb-kicker], [class*="kicker"], [class*="eyebrow"], ' \
-                     '[class*="pre-title"], [class*="pretitle"], [class*="overline"]'
-          node = article_tag.at_css(selector)
-          node && heading && (node == heading || Navigator.descendant_of?(node, heading)) ? nil : node
-        end
+        return @kicker_node if defined?(@kicker_node)
+
+        node = article_tag.at_css(KICKER_SELECTOR)
+        @kicker_node = node && heading && (node == heading || Navigator.descendant_of?(heading, node)) ? nil : node
       end
 
       def leftover_lines

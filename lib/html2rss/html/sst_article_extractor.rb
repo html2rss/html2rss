@@ -9,7 +9,7 @@ module Html2rss
     # Port of Html::ArticleExtractor field logic onto SST::Node.
     # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated for parity with ArticleExtractor
     class SstArticleExtractor
-      # CSS class tokens that mark kicker / eyebrow text (excluded from titles).
+      # CSS class tokens that mark kicker / eyebrow text (passed to {Article} apart from the headline).
       KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::SelectorCandidates}, which owns no copy of it.
@@ -57,12 +57,13 @@ module Html2rss
       ##
       # @return [Html2rss::Article, nil]
       def call # rubocop:disable Metrics/MethodLength
-        title = extract_title
+        title = title_from_in_card_sources
         lines = leftover_lines
         published_at = extract_published_at(lines)
         root, lines, published_at = parent_card_fields(title, lines, published_at)
         attrs = {
           title:,
+          kicker: kicker_text,
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
@@ -96,14 +97,6 @@ module Html2rss
         Url.from_relative("##{id}", @base_url) if id
       end
 
-      def extract_title
-        title_text = title_from_in_card_sources
-        return unless title_text
-
-        kicker = kicker_text
-        kicker && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
-      end
-
       # Kicker text without its time/clock pieces and field labels (e.g. a screen-reader
       # "Section:" prefix), so only the topic prefixes the title.
       #
@@ -120,9 +113,9 @@ module Html2rss
           !ArticleRules::Description.keep?(text)
       end
 
-      # Prefer a non-junk title. Credit-only cards may blank to nil (description can carry
-      # the item). Other junk shapes must stay present so Cleanup can hard-reject them —
-      # blanking slug/CMS/template text would admit titleless cards.
+      # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). Credit-only cards
+      # may blank to nil (description can carry the item). Other junk shapes must stay present so
+      # Cleanup can hard-reject them — blanking slug/CMS/template text would admit titleless cards.
       #
       # @return [String, nil]
       def title_from_in_card_sources
@@ -137,7 +130,7 @@ module Html2rss
       def title_candidates
         [].tap do |candidates|
           add_title_candidate!(candidates, heading_title_text)
-          add_title_candidate!(candidates, @selected_anchor&.visible_text)
+          add_title_candidate!(candidates, text_without_kicker(@selected_anchor))
           next unless candidates.empty? && @fallback_anchorless && @selected_anchor.nil?
 
           add_title_candidate!(candidates, first_nonempty_own_text)
@@ -155,8 +148,17 @@ module Html2rss
       end
 
       # @return [String, nil] the title child's text when the heading splits kicker and title, else the whole heading
-      def heading_title_text
-        (title_child_of_heading || heading)&.visible_text
+      def heading_title_text = text_without_kicker(title_child_of_heading || heading)
+
+      # A kicker nested in a heading or anchor is the kicker, not headline text.
+      #
+      # @param node [SST::Node, nil]
+      # @return [String, nil]
+      def text_without_kicker(node)
+        return unless node
+        return node.visible_text unless kicker_node && descendant_of?(kicker_node, node)
+
+        node.visible_text(exclude: [kicker_node])
       end
 
       # A heading made only of child elements (no stray text) where exactly one carries a title
@@ -208,14 +210,14 @@ module Html2rss
         end
       end
 
-      def kicker_node # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        @kicker_node ||= begin
-          node = @root.find do |n|
-            n.attrs.raw.key?('data-tb-kicker') ||
-              n.attrs.class_names.any? { |c| c.match?(KICKER_CLASS_PATTERN) }
-          end
-          node && heading && (node.equal?(heading) || descendant_of?(node, heading)) ? nil : node
+      # The first kicker-marked node, unless it wraps the heading. Memoized even when nil.
+      def kicker_node
+        return @kicker_node if defined?(@kicker_node)
+
+        node = @root.find do |n|
+          n.attrs.raw.key?('data-tb-kicker') || n.attrs.class_names.any?(KICKER_CLASS_PATTERN)
         end
+        @kicker_node = node && heading && descendant_of?(heading, node) ? nil : node
       end
 
       def descendant_of?(child, ancestor)

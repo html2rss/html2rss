@@ -78,20 +78,26 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       end
     end
 
-    it 'keeps the full text when a pre-title kicker precedes a headline without a title class' do
+    it 'composes a pre-title kicker with a headline that has no title class' do
       html = '<article><h2><span class="pre-title">Weekend kicker text</span>' \
              '<span class="headline">Main headline here</span></h2>' \
              '<a href="/news/story">Read</a></article>'
 
-      expect(title_for.call(html)).to eq('Weekend kicker text Main headline here')
+      expect(title_for.call(html)).to eq('Weekend kicker text: Main headline here')
     end
 
-    it 'takes the title child when a pre-title kicker precedes it' do
+    it 'composes a pre-title kicker with the title child it precedes' do
       html = '<article><h2><span class="pre-title">Weekend kicker text</span>' \
              '<span class="title">Main headline here</span></h2>' \
              '<a href="/news/story">Read</a></article>'
 
-      expect(title_for.call(html)).to eq('Main headline here')
+      expect(title_for.call(html)).to eq('Weekend kicker text: Main headline here')
+    end
+
+    it 'composes a kicker nested in the anchor when the card has no heading' do
+      html = '<article><a href="/news/story"><span class="kicker">Update</span> Ferry route returns</a></article>'
+
+      expect(title_for.call(html)).to eq('Update: Ferry route returns')
     end
 
     it 'keeps the full text when the only emphasised child carries a font-weight class' do
@@ -106,7 +112,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
         html = "<article><h2><span class=\"kicker\">K</span><span class=\"#{klass}\">Real Title</span></h2>" \
                '<a href="/news/story">Read</a></article>'
 
-        expect(title_for.call(html)).to eq('Real Title')
+        expect(title_for.call(html)).to eq('K: Real Title')
       end
     end
   end
@@ -137,8 +143,27 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(title_for.call(html)).to eq('Weather: Storm ahead')
     end
 
-    it 'adds no prefix when the title already contains the kicker' do
+    it 'adds no prefix when the title already opens with the kicker' do
       html = '<article><span class="eyebrow">Storm</span><h2><a href="/news/story">Storm ahead</a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Storm ahead')
+    end
+
+    it 'reads a kicker marked only by a data-tb-kicker attribute' do
+      html = '<article><span data-tb-kicker="">Weather</span><h2><a href="/news/story">Storm ahead</a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Weather: Storm ahead')
+    end
+
+    it 'keeps a kicker that the title only mentions further in' do
+      html = '<article><span class="eyebrow">Storm</span><h2><a href="/news/story">Big storm ahead</a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Storm: Big storm ahead')
+    end
+
+    it 'adds no prefix when the kicker wraps the heading' do
+      html = '<article><div class="overline-block"><h2><a href="/news/story">Storm ahead</a></h2>' \
+             '<p>Gusts reach the coast tonight.</p></div></article>'
 
       expect(title_for.call(html)).to eq('Storm ahead')
     end

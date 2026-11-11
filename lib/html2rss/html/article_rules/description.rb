@@ -9,19 +9,18 @@ module Html2rss
       module Description
         # CTA lines dropped by whole-line equality (case-insensitive).
         CTA = Set['read more', 'learn more'].freeze
-        # Type-chip lines dropped when the whole leftover line is one of these.
-        TYPE_CHIPS = Set['news article', 'press release', 'news'].freeze
+        # Type-chip lines dropped when the whole leftover line is one of these ({Article::Title} owns the set).
+        TYPE_CHIPS = Article::Title::TYPE_MARKERS
         # Listing section names that are chrome, not a dek.
         SECTION_NAMES = Set['press releases'].freeze
         # Skip date detection / DateTime.parse above this length.
         MAX_DATE_CHARS = 128
         # Optional type-chip / clock separators (ASCII/en/em dash, pipe, bullet).
         CHIP_SEPARATORS = [' - ', ' – ', ' — ', ' | ', ' • '].freeze
-        # Trailing clock plus optional AM/PM and one timezone/offset token (IANA, GMT/UTC offset, or abbrev).
+        # Whole-line clock ({Article::Title::CLOCK}) plus one timezone/offset token (IANA, GMT/UTC offset, or abbrev).
         CLOCK_ZONE = %r{
           \A
-          \d{1,2}:\d{2}(?::\d{2})?
-          (?:\s*(?:AM|PM))?
+          #{Article::Title::CLOCK}
           (?:\s+(?:[A-Za-z]+(?:/[A-Za-z_]+)+|(?:GMT|UTC)[+-]\d{1,2}(?::\d{2})?|[A-Za-z]{2,5}))?
           \z
         }ix

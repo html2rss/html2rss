@@ -455,12 +455,42 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
                                   base_url: 'https://example.com')[:title]).to eq('Politics: Headline Text')
     end
 
-    it 'does not prefix a kicker that the headline already contains' do
+    it 'does not prefix a kicker that the headline already opens with' do
       article_tag = Nokogiri::HTML.fragment(
-        '<article><span class="kicker">News</span><h3>News roundup today</h3></article>'
+        '<article><span class="kicker">Harbor</span><h3>Harbor roundup today</h3></article>'
       )
                                   .at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('News roundup today')
+      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Harbor roundup today')
+    end
+
+    it 'keeps a kicker that the headline only mentions further in' do
+      article_tag = Nokogiri::HTML.fragment(
+        '<article><span class="kicker">Harbor</span><h3>New harbor ferry</h3></article>'
+      ).at_css('article')
+      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title])
+        .to eq('Harbor: New harbor ferry')
+    end
+
+    it 'composes a kicker nested in the heading as Kicker: Headline' do
+      article_tag = Nokogiri::HTML.fragment(
+        '<article><h3><span class="kicker">Update</span><span class="headline">Ferry returns</span></h3></article>'
+      ).at_css('article')
+      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Update: Ferry returns')
+    end
+
+    it 'adds no prefix when the kicker wraps the heading' do
+      article_tag = Nokogiri::HTML.fragment(
+        '<article><div class="overline-block"><h3>Ferry returns</h3><p>Four new stops open.</p></div></article>'
+      ).at_css('article')
+      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Ferry returns')
+    end
+
+    it 'drops clock and type-label noise from the kicker and headline' do
+      article_tag = Nokogiri::HTML.fragment(
+        '<article><span class="kicker">19:47 Harbor :</span>' \
+        '<h3><span class="sr-only">Article type: Video</span> Ferry returns</h3></article>'
+      ).at_css('article')
+      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Harbor: Ferry returns')
     end
   end
 
@@ -653,6 +683,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     it_behaves_like 'title line excluded from description'
     it_behaves_like 'card walk from heading item'
     it_behaves_like 'selected anchor excluded from description'
+    it_behaves_like 'kicker title'
   end
 
   describe '#extract_url' do
@@ -686,10 +717,14 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
   end
 
-  describe '#extract_title' do
+  describe '#extract_headline' do
     it_behaves_like 'kicker title'
     it_behaves_like 'anchor-only title'
     it_behaves_like 'fallback span title'
+  end
+
+  describe '#kicker_node' do
+    it_behaves_like 'kicker title'
   end
 
   describe '#fallback_anchorless_title' do

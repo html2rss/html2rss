@@ -148,23 +148,23 @@ title_clock_prefix.html:
   junk: 0
   real: 5
   expected: 5
-  title_misses: 5
+  title_misses: 0
   sst_built: true
 title_localized_labels.html:
   junk: 0
   real: 6
   expected: 6
-  title_misses: 3
+  title_misses: 0
   sst_built: true
 title_newline_heading.html:
   junk: 0
   real: 5
   expected: 5
-  title_misses: 5
+  title_misses: 0
   sst_built: true
 title_spaced_colon_kicker.html:
   junk: 0
   real: 5
   expected: 5
-  title_misses: 5
+  title_misses: 0
   sst_built: true
