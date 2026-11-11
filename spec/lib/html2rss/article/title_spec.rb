@@ -22,8 +22,9 @@ RSpec.describe Html2rss::Article::Title do
       ['Storm ahead', 'Weather :'] => 'Weather: Storm ahead',
       ['Storm ahead', 'Weather: '] => 'Weather: Storm ahead',
       ['Storm ahead', 'Weather |'] => 'Weather: Storm ahead',
-      ['Storm ahead', '19:47 Weather'] => 'Weather: Storm ahead',
-      ['Storm ahead', '19:47 Uhr Weather'] => 'Weather: Storm ahead',
+      ['Storm ahead', '19:47 | Weather'] => 'Weather: Storm ahead',
+      ['Storm ahead', '19:47 Uhr – Weather'] => 'Weather: Storm ahead',
+      ['Storm ahead', '19:47 Weather'] => '19:47 Weather: Storm ahead',
       ['Storm ahead', 'Rubrik: Verkehr'] => 'Verkehr: Storm ahead',
       ['Storm ahead', 'Rubrique : Transports'] => 'Transports: Storm ahead',
       ['Storm ahead', 'Sección: Transporte'] => 'Transporte: Storm ahead',
@@ -53,13 +54,19 @@ RSpec.describe Html2rss::Article::Title do
     {
       "Tram line extends\nto the eastern districts" => 'Tram line extends to the eastern districts',
       "  Tram line\t extends  " => 'Tram line extends',
-      '9:15 Park planting day' => 'Park planting day',
-      '21:00:30 Council approves' => 'Council approves',
-      '9:15 PM Council approves' => 'Council approves',
-      '9:15pm Council approves' => 'Council approves',
-      '9:15 am Bahnhof gesperrt' => 'am Bahnhof gesperrt',
+      '9:15 | Park planting day' => 'Park planting day',
+      '21:00:30 – Council approves' => 'Council approves',
+      '9:15 PM • Council approves' => 'Council approves',
+      '9:15pm · Council approves' => 'Council approves',
+      '9:15 Uhr: Bahnhof gesperrt' => 'Bahnhof gesperrt',
+      '23:59 — Council approves' => 'Council approves',
+      '10:00 Budget vote' => '10:00 Budget vote',
+      '9:15 am Bahnhof gesperrt' => '9:15 am Bahnhof gesperrt',
       '9:155 trains cancelled' => '9:155 trains cancelled',
-      '12:30 | 10:00 Council approves' => 'Council approves',
+      '28:25 – Derby ends level' => '28:25 – Derby ends level',
+      '24:00 | Night bus returns' => '24:00 | Night bus returns',
+      '9:60 | Night bus returns' => '9:60 | Night bus returns',
+      '12:30 | 10:00 – Council approves' => 'Council approves',
       ': Council approves' => 'Council approves',
       'Artikeltyp: Video Museum öffnet wieder' => 'Museum öffnet wieder',
       "Type d'article : Vidéo Le musée rouvre" => 'Le musée rouvre',
@@ -73,7 +80,13 @@ RSpec.describe Html2rss::Article::Title do
       %(Transit :\nTram line extends) => 'Transit: Tram line extends',
       'Transit :Tram line extends' => 'Transit: Tram line extends',
       'Transit : Tram line : east' => 'Transit: Tram line : east',
-      'Ratio 3:2 for the east line' => 'Ratio 3:2 for the east line'
+      'Ratio 3:2 for the east line' => 'Ratio 3:2 for the east line',
+      '16 : 9 screens return' => '16 : 9 screens return',
+      'Score 16 : 9 at the break' => 'Score 16 : 9 at the break',
+      '"Quoted words" : Tram line extends' => '"Quoted words": Tram line extends',
+      'Transit (east) : Tram line extends' => 'Transit (east): Tram line extends',
+      'One two three four five six seven eight : Tram' => 'One two three four five six seven eight: Tram',
+      'One two three four five six seven eight nine : Tram' => 'One two three four five six seven eight nine : Tram'
     }.each do |headline, expected|
       it "cleans #{headline.inspect} to #{expected.inspect}" do
         expect(described_class.compose(headline)).to eq(expected)
@@ -87,9 +100,32 @@ RSpec.describe Html2rss::Article::Title do
     end
 
     it 'is idempotent on its own output' do
-      title = described_class.compose('12:30 Storm ahead', kicker: 'Rubrik: Weather :')
+      title = described_class.compose('12:30 | Storm ahead', kicker: 'Rubrik: Weather :')
 
       expect(described_class.compose(title)).to eq(title)
+    end
+  end
+
+  describe '.clock_piece?' do
+    {
+      '19:47' => true, ' 9:05 ' => true, '10:00 CET' => true, '10:00 Uhr' => true, '9:15pm' => true,
+      '10:00 Europe/Berlin' => true, '10:00 GMT+1' => true,
+      '28:25' => false, '10:00 Budget vote' => false, 'Weather' => false, '' => false, nil => false
+    }.each do |text, expected|
+      it "is #{expected} for #{text.inspect}" do
+        expect(described_class.clock_piece?(text)).to be(expected)
+      end
+    end
+  end
+
+  describe '.noise_piece?' do
+    {
+      'Thema:' => true, ' Section: ' => true, '19:47' => true, 'Video' => true, 'Live Blog' => true, ' ' => true,
+      nil => true, 'Verkehr' => false, 'Thema: Verkehr' => false, '28:25' => false, 'Video tour' => false
+    }.each do |text, expected|
+      it "is #{expected} for #{text.inspect}" do
+        expect(described_class.noise_piece?(text)).to be(expected)
+      end
     end
   end
 end

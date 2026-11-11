@@ -487,7 +487,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'drops clock and type-label noise from the kicker and headline' do
       article_tag = Nokogiri::HTML.fragment(
-        '<article><span class="kicker">19:47 Harbor :</span>' \
+        '<article><span class="kicker"><time>19:47</time> Harbor :</span>' \
         '<h3><span class="sr-only">Article type: Video</span> Ferry returns</h3></article>'
       ).at_css('article')
       expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Harbor: Ferry returns')
@@ -684,6 +684,12 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     it_behaves_like 'card walk from heading item'
     it_behaves_like 'selected anchor excluded from description'
     it_behaves_like 'kicker title'
+
+    it_behaves_like 'article extractor title pieces' do
+      let(:title_for) do
+        ->(html) { described_class.call(Nokogiri::HTML.fragment(html).at_css('article'), base_url: 'https://example.com')[:title] }
+      end
+    end
   end
 
   describe '#extract_url' do

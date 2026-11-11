@@ -85,16 +85,27 @@ module Html2rss
         Url.from_relative("##{id}", base_url) if id
       end
 
-      # A kicker nested in the heading or anchor is the kicker, not headline text. Excluding a
-      # kicker outside +source+ is a no-op, so no descendant check is needed.
+      # A kicker nested in the heading or anchor is the kicker, not headline text; nor is a teaser
+      # clock. Excluding a kicker outside +source+ is a no-op, so no descendant check is needed.
       def extract_headline
         source = heading || selected_anchor
         return fallback_anchorless_title unless source
 
-        Navigator.extract_visible_text(source, exclude_nodes: kicker_node && [kicker_node])
+        clocks = source.css('*').select { teaser_clock?(_1) }
+        Navigator.extract_visible_text(source, exclude_nodes: [kicker_node, *clocks].compact)
       end
 
-      def kicker_text = kicker_node && Navigator.extract_visible_text(kicker_node)
+      # Kicker text without its +time+ and noise pieces ({Article::Title.noise_piece?}).
+      def kicker_text
+        return unless kicker_node
+
+        noise = kicker_node.css('*').select { kicker_noise?(_1) }
+        Navigator.extract_visible_text(kicker_node, exclude_nodes: noise)
+      end
+
+      def kicker_noise?(node) = node.name == 'time' || Article::Title.noise_piece?(Navigator.extract_visible_text(node))
+
+      def teaser_clock?(node) = node.name == 'time' || Article::Title.clock_piece?(Navigator.extract_visible_text(node))
 
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?

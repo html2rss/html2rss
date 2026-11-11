@@ -6,7 +6,8 @@
 # DIR holds the saved pages plus a manifest.tsv of "<file><TAB><base url>" lines. Each
 # revision is checked out as a detached temporary worktree (removed on exit), every page
 # runs offline in both, and per page the report shows item counts, items gained or lost,
-# title changes, Cleanup drop tallies and wall time. Nothing is written into the repo.
+# title changes, Cleanup drop tallies and wall time. Pages that errored in either revision
+# count as errored in the TOTAL line, not as lost or gained items. Nothing is written into the repo.
 # Needs the gems the revisions' Gemfile.lock pins (set BUNDLE_PATH when the bundle is not
 # under ./vendor/bundle).
 #
@@ -44,8 +45,15 @@ def with_worktrees(shas)
     shas.each_with_index { |sha, index| trees << add_worktree(sha, File.join(tmp, "rev#{index}")) }
     yield trees
   ensure
-    trees&.each { git('worktree', 'remove', '--force', _1) }
+    trees&.each { remove_worktree(_1) }
+    system('git', '-C', REPO_ROOT, 'worktree', 'prune', exception: false)
   end
+end
+
+# Cleanup never aborts: each worktree is removed on its own, then `git worktree prune` drops leftovers.
+def remove_worktree(path)
+  _, err, status = Open3.capture3('git', '-C', REPO_ROOT, 'worktree', 'remove', '--force', path)
+  warn "git worktree remove #{path}: #{err}" unless status.success?
 end
 
 def add_worktree(sha, path)

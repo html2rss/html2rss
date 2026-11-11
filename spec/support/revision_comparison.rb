@@ -27,6 +27,9 @@ module RevisionComparison
   ##
   # Base-versus-head comparison for one page.
   Diff = Data.define(:page, :base, :head) do
+    # @return [Boolean] whether either revision raised on the page (its item changes are not comparable)
+    def errored? = !(base.error || head.error).nil?
+
     # @return [Hash{String => String}] items only head admits
     def gained = head.items.except(*base.items.keys)
 
@@ -144,9 +147,11 @@ module RevisionComparison
 
     def drop_lines(diff) = diff.drop_tallies.map { |reason, (from, to)| "  drops  #{reason}: #{from} -> #{to}" }
 
+    # Pages that errored in either revision count as +errored+, not as lost or gained items.
     def totals_line(diffs)
-      counts = ["lost #{diffs.sum { _1.lost.size }}", "gained #{diffs.sum { _1.gained.size }}",
-                "retitled #{diffs.sum { _1.title_changes.size }}"]
+      errored, comparable = diffs.partition(&:errored?)
+      counts = ["lost #{comparable.sum { _1.lost.size }}", "gained #{comparable.sum { _1.gained.size }}",
+                "retitled #{comparable.sum { _1.title_changes.size }}", "errored #{errored.size}"]
       ['TOTAL', items_total(diffs), *counts, wall_total(diffs)].join('  ')
     end
 

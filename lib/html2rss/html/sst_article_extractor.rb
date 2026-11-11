@@ -98,8 +98,8 @@ module Html2rss
         Url.from_relative("##{id}", @base_url) if id
       end
 
-      # Kicker text without its time/clock pieces and field labels (e.g. a screen-reader
-      # "Section:" prefix), so only the topic prefixes the title.
+      # Kicker text without its +time+ and noise pieces ({Article::Title.noise_piece?}: clocks,
+      # field labels such as a screen-reader "Section:" prefix), so only the topic prefixes the title.
       #
       # @return [String, nil]
       def kicker_text
@@ -108,11 +108,10 @@ module Html2rss
         kicker_node.visible_text(exclude: kicker_node.descendants.select { |node| kicker_noise?(node) })
       end
 
-      def kicker_noise?(node)
-        text = node.visible_text.to_s
-        node.name == :time || text.match?(ArticleRules::Description::CLOCK_ZONE) ||
-          !ArticleRules::Description.keep?(text)
-      end
+      def kicker_noise?(node) = node.name == :time || Article::Title.noise_piece?(node.visible_text)
+
+      # Teaser clock elements (+time+, or text that is only a clock) are not headline text.
+      def teaser_clock?(node) = node.name == :time || Article::Title.clock_piece?(node.visible_text)
 
       # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). Credit-only cards
       # may blank to nil (description can carry the item). Other junk shapes must stay present so
@@ -151,15 +150,16 @@ module Html2rss
       # @return [String, nil] the title child's text when the heading splits kicker and title, else the whole heading
       def heading_title_text = text_without_kicker(title_child_of_heading || heading)
 
-      # A kicker nested in a heading or anchor is the kicker, not headline text.
+      # A kicker nested in a heading or anchor is the kicker, not headline text; nor is a teaser clock.
       #
       # @param node [SST::Node, nil]
       # @return [String, nil]
       def text_without_kicker(node)
         return unless node
-        return node.visible_text unless kicker_node && descendant_of?(kicker_node, node)
 
-        node.visible_text(exclude: [kicker_node])
+        excluded = node.descendants.select { teaser_clock?(_1) }
+        excluded << kicker_node if kicker_node && descendant_of?(kicker_node, node)
+        excluded.empty? ? node.visible_text : node.visible_text(exclude: excluded)
       end
 
       # A heading made only of child elements (no stray text) where exactly one carries a title

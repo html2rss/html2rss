@@ -65,7 +65,7 @@ RSpec.describe RevisionComparison do
                    + "New"
           drops  sponsored: 0 -> 1
           wall   10.0ms -> 8.5ms
-        TOTAL  items 2 -> 1  lost 1  gained 0  retitled 1  wall 10.0ms -> 8.5ms
+        TOTAL  items 2 -> 1  lost 1  gained 0  retitled 1  errored 0  wall 10.0ms -> 8.5ms
       REPORT
     end
 
@@ -76,10 +76,27 @@ RSpec.describe RevisionComparison do
     end
 
     it 'reports a run error on its side' do
-      failed = new_run.call(items: {}, error: 'RuntimeError: boom')
-      report = described_class.report(described_class.diffs([page], [base], [failed]), %w[a b])
+      report = described_class.report(
+        described_class.diffs([page], [base], [base.with(items: {}, error: 'RuntimeError: boom')]), %w[a b]
+      )
 
       expect(report.lines(chomp: true)).to include('  error  head: RuntimeError: boom')
+    end
+
+    it 'counts an errored page apart from the lost and gained totals' do
+      other = RevisionComparison::Page.new(file: 'other.html', url: 'https://example.com/other/')
+      diffs = described_class.diffs([page, other], [base, base], [base.with(items: {}, error: 'boom'), head])
+
+      expect(described_class.report(diffs, %w[a b]).lines(chomp: true).last)
+        .to start_with('TOTAL  items 4 -> 1  lost 1  gained 0  retitled 1  errored 1  wall')
+    end
+
+    it 'counts a page that errored on the base side as errored' do
+      report = described_class.report(
+        described_class.diffs([page], [base.with(items: {}, error: 'RuntimeError: boom')], [head]), %w[a b]
+      )
+
+      expect(report.lines(chomp: true).last).to include('lost 0  gained 0  retitled 0  errored 1')
     end
   end
 

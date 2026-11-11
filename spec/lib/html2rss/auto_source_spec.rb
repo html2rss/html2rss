@@ -382,23 +382,24 @@ RSpec.describe Html2rss::AutoSource do
         %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{cards.join}</main></body></html>)
       end
 
-      it 'strips noise from structured scraper titles' do
-        schema_titles = articles.select { _1.scraper == Html2rss::AutoSource::Scraper::Schema }.map(&:title)
-
-        expect(schema_titles).to eq(['Schema story one words', 'Schema story two words'])
+      let(:declared_scraper) do
+        lambda do |klass|
+          instance_double(klass, extractable?: true, class: klass).tap do |scraper|
+            allow(scraper).to receive(:map) { |&block| [feed_item].map(&block) }
+          end
+        end
       end
 
-      def stub_declared_scraper(klass)
-        scraper = klass.allocate
-        allow(scraper).to receive(:extractable?).and_return(true)
-        allow(scraper).to receive(:map) { |&block| [feed_item].map(&block) }
-        allow(klass).to receive(:new).and_return(scraper)
+      it 'keeps a publisher-declared structured headline verbatim' do
+        schema_titles = articles.select { _1.scraper == Html2rss::AutoSource::Scraper::Schema }.map(&:title)
+
+        expect(schema_titles).to eq(['10:00 Schema story one words', '10:00 Schema story two words'])
       end
 
       %w[NativeFeed WordpressApi Sitemap MetaOembed].each do |name|
         it "keeps a #{name} title verbatim" do
           klass = Html2rss::AutoSource::Scraper.const_get(name)
-          stub_declared_scraper(klass)
+          allow(klass).to receive(:new).and_return(declared_scraper.call(klass))
 
           expect(articles.find { _1.scraper == klass }.title).to eq('10:00 Video: Native feed story title')
         end
@@ -628,7 +629,7 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
-    context 'when a scraper raises an unexpected error' do
+    shared_context 'with a lone Schema scraper' do
       let(:body) do
         ld = {
           '@context' => 'https://schema.org',
@@ -654,20 +655,30 @@ RSpec.describe Html2rss::AutoSource do
           instance = method.call(scraper_class, *args, **kwargs)
           next instance unless scraper_class == Html2rss::AutoSource::Scraper::Schema && instance
 
-          allow(instance).to receive(:each).and_raise(StandardError, 'boom')
+          allow(instance).to receive(:each, &schema_each)
           instance
         end
       end
+    end
+
+    context 'when a scraper raises an unexpected error' do
+      include_context 'with a lone Schema scraper'
+
+      let(:schema_each) { proc { raise StandardError, 'boom' } }
 
       it 'propagates StandardError instead of quarantining it' do
         expect { articles }.to raise_error(StandardError, 'boom')
       end
+    end
 
-      it 'rejects a scraper item that is neither Article nor Hash' do
-        stub_const('FakeScraper', Class.new { def map = [yield('not an item')] })
+    context 'when a scraper yields an item that is neither Article nor Hash' do
+      include_context 'with a lone Schema scraper'
 
-        expect { auto_source.send(:run_scraper, FakeScraper.new) }
-          .to raise_error(TypeError, 'FakeScraper yielded String; expected Article or Hash')
+      let(:schema_each) { proc { |&block| block.call('not an item') } }
+
+      it 'raises a TypeError naming the scraper' do
+        expect { articles }
+          .to raise_error(TypeError, 'Html2rss::AutoSource::Scraper::Schema yielded String; expected Article or Hash')
       end
     end
 

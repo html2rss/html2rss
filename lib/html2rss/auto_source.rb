@@ -313,8 +313,9 @@ module Html2rss
       when Article
         item
       when Hash
-        # Page-derived titles opt in to composition; publisher-declared titles stay verbatim.
-        Article.new(**item, scraper: instance.class, compose_title: Scraper::PAGE_SCRAPERS.include?(instance.class))
+        # Hash items carry publisher-declared or structured titles: verbatim (collapse only).
+        # Heuristic scrapers yield Articles composed by Html::SstArticleExtractor.
+        Article.new(**item, scraper: instance.class)
       else
         raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
       end
