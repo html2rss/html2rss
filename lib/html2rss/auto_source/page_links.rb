@@ -180,7 +180,6 @@ module Html2rss
           @ancestors = []
           @boundary_count = 0
           walk(document.root) if document
-          @keys.freeze
           freeze
         end
 
@@ -218,10 +217,11 @@ module Html2rss
           pending
         end
 
-        # Children's states: a waiting label wins; two different widening cards stop widening.
+        # Children's states: a waiting label wins; two different widening cards stop widening. A falsy
+        # state (no label, no card) is neutral.
         def merge(pending, result)
-          return result if pending == false
-          return pending if result == false || result == pending
+          return result unless pending
+          return pending if !result || result == pending
 
           pending == true || result == true
         end
@@ -249,7 +249,7 @@ module Html2rss
           return !boundary?(node) if keys.empty?
 
           key = keys.one? ? keys.first : headline_key(indexes)
-          key ? claim(start, [key]) : false
+          key && claim(start, [key])
         end
 
         # Widens a bound card over an ancestor whose other anchors all link the card's destination
@@ -264,11 +264,11 @@ module Html2rss
         end
 
         # An anchor inside a heading, or wrapping one.
-        def headline?(index) = @headline[index] || @anchors[index].children.any? { _1.find(&:heading?) }
+        def headline?(index) = @headline.fetch(index) || @anchors.fetch(index).children.any? { _1.find(&:heading?) }
 
         def card_keys(indexes) = indexes.filter_map { key_at(_1) }.uniq
 
-        def key_at(index) = @link_resolver.destination_facts(@anchors[index])&.url&.article_identity
+        def key_at(index) = @link_resolver.destination_facts(@anchors.fetch(index))&.url&.article_identity
 
         # Marks +keys+ and every anchor from +start+ as inside a marked card. Returns the card's only
         # destination, whose claim may still widen, else false.
