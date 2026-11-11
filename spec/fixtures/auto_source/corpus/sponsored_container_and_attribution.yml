@@ -1,0 +1,7 @@
+---
+case: Attribution labels ("Sponsored by …", "Partner content", "Ad", "Anzeige |", Spanish and French forms), BEM sponsored class tokens, a labelled card with image, label and sponsor links, an ARIA-labelled partner rail, and a data-sponsored ad container all mark their cards; only the editorial cards are expected.
+expected:
+- https://example.com/news/2026/11/tram-line-extends-east
+- https://example.com/news/2026/11/museum-reopens-north-wing
+- https://example.com/news/2026/11/school-lunch-program-expands
+- https://example.com/news/2026/11/park-planting-volunteers

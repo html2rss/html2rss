@@ -120,10 +120,22 @@ sponsored_ad_label_card.html:
   expected: 4
   title_misses: 0
   sst_built: true
+sponsored_container_and_attribution.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  sst_built: true
 sponsored_empty_ad_slot_row.html:
   junk: 0
   real: 6
   expected: 6
+  title_misses: 0
+  sst_built: true
+sponsored_label_precision.html:
+  junk: 0
+  real: 11
+  expected: 11
   title_misses: 0
   sst_built: true
 sponsored_paywall_markers.html:

@@ -2,79 +2,138 @@
 
 RSpec.describe Html2rss::LinkDestination::Sponsorship do
   let(:node) do
-    lambda do |name: :span, text: nil, class_names: nil, raw: nil|
-      Html2rss::SST::Node.build(name:, own_text: text, attrs: Html2rss::SST::Attrs.build(class_names:, raw:))
+    lambda do |name: :span, text: 'x', class_names: nil, raw: nil, style: nil, children: nil|
+      attrs = Html2rss::SST::Attrs.build(class_names:, raw:, style:)
+      Html2rss::SST::Node.build(name:, own_text: text, attrs:, children:)
     end
   end
+  let(:marker) { ->(element, ancestors = []) { described_class.marker(element, ancestors) } }
+  let(:label) { ->(text, **opts) { marker[node[text:, **opts]] } }
+  let(:block) { node[name: :div, text: ''] }
 
-  describe '.marker?' do
-    it 'marks a rel containing sponsored in any case and position', :aggregate_failures do
-      expect(described_class.marker?(node[name: :a, raw: { 'rel' => 'sponsored' }])).to be(true)
-      expect(described_class.marker?(node[name: :a, raw: { 'rel' => 'nofollow Sponsored' }])).to be(true)
-      expect(described_class.marker?(node[name: :a, raw: { 'rel' => 'nofollow noopener' }])).to be(false)
-      expect(described_class.marker?(node[name: :a, raw: { 'rel' => 'sponsoredx' }])).to be(false)
+  describe '.marker' do
+    it 'marks a rel containing sponsored in any case and position as a container', :aggregate_failures do
+      expect(marker[node[name: :a, raw: { 'rel' => 'sponsored' }]]).to eq(:container)
+      expect(marker[node[name: :a, raw: { 'rel' => 'nofollow Sponsored' }]]).to eq(:container)
+      expect(marker[node[name: :a, raw: { 'rel' => "nofollow\tsponsored" }]]).to eq(:container)
+      expect(marker[node[name: :a, raw: { 'rel' => 'nofollow noopener' }]]).to be_nil
+      expect(marker[node[name: :a, raw: { 'rel' => 'sponsoredx' }]]).to be_nil
     end
 
-    it 'marks advertorial attributes unless switched off', :aggregate_failures do
-      expect(described_class.marker?(node[raw: { 'data-sponsored' => '' }])).to be(true)
-      expect(described_class.marker?(node[raw: { 'data-advertorial' => 'true' }])).to be(true)
-      expect(described_class.marker?(node[raw: { 'data-sponsored' => 'FALSE' }])).to be(false)
-      expect(described_class.marker?(node[raw: { 'data-advertorial' => '0' }])).to be(false)
-      expect(described_class.marker?(node[raw: { 'data-ad-slot' => 'top' }])).to be(false)
+    it 'marks advertorial attributes only for a closed set of truthy values', :aggregate_failures do
+      on = ['true', 'TRUE', '1', 'yes', ' Yes ']
+      off = ['', 'no', 'null', 'false', 'False', '0', 'off', 'acme']
+      expect(on.map { marker[node[raw: { 'data-sponsored' => _1 }]] }).to all(eq(:container))
+      expect(off.map { marker[node[raw: { 'data-advertorial' => _1 }]] }).to all(be_nil)
+      expect(marker[node[raw: { 'data-ad-slot' => 'true' }]]).to be_nil
     end
 
-    it 'marks advertorial class tokens only when whole', :aggregate_failures do
-      expect(described_class.marker?(node[class_names: %w[card advertorial]])).to be(true)
-      expect(described_class.marker?(node[class_names: %w[is-sponsored]])).to be(true)
-      expect(described_class.marker?(node[class_names: %w[card sponsored-by-line]])).to be(false)
+    it 'marks sponsored class tokens whole or as BEM and state variants' do
+      tokens = %w[advertorial sponsored is-sponsored has-advertorial sponsored-content card--sponsored
+                  teaser--advertorial c-card__sponsored sponsored_post]
+      expect(tokens.map { marker[node[class_names: ['card', _1]]] }).to all(eq(:container))
     end
 
-    it 'marks ad-label class tokens on their own, without label text' do
+    it 'ignores sponsored look-alike class tokens' do
+      rejected = %w[unsponsored non-sponsored page-sponsored sponsored-by-line sponsoredx Sponsored card--sponsor]
+      expect(rejected.filter_map { marker[node[class_names: [_1]]] }).to be_empty
+    end
+
+    it 'marks ad-label class tokens as labels, without label text' do
       tokens = %w[ad-label ad-labels ad-labels__item ad-badge ad-marker ad-label--small]
-      expect(tokens).to all(satisfy { described_class.marker?(node[class_names: ['teaser__meta', _1]]) })
+      expect(tokens.map { marker[node[class_names: ['teaser__meta', _1]]] }).to all(eq(:label))
     end
 
     it 'ignores ad-slot and look-alike class tokens' do
       rejected = %w[ad-container ad-tag-container adress head shadow badge ad-labeled teaser__ad-labels
                     ad-label__ ad-labelsx Ad-label]
-      expect(rejected.select { described_class.marker?(node[class_names: [_1]]) }).to be_empty
+      expect(rejected.filter_map { marker[node[class_names: [_1]]] }).to be_empty
+    end
+
+    it 'ignores class markers on empty or hidden elements' do
+      hidden = [node[text: ' ', class_names: %w[ad-label]], node[text: '', class_names: %w[sponsored]],
+                node[raw: { 'aria-hidden' => 'True' }, class_names: %w[ad-badge]],
+                node[style: 'color: red; display : none', class_names: %w[ad-label]]]
+      expect(hidden.filter_map { marker[_1] }).to be_empty
+    end
+
+    it 'keeps class markers on visible elements with text or children', :aggregate_failures do
+      expect(marker[node[raw: { 'aria-hidden' => 'false' }, class_names: %w[ad-label]]]).to eq(:label)
+      expect(marker[node[text: '', class_names: %w[ad-labels], children: [node[]]]]).to eq(:label)
     end
 
     it 'never reads paywall markers as sponsorship' do
       paywall = [{ 'data-paid-category' => 'plus' }, { 'data-testid' => 'paid-teaser' },
                  { 'data-tracking-paid-category' => 'paid' }]
-      expect(paywall.select { described_class.marker?(node[raw: _1, class_names: %w[paywall-badge plus-badge]]) })
-        .to be_empty
+      expect(paywall.filter_map { marker[node[raw: _1, class_names: %w[paywall-badge plus-badge]]] }).to be_empty
     end
 
-    it 'marks ARIA labels that are exactly an ad label', :aggregate_failures do
-      expect(described_class.marker?(node[raw: { 'aria-label' => 'Anzeige' }])).to be(true)
-      expect(described_class.marker?(node[raw: { 'aria-roledescription' => 'Advertisement' }])).to be(true)
-      expect(described_class.marker?(node[raw: { 'aria-label' => 'Read the story about advertising' }])).to be(false)
+    it 'marks ARIA labels that are exactly an ad label as containers', :aggregate_failures do
+      expect(marker[node[raw: { 'aria-label' => 'Anzeige' }]]).to eq(:container)
+      expect(marker[node[raw: { 'aria-roledescription' => 'Advertisement' }]]).to eq(:container)
+      expect(marker[node[raw: { 'aria-label' => 'Read the story about advertising' }]]).to be_nil
     end
 
-    it 'marks element text that is exactly an ad label, but never anchor text', :aggregate_failures do
-      expect(described_class.marker?(node[text: ' Werbung '])).to be(true)
-      expect(described_class.marker?(node[name: :p, text: '[Sponsored]'])).to be(true)
-      expect(described_class.marker?(node[name: :a, text: 'Sponsored'])).to be(false)
-      expect(described_class.marker?(node[text: 'Advertising'])).to be(false)
-      expect(described_class.marker?(node[])).to be(false)
+    it 'marks element text that is exactly an ad label, but never anchor or heading text', :aggregate_failures do
+      expect(label[' Werbung ']).to eq(:label)
+      expect(label['[Sponsored]', name: :p]).to eq(:label)
+      expect(label['Sponsored', name: :a]).to be_nil
+      expect(label['Anzeige', name: :h4]).to be_nil
+      expect(label['Advertising']).to be_nil
     end
 
-    it 'marks the closed multilingual label set with surrounding punctuation' do
-      labels = ['Anzeige', 'Gesponsert', 'Sponsored content', 'Paid post', 'Advertorial', 'Promoted',
-                'Publicité:', 'Contenu sponsorisé', 'Publireportage', 'Publicidad', 'Contenido patrocinado',
-                'Publirreportaje', '· Sponsored story ·']
-      expect(labels).to all(satisfy { described_class.marker?(node[text: _1]) })
+    it 'marks the closed multilingual label set with surrounding punctuation or separators' do
+      labels = ['Anzeige', 'Gesponsert', 'Sponsored content', 'Paid post', 'Paid content', 'Partner content',
+                'Advertorial', 'Promoted', 'Ad', 'AD:', 'Publicité:', 'Contenu sponsorisé', 'Publireportage',
+                'Publicidad', 'Contenido patrocinado', 'Publirreportaje', '· Sponsored story ·', 'Anzeige |',
+                'Anzeige ·', 'Anzeige •', 'Anzeige /', "Anzeige\u00A0|"]
+      expect(labels.reject { label[_1] == :label }).to be_empty
     end
 
-    it 'ignores text that only contains a label' do
-      rejected = ['Advertising', 'Sponsored by the harbor trust', 'Anzeigenmarkt', 'Ad']
-      expect(rejected.select { described_class.marker?(node[text: _1]) }).to be_empty
+    it 'marks attribution labels naming a sponsor in up to five words' do
+      labels = ['Sponsored by Acme Heating', 'Presented by', 'Präsentiert von Acme', 'In Kooperation mit Acme',
+                'Sponsorisé par Acme', 'En partenariat avec', 'Patrocinado por Acme Hogar', 'Presented by a b c d e']
+      expect(labels.reject { label[_1] == :label }).to be_empty
     end
 
-    it 'reads rel as whitespace-separated tokens' do
-      expect(described_class.marker?(node[name: :a, raw: { 'rel' => "nofollow\tsponsored" }])).to be(true)
+    it 'ignores text that only contains or starts with a label' do
+      rejected = ['Advertising', 'Anzeigenmarkt', 'Adventure', 'Ad hoc', 'Sponsored posts dominate the feed',
+                  'Presented by a b c d e f', 'Paid', 'Partner', 'Werbung im Wandel', 'by Acme']
+      expect(rejected.filter_map { label[_1] }).to be_empty
+    end
+
+    it 'reads the whole element text, so a label word beside other text is no label' do
+      meta_line = node[name: :div, text: ' · Werbung', children: [node[name: :time, text: '10.11.2026']]]
+      expect(marker[meta_line]).to be_nil
+    end
+
+    it 'ignores labels on topic chips', :aggregate_failures do
+      chips = %w[category post-category tag tags__item kicker teaser__kicker topic eyebrow rubrik]
+      expect(chips.filter_map { marker[node[text: 'Werbung', class_names: [_1]]] }).to be_empty
+      expect(marker[node[text: 'Werbung', class_names: %w[tagline]]]).to eq(:label)
+    end
+
+    it 'ignores labels inside an anchor or heading at any depth', :aggregate_failures do
+      expect(marker[node[text: 'Werbung'], [block, node[name: :a, text: ''], node[name: :span, text: '']]]).to be_nil
+      expect(marker[node[text: 'Werbung'], [node[name: :h3, text: ''], block]]).to be_nil
+    end
+
+    it 'ignores labels inside running text or an inline chip', :aggregate_failures do
+      expect(marker[node[name: :strong, text: 'Werbung:'], [node[name: :p, text: ' Wer Produkte zeigt.']]]).to be_nil
+      expect(marker[node[name: :b, text: 'Werbung'], [node[name: :p, text: 'Die  kehrt zurück.']]]).to be_nil
+      expect(marker[node[text: 'Werbung'], [block, node[name: :em, text: 'Die ']]]).to be_nil
+      expect(marker[node[text: 'Werbung'], [block, node[class_names: %w[category], text: '']]]).to be_nil
+    end
+
+    it 'keeps a standalone label below separators, inline wrappers, and block classes', :aggregate_failures do
+      expect(marker[node[text: 'Anzeige'], [node[name: :div, text: ' | '], node[name: :span, text: '']]]).to eq(:label)
+      expect(marker[node[text: 'Anzeige'], [node[name: :div, text: 'Mehr'], block]]).to eq(:label)
+      expect(marker[node[text: 'Anzeige'], [node[name: :article, text: '', class_names: %w[category-news]]]])
+        .to eq(:label)
+    end
+
+    it 'is nil for an unmarked node' do
+      expect(marker[node[text: '']]).to be_nil
     end
   end
 end

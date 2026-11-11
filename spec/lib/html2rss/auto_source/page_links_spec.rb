@@ -227,7 +227,8 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
             <h3><a href="/news/labelled#top">Labelled card</a></h3>
             <div><span class="ad-label">Anzeige</span></div>
           </article>
-          <article data-advertorial><h3><a href="/news/attributed">Attributed card</a></h3></article>
+          <article data-advertorial="true"><h3><a href="/news/attributed">Attributed card</a></h3></article>
+          <article data-advertorial=""><h3><a href="/news/blank-attribute">Blank attribute card</a></h3></article>
           <article>
             <div><span>Sponsored</span></div>
             <div><span aria-label="Anzeige"></span></div>
@@ -251,7 +252,34 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
           </div>
           <div class="row"><p>Advertisement</p><article><h3><a href="/news/beside-label">Beside a label</a></h3></article></div>
           <div class="row"><article><span>Sponsored</span></article><a href="/news/after-empty-card">After an empty card</a></div>
-          <div data-sponsored><article><h3><a href="/news/wrapped">Wrapped card</a></h3></article></div>
+          <div data-sponsored="yes"><article><h3><a href="/news/wrapped">Wrapped card</a></h3></article></div>
+          <section aria-label="Anzeige">
+            <article><h3><a href="/news/rail-one">Rail one</a></h3></article>
+            <article><h3><a href="/news/rail-two">Rail two</a></h3><a href="/sport/">Sport</a></article>
+          </section>
+          <div class="list">
+            <div class="teaser--advertorial"><h3><a href="/news/bem-one">BEM one</a></h3></div>
+            <div class="teaser"><h3><a href="/news/bem-neighbour">BEM neighbour</a></h3></div>
+          </div>
+          <article>
+            <span class="label">Sponsored</span>
+            <a href="/news/dominant?src=img"><img src="/d.jpg"></a>
+            <a class="ad-label" href="/about-ads/">Anzeige</a>
+            <h3><a href="/news/dominant">Dominant headline</a></h3>
+            <p>Presented by <a href="https://brand.example.com/">Acme</a></p>
+          </article>
+          <div class="grid">
+            <div><h3><a href="/news/grid-one">Grid one</a></h3></div>
+            <span>Anzeige</span>
+            <div><h3><a href="/news/grid-two">Grid two</a></h3></div>
+          </div>
+          <article><h3><a href="/news/house-story">House story</a></h3></article>
+          <aside><span class="ad-label">Anzeige</span><a href="/news/house-story">Listen to our podcast</a></aside>
+          <article><h3><a href="/news/in-heading">Why <em>sponsored</em> posts win</a></h3></article>
+          <article>
+            <h3><a href="/news/review">Review</a></h3>
+            <p>Buy it: <a rel="sponsored" href="https://shop.example.com/buy">at the shop</a></p>
+          </article>
           <article>
             <span>Sponsored</span>
             <h3><a href="/news/beside-skipped">Beside skipped hrefs</a></h3>
@@ -271,10 +299,39 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       expect(page_links.sponsored?(url_at['/news/twice-labelled'])).to be(true)
     end
 
-    it 'marks nothing when the marker card spans several destinations', :aggregate_failures do
+    it 'marks nothing when a label sits between several headline destinations', :aggregate_failures do
       expect(page_links.sponsored?(url_at['/news/listed-one'])).to be(false)
       expect(page_links.sponsored?(url_at['/news/listed-two'])).to be(false)
-      expect(page_links.sponsored?(url_at['/news/mixed-headline'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/grid-one'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/grid-two'])).to be(false)
+    end
+
+    it "marks a labelled card's headline beside secondary links", :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/mixed-headline'])).to be(true)
+      expect(page_links.sponsored?(url_at['/news/dominant'])).to be(true)
+      expect(page_links.sponsored?(url_at['/culture/'])).to be(false)
+    end
+
+    it 'marks every card inside an explicit container marker', :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/rail-one'])).to be(true)
+      expect(page_links.sponsored?(url_at['/news/rail-two'])).to be(true)
+      expect(page_links.sponsored?(url_at['/sport/'])).to be(true)
+      expect(page_links.sponsored?(url_at['/news/bem-one'])).to be(true)
+      expect(page_links.sponsored?(url_at['/news/bem-neighbour'])).to be(false)
+    end
+
+    it 'keeps a URL that an unmarked card also links' do
+      expect(page_links.sponsored?(url_at['/news/house-story'])).to be(false)
+    end
+
+    it 'marks only the sponsored link itself for rel, never its card', :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/review'])).to be(false)
+      expect(Html2rss::Url.from_absolute('https://shop.example.com/buy').then { page_links.sponsored?(_1) }).to be(true)
+    end
+
+    it 'ignores a switched-off attribute and a label inside a headline', :aggregate_failures do
+      expect(page_links.sponsored?(url_at['/news/blank-attribute'])).to be(false)
+      expect(page_links.sponsored?(url_at['/news/in-heading'])).to be(false)
     end
 
     it 'keeps a marker over unresolvable anchors from reaching later cards' do
