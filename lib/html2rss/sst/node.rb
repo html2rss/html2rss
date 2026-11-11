@@ -78,10 +78,6 @@ module Html2rss
 
       ##
       # @return [Boolean]
-      def ignored_container_name? = Tags::IGNORED_CONTAINER_NAMES.include?(name)
-
-      ##
-      # @return [Boolean]
       def eligible_href?
         href = attrs.href
         return false if href.nil? || href.empty?

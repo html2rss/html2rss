@@ -111,6 +111,45 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     end
   end
 
+  describe 'card kicker prefix' do
+    let(:title_for) do
+      ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com')&.title }
+    end
+
+    it 'keeps only the topic of a kicker that also holds a clock, a time element and a field label' do
+      html = '<article><header><div class="overline"><span class="date">11:46</span><i></i>' \
+             '<time datetime="2026-10-20">Oct 20</time><span class="sr-only">Section:</span>' \
+             '<span class="topic">Harbor</span></div>' \
+             '<h2><a href="/news/story">Ferry route returns</a></h2></header></article>'
+
+      expect(title_for.call(html)).to eq('Harbor: Ferry route returns')
+    end
+
+    it 'adds no prefix when the kicker holds only a clock' do
+      html = '<article><span class="kicker"><span>09:05</span></span><h2><a href="/news/story">Story</a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Story')
+    end
+
+    it 'keeps a plain kicker as the title prefix' do
+      html = '<article><span class="eyebrow">Weather</span><h2><a href="/news/story">Storm ahead</a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Weather: Storm ahead')
+    end
+
+    it 'adds no prefix when the title already contains the kicker' do
+      html = '<article><span class="eyebrow">Storm</span><h2><a href="/news/story">Storm ahead</a></h2></article>'
+
+      expect(title_for.call(html)).to eq('Storm ahead')
+    end
+
+    it 'returns no title for a kicker-only card' do
+      html = '<article><span class="eyebrow">Weather</span><a href="/news/story"><img src="/a.jpg"></a></article>'
+
+      expect(title_for.call(html)).to be_nil
+    end
+  end
+
   it 'extracts core article fields from an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <html><body>

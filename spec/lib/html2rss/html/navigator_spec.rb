@@ -149,6 +149,25 @@ RSpec.describe Html2rss::Html::Navigator do
 
       expect(described_class.usable_card_parent?(document.at_css('NAV'))).to be(false)
     end
+
+    it 'stops at page-level header and footer but not at ones inside sectioning content' do # rubocop:disable RSpec/ExampleLength
+      document = Nokogiri::HTML('<body><header id="ph"></header><footer id="pf"></footer>' \
+                                '<article><header id="ah"></header><footer id="af"></footer></article>' \
+                                '<main><div><header id="mh"></header></div></main>' \
+                                '<nav><header id="nh"></header></nav></body>')
+      usable = %w[ph pf ah af mh nh].to_h { |id| [id, described_class.usable_card_parent?(document.at_css("##{id}"))] }
+
+      expect(usable).to eq('ph' => false, 'pf' => false, 'ah' => true, 'af' => true, 'mh' => true, 'nh' => false)
+    end
+
+    it 'follows the SST chrome index for header and footer nodes', :aggregate_failures do
+      doc = Html2rss::SST::Normalizer.call('<html><body><header>H</header><article><header>A</header></article></body></html>')
+      page_header, card_header = doc.root.find_all { _1.name == :header }
+
+      expect(described_class.usable_card_parent?(page_header)).to be(false)
+      expect(described_class.usable_card_parent?(card_header)).to be(true)
+      expect(described_class.usable_card_parent?(Html2rss::SST::Node.build(name: :header))).to be(false)
+    end
   end
 
   describe '.find_closest_selector_upwards' do

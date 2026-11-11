@@ -15,8 +15,16 @@ module Html2rss
       # Ancestor tags that usually indicate navigation/utility regions inside a content container.
       UTILITY_LANDMARK_TAGS = SST::Tags::UTILITY_LANDMARK_NAMES.to_set(&:to_s).freeze
 
-      # Immediate parent walk stops here — not a usable article card.
-      CARD_WALK_STOP_TAGS = (UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | Set['html', 'body']).freeze
+      # header/footer: a card-walk stop only at page level (see {SST::Tags::PAGE_CHROME_NAMES}).
+      PAGE_CHROME_TAGS = SST::Tags::PAGE_CHROME_NAMES.to_set(&:to_s).freeze
+
+      # Ancestors that scope a header/footer to their section.
+      SECTIONING_TAGS = SST::Tags::SECTIONING_NAMES.to_set(&:to_s).freeze
+
+      # Immediate parent walk stops here — not a usable article card. Page-level
+      # header/footer stop too, via {usable_card_parent?}.
+      CARD_WALK_STOP_TAGS =
+        ((UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | Set['html', 'body']) - PAGE_CHROME_TAGS).freeze
 
       # Inner tags that mean a wrapping <a> is a card, not a span-styled list link.
       WRAPPING_ANCHOR_CHILD_TAGS = (HEADING_TAGS + %w[p]).freeze
@@ -68,6 +76,7 @@ module Html2rss
 
         ##
         # Immediate parent is a usable article card (not html/body/landmark chrome).
+        # A header/footer inside article/section/aside/main belongs to its card.
         #
         # @param node [Nokogiri::XML::Node, SST::Node, nil]
         # @return [Boolean]
@@ -75,7 +84,10 @@ module Html2rss
           return false unless node
           return false if node.is_a?(Nokogiri::XML::Document)
 
-          !CARD_WALK_STOP_TAGS.include?(Probe.tag(node))
+          tag = Probe.tag(node)
+          return !page_chrome?(node) if PAGE_CHROME_TAGS.include?(tag)
+
+          !CARD_WALK_STOP_TAGS.include?(tag)
         end
 
         ##
@@ -123,6 +135,23 @@ module Html2rss
             curr = curr.parent
           end
           false
+        end
+
+        private
+
+        # Whether a header/footer is page-level chrome. SST nodes defer to the
+        # Normalizer's chrome index (unindexed nodes stay chrome); Nokogiri nodes
+        # check for a sectioning ancestor.
+        #
+        # @param node [Nokogiri::XML::Node, SST::Node]
+        # @return [Boolean]
+        def page_chrome?(node)
+          if node.is_a?(SST::Node)
+            index = SST::Index.for_node(node)
+            return index.nil? || index.ignored_chrome?(node)
+          end
+
+          node.ancestors.none? { |ancestor| SECTIONING_TAGS.include?(Probe.tag(ancestor)) }
         end
       end
     end

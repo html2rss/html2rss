@@ -1,0 +1,9 @@
+---
+case: Cards whose <article><header> holds a clock-and-label kicker and a <time> next to
+  the permalink heading; titles must carry only the topic kicker.
+expected:
+- https://example.com/news/2026/11/tram-line-extends-east
+- https://example.com/news/2026/11/museum-reopens-north-wing
+- https://example.com/news/2026/11/school-lunch-program-expands
+- https://example.com/news/2026/11/park-planting-volunteers
+- https://example.com/news/2026/11/council-approves-housing-plan

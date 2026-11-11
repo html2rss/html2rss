@@ -10,6 +10,11 @@ card_article_header_link.html:
   real: 5
   expected: 5
   sst_built: true
+card_header_time_kicker.html:
+  junk: 0
+  real: 5
+  expected: 5
+  sst_built: true
 json_response_articles.json:
   junk: 0
   real: 4
