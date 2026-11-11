@@ -399,6 +399,10 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
             <article><h3><a href="/news/outer">Outer</a></h3>
               <article><span>Anzeige</span><h3><a href="/news/inner">Inner</a></h3></article></article>
             <span>Anzeige</span>
+            <article><span>Sponsored</span><h3><a href="/news/head-one">One</a></h3><h3><a href="/news/head-two">Two</a></h3></article>
+            <p><a rel="sponsored" href="/news/head-one">Head one copy</a></p>
+            <article><span>Sponsored</span><a href="http://example.com:abc/">Bad</a><h3><a href="/news/after-bad">After</a></h3></article>
+            <article><span>Sponsored</span><h3><a href="/news/next-copy">Next copy</a></h3></article><a href="/news/next-copy">Again</a>
           </main></body></html>
         HTML
       end
@@ -407,7 +411,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
       it 'marks the dominant destination of the card a label sits in, at any depth' do
         paths = %w[/news/wrapped-heading /news/only-link /news/deep-label /news/beside-bad /news/anchorless-container
-                   /news/labelled-card /news/tagged-ad /news/inner]
+                   /news/labelled-card /news/tagged-ad /news/inner /news/after-bad]
         expect(sponsored[*paths, '/culture/wrapped', '/tag/travel/', '/news/outer']).to eq(
           paths.to_h { [_1, true] }.merge('/culture/wrapped' => false, '/tag/travel/' => false, '/news/outer' => false)
         )
@@ -416,6 +420,21 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       it 'binds nothing for a label outside every card or holding the only other link' do
         paths = %w[/news/row-story /news/promoted-story /news/linked-label /news/ads-info]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'releases a URL whose other copy sits in an unbound card or right after a marked one' do
+        paths = %w[/news/head-one /news/head-two /news/next-copy]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+    end
+
+    context 'without markers' do
+      let(:html) { '<html><body><article><h3><a href="/news/plain">Plain</a></h3></article></body></html>' }
+
+      it 'resolves no anchor', :aggregate_failures do
+        allow(link_resolver).to receive(:destination_facts).and_call_original
+        expect(page_links.sponsored?(url_at['/news/plain'])).to be(false)
+        expect(link_resolver).not_to have_received(:destination_facts)
       end
     end
 
