@@ -727,6 +727,12 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     it_behaves_like 'kicker title'
     it_behaves_like 'anchor-only title'
     it_behaves_like 'fallback span title'
+
+    it_behaves_like 'article extractor title pieces' do
+      let(:title_for) do
+        ->(html) { described_class.call(Nokogiri::HTML.fragment(html).at_css('article'), base_url: 'https://example.com')[:title] }
+      end
+    end
   end
 
   describe '#kicker_node' do

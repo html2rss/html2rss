@@ -10,7 +10,7 @@ RSpec.shared_examples 'article extractor title pieces' do
       'Verkehr: Tram line extends'
     ],
     'clock, time and type-marker kicker children' => [
-      '<span class="kicker"><span>09:05</span><time>Oct 20</time><span>Video</span> Harbor</span>' \
+      '<span class="kicker"><span>09:05</span><time>Oct 20</time><span>Video</span><span>Harbor</span></span>' \
       '<h2><a href="/news/story">Ferry route returns</a></h2>',
       'Harbor: Ferry route returns'
     ],
