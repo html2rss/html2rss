@@ -80,3 +80,8 @@ structured_small_merge.html:
   real: 6
   expected: 6
   sst_built: true
+structured_tracked_urls.html:
+  junk: 0
+  real: 5
+  expected: 5
+  sst_built: true

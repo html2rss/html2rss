@@ -95,7 +95,10 @@ module Html2rss
           tallies = Hash.new(0)
 
           reject_invalid!(articles, tallies)
-          reject_uncorroborated!(articles, corroboration, tallies) if corroboration
+          if corroboration
+            reject_uncorroborated!(articles, corroboration, tallies)
+            canonicalize_urls!(articles, corroboration)
+          end
           deduplicate_by_url!(articles, tallies)
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies)
@@ -214,12 +217,18 @@ module Html2rss
           end
         end
 
-        def deduplicate_by_url!(articles, tallies)
-          seen = {}
-          tally_reject!(articles, tallies, 'duplicate_url') do |article|
-            identity = url_identity(article.url)
-            identity.nil? || seen.key?(identity).tap { seen[identity] = true }
+        # Kept structured items take the rendered anchor's URL, so dedupe merges them with the
+        # heuristic copy and the feed links the page's canonical form.
+        def canonicalize_urls!(articles, corroboration)
+          articles.map! do |article|
+            canonical = corroboration.canonical_url(article)
+            canonical ? article.with_url(canonical) : article
           end
+        end
+
+        def deduplicate_by_url!(articles, tallies)
+          seen = Set.new
+          tally_reject!(articles, tallies, 'duplicate_url') { |article| seen.add?(article.url.article_identity).nil? }
         end
 
         def keep_only_http_urls!(articles, tallies)

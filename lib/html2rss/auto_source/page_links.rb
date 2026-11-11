@@ -5,9 +5,10 @@ module Html2rss
     ##
     # Where each URL is rendered on the page, from one pass over the SST anchors.
     #
-    # Keys are {Html2rss::Url#document_identity}, so trailing slashes and fragments do not
-    # split a URL. Chrome comes from the SST chrome flag ({SST::Normalizer}); utility
-    # landmarks that are not chrome (+aside+, +menu+, sectioned +footer+) are peripheral.
+    # Keys are {Html2rss::Url#article_identity}, so scheme, tracking query params, trailing
+    # slashes and fragments do not split a URL; other query params stay significant. Chrome
+    # comes from the SST chrome flag ({SST::Normalizer}); utility landmarks that are not chrome
+    # (+aside+, +menu+, sectioned +footer+) are peripheral.
     # A URL rendered several times keeps its strongest placement. PageLinks owns no keep
     # or drop rule; {Corroboration} reads it.
     class PageLinks
@@ -30,6 +31,7 @@ module Html2rss
       # @param link_resolver [Scoring::LinkResolver, nil]
       def initialize(document, link_resolver)
         @placements = {}
+        @hrefs = {}
         @index = document&.index
         @link_resolver = link_resolver
         walk(document.root, false) if document
@@ -43,8 +45,16 @@ module Html2rss
       def placement(url)
         return :absent unless url
 
-        @placements.fetch(url.document_identity, :absent)
+        @placements.fetch(url.article_identity, :absent)
       end
+
+      ##
+      # The rendered content anchor's URL for the article +url+ names, so an item
+      # carrying a +http+ or tracked variant can take the page's canonical form.
+      #
+      # @param url [Html2rss::Url, nil] candidate item URL
+      # @return [Html2rss::Url, nil] nil unless +url+ is placed as +:content+
+      def canonical_url(url) = @hrefs[url&.article_identity]
 
       ##
       # True when absence cannot be told from an unrendered list: no page, a degraded SST,
@@ -65,10 +75,13 @@ module Html2rss
         url = @link_resolver.destination_facts(anchor)&.url
         return unless url
 
-        key = url.document_identity
+        key = url.article_identity
         placement = anchor_placement(anchor, peripheral)
         current = @placements[key]
-        @placements[key] = placement if current.nil? || RANKS.fetch(placement) < RANKS.fetch(current)
+        return unless current.nil? || RANKS.fetch(placement) < RANKS.fetch(current)
+
+        @placements[key] = placement
+        @hrefs[key] = url if placement == :content
       end
 
       def anchor_placement(anchor, peripheral)

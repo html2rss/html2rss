@@ -26,6 +26,9 @@ module Html2rss
   class Url
     include Comparable
 
+    # Closed set of query params that carry campaign or referrer data, never page identity.
+    TRACKING_PARAM = /\A(?:utm_.*|fbclid|gclid|msclkid|mc_cid|mc_eid|ref|ref_src)\z/i
+
     # Raised when a string cannot be parsed or resolved to a valid URL.
     class InvalidUrlError < Html2rss::Error
       # @return [Symbol]
@@ -341,6 +344,19 @@ module Html2rss
     # @return [String]
     def document_identity
       "#{scheme}\0#{@uri.authority}\0#{path.chomp('/')}\0#{query}"
+    end
+
+    ##
+    # "Same article" key: host, port, slash-stripped path, and query params minus
+    # {TRACKING_PARAM}. Scheme, fragment, trailing slash, and tracking params are ignored, so
+    # +http://example.com/a+ and +https://example.com/a/?utm_source=x#top+ share it; every other
+    # query param stays significant. Keys page placement and feed-item dedupe, unlike
+    # {#document_identity}, which stays scheme- and query-exact.
+    #
+    # @return [Array] equal for URLs naming the same article
+    def article_identity
+      params = query.to_s.split('&').reject { TRACKING_PARAM.match?(_1.split('=', 2).first) }
+      [host, port, path.chomp('/'), params]
     end
 
     private

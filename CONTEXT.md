@@ -100,7 +100,11 @@ Shared path lexicon for native feed discovery and entry-resolution listing guess
 
 ## URL document identity
 
-Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`; `Url#document_identity` is the matching hash key. `FeedResolution::CandidateGenerator` filters with it; `AutoSource::PageLinks` keys rendered anchors by it. Differs from `Url#==` (slash-sensitive) and from Cleanup's fragment-only dedupe identity.
+Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`; `Url#document_identity` is the matching hash key. `FeedResolution::CandidateGenerator` filters with it. Differs from `Url#==` (slash-sensitive).
+
+## URL article identity
+
+Scheme-, fragment-, trailing-slash-, and tracking-param-insensitive "same article" key (closed `Url::TRACKING_PARAM` set: `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid`, `mc_eid`, `ref`, `ref_src`; every other query param stays significant). Owned by `Html2rss::Url#article_identity`; `AutoSource::PageLinks` keys rendered anchors by it and `Cleanup` dedupes by it, so one rule decides both. A kept corroborated item whose URL differs from its content anchor only by these takes the anchor's URL (`PageLinks#canonical_url`, applied by `Cleanup`).
 
 ## Feed resolution policy
 
@@ -164,7 +168,7 @@ Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoS
 
 ## Structured-tier corroboration
 
-Whether an in-page structured item is backed by the rendered page. Which scrapers are checked: `AutoSource::Scraper::CORROBORATED_SCRAPERS` (Schema, Microdata, Microformats2, JsonState, XhrArticles, JsonDocument); native feed, CMS REST API, sitemap, and oEmbed items are publisher-declared and exempt. Where a URL is rendered: `AutoSource::PageLinks` (one pass over SST anchors keyed by `Url#document_identity`; `:content`, `:peripheral` for aside/menu/sectioned-footer landmarks, `:chrome` from `SST::Index#ignored_chrome?`, else `:absent`; `#sparse?` for no page, a degraded SST, or at most two content URLs). The keep/drop verdict and its private article-likeness score (dates, image, description, URL shape, scraper-cohort size and parent-path cohesion): `AutoSource::Corroboration#verdict`. Content placement keeps; chrome-only and unrendered URLs drop (`chrome_only`, `not_on_page`) unless the page is sparse; peripheral and sparse-page items keep on score, else drop as `unlikely`. Cleanup runs the check before dedupe and tallies the reasons, so a dropped structured copy leaves its URL to a heuristic tier and a kept one wins dedupe. `AutoSource` memoizes the SST and page `LinkResolver` lazily: the first consumer (page check or heuristic tier) builds them, at most once per page. JsonState keeps no chrome rules of its own.
+Whether an in-page structured item is backed by the rendered page. Which scrapers are checked: `AutoSource::Scraper::CORROBORATED_SCRAPERS` (Schema, Microdata, Microformats2, JsonState, XhrArticles, JsonDocument); native feed, CMS REST API, sitemap, and oEmbed items are publisher-declared and exempt. Where a URL is rendered: `AutoSource::PageLinks` (one pass over SST anchors keyed by `Url#article_identity`; `:content`, `:peripheral` for aside/menu/sectioned-footer landmarks, `:chrome` from `SST::Index#ignored_chrome?`, else `:absent`; `#sparse?` for no page, a degraded SST, or at most two content URLs). The keep/drop verdict and its private article-likeness score (dates, image, description, URL shape, scraper-cohort size and parent-path cohesion): `AutoSource::Corroboration#verdict`. Content placement keeps; chrome-only and unrendered URLs drop (`chrome_only`, `not_on_page`) unless the page is sparse; peripheral and sparse-page items keep on score, else drop as `unlikely`. Cleanup runs the check before dedupe and tallies the reasons, so a dropped structured copy leaves its URL to a heuristic tier and a kept one wins dedupe. `AutoSource` memoizes the SST and page `LinkResolver` lazily: the first consumer (page check or heuristic tier) builds them, at most once per page. JsonState keeps no chrome rules of its own.
 
 ## Auto-source corpus
 

@@ -12,6 +12,8 @@ module Html2rss
     # menu landmark), or any URL on a sparse page or without a page ({PageLinks#sparse?}),
     # is decided by a private article-likeness score: +:keep+ or +:unlikely+.
     #
+    # A kept item takes the rendered anchor's URL ({#canonical_url}); {Cleanup} applies it.
+    #
     # {Cleanup} owns admission and tallies the drop verdicts.
     class Corroboration
       # Article-likeness score at or above which an uncorroborated item is kept.
@@ -39,6 +41,19 @@ module Html2rss
         when :absent then uncorroborated(:not_on_page, article, cohort)
         else scored(article, cohort)
         end
+      end
+
+      ##
+      # The page's own form of a checked item's URL, when it differs only by scheme, tracking
+      # params, trailing slash, or fragment from a rendered content anchor.
+      #
+      # @param article [Html2rss::Article]
+      # @return [Html2rss::Url, nil] nil when the item is exempt, not a content anchor, or already canonical
+      def canonical_url(article)
+        return unless Scraper::CORROBORATED_SCRAPERS.include?(article.scraper)
+
+        canonical = page_links.canonical_url(article.url)
+        canonical unless canonical.to_s == article.url.to_s
       end
 
       private

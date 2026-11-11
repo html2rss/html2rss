@@ -58,7 +58,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       expect(page_links.placement(url_at['/news/one'])).to eq(:content)
     end
 
-    it 'matches URLs by document identity (trailing slash, fragment)', :aggregate_failures do
+    it 'matches URLs by article identity (trailing slash, fragment)', :aggregate_failures do
       expect(page_links.placement(url_at['/news/two/#comments'])).to eq(:content)
       expect(page_links.placement(url_at['/world'])).to eq(:chrome)
     end
@@ -67,6 +67,58 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       expect(page_links.placement(url_at['/news/never-rendered'])).to eq(:absent)
       expect(page_links.placement(url_at['/news/?q=1'])).to eq(:absent)
       expect(page_links.placement(nil)).to eq(:absent)
+    end
+
+    context 'when structured URLs differ from rendered anchors by scheme or tracking params' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <article><a href="/news/plain">Plain</a></article>
+            <article><a href="/news/tracked?utm_source=feed&amp;id=7">Tracked</a></article>
+            <article><a href="/news/post?id=1">One</a></article>
+            <article><a href="/news/multi?a=1&amp;b=2">Multi</a></article>
+            <article><a href="/news/bare?flag">Bare</a></article>
+          </main></body></html>
+        HTML
+      end
+
+      {
+        'http://example.com/news/plain' => :content,
+        'https://example.com/news/plain?utm_source=x&utm_medium=y' => :content,
+        'https://example.com/news/tracked?id=7' => :content,
+        'https://example.com/news/post?id=1' => :content,
+        'https://example.com/news/post?id=2' => :absent,
+        'https://example.com/news/post' => :absent
+      }.each do |href, expected|
+        it "places #{href} as #{expected}" do
+          expect(page_links.placement(Html2rss::Url.from_absolute(href))).to eq(expected)
+        end
+      end
+
+      it 'exposes the rendered anchor URL as canonical for a variant', :aggregate_failures do
+        expect(page_links.canonical_url(Html2rss::Url.from_absolute('http://example.com/news/plain?utm_term=t')).to_s)
+          .to eq('https://example.com/news/plain')
+        expect(page_links.canonical_url(url_at['/news/tracked?id=7&fbclid=x']).to_s)
+          .to eq('https://example.com/news/tracked?utm_source=feed&id=7')
+      end
+
+      it 'has no canonical URL for absent URLs or nil', :aggregate_failures do
+        expect(page_links.canonical_url(url_at['/news/post?id=2'])).to be_nil
+        expect(page_links.canonical_url(nil)).to be_nil
+      end
+    end
+
+    context 'when a URL is rendered as chrome, then content, with a fragment' do
+      let(:html) do
+        '<html><body><nav><a href="/news/x">X</a></nav><main><article><a href="/news/x/#more">X</a></article></main>' \
+          '<aside><a href="/news/y">Y</a></aside><nav><a href="/news/z">Z</a></nav></body></html>'
+      end
+
+      it 'canonicalizes to the content anchor without its fragment', :aggregate_failures do
+        expect(page_links.canonical_url(url_at['/news/x'])).to eq(url_at['/news/x/'])
+        expect(page_links.canonical_url(url_at['/news/y'])).to be_nil
+        expect(page_links.canonical_url(url_at['/news/z'])).to be_nil
+      end
     end
 
     context 'when a peripheral copy precedes a chrome copy' do

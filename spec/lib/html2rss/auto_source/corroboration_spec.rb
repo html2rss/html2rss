@@ -60,6 +60,28 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       expect(builds.size).to eq(1)
     end
 
+    describe '#canonical_url' do
+      let(:canonical) { Html2rss::Url.from_absolute('https://example.com/news/canonical') }
+
+      before { allow(page_links).to receive(:canonical_url).with(article.url).and_return(canonical) }
+
+      it 'returns the page anchor URL for a checked item' do
+        expect(corroboration.canonical_url(article)).to eq(canonical)
+      end
+
+      it 'returns nil when the item already carries that URL' do
+        allow(page_links).to receive(:canonical_url).with(article.url).and_return(article.url)
+
+        expect(corroboration.canonical_url(article)).to be_nil
+      end
+
+      it 'returns nil for an exempt scraper' do
+        exempt = build_article['/news/x', scraper: Html2rss::AutoSource::Scraper::SemanticHtml]
+
+        expect(corroboration.canonical_url(exempt)).to be_nil
+      end
+    end
+
     it 'keeps a content placement' do
       placements[article.url.path] = :content
 

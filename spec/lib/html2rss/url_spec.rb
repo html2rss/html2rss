@@ -279,6 +279,36 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '#article_identity' do
+    let(:identity) { ->(raw) { described_class.from_absolute(raw).article_identity } }
+
+    %w[
+      http://example.com/a https://example.com:443/a https://example.com/a/ https://example.com/a#top
+      https://example.com/a?utm_source=x&utm_medium=y https://example.com/a?fbclid=1 https://example.com/a?gclid=1
+      https://example.com/a?msclkid=1 https://example.com/a?mc_cid=1&mc_eid=2 https://example.com/a?ref=feed
+      https://example.com/a?ref_src=tw https://example.com/a?UTM_Source=x
+    ].each do |other|
+      it "ignores the difference of #{other}" do
+        expect(identity[other]).to eq(identity['https://example.com/a'])
+      end
+    end
+
+    %w[
+      https://other.example.com/a https://example.com:8443/a https://example.com/b https://example.com/a?id=1
+      https://example.com/a?refx=1 https://example.com/a?xutm_source=1 https://example.com/a?utm
+    ].each do |other|
+      it "keeps #{other} distinct" do
+        expect(identity[other]).not_to eq(identity['https://example.com/a'])
+      end
+    end
+
+    it 'keeps meaningful query params significant', :aggregate_failures do
+      expect(identity['https://example.com/a?id=1']).not_to eq(identity['https://example.com/a?id=2'])
+      expect(identity['https://example.com/a?id=1']).to eq(identity['https://example.com/a?utm_term=t&id=1'])
+      expect(identity['https://example.com/a?a=1&b=2']).not_to eq(identity['https://example.com/a?a=1'])
+    end
+  end
+
   describe '#document_identity' do
     it 'is equal for URLs differing only by trailing slash or fragment', :aggregate_failures do
       bare = described_class.from_absolute('https://example.com/blog')

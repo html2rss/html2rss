@@ -120,6 +120,7 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         allow(corroboration).to receive(:verdict) do |article, **|
           article.scraper == structured ? verdicts.fetch(article.url.path, :keep) : :keep
         end
+        allow(corroboration).to receive(:canonical_url).and_return(nil)
       end
 
       it 'tallies each drop verdict under its own reason', :aggregate_failures do
@@ -135,6 +136,35 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(corroboration).to have_received(:verdict).exactly(6).times
         expect(corroboration).to have_received(:verdict).with(given[1], cohort: given.first(5))
         expect(corroboration).to have_received(:verdict).with(given[5], cohort: [given[5]])
+      end
+    end
+
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- corroboration stub + two scraper articles
+    context 'when a corroborated item differs from its rendered anchor by scheme or tracking params' do
+      subject(:result) { described_class.call(articles, url:, corroboration:) }
+
+      let(:corroboration) { instance_double(Html2rss::AutoSource::Corroboration, verdict: :keep) }
+      let(:structured) { Html2rss::AutoSource::Scraper::JsonState }
+      let(:heuristic) { Html2rss::AutoSource::Scraper::SemanticHtml }
+      let(:articles) do
+        [
+          Html2rss::Article.new(id: 's', title: 'Story title for structured', scraper: structured,
+                                url: 'http://example.com/story?utm_source=feed'),
+          Html2rss::Article.new(id: 'h', title: 'Story title for heuristic', scraper: heuristic,
+                                url: 'https://example.com/story')
+        ]
+      end
+
+      before do
+        allow(corroboration).to receive(:canonical_url) do |article|
+          Html2rss::Url.from_absolute('https://example.com/story') if article.scraper == structured
+        end
+      end
+
+      it 'takes the anchor URL, then merges the duplicate', :aggregate_failures do
+        expect(result.articles.map { [_1.url.to_s, _1.scraper] })
+          .to eq([['https://example.com/story', structured]])
+        expect(result.drop_tallies).to eq('duplicate_url' => 1)
       end
     end
 
