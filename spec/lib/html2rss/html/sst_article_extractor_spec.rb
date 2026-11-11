@@ -180,7 +180,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     it 'keeps the kicker of an anchorless card without a heading' do
       html = '<div id="storm-card">Storm ahead tonight <span class="kicker">Weather</span></div>'
       root = document_for(html).root.find { |n| n.name == :div }
-      segment = Html2rss::AutoSource::Segment.build(root_node: root, primary_link: nil, strategy: :semantic, position: 0)
+      segment = build_segment(root:)
 
       article = described_class.call(segment, base_url: 'https://example.com', fallback_anchorless: true)
 

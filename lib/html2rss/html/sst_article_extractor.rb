@@ -217,10 +217,14 @@ module Html2rss
       def kicker_node
         return @kicker_node if defined?(@kicker_node)
 
-        marked = @root.find_all { |n| n.attrs.raw.key?('data-tb-kicker') || n.attrs.class_names.any?(KICKER_CLASS_PATTERN) }
+        marked = @root.find_all { kicker_marked?(_1) }
         @kicker_node = marked.find do |node|
           marked.none? { |other| !other.equal?(node) && descendant_of?(other, node) } && kicker_beside_headline?(node)
         end
+      end
+
+      def kicker_marked?(node)
+        node.attrs.raw.key?('data-tb-kicker') || node.attrs.class_names.any?(KICKER_CLASS_PATTERN)
       end
 
       def kicker_beside_headline?(node)
