@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 # Host specs define title_for as a lambda: ->(html) { String or nil }, html being one <article> card.
-# Both extractors judge kicker children with Article::Title.noise_piece? and drop teaser clock
-# elements (Article::Title.clock_piece?, +time+) from the headline, so these must agree.
+# Both extractors pick the leaf-most kicker-marked node beside the headline, judge kicker children
+# with Article::Title.noise_piece? and drop teaser noise elements (Article::Title.headline_noise_piece?,
+# +time+) from the headline, whose text stays verbatim; so these must agree.
 RSpec.shared_examples 'article extractor title pieces' do
   {
     'a field-label kicker child' => [
@@ -29,6 +30,36 @@ RSpec.shared_examples 'article extractor title pieces' do
     'a leading score' => [
       '<h2><a href="/news/story">28:25 – Derby ends level</a></h2>',
       '28:25 – Derby ends level'
+    ],
+    'a clock and label opening the headline text' => [
+      '<h2><a href="/news/story">20:15 Uhr: Neuer Krimi im Ersten</a></h2>',
+      '20:15 Uhr: Neuer Krimi im Ersten'
+    ],
+    'a screen-reader label element in the headline' => [
+      '<h2><a href="/news/story"><span class="sr-only">Article type: Video</span> Tram line extends</a></h2>',
+      'Tram line extends'
+    ],
+    'a kicker group wrapping kicker and title' => [
+      '<h2><a href="/news/story"><span class="kicker-group"><span class="kicker">Transit</span> ' \
+      '<span class="title">Tram line extends</span></span></a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a has-kicker modifier wrapping the kicker and headline text' => [
+      '<h2><a href="/news/story"><span class="headline__inner headline__inner--has-kicker">' \
+      '<span class="kicker">Transit</span> Tram line extends</span></a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a has-kicker modifier holding only the headline text' => [
+      '<h2><a href="/news/story"><span class="headline--has-kicker">20:15 | Krimi im Ersten</span></a></h2>',
+      '20:15 | Krimi im Ersten'
+    ],
+    'a separator after a kicker in the heading' => [
+      '<h2><a href="/news/story"><span class="kicker">Transit</span> / Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a kicker ending in a separator' => [
+      '<span class="kicker">Transit &gt;</span><h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
     ]
   }.each do |shape, (card, title)|
     it "titles a card with #{shape} as #{title.inspect}" do

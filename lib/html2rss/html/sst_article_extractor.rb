@@ -110,8 +110,8 @@ module Html2rss
 
       def kicker_noise?(node) = node.name == :time || Article::Title.noise_piece?(node.visible_text)
 
-      # Teaser clock elements (+time+, or text that is only a clock) are not headline text.
-      def teaser_clock?(node) = node.name == :time || Article::Title.clock_piece?(node.visible_text)
+      # Teaser noise elements (+time+, or text that is only a clock or a label) are not headline text.
+      def headline_noise?(node) = node.name == :time || Article::Title.headline_noise_piece?(node.visible_text)
 
       # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). Credit-only cards
       # may blank to nil (description can carry the item). Other junk shapes must stay present so
@@ -150,14 +150,14 @@ module Html2rss
       # @return [String, nil] the title child's text when the heading splits kicker and title, else the whole heading
       def heading_title_text = text_without_kicker(title_child_of_heading || heading)
 
-      # A kicker nested in a heading or anchor is the kicker, not headline text; nor is a teaser clock.
+      # A kicker nested in a heading or anchor is the kicker, not headline text; nor is a teaser noise element.
       #
       # @param node [SST::Node, nil]
       # @return [String, nil]
       def text_without_kicker(node)
         return unless node
 
-        excluded = node.descendants.select { teaser_clock?(_1) }
+        excluded = node.descendants.select { headline_noise?(_1) }
         excluded << kicker_node if kicker_node && descendant_of?(kicker_node, node)
         excluded.empty? ? node.visible_text : node.visible_text(exclude: excluded)
       end
@@ -211,14 +211,23 @@ module Html2rss
         end
       end
 
-      # The first kicker-marked node, unless it wraps the heading. Memoized even when nil.
+      # The first leaf-most kicker-marked node that leaves headline text beside it. A marked wrapper
+      # (+kicker-group+, +headline--has-kicker+, a +teaser--with-kicker+ card) holds the kicker or the
+      # headline; it is not the kicker. Memoized even when nil.
       def kicker_node
         return @kicker_node if defined?(@kicker_node)
 
-        node = @root.find do |n|
-          n.attrs.raw.key?('data-tb-kicker') || n.attrs.class_names.any?(KICKER_CLASS_PATTERN)
+        marked = @root.find_all { |n| n.attrs.raw.key?('data-tb-kicker') || n.attrs.class_names.any?(KICKER_CLASS_PATTERN) }
+        @kicker_node = marked.find do |node|
+          marked.none? { |other| !other.equal?(node) && descendant_of?(other, node) } && kicker_beside_headline?(node)
         end
-        @kicker_node = node && heading && descendant_of?(heading, node) ? nil : node
+      end
+
+      def kicker_beside_headline?(node)
+        return true unless (source = heading || @selected_anchor)
+        return false if descendant_of?(source, node)
+
+        !descendant_of?(node, source) || source.visible_text(exclude: [node]).to_s.match?(/[[:alnum:]]/)
       end
 
       def descendant_of?(child, ancestor)

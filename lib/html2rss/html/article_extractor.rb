@@ -86,13 +86,12 @@ module Html2rss
       end
 
       # A kicker nested in the heading or anchor is the kicker, not headline text; nor is a teaser
-      # clock. Excluding a kicker outside +source+ is a no-op, so no descendant check is needed.
+      # noise element. Excluding a kicker outside +source+ is a no-op, so no descendant check is needed.
       def extract_headline
-        source = heading || selected_anchor
-        return fallback_anchorless_title unless source
+        return fallback_anchorless_title unless headline_source
 
-        clocks = source.css('*').select { teaser_clock?(_1) }
-        Navigator.extract_visible_text(source, exclude_nodes: [kicker_node, *clocks].compact)
+        noise = headline_source.css('*').select { headline_noise?(_1) }
+        Navigator.extract_visible_text(headline_source, exclude_nodes: [kicker_node, *noise].compact)
       end
 
       # Kicker text without its +time+ and noise pieces ({Article::Title.noise_piece?}).
@@ -105,7 +104,9 @@ module Html2rss
 
       def kicker_noise?(node) = node.name == 'time' || Article::Title.noise_piece?(Navigator.extract_visible_text(node))
 
-      def teaser_clock?(node) = node.name == 'time' || Article::Title.clock_piece?(Navigator.extract_visible_text(node))
+      def headline_noise?(node)
+        node.name == 'time' || Article::Title.headline_noise_piece?(Navigator.extract_visible_text(node))
+      end
 
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?
@@ -122,12 +123,24 @@ module Html2rss
         )
       end
 
-      # The first kicker-marked node, unless it is or wraps the heading. Memoized even when nil.
+      def headline_source = heading || selected_anchor
+
+      # The first leaf-most kicker-marked node that leaves headline text beside it. A marked wrapper
+      # (+kicker-group+, +headline--has-kicker+, a +teaser--with-kicker+ card) holds the kicker or the
+      # headline; it is not the kicker. Memoized even when nil.
       def kicker_node
         return @kicker_node if defined?(@kicker_node)
 
-        node = article_tag.at_css(KICKER_SELECTOR)
-        @kicker_node = node && heading && (node == heading || Navigator.descendant_of?(heading, node)) ? nil : node
+        @kicker_node = article_tag.css(KICKER_SELECTOR).find { |node| kicker_leaf?(node) }
+      end
+
+      def kicker_leaf?(node)
+        return false if node.at_css(KICKER_SELECTOR)
+        return true unless (source = headline_source)
+        return false if node == source || Navigator.descendant_of?(source, node)
+
+        !Navigator.descendant_of?(node, source) ||
+          Navigator.extract_visible_text(source, exclude_nodes: [node]).to_s.match?(/[[:alnum:]]/)
       end
 
       def leftover_lines

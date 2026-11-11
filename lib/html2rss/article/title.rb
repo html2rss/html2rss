@@ -8,14 +8,16 @@ module Html2rss
     # Whitespace collapse ({.collapse}) is universal. Composition ({.compose}) is opt-in per caller
     # (see {Article#initialize}): configured selector titles and publisher feed titles stay verbatim.
     #
-    # A composed title takes the form +Kicker: Headline+ (or just +Headline+). Both parts are
-    # whitespace-collapsed, trimmed of stray separators, and stripped of leading noise: a clock
-    # time set off by a separator (+10:00 | Headline+), screen-reader field labels (+Section:+)
-    # and type labels with their marker (+Article type: Video+). The label and marker sets are
-    # small, closed and multilingual (en, de, fr, es), matching {LinkDestination::TextClassifier}.
+    # A composed title takes the form +Kicker: Headline+ (or just +Headline+, or the kicker alone when
+    # the headline is blank). Both parts are whitespace-collapsed and trimmed of stray separators
+    # ({SEPARATOR_MARK}). Only the kicker is noise-stripped by text: a leading clock time set off by a
+    # separator (+10:00 | Topic+), screen-reader field labels (+Section:+) and type labels with their
+    # marker (+Article type: Video+). The label and marker sets are small, closed and multilingual
+    # (en, de, fr, es), matching {LinkDestination::TextClassifier}.
     #
-    # A clock run straight into the headline (+10:00 Budget vote+) is not noise by text alone:
-    # the extractors drop teaser clock elements ({.clock_piece?}) before the text is joined, and
+    # Headline text is never noise-stripped: +20:15 Uhr: Neuer Krimi+ or +9:41 is the time+ is a real
+    # headline. Teaser noise in a headline is told apart by structure instead: the extractors drop
+    # +time+ elements and elements that are only a clock or a label ({.headline_noise_piece?}), and
     # judge kicker child elements with {.noise_piece?}.
     module Title
       # Joins a kicker to its headline.
@@ -38,25 +40,36 @@ module Html2rss
         'vidéo', 'diaporama', 'en direct', 'communiqué de presse',
         'vídeo', 'galería', 'en directo', 'nota de prensa'
       ].freeze
-      # Leading noise pieces, repeated: stray separators, separated clocks, field labels, type label plus marker.
-      NOISE_PREFIX = /
-        \A(?:
-          [[:space:]:|•·–—]+
-          | #{CLOCK}(?:\s*Uhr)?(?=[[:space:]]*(?:[:|•·–—]|\z))
-          | (?:section|category|rubrik|ressort|kategorie|rubrique|cat[ée]gorie|secci[óo]n|categor[íi]a)\s*:
-          | (?:article\s+type|content\s+type|artikeltyp|beitragstyp|inhaltstyp|type\s+d['’]article
-              |type\s+de\s+contenu|tipo\s+de\s+art[íi]culo|tipo\s+de\s+contenido)\s*:
-            (?:\s*(?:#{Regexp.union(TYPE_MARKERS.sort_by { -_1.length }).source})(?![[:alnum:]]))?
-        )+
+      # One separator between a kicker and its headline: +: | • · – —+, or a space-delimited +- / > »+
+      # (so a minus sign, a path or a German »quote« is not one).
+      SEPARATOR_MARK = %r{[:|•·–—]|[-/>»](?=[[:space:]]|\z)}
+      # Screen-reader field labels (+Section:+) and type labels with their marker (+Article type: Video+).
+      LABEL = /
+        (?:section|category|rubrik|ressort|kategorie|rubrique|cat[ée]gorie|secci[óo]n|categor[íi]a)\s*:
+        | (?:article\s+type|content\s+type|artikeltyp|beitragstyp|inhaltstyp|type\s+d['’]article
+            |type\s+de\s+contenu|tipo\s+de\s+art[íi]culo|tipo\s+de\s+contenido)\s*:
+          (?:\s*(?:#{Regexp.union(TYPE_MARKERS.sort_by { -_1.length }).source})(?![[:alnum:]]))?
       /ix
-      # Trailing stray separators (a kicker that already ends in +:+ or + :+).
-      STRAY_SUFFIX = /[[:space:]:|•·–—]+\z/
+      # A whole piece that is only a label: a screen-reader label element, never headline text.
+      LABEL_PIECE = /\A(?:#{LABEL})\z/
+      # Leading separators of a headline (+Kicker</span> – Headline+ leaves +– Headline+).
+      LEADING_SEPARATORS = /\A(?:[[:space:]]|#{SEPARATOR_MARK})+/
+      # Leading kicker noise, repeated: separators, separated clocks, labels.
+      KICKER_NOISE = /
+        \A(?:
+          [[:space:]] | #{SEPARATOR_MARK} | #{LABEL}
+          | #{CLOCK}(?:\s*Uhr)?(?=[[:space:]]*(?:#{SEPARATOR_MARK}|\z))
+        )+
+      /x
+      # Trailing stray separators (+Kicker :+, +Kicker -+). A trailing +»+ closes a French quote, so it stays.
+      TRAILING_SEPARATORS = %r{(?:[[:space:]]|[:|•·–—]|(?<=[[:space:]])[-/>])+\z}
       # The inline kicker boundary of +Kicker : Headline+: a whitespace-preceded colon after at most
       # eight words ending in a letter or closing quote/bracket, so a score (+16 : 9+) keeps its colon.
       SPACED_COLON = /\A((?:[^[:space:]]+[[:space:]]+){0,7}?[^[:space:]]*[\p{L}"'“”’»›)\]])[[:space:]]+:[[:space:]]*/
       # A kicker that already ends a sentence (+Kicker?+) joins its headline with a space, not a colon.
       TERMINAL_PUNCTUATION = /[?!…‽]\z/
-      private_constant :NOISE_PREFIX, :STRAY_SUFFIX, :SPACED_COLON, :TERMINAL_PUNCTUATION
+      private_constant :LABEL, :LABEL_PIECE, :LEADING_SEPARATORS, :KICKER_NOISE, :TRAILING_SEPARATORS,
+                       :SPACED_COLON, :TERMINAL_PUNCTUATION
 
       class << self
         ##
@@ -68,26 +81,38 @@ module Html2rss
         end
 
         ##
-        # @param headline [String, nil] headline text as extracted
+        # @param headline [String, nil] headline text as extracted; kept verbatim apart from separators
         # @param kicker [String, nil] kicker / eyebrow text, when the source exposes one
-        # @return [String, nil] +Kicker: Headline+, the clean headline, or nil when it is blank
+        # @return [String, nil] +Kicker: Headline+, the headline, the kicker when the headline is blank,
+        #   or nil when both are blank
         def compose(headline, kicker: nil)
-          head = clean(headline)
-          return unless head
-
-          top = clean(kicker)
-          return head if top.nil? || noise_kicker?(top) || prefixed?(head, top)
+          head = trim(headline, LEADING_SEPARATORS)
+          top = trim(kicker, KICKER_NOISE)
+          return head if top.nil? || noise_kicker?(top)
+          return top unless head
+          return head if prefixed?(head, top)
 
           "#{top}#{top.match?(TERMINAL_PUNCTUATION) ? ' ' : SEPARATOR}#{head}"
         end
 
         ##
-        # Whether a teaser element's text is only a clock time (+19:47+, +10:00 CET+). Extractors drop
-        # such elements, and +time+ elements, from headline text before it is joined.
+        # Whether a piece of text is only a clock time (+19:47+, +10:00 CET+). Description peels such chips.
         #
-        # @param text [String, nil] visible text of one element
+        # @param text [String, nil] visible text of one element or chip
         # @return [Boolean]
         def clock_piece?(text) = collapse(text).to_s.match?(CLOCK_PIECE)
+
+        ##
+        # Whether one element inside a headline is teaser noise on its own: only a clock time or only a
+        # label (+Section:+, +Article type: Video+). Extractors drop such elements, and +time+ elements,
+        # from headline text before it is joined; the headline text itself is never noise-stripped.
+        #
+        # @param text [String, nil] visible text of one headline descendant element
+        # @return [Boolean]
+        def headline_noise_piece?(text)
+          piece = collapse(text).to_s
+          piece.match?(CLOCK_PIECE) || piece.match?(LABEL_PIECE)
+        end
 
         ##
         # Whether one child element of a kicker is noise on its own: blank, a clock time, a field
@@ -102,11 +127,11 @@ module Html2rss
 
         private
 
-        def clean(text)
+        def trim(text, prefix)
           return unless (collapsed = collapse(text))
 
-          cleaned = collapsed.sub(NOISE_PREFIX, '').sub(STRAY_SUFFIX, '').sub(SPACED_COLON, "\\1#{SEPARATOR}")
-          cleaned unless cleaned.empty?
+          trimmed = collapsed.sub(prefix, '').sub(TRAILING_SEPARATORS, '').sub(SPACED_COLON, "\\1#{SEPARATOR}")
+          trimmed unless trimmed.empty?
         end
 
         def noise_kicker?(kicker) = TYPE_MARKERS.include?(kicker.downcase)

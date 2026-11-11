@@ -170,10 +170,17 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(title_for.call(html)).to eq('Storm ahead')
     end
 
-    it 'returns no title for a kicker-only card' do
+    it 'takes no kicker from a with-kicker modifier on the card root' do
+      html = '<div class="teaser teaser--with-kicker"><a href="/news/story">Tram line extends</a> ' \
+             '<span>Short note on the line.</span></div>'
+
+      expect(title_for.call(html)).to eq('Tram line extends')
+    end
+
+    it 'titles a kicker-only card with the kicker alone' do
       html = '<article><span class="eyebrow">Weather</span><a href="/news/story"><img src="/a.jpg"></a></article>'
 
-      expect(title_for.call(html)).to be_nil
+      expect(title_for.call(html)).to eq('Weather')
     end
   end
 

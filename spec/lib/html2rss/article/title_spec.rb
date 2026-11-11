@@ -44,7 +44,38 @@ RSpec.describe Html2rss::Article::Title do
       ['Storm ahead', 'Weather!'] => 'Weather! Storm ahead',
       ['Storm ahead', 'Weather…'] => 'Weather… Storm ahead',
       ['Storm ahead', 'Weather? :'] => 'Weather? Storm ahead',
-      ['Storm : ahead', 'Weather'] => 'Weather: Storm: ahead'
+      ['Storm : ahead', 'Weather'] => 'Weather: Storm: ahead',
+      ['- Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['– Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['— Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['/ Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['| Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['» Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['> Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      [': Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['· Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['• Storm ahead', 'Weather'] => 'Weather: Storm ahead',
+      ['Storm ahead', 'Weather -'] => 'Weather: Storm ahead',
+      ['Storm ahead', 'Weather /'] => 'Weather: Storm ahead',
+      ['Storm ahead', 'Weather >'] => 'Weather: Storm ahead',
+      ['Storm ahead', 'Weather —'] => 'Weather: Storm ahead',
+      ['Storm ahead', 'Weather •'] => 'Weather: Storm ahead',
+      ['Storm ahead', 'Weather ·'] => 'Weather: Storm ahead',
+      ['Storm ahead', '19:47 - Weather'] => 'Weather: Storm ahead',
+      ['Storm ahead', 'Up-'] => 'Up-: Storm ahead',
+      ['Storm ahead', 'A/'] => 'A/: Storm ahead',
+      ['Storm ahead', '« Exclusif »'] => '« Exclusif »: Storm ahead',
+      ['-5 degrees tonight', 'Weather'] => 'Weather: -5 degrees tonight',
+      ['/r/ threads grow', 'Weather'] => 'Weather: /r/ threads grow',
+      ['>Storm ahead', 'Weather'] => 'Weather: >Storm ahead',
+      ['»Storm« ahead', 'Weather'] => 'Weather: »Storm« ahead',
+      ['9:15 | Storm ahead', 'Weather'] => 'Weather: 9:15 | Storm ahead',
+      [nil, 'Weather'] => 'Weather',
+      [" \n ", 'Rubrik: Weather :'] => 'Weather',
+      ['19:47', 'Weather'] => 'Weather: 19:47',
+      [nil, 'Video'] => nil,
+      [nil, '09:05'] => nil,
+      [nil, nil] => nil
     }.each do |(headline, kicker), expected|
       it "composes #{headline.inspect} with kicker #{kicker.inspect} as #{expected.inspect}" do
         expect(described_class.compose(headline, kicker:)).to eq(expected)
@@ -54,26 +85,35 @@ RSpec.describe Html2rss::Article::Title do
     {
       "Tram line extends\nto the eastern districts" => 'Tram line extends to the eastern districts',
       "  Tram line\t extends  " => 'Tram line extends',
-      '9:15 | Park planting day' => 'Park planting day',
-      '21:00:30 – Council approves' => 'Council approves',
-      '9:15 PM • Council approves' => 'Council approves',
-      '9:15pm · Council approves' => 'Council approves',
-      '9:15 Uhr: Bahnhof gesperrt' => 'Bahnhof gesperrt',
-      '23:59 — Council approves' => 'Council approves',
+      '9:15 | Park planting day' => '9:15 | Park planting day',
+      '21:00:30 – Council approves' => '21:00:30 – Council approves',
+      '9:15 PM • Council approves' => '9:15 PM • Council approves',
+      '9:15pm · Council approves' => '9:15pm · Council approves',
+      '9:15 Uhr: Bahnhof gesperrt' => '9:15 Uhr: Bahnhof gesperrt',
+      '23:59 — Council approves' => '23:59 — Council approves',
       '10:00 Budget vote' => '10:00 Budget vote',
       '9:15 am Bahnhof gesperrt' => '9:15 am Bahnhof gesperrt',
       '9:155 trains cancelled' => '9:155 trains cancelled',
       '28:25 – Derby ends level' => '28:25 – Derby ends level',
       '24:00 | Night bus returns' => '24:00 | Night bus returns',
       '9:60 | Night bus returns' => '9:60 | Night bus returns',
-      '12:30 | 10:00 – Council approves' => 'Council approves',
+      '12:30 | 10:00 – Council approves' => '12:30 | 10:00 – Council approves',
       ': Council approves' => 'Council approves',
-      'Artikeltyp: Video Museum öffnet wieder' => 'Museum öffnet wieder',
-      "Type d'article : Vidéo Le musée rouvre" => 'Le musée rouvre',
-      'Tipo de artículo: Audio El museo reabre' => 'El museo reabre',
-      'Article type: Live blog Council votes' => 'Council votes',
-      'Article type: Council votes' => 'Council votes',
-      'Category: Council votes' => 'Council votes',
+      '– Council approves' => 'Council approves',
+      '16:10 laptops are back' => '16:10 laptops are back',
+      '23:21 – Handball women win' => '23:21 – Handball women win',
+      '20:15 Uhr: Neuer Krimi' => '20:15 Uhr: Neuer Krimi',
+      '9:41 is the time' => '9:41 is the time',
+      '12:00 noon deadline passes' => '12:00 noon deadline passes',
+      'Council approves —' => 'Council approves',
+      'Council approves -' => 'Council approves',
+      'Council approves »' => 'Council approves »',
+      'Artikeltyp: Video Museum öffnet wieder' => 'Artikeltyp: Video Museum öffnet wieder',
+      "Type d'article : Vidéo Le musée rouvre" => "Type d'article: Vidéo Le musée rouvre",
+      'Tipo de artículo: Audio El museo reabre' => 'Tipo de artículo: Audio El museo reabre',
+      'Article type: Live blog Council votes' => 'Article type: Live blog Council votes',
+      'Article type: Council votes' => 'Article type: Council votes',
+      'Category: Council votes' => 'Category: Council votes',
       'Video shows the new tram line' => 'Video shows the new tram line',
       'Council approves:' => 'Council approves',
       '2:1 win for the home side' => '2:1 win for the home side',
@@ -93,14 +133,8 @@ RSpec.describe Html2rss::Article::Title do
       end
     end
 
-    it 'returns nil for a blank or noise-only headline even with a kicker', :aggregate_failures do
-      expect(described_class.compose(nil, kicker: 'Weather')).to be_nil
-      expect(described_class.compose(" \n ", kicker: 'Weather')).to be_nil
-      expect(described_class.compose('19:47', kicker: 'Weather')).to be_nil
-    end
-
     it 'is idempotent on its own output' do
-      title = described_class.compose('12:30 | Storm ahead', kicker: 'Rubrik: Weather :')
+      title = described_class.compose('– 12:30 | Storm ahead', kicker: 'Rubrik: Weather :')
 
       expect(described_class.compose(title)).to eq(title)
     end
@@ -114,6 +148,18 @@ RSpec.describe Html2rss::Article::Title do
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.clock_piece?(text)).to be(expected)
+      end
+    end
+  end
+
+  describe '.headline_noise_piece?' do
+    {
+      '19:47' => true, '10:00 Uhr' => true, ' Section: ' => true, 'Rubrique :' => true, 'Article type: Video' => true,
+      'Artikeltyp:' => true, 'Video' => false, 'Thema:' => false, 'Section: Harbor' => false,
+      '10:00 Budget vote' => false, '' => false, nil => false
+    }.each do |text, expected|
+      it "is #{expected} for #{text.inspect}" do
+        expect(described_class.headline_noise_piece?(text)).to be(expected)
       end
     end
   end
