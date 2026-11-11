@@ -682,13 +682,13 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
-    context 'when the listing is wrapping a.card links (ISS Africa shape)' do
-      let(:url) { Html2rss::Url.from_absolute('https://issafrica.org/iss-today') }
+    context 'when the listing is wrapping a.card links (synthetic news shape)' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/daily-briefing') }
       let(:body) do
         cards = [
-          ['/iss-today/sahel-conflict-needs-more-attention', 'Sahel conflict needs more attention today'],
-          ['/iss-today/west-africa-coup-watch-briefing', 'West Africa coup watch briefing today'],
-          ['/iss-today/sudan-peace-talks-stall-again', 'Sudan peace talks stall again this week']
+          ['/daily-briefing/harbor-project-needs-more-attention', 'Harbor project needs more attention today'],
+          ['/daily-briefing/northern-region-weather-watch-briefing', 'Northern region weather watch briefing today'],
+          ['/daily-briefing/river-council-talks-stall-again', 'River council talks stall again this week']
         ]
         items = cards.map do |href, title|
           <<~CARD
@@ -696,7 +696,7 @@ RSpec.describe Html2rss::AutoSource do
               <div class="card__image"><img src="/img/#{href.split('/').last}.jpg" alt=""></div>
               <div class="card__content">
                 <h3>#{title}</h3>
-                <p>Teaser line for the ISS Today briefing.</p>
+                <p>Teaser line for the daily briefing.</p>
               </div>
             </a>
           CARD
@@ -706,13 +706,13 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'admits at least one article from the wrapping cards', :aggregate_failures do
         expect(articles.size).to be >= 1
-        expect(articles.map { |article| article.url.to_s }).to all(include('/iss-today/'))
+        expect(articles.map { |article| article.url.to_s }).to all(include('/daily-briefing/'))
         expect(articles.map(&:title)).to all(match(/\A\S+(?:\s+\S+){2,}/))
       end
     end
 
-    context 'with a JSON document listing (indieappsales slice)' do
-      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+    context 'with a JSON document listing (app list slice)' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/banner/app-list.json') }
       let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
       let(:response) do
         Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
@@ -736,7 +736,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     context 'with a JSON document listing keeping different domains' do
-      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/banner/app-list.json') }
       let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
       let(:response) do
         Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
@@ -747,13 +747,13 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'keeps the long-named off-domain item', :aggregate_failures do
         expect(articles.map(&:title)).to eq(['Long Enough App Name'])
-        expect(articles.first.url.to_s).to eq('https://apps.apple.com/app/id1234567890')
+        expect(articles.first.url.to_s).to eq('https://apps.example.net/app/id1234567890')
         expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::JsonDocument)
       end
     end
 
     context 'with json_document disabled on a JSON listing' do
-      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/banner/app-list.json') }
       let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
       let(:response) do
         Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
