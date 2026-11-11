@@ -176,7 +176,7 @@ Labeled synthetic pages under `spec/fixtures/auto_source/corpus/` (hosts `exampl
 
 ## JSON state article node
 
-Which hashes of a JSON state entry hold its article fields. Owned by `JsonState::ArticleNormalizer.article_sources` (detector and normaliser both consult it; `ValueFinder` reads only the keys of the hashes it is given). An entry with its own title or description is the node; a wrapper entry delegates to the only nested Hash (up to two levels) with title and URL, else the only titled one, keeping the entry as fallback source; competing nodes skip the entry. No wrapper-key list.
+Which hashes of a JSON state entry hold its article fields. Owned by `JsonState::ArticleNormalizer.article_sources` (detector and normaliser both consult it; `ValueFinder` reads only the keys of the hashes it is given). An entry with its own title or description is the node; a wrapper entry delegates to the only nested Hash (up to two levels) with title and URL, else the only titled one, keeping the entry as fallback source; competing nodes skip the entry. An entry with its own direct URL (not the envelope `links` key) delegates only to a node with a real title key (`title`/`headline`/`text`, never a bare `name`) and keeps its URL; an entry whose only URL is `links` keeps the node first. No wrapper-key list.
 
 ## Enhance leftover fields
 

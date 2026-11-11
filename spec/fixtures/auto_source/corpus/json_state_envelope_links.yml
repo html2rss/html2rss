@@ -1,0 +1,8 @@
+---
+case: State-only envelope entries carrying attributes{title,path.alias} and a sibling links.self API
+  href; the node path alias is the article URL, the envelope links URL never wins.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/council-votes-on-parking

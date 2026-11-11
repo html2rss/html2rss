@@ -12,6 +12,8 @@ module Html2rss
           ARTICLE_TITLE_KEYS = (TITLE_KEYS - %i[name]).freeze
           # Preferred keys when extracting URL-like values from state payloads.
           URL_KEYS = %i[url link href permalink slug path canonicalUrl shortUrl alias self links].freeze
+          # URL keys an entry itself can own; +links+ is an envelope sibling of the node, never the entry's own URL.
+          DIRECT_URL_KEYS = (URL_KEYS - %i[links]).freeze
           # Preferred keys when extracting description-like values from state payloads.
           DESCRIPTION_KEYS = %i[description summary excerpt dek subheading abstract].freeze
           # Preferred keys when extracting image-like values from state payloads.
@@ -66,7 +68,8 @@ module Html2rss
             # and URL, else to the only nested Hash carrying a title; the entry stays the fallback
             # source (e.g. an envelope's sibling +links+). A wrapper entry with its own URL is the
             # link: it delegates only to the only nested Hash carrying an article title (never a bare
-            # +name+), and its URL wins over the node's. Competing nested nodes skip the entry, so an
+            # +name+), and its URL wins over the node's. An entry whose only URL is +links+ is not that
+            # link: the node leads and +links+ stays a fallback. Competing nested nodes skip the entry, so an
             # author object holding a name and URL never becomes the article.
             #
             # @param entry [Object] raw article entry candidate
@@ -80,7 +83,7 @@ module Html2rss
               return unless nodes.one?
 
               node = nodes.first
-              url?(entry) && url?(node) ? [entry, node] : [node, entry]
+              own_url?(entry) && url?(node) ? [entry, node] : [node, entry]
             end
 
             # @param sources [Hash, Array<Hash>, nil] entry or field sources from {article_sources}
@@ -216,10 +219,14 @@ module Html2rss
               !ValueFinder.fetch(object, URL_KEYS).nil?
             end
 
+            def own_url?(entry)
+              !ValueFinder.fetch(entry, DIRECT_URL_KEYS).nil?
+            end
+
             # Nested nodes that may hold the article fields of a wrapper entry.
             def candidate_nodes(entry)
               titled = titled_nodes(entry, MAX_NODE_DEPTH)
-              return titled.reject { ValueFinder.fetch(_1, ARTICLE_TITLE_KEYS).nil? } if url?(entry)
+              return titled.reject { ValueFinder.fetch(_1, ARTICLE_TITLE_KEYS).nil? } if own_url?(entry)
 
               linked = titled.select { url?(_1) }
               linked.empty? ? titled : linked

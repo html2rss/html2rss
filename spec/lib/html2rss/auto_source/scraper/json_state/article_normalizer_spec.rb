@@ -104,6 +104,23 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       expect(result[:url].to_s).to eq('https://example.com/a')
     end
 
+    it 'keeps the node url when the entry only has an envelope links key', :aggregate_failures do
+      entry = { links: { self: { href: '/api/node/article/u1' } },
+                attributes: { title: 'Harbor ferry', path: { alias: '/news/harbor-ferry' } } }
+      result = described_class.normalise(entry, base_url:)
+
+      expect(result).to include(title: 'Harbor ferry')
+      expect(result[:url].to_s).to eq('https://example.com/news/harbor-ferry')
+    end
+
+    it 'prefers the node url over an unrelated sibling links array', :aggregate_failures do
+      entry = { node: { title: 'T', url: '/news/harbor' }, links: [{ url: '/tag/a' }] }
+      result = described_class.normalise(entry, base_url:)
+
+      expect(result).to include(title: 'T')
+      expect(result[:url].to_s).to eq('https://example.com/news/harbor')
+    end
+
     it 'never turns an author-only entry into an article', :aggregate_failures do
       author = { name: 'Staff', url: '/authors/staff' }
 
