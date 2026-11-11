@@ -32,8 +32,8 @@ RSpec.shared_examples 'article extractor title pieces' do
       '28:25 – Derby ends level'
     ],
     'a clock and label opening the headline text' => [
-      '<h2><a href="/news/story">20:15 Uhr: Neuer Krimi im Ersten</a></h2>',
-      '20:15 Uhr: Neuer Krimi im Ersten'
+      '<h2><a href="/news/story">20:15 Uhr: Neuer Krimi am Abend</a></h2>',
+      '20:15 Uhr: Neuer Krimi am Abend'
     ],
     'a screen-reader label element in the headline' => [
       '<h2><a href="/news/story"><span class="sr-only">Article type: Video</span> Tram line extends</a></h2>',
@@ -50,8 +50,8 @@ RSpec.shared_examples 'article extractor title pieces' do
       'Transit: Tram line extends'
     ],
     'a has-kicker modifier holding only the headline text' => [
-      '<h2><a href="/news/story"><span class="headline--has-kicker">20:15 | Krimi im Ersten</span></a></h2>',
-      '20:15 | Krimi im Ersten'
+      '<h2><a href="/news/story"><span class="headline--has-kicker">20:15 | Krimi am Abend</span></a></h2>',
+      '20:15 | Krimi am Abend'
     ],
     'a separator after a kicker in the heading' => [
       '<h2><a href="/news/story"><span class="kicker">Transit</span> / Tram line extends</a></h2>',
@@ -63,12 +63,12 @@ RSpec.shared_examples 'article extractor title pieces' do
       'Transit: Tram line extends'
     ],
     'a kicker-marked heading' => [
-      '<h2 class="headline--with-kicker"><a href="/news/story">20:15 | Krimi im Ersten</a></h2>',
-      '20:15 | Krimi im Ersten'
+      '<h2 class="headline--with-kicker"><a href="/news/story">20:15 | Krimi am Abend</a></h2>',
+      '20:15 | Krimi am Abend'
     ],
     'a has-kicker modifier holding the heading text beside a read-more link' => [
-      '<h2><span class="headline--has-kicker">20:15 | Krimi im Ersten</span></h2><a href="/news/story">Read more</a>',
-      '20:15 | Krimi im Ersten'
+      '<h2><span class="headline--has-kicker">20:15 | Krimi am Abend</span></h2><a href="/news/story">Read more</a>',
+      '20:15 | Krimi am Abend'
     ],
     'a kicker beside an image-only heading' => [
       '<span class="kicker">Weather</span><h2><a href="/news/story"><img src="/a.jpg" alt=""></a></h2>',
