@@ -29,13 +29,14 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     end
 
     it 'marks sponsored class tokens whole or as BEM and state variants' do
-      tokens = %w[advertorial sponsored is-sponsored has-advertorial sponsored-content card--sponsored
+      tokens = %w[advertorial sponsored is-sponsored is-advertorial sponsored-content card--sponsored
                   teaser--advertorial c-card__sponsored sponsored_post]
       expect(tokens.map { marker[node[class_names: ['card', _1]]] }).to all(eq(:container))
     end
 
     it 'ignores sponsored look-alike class tokens' do
-      rejected = %w[unsponsored non-sponsored page-sponsored sponsored-by-line sponsoredx Sponsored card--sponsor]
+      rejected = %w[unsponsored non-sponsored page-sponsored sponsored-by-line sponsoredx Sponsored card--sponsor
+                    has-sponsored has-advertorial list--has-sponsored]
       expect(rejected.filter_map { marker[node[class_names: [_1]]] }).to be_empty
     end
 
@@ -87,6 +88,22 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
       expect(label['Anzeige', raw: { 'hidden' => '' }]).to be_nil
       expect(label['Anzeige', style: 'display:none']).to be_nil
       expect(%w[hidden d-none is-hidden hide].filter_map { label['Anzeige', class_names: ['label', _1]] }).to be_empty
+    end
+
+    it 'ignores text and class labels under a hidden ancestor inside their card', :aggregate_failures do
+      chains = [{ class_names: %w[d-none] }, { raw: { 'hidden' => '' } }, { style: 'display: none' }]
+               .map { [node[name: :article, text: ''], node[name: :div, text: '', **_1]] }
+      expect(chains.filter_map { marker[node[text: 'Anzeige'], [*_1, block]] }).to be_empty
+      expect(chains.filter_map { marker[node[class_names: %w[ad-label]], _1] }).to be_empty
+      expect(chains.filter_map { marker[node[class_names: %w[is-sponsored]], _1] }).to be_empty
+    end
+
+    it 'keeps labels whose hidden ancestor sits outside their card', :aggregate_failures do
+      panel = node[name: :div, text: '', class_names: %w[hidden]]
+      %i[article section aside li].each do |card|
+        expect(marker[node[text: 'Anzeige'], [panel, node[name: card, text: ''], block]]).to eq(:label)
+      end
+      expect(marker[node[class_names: %w[ad-label]], [panel, node[name: :li, text: '']]]).to eq(:label)
     end
 
     it 'keeps visual-only and screen-reader-only text labels', :aggregate_failures do

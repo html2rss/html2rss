@@ -12,8 +12,9 @@ module Html2rss
     #   whose whole text is a paid-content label from a small closed multilingual set (en, de, fr,
     #   es). Attribution alone ("Presented by", "In Kooperation mit") states no payment and is no label.
     #
-    # A class or text label counts only on a rendered element: one without a +hidden+ attribute, an
-    # inline +display: none+ or a hiding utility class ({HIDDEN_CLASSES}). +aria-hidden="true"+ and
+    # A class or text label counts only on a rendered element: neither it nor an ancestor inside its
+    # card ({CARD_NAMES}) carries a +hidden+ attribute, an inline +display: none+ or a hiding utility
+    # class ({HIDDEN_CLASSES}). +aria-hidden="true"+ and
     # screen-reader-only classes still count: one is a visual label, the other a spoken one. A class
     # marker also needs content (an empty template slot is not a label). A text label never counts
     # inside running text: anchor text and headings are never read, nor are words inside an anchor, a
@@ -31,10 +32,10 @@ module Html2rss
       # apart), +no+, +null+, +false+, +0+, +off+.
       ON_VALUES = Set['true', '1', 'yes'].freeze
       # Sponsored class token: whole, behind a BEM block (+card--sponsored+, +teaser__advertorial+)
-      # or an +is-+/+has-+ state prefix, with an optional content suffix (+sponsored-content+).
-      # +unsponsored+ and +non-sponsored+ do not match.
+      # or an +is-+ state prefix, with an optional content suffix (+sponsored-content+).
+      # +unsponsored+, +non-sponsored+ and +has-sponsored+ (a wrapper that contains one) do not match.
       SPONSORED_CLASS = /
-        \A(?:[a-z0-9_-]*(?:--|__))?(?:is-|has-)?(?:sponsored|advertorial)
+        \A(?:[a-z0-9_-]*(?:--|__))?(?:is-)?(?:sponsored|advertorial)
         (?:[-_](?:content|post|story|article|card|item|teaser))?\z
       /x
       # Ad-label class token family, with an optional BEM element or modifier: +ad-label+,
@@ -48,6 +49,10 @@ module Html2rss
       HIDDEN_ATTRIBUTE = 'hidden'
       # Utility class tokens that keep an element from rendering.
       HIDDEN_CLASSES = Set['hidden', 'd-none', 'is-hidden', 'hide'].freeze
+      # Elements that delimit one card (+main+ is a page region, never a card). A hidden ancestor hides
+      # a marker only inside its card: a hidden tab panel or responsive wrapper around whole cards
+      # hides none of their labels.
+      CARD_NAMES = Set[:article, :section, :aside, :li].freeze
       # Class-token words (split on +-+/+_+) of topic chips, whose text names a topic, not a sale.
       CHIP_WORDS = Set['category', 'categories', 'tag', 'tags', 'kicker', 'topic', 'topics', 'rubric', 'rubrik',
                        'eyebrow'].freeze
@@ -82,7 +87,7 @@ module Html2rss
           return :container if raw_marker?(node.attrs.raw)
 
           kind = class_marker(node.attrs.class_names)
-          return (kind if visible?(node)) if kind
+          return (kind if visible?(node, ancestors)) if kind
 
           :label if text_label?(node, ancestors)
         end
@@ -104,7 +109,20 @@ module Html2rss
           (token.include?('sponsored') || token.include?('advertorial')) && token.match?(SPONSORED_CLASS)
         end
 
-        def visible?(node) = (node.children.any? || node.own_text.match?(/\S/)) && !hidden?(node)
+        def visible?(node, ancestors)
+          (node.children.any? || node.own_text.match?(/\S/)) && !unrendered?(node, ancestors)
+        end
+
+        # Whether +node+, or an ancestor up to and including its card, is hidden.
+        def unrendered?(node, ancestors)
+          return true if hidden?(node)
+
+          ancestors.reverse_each do |ancestor|
+            return true if hidden?(ancestor)
+            return false if CARD_NAMES.include?(ancestor.name)
+          end
+          false
+        end
 
         def hidden?(node)
           attrs = node.attrs
@@ -129,8 +147,9 @@ module Html2rss
 
         # The own-text check runs first: it is the cheap filter for every node of the page.
         def text_label?(node, ancestors)
-          label?(node.own_text) && !inert?(node) && !hidden?(node) && label?(node.visible_text) &&
-            ancestors.none? { _1.name == :a || _1.heading? } && !in_running_text?(ancestors)
+          label?(node.own_text) && !inert?(node) && label?(node.visible_text) &&
+            ancestors.none? { _1.name == :a || _1.heading? } && !in_running_text?(ancestors) &&
+            !unrendered?(node, ancestors)
         end
 
         def inert?(node) = node.name == :a || node.heading? || chip?(node)

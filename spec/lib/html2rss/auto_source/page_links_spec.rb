@@ -428,6 +428,36 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       end
     end
 
+    context 'when wrappers contain or hide markers' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <ul class="has-sponsored">
+              <li><h3><a href="/news/editorial">Editorial</a></h3></li>
+              <li class="is-sponsored"><h3><a href="/news/paid">Paid</a></h3></li>
+            </ul>
+            <article><div class="d-none"><span>Anzeige</span></div><h3><a href="/news/hidden-label">Hidden</a></h3></article>
+            <article><div hidden><span class="ad-label">Anzeige</span></div><h3><a href="/news/hidden-badge">Badge</a></h3></article>
+            <article><div style="display:none"><p><span>Werbung</span></p></div><h3><a href="/news/hidden-deep">Deep</a></h3></article>
+            <div class="hide"><article><span>Anzeige</span><h3><a href="/news/hidden-panel">Panel</a></h3></article></div>
+          </main></body></html>
+        HTML
+      end
+
+      let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
+
+      it 'reads a has- wrapper as containing sponsored cards, not as one' do
+        expect(sponsored['/news/editorial', '/news/paid']).to eq('/news/editorial' => false, '/news/paid' => true)
+      end
+
+      it 'ignores labels under a hidden ancestor inside their card, but not a hidden region around the card' do
+        expect(sponsored['/news/hidden-label', '/news/hidden-badge', '/news/hidden-deep', '/news/hidden-panel']).to eq(
+          '/news/hidden-label' => false, '/news/hidden-badge' => false, '/news/hidden-deep' => false,
+          '/news/hidden-panel' => true
+        )
+      end
+    end
+
     context 'without markers' do
       let(:html) { '<html><body><article><h3><a href="/news/plain">Plain</a></h3></article></body></html>' }
 

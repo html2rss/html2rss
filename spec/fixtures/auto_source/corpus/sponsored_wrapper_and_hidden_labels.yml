@@ -1,0 +1,13 @@
+---
+case: 'A has-sponsored list wrapper only contains a sponsored card: its editorial
+  cards stay and the is-sponsored card is dropped by its own marker. Labels or sponsored
+  classes under a hidden ancestor inside their card (d-none, is-hidden, a hidden attribute,
+  display:none) are no markers; a visible label still drops its card.'
+expected:
+- https://example.com/news/2026/11/harbor-crane-repaired
+- https://example.com/news/2026/11/school-choir-tour
+- https://example.com/news/2026/11/bridge-paint-finished
+- https://example.com/news/2026/11/market-hall-reopens
+- https://example.com/news/2026/11/night-library-pilot
+- https://example.com/news/2026/11/river-path-lights
+- https://example.com/news/2026/11/ice-rink-season

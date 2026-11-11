@@ -155,17 +155,15 @@ module Html2rss
       # a marker binds; a page without markers resolves nothing.
       #
       # A +:container+ marker holding anchors marks every destination inside it. A +:label+ (or an
-      # anchorless container marker) marks the card it sits in: its nearest {CARD_NAMES} element,
-      # itself included. That card marks its dominant destination: its only one, else its only
-      # headline destination (an anchor in or around a heading); a card with several headlines marks
-      # nothing, and so does a label outside every card (bare +div+ layouts).
+      # anchorless container marker) marks the card it sits in: its nearest
+      # {LinkDestination::Sponsorship::CARD_NAMES} element, itself included. That card marks its
+      # dominant destination: its only one, else its only headline destination (an anchor in or
+      # around a heading); a card with several headlines marks nothing, and so does a label outside
+      # every card (bare +div+ layouts).
       #
       # Marking is per card: a URL is sponsored only when every anchor to it sits in a marked card,
       # so a promo slot never hides the editorial card linking the same story.
       class SponsoredCards
-        # Elements that delimit one card. +main+ is a page region, never a card.
-        CARD_NAMES = Set[:article, :section, :aside, :li].freeze
-
         # @param document [SST::Document, nil]
         # @param link_resolver [Scoring::LinkResolver, nil]
         def initialize(document, link_resolver)
@@ -190,7 +188,7 @@ module Html2rss
         # +@labelled+ holds one flag per open card, innermost last.
         def walk(node)
           start = @anchors.size
-          card = CARD_NAMES.include?(node.name)
+          card = LinkDestination::Sponsorship::CARD_NAMES.include?(node.name)
           @labelled << false if card
           descend(node)
           mark(node, start)
