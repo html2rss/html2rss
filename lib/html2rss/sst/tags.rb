@@ -15,6 +15,10 @@ module Html2rss
       UTILITY_LANDMARK_NAMES = Set[:nav, :aside, :footer, :menu].freeze
       # Container names ignored as article roots.
       IGNORED_CONTAINER_NAMES = Set[:nav, :footer, :header, :svg, :script, :style].freeze
+      # Ignored containers that are chrome only at page level (ARIA banner/contentinfo scoping).
+      PAGE_CHROME_NAMES = Set[:header, :footer].freeze
+      # Ancestors that scope a header/footer to their own section instead of the page.
+      SECTIONING_NAMES = Set[:article, :section, :aside, :main].freeze
       # Names excluded from class/structure clustering.
       CLUSTER_EXCLUDED_NAMES = Set[:html, :body, :nav, :footer, :header, :svg, :script, :style].freeze
       # Href prefixes that never count as content destinations.

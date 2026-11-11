@@ -7,7 +7,7 @@ app_shell_state_dated.html:
   sst_built: true
 card_article_header_link.html:
   junk: 0
-  real: 0
+  real: 5
   expected: 5
   sst_built: true
 json_response_articles.json:

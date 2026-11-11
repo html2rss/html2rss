@@ -179,6 +179,34 @@ RSpec.describe Html2rss::SST::Normalizer do
       text = Nokogiri::HTML.fragment('just text').child
       expect(described_class.call(text)).to be_nil
     end
+
+    %w[article section aside main].each do |section|
+      it "keeps header, its link, and footer inside #{section} out of chrome" do # rubocop:disable RSpec/ExampleLength
+        doc = described_class.call("<html><body><#{section}><header><a href=\"/p\">P</a></header>" \
+                                   "<footer>F</footer></#{section}></body></html>")
+        header = doc.root.find { _1.name == :header }
+        nodes = [header, header.children.first, doc.root.find { _1.name == :footer }]
+        chrome = nodes.map { doc.index.ignored_chrome?(_1) }
+
+        expect(chrome).to eq([false, false, false])
+      end
+    end
+
+    it 'keeps page-level header and footer as chrome', :aggregate_failures do
+      doc = described_class.call('<html><body><header>H</header><div><footer>F</footer></div></body></html>')
+
+      expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :header })).to be(true)
+      expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :footer })).to be(true)
+    end
+
+    it 'keeps chrome for headers under nav or a page-level footer', :aggregate_failures do
+      doc = described_class.call('<html><body><article><nav><header id="n">N</header></nav></article><footer>' \
+                                 '<article><header id="f"><a href="/f">F</a></header></article></footer></body></html>')
+      chrome = %w[n f].map { |id| doc.index.ignored_chrome?(doc.root.find { _1.attrs.id == id }) }
+
+      expect(chrome).to eq([true, true])
+      expect(doc.index.ignored_chrome?(doc.root.find(&:link?))).to be(true)
+    end
   end
 
   describe '.call text order' do

@@ -54,8 +54,13 @@ module Html2rss
       # Typed Attrs fields excluded from the leftover raw hash.
       TYPED_ATTR_NAMES = Set['href', 'src', 'id', 'class', 'datetime', 'itemprop', 'style', 'srcset', 'type'].freeze
 
-      # String form of Tags::IGNORED_CONTAINER_NAMES for chrome checks without to_sym.
-      IGNORED_CONTAINER_TAGS = Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze
+      # String forms of {Tags} chrome sets for checks without to_sym.
+      # Chrome wherever it appears.
+      ALWAYS_CHROME_TAGS = (Tags::IGNORED_CONTAINER_NAMES - Tags::PAGE_CHROME_NAMES).to_set(&:to_s).freeze
+      # Chrome only outside {SECTIONING_TAGS}.
+      PAGE_CHROME_TAGS = Tags::PAGE_CHROME_NAMES.to_set(&:to_s).freeze
+      # Scope header/footer to their section.
+      SECTIONING_TAGS = Tags::SECTIONING_NAMES.to_set(&:to_s).freeze
 
       class << self
         ##
@@ -97,7 +102,7 @@ module Html2rss
       # @return [Document, nil] +nil+ when no SST nodes survive normalization
       def call
         root_nk = resolve_root_nk
-        root = normalize_element(root_nk, depth: 0, path: '', chrome: false)
+        root = normalize_element(root_nk, depth: 0, path: '', scope: :page)
         return unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
@@ -146,8 +151,8 @@ module Html2rss
         node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
       end
 
-      # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-      def normalize_element(nk_node, depth:, path:, chrome:)
+      # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+      def normalize_element(nk_node, depth:, path:, scope:)
         return unless nk_node.element?
 
         tag = Html::Probe.tag(nk_node)
@@ -167,16 +172,29 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        chrome_here = chrome || IGNORED_CONTAINER_TAGS.include?(tag)
+        scope_here = chrome_scope(tag, scope)
 
-        children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, chrome: chrome_here)
+        children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, scope: scope_here)
 
         node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
         @depths[node] = depth
-        @ignored_chrome[node] = chrome_here
+        @ignored_chrome[node] = scope_here == :chrome
         children.each { |child| @parents[child] = node }
 
         node
+      end
+
+      # Scope an element's subtree inherits: +:chrome+ sticks; header/footer are chrome only
+      # at +:page+ level, so card headers inside article/section/aside/main stay content.
+      # @param tag [String]
+      # @param scope [Symbol] parent scope: +:page+, +:sectioned+, or +:chrome+
+      # @return [Symbol]
+      def chrome_scope(tag, scope)
+        return :chrome if scope == :chrome || ALWAYS_CHROME_TAGS.include?(tag)
+        return :chrome if scope == :page && PAGE_CHROME_TAGS.include?(tag)
+        return :sectioned if SECTIONING_TAGS.include?(tag)
+
+        scope
       end
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
@@ -206,13 +224,13 @@ module Html2rss
 
       # Walks child nodes once, keeping direct text in the slot of the preceding kept child
       # (slot 0 is the lead text) so text order survives the element-only tree.
-      def normalize_children(nk_node, depth:, path:, chrome:)
+      def normalize_children(nk_node, depth:, path:, scope:)
         children = []
         slots = [+'']
         nk_node.children.each do |child|
           next slots.last << child.text if child.text?
 
-          node = normalize_element(child, depth: depth + 1, path:, chrome:)
+          node = normalize_element(child, depth: depth + 1, path:, scope:)
           (children << node) && (slots << +'') if node
         end
         [children, slots.first, slots.drop(1)]
