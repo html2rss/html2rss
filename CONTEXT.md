@@ -102,6 +102,10 @@ Shared path lexicon for native feed discovery and entry-resolution listing guess
 
 Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it. Differs from `Url#==` (slash-sensitive).
 
+## URL article identity
+
+Scheme-, fragment-, trailing-slash-, query-param-order-, and tracking-param-insensitive "same article" key (closed `Url::TRACKING_PARAM` set: `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid`, `mc_eid`, `ref`, `ref_src`; every other query param stays significant). Owned by `Html2rss::Url#article_identity`; `AutoSource::PageLinks` keys rendered anchors by it and `Cleanup` dedupes, rejects self-links, and audits URL diversity by it, so one rule decides all. A kept corroborated item whose URL differs from its content anchor only by these takes the anchor's URL minus tracking params (`Url#without_tracking_params`), never downgraded from `https` to `http`, so the item guid stays stable (`PageLinks#canonical_url`, applied by `Cleanup`).
+
 ## Feed resolution policy
 
 Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — requires typed `articles:` Array (`ArgumentError` otherwise; derive count from `articles.size`), surface weak/blocked predicates, and NativeFeed ≥50% majority (`scraper == AutoSource::Scraper::NativeFeed`).
@@ -142,9 +146,9 @@ OpenAPI 2.0 `ScrapeRequest` / `ScrapeSuccess` / `ScrapeError` is the wire author
 
 ## DOM chrome
 
-Layout noise and primary-link recognition for the **manual selector** path: ignored container tags/paths, class-clustering exclusions, utility landmarks, heading tags, main-anchor CSS, and visible-text extraction. Owned by `Html2rss::Html::Navigator` (+ `TextExtractor`). `Html::ArticleExtractor` serves selectors only.
+Layout noise and primary-link recognition for the **manual selector** path: ignored container tags/paths, class-clustering exclusions, utility landmarks, heading tags, main-anchor CSS, and visible-text extraction. Owned by `Html2rss::Html::Navigator` (+ `TextExtractor`); its tag sets and skip-href prefixes derive from `SST::Tags`, the single vocabulary owner. `Html::ArticleExtractor` serves selectors only.
 
-Heuristic auto-source chrome lives on `SST::Tags` / `SST::Text` after `SST::Normalizer` (sole Nokogiri on that path).
+Heuristic auto-source chrome lives on `SST::Tags` / `SST::Text` after `SST::Normalizer` (sole Nokogiri on that path). `SST::Index#ignored_chrome?` is set by the Normalizer: `nav` (and stripped tags) are chrome anywhere; `header`/`footer` (`Tags::PAGE_CHROME_NAMES`) are chrome only at page level, not under `Tags::SECTIONING_NAMES` (`article`/`section`/`aside`/`main`), matching ARIA banner/contentinfo scoping, so card permalinks in `<article><header>` stay content. Chrome is inherited: a header under `nav` or a page-level footer stays chrome. `Navigator.usable_card_parent?` applies the same scoping to card walks (SST nodes read `ignored_chrome?`; Nokogiri nodes check for a sectioning ancestor). A card kicker prefixes the title only with its topic: `SstArticleExtractor` drops `time`, clock, and field-label (`Section:`) pieces per `ArticleRules::Description`.
 
 ## Default items selector
 
@@ -160,7 +164,19 @@ Whether an anchor is junk chrome vs a content permalink. Owned by `Html2rss::Lin
 
 ## Feed-item admission
 
-Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoSource::Cleanup` (scheme/domain/self-link/title floor **and** destination-class hard exclude). Destination facts come from `LinkDestination::DestinationFacts` / `PathClassifier` — Cleanup does not own path lexicon Sets. Title string backstop stays `Cleanup.junk_reason` only. Scoring may demote or rank-time drop for heuristic discovery; it does not admit feed items. `AutoSource` short-circuits Html when earlier tiers already admitted ≥1 clean article below `limit` (quality over padding).
+Whether an extracted candidate may become a feed item. Owned by `Html2rss::AutoSource::Cleanup` (scheme/domain/self-link/title floor, destination-class hard exclude, **and** the structured-tier page check). Destination facts come from `LinkDestination::DestinationFacts` / `PathClassifier` — Cleanup does not own path lexicon Sets. Title string backstop stays `Cleanup.junk_reason` only. Scoring may demote or rank-time drop for heuristic discovery; it does not admit feed items. `AutoSource` short-circuits Html when earlier tiers already admitted ≥1 clean article below `limit` (quality over padding). Tier stop counts Cleanup-admitted items only, so items the page check drops never stop later tiers.
+
+## Structured-tier corroboration
+
+Whether an in-page structured item is backed by the rendered page. Which scrapers are checked: `AutoSource::Scraper::CORROBORATED_SCRAPERS` (Schema, Microdata, Microformats2, JsonState, XhrArticles, JsonDocument); native feed, CMS REST API, sitemap, and oEmbed items are publisher-declared and exempt. Where a URL is rendered: `AutoSource::PageLinks` (one pass over SST anchors keyed by `Url#article_identity`; `:content`, `:peripheral` for aside/menu/sectioned-footer landmarks, `:chrome` from `SST::Index#ignored_chrome?`, else `:absent`; `#sparse?` for no page, a degraded SST, or at most two content URLs). The keep/drop verdict and its private article-likeness score (dates, image, description, URL shape, scraper-cohort size and parent-path cohesion): `AutoSource::Corroboration#verdict`. Content placement keeps; chrome-only and unrendered URLs drop (`chrome_only`, `not_on_page`) unless the page is sparse; peripheral and sparse-page items keep on score, else drop as `unlikely`. Absence drops only when the page renders the item's scraper cohort (at least half of it as content anchors, or fewer than three items); a cohort the page mostly does not render (app shell with consent or legal links, aggregator redirect anchors) is scored with absence counting one against it. A shallow path ending in a post slug is a root-level permalink, not a section root. Cleanup runs the check before dedupe and tallies the reasons, so a dropped structured copy leaves its URL to a heuristic tier and a kept one wins dedupe. `AutoSource` memoizes the SST and page `LinkResolver` lazily: the first consumer (page check or heuristic tier) builds them, at most once per page. JsonState keeps no chrome rules of its own.
+
+## Auto-source corpus
+
+Labeled synthetic pages under `spec/fixtures/auto_source/corpus/` (hosts `example.com` only); each page (`.html` or `.json`) has a `.yml` sidecar listing its expected article URLs. `AutoSourceCorpus` (`spec/support/auto_source_corpus.rb`) is the sole runner: fixed base URL, no request session, no network. It scores admitted URLs per page as junk (not in the sidecar) and real (in the sidecar), and reports whether `SST::Normalizer` ran (observed by a spec-side probe, not a `lib/` hook). `bin/auto-source-corpus` prints the table. `auto_source_corpus_spec.rb` ratchets against `corpus/baseline.yml`: it fails only when a page's junk rises or real-found drops. Re-record intended changes only via `make corpus-baseline`. Adding a page means adding its sidecar and re-recording.
+
+## JSON state article node
+
+Which hashes of a JSON state entry hold its article fields. Owned by `JsonState::ArticleNormalizer.article_sources` (detector and normaliser both consult it; `ValueFinder` reads only the keys of the hashes it is given). An entry with its own title or description is the node; a wrapper entry delegates to the only nested Hash (up to two levels) with title and URL, else the only titled one, keeping the entry as fallback source; competing nodes skip the entry. An entry with its own direct URL (not the envelope `links` key) delegates only to a node with a real title key (`title`/`headline`/`text`, never a bare `name`) and keeps its URL; an entry whose only URL is `links` keeps the node first. No wrapper-key list.
 
 ## Enhance leftover fields
 

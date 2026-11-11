@@ -1,0 +1,9 @@
+---
+case: JSON state holds a menu that is never rendered; the page renders only the teaser
+  grid.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/school-board-approves-budget
+- https://example.com/news/2026/10/night-market-opens-downtown

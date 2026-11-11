@@ -513,7 +513,14 @@ RSpec.describe Html2rss do
       expect(feed_return.channel.title).to eq 'WELT - Aktuelle Nachrichten, News, Hintergründe & Videos'
       expect(feed_return.channel.link).to eq 'https://www.welt.de/'
       # eTLD+1 keeps same-site portal hosts (go.welt.de, asbs.welt.de) with www.welt.de.
-      expect(feed_return.items.size).to eq(86)
+      expect(feed_return.items.size).to eq(85)
+    end
+
+    it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
+      titles = feed_return.items.map { _1.title.to_s }
+
+      expect(titles.grep(/\A[^:]{0,40}\d{1,2}:\d{2}/)).to be_empty
+      expect(titles.grep(/\A\p{L}+:\s+\p{L}+:\s/)).to be_empty
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_source
@@ -549,7 +556,14 @@ RSpec.describe Html2rss do
     end
 
     it 'returns items', :slow do
-      expect(feed_return[:items].size).to eq(86)
+      expect(feed_return[:items].size).to eq(85)
+    end
+
+    it 'emits item titles without a clock-time or screen-reader label prefix', :aggregate_failures, :slow do
+      titles = feed_return[:items].map { _1[:title].to_s }
+
+      expect(titles.grep(/\A[^:]{0,40}\d{1,2}:\d{2}/)).to be_empty
+      expect(titles.grep(/\A\p{L}+:\s+\p{L}+:\s/)).to be_empty
     end
 
     it_behaves_like 'auto source option forwarding', method: :auto_json_feed

@@ -1,0 +1,27 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Runs AutoSource over the labeled corpus in spec/fixtures/auto_source/corpus/ and prints,
+# per page and in total: junk admitted, real items found, expected items, and whether SST
+# was built. Deterministic: fixed base URL, no request session, no network.
+# Usage: mise exec -- bin/auto-source-corpus [--write-baseline]
+
+ENV['LOG_LEVEL'] ||= 'error'
+
+require 'bundler/setup'
+require 'optparse'
+require_relative '../lib/html2rss'
+require_relative '../spec/support/auto_source_corpus'
+
+options = { write_baseline: false }
+OptionParser.new do |opts|
+  opts.on('--write-baseline', "Re-record #{AutoSourceCorpus::BASELINE_PATH}") { options[:write_baseline] = true }
+end.parse!
+
+rows = AutoSourceCorpus.run
+puts AutoSourceCorpus.table(rows)
+
+if options[:write_baseline]
+  AutoSourceCorpus.write_baseline(rows)
+  warn "Wrote #{AutoSourceCorpus::BASELINE_PATH}"
+end

@@ -3,6 +3,26 @@
 require 'nokogiri'
 
 RSpec.describe Html2rss::Html::Navigator do
+  describe 'tag vocabulary' do
+    {
+      HEADING_TAGS: [:HEADING_NAMES, %w[h1 h2 h3 h4 h5 h6]],
+      IGNORED_CONTAINER_TAGS: [:IGNORED_CONTAINER_NAMES, %w[nav footer header svg script style]],
+      UTILITY_LANDMARK_TAGS: [:UTILITY_LANDMARK_NAMES, %w[nav aside footer menu]]
+    }.each do |navigator_const, (tags_const, values)|
+      it "derives #{navigator_const} from SST::Tags::#{tags_const} with no delta" do
+        derived = Html2rss::SST::Tags.const_get(tags_const).to_set(&:to_s)
+
+        expect(described_class.const_get(navigator_const)).to eq(derived).and eq(Set.new(values))
+      end
+    end
+
+    it 'builds MAIN_ANCHOR_SELECTOR from SST::Tags::SKIP_HREF_PREFIXES' do
+      nots = Html2rss::SST::Tags::SKIP_HREF_PREFIXES.map { |prefix| %[:not([href^="#{prefix}"])] }.join
+
+      expect(described_class::MAIN_ANCHOR_SELECTOR).to eq(%(a[href]:not([href=""])#{nots}))
+    end
+  end
+
   describe '.extract_visible_text' do
     subject(:visible_text) { described_class.extract_visible_text(tag) }
 
@@ -128,6 +148,47 @@ RSpec.describe Html2rss::Html::Navigator do
       document = Nokogiri::HTML('<html><body><NAV><a href="/home">Home</a></NAV></body></html>')
 
       expect(described_class.usable_card_parent?(document.at_css('NAV'))).to be(false)
+    end
+
+    it 'stops at page-level header and footer but not at ones inside sectioning content' do # rubocop:disable RSpec/ExampleLength
+      document = Nokogiri::HTML('<body><header id="ph"></header><footer id="pf"></footer>' \
+                                '<article><header id="ah"></header><footer id="af"></footer></article>' \
+                                '<main><div><header id="mh"></header></div></main>' \
+                                '<nav><header id="nh"></header></nav></body>')
+      usable = %w[ph pf ah af mh nh].to_h { |id| [id, described_class.usable_card_parent?(document.at_css("##{id}"))] }
+
+      expect(usable).to eq('ph' => false, 'pf' => false, 'ah' => true, 'af' => true, 'mh' => true, 'nh' => false)
+    end
+
+    describe 'chrome-scope parity between Nokogiri and SST nodes' do
+      let(:html) do
+        '<body><header id="page"></header>' \
+          '<section><header id="sectioned"></header></section>' \
+          '<nav><section><header id="inherited"></header></section></nav>' \
+          '<footer><article><footer id="in_footer"></footer></article></footer></body>'
+      end
+      let(:ids) { %w[page sectioned inherited in_footer] }
+      let(:expected) { { 'page' => false, 'sectioned' => true, 'inherited' => false, 'in_footer' => false } }
+
+      let(:document) { Nokogiri::HTML(html) }
+      let(:sst_root) { Html2rss::SST::Normalizer.call(html).root }
+
+      it 'agrees on page-level, sectioned and chrome-inherited headers', :aggregate_failures do
+        nokogiri = ids.to_h { |id| [id, described_class.usable_card_parent?(document.at_css("##{id}"))] }
+        sst = ids.to_h { |id| [id, described_class.usable_card_parent?(sst_root.find_all { _1.attrs.id == id }.first)] }
+
+        expect(nokogiri).to eq(expected)
+        expect(sst).to eq(expected)
+      end
+    end
+
+    it 'follows the SST chrome index for header and footer nodes', :aggregate_failures do
+      doc = Html2rss::SST::Normalizer.call('<html><body><header>H</header><article><header>A</header></article></body></html>')
+      page_header, card_header = doc.root.find_all { _1.name == :header }
+
+      expect(described_class.usable_card_parent?(page_header)).to be(false)
+      expect(described_class.usable_card_parent?(card_header)).to be(true)
+      expect(described_class.usable_card_parent?(Html2rss::SST::Node.build(name: :header))).to be(false)
     end
   end
 

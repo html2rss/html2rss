@@ -1,0 +1,16 @@
+---
+case: State-only entries wrapped as node/fields/content/item/model, an author {name,url}
+  decoy, and an attributes/links envelope control.
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/school-board-approves-budget
+- https://example.com/news/2026/10/bike-lane-pilot-expands
+- https://example.com/news/2026/10/council-votes-on-parking
+- https://example.com/news/2026/10/bakery-wins-regional-award
+- https://example.com/news/2026/10/museum-reopens-east-wing
+- https://example.com/news/2026/10/tram-line-adds-late-service
+- https://example.com/news/2026/10/park-gets-new-playground
+- https://example.com/news/2026/10/night-market-opens-downtown
+- https://example.com/news/2026/10/market-hall-renovation-starts

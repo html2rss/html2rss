@@ -177,9 +177,11 @@ RSpec.describe Html2rss::AutoSource do
       end
       let(:body) do
         ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => schema_items }
+        rendered = schema_items.map { |item| %(<li><a href="#{item['url']}">#{item['headline']}</a></li>) }.join
         <<~HTML
           <html><body>
             <script type="application/ld+json">#{ld.to_json}</script>
+            <ul>#{rendered}</ul>
             <article><h2><a href="/sem-0">Semantic Story 0 Extra Words</a></h2><p>teaser</p></article>
           </body></html>
         HTML
@@ -255,6 +257,93 @@ RSpec.describe Html2rss::AutoSource do
         expect(articles.size).to eq(5)
         expect(articles.map(&:title)).to all(include('Semantic Story'))
         expect(articles.map(&:scraper)).to all(eq(Html2rss::AutoSource::Scraper::SemanticHtml))
+      end
+    end
+
+    context 'with options lacking a scraper map' do
+      let(:config) { { limit: 5 } }
+
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'enables no scraper and returns no articles' do
+        expect(articles).to eq([])
+      end
+    end
+
+    context 'when chrome-only structured items would fill a small limit' do
+      let(:teasers) { %w[harbor-ferry-route-returns library-extends-weekend-hours river-cleanup-volunteers-record] }
+      let(:state) do
+        menu = %w[world local science].map { |slug| { title: "#{slug.capitalize} affairs desk", url: "/#{slug}/" } }
+        lead = { title: 'Harbor ferry route returns after repairs', url: "/news/2026/10/#{teasers.first}",
+                 description: 'State copy of the lead story.' }
+        { props: { pageProps: { navigation: [*menu, lead] } } }
+      end
+      let(:body) do
+        nav = %w[world local science].map { |slug| %(<a href="/#{slug}/">#{slug.capitalize} affairs desk</a>) }.join
+        cards = teasers.map do |slug|
+          %(<article><h2><a href="/news/2026/10/#{slug}">#{slug.tr('-', ' ').capitalize}</a></h2>
+            <p>Rendered teaser text for this story.</p></article>)
+        end.join
+        <<~HTML
+          <html><body><nav>#{nav}</nav><main>#{cards}</main>
+            <script id="__NEXT_DATA__" type="application/json">#{state.to_json}</script>
+          </body></html>
+        HTML
+      end
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 3) }
+
+      it 'drops them as chrome_only, runs SemanticHtml, and keeps the structured copy of a shared URL',
+         :aggregate_failures do
+        expect(articles.map { |article| article.url.path }).to eq(teasers.map { "/news/2026/10/#{_1}" })
+        expect(articles.map(&:scraper)).to eq([Html2rss::AutoSource::Scraper::JsonState,
+                                               *[Html2rss::AutoSource::Scraper::SemanticHtml] * 2])
+        expect(articles.first.description).to eq('State copy of the lead story.')
+        expect(auto_source.admission_drops).to include('chrome_only' => 3, 'duplicate_url' => 1)
+      end
+    end
+
+    context 'when structured items and a heuristic tier share one page' do
+      let(:counts) { Hash.new(0) }
+      let(:native_feed) do
+        item = { title: 'Native feed story title', url: 'https://example.com/news/feed-1', id: 'feed-1' }
+        instance_double(Html2rss::AutoSource::Scraper::NativeFeed, extractable?: true).tap do |feed|
+          allow(feed).to receive(:map) { |&block| [item].map(&block) }
+        end
+      end
+      let(:body) do
+        items = Array.new(2) do |index|
+          { '@type' => 'NewsArticle', 'headline' => "Schema story #{index} words", 'url' => "/news/s-#{index}" }
+        end
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => items }
+        cards = Array.new(3) do |index|
+          %(<article><h2><a href="/news/s-#{index}">Schema story #{index} words</a></h2></article>)
+        end
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{cards.join}</main></body></html>)
+      end
+
+      before do
+        allow(Html2rss::SST::Normalizer).to receive(:call).and_wrap_original do |method, *args|
+          counts[:sst] += 1
+          method.call(*args)
+        end
+        allow(Html2rss::Scoring::LinkResolver).to receive(:new).and_wrap_original do |method, *args|
+          counts[:resolver] += 1
+          method.call(*args)
+        end
+      end
+
+      it 'builds the SST and link resolver once for the page check and the heuristic tiers', :aggregate_failures do
+        expect(articles.map(&:scraper).tally)
+          .to eq(Html2rss::AutoSource::Scraper::Schema => 2, Html2rss::AutoSource::Scraper::SemanticHtml => 1)
+        expect(counts).to eq(sst: 1, resolver: 1)
+      end
+
+      it 'builds no SST when an exempt native feed already fills the limit', :aggregate_failures do
+        allow(Html2rss::AutoSource::Scraper::NativeFeed).to receive(:new).and_return(native_feed)
+        limited = described_class.new(response, described_class::DEFAULT_CONFIG.merge(limit: 1)).articles
+
+        expect(limited.map { _1.url.path }).to eq(['/news/feed-1'])
+        expect(counts[:sst]).to eq(0)
       end
     end
 

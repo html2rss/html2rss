@@ -96,6 +96,78 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- verdict stub + two scraper cohorts
+    context 'with a corroboration page check' do
+      subject(:result) { described_class.call(articles, url:, corroboration:) }
+
+      let(:corroboration) { instance_double(Html2rss::AutoSource::Corroboration) }
+      let(:structured) { Html2rss::AutoSource::Scraper::JsonState }
+      let(:heuristic) { Html2rss::AutoSource::Scraper::SemanticHtml }
+      let(:verdicts) do
+        { '/menu' => :chrome_only, '/hidden' => :not_on_page, '/thin' => :unlikely, '/story-one' => :chrome_only }
+      end
+      let(:articles) do
+        [
+          ['/story-one', structured], ['/menu', structured], ['/hidden', structured], ['/thin', structured],
+          ['/story-two', structured], ['/story-one', heuristic], ['/broken', structured]
+        ].map do |path, scraper|
+          instance_double(Html2rss::Article, valid?: path != '/broken', scraper:, title: "Story title for #{path}",
+                                             url: Html2rss::Url.from_absolute("http://example.com#{path}"))
+        end
+      end
+
+      before do
+        allow(corroboration).to receive(:verdict) do |article, **|
+          article.scraper == structured ? verdicts.fetch(article.url.path, :keep) : :keep
+        end
+        allow(corroboration).to receive(:canonical_url).and_return(nil)
+      end
+
+      it 'tallies each drop verdict under its own reason', :aggregate_failures do
+        expect(result.drop_tallies).to eq('invalid' => 1, 'chrome_only' => 2, 'not_on_page' => 1, 'unlikely' => 1)
+        expect(result.articles.map { [_1.url.path, _1.scraper] })
+          .to eq([['/story-two', structured], ['/story-one', heuristic]])
+      end
+
+      it 'checks valid items only, each with its scraper cohort', :aggregate_failures do
+        given = articles.dup
+        result
+
+        expect(corroboration).to have_received(:verdict).exactly(6).times
+        expect(corroboration).to have_received(:verdict).with(given[1], cohort: given.first(5))
+        expect(corroboration).to have_received(:verdict).with(given[5], cohort: [given[5]])
+      end
+    end
+
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- corroboration stub + two scraper articles
+    context 'when a corroborated item differs from its rendered anchor by scheme or tracking params' do
+      subject(:result) { described_class.call(articles, url:, corroboration:) }
+
+      let(:corroboration) { instance_double(Html2rss::AutoSource::Corroboration, verdict: :keep) }
+      let(:structured) { Html2rss::AutoSource::Scraper::JsonState }
+      let(:heuristic) { Html2rss::AutoSource::Scraper::SemanticHtml }
+      let(:articles) do
+        [
+          Html2rss::Article.new(id: 's', title: 'Story title for structured', scraper: structured,
+                                url: 'http://example.com/story?utm_source=feed'),
+          Html2rss::Article.new(id: 'h', title: 'Story title for heuristic', scraper: heuristic,
+                                url: 'https://example.com/story')
+        ]
+      end
+
+      before do
+        allow(corroboration).to receive(:canonical_url) do |article|
+          Html2rss::Url.from_absolute('https://example.com/story') if article.scraper == structured
+        end
+      end
+
+      it 'takes the anchor URL, then merges the duplicate', :aggregate_failures do
+        expect(result.articles.map { [_1.url.to_s, _1.scraper] })
+          .to eq([['https://example.com/story', structured]])
+        expect(result.drop_tallies).to eq('duplicate_url' => 1)
+      end
+    end
+
     context 'when URLs differ only by fragment' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/news') }
       let(:articles) do
@@ -123,6 +195,33 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(cleaned.map { |article| article.url.to_s }).to eq(['http://example.com/story-one'])
         expect(cleaned.size).to eq(1)
         expect(result.drop_tallies).to include('duplicate_url' => 2, 'self_link' => 1)
+      end
+    end
+
+    context 'when an item URL is a scheme, tracking, or trailing-slash variant of the page URL' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news') }
+      let(:article_at) do
+        lambda do |href|
+          instance_double(Html2rss::Article, valid?: true, url: Html2rss::Url.from_absolute(href),
+                                             title: 'A Reasonably Long Story Title')
+        end
+      end
+
+      %w[http://example.com/news https://example.com/news?utm_source=hp https://example.com/news/
+         https://example.com/news?fbclid=1#top].each do |href|
+        it "rejects #{href} as self_link", :aggregate_failures do
+          other = article_at['https://example.com/story-two']
+          result = described_class.call([article_at[href], other], url:)
+
+          expect(result.articles).to eq([other])
+          expect(result.drop_tallies).to include('self_link' => 1)
+        end
+      end
+
+      it 'keeps a variant with a meaningful query param' do
+        kept = article_at['https://example.com/news?id=1']
+
+        expect(described_class.call([kept], url:).articles).to eq([kept])
       end
     end
 
@@ -331,6 +430,14 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       expect(audit.warnings).to include(:duplicate_urls)
       expect(audit.metrics[:junk_title_count]).to eq(0)
+    end
+
+    it 'warns on duplicate URLs that differ only by scheme, tracking params, or trailing slash' do
+      items = %w[http://example.com/same https://example.com/same/?utm_source=x].map do |href|
+        rss_item(title: 'Story Title Words Here', url: href)
+      end
+
+      expect(described_class.audit_feed_items(items).warnings).to include(:duplicate_urls)
     end
 
     it 'warns on CTA titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

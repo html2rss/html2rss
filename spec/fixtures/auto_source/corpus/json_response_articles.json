@@ -1,0 +1,30 @@
+{
+  "data": {
+    "articles": [
+      {
+        "title": "Harbor ferry route returns after repairs",
+        "url": "https://example.com/news/2026/10/harbor-ferry-route-returns",
+        "description": "The morning crossing resumes with a refitted vessel and longer hours.",
+        "publishedAt": "2026-10-20T08:00:00Z"
+      },
+      {
+        "title": "City library extends its weekend hours",
+        "url": "https://example.com/news/2026/10/library-extends-weekend-hours",
+        "description": "Branches stay open later on Saturdays starting next month.",
+        "publishedAt": "2026-10-21T08:00:00Z"
+      },
+      {
+        "title": "River cleanup draws record volunteer turnout",
+        "url": "https://example.com/news/2026/10/river-cleanup-volunteers-record",
+        "description": "More than four hundred residents joined the annual cleanup.",
+        "publishedAt": "2026-10-22T08:00:00Z"
+      },
+      {
+        "title": "School board approves the new budget plan",
+        "url": "https://example.com/news/2026/10/school-board-approves-budget",
+        "description": "The plan adds two reading specialists and repairs three roofs.",
+        "publishedAt": "2026-10-23T08:00:00Z"
+      }
+    ]
+  }
+}

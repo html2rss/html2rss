@@ -44,6 +44,10 @@ module Html2rss
       !url.to_s.empty? && (!title.to_s.empty? || !description.to_s.empty?) && !id.to_s.empty?
     end
 
+    # @param new_url [String, Html2rss::Url] replacement article URL
+    # @return [Article] a copy of this article carrying +new_url+
+    def with_url(new_url) = self.class.new(**@to_h, url: new_url)
+
     # @return [String, nil] stable article identifier
     def id = blank_string_to_nil(@to_h[:id])
 

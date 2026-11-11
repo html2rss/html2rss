@@ -5,17 +5,23 @@ module Html2rss
     ##
     # Navigator owns DOM chrome recognition and node traversal helpers.
     class Navigator
+      # String forms of {SST::Tags} (the vocabulary owner); no delta today.
       # Heading tags used to prioritize title extraction and container assessment.
-      HEADING_TAGS = Set['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].freeze
+      HEADING_TAGS = SST::Tags::HEADING_NAMES.to_set(&:to_s).freeze
 
       # Element tags that indicate ignored DOM chrome when found in a container path.
-      IGNORED_CONTAINER_TAGS = Set['nav', 'footer', 'header', 'svg', 'script', 'style'].freeze
+      IGNORED_CONTAINER_TAGS = SST::Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze
 
       # Ancestor tags that usually indicate navigation/utility regions inside a content container.
-      UTILITY_LANDMARK_TAGS = Set['nav', 'aside', 'footer', 'menu'].freeze
+      UTILITY_LANDMARK_TAGS = SST::Tags::UTILITY_LANDMARK_NAMES.to_set(&:to_s).freeze
 
-      # Immediate parent walk stops here — not a usable article card.
-      CARD_WALK_STOP_TAGS = (UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | Set['html', 'body']).freeze
+      # header/footer: a card-walk stop only at page level (see {SST::Tags::PAGE_CHROME_NAMES}).
+      PAGE_CHROME_TAGS = SST::Tags::PAGE_CHROME_NAMES.to_set(&:to_s).freeze
+
+      # Immediate parent walk stops here — not a usable article card. Page-level
+      # header/footer stop too, via {usable_card_parent?}.
+      CARD_WALK_STOP_TAGS =
+        ((UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | Set['html', 'body']) - PAGE_CHROME_TAGS).freeze
 
       # Inner tags that mean a wrapping <a> is a card, not a span-styled list link.
       WRAPPING_ANCHOR_CHILD_TAGS = (HEADING_TAGS + %w[p]).freeze
@@ -23,7 +29,7 @@ module Html2rss
       # Anchor selector used to identify the canonical article link element.
       MAIN_ANCHOR_SELECTOR = begin
         buf = +'a[href]:not([href=""])'
-        %w[# javascript: mailto: tel: file:// sms: data:].each do |prefix|
+        SST::Tags::SKIP_HREF_PREFIXES.each do |prefix|
           buf << %[:not([href^="#{prefix}"])]
         end
         buf.freeze
@@ -67,6 +73,7 @@ module Html2rss
 
         ##
         # Immediate parent is a usable article card (not html/body/landmark chrome).
+        # A header/footer inside article/section/aside/main belongs to its card.
         #
         # @param node [Nokogiri::XML::Node, SST::Node, nil]
         # @return [Boolean]
@@ -74,7 +81,10 @@ module Html2rss
           return false unless node
           return false if node.is_a?(Nokogiri::XML::Document)
 
-          !CARD_WALK_STOP_TAGS.include?(Probe.tag(node))
+          tag = Probe.tag(node)
+          return !page_chrome?(node) if PAGE_CHROME_TAGS.include?(tag)
+
+          !CARD_WALK_STOP_TAGS.include?(tag)
         end
 
         ##
@@ -122,6 +132,31 @@ module Html2rss
             curr = curr.parent
           end
           false
+        end
+
+        private
+
+        # Whether a header/footer is page-level chrome. SST nodes defer to the
+        # Normalizer's chrome index (unindexed nodes stay chrome); Nokogiri nodes
+        # check for a sectioning ancestor.
+        #
+        # @param node [Nokogiri::XML::Node, SST::Node]
+        # @return [Boolean]
+        def page_chrome?(node)
+          if node.is_a?(SST::Node)
+            index = SST::Index.for_node(node)
+            return index.nil? || index.ignored_chrome?(node)
+          end
+
+          nokogiri_chrome_scope(node) == :chrome
+        end
+
+        # Folds {SST::Tags.chrome_scope} over a Nokogiri node's ancestors, root first.
+        #
+        # @param node [Nokogiri::XML::Node]
+        # @return [Symbol] +:page+, +:sectioned+, or +:chrome+
+        def nokogiri_chrome_scope(node)
+          (node.ancestors.reverse << node).reduce(:page) { |scope, el| SST::Tags.chrome_scope(Probe.tag(el), scope) }
         end
       end
     end

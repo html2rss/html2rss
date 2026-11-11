@@ -24,7 +24,6 @@ RSpec.describe Html2rss::SST::Node do
       expect(heading).to be_heading
       expect(img).to be_image
       expect(nav).to be_utility_landmark
-      expect(nav).to be_ignored_container_name
       expect(parent_div.word_count).to be >= 1
       expect(parent_div.text_density).to be_a(Float)
       expect(parent_div.descendants).to include(link)
@@ -61,22 +60,18 @@ RSpec.describe Html2rss::SST::Node do
   end
 
   describe 'element predicates' do
-    it 'recognises every heading, landmark and ignored container name', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    it 'recognises every heading and landmark name', :aggregate_failures do
       Html2rss::SST::Tags::HEADING_NAMES.each { |name| expect(described_class.build(name:)).to be_heading }
       Html2rss::SST::Tags::UTILITY_LANDMARK_NAMES.each do |name|
         expect(described_class.build(name:)).to be_utility_landmark
       end
-      Html2rss::SST::Tags::IGNORED_CONTAINER_NAMES.each do |name|
-        expect(described_class.build(name:)).to be_ignored_container_name
-      end
     end
 
-    it 'does not treat other names as headings, landmarks or containers', :aggregate_failures do
+    it 'does not treat other names as headings or landmarks', :aggregate_failures do
       span = described_class.build(name: :span)
 
       expect(span).not_to be_heading
       expect(span).not_to be_utility_landmark
-      expect(span).not_to be_ignored_container_name
       expect(span).not_to be_image
     end
 

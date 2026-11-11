@@ -1,0 +1,7 @@
+---
+case: JSON response body (no page) holding thin articles (title, url, date only) under root-level slugs.
+expected:
+- https://example.com/harbor-ferry-route-returns
+- https://example.com/library-extends-weekend-hours
+- https://example.com/river-cleanup-volunteers-record
+- https://example.com/school-board-approves-budget

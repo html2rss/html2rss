@@ -1,0 +1,28 @@
+{
+  "menu": [
+    {
+      "title": "Live traffic updates",
+      "url": "https://example.com/traffic/",
+      "icon": "/icons/car.svg",
+      "target": "_self"
+    },
+    {
+      "title": "Weather radar map",
+      "url": "https://example.com/weather/",
+      "icon": "/icons/cloud.svg",
+      "target": "_self"
+    },
+    {
+      "title": "Lottery numbers today",
+      "url": "https://example.com/lottery/",
+      "icon": "/icons/ball.svg",
+      "target": "_self"
+    },
+    {
+      "title": "Podcast audio library",
+      "url": "https://example.com/podcasts/",
+      "icon": "/icons/mic.svg",
+      "target": "_self"
+    }
+  ]
+}

@@ -56,6 +56,18 @@ RSpec.describe Html2rss::Article do
     end
   end
 
+  describe '#with_url' do
+    let(:options) { { id: 'a', title: 'Sample instance', url: 'http://example.com/a?utm_term=t', scraper: Object } }
+
+    it 'copies the article with another URL', :aggregate_failures do
+      copy = instance.with_url(Html2rss::Url.from_absolute('https://example.com/a'))
+
+      expect(copy.url.to_s).to eq('https://example.com/a')
+      expect(copy).to have_attributes(id: 'a', title: 'Sample instance', scraper: Object)
+      expect(instance.url.to_s).to eq('http://example.com/a?utm_term=t')
+    end
+  end
+
   describe '#description' do
     it 'returns the raw extracted description without DescriptionBuilder', :aggregate_failures do
       allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new)

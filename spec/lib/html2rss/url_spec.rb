@@ -277,6 +277,92 @@ RSpec.describe Html2rss::Url do
 
       expect(page).to be_same_document(child)
     end
+
+    it 'is public while the identity key stays private', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a')
+
+      expect(url).not_to respond_to(:document_identity)
+      expect(url).to be_same_document(described_class.from_absolute('https://example.com/a/#top'))
+    end
+
+    it 'differs by scheme, authority, path, and query', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?x=1')
+
+      %w[http://example.com/a?x=1 https://example.com:8443/a?x=1 https://example.com/b?x=1
+         https://example.com/a?x=2].each do |other|
+        expect(url).not_to be_same_document(described_class.from_absolute(other))
+      end
+    end
+  end
+
+  describe '#article_identity' do
+    let(:identity) { ->(raw) { described_class.from_absolute(raw).article_identity } }
+
+    %w[
+      http://example.com/a https://example.com:443/a https://example.com/a/ https://example.com/a#top
+      https://example.com/a?utm_source=x&utm_medium=y https://example.com/a?fbclid=1 https://example.com/a?gclid=1
+      https://example.com/a?msclkid=1 https://example.com/a?mc_cid=1&mc_eid=2 https://example.com/a?ref=feed
+      https://example.com/a?ref_src=tw https://example.com/a?UTM_Source=x
+    ].each do |other|
+      it "ignores the difference of #{other}" do
+        expect(identity[other]).to eq(identity['https://example.com/a'])
+      end
+    end
+
+    %w[
+      https://other.example.com/a https://example.com:8443/a https://example.com/b https://example.com/a?id=1
+      https://example.com/a?refx=1 https://example.com/a?xutm_source=1 https://example.com/a?utm
+    ].each do |other|
+      it "keeps #{other} distinct" do
+        expect(identity[other]).not_to eq(identity['https://example.com/a'])
+      end
+    end
+
+    it 'keeps meaningful query params significant', :aggregate_failures do
+      expect(identity['https://example.com/a?id=1']).not_to eq(identity['https://example.com/a?id=2'])
+      expect(identity['https://example.com/a?id=1']).to eq(identity['https://example.com/a?utm_term=t&id=1'])
+      expect(identity['https://example.com/a?a=1&b=2']).not_to eq(identity['https://example.com/a?a=1'])
+    end
+
+    it 'ignores query param order', :aggregate_failures do
+      expect(identity['https://example.com/a?a=1&b=2']).to eq(identity['https://example.com/a?b=2&a=1'])
+      expect(identity['https://example.com/a?b=2&utm_term=t&a=1']).to eq(identity['https://example.com/a?a=1&b=2'])
+    end
+  end
+
+  describe '#without_tracking_params' do
+    it 'removes tracking params and keeps the others in order', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?utm_source=x&id=7&fbclid=1&b=2#top')
+
+      expect(url.without_tracking_params).to eq(described_class.from_absolute('https://example.com/a?id=7&b=2#top'))
+      expect(described_class.from_absolute('https://example.com/a?utm_source=x&ref=1').without_tracking_params.to_s)
+        .to eq('https://example.com/a')
+    end
+
+    it 'returns the same URL when nothing is tracked', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?refx=1&id=2')
+
+      expect(url.without_tracking_params).to equal(url)
+      expect(described_class.from_absolute('https://example.com/a').without_tracking_params.to_s)
+        .to eq('https://example.com/a')
+    end
+
+    it 'does not mutate the original URL' do
+      url = described_class.from_absolute('https://example.com/a?utm_source=x')
+
+      url.without_tracking_params
+
+      expect(url.to_s).to eq('https://example.com/a?utm_source=x')
+    end
+  end
+
+  describe '#with_scheme' do
+    it 'returns a copy with the scheme replaced', :aggregate_failures do
+      url = described_class.from_absolute('http://example.com/a?x=1')
+
+      expect(url.with_scheme('https')).to eq(described_class.from_absolute('https://example.com/a?x=1'))
+      expect(url.to_s).to eq('http://example.com/a?x=1')
+    end
   end
 
   describe '#with_query_values' do

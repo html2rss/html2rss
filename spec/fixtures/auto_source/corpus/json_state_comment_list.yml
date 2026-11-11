@@ -1,0 +1,7 @@
+---
+case: Story page whose JSON state holds a comment list [{body, createdAt, author:{name,url}}];
+  author profile URLs are never rendered as links. Only the rendered related stories are articles.
+expected:
+- https://example.com/news/2026/10/bike-lane-pilot-expands
+- https://example.com/news/2026/10/bakery-wins-regional-award
+- https://example.com/news/2026/10/museum-reopens-east-wing

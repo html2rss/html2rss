@@ -54,9 +54,6 @@ module Html2rss
       # Typed Attrs fields excluded from the leftover raw hash.
       TYPED_ATTR_NAMES = Set['href', 'src', 'id', 'class', 'datetime', 'itemprop', 'style', 'srcset', 'type'].freeze
 
-      # String form of Tags::IGNORED_CONTAINER_NAMES for chrome checks without to_sym.
-      IGNORED_CONTAINER_TAGS = Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze
-
       class << self
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
@@ -97,7 +94,7 @@ module Html2rss
       # @return [Document, nil] +nil+ when no SST nodes survive normalization
       def call
         root_nk = resolve_root_nk
-        root = normalize_element(root_nk, depth: 0, path: '', chrome: false)
+        root = normalize_element(root_nk, depth: 0, path: '', scope: :page)
         return unless root
 
         index = Index.new(root:, parents: @parents, depths: @depths, ignored_chrome: @ignored_chrome)
@@ -146,8 +143,8 @@ module Html2rss
         node.element? && !STRIPPED_TAGS.include?(Html2rss::Html::Probe.tag(node))
       end
 
-      # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
-      def normalize_element(nk_node, depth:, path:, chrome:)
+      # rubocop:disable-next Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+      def normalize_element(nk_node, depth:, path:, scope:)
         return unless nk_node.element?
 
         tag = Html::Probe.tag(nk_node)
@@ -167,13 +164,13 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        chrome_here = chrome || IGNORED_CONTAINER_TAGS.include?(tag)
+        scope_here = Tags.chrome_scope(tag, scope)
 
-        children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, chrome: chrome_here)
+        children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, scope: scope_here)
 
         node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
         @depths[node] = depth
-        @ignored_chrome[node] = chrome_here
+        @ignored_chrome[node] = scope_here == :chrome
         children.each { |child| @parents[child] = node }
 
         node
@@ -206,13 +203,13 @@ module Html2rss
 
       # Walks child nodes once, keeping direct text in the slot of the preceding kept child
       # (slot 0 is the lead text) so text order survives the element-only tree.
-      def normalize_children(nk_node, depth:, path:, chrome:)
+      def normalize_children(nk_node, depth:, path:, scope:)
         children = []
         slots = [+'']
         nk_node.children.each do |child|
           next slots.last << child.text if child.text?
 
-          node = normalize_element(child, depth: depth + 1, path:, chrome:)
+          node = normalize_element(child, depth: depth + 1, path:, scope:)
           (children << node) && (slots << +'') if node
         end
         [children, slots.first, slots.drop(1)]

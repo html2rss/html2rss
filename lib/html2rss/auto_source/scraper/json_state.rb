@@ -55,7 +55,7 @@ module Html2rss
               array.each do |entry|
                 yield(ArticleNormalizer.normalise(entry, base_url:))
               end
-            elsif !CandidateDetector.menu_array?(array)
+            else
               array.each { discover_articles(_1, base_url:, &block) }
             end
           end

@@ -100,8 +100,24 @@ module Html2rss
         title_text = title_from_in_card_sources
         return unless title_text
 
-        kicker = kicker_node&.visible_text.to_s.strip
-        kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
+        kicker = kicker_text
+        kicker && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
+      end
+
+      # Kicker text without its time/clock pieces and field labels (e.g. a screen-reader
+      # "Section:" prefix), so only the topic prefixes the title.
+      #
+      # @return [String, nil]
+      def kicker_text
+        return unless kicker_node
+
+        kicker_node.visible_text(exclude: kicker_node.descendants.select { |node| kicker_noise?(node) })
+      end
+
+      def kicker_noise?(node)
+        text = node.visible_text.to_s
+        node.name == :time || text.match?(ArticleRules::Description::CLOCK_ZONE) ||
+          !ArticleRules::Description.keep?(text)
       end
 
       # Prefer a non-junk title. Credit-only cards may blank to nil (description can carry

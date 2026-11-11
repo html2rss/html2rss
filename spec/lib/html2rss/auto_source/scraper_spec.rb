@@ -41,6 +41,24 @@ RSpec.describe Html2rss::AutoSource::Scraper do
     end
   end
 
+  describe '::CORROBORATED_SCRAPERS' do
+    it 'is the in-page structured tier plus the JSON document scraper' do
+      expect(described_class::CORROBORATED_SCRAPERS)
+        .to eq(Set[*described_class::SCRAPER_TIERS[1], *described_class::DOCUMENT_SCRAPERS])
+    end
+
+    it 'exempts publisher-declared and heuristic scrapers', :aggregate_failures do
+      exempt = described_class::SCRAPERS - described_class::CORROBORATED_SCRAPERS.to_a
+
+      expect(exempt).to contain_exactly(
+        Html2rss::AutoSource::Scraper::NativeFeed, Html2rss::AutoSource::Scraper::WordpressApi,
+        Html2rss::AutoSource::Scraper::Sitemap, Html2rss::AutoSource::Scraper::MetaOembed,
+        Html2rss::AutoSource::Scraper::SemanticHtml, Html2rss::AutoSource::Scraper::Html
+      )
+      expect(described_class::CORROBORATED_SCRAPERS).to be_frozen
+    end
+  end
+
   describe 'scraper protocol' do
     described_class::SCRAPERS.each do |klass|
       describe klass.name do
