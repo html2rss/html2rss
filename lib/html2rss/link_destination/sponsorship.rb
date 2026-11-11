@@ -11,8 +11,9 @@ module Html2rss
     # - +:label+: an ad-label class token (+ad-label+, +ad-badge__item+), or a standalone element
     #   whose whole text is an ad label from a small closed multilingual set (en, de, fr, es).
     #
-    # A class marker counts only on a visible, non-empty element (an empty template slot is not a
-    # label). A text label never counts inside running text: anchor text and headings are never
+    # A class or text label counts only on a rendered element: one without a +hidden+ attribute,
+    # +aria-hidden="true"+ or an inline +display: none+. A class marker also needs content (an empty
+    # template slot is not a label). A text label never counts inside running text: anchor text and headings are never
     # read, nor are words inside an anchor, a heading, a topic chip (category, tag or kicker class)
     # or an inline element of text-bearing prose. A headline about advertising is not a marker.
     #
@@ -42,6 +43,8 @@ module Html2rss
       ARIA_NAMES = %w[aria-label aria-roledescription].freeze
       # Inline style that hides an element.
       HIDDEN_STYLE = /display\s*:\s*none/i
+      # Raw attribute that keeps an element from rendering, whatever its value.
+      HIDDEN_ATTRIBUTE = 'hidden'
       # Class-token words (split on +-+/+_+) of topic chips, whose text names a topic, not a sale.
       CHIP_WORDS = Set['category', 'categories', 'tag', 'tags', 'kicker', 'topic', 'topics', 'rubric', 'rubrik',
                        'eyebrow'].freeze
@@ -102,10 +105,12 @@ module Html2rss
           (token.include?('sponsored') || token.include?('advertorial')) && token.match?(SPONSORED_CLASS)
         end
 
-        def visible?(node)
+        def visible?(node) = (node.children.any? || node.own_text.match?(/\S/)) && !hidden?(node)
+
+        def hidden?(node)
           attrs = node.attrs
-          (node.children.any? || node.own_text.match?(/\S/)) &&
-            !attrs.raw['aria-hidden']&.casecmp?('true') && !attrs.style&.match?(HIDDEN_STYLE)
+          attrs.raw.key?(HIDDEN_ATTRIBUTE) || attrs.raw['aria-hidden']&.casecmp?('true') ||
+            attrs.style&.match?(HIDDEN_STYLE)
         end
 
         # Most nodes carry no raw attributes, so the empty check skips every lookup.
@@ -125,7 +130,7 @@ module Html2rss
 
         # The own-text check runs first: it is the cheap filter for every node of the page.
         def text_label?(node, ancestors)
-          label?(node.own_text) && !inert?(node) && label?(node.visible_text) &&
+          label?(node.own_text) && !inert?(node) && !hidden?(node) && label?(node.visible_text) &&
             ancestors.none? { _1.name == :a || _1.heading? } && !in_running_text?(ancestors)
         end
 

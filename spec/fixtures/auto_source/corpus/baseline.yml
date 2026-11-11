@@ -134,8 +134,8 @@ sponsored_empty_ad_slot_row.html:
   sst_built: true
 sponsored_label_precision.html:
   junk: 0
-  real: 11
-  expected: 11
+  real: 12
+  expected: 12
   title_misses: 0
   sst_built: true
 sponsored_paywall_markers.html:

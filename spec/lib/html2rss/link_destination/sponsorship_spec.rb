@@ -53,7 +53,9 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     it 'ignores class markers on empty or hidden elements' do
       hidden = [node[text: ' ', class_names: %w[ad-label]], node[text: '', class_names: %w[sponsored]],
                 node[raw: { 'aria-hidden' => 'True' }, class_names: %w[ad-badge]],
-                node[style: 'color: red; display : none', class_names: %w[ad-label]]]
+                node[style: 'color: red; display : none', class_names: %w[ad-label]],
+                node[raw: { 'hidden' => '' }, class_names: %w[ad-label]],
+                node[raw: { 'hidden' => 'until-found' }, class_names: %w[sponsored]]]
       expect(hidden.filter_map { marker[_1] }).to be_empty
     end
 
@@ -81,6 +83,13 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
       expect(label['Sponsored', name: :a]).to be_nil
       expect(label['Anzeige', name: :h4]).to be_nil
       expect(label['Advertising']).to be_nil
+    end
+
+    it 'ignores text labels on hidden elements', :aggregate_failures do
+      expect(label['Anzeige', raw: { 'hidden' => '' }]).to be_nil
+      expect(label['Anzeige', raw: { 'aria-hidden' => 'true' }]).to be_nil
+      expect(label['Anzeige', style: 'display:none']).to be_nil
+      expect(label['Anzeige', raw: { 'aria-hidden' => 'false' }]).to eq(:label)
     end
 
     it 'marks the closed multilingual label set with surrounding punctuation or separators' do
