@@ -26,8 +26,6 @@ module Html2rss
       # off: an empty value (template output or a bare attribute; HTML parsing cannot tell them
       # apart), +no+, +null+, +false+, +0+, +off+.
       ON_VALUES = Set['true', '1', 'yes'].freeze
-      # Literal substrings every {SPONSORED_CLASS} token holds; checked before the regex.
-      SPONSORED_STEMS = %w[sponsored advertorial].freeze
       # Sponsored class token: whole, behind a BEM block (+card--sponsored+, +teaser__advertorial+)
       # or an +is-+/+has-+ state prefix, with an optional content suffix (+sponsored-content+).
       # +unsponsored+ and +non-sponsored+ do not match.
@@ -38,8 +36,8 @@ module Html2rss
       # Ad-label class token family, with an optional BEM element or modifier: +ad-label+,
       # +ad-labels__item+, +ad-badge+, +ad-marker--small+. Ad slots (+ad-container+) are not labels.
       AD_LABEL_CLASS = /\Aad-(?:labels?|badge|marker)(?:(?:__|--)[a-z0-9-]+)?\z/
-      # Literal prefix every {AD_LABEL_CLASS} token holds; checked before the regex.
-      AD_LABEL_STEMS = %w[ad-].freeze
+      # Literal prefix every {AD_LABEL_CLASS} token starts with; checked before the regex.
+      AD_LABEL_PREFIX = 'ad-'
       # ARIA attributes read as labels.
       ARIA_NAMES = %w[aria-label aria-roledescription].freeze
       # Inline style that hides an element.
@@ -53,23 +51,23 @@ module Html2rss
       # A whole label, optionally wrapped in punctuation or separators ("Anzeige |", "[Sponsored]",
       # "Publicité:"). Attribution forms may name the sponsor in up to five words.
       LABEL_PATTERN = /
-        \A[[:space:]\p{P}|]*(?:
+        \A[\s\u00A0\p{P}|]*(?:
           # English
-          sponsored(?:[[:space:]]+(?:content|post|story))?|advertisement|advertorial|
-          (?:paid|partner)[[:space:]]+content|paid[[:space:]]+post|promoted|ad|
+          sponsored(?:\s+(?:content|post|story))?|advertisement|advertorial|
+          (?:paid|partner)\s+content|paid\s+post|promoted|ad|
           # German
           anzeige|werbung|gesponsert|
           # French
-          publicit[eé]|(?:contenu[[:space:]]+)?sponsoris[eé]|publireportage|
+          publicit[eé]|(?:contenu\s+)?sponsoris[eé]|publireportage|
           # Spanish
-          publicidad|(?:contenido[[:space:]]+)?patrocinado|publirreportaje|
+          publicidad|(?:contenido\s+)?patrocinado|publirreportaje|
           # Attribution: "Sponsored by …", "Präsentiert von …", "En partenariat avec …"
           (?:
-            (?:sponsored|presented)[[:space:]]+by|pr[äa]sentiert[[:space:]]+von|
-            in[[:space:]]+kooperation[[:space:]]+mit|sponsoris[eé][[:space:]]+par|
-            en[[:space:]]+partenariat[[:space:]]+avec|patrocinado[[:space:]]+por
-          )(?:[[:space:]]+[^[:space:]]+){0,5}
-        )[[:space:]\p{P}|]*\z
+            (?:sponsored|presented)\s+by|pr[äa]sentiert\s+von|
+            in\s+kooperation\s+mit|sponsoris[eé]\s+par|
+            en\s+partenariat\s+avec|patrocinado\s+por
+          )(?:\s+\S+){0,5}
+        )[\s\u00A0\p{P}|]*\z
       /ix
 
       class << self
@@ -79,18 +77,29 @@ module Html2rss
         # @return [Symbol, nil] +:container+ or +:label+ when +node+ itself carries an explicit
         #   sponsorship marker, else nil
         def marker(node, ancestors)
-          attrs = node.attrs
-          return :container if raw_marker?(attrs.raw) || class_marker?(node, SPONSORED_CLASS, SPONSORED_STEMS)
-          return :label if class_marker?(node, AD_LABEL_CLASS, AD_LABEL_STEMS) || text_label?(node, ancestors)
+          return :container if raw_marker?(node.attrs.raw)
 
-          nil
+          kind = class_marker(node.attrs.class_names)
+          return (kind if visible?(node)) if kind
+
+          :label if text_label?(node, ancestors)
         end
 
         private
 
-        def class_marker?(node, pattern, stems)
-          node.attrs.class_names.any? { |token| stems.any? { token.include?(_1) } && token.match?(pattern) } &&
-            visible?(node)
+        # Runs on every node of the page: literal checks gate each regex.
+        def class_marker(class_names)
+          kind = nil
+          class_names.each do |token|
+            return :container if sponsored_class?(token)
+
+            kind ||= :label if token.start_with?(AD_LABEL_PREFIX) && token.match?(AD_LABEL_CLASS)
+          end
+          kind
+        end
+
+        def sponsored_class?(token)
+          (token.include?('sponsored') || token.include?('advertorial')) && token.match?(SPONSORED_CLASS)
         end
 
         def visible?(node)
