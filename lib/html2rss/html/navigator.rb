@@ -5,14 +5,15 @@ module Html2rss
     ##
     # Navigator owns DOM chrome recognition and node traversal helpers.
     class Navigator
+      # String forms of {SST::Tags} (the vocabulary owner); no delta today.
       # Heading tags used to prioritize title extraction and container assessment.
-      HEADING_TAGS = Set['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].freeze
+      HEADING_TAGS = SST::Tags::HEADING_NAMES.to_set(&:to_s).freeze
 
       # Element tags that indicate ignored DOM chrome when found in a container path.
-      IGNORED_CONTAINER_TAGS = Set['nav', 'footer', 'header', 'svg', 'script', 'style'].freeze
+      IGNORED_CONTAINER_TAGS = SST::Tags::IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze
 
       # Ancestor tags that usually indicate navigation/utility regions inside a content container.
-      UTILITY_LANDMARK_TAGS = Set['nav', 'aside', 'footer', 'menu'].freeze
+      UTILITY_LANDMARK_TAGS = SST::Tags::UTILITY_LANDMARK_NAMES.to_set(&:to_s).freeze
 
       # Immediate parent walk stops here — not a usable article card.
       CARD_WALK_STOP_TAGS = (UTILITY_LANDMARK_TAGS | IGNORED_CONTAINER_TAGS | Set['html', 'body']).freeze
@@ -23,7 +24,7 @@ module Html2rss
       # Anchor selector used to identify the canonical article link element.
       MAIN_ANCHOR_SELECTOR = begin
         buf = +'a[href]:not([href=""])'
-        %w[# javascript: mailto: tel: file:// sms: data:].each do |prefix|
+        SST::Tags::SKIP_HREF_PREFIXES.each do |prefix|
           buf << %[:not([href^="#{prefix}"])]
         end
         buf.freeze

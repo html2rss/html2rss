@@ -142,7 +142,7 @@ OpenAPI 2.0 `ScrapeRequest` / `ScrapeSuccess` / `ScrapeError` is the wire author
 
 ## DOM chrome
 
-Layout noise and primary-link recognition for the **manual selector** path: ignored container tags/paths, class-clustering exclusions, utility landmarks, heading tags, main-anchor CSS, and visible-text extraction. Owned by `Html2rss::Html::Navigator` (+ `TextExtractor`). `Html::ArticleExtractor` serves selectors only.
+Layout noise and primary-link recognition for the **manual selector** path: ignored container tags/paths, class-clustering exclusions, utility landmarks, heading tags, main-anchor CSS, and visible-text extraction. Owned by `Html2rss::Html::Navigator` (+ `TextExtractor`); its tag sets and skip-href prefixes derive from `SST::Tags`, the single vocabulary owner. `Html::ArticleExtractor` serves selectors only.
 
 Heuristic auto-source chrome lives on `SST::Tags` / `SST::Text` after `SST::Normalizer` (sole Nokogiri on that path).
 
