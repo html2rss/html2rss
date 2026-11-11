@@ -88,7 +88,7 @@ module Html2rss
 
       private
 
-      # @walks is the explicit lazy holder: the frozen PageLinks fills each walk once.
+      # The +@walks+ memo is the explicit lazy holder: the frozen PageLinks fills each walk once.
       def placements = @walks[:placements] ||= Placements.new(@document, @link_resolver)
 
       def sponsored_cards = @walks[:sponsored_cards] ||= SponsoredCards.new(@document, @link_resolver)
