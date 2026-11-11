@@ -210,10 +210,22 @@ title_headline_clock_opening.html:
   expected: 6
   title_misses: 0
   sst_built: true
+title_headline_noise_placement.html:
+  junk: 0
+  real: 14
+  expected: 14
+  title_misses: 0
+  sst_built: true
 title_inline_spaced_colon.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
+  sst_built: true
+title_kicker_selection.html:
+  junk: 0
+  real: 17
+  expected: 17
   title_misses: 0
   sst_built: true
 title_kicker_separators.html:
@@ -238,6 +250,12 @@ title_newline_heading.html:
   junk: 0
   real: 5
   expected: 5
+  title_misses: 0
+  sst_built: true
+title_separators_typography.html:
+  junk: 0
+  real: 17
+  expected: 17
   title_misses: 0
   sst_built: true
 title_spaced_colon_kicker.html:

@@ -1,5 +1,5 @@
 ---
-case: 'Kicker-marked wrappers (kicker-group, a has-kicker modifier, a with-kicker card) that also hold the headline; the kicker is the innermost kicker element, so each title is exactly "Kicker: Headline" or the headline.'
+case: 'Kicker-marked wrappers (kicker-group, a has-kicker modifier, a with-kicker card) that also hold the headline; none of them is the kicker, so each title is exactly "Kicker: Headline" or the headline.'
 expected:
 - https://example.com/news/2026/11/budget-vote-delayed
 - https://example.com/news/2026/11/tram-line-extends-east

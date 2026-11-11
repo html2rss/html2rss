@@ -1,0 +1,47 @@
+---
+case: 'A time, clock-only or label-only element is dropped from the headline only
+  before its first word; mid-sentence and trailing ones stay, and headline text is
+  never noise-stripped. Known gap kept out of titles: an unlisted screen-reader label
+  ("Article:") stays in the title.'
+expected:
+- https://example.com/news/2026/11/night-train-platform
+- https://example.com/news/2026/11/council-meeting-moved
+- https://example.com/news/2026/11/handball-overtime
+- https://example.com/news/2026/11/category-field-editors
+- https://example.com/news/2026/11/budget-vote-evening
+- https://example.com/news/2026/11/coalition-special-sessions
+- https://example.com/news/2026/11/relief-convoy-border
+- https://example.com/news/2026/11/local-cup-final
+- https://example.com/news/2026/11/budget-vote-delayed
+- https://example.com/news/2026/11/capital-talks-pause
+- https://example.com/news/2026/11/laptop-panels-return
+- https://example.com/news/2026/11/evening-crime-drama
+- https://example.com/news/2026/11/noon-deadline-passes
+- https://example.com/news/2026/11/article-label-budget
+titles:
+  https://example.com/news/2026/11/night-train-platform: Night train leaves again
+    at 20:15 from platform four
+  https://example.com/news/2026/11/council-meeting-moved: Council meeting moved to
+    Friday after budget row
+  https://example.com/news/2026/11/handball-overtime: Handball women beat the champions
+    23:21 after overtime
+  https://example.com/news/2026/11/category-field-editors: 'Why the Category: field
+    confuses every new CMS editor'
+  https://example.com/news/2026/11/budget-vote-evening: Budget vote passes late in
+    the evening 22:10
+  https://example.com/news/2026/11/coalition-special-sessions: Coalition holds special
+    sessions on the budget
+  https://example.com/news/2026/11/relief-convoy-border: Relief convoy reaches the
+    border crossing
+  https://example.com/news/2026/11/local-cup-final: 'Sport: Local club wins the regional
+    cup final'
+  https://example.com/news/2026/11/budget-vote-delayed: Budget vote delayed again
+    by the council
+  https://example.com/news/2026/11/capital-talks-pause: Talks resume in the capital
+    after a long pause
+  https://example.com/news/2026/11/laptop-panels-return: 16:10 laptops are back as
+    makers drop widescreen panels
+  https://example.com/news/2026/11/evening-crime-drama: '20:15 Uhr: Neuer Krimi aus
+    der Hafenstadt am Abend'
+  https://example.com/news/2026/11/noon-deadline-passes: 12:00 noon deadline passes
+    without a deal

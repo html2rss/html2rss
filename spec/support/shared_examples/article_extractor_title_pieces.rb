@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 # Host specs define title_for as a lambda: ->(html) { String or nil }, html being one <article> card.
-# Both extractors pick the leaf-most kicker-marked node beside the headline, judge kicker children
-# with Article::Title.noise_piece? and drop teaser noise elements (Article::Title.headline_noise_piece?,
-# +time+) from the headline, whose text stays verbatim; so these must agree.
+# Both extractors read kicker and headline through Html::TitlePieces (one rule): the outermost
+# kicker-marked element beside the headline carrying kicker text, its noise pieces dropped
+# (Article::Title.noise_piece?), and headline noise elements (+time+, Article::Title.headline_noise_piece?)
+# dropped only before the first headline word; so these must agree.
 RSpec.shared_examples 'article extractor title pieces' do
   {
     'a field-label kicker child' => [
@@ -77,6 +78,38 @@ RSpec.shared_examples 'article extractor title pieces' do
     'a dated time element in the headline' => [
       '<h2><a href="/news/story"><time datetime="2026-10-20">Oct 20</time> Tram line extends</a></h2>',
       'Tram line extends'
+    ],
+    'an icon leaf in the kicker' => [
+      '<span class="kicker"><span class="kicker__icon" aria-hidden="true"></span>Transit</span>' \
+      '<h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a time leaf beside the kicker topic' => [
+      '<span class="eyebrow"><time class="eyebrow__time">10:30</time> <b class="eyebrow__topic">Transit</b></span>' \
+      '<h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a kicker-marked clock leaf before the kicker' => [
+      '<span class="kicker__time">10:30</span><span class="kicker">Transit</span>' \
+      '<h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a kicker made of a topic and a sub part' => [
+      '<div class="kicker"><span class="kicker__topic">Transit</span> <span class="kicker__sub">East</span></div>' \
+      '<h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit East: Tram line extends'
+    ],
+    'a clock element in the middle of the headline' => [
+      '<h2><a href="/news/story">Night train leaves at <strong>20:15</strong> from platform four</a></h2>',
+      'Night train leaves at 20:15 from platform four'
+    ],
+    'a time element ending the headline' => [
+      '<h2><a href="/news/story">Budget vote passes late <time>22:10</time></a></h2>',
+      'Budget vote passes late 22:10'
+    ],
+    'a label element in the middle of the headline' => [
+      '<h2><a href="/news/story">Why the <em>Category:</em> field confuses editors</a></h2>',
+      'Why the Category: field confuses editors'
     ],
     'a kicker ending in a separator' => [
       '<span class="kicker">Transit &gt;</span><h2><a href="/news/story">Tram line extends</a></h2>',
