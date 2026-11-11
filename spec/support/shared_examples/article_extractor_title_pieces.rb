@@ -94,8 +94,9 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<h2><a href="/news/story">Tram line extends</a></h2>',
       'Transit: Tram line extends'
     ],
-    'a kicker made of a topic and a sub part' => [
-      '<div class="kicker"><span class="kicker__topic">Transit</span> <span class="kicker__sub">East</span></div>' \
+    'a kicker made of a topic, a sub part and a time' => [
+      '<div class="kicker"><time>10:30</time> <b class="kicker__topic">Transit</b> ' \
+      '<b class="kicker__sub">East</b></div>' \
       '<h2><a href="/news/story">Tram line extends</a></h2>',
       'Transit East: Tram line extends'
     ],
@@ -110,6 +111,28 @@ RSpec.shared_examples 'article extractor title pieces' do
     'a label element in the middle of the headline' => [
       '<h2><a href="/news/story">Why the <em>Category:</em> field confuses editors</a></h2>',
       'Why the Category: field confuses editors'
+    ],
+    'a classed badge before the kicker' => [
+      '<span class="badge">Plus</span><span class="kicker">Transit</span>' \
+      '<h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'two sibling kickers in a plain wrapper' => [
+      '<div class="meta"><span class="kicker">Transit</span> <span class="kicker">East</span></div>' \
+      '<h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'an empty time element opening the headline' => [
+      '<h2><a href="/news/story"><time datetime="2026-10-20"></time>Tram line extends</a></h2>',
+      'Tram line extends'
+    ],
+    'a headline made only of noise elements' => [
+      '<span class="kicker">Weather</span><h2><a href="/news/story"><span><time>19:47</time></span></a></h2>',
+      'Weather'
+    ],
+    'an indented headline opening with a time element' => [
+      "<h2>\n  <a href=\"/news/story\">\n    <time>19:47</time>\n    Tram line extends\n  </a>\n</h2>",
+      'Tram line extends'
     ],
     'a kicker ending in a separator' => [
       '<span class="kicker">Transit &gt;</span><h2><a href="/news/story">Tram line extends</a></h2>',

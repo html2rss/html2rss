@@ -47,11 +47,11 @@ module Html2rss
       module DomNodes
         def self.marked(root)
           root.xpath('descendant-or-self::*[@class or @data-tb-kicker]')
-              .select { |node| node.key?(KICKER_ATTRIBUTE) || node['class'].to_s.match?(KICKER_CLASS) }
+              .select { |node| node.key?(KICKER_ATTRIBUTE) || node['class'].match?(KICKER_CLASS) }
         end
 
         def self.elements(node) = node.css('*')
-        def self.text(node, exclude = []) = Navigator.extract_visible_text(node, exclude_nodes: exclude)
+        def self.text(node, exclude = nil) = Navigator.extract_visible_text(node, exclude_nodes: exclude)
         def self.time?(node) = node.name == 'time'
         def self.inside?(node, ancestor) = node == ancestor || Navigator.descendant_of?(node, ancestor)
       end
@@ -63,7 +63,7 @@ module Html2rss
       def initialize(root, source)
         @root = root
         @source = source
-        @nodes = root.is_a?(SST::Node) ? SstNodes : DomNodes
+        @nodes = root.instance_of?(SST::Node) ? SstNodes : DomNodes
       end
 
       ##
@@ -85,7 +85,7 @@ module Html2rss
       def headline_text(node)
         return unless node
 
-        dropped = kicker && @nodes.inside?(kicker, node) ? [kicker] : []
+        dropped = [kicker].compact
         @nodes.elements(node).each do |element|
           next unless noise_element?(element)
           break unless opening?(node, dropped, element)
@@ -100,10 +100,7 @@ module Html2rss
       def noise_element?(node) = @nodes.time?(node) || Article::Title.headline_noise_piece?(@nodes.text(node))
 
       # Whether +element+ opens the text of +node+ left after +dropped+.
-      def opening?(node, dropped, element)
-        head = Article::Title.collapse(@nodes.text(node, dropped)).to_s
-        head.start_with?(Article::Title.collapse(@nodes.text(element)).to_s)
-      end
+      def opening?(node, dropped, element) = @nodes.text(node, dropped).to_s.start_with?(@nodes.text(element).to_s)
 
       def kicker_text?(node) = !noise_element?(node) && text_without_noise(node).to_s.match?(WORD)
 
