@@ -18,12 +18,6 @@ module Html2rss
       # header/footer: a card-walk stop only at page level (see {SST::Tags::PAGE_CHROME_NAMES}).
       PAGE_CHROME_TAGS = SST::Tags::PAGE_CHROME_NAMES.to_set(&:to_s).freeze
 
-      # Ancestors that scope a header/footer to their section.
-      SECTIONING_TAGS = SST::Tags::SECTIONING_NAMES.to_set(&:to_s).freeze
-
-      # Chrome wherever it appears; mirrors SST::Normalizer::ALWAYS_CHROME_TAGS.
-      ALWAYS_CHROME_TAGS = (IGNORED_CONTAINER_TAGS - PAGE_CHROME_TAGS).freeze
-
       # Immediate parent walk stops here — not a usable article card. Page-level
       # header/footer stop too, via {usable_card_parent?}.
       CARD_WALK_STOP_TAGS =
@@ -157,22 +151,12 @@ module Html2rss
           nokogiri_chrome_scope(node) == :chrome
         end
 
-        # Folds the Normalizer's scope rule (+SST::Normalizer#chrome_scope+) over a
-        # Nokogiri node's ancestors, root first: chrome is inherited, header/footer
-        # are chrome only at page scope, sectioning tags open a sectioned scope.
+        # Folds {SST::Tags.chrome_scope} over a Nokogiri node's ancestors, root first.
         #
         # @param node [Nokogiri::XML::Node]
         # @return [Symbol] +:page+, +:sectioned+, or +:chrome+
         def nokogiri_chrome_scope(node)
-          chain = node.ancestors.reverse << node
-          chain.reduce(:page) { |scope, element| chrome_scope_step(Probe.tag(element), scope) }
-        end
-
-        def chrome_scope_step(tag, scope)
-          return :chrome if scope == :chrome || ALWAYS_CHROME_TAGS.include?(tag)
-          return :chrome if scope == :page && PAGE_CHROME_TAGS.include?(tag)
-
-          SECTIONING_TAGS.include?(tag) ? :sectioned : scope
+          (node.ancestors.reverse << node).reduce(:page) { |scope, el| SST::Tags.chrome_scope(Probe.tag(el), scope) }
         end
       end
     end

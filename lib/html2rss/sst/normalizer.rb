@@ -54,14 +54,6 @@ module Html2rss
       # Typed Attrs fields excluded from the leftover raw hash.
       TYPED_ATTR_NAMES = Set['href', 'src', 'id', 'class', 'datetime', 'itemprop', 'style', 'srcset', 'type'].freeze
 
-      # String forms of {Tags} chrome sets for checks without to_sym.
-      # Chrome wherever it appears.
-      ALWAYS_CHROME_TAGS = (Tags::IGNORED_CONTAINER_NAMES - Tags::PAGE_CHROME_NAMES).to_set(&:to_s).freeze
-      # Chrome only outside {SECTIONING_TAGS}.
-      PAGE_CHROME_TAGS = Tags::PAGE_CHROME_NAMES.to_set(&:to_s).freeze
-      # Scope header/footer to their section.
-      SECTIONING_TAGS = Tags::SECTIONING_NAMES.to_set(&:to_s).freeze
-
       class << self
         ##
         # @param input [String, Nokogiri::HTML::Document, Nokogiri::XML::Node]
@@ -172,7 +164,7 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        scope_here = chrome_scope(tag, scope)
+        scope_here = Tags.chrome_scope(tag, scope)
 
         children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, scope: scope_here)
 
@@ -182,19 +174,6 @@ module Html2rss
         children.each { |child| @parents[child] = node }
 
         node
-      end
-
-      # Scope an element's subtree inherits: +:chrome+ sticks; header/footer are chrome only
-      # at +:page+ level, so card headers inside article/section/aside/main stay content.
-      # @param tag [String]
-      # @param scope [Symbol] parent scope: +:page+, +:sectioned+, or +:chrome+
-      # @return [Symbol]
-      def chrome_scope(tag, scope)
-        return :chrome if scope == :chrome || ALWAYS_CHROME_TAGS.include?(tag)
-        return :chrome if scope == :page && PAGE_CHROME_TAGS.include?(tag)
-        return :sectioned if SECTIONING_TAGS.include?(tag)
-
-        scope
       end
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength

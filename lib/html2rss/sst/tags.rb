@@ -25,6 +25,26 @@ module Html2rss
       SKIP_HREF_PREFIXES = ['#', 'javascript:', 'mailto:', 'tel:', 'file://', 'sms:', 'data:'].freeze
       # Layout-ish names used when resolving nested wrapper groups.
       LAYOUT_NAMES = Set[:div, :section, :article, :li, :ul, :ol].freeze
+
+      ALWAYS_CHROME = (IGNORED_CONTAINER_NAMES - PAGE_CHROME_NAMES).to_set(&:to_s).freeze
+      PAGE_CHROME = PAGE_CHROME_NAMES.to_set(&:to_s).freeze
+      SECTIONING = SECTIONING_NAMES.to_set(&:to_s).freeze
+      private_constant :ALWAYS_CHROME, :PAGE_CHROME, :SECTIONING
+
+      ##
+      # The single chrome-scope rule, folded down the tree by both the SST normalizer
+      # and the Nokogiri ancestor walk: +:chrome+ sticks; header/footer are chrome only
+      # at +:page+ level, so card headers inside article/section/aside/main stay content.
+      #
+      # @param tag [String] folded tag name
+      # @param scope [Symbol] parent scope: +:page+, +:sectioned+, or +:chrome+
+      # @return [Symbol] scope the element's subtree inherits
+      def self.chrome_scope(tag, scope)
+        return :chrome if scope == :chrome || ALWAYS_CHROME.include?(tag)
+        return :chrome if scope == :page && PAGE_CHROME.include?(tag)
+
+        SECTIONING.include?(tag) ? :sectioned : scope
+      end
     end
   end
 end

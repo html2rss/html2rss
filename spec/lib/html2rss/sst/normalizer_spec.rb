@@ -226,4 +226,22 @@ RSpec.describe Html2rss::SST::Normalizer do
         .to raise_error(Html2rss::InvalidOption, 'expected String or Nokogiri::XML::Node, got Integer')
     end
   end
+
+  describe 'chrome scope rule (SST::Tags.chrome_scope)' do
+    {
+      %w[div page] => :page,
+      %w[header page] => :chrome,
+      %w[footer page] => :chrome,
+      %w[nav page] => :chrome,
+      %w[nav sectioned] => :chrome,
+      %w[header sectioned] => :sectioned,
+      %w[section page] => :sectioned,
+      %w[article chrome] => :chrome,
+      %w[div sectioned] => :sectioned
+    }.each do |(tag, scope), expected|
+      it "maps #{tag} under #{scope} to #{expected}" do
+        expect(Html2rss::SST::Tags.chrome_scope(tag, scope.to_sym)).to eq(expected)
+      end
+    end
+  end
 end
