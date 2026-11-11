@@ -8,7 +8,10 @@ module Html2rss
     # Only {Scraper::CORROBORATED_SCRAPERS} items are checked; publisher-declared sources
     # (native feed, CMS REST API, sitemap, oEmbed) are kept as-is. A URL rendered as a
     # content anchor is kept. On a page that can corroborate, a URL rendered only in chrome
-    # is +:chrome_only+ and one rendered nowhere is +:not_on_page+. A peripheral URL (aside,
+    # is +:chrome_only+. A URL rendered nowhere is +:not_on_page+ when the page renders its
+    # cohort (at least half the cohort as content anchors, or a cohort too small to tell);
+    # an item of a cohort the page mostly does not render (an app shell, an aggregator linking
+    # through redirects) is scored with absence counting against it. A peripheral URL (aside,
     # menu landmark), or any URL on a sparse page or without a page ({PageLinks#sparse?}),
     # is decided by a private article-likeness score: +:keep+ or +:unlikely+.
     #
@@ -18,7 +21,7 @@ module Html2rss
     class Corroboration
       # Article-likeness score at or above which an uncorroborated item is kept.
       LIKELY_SCORE = 2
-      # Fewest items in a scraper's cohort before its URL cohesion counts.
+      # Fewest items in a scraper's cohort before its URL cohesion or render share counts.
       MIN_COHORT_SIZE = 3
 
       ##
@@ -26,6 +29,7 @@ module Html2rss
       def initialize(&page_links)
         @page_links_source = page_links
         @cohesion = {}.compare_by_identity
+        @rendered = {}.compare_by_identity
       end
 
       ##
@@ -38,7 +42,7 @@ module Html2rss
         case page_links.placement(article.url)
         when :content then :keep
         when :chrome then uncorroborated(:chrome_only, article, cohort)
-        when :absent then uncorroborated(:not_on_page, article, cohort)
+        when :absent then unrendered(article, cohort)
         else scored(article, cohort)
         end
       end
@@ -63,27 +67,40 @@ module Html2rss
         page_links.sparse? ? scored(article, cohort) : reason
       end
 
-      def scored(article, cohort)
-        likely?(article, cohort) ? :keep : :unlikely
+      # Absence is evidence only against a cohort the page renders: a page showing most of a
+      # list left the rest out. A page that renders little of the cohort shows the list
+      # elsewhere (client-side, through redirects), so there absence only lowers the score.
+      def unrendered(article, cohort)
+        return uncorroborated(:not_on_page, article, cohort) if page_links.sparse? || rendered?(cohort)
+
+        scored(article, cohort, absent: true)
+      end
+
+      def scored(article, cohort, absent: false)
+        likely?(article, cohort, absent:) ? :keep : :unlikely
       end
 
       def page_links
         @page_links ||= @page_links_source.call
       end
 
-      def likely?(article, cohort)
+      def likely?(article, cohort, absent:)
         score = [article.published_at, article.image, article.description].count(&:itself)
         score += url_shape(article.url)
         score += 1 if cohesive?(cohort)
+        score -= 1 if absent
         score >= LIKELY_SCORE
       end
 
-      # +1 for an article-shaped path, -1 for a section root, 0 otherwise.
+      # +1 for an article-shaped path, -1 for a section root, 0 otherwise. A shallow path
+      # ending in a post slug (+/harbor-ferry-route-returns+) is a root-level permalink, not a
+      # section root.
       def url_shape(url)
         facts = LinkDestination::DestinationFacts.build(url)
         return 1 if facts.content_path || facts.strong_post_suffix
+        return 0 unless facts.shallow
 
-        facts.shallow ? -1 : 0
+        facts.segments.last&.match?(LinkDestination::PathClassifier::POST_SLUG_SEGMENT) ? 0 : -1
       end
 
       # A cohort is cohesive when at least half its URLs share one parent path.
@@ -93,6 +110,17 @@ module Html2rss
         @cohesion.fetch(cohort) do
           modal = cohort.map { _1.url.path_segments[0...-1] }.tally.values.max
           @cohesion[cohort] = modal * 2 >= cohort.size
+        end
+      end
+
+      # A cohort is rendered when at least half its URLs are content anchors, or when it is
+      # too small for its share to tell a rendered list from an unrendered one.
+      def rendered?(cohort)
+        return true if cohort.size < MIN_COHORT_SIZE
+
+        @rendered.fetch(cohort) do
+          content = cohort.count { page_links.placement(_1.url) == :content }
+          @rendered[cohort] = content * 2 >= cohort.size
         end
       end
     end

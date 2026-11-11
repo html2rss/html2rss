@@ -1,0 +1,8 @@
+---
+case: 'Client-rendered shell with consent, privacy, terms, and noscript body links; dated
+  articles only in JSON state.'
+expected:
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/school-board-approves-budget

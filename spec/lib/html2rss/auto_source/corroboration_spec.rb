@@ -100,6 +100,68 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       expect(corroboration.verdict(dated, cohort: [dated])).to eq(:not_on_page)
     end
 
+    context 'with a cohort the page mostly does not render' do
+      let(:cohort) { %w[a-b-c d-e-f g-h-i j-k-l].map { build_article["/news/2026/10/#{_1}"] } }
+      let(:absent_member) { cohort.last }
+
+      it 'drops an absent member as :not_on_page when half the cohort is content' do
+        cohort.first(2).each { placements[_1.url.path] = :content }
+
+        expect(corroboration.verdict(absent_member, cohort:)).to eq(:not_on_page)
+      end
+
+      it 'drops an absent member as :not_on_page when most of the cohort is content' do
+        cohort.first(3).each { placements[_1.url.path] = :content }
+
+        expect(corroboration.verdict(absent_member, cohort:)).to eq(:not_on_page)
+      end
+
+      it 'scores an absent member when less than half the cohort is content', :aggregate_failures do
+        trio = cohort.first(3)
+        placements[cohort.first.url.path] = :content
+
+        expect(corroboration.verdict(absent_member, cohort:)).to eq(:unlikely)
+        expect(corroboration.verdict(trio.last, cohort: trio)).to eq(:unlikely)
+      end
+
+      it 'needs MIN_COHORT_SIZE items before the share counts', :aggregate_failures do
+        pair = %w[a-b-c d-e-f].map { build_article["/news/2026/10/#{_1}", description: 'D', published_at: '2026'] }
+        trio = %w[a-b-c d-e-f g-h-i].map { build_article["/news/2026/10/#{_1}", description: 'D'] }
+
+        expect(corroboration.verdict(pair.first, cohort: pair)).to eq(:not_on_page)
+        expect(corroboration.verdict(trio.first, cohort: trio)).to eq(:keep)
+      end
+
+      it 'counts absence one against the score', :aggregate_failures do
+        bare = cohort.first
+        described = build_article[bare.url.path, description: 'D']
+
+        expect(corroboration.verdict(bare, cohort:)).to eq(:unlikely)
+        expect(corroboration.verdict(described, cohort:)).to eq(:keep)
+      end
+
+      it 'drops a dated, cohesive cohort that would otherwise reach the threshold' do
+        comments = %w[jane-marlow-ortiz omar-lindqvist-hale rita-osei-brandt].map do |slug|
+          build_article["/people/#{slug}", published_at: '2026-10-20']
+        end
+
+        expect(comments.map { corroboration.verdict(_1, cohort: comments) }).to all(eq(:unlikely))
+      end
+
+      it 'still drops a chrome-only member as :chrome_only' do
+        placements[absent_member.url.path] = :chrome
+
+        expect(corroboration.verdict(absent_member, cohort:)).to eq(:chrome_only)
+      end
+
+      it 'computes the content share once per cohort' do
+        allow(cohort).to receive(:count).and_call_original
+        cohort.each { corroboration.verdict(_1, cohort:) }
+
+        expect(cohort).to have_received(:count).once
+      end
+    end
+
     context 'with a peripheral placement' do
       before { placements['/news/2026/10/harbor-ferry-route-returns'] = :peripheral }
 
@@ -165,6 +227,29 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
 
         expect(corroboration.verdict(item, cohort: [])).to eq(:unlikely)
         expect(corroboration.verdict(dated, cohort: [])).to eq(:keep)
+      end
+
+      it 'scores a root-level post slug zero', :aggregate_failures do
+        dated = build_article['/harbor-ferry-route-returns', published_at: '2026-10-20']
+        described = build_article['/harbor-ferry-route-returns', description: 'D', published_at: '2026-10-20']
+
+        expect(corroboration.verdict(dated, cohort: [])).to eq(:unlikely)
+        expect(corroboration.verdict(described, cohort: [])).to eq(:keep)
+      end
+
+      it 'subtracts one for a shallow path without a post slug', :aggregate_failures do
+        short = build_article['/about-us', description: 'D', published_at: '2026-10-20']
+        root = build_article['/', description: 'D', published_at: '2026-10-20']
+
+        expect(corroboration.verdict(short, cohort: [])).to eq(:unlikely)
+        expect(corroboration.verdict(root, cohort: [])).to eq(:unlikely)
+      end
+
+      it 'keeps a thin dated cohort under root-level slugs without counting absence' do
+        thin = %w[harbor-ferry-route-returns library-extends-weekend-hours river-cleanup-volunteers-record]
+               .map { build_article["/#{_1}", published_at: '2026-10-20'] }
+
+        expect(thin.map { corroboration.verdict(_1, cohort: thin) }).to all(eq(:keep))
       end
 
       it 'adds one for a cohesive cohort of at least MIN_COHORT_SIZE items' do

@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "title": "Harbor ferry route returns after repairs",
+      "url": "https://example.com/harbor-ferry-route-returns",
+      "date": "2026-10-20T08:00:00Z"
+    },
+    {
+      "title": "City library extends its weekend hours",
+      "url": "https://example.com/library-extends-weekend-hours",
+      "date": "2026-10-21T08:00:00Z"
+    },
+    {
+      "title": "River cleanup draws record volunteer turnout",
+      "url": "https://example.com/river-cleanup-volunteers-record",
+      "date": "2026-10-22T08:00:00Z"
+    },
+    {
+      "title": "School board approves the new budget plan",
+      "url": "https://example.com/school-board-approves-budget",
+      "date": "2026-10-23T08:00:00Z"
+    }
+  ]
+}
