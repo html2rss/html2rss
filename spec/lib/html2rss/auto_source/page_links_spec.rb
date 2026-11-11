@@ -78,6 +78,8 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
             <article><a href="/news/post?id=1">One</a></article>
             <article><a href="/news/multi?a=1&amp;b=2">Multi</a></article>
             <article><a href="/news/bare?flag">Bare</a></article>
+            <article><a href="/news/a?utm_source=hp">Anchor</a></article>
+            <article><a href="http://example.com/news/legacy?ref=hp&amp;id=3">Legacy</a></article>
           </main></body></html>
         HTML
       end
@@ -99,7 +101,18 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
         expect(page_links.canonical_url(Html2rss::Url.from_absolute('http://example.com/news/plain?utm_term=t')).to_s)
           .to eq('https://example.com/news/plain')
         expect(page_links.canonical_url(url_at['/news/tracked?id=7&fbclid=x']).to_s)
-          .to eq('https://example.com/news/tracked?utm_source=feed&id=7')
+          .to eq('https://example.com/news/tracked?id=7')
+      end
+
+      it 'strips tracking params from the anchor URL', :aggregate_failures do
+        expect(page_links.canonical_url(url_at['/news/a']).to_s).to eq('https://example.com/news/a')
+        expect(page_links.canonical_url(url_at['/news/a?utm_source=other']).to_s).to eq('https://example.com/news/a')
+      end
+
+      it 'never downgrades an https item to an http anchor', :aggregate_failures do
+        expect(page_links.canonical_url(url_at['/news/legacy?id=3']).to_s).to eq('https://example.com/news/legacy?id=3')
+        expect(page_links.canonical_url(Html2rss::Url.from_absolute('http://example.com/news/legacy?id=3')).to_s)
+          .to eq('http://example.com/news/legacy?id=3')
       end
 
       it 'has no canonical URL for absent URLs or nil', :aggregate_failures do

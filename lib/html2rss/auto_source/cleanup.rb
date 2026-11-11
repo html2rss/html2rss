@@ -149,7 +149,7 @@ module Html2rss
         end
 
         def audit_url_diversity(items, metrics, violations)
-          unique_urls = items.filter_map { |item| url_identity(item_url(item)) }.uniq
+          unique_urls = items.filter_map { |item| item_url(item)&.article_identity }.uniq
           metrics[:unique_url_count] = unique_urls.size
           return [] unless items.size >= 2 && unique_urls.size < 2
 
@@ -238,9 +238,9 @@ module Html2rss
         end
 
         def reject_self_links!(articles, base_url, tallies)
-          source_identity = url_identity(base_url)
+          source_identity = base_url.article_identity
           tally_reject!(articles, tallies, 'self_link') do |article|
-            url_identity(article.url) == source_identity
+            article.url.article_identity == source_identity
           end
         end
 
@@ -293,10 +293,6 @@ module Html2rss
             tallies[reason] += 1
             true
           end
-        end
-
-        def url_identity(url)
-          url.to_s.partition('#').first if url
         end
 
         def feed_item_as_article(item)

@@ -198,6 +198,33 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'when an item URL is a scheme, tracking, or trailing-slash variant of the page URL' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news') }
+      let(:article_at) do
+        lambda do |href|
+          instance_double(Html2rss::Article, valid?: true, url: Html2rss::Url.from_absolute(href),
+                                             title: 'A Reasonably Long Story Title')
+        end
+      end
+
+      %w[http://example.com/news https://example.com/news?utm_source=hp https://example.com/news/
+         https://example.com/news?fbclid=1#top].each do |href|
+        it "rejects #{href} as self_link", :aggregate_failures do
+          other = article_at['https://example.com/story-two']
+          result = described_class.call([article_at[href], other], url:)
+
+          expect(result.articles).to eq([other])
+          expect(result.drop_tallies).to include('self_link' => 1)
+        end
+      end
+
+      it 'keeps a variant with a meaningful query param' do
+        kept = article_at['https://example.com/news?id=1']
+
+        expect(described_class.call([kept], url:).articles).to eq([kept])
+      end
+    end
+
     it 'keeps only HTTP and HTTPS articles' do
       expect(cleaned).not_to include(articles[4])
     end
@@ -403,6 +430,14 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
       expect(audit.warnings).to include(:duplicate_urls)
       expect(audit.metrics[:junk_title_count]).to eq(0)
+    end
+
+    it 'warns on duplicate URLs that differ only by scheme, tracking params, or trailing slash' do
+      items = %w[http://example.com/same https://example.com/same/?utm_source=x].map do |href|
+        rss_item(title: 'Story Title Words Here', url: href)
+      end
+
+      expect(described_class.audit_feed_items(items).warnings).to include(:duplicate_urls)
     end
 
     it 'warns on CTA titles', :aggregate_failures do # rubocop:disable RSpec/ExampleLength

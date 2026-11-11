@@ -242,6 +242,30 @@ module Html2rss
     end
 
     ##
+    # Returns a copy of the URL with {TRACKING_PARAM} query params removed; the remaining
+    # params keep their order.
+    #
+    # @return [Url] this URL when it carries no tracking param; otherwise a new URL
+    def without_tracking_params
+      return self if query_params.none? { tracking_param?(_1) }
+
+      uri = @uri.dup
+      uri.query = query_params.reject { tracking_param?(_1) }.join('&')
+      self.class.from_absolute(uri)
+    end
+
+    ##
+    # Returns a copy of the URL with the provided scheme.
+    #
+    # @param scheme [String] for example +https+
+    # @return [Url] a new URL with the updated scheme
+    def with_scheme(scheme)
+      uri = @uri.dup
+      uri.scheme = scheme
+      self.class.from_absolute(uri)
+    end
+
+    ##
     # Returns a copy of the URL with the provided query values.
     #
     # @param values [Hash{String, Symbol => #to_s}] query parameters to assign
@@ -338,28 +362,33 @@ module Html2rss
     end
 
     ##
+    # "Same article" key: host, port, slash-stripped path, and the sorted query params minus
+    # {TRACKING_PARAM}. Scheme, fragment, trailing slash, tracking params, and param order are
+    # ignored, so +http://example.com/a+ and +https://example.com/a/?utm_source=x#top+ share it;
+    # every other query param stays significant. Keys page placement, self-link rejection, and
+    # feed-item dedupe, unlike {#same_document?}, which stays scheme- and query-exact.
+    #
+    # @return [Array] equal for URLs naming the same article
+    def article_identity
+      [host, port, path.chomp('/'), query_params.reject { tracking_param?(_1) }.sort]
+    end
+
+    protected
+
     # Same-document key: scheme, authority, slash-stripped path, and query (fragment omitted).
-    # Two URLs share it exactly when {#same_document?} holds, so it keys per-document indexes.
+    # Two URLs share it exactly when {#same_document?} holds.
     #
     # @return [String]
     def document_identity
       "#{scheme}\0#{@uri.authority}\0#{path.chomp('/')}\0#{query}"
     end
 
-    ##
-    # "Same article" key: host, port, slash-stripped path, and query params minus
-    # {TRACKING_PARAM}. Scheme, fragment, trailing slash, and tracking params are ignored, so
-    # +http://example.com/a+ and +https://example.com/a/?utm_source=x#top+ share it; every other
-    # query param stays significant. Keys page placement and feed-item dedupe, unlike
-    # {#document_identity}, which stays scheme- and query-exact.
-    #
-    # @return [Array] equal for URLs naming the same article
-    def article_identity
-      params = query.to_s.split('&').reject { TRACKING_PARAM.match?(_1.split('=', 2).first) }
-      [host, port, path.chomp('/'), params]
-    end
-
     private
+
+    # @return [Array<String>] raw +key=value+ query pairs, in source order
+    def query_params = query.to_s.split('&')
+
+    def tracking_param?(pair) = TRACKING_PARAM.match?(pair.partition('=').first)
 
     def ip_address_host?
       !IPAddr.new(host).nil?

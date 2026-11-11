@@ -100,11 +100,11 @@ Shared path lexicon for native feed discovery and entry-resolution listing guess
 
 ## URL document identity
 
-Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`; `Url#document_identity` is the matching hash key. `FeedResolution::CandidateGenerator` filters with it. Differs from `Url#==` (slash-sensitive).
+Trailing-slash and fragment-insensitive same-document compare. Owned by `Html2rss::Url#same_document?`. `FeedResolution::CandidateGenerator` filters with it. Differs from `Url#==` (slash-sensitive).
 
 ## URL article identity
 
-Scheme-, fragment-, trailing-slash-, and tracking-param-insensitive "same article" key (closed `Url::TRACKING_PARAM` set: `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid`, `mc_eid`, `ref`, `ref_src`; every other query param stays significant). Owned by `Html2rss::Url#article_identity`; `AutoSource::PageLinks` keys rendered anchors by it and `Cleanup` dedupes by it, so one rule decides both. A kept corroborated item whose URL differs from its content anchor only by these takes the anchor's URL (`PageLinks#canonical_url`, applied by `Cleanup`).
+Scheme-, fragment-, trailing-slash-, query-param-order-, and tracking-param-insensitive "same article" key (closed `Url::TRACKING_PARAM` set: `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid`, `mc_eid`, `ref`, `ref_src`; every other query param stays significant). Owned by `Html2rss::Url#article_identity`; `AutoSource::PageLinks` keys rendered anchors by it and `Cleanup` dedupes, rejects self-links, and audits URL diversity by it, so one rule decides all. A kept corroborated item whose URL differs from its content anchor only by these takes the anchor's URL minus tracking params (`Url#without_tracking_params`), never downgraded from `https` to `http`, so the item guid stays stable (`PageLinks#canonical_url`, applied by `Cleanup`).
 
 ## Feed resolution policy
 

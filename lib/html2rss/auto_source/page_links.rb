@@ -49,12 +49,18 @@ module Html2rss
       end
 
       ##
-      # The rendered content anchor's URL for the article +url+ names, so an item
-      # carrying a +http+ or tracked variant can take the page's canonical form.
+      # The rendered content anchor's URL for the article +url+ names, minus tracking params,
+      # so a tracked or +http+ variant takes one stable form (the feed item guid keys on it).
+      # An +https+ item never drops to an +http+ anchor.
       #
       # @param url [Html2rss::Url, nil] candidate item URL
       # @return [Html2rss::Url, nil] nil unless +url+ is placed as +:content+
-      def canonical_url(url) = @hrefs[url&.article_identity]
+      def canonical_url(url)
+        anchor = @hrefs[url&.article_identity]&.without_tracking_params
+        return anchor unless anchor && url.scheme == 'https'
+
+        anchor.with_scheme('https')
+      end
 
       ##
       # True when absence cannot be told from an unrendered list: no page, a degraded SST,

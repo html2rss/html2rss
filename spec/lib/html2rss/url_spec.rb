@@ -277,6 +277,22 @@ RSpec.describe Html2rss::Url do
 
       expect(page).to be_same_document(child)
     end
+
+    it 'is public while the identity key stays private', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a')
+
+      expect(url).not_to respond_to(:document_identity)
+      expect(url).to be_same_document(described_class.from_absolute('https://example.com/a/#top'))
+    end
+
+    it 'differs by scheme, authority, path, and query', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?x=1')
+
+      %w[http://example.com/a?x=1 https://example.com:8443/a?x=1 https://example.com/b?x=1
+         https://example.com/a?x=2].each do |other|
+        expect(url).not_to be_same_document(described_class.from_absolute(other))
+      end
+    end
   end
 
   describe '#article_identity' do
@@ -307,24 +323,45 @@ RSpec.describe Html2rss::Url do
       expect(identity['https://example.com/a?id=1']).to eq(identity['https://example.com/a?utm_term=t&id=1'])
       expect(identity['https://example.com/a?a=1&b=2']).not_to eq(identity['https://example.com/a?a=1'])
     end
+
+    it 'ignores query param order', :aggregate_failures do
+      expect(identity['https://example.com/a?a=1&b=2']).to eq(identity['https://example.com/a?b=2&a=1'])
+      expect(identity['https://example.com/a?b=2&utm_term=t&a=1']).to eq(identity['https://example.com/a?a=1&b=2'])
+    end
   end
 
-  describe '#document_identity' do
-    it 'is equal for URLs differing only by trailing slash or fragment', :aggregate_failures do
-      bare = described_class.from_absolute('https://example.com/blog')
+  describe '#without_tracking_params' do
+    it 'removes tracking params and keeps the others in order', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?utm_source=x&id=7&fbclid=1&b=2#top')
 
-      expect(described_class.from_absolute('https://example.com/blog/#top').document_identity)
-        .to eq(bare.document_identity)
-      expect(bare.document_identity).to eq("https\0example.com\0/blog\0")
+      expect(url.without_tracking_params).to eq(described_class.from_absolute('https://example.com/a?id=7&b=2#top'))
+      expect(described_class.from_absolute('https://example.com/a?utm_source=x&ref=1').without_tracking_params.to_s)
+        .to eq('https://example.com/a')
     end
 
-    it 'differs by scheme, authority, path, and query', :aggregate_failures do
-      identity = described_class.from_absolute('https://example.com/a?x=1').document_identity
+    it 'returns the same URL when nothing is tracked', :aggregate_failures do
+      url = described_class.from_absolute('https://example.com/a?refx=1&id=2')
 
-      %w[http://example.com/a?x=1 https://example.com:8443/a?x=1 https://example.com/b?x=1
-         https://example.com/a?x=2].each do |other|
-        expect(described_class.from_absolute(other).document_identity).not_to eq(identity)
-      end
+      expect(url.without_tracking_params).to equal(url)
+      expect(described_class.from_absolute('https://example.com/a').without_tracking_params.to_s)
+        .to eq('https://example.com/a')
+    end
+
+    it 'does not mutate the original URL' do
+      url = described_class.from_absolute('https://example.com/a?utm_source=x')
+
+      url.without_tracking_params
+
+      expect(url.to_s).to eq('https://example.com/a?utm_source=x')
+    end
+  end
+
+  describe '#with_scheme' do
+    it 'returns a copy with the scheme replaced', :aggregate_failures do
+      url = described_class.from_absolute('http://example.com/a?x=1')
+
+      expect(url.with_scheme('https')).to eq(described_class.from_absolute('https://example.com/a?x=1'))
+      expect(url.to_s).to eq('http://example.com/a?x=1')
     end
   end
 
