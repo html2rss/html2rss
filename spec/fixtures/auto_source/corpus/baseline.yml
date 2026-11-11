@@ -186,6 +186,12 @@ sponsored_structured_shared_url.html:
   expected: 2
   title_misses: 0
   sst_built: true
+sponsored_wrapper_and_hidden_labels.html:
+  junk: 0
+  real: 7
+  expected: 7
+  title_misses: 0
+  sst_built: true
 structured_small_merge.html:
   junk: 0
   real: 6
@@ -217,6 +223,12 @@ title_headline_noise_placement.html:
   title_misses: 0
   sst_built: true
 title_inline_spaced_colon.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+title_kicker_colon_piece.html:
   junk: 0
   real: 5
   expected: 5
