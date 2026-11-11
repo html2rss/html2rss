@@ -733,10 +733,6 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
         ->(html) { described_class.call(Nokogiri::HTML.fragment(html).at_css('article'), base_url: 'https://example.com')[:title] }
       end
     end
-  end
-
-  describe '#kicker_node' do
-    it_behaves_like 'kicker title'
 
     it 'keeps the kicker of a card without heading or anchor as its title' do
       article_tag = Nokogiri::HTML.fragment('<article><span class="kicker">Weather</span><p>Storm ahead.</p></article>')
