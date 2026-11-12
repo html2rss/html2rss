@@ -1,0 +1,16 @@
+---
+case: A page with a native feed (saved response) of five items and eight cards; three cards repeat feed articles and merge into the feed items, the feed's paid post (a sponsored card) is dropped, four page-only cards fill.
+responses: t6_feed_merge
+expected:
+- https://example.com/news/2026/11/feed-only-council-vote
+- https://example.com/news/2026/11/harbor-ferry-schedule
+- https://example.com/news/2026/11/library-reading-week
+- https://example.com/news/2026/11/river-path-reopens
+- https://example.com/news/2026/11/night-market-vendors
+- https://example.com/news/2026/11/school-garden-harvest
+- https://example.com/news/2026/11/bridge-paint-survey
+- https://example.com/news/2026/11/museum-late-opening
+titles:
+  https://example.com/news/2026/11/harbor-ferry-schedule: Harbor ferry schedule changes this winter (publisher title)
+  https://example.com/news/2026/11/library-reading-week: Library reading week draws young readers (publisher title)
+  https://example.com/news/2026/11/river-path-reopens: River path reopens after flood repairs (publisher title)

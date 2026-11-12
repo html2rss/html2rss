@@ -120,9 +120,9 @@ RSpec.describe RevisionComparison do
 
   describe '.measure' do
     it 'splits a feed-backed page into feed, page and merged items' do
-      dir = File.join(AutoSourceCorpus::ROOT, 't6_feed_merge')
-      run = described_class.measure(described_class.load_pages(dir), dir,
-                                    responses: SavedResponses.new(File.join(dir, 'responses'))).first
+      saved = RevisionComparison::Page.new(file: 't6_feed_merge.html', url: AutoSourceCorpus::BASE_URL)
+      responses = SavedResponses.new(File.join(AutoSourceCorpus::ROOT, 't6_feed_merge'))
+      run = described_class.measure([saved], AutoSourceCorpus::ROOT, responses:).first
 
       expect(run.feed).to eq([4, 4, 3])
     end

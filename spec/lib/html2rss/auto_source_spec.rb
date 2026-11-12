@@ -405,9 +405,9 @@ RSpec.describe Html2rss::AutoSource do
 
     context 'with a native feed and a page of cards' do
       let(:dir) { 'spec/fixtures/auto_source/corpus/t6_feed_merge' }
-      let(:body) { File.read(File.join(dir, 'page.html')) }
+      let(:body) { File.read("#{dir}.html") }
       let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
-      let(:request_session) { SavedResponses.new(File.join(dir, 'responses')) }
+      let(:request_session) { SavedResponses.new(dir) }
       let(:slugs) { articles.map { _1.url.path.delete_prefix('/news/2026/11/') } }
       let(:feed_items) { articles.select { _1.scraper == Html2rss::AutoSource::Scraper::NativeFeed } }
 

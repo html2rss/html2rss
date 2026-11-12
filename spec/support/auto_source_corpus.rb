@@ -6,9 +6,11 @@ require 'yaml'
 # Labeled auto-source corpus under spec/fixtures/auto_source/corpus/.
 #
 # Each page (+.html+ or +.json+) has a +.yml+ sidecar listing its expected article URLs and,
-# optionally, a +titles+ map (expected URL => exact expected title).
-# {.run} feeds every page through {Html2rss::AutoSource} with a fixed base URL and no
-# request session (no network; {.auto_source} accepts one to serve saved follow-up responses), then scores the admitted URLs against the sidecar.
+# optionally, a +titles+ map (expected URL => exact expected title), a +media+ list (audio or
+# video URLs the page may admit beside its articles: scored neither real nor junk), and a
+# +responses+ directory (relative to the corpus root) of saved follow-up responses ({SavedResponses}).
+# {.run} feeds every page through {Html2rss::AutoSource} with a fixed base URL, no network, and a
+# request session only when the sidecar names saved responses, then scores the admitted URLs against the sidecar.
 # Shared by bin/auto-source-corpus (table + baseline recording) and the ratchet spec.
 #
 # Saved pages are UTF-8 by contract (the capture tool re-encodes them, so an in-page
@@ -23,7 +25,7 @@ module AutoSourceCorpus
   RECORD_COMMAND = 'mise exec -- make corpus-baseline'
   SST_CALLS = :auto_source_corpus_sst_calls
 
-  # Per-page score: junk = admitted URLs not in the sidecar; real = admitted sidecar URLs;
+  # Per-page score: junk = admitted URLs not in the sidecar (+media+ URLs excepted); real = admitted sidecar URLs;
   # title_misses = sidecar titles the admitted article does not carry verbatim (absent counts).
   Row = Data.define(:page, :junk, :real, :expected, :title_misses, :sst_built) do
     # @return [Array<String, Integer>] table cells in column order
@@ -130,13 +132,13 @@ module AutoSourceCorpus
 
     def run_page(page)
       sidecar = YAML.load_file(File.join(ROOT, "#{File.basename(page, '.*')}.yml"))
-      articles, sst_calls = with_sst_count { page_articles(page) }
+      articles, sst_calls = with_sst_count { page_articles(page, sidecar['responses']) }
       score(page, sidecar, articles, sst_calls.positive?)
     end
 
     def score(page, sidecar, articles, sst_built)
-      expected = sidecar.fetch('expected').map { normalize(_1) }
-      admitted = articles.map { _1.url.to_s }.uniq
+      expected = sidecar_urls(sidecar, 'expected')
+      admitted = articles.map { _1.url.to_s }.uniq - sidecar_urls(sidecar, 'media')
       real = (admitted & expected).size
       Row.new(page:, junk: admitted.size - real, real:, expected: expected.size, sst_built:,
               title_misses: title_misses(articles, sidecar.fetch('titles', {})))
@@ -149,6 +151,8 @@ module AutoSourceCorpus
 
     def normalize(url) = Html2rss::Url.from_absolute(url).to_s
 
+    def sidecar_urls(sidecar, key) = sidecar.fetch(key, []).map { normalize(_1) }
+
     def with_sst_count
       Thread.current[SST_CALLS] = 0
       [yield, Thread.current[SST_CALLS]]
@@ -156,8 +160,16 @@ module AutoSourceCorpus
       Thread.current[SST_CALLS] = nil
     end
 
-    def page_articles(page)
-      auto_source(path: File.join(ROOT, page)).articles
+    def page_articles(page, responses)
+      auto_source(path: File.join(ROOT, page), request_session: saved_responses(responses)).articles
+    end
+
+    # Loaded on first use: SavedResponses builds its responses through this module.
+    def saved_responses(dir)
+      return unless dir
+
+      require_relative 'saved_responses'
+      SavedResponses.new(File.join(ROOT, dir))
     end
   end
 end

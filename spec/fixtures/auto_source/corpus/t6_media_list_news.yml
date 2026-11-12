@@ -1,5 +1,5 @@
 ---
-case: A Schema ItemList of 25 audio objects (the item limit) shown on the page beside ten news cards; the audio items must not stop the tiers before the news is read. Audio URLs are not expected, so they count as junk.
+case: A Schema ItemList of 25 audio objects (the item limit) shown on the page beside ten news cards; the audio items must not stop the tiers before the news is read. Admitted audio items are allowed media.
 expected:
 - https://example.com/news/2026/11/harbor-council-update-1
 - https://example.com/news/2026/11/library-council-update-2
@@ -11,3 +11,29 @@ expected:
 - https://example.com/news/2026/11/garden-council-update-8
 - https://example.com/news/2026/11/station-council-update-9
 - https://example.com/news/2026/11/festival-council-update-10
+media:
+- https://example.com/news/audio/morning-briefing-episode-1
+- https://example.com/news/audio/morning-briefing-episode-2
+- https://example.com/news/audio/morning-briefing-episode-3
+- https://example.com/news/audio/morning-briefing-episode-4
+- https://example.com/news/audio/morning-briefing-episode-5
+- https://example.com/news/audio/morning-briefing-episode-6
+- https://example.com/news/audio/morning-briefing-episode-7
+- https://example.com/news/audio/morning-briefing-episode-8
+- https://example.com/news/audio/morning-briefing-episode-9
+- https://example.com/news/audio/morning-briefing-episode-10
+- https://example.com/news/audio/morning-briefing-episode-11
+- https://example.com/news/audio/morning-briefing-episode-12
+- https://example.com/news/audio/morning-briefing-episode-13
+- https://example.com/news/audio/morning-briefing-episode-14
+- https://example.com/news/audio/morning-briefing-episode-15
+- https://example.com/news/audio/morning-briefing-episode-16
+- https://example.com/news/audio/morning-briefing-episode-17
+- https://example.com/news/audio/morning-briefing-episode-18
+- https://example.com/news/audio/morning-briefing-episode-19
+- https://example.com/news/audio/morning-briefing-episode-20
+- https://example.com/news/audio/morning-briefing-episode-21
+- https://example.com/news/audio/morning-briefing-episode-22
+- https://example.com/news/audio/morning-briefing-episode-23
+- https://example.com/news/audio/morning-briefing-episode-24
+- https://example.com/news/audio/morning-briefing-episode-25

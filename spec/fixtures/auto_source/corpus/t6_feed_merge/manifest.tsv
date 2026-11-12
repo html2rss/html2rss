@@ -1,2 +1,2 @@
-# feed-backed page for bin/compare-revisions --pages DIR --responses DIR/responses
-page.html	https://example.com/news/
+# saved follow-up responses for t6_feed_merge.html: <file> TAB <absolute url>
+feed.xml	https://example.com/news/feed.xml
