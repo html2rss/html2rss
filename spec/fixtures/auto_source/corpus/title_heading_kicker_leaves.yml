@@ -1,0 +1,18 @@
+---
+case: >-
+  A kicker element inside the heading or anchor (topline, prefix, label, an unmarked leaf before the headline
+  piece) becomes Kicker: Headline; trailing tag pieces and a repeated kicker are dropped.
+expected:
+- https://example.com/news/2026/11/tram-line-extends
+- https://example.com/news/2026/11/museum-north-wing
+- https://example.com/news/2026/11/school-lunch-program
+- https://example.com/news/2026/11/harbor-ferry-returns
+- https://example.com/news/2026/11/council-budget-deal
+titles:
+  https://example.com/news/2026/11/tram-line-extends: 'Transit: Tram line extends to the eastern districts'
+  https://example.com/news/2026/11/museum-north-wing: 'Culture: Museum reopens its restored north wing'
+  https://example.com/news/2026/11/school-lunch-program: 'Explainer: School lunch program expands to every
+    district'
+  https://example.com/news/2026/11/harbor-ferry-returns: 'Regional news: Harbor ferry returns after the
+    winter repairs'
+  https://example.com/news/2026/11/council-budget-deal: Council reaches a late budget deal

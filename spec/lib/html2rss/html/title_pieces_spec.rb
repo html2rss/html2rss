@@ -5,8 +5,9 @@ RSpec.describe Html2rss::Html::TitlePieces do
     let(:pieces_for) do
       lambda do |html|
         root = Nokogiri::HTML.fragment(html).at_css('article')
-        source = root.at_css('h1, h2, h3, h4, h5, h6') || root.at_css('a[href]')
-        [described_class.new(root, source), root, source]
+        anchor = root.at_css('a[href]')
+        source = root.at_css('h1, h2, h3, h4, h5, h6') || anchor
+        [described_class.new(root, source, anchor:), root, source]
       end
     end
     let(:title_for) do
@@ -36,6 +37,16 @@ RSpec.describe Html2rss::Html::TitlePieces do
       expect(described_class.new(root, nil).kicker_text).to eq('Transit')
     end
 
+    it 'finds no kicker without a marked one or a headline source' do
+      root = Nokogiri::HTML.fragment('<article><b>Transit</b><p>Tram</p></article>').at_css('article')
+      expect(described_class.new(root, nil).kicker).to be_nil
+    end
+
+    it 'reads a heading whose only link is not the selected anchor as a whole' do
+      html = '<article><a href="/s">Pics</a><h2><span>Transit</span> <a href="/t">Tram line extends</a></h2></article>'
+      expect(title_for.call(html)).to eq('Transit Tram line extends')
+    end
+
     it 'returns nil headline text without a node' do
       pieces, = pieces_for.call('<article><h2><a href="/s">Tram</a></h2></article>')
       expect(pieces.headline_text(nil)).to be_nil
@@ -52,8 +63,9 @@ RSpec.describe Html2rss::Html::TitlePieces do
       lambda do |html|
         doc = Html2rss::SST::Normalizer.call("<html><body>#{html}</body></html>")
         root = doc.root.find { _1.name == :article }
-        source = root.find(&:heading?) || root.find(&:link?)
-        [described_class.new(root, source), root, source]
+        anchor = root.find(&:link?)
+        source = root.find(&:heading?) || anchor
+        [described_class.new(root, source, anchor:), root, source]
       end
     end
     let(:title_for) do
@@ -70,6 +82,11 @@ RSpec.describe Html2rss::Html::TitlePieces do
       expect(pieces.kicker_text).to eq('Transit')
     end
 
+    it 'reads a heading whose only link is not the selected anchor as a whole' do
+      html = '<article><a href="/s">Pics</a><h2><span>Transit</span> <a href="/t">Tram line extends</a></h2></article>'
+      expect(title_for.call(html)).to eq('Transit Tram line extends')
+    end
+
     context 'with unindexed nodes' do
       let(:kicker) do
         Html2rss::SST::Node.build(name: :span, attrs: Html2rss::SST::Attrs.build(class_names: ['kicker']),
@@ -84,6 +101,19 @@ RSpec.describe Html2rss::Html::TitlePieces do
       it 'judges them by walking the tree', :aggregate_failures do
         expect(pieces.kicker).to equal(kicker)
         expect(pieces.headline_text(heading)).to eq('Tram')
+      end
+
+      it 'finds no piece before a title piece without parents' do
+        title = kicker.with(attrs: kicker.attrs.with(class_names: ['title']), own_text: 'Tram')
+        box = heading.with(children: [kicker.with(attrs: Html2rss::SST::Attrs.build), title])
+        bare = described_class.new(Html2rss::SST::Node.build(name: :article, children: [box]), box)
+
+        expect([bare.kicker, bare.headline_text(box)]).to eq([nil, 'Tram'])
+      end
+
+      it 'drops a time element without a parent to read running text from' do
+        time = Html2rss::SST::Node.build(name: :time, own_text: 'Friday')
+        expect(pieces.headline_text(heading.with(children: [time, *heading.children]))).to eq('Tram')
       end
     end
   end

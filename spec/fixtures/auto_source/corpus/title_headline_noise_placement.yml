@@ -1,8 +1,8 @@
 ---
-case: 'A time, clock-only or label-only element is dropped from the headline only
-  before its first word; mid-sentence and trailing ones stay, and headline text is
-  never noise-stripped. Known gap kept out of titles: an unlisted screen-reader label
-  ("Article:") stays in the title.'
+case: 'A time element is dropped from the headline wherever it sits, unless it is part
+  of running text (a word right before and after it); a clock-only or label-only element
+  is dropped only before the first word, and headline text is never noise-stripped. A screen-reader-only label ("Article:") is not seen, so it
+  never reaches the title.'
 expected:
 - https://example.com/news/2026/11/night-train-platform
 - https://example.com/news/2026/11/council-meeting-moved
@@ -28,7 +28,7 @@ titles:
   https://example.com/news/2026/11/category-field-editors: 'Why the Category: field
     confuses every new CMS editor'
   https://example.com/news/2026/11/budget-vote-evening: Budget vote passes late in
-    the evening 22:10
+    the evening
   https://example.com/news/2026/11/coalition-special-sessions: Coalition holds special
     sessions on the budget
   https://example.com/news/2026/11/relief-convoy-border: Relief convoy reaches the
@@ -45,3 +45,4 @@ titles:
     der Hafenstadt am Abend'
   https://example.com/news/2026/11/noon-deadline-passes: 12:00 noon deadline passes
     without a deal
+  https://example.com/news/2026/11/article-label-budget: Budget talks stall over school funding

@@ -1,0 +1,16 @@
+---
+case: >-
+  An anchor card with a title span and a lead paragraph and no heading: the title child or the data-title
+  attribute wins; the lead and trailing tags never join the title.
+expected:
+- https://example.com/news/2026/11/tram-depot-fire
+- https://example.com/news/2026/11/council-housing-plan
+- https://example.com/news/2026/11/budget-agreement
+- https://example.com/news/2026/11/school-heating-repairs
+- https://example.com/news/2026/11/park-lighting-upgrade
+titles:
+  https://example.com/news/2026/11/tram-depot-fire: Fire at the tram depot halts two lines
+  https://example.com/news/2026/11/council-housing-plan: 'City hall: Council unveils its housing plan'
+  https://example.com/news/2026/11/budget-agreement: Budget agreement reached after long talks
+  https://example.com/news/2026/11/school-heating-repairs: School heating repairs finish early
+  https://example.com/news/2026/11/park-lighting-upgrade: Park lighting upgrade starts next month

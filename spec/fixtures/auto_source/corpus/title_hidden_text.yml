@@ -1,0 +1,16 @@
+---
+case: >-
+  Screen-reader-only and off-screen text (sr-only, h-offscreen, _screen-reader-only, visually-hidden)
+  never reaches a title; a link whose only name is screen-reader text keeps it.
+expected:
+- https://example.com/news/2026/11/harbor-festival-video
+- https://example.com/news/2026/11/tenant-help-line
+- https://example.com/news/2026/11/ticker-update
+- https://example.com/news/2026/11/harbor-podcast
+- https://example.com/news/2026/11/icon-only-link
+titles:
+  https://example.com/news/2026/11/harbor-festival-video: Harbor festival draws record crowds
+  https://example.com/news/2026/11/tenant-help-line: Help line for new tenants opens
+  https://example.com/news/2026/11/ticker-update: Senate race ticker
+  https://example.com/news/2026/11/harbor-podcast: Harbor podcast looks back at the strike
+  https://example.com/news/2026/11/icon-only-link: Mayor answers questions from residents

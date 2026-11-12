@@ -216,6 +216,18 @@ title_clock_prefix.html:
   expected: 5
   title_misses: 0
   sst_built: true
+title_date_elements_anywhere.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+title_heading_kicker_leaves.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 title_headline_clock_opening.html:
   junk: 0
   real: 6
@@ -226,6 +238,12 @@ title_headline_noise_placement.html:
   junk: 0
   real: 14
   expected: 14
+  title_misses: 0
+  sst_built: true
+title_hidden_text.html:
+  junk: 0
+  real: 5
+  expected: 5
   title_misses: 0
   sst_built: true
 title_inline_spaced_colon.html:
@@ -295,6 +313,12 @@ title_separators_typography.html:
   title_misses: 0
   sst_built: true
 title_spaced_colon_kicker.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+title_teaser_lead_card.html:
   junk: 0
   real: 5
   expected: 5

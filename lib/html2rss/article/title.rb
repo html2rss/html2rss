@@ -18,8 +18,9 @@ module Html2rss
     #
     # Headline text is never noise-stripped: +20:15 Uhr: Neuer Krimi+ or +9:41 is the time+ is a real
     # headline. Teaser noise in a headline is told apart by structure instead ({Html::TitlePieces}):
-    # +time+ elements and elements that are only a clock or a label ({.headline_noise_piece?}) are
-    # dropped only before the first headline word, and kicker pieces are judged with {.noise_piece?}.
+    # date and time elements leave wherever they sit outside running text, elements that are only a
+    # clock or a label ({.headline_noise_piece?}) only before the first headline word, and kicker
+    # pieces are judged with {.noise_piece?}.
     module Title
       # Joins a kicker to its headline.
       SEPARATOR = ': '
@@ -112,8 +113,8 @@ module Html2rss
 
         ##
         # Whether one element inside a headline is teaser noise on its own: only a clock time or only a
-        # label (+Section:+, +Article type: Video+). {Html::TitlePieces} drops such elements, and +time+
-        # elements, when they open the headline; the headline text itself is never noise-stripped.
+        # label (+Section:+, +Article type: Video+). {Html::TitlePieces} drops such elements when they open
+        # the headline; the headline text itself is never noise-stripped.
         #
         # @param text [String, nil] visible text of one headline descendant element
         # @return [Boolean]

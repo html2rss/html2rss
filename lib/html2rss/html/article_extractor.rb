@@ -88,7 +88,7 @@ module Html2rss
       end
 
       # Kicker and headline text ({TitlePieces}) of this card.
-      def title_pieces = @title_pieces ||= TitlePieces.new(article_tag, headline_source)
+      def title_pieces = @title_pieces ||= TitlePieces.new(article_tag, headline_source, anchor: selected_anchor)
 
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?

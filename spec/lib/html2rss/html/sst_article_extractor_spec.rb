@@ -28,7 +28,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       ->(html) { described_class.call(segment_for(html), base_url: 'https://example.com')&.title }
     end
 
-    it 'takes the single title-classed child of a multi-span heading', :aggregate_failures do
+    it 'takes the single title-classed child of a multi-span heading and drops a type-marker kicker before it' do
       html = File.read(File.expand_path('../../../fixtures/auto_source/teaser_card_kicker_heading.html', __dir__))
 
       expect(title_for.call(html)).to eq('Evening bulletin 15:00')
@@ -60,21 +60,21 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
       expect(title_for.call(html)).to eq('One Two')
     end
 
-    it 'keeps the full text when the only title-like class is a subtitle' do
+    it 'drops a subtitle piece beside the headline piece' do
       html = '<article><h2><span class="headline">Main headline here</span>' \
              '<span class="subtitle">Longer subtitle text</span></h2>' \
              '<a href="/news/story">Read</a></article>'
 
-      expect(title_for.call(html)).to eq('Main headline here Longer subtitle text')
+      expect(title_for.call(html)).to eq('Main headline here')
     end
 
-    it 'keeps the full text when the only title-like class is a hyphen- or underscore-delimited sub-title',
+    it 'drops a hyphen- or underscore-delimited sub-title piece beside the headline piece',
        :aggregate_failures do
       %w[sub-title sub_title Sub-Title].each do |klass|
         html = "<article><h2><span class=\"headline\">Main headline here</span><span class=\"#{klass}\">Longer " \
                'subtitle text</span></h2><a href="/news/story">Read</a></article>'
 
-        expect(title_for.call(html)).to eq('Main headline here Longer subtitle text')
+        expect(title_for.call(html)).to eq('Main headline here')
       end
     end
 
