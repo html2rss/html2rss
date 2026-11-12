@@ -282,6 +282,12 @@ title_newline_heading.html:
   expected: 5
   title_misses: 0
   sst_built: true
+title_offscreen_twin_anchor.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 title_separators_typography.html:
   junk: 0
   real: 17

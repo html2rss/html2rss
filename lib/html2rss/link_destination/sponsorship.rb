@@ -13,8 +13,7 @@ module Html2rss
     #   es). Attribution alone ("Presented by", "In Kooperation mit") states no payment and is no label.
     #
     # A class or text label counts only on a rendered element: neither it nor an ancestor inside its
-    # card ({CARD_NAMES}) carries a +hidden+ attribute, an inline +display: none+ or a hiding utility
-    # class ({HIDDEN_CLASSES}). +aria-hidden="true"+ and
+    # card ({CARD_NAMES}) is unrendered ({Html::Visibility.unrendered?}). +aria-hidden="true"+ and
     # screen-reader-only classes still count: one is a visual label, the other a spoken one. A class
     # marker also needs content (an empty template slot is not a label). A text label never counts
     # inside running text: anchor text and headings are never read, nor are words inside an anchor, a
@@ -43,12 +42,6 @@ module Html2rss
       AD_LABEL_CLASS = /\Aad-(?:labels?|badge|marker)(?:(?:__|--)[a-z0-9-]+)?\z/
       # ARIA attributes read as labels.
       ARIA_NAMES = %w[aria-label aria-roledescription].freeze
-      # Inline style that hides an element.
-      HIDDEN_STYLE = /display\s*:\s*none/i
-      # Raw attribute that keeps an element from rendering, whatever its value.
-      HIDDEN_ATTRIBUTE = 'hidden'
-      # Utility class tokens that keep an element from rendering.
-      HIDDEN_CLASSES = Set['hidden', 'd-none', 'is-hidden', 'hide'].freeze
       # Elements that delimit one card (+main+ is a page region, never a card). A hidden ancestor hides
       # a marker only inside its card: a hidden tab panel or responsive wrapper around whole cards
       # hides none of their labels.
@@ -126,8 +119,7 @@ module Html2rss
 
         def hidden?(node)
           attrs = node.attrs
-          attrs.raw.key?(HIDDEN_ATTRIBUTE) || attrs.style&.match?(HIDDEN_STYLE) ||
-            attrs.class_names.any? { HIDDEN_CLASSES.include?(_1) }
+          Html::Visibility.unrendered?(attrs.class_names, style: attrs.style, hidden: attrs.raw.key?('hidden'))
         end
 
         # Most nodes carry no raw attributes, so the empty check skips every lookup.

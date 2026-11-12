@@ -33,6 +33,7 @@ module Html2rss
           (@link_resolver.utility_text?(text) && destination_facts.vanity_path) ||
           utility_text_chrome?(text, destination_facts, heading_anchor:) ||
           icon_only_anchor?(anchor, text) ||
+          concealed_anchor?(anchor) ||
           utility_landmark_ancestor
       end
 
@@ -63,6 +64,15 @@ module Html2rss
         return false unless @link_resolver.utility_text?(text)
 
         !heading_anchor && !destination_facts.strong_post_suffix
+      end
+
+      # An anchor a sighted reader does not see, such as the off-screen accessibility twin of a teaser
+      # link ({Html::Visibility.concealed?}), is never the item.
+      def concealed_anchor?(anchor)
+        return false unless anchor
+
+        attrs = anchor.attrs
+        Html::Visibility.concealed?(attrs.class_names, style: attrs.style, hidden: attrs.raw.key?('hidden'))
       end
 
       def icon_only_anchor?(anchor, text)

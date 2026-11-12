@@ -33,6 +33,18 @@ RSpec.describe Html2rss::LinkDestination::NoisePolicy do
       expect(policy.noise_anchor?(text: '', destination_facts: facts, anchor:)).to be(true)
     end
 
+    it 'rejects an anchor a sighted reader does not see', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      verdict = lambda do |attributes|
+        anchor = anchor_for.call(%(<a href="/news/2024/harbor-tour" #{attributes}>Harbor tour audio</a>))
+        policy.noise_anchor?(text: 'Harbor tour audio', destination_facts: link_resolver.destination_facts(anchor),
+                             anchor:)
+      end
+
+      concealed = ['class="h-offscreen h-offscreen-focusable"', 'class="sr-only"', 'hidden', 'style="display: none"']
+      expect(concealed.map(&verdict)).to all(be(true))
+      expect(verdict.call('class="teaser" aria-hidden="true"')).to be(false)
+    end
+
     it 'rejects when caller reports a utility landmark ancestor' do # rubocop:disable RSpec/ExampleLength
       facts = link_resolver.destination_facts('/news/2024/platform-launch-notes')
 
