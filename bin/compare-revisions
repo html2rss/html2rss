@@ -6,7 +6,9 @@
 # DIR holds the saved pages plus a manifest.tsv of "<file><TAB><base url>" lines. Each
 # revision is checked out as a detached temporary worktree (removed on exit), every page
 # runs offline in both, and per page the report shows item counts, items gained or lost,
-# title changes, Cleanup drop tallies and wall time. Pages that errored in either revision
+# title changes, Cleanup drop tallies and wall time; on a page where the native feed
+# contributed, a feed line shows feed items, page items added, and feed items a page copy
+# merged into ("-" on a revision that cannot merge). Pages that errored in either revision
 # count as errored in the TOTAL line, not as lost or gained items. Nothing is written into the repo.
 # Needs the gems the revisions' Gemfile.lock pins (set BUNDLE_PATH when the bundle is not
 # under ./vendor/bundle).

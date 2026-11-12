@@ -2,11 +2,12 @@
 
 require 'tmpdir'
 require_relative '../../support/revision_comparison'
+require_relative '../../support/saved_responses'
 
 RSpec.describe RevisionComparison do
   let(:new_run) do
-    lambda do |items:, drops: {}, wall_ms: 1.0, error: nil|
-      RevisionComparison::Run.new(items:, drops:, wall_ms:, error:)
+    lambda do |items:, drops: {}, wall_ms: 1.0, error: nil, feed: nil|
+      RevisionComparison::Run.new(items:, drops:, wall_ms:, error:, feed:)
     end
   end
   let(:page) { RevisionComparison::Page.new(file: 'list.html', url: 'https://example.com/news/') }
@@ -75,6 +76,13 @@ RSpec.describe RevisionComparison do
       expect(described_class.report(diffs, %w[abc123 def456])).to eq(expected)
     end
 
+    it 'shows the native feed split where a feed contributed' do
+      diffs = described_class.diffs([page], [base.with(feed: [5, 4, nil])], [head.with(feed: [4, 4, 3])])
+
+      expect(described_class.report(diffs, %w[a b]).lines(chomp: true))
+        .to include('  feed   feed 5 page 4 merged - -> feed 4 page 4 merged 3')
+    end
+
     it 'reports a run error on its side' do
       report = described_class.report(
         described_class.diffs([page], [base], [base.with(items: {}, error: 'RuntimeError: boom')]), %w[a b]
@@ -111,6 +119,14 @@ RSpec.describe RevisionComparison do
   end
 
   describe '.measure' do
+    it 'splits a feed-backed page into feed, page and merged items' do
+      dir = File.join(AutoSourceCorpus::ROOT, 't6_feed_merge')
+      run = described_class.measure(described_class.load_pages(dir), dir,
+                                    responses: SavedResponses.new(File.join(dir, 'responses'))).first
+
+      expect(run.feed).to eq([4, 4, 3])
+    end
+
     it 'runs a saved page offline through the shared corpus runner' do
       Dir.mktmpdir do |dir|
         FileUtils.cp(File.join(AutoSourceCorpus::ROOT, 'plain_listing.html'), File.join(dir, 'p.html'))

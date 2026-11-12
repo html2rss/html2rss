@@ -10,19 +10,35 @@ require_relative 'auto_source_corpus'
 # A pages directory holds saved page files plus a +manifest.tsv+ of tab-separated
 # +file+ and +url+ lines (blank lines and +#+ comments ignored); the url is the page's base URL.
 # Saved page files must be UTF-8 (see {AutoSourceCorpus}).
-module RevisionComparison
+module RevisionComparison # rubocop:disable Metrics/ModuleLength -- run, diff and report of one comparison tool
   MANIFEST = 'manifest.tsv'
 
   # One manifest entry.
   Page = Data.define(:file, :url)
 
+  # Thread-local set of feed item identities a page copy was merged into, while a page runs.
+  MERGED = :revision_comparison_merged
+
   ##
   # One page run on one revision: admitted items (URL => title), Cleanup drop tallies,
-  # wall time, and the error message when the run raised.
-  Run = Data.define(:items, :drops, :wall_ms, :error) do
+  # wall time, the error message when the run raised, and the native feed split when the
+  # feed contributed: +[feed items, page items added, merged items]+ (merged is nil on a
+  # revision without {Html2rss::Article#merge}).
+  Run = Data.define(:items, :drops, :wall_ms, :error, :feed) do
     # @param hash [Hash{String => Object}] a parsed {#to_h} document
     # @return [Run]
     def self.from_h(hash) = new(**hash.slice(*members.map(&:to_s)).transform_keys(&:to_sym))
+  end
+
+  ##
+  # Records which native feed items absorbed a page copy, so the report can count merged items
+  # without adding hooks to lib/. Installed only on revisions whose Article can merge.
+  module MergeProbe
+    def merge(other)
+      feed = Html2rss::AutoSource::Scraper::NativeFeed
+      Thread.current[MERGED]&.add(url.article_identity) if scraper == feed && other.scraper != feed
+      super
+    end
   end
 
   ##
@@ -106,15 +122,34 @@ module RevisionComparison
 
     def measure_page(page, dir, responses)
       started = now
-      items, drops = extract(page, dir, responses)
-      Run.new(items:, drops:, wall_ms: ((now - started) * 1000).round(2), error: nil)
+      items, drops, feed = extract(page, dir, responses)
+      Run.new(items:, drops:, wall_ms: ((now - started) * 1000).round(2), error: nil, feed:)
     rescue StandardError => error
-      Run.new(items: {}, drops: {}, wall_ms: 0.0, error: "#{error.class}: #{error.message}")
+      Run.new(items: {}, drops: {}, wall_ms: 0.0, error: "#{error.class}: #{error.message}", feed: nil)
+    ensure
+      Thread.current[MERGED] = nil
     end
 
     def extract(page, dir, responses)
+      merged = install_merge_probe
       source = AutoSourceCorpus.auto_source(path: File.join(dir, page.file), url: page.url, request_session: responses)
-      [source.articles.to_h { [_1.url.to_s, _1.title.to_s] }, source.admission_drops]
+      articles = source.articles
+      [articles.to_h { [_1.url.to_s, _1.title.to_s] }, source.admission_drops, feed_split(articles, merged)]
+    end
+
+    # @return [Set, nil] the merged identities of this run, nil when the revision cannot merge
+    def install_merge_probe
+      return unless Html2rss::Article.method_defined?(:merge)
+
+      Html2rss::Article.prepend(MergeProbe) unless Html2rss::Article.include?(MergeProbe)
+      Thread.current[MERGED] = Set.new
+    end
+
+    def feed_split(articles, merged)
+      feed, page = articles.partition { _1.scraper == Html2rss::AutoSource::Scraper::NativeFeed }
+      return if feed.empty?
+
+      [feed.size, page.size, merged&.then { |ids| feed.count { ids.include?(_1.url.article_identity) } }]
     end
 
     def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -124,9 +159,21 @@ module RevisionComparison
     def detail_lines(diff)
       [
         "  items  #{diff.base.items.size} -> #{diff.head.items.size}",
-        *error_lines(diff), *change_lines(diff), *drop_lines(diff),
+        *feed_lines(diff), *error_lines(diff), *change_lines(diff), *drop_lines(diff),
         "  wall   #{wall([diff.base])} -> #{wall([diff.head])}"
       ]
+    end
+
+    # Pages where a native feed contributed on either side: feed items, page items added, merged items.
+    def feed_lines(diff)
+      return [] unless diff.base.feed || diff.head.feed
+
+      ["  feed   #{feed_cells(diff.base.feed)} -> #{feed_cells(diff.head.feed)}"]
+    end
+
+    def feed_cells(split)
+      feed, page, merged = split || [0, 0, 0]
+      "feed #{feed} page #{page} merged #{merged || '-'}"
     end
 
     def error_lines(diff)
