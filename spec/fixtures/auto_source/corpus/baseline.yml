@@ -336,26 +336,26 @@ menu_mixed_top_level.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+native_feed_cross_origin_platform_links.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+native_feed_news_before_cross_origin_podcast.html:
+  junk: 0
+  real: 2
+  expected: 2
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 plain_listing.html:
   junk: 0
   real: 6
   expected: 6
-  title_misses: 0
-  enclosure_misses: 0
-  image_misses: 0
-  sst_built: true
-q24_followed_feed_platform_links.html:
-  junk: 0
-  real: 4
-  expected: 4
-  title_misses: 0
-  enclosure_misses: 0
-  image_misses: 0
-  sst_built: true
-q25_news_cross_origin_podcast_first.html:
-  junk: 0
-  real: 2
-  expected: 2
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0

@@ -1,11 +1,12 @@
 ---
-case: A podcast page whose episodes live only in its feed on the hosting platform (another origin). The episodes link to the platform's episode pages, one has no link but an http guid, and one has neither a link nor a URL guid, only its audio file. Every episode must ship with its audio enclosure, linking to the platform page, the guid, or the audio file.
-responses: q24_followed_feed_platform_links
+case: A podcast page whose episodes live only in its feed on the hosting platform (another origin). The episodes link to the platform's episode pages, one has no link but an http guid, and two have neither a link nor a URL guid, only their audio file (one on the platform's media host, one on an unrelated audio host). Every episode must ship with its audio enclosure, linking to the platform page, the guid, or the audio file.
+responses: native_feed_cross_origin_platform_links
 expected:
 - https://podhost.example.net/harbour-hour/episodes/7-ferry-timetable
 - https://podhost.example.net/harbour-hour/episodes/6-lighthouse-keepers
 - https://podhost.example.net/harbour-hour/episodes/5-fish-auction
 - https://media.example.net/harbour-hour/4.mp3
+- https://cdn.audiohost.test/harbour-hour/3.mp3
 enclosures:
   https://podhost.example.net/harbour-hour/episodes/7-ferry-timetable:
     url: https://media.example.net/harbour-hour/7.mp3
@@ -18,4 +19,7 @@ enclosures:
     type: audio/mpeg
   https://media.example.net/harbour-hour/4.mp3:
     url: https://media.example.net/harbour-hour/4.mp3
+    type: audio/mpeg
+  https://cdn.audiohost.test/harbour-hour/3.mp3:
+    url: https://cdn.audiohost.test/harbour-hour/3.mp3
     type: audio/mpeg

@@ -417,9 +417,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
     context 'when image is absolute and no page url is given' do
       subject(:instance) { described_class.new(schema_object, url: nil) }
 
-      let(:schema_object) { { image: 'https://cdn.example.org/i.jpg' } }
+      let(:schema_object) { { image: 'https://cdn.example.net/i.jpg' } }
 
-      it { expect(image.to_s).to eq('https://cdn.example.org/i.jpg') }
+      it { expect(image.to_s).to eq('https://cdn.example.net/i.jpg') }
     end
 
     context 'when image is a string' do

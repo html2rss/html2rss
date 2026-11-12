@@ -96,7 +96,8 @@ module Html2rss
         # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
         #   different domain than +url+ (source-controlled off-domain links; default false)
         # @param feed_url [Html2rss::Url, nil] the native feed the page advertises and that was read
-        #   ({Scraper::NativeFeed#feed_url}); that feed's own items may also link to its domain
+        #   ({Scraper::NativeFeed#feed_url}); that feed's own items may also link to its domain, or be their
+        #   own audio/video file on any domain
         # @param keep_sponsored [Boolean] when true, keep items the page marks as sponsored
         #   (default false)
         # @param corroboration [Corroboration, nil] page check for structured-tier items, run
@@ -281,15 +282,23 @@ module Html2rss
           end
         end
 
-        # Items link to the page's domain; a followed native feed's own items may also link to the
-        # feed's domain (a podcast platform's episode pages, a link-less episode's audio file there).
+        # Items link to the page's domain. A followed native feed's own items may also link to the feed's
+        # domain (a podcast platform's episode pages) or be their own audio/video file, which hosted podcasts
+        # serve from a third-party CDN; every other item keeps the rule.
         def reject_different_domain!(articles, base_url, feed_url, tallies)
           page_domain = base_url.domain
-          feed_domain = feed_url&.domain
           tally_reject!(articles, tallies, 'different_domain') do |article|
-            domain = article.url.domain
-            domain != page_domain && (domain != feed_domain || article.scraper != Scraper::NativeFeed)
+            article.url.domain != page_domain && !followed_feed_exempt?(article, feed_url)
           end
+        end
+
+        # A followed feed's item may link to the feed's domain or be its own audio/video file; a link-less
+        # episode takes that file as its URL ({Syndication::Parser#article}).
+        def followed_feed_exempt?(article, feed_url)
+          return false unless feed_url && article.scraper == Scraper::NativeFeed
+
+          article.url.domain == feed_url.domain ||
+            article.enclosures.any? { |enclosure| enclosure.media? && enclosure.url == article.url }
         end
 
         # Hard-exclude non-article destination classes (commerce/affiliate/utility chrome).

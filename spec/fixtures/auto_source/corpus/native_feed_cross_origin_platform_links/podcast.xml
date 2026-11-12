@@ -34,5 +34,12 @@
       <description>A night aboard the dredger that keeps the channel open.</description>
       <enclosure url="https://media.example.net/harbour-hour/4.mp3" type="audio/mpeg" length="33000000"/>
     </item>
+    <item>
+      <title>Harbour Hour 3: the tide tables, explained</title>
+      <guid isPermaLink="false">harbour-hour-3</guid>
+      <pubDate>Thu, 08 Oct 2026 08:00:00 GMT</pubDate>
+      <description>How the harbour master reads a year of tides.</description>
+      <enclosure url="https://cdn.audiohost.test/harbour-hour/3.mp3" type="audio/mpeg" length="34000000"/>
+    </item>
   </channel>
 </rss>

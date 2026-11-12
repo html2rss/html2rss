@@ -136,7 +136,7 @@ RSpec.describe Html2rss::Capture do
     it 'falls back to a path-suffix match when the article host differs' do
       html = page.call((1..3).map { card.call(_1) }.join)
 
-      expect(derive.call(html, articles_for.call(3, host: 'https://other.example.org'))).to eq(['article', :list])
+      expect(derive.call(html, articles_for.call(3, host: 'https://other.example.net'))).to eq(['article', :list])
     end
 
     it 'needs two matched segments', :aggregate_failures do
@@ -315,19 +315,19 @@ RSpec.describe Html2rss::Capture do
         'zzz' => %w[news]
       }.each do |keyword, topics|
         it "maps #{keyword.inspect} to #{topics.join('+')}" do
-          result = described_class.new('https://example.org/x', title: keyword).build
+          result = described_class.new('https://example.net/x', title: keyword).build
           expect(result.inferred_topics).to eq(topics)
         end
       end
 
       it 'matches case-insensitively against the url as well as the title', :aggregate_failures do
-        result = described_class.new('https://example.org/SOLAR', title: 'zzz').build
+        result = described_class.new('https://example.net/SOLAR', title: 'zzz').build
         expect(result.inferred_topics).to eq(%w[energy])
         expect(result.config.dig(:directory, :topics)).to eq(%w[energy])
       end
 
       it 'prefers explicit topics over inference' do
-        result = described_class.new('https://example.org/solar', topics: %w[jobs]).build
+        result = described_class.new('https://example.net/solar', topics: %w[jobs]).build
         expect(result.inferred_topics).to eq(%w[jobs])
       end
     end
