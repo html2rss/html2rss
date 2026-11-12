@@ -7,8 +7,8 @@ module Html2rss
     class ContainerAssessor
       # Microdata itemprop values treated as publish/update markers.
       PUBLISH_ITEMPROPS = %w[datePublished dateModified].freeze
-      # Words beyond the title that make a container descriptive.
-      DESCRIPTIVE_WORDS = 8
+      # Letter/digit runs ({WordCount.runs}) beyond the title that make a container descriptive.
+      DESCRIPTIVE_RUNS = 8
 
       # @param text_classifier [LinkDestination::TextClassifier]
       # @param content_token_regexp [Regexp]
@@ -32,7 +32,7 @@ module Html2rss
         tokens = "#{container.attrs.class_attr} #{container.attrs.id}"
 
         Observation.new(
-          title_word_count: source ? source.word_count : 0,
+          title_runs: source ? source.run_count : 0,
           path_length: destination_facts&.url&.path.to_s.length,
           content_path: destination_facts&.content_path,
           publish_marker: publish_marker?(container),
@@ -63,7 +63,7 @@ module Html2rss
 
       def descriptive_context?(container_text, title)
         snippet = without_title_prefix(container_text.to_s, title)
-        snippet.length > 30 && words_at_least?(snippet, DESCRIPTIVE_WORDS)
+        snippet.length > 30 && WordCount.runs(snippet, ceiling: DESCRIPTIVE_RUNS) == DESCRIPTIVE_RUNS
       end
 
       # Case-insensitive prefix strip compared by character count, so multi-character
@@ -72,12 +72,6 @@ module Html2rss
         return text unless text[0, title.length].casecmp?(title)
 
         text[title.length..]
-      end
-
-      def words_at_least?(text, limit)
-        count = 0
-        text.scan(/\p{Alnum}+/) { return true if (count += 1) >= limit }
-        false
       end
     end
   end

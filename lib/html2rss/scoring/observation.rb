@@ -3,7 +3,7 @@
 module Html2rss
   module Scoring
     Observation = Data.define(
-      :title_word_count,
+      :title_runs,
       :path_length,
       :content_path,
       :publish_marker,

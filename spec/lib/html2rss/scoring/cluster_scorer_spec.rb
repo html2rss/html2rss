@@ -204,11 +204,11 @@ RSpec.describe Html2rss::Scoring::ClusterScorer do
     end
 
     it 'memoizes word counts per node', :aggregate_failures do
-      node = instance_double(Html2rss::SST::Node, word_count: 7)
+      node = instance_double(Html2rss::SST::Node, run_count: 7)
 
       expect(scorer.avg_words([node])).to eq(7.0)
       expect(scorer.avg_words([node])).to eq(7.0)
-      expect(node).to have_received(:word_count).once
+      expect(node).to have_received(:run_count).once
     end
   end
 end

@@ -39,7 +39,7 @@ module Html2rss
         @depths = depths
         @ignored_chrome = ignored_chrome
         @visible_text = {}.compare_by_identity
-        @word_count = {}.compare_by_identity
+        @run_count = {}.compare_by_identity
         bind_tree(root)
       end
 
@@ -73,13 +73,11 @@ module Html2rss
 
       ##
       # @param node [Node]
-      # @return [Integer]
-      def memo_word_count(node)
-        return @word_count[node] if @word_count.key?(node)
+      # @return [Integer] memoized letter/digit runs of the default visible text ({WordCount.runs})
+      def memo_run_count(node)
+        return @run_count[node] if @run_count.key?(node)
 
-        count = 0
-        memo_visible_text(node).to_s.scan(/\p{Alnum}+/) { count += 1 }
-        @word_count[node] = count
+        @run_count[node] = WordCount.runs(memo_visible_text(node))
       end
 
       ##

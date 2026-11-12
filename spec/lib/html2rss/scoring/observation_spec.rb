@@ -4,7 +4,7 @@
 RSpec.describe Html2rss::Scoring::Observation do
   let(:blank_attributes) do
     {
-      title_word_count: 0, path_length: 0, content_path: false, publish_marker: false,
+      title_runs: 0, path_length: 0, content_path: false, publish_marker: false,
       descriptive_context: false, article_container: false, content_tokens: false, junk_tokens: false,
       utility_prefix_title: false, recommended_title: false, utility_path: false, strong_post_suffix: false,
       shallow: false, high_confidence_junk_path: false, high_confidence_utility_destination: false,
