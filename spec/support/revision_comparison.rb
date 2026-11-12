@@ -9,6 +9,7 @@ require_relative 'auto_source_corpus'
 #
 # A pages directory holds saved page files plus a +manifest.tsv+ of tab-separated
 # +file+ and +url+ lines (blank lines and +#+ comments ignored); the url is the page's base URL.
+# Saved page files must be UTF-8 (see {AutoSourceCorpus}).
 module RevisionComparison
   MANIFEST = 'manifest.tsv'
 
@@ -110,8 +111,7 @@ module RevisionComparison
     end
 
     def extract(page, dir)
-      content_type = AutoSourceCorpus::CONTENT_TYPES.fetch(File.extname(page.file), 'text/html')
-      source = AutoSourceCorpus.auto_source(body: File.read(File.join(dir, page.file)), content_type:, url: page.url)
+      source = AutoSourceCorpus.auto_source(path: File.join(dir, page.file), url: page.url)
       [source.articles.to_h { [_1.url.to_s, _1.title.to_s] }, source.admission_drops]
     end
 

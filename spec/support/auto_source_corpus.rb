@@ -10,11 +10,15 @@ require 'yaml'
 # {.run} feeds every page through {Html2rss::AutoSource} with a fixed base URL and no
 # request session (no network), then scores the admitted URLs against the sidecar.
 # Shared by bin/auto-source-corpus (table + baseline recording) and the ratchet spec.
+#
+# Saved pages are UTF-8 by contract (the capture tool re-encodes them, so an in-page
+# +<meta charset>+ is stale). {.auto_source} owns building the response and declares UTF-8.
 module AutoSourceCorpus
   ROOT = File.expand_path('../fixtures/auto_source/corpus', __dir__)
   BASELINE_PATH = File.join(ROOT, 'baseline.yml')
   BASE_URL = 'https://example.com/news/'
   CONTENT_TYPES = { '.html' => 'text/html', '.json' => 'application/json' }.freeze
+  SAVED_PAGE_CHARSET = 'utf-8'
   RECORD_COMMAND = 'mise exec -- make corpus-baseline'
   SST_CALLS = :auto_source_corpus_sst_calls
 
@@ -47,16 +51,18 @@ module AutoSourceCorpus
       pages.map { run_page(_1) }
     end
 
-    # Runs one page body through {Html2rss::AutoSource} offline (no request session).
-    # Shared with the revision-comparison tool so there is a single runner.
+    # Runs one saved page file through {Html2rss::AutoSource} offline (no request session).
+    # The one builder of a Response from a saved page, shared with the revision-comparison tool:
+    # the file is read and declared as UTF-8, so a stale in-page meta charset never decodes it.
     #
-    # @param body [String] raw page body
-    # @param content_type [String] response content type
+    # @param path [String] saved page file (+.html+, or +.json+ for a JSON document)
     # @param url [String] absolute page URL
     # @return [Html2rss::AutoSource] not yet extracted; call +articles+
-    def auto_source(body:, content_type:, url: BASE_URL)
+    def auto_source(path:, url: BASE_URL)
+      content_type = "#{CONTENT_TYPES.fetch(File.extname(path), 'text/html')}; charset=#{SAVED_PAGE_CHARSET}"
       response = Html2rss::RequestService::Response.new(
-        body:, headers: { 'content-type' => content_type }, url: Html2rss::Url.from_absolute(url)
+        body: File.read(path, encoding: Encoding::UTF_8), headers: { 'content-type' => content_type },
+        url: Html2rss::Url.from_absolute(url)
       )
       Html2rss::AutoSource.new(response)
     end
@@ -133,8 +139,7 @@ module AutoSourceCorpus
     end
 
     def page_articles(page)
-      content_type = CONTENT_TYPES.fetch(File.extname(page))
-      auto_source(body: File.read(File.join(ROOT, page)), content_type:).articles
+      auto_source(path: File.join(ROOT, page)).articles
     end
   end
 end

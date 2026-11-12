@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'tmpdir'
 require_relative '../../support/auto_source_corpus'
 
 RSpec.describe Html2rss::AutoSource do
@@ -42,6 +43,24 @@ RSpec.describe Html2rss::AutoSource do
 
         expect(row.sst_built).to be(false), "#{row.page}: SST built but baseline built none (perf regression)"
       end
+    end
+  end
+
+  describe 'AutoSourceCorpus.auto_source' do
+    let(:dir) { Dir.mktmpdir }
+    let(:path) { File.join(dir, 'page.html') }
+    let(:links) { (1..6).map { |i| %(<li><a href="/news/story-#{i}">Café über Straße número #{i}</a></li>) } }
+    let(:html) do
+      %(<!doctype html><html><head><meta charset="iso-8859-15"></head><body><ul>#{links.join}</ul></body></html>)
+    end
+    let(:titles) { AutoSourceCorpus.auto_source(path:, url: 'https://example.com/news/').articles.map(&:title) }
+
+    before { File.write(path, html, encoding: Encoding::UTF_8) }
+
+    after { FileUtils.remove_entry(dir) }
+
+    it 'decodes a saved UTF-8 page despite a stale non-UTF-8 meta charset' do
+      expect(titles).to include('Café über Straße número 1')
     end
   end
 end
