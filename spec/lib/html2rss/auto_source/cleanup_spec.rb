@@ -109,6 +109,21 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with a read-more copy of an article that also has a real title' do
+      let(:read_more_first) do
+        instance_double(Html2rss::Article, valid?: true, url: articles.first.url,
+                                           title: 'More about «Valid Article One»')
+      end
+
+      before { articles.unshift(read_more_first) }
+
+      it 'keeps the real title whichever copy comes first', :aggregate_failures do
+        expect(cleaned.map(&:title)).to include('Valid Article One')
+        expect(cleaned).not_to include(read_more_first)
+        expect(result.drop_tallies['duplicate_url']).to eq(1)
+      end
+    end
+
     # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- verdict stub + two scraper cohorts
     context 'with a corroboration page check' do
       subject(:result) { described_class.call(articles, url:, corroboration:) }
@@ -551,7 +566,13 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     [
       { title: 'Read More', reason: :cta },
       { title: 'learn more', reason: :cta },
-      { title: 'PDF', reason: :cta }
+      { title: 'PDF', reason: :cta },
+      { title: 'More about «Harbor ferry»', reason: :cta },
+      { title: 'Mehr zu «Hafen»', reason: :cta },
+      { title: 'En savoir plus sur «Port»', reason: :cta },
+      { title: 'Altro su «Porto»', reason: :cta },
+      { title: '「港」の続きを読む', reason: :cta },
+      { title: 'Harbor ferry route returns', reason: nil }
     ].each do |example|
       it "returns junk_reason #{example[:reason].inspect} for #{example[:title].inspect}" do
         expect(described_class.junk_reason(example[:title])).to eq(example[:reason])

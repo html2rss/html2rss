@@ -2,7 +2,9 @@
 
 module Html2rss
   module LinkDestination
-    # Classifies visible anchor text for utility and recommendation chrome.
+    # Classifies visible anchor text for utility, recommendation and read-more chrome in en, de, fr, es, it,
+    # nl, pl, sv and ja. Letters with an accented variant are alternations, not classes: with +/i+, Ruby on
+    # Linux does not fold an uppercase accented letter against a class that also holds its ASCII base.
     class TextClassifier
       # Prefix labels that usually identify navigation or subscription links.
       UTILITY_PREFIX_PATTERN = /
@@ -14,7 +16,17 @@ module Html2rss
           # Spanish
           ver\s+todos|ver\s+todo|todas\s+las\s+noticias|suscribirse|bolet(i|í)n|comentarios\s+feed|unirse|
           # French
-          voir\s+tout|voir\s+tous|toutes\s+les\s+nouvelles|s['’]abonner|flux\s+de\s+commentaires|rejoindre
+          voir\s+tout|voir\s+tous|toutes\s+les\s+nouvelles|s['’]abonner|flux\s+de\s+commentaires|rejoindre|
+          # Italian
+          vedi\s+tutto|vedi\s+tutti|tutte\s+le\s+notizie|abbonati|newsletter|iscriviti|
+          # Dutch
+          bekijk\s+alles|alles\s+bekijken|al\s+het\s+nieuws|abonneren|nieuwsbrief|lid\s+worden|
+          # Polish
+          zobacz\s+wszystko|wszystkie\s+wiadomo(ś|s)ci|subskrybuj|newsletter|do(łą|la)cz|
+          # Swedish
+          visa\s+alla|se\s+alla|alla\s+nyheter|prenumerera|nyhetsbrev|bli\s+medlem|
+          # Japanese
+          すべて見る|全て見る|ニュースレター|メルマガ|会員登録|購読
         )\b
       /ix
       # Short labels that usually identify non-article navigation links.
@@ -35,7 +47,22 @@ module Html2rss
           # French
           (a|à)\s+propos|(a|à)propos|contact|commentaires?|rejoindre|
           se\s+connecter|login|membre|abonnement|recommand(e|é)(\s+pour\s+vous)?|
-          voir\s+tout|partager|s['’]inscrire|s['’]abonner|newsletter
+          voir\s+tout|partager|s['’]inscrire|s['’]abonner|newsletter|
+          # Italian
+          chi\s+siamo|contatti|commenti|accedi|iscriviti|condividi|abbonati|registrati|vedi\s+tutto|
+          consigliato(\s+per\s+te)?|abbonamento|
+          # Dutch
+          over\s+ons|contact|reacties|inloggen|aanmelden|delen|abonneren|registreren|bekijk\s+alles|
+          aanbevolen(\s+voor\s+jou)?|nieuwsbrief|lid\s+worden|lidmaatschap|
+          # Polish
+          o\s+nas|kontakt|komentarze|zaloguj\s+si(ę|e)|zarejestruj\s+si(ę|e)|udost(ę|e)pnij|subskrybuj|
+          zobacz\s+wszystko|polecane(\s+dla\s+ciebie)?|do(łą|la)cz|
+          # Swedish
+          om\s+oss|kontakt|kommentarer|logga\s+in|bli\s+medlem|dela|prenumerera|registrera\s+dig|visa\s+alla|
+          se\s+alla|rekommenderat(\s+f(ö|o)r\s+dig)?|nyhetsbrev|medlemskap|
+          # Japanese
+          会社概要|お問い合わせ|コメント|ログイン|会員登録|新規登録|シェア|共有|購読|すべて見る|全て見る|
+          もっと見る|おすすめ|ニュースレター|メルマガ
         )\b
       /ix
       # Labels for recommendation chrome rather than source articles.
@@ -44,8 +71,42 @@ module Html2rss
           recommended(\s+for\s+you)?|
           empfohlen(\s+f(ue|ü)r\s+dich)?|
           recomendado(\s+para\s+ti)?|
-          recommand(e|é)(\s+pour\s+vous)?
+          recommand(e|é)(\s+pour\s+vous)?|
+          consigliato(\s+per\s+te)?|
+          aanbevolen(\s+voor\s+jou)?|
+          polecane(\s+dla\s+ciebie)?|
+          rekommenderat(\s+f(ö|o)r\s+dig)?|
+          おすすめ
         )\b
+      /ix
+
+      # Whole read-more labels that stand alone ("Continue reading", "Lire la suite", "続きを読む").
+      READ_MORE_PHRASE = /
+        read\s+more|read\s+on|continue\s+reading|keep\s+reading|learn\s+more|read\s+the\s+(?:full\s+)?(?:story|article)|
+        weiterlesen|weiter\s+lesen|mehr\s+lesen|mehr\s+erfahren|
+        lire\s+la\s+suite|lire\s+plus|lire\s+l['’]article|en\s+savoir\s+plus|
+        leer\s+m(?:á|a)s|seguir\s+leyendo|continuar\s+leyendo|saber\s+m(?:á|a)s|
+        leggi\s+tutto|leggi\s+di\s+pi(?:ù|u)|leggi\s+l['’]articolo|continua\s+a\s+leggere|scopri\s+di\s+pi(?:ù|u)|
+        lees\s+meer|lees\s+verder|verder\s+lezen|meer\s+lezen|
+        czytaj\s+wi(?:ę|e)cej|czytaj\s+dalej|dowiedz\s+si(?:ę|e)\s+wi(?:ę|e)cej|
+        l(?:ä|a)s\s+mer|l(?:ä|a)s\s+vidare|forts(?:ä|a)tt\s+l(?:ä|a)sa|
+        続きを読む|もっと読む|続きはこちら|詳しくはこちら|詳細を見る
+      /ix
+      # "More about X" lead-ins: a read-more phrase or a bare "more", then a topic preposition.
+      READ_MORE_TOPIC_LEAD = /
+        (?:#{READ_MORE_PHRASE.source}|more|mehr|plus\s+d['’]infos?|m(?:á|a)s|altro|di\s+pi(?:ù|u)|meer|wi(?:ę|e)cej|mer)
+        \s+(?:about|on|from|zu|zum|zur|(?:ü|ue)ber|von|sur|(?:à|a)\s+propos\s+de|de|sobre|su|riguardo|over|van|
+        o|na\s+temat|om|av)
+      /ix
+      # A read-more label as a whole text, optionally wrapped in punctuation or arrows. The topic after a
+      # lead-in ("More about «X»") spans at most eight words, so a headline that merely opens with one is
+      # not caught; Japanese topic forms put the topic first.
+      READ_MORE_PATTERN = /
+        \A[\s\p{P}\p{S}]*(?:
+          (?:#{READ_MORE_PHRASE.source})|
+          (?:#{READ_MORE_TOPIC_LEAD.source})(?:\s+\S+){1,8}|
+          \S{1,40}(?:の続きを読む|をもっと読む|について詳しく(?:はこちら)?|の詳細(?:を見る|はこちら))
+        )[\s\p{P}\p{S}]*\z
       /ix
 
       # @param text [String, #to_s] visible anchor text
@@ -59,6 +120,10 @@ module Html2rss
       # @param text [String, #to_s] visible anchor text
       # @return [Boolean] true when text identifies recommendation chrome
       def recommended?(text) = text.to_s.match?(RECOMMENDED_PATTERN)
+
+      # @param text [String, #to_s] visible anchor text or extracted title
+      # @return [Boolean] true when the whole text is a read-more label, bare or with its topic
+      def read_more?(text) = text.to_s.unicode_normalize(:nfc).match?(READ_MORE_PATTERN)
     end
   end
 end

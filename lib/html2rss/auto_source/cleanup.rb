@@ -49,11 +49,13 @@ module Html2rss
         [:video_chrome, /\AVideo\s*[•·]/i],
         [:template, /\ACreated\s+from\s+Template\s+ID\b/i],
         [:template, /(\{\{[^}]+\}\}|%\{\w+\})/],
-        [:cta, /\Aread more\z/i],
-        [:cta, /\Alearn more\z/i],
         [:cta, /\Apdf\z/i]
       ].freeze
       private_constant :JUNK_TITLE_RULES
+
+      # Owner of the read-more vocabulary ("Read more", "More about X" in nine languages): a +:cta+ title.
+      TEXT_CLASSIFIER = LinkDestination::TextClassifier.new
+      private_constant :TEXT_CLASSIFIER
 
       # Minimum present-title length before short-title warnings.
       MIN_TITLE_LENGTH = 4
@@ -133,7 +135,8 @@ module Html2rss
           normalized = normalize_title(title)
           return if normalized.empty?
 
-          JUNK_TITLE_RULES.find { |_, pattern| pattern.match?(normalized) }&.first
+          JUNK_TITLE_RULES.find { |_, pattern| pattern.match?(normalized) }&.first ||
+            (:cta if TEXT_CLASSIFIER.read_more?(normalized))
         end
 
         # @param items [Array<Html2rss::Article, RSS::Rss::Channel::Item>]
@@ -239,7 +242,10 @@ module Html2rss
           end
         end
 
+        # First copy of an article identity wins, except a read-more titled copy always loses to a
+        # copy with a real title: the link text is chrome, the other copy carries the headline.
         def deduplicate_by_url!(articles, tallies)
+          reject_read_more_copies!(articles, tallies)
           seen = Set.new
           tally_reject!(articles, tallies, 'duplicate_url') { |article| seen.add?(article.url.article_identity).nil? }
         end
@@ -306,6 +312,17 @@ module Html2rss
           else
             junk_reason(title)&.to_s || ('low_word_count' unless WordCount.at_least?(title, MIN_WORDS))
           end
+        end
+
+        def reject_read_more_copies!(articles, tallies)
+          titled = articles.reject { |article| read_more_title?(article) }.to_set { |a| a.url.article_identity }
+          tally_reject!(articles, tallies, 'duplicate_url') do |article|
+            read_more_title?(article) && titled.include?(article.url.article_identity)
+          end
+        end
+
+        def read_more_title?(article)
+          article.title && junk_reason(article.title) == :cta
         end
 
         def tally_reject!(articles, tallies, reason)
