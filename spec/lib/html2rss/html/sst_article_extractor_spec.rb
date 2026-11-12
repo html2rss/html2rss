@@ -334,7 +334,7 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(zip.url.to_s).to eq('https://example.com/downloads/bundle.zip')
   end
 
-  it 'extracts iframe enclosures when present on an SST segment', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+  it 'never turns an iframe on an SST segment into an enclosure' do # rubocop:disable RSpec/ExampleLength
     link = Html2rss::SST::Node.build(
       name: :a,
       attrs: Html2rss::SST::Attrs.build(href: '/news/embed'),
@@ -357,9 +357,64 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     )
 
     article = described_class.call(segment, base_url: 'https://example.com')
-    frame = article.enclosures.find { |enclosure| enclosure.type == 'text/html' }
 
-    expect(frame).not_to be_nil
-    expect(frame.url.to_s).to eq('https://example.com/embeds/player.html')
+    expect(article.enclosures).to be_empty
+  end
+
+  it 'extracts player files in document order and the video poster as the image', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body>
+        <article>
+          <h2><a href="/news/clip">Clip Story</a></h2>
+          <p>Useful context paragraph with enough words for description extraction.</p>
+          <picture><source src="/images/hero.webp" type="image/webp"></picture>
+          <video src="/videos/clip.mp4" poster="/posters/clip.jpg"></video>
+          <audio><source src="/audio/clip.ogg" type="audio/ogg; codecs=vorbis"></audio>
+        </article>
+      </body></html>
+    HTML
+
+    article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com')
+
+    expect(article.enclosures.map { [_1.url.to_s, _1.type] }).to eq(
+      [%w[https://example.com/videos/clip.mp4 video/mp4],
+       ['https://example.com/audio/clip.ogg', 'audio/ogg; codecs=vorbis']]
+    )
+    expect(article.image.to_s).to eq('https://example.com/posters/clip.jpg')
+  end
+
+  it 'skips inline data posters and prefers a card image over a poster', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    card = lambda do |extra|
+      html = <<~HTML
+        <html><body><article>
+          <h2><a href="/news/clip">Clip Story</a></h2>
+          <p>Useful context paragraph with enough words for description extraction.</p>
+          <div poster="/posters/decoy.jpg"></div>
+          <video src="/videos/clip.mp4"></video>
+          <video poster="data:image/png;base64,AAAA"></video>
+          <video poster="/posters/clip.jpg"></video>
+          <video poster="/posters/later.jpg"></video>
+          #{extra}
+        </article></body></html>
+      HTML
+      described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com').image.to_s
+    end
+
+    expect(card.call('')).to eq('https://example.com/posters/clip.jpg')
+    expect(card.call('<img src="/images/photo.jpg" alt="">')).to eq('https://example.com/images/photo.jpg')
+    expect(card.call('<img src="/images/photo.jpg" srcset="/images/wide.jpg 800w" alt="">'))
+      .to eq('https://example.com/images/wide.jpg')
+  end
+
+  it 'gives a card without any image no image' do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body><article>
+        <h2><a href="/news/clip">Clip Story</a></h2>
+        <p>Useful context paragraph with enough words for description extraction.</p>
+        <video src="/videos/clip.mp4"></video>
+      </article></body></html>
+    HTML
+
+    expect(described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com').image).to be_nil
   end
 end

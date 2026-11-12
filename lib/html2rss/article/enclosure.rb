@@ -25,10 +25,20 @@ module Html2rss
       CLOCK = /\A(?:(?:(\d+):)?(\d+):)?(\d+(?:\.\d+)?)\z/
       # Types of web pages (embed players, article pages), never a media file.
       PAGE_TYPES = %w[application/xhtml+xml].freeze
+      # Playable audio/video types by file extension. MIME::Types lists these extensions under
+      # several types and puts a non-playable or codec-level one first (+.mp4+ as +application/mp4+,
+      # +.ogg+ as +audio/vorbis+, +.m4v+ without +video/mp4+), so media extensions are looked up here first.
+      # HLS playlists (+.m3u8+) are no media file: MIME::Types types them +application/vnd.apple.mpegurl+.
+      MEDIA_TYPES = {
+        'mp4' => 'video/mp4', 'm4v' => 'video/mp4', 'ogv' => 'video/ogg', 'webm' => 'video/webm',
+        'm4a' => 'audio/mp4', 'mp3' => 'audio/mpeg', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg',
+        'opus' => 'audio/opus', 'aac' => 'audio/aac', 'wav' => 'audio/wav', 'flac' => 'audio/flac'
+      }.freeze
 
       class << self
         ##
-        # Guesses the content type based on the file extension of the URL.
+        # Guesses the content type based on the file extension of the URL: a media extension
+        # ({MEDIA_TYPES}) gives its audio or video type, any other the first MIME::Types match.
         #
         # @param url [Html2rss::Url]
         # @param default [String] default content type
@@ -36,8 +46,9 @@ module Html2rss
         def guess_content_type_from_url(url, default: 'application/octet-stream')
           return default unless url
 
-          found = MIME::Types.type_for(url.path).first
-          found&.content_type || default
+          path = url.path
+          MEDIA_TYPES[File.extname(path).delete_prefix('.').downcase] ||
+            MIME::Types.type_for(path).first&.content_type || default
         end
 
         ##

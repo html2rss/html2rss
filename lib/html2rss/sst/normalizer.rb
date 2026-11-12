@@ -29,6 +29,7 @@ module Html2rss
           href |
           src |
           srcset |
+          poster\z |
           style |
           datetime |
           itemprop |

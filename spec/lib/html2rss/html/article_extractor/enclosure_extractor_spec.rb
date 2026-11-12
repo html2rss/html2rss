@@ -79,21 +79,33 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
       end
     end
 
-    context 'when article_tag contains iframe sources' do
+    context 'when article_tag contains embed player frames' do
       let(:article_tag) do
         article_tag_from.call(<<~HTML)
           <article>
             <iframe src="/embeds/video.html"></iframe>
-            <iframe src="/widgets/chart.html"></iframe>
+            <iframe src="/embeds/clip.mp4"></iframe>
           </article>
         HTML
       end
 
-      it 'extracts iframe enclosures with correct URLs and types' do
-        expect(enclosures).to contain_exactly(
-          expected_enclosure.call('/embeds/video.html', 'text/html'),
-          expected_enclosure.call('/widgets/chart.html', 'text/html')
-        )
+      it 'never turns an iframe into an enclosure' do
+        expect(enclosures).to be_empty
+      end
+    end
+
+    context 'when article_tag contains a video player with its own src' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <video src="/videos/clip.mp4" poster="/posters/clip.jpg"></video>
+            <picture><source src="/images/hero.webp" type="image/webp"></picture>
+          </article>
+        HTML
+      end
+
+      it 'extracts the video file and no picture source' do
+        expect(enclosures).to eq([expected_enclosure.call('/videos/clip.mp4', nil)])
       end
     end
 
@@ -162,6 +174,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
             </video>
             <a href="/documents/guide.pdf">Guide</a>
             <iframe src="/widgets/map.html"></iframe>
+            <a href="/news/story">Story</a>
             <a href="/downloads/source.zip">Source Code</a>
           </article>
         HTML
@@ -172,13 +185,12 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
           expected_enclosure.call('/images/hero.jpg', 'image/jpeg'),
           expected_enclosure.call('/videos/demo.mp4', 'video/mp4'),
           expected_enclosure.call('/documents/guide.pdf', 'application/pdf'),
-          expected_enclosure.call('/widgets/map.html', 'text/html'),
           expected_enclosure.call('/downloads/source.zip', 'application/zip')
         ]
       end
 
-      it 'extracts all types of enclosures' do
-        expect(enclosures).to match_array(expected_enclosures)
+      it 'extracts images, media and file links in document order' do
+        expect(enclosures).to eq(expected_enclosures)
       end
     end
   end

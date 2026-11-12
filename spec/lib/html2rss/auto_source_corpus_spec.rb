@@ -37,11 +37,12 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
-    it 'misses no more enclosures than the recorded baseline', :aggregate_failures do
-      rows.each do |row|
-        recorded = baseline.dig(row.page, 'enclosure_misses')
-        expect(row.enclosure_misses).to be <= recorded,
-                                        "#{row.page}: enclosure misses #{row.enclosure_misses} > #{recorded}"
+    %w[enclosure_misses image_misses].each do |key|
+      it "has no more #{key} than the recorded baseline", :aggregate_failures do
+        rows.each do |row|
+          recorded = baseline.dig(row.page, key)
+          expect(row.to_h[key.to_sym]).to be <= recorded, "#{row.page}: #{key} #{row.to_h[key.to_sym]} > #{recorded}"
+        end
       end
     end
 

@@ -11,6 +11,20 @@ RSpec.describe Html2rss::Article::Enclosure do
       'https://example.com/image.svg' => 'image/svg+xml',
       'https://example.com/image.webp' => 'image/webp',
       'https://example.com/image' => 'application/octet-stream',
+      'https://example.com/media/clip.mp4' => 'video/mp4',
+      'https://example.com/media/clip.M4V' => 'video/mp4',
+      'https://example.com/media/clip.ogv' => 'video/ogg',
+      'https://example.com/media/clip.webm' => 'video/webm',
+      'https://example.com/media/talk.m4a' => 'audio/mp4',
+      'https://example.com/media/talk.mp3?download=1' => 'audio/mpeg',
+      'https://example.com/media/talk.ogg' => 'audio/ogg',
+      'https://example.com/media/talk.oga' => 'audio/ogg',
+      'https://example.com/media/talk.opus' => 'audio/opus',
+      'https://example.com/media/talk.aac' => 'audio/aac',
+      'https://example.com/media/talk.wav' => 'audio/wav',
+      'https://example.com/media/talk.flac' => 'audio/flac',
+      'https://example.com/media/live.m3u8' => 'application/vnd.apple.mpegurl',
+      'https://example.com/docs/report.pdf' => 'application/pdf',
       'https://img.example.net/wp-content/photo.jpg?quality=85&w=925&h=617&crop=1&resize=925,617' => 'image/jpeg'
     }.each_pair do |url, expected|
       it { expect(described_class.guess_content_type_from_url(Html2rss::Url.from_relative(url, 'https://example.com'))).to eq expected }
@@ -148,6 +162,13 @@ RSpec.describe Html2rss::Article::Enclosure do
       let(:bytes_length) { nil }
 
       it { expect(subject.bytes_length).to eq 0 }
+    end
+
+    it 'rejects a missing or relative URL', :aggregate_failures do
+      relative = instance_double(Html2rss::Url, absolute?: false)
+
+      expect { described_class.new(url: nil) }.to raise_error(ArgumentError, /absolute URL/)
+      expect { described_class.new(url: relative) }.to raise_error(ArgumentError, /absolute URL/)
     end
 
     it 'defaults the byte length to 0' do

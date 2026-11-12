@@ -28,7 +28,7 @@ Cloud development: [Open in GitHub Codespaces](https://github.com/codespaces/new
 1. **Config** — loads and validates configuration (YAML/hash); schema via `html2rss schema` / `schema/html2rss-config.schema.json`
 2. **RequestService** — fetches pages (`default` (HTTPX), `botasaurus`, or `local_file`)
 3. **Selectors** — extracts content via CSS selectors with extractors/post-processors
-4. **AutoSource** — auto-detects content (Schema.org, JSON state, semantic HTML, structural patterns)
+4. **AutoSource** — auto-detects content (Schema.org, JSON state, semantic HTML, structural patterns); a card's `<audio>`/`<video>` file becomes its enclosure (an embedded `iframe` player never does)
 5. **FeedBuilder** — assembles Article objects and renders feeds (RSS 2.0 / JSON Feed 1.1); a feed where most items carry audio or video gets podcast (`itunes:`) tags
 
 ```text

@@ -210,12 +210,18 @@ module Html2rss
       end
 
       def extract_image
-        img_src = image_from_srcset || image_from_img || image_from_style
+        img_src = image_from_srcset || image_from_img || image_from_style || image_from_poster
         Url.from_relative(img_src, @base_url) if img_src
       end
 
       def image_from_img
         @root.find { |n| n.image? && n.attrs.src && !n.attrs.src.start_with?('data:') }&.attrs&.src
+      end
+
+      # A video's poster frame: the last resort, when the card has no other image.
+      def image_from_poster
+        posters = @root.find_all { |n| n.name == :video }.map { |n| n.attrs.raw['poster'] }
+        posters.find { |src| ArticleRules::Image.remote_src?(src) }
       end
 
       def image_from_srcset
@@ -233,30 +239,18 @@ module Html2rss
         ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
-      def extract_enclosures
-        @root.find_all { |n| enclosure_node?(n) }.filter_map { |element| enclosure_from(element) }
-      end
+      def extract_enclosures = collect_enclosures(@root, false, [])
 
-      def enclosure_node?(node)
-        case node.name
-        when :img then node.attrs.src && !node.attrs.src.start_with?('data:')
-        when :source, :audio, :video, :iframe then node.attrs.src
-        when :a then ArticleRules::Enclosure.archive_href?(node.attrs.href)
-        else false
-        end
-      end
-
-      def enclosure_from(element)
-        case element.name
-        when :img
-          ArticleRules::Enclosure.from_image(element.attrs.src, @base_url)
-        when :video, :audio, :source
-          ArticleRules::Enclosure.from_media(element.attrs.src, element.attrs.type, @base_url)
-        when :iframe
-          ArticleRules::Enclosure.from_iframe(element.attrs.src, @base_url)
-        when :a
-          ArticleRules::Enclosure.from_anchor(element.attrs.href, @base_url)
-        end
+      # Depth-first in document order, carrying whether an ancestor is a player for +source+ elements.
+      def collect_enclosures(node, in_player, found)
+        name = node.name.name
+        attrs = node.attrs
+        enclosure = ArticleRules::Enclosure.from_element(name, @base_url, src: attrs.src, href: attrs.href,
+                                                                          type: attrs.type) { in_player }
+        found << enclosure if enclosure
+        in_player ||= ArticleRules::Enclosure::MEDIA_ELEMENTS.include?(name)
+        node.children.each { |child| collect_enclosures(child, in_player, found) }
+        found
       end
 
       def extract_categories(title, root: @root)

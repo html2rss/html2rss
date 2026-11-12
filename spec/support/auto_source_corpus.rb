@@ -6,10 +6,11 @@ require 'yaml'
 # Labeled auto-source corpus under spec/fixtures/auto_source/corpus/.
 #
 # Each page (+.html+ or +.json+) has a +.yml+ sidecar listing its expected article URLs and,
-# optionally, a +titles+ map (expected URL => exact expected title), an +enclosures+ map (expected
-# URL => a media file URL the admitted article must carry among its enclosures), a +media+ list (audio or
-# video URLs the page may admit beside its articles: scored neither real nor junk), and a
-# +responses+ directory (relative to the corpus root) of saved follow-up responses ({SavedResponses}).
+# optionally, a +titles+ map (expected URL => exact expected title), a +media+ list (audio or
+# video URLs the page may admit beside its articles: scored neither real nor junk), an +enclosures+
+# map (expected URL => a hash of the RSS enclosure facts the item ships, any of +url+, +type+, +length+
+# and +duration+, each present key asserted; or null for no enclosure), an +images+
+# map (expected URL => item image URL), and a +responses+ directory (relative to the corpus root) of saved follow-up responses ({SavedResponses}).
 # {.run} feeds every page through {Html2rss::AutoSource} with a fixed base URL, no network, and a
 # request session only when the sidecar names saved responses, then scores the admitted URLs against the sidecar.
 # Shared by bin/auto-source-corpus (table + baseline recording) and the ratchet spec.
@@ -25,13 +26,15 @@ module AutoSourceCorpus
   SAVED_PAGE_CHARSET = 'utf-8'
   RECORD_COMMAND = 'mise exec -- make corpus-baseline'
   SST_CALLS = :auto_source_corpus_sst_calls
+  # Summed per-page scores, in table column order.
+  SCORES = %i[junk real expected title_misses enclosure_misses image_misses].freeze
 
   # Per-page score: junk = admitted URLs not in the sidecar (+media+ URLs excepted); real = admitted sidecar URLs;
   # title_misses = sidecar titles the admitted article does not carry verbatim (absent counts);
-  # enclosure_misses = sidecar enclosures the admitted article does not carry (absent counts).
-  Row = Data.define(:page, :junk, :real, :expected, :title_misses, :enclosure_misses, :sst_built) do
+  # enclosure_misses / image_misses = sidecar enclosures / images the admitted article does not ship.
+  Row = Data.define(:page, :junk, :real, :expected, :title_misses, :enclosure_misses, :image_misses, :sst_built) do
     # @return [Array<String, Integer>] table cells in column order
-    def cells = [page, junk, real, expected, title_misses, enclosure_misses, sst_built ? 'yes' : 'no']
+    def cells = [page, junk, real, expected, title_misses, enclosure_misses, image_misses, sst_built ? 'yes' : 'no']
   end
 
   ##
@@ -84,20 +87,17 @@ module AutoSourceCorpus
     end
 
     # @param rows [Array<Row>]
-    # @return [Hash{Symbol => Integer}] summed junk, real, expected and misses, then pages with SST built
-    def totals(rows)
-      %i[junk real expected title_misses enclosure_misses].to_h { [_1, rows.sum(&_1)] }
-                                                          .merge(sst_built: rows.count(&:sst_built))
-    end
+    # @return [Hash{Symbol => Integer}] summed scores and pages with SST built
+    def totals(rows) = SCORES.to_h { [_1, rows.sum(&_1)] }.merge(sst_built: rows.count(&:sst_built))
 
     # @param rows [Array<Row>]
     # @return [String] fixed-width table with a totals line
     def table(rows)
       sum = totals(rows)
-      cells = [%w[page junk real expected title_miss enclosure_miss sst]]
+      cells = [%w[page junk real expected title_miss encl_miss image_miss sst]]
       cells.concat(rows.map(&:cells))
-      cells << ['TOTAL', *sum.except(:sst_built).values, "#{sum[:sst_built]}/#{rows.size}"]
-      line = "%-#{cells.map { _1.first.size }.max}s  %5s  %5s  %8s  %10s  %14s  %s"
+      cells << ['TOTAL', *sum.values_at(*SCORES), "#{sum[:sst_built]}/#{rows.size}"]
+      line = "%-#{cells.map { _1.first.size }.max}s  %5s  %5s  %8s  %10s  %9s  %10s  %s"
       cells.map { format(line, *_1) }.join("\n")
     end
 
@@ -136,23 +136,29 @@ module AutoSourceCorpus
       admitted = articles.map { _1.url.to_s }.uniq - sidecar_urls(sidecar, 'media')
       real = (admitted & expected).size
       Row.new(page:, junk: admitted.size - real, real:, expected: expected.size, sst_built:,
-              **misses(articles, sidecar))
+              **field_misses(sidecar, articles))
     end
 
-    def misses(articles, sidecar)
+    def field_misses(sidecar, articles)
       by_url = articles.to_h { [_1.url.to_s, _1] }
-      { title_misses: title_misses(by_url, sidecar.fetch('titles', {})),
-        enclosure_misses: enclosure_misses(by_url, sidecar.fetch('enclosures', {})) }
+      { title_misses: misses(by_url, sidecar['titles']) { _1&.title },
+        enclosure_misses: misses(by_url, sidecar['enclosures']) { |article, facts| enclosure_of(article, facts&.keys) },
+        image_misses: misses(by_url, sidecar['images']) { _1&.image&.to_s } }
     end
 
-    def title_misses(by_url, expected_titles)
-      expected_titles.count { |url, title| by_url[normalize(url)]&.title != title }
+    # Sidecar entries (expected URL => expected value) whose admitted article yields another value.
+    def misses(by_url, expectations)
+      (expectations || {}).count { |url, expected| yield(by_url[normalize(url)], expected) != expected }
     end
 
-    def enclosure_misses(by_url, expected_files)
-      expected_files.count do |url, file|
-        !by_url[normalize(url)]&.enclosures&.any? { _1.url.to_s == normalize(file) }
-      end
+    # The asserted facts of the RSS enclosure the item ships ({Html2rss::FeedBuilder::ItemPresentation.rss_enclosure_for});
+    # nil when it ships none.
+    def enclosure_of(article, keys)
+      enclosure = article && Html2rss::FeedBuilder::ItemPresentation.rss_enclosure_for(article)
+      return unless enclosure
+
+      { 'url' => enclosure.url.to_s, 'type' => enclosure.type, 'length' => enclosure.bytes_length,
+        'duration' => enclosure.duration }.slice(*keys)
     end
 
     def normalize(url) = Html2rss::Url.from_absolute(url).to_s

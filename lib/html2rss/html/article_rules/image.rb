@@ -36,6 +36,11 @@ module Html2rss
           end
 
           ##
+          # @param src [String, nil] an image URL attribute, e.g. a video +poster+
+          # @return [Boolean] whether it names a fetchable image: not blank, not an inline +data:+ URI
+          def remote_src?(src) = src.to_s.match?(/\S/) && !src.start_with?('data:')
+
+          ##
           # @param style_strings [Array<String>] CSS style attribute values
           # @return [String, nil] longest non-data background url
           def best_from_styles(style_strings)

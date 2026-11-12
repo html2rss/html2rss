@@ -6,6 +6,7 @@ app_shell_consent_links.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 app_shell_state_dated.html:
   junk: 0
@@ -13,6 +14,7 @@ app_shell_state_dated.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 card_article_header_link.html:
   junk: 0
@@ -20,6 +22,7 @@ card_article_header_link.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 card_header_time_kicker.html:
   junk: 0
@@ -27,6 +30,7 @@ card_header_time_kicker.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 cardlink_cluster_consent_only.html:
   junk: 0
@@ -34,6 +38,7 @@ cardlink_cluster_consent_only.html:
   expected: 0
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 cardlink_empty_overlay_heading.html:
   junk: 0
@@ -41,6 +46,7 @@ cardlink_empty_overlay_heading.html:
   expected: 7
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 cardlink_nested_div_clips.html:
   junk: 0
@@ -48,6 +54,7 @@ cardlink_nested_div_clips.html:
   expected: 110
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 cardlink_whole_card_anchor.html:
   junk: 0
@@ -55,6 +62,7 @@ cardlink_whole_card_anchor.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_f2_teaser_lists_named_like_pagers.html:
   junk: 0
@@ -62,6 +70,7 @@ chrome_f2_teaser_lists_named_like_pagers.html:
   expected: 32
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_role_consent_dialog.html:
   junk: 0
@@ -69,6 +78,7 @@ chrome_role_consent_dialog.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_role_div_menu.html:
   junk: 0
@@ -76,6 +86,7 @@ chrome_role_div_menu.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_role_main_nav_list.html:
   junk: 0
@@ -83,6 +94,7 @@ chrome_role_main_nav_list.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_role_main_pager.html:
   junk: 0
@@ -90,6 +102,7 @@ chrome_role_main_pager.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_role_search_results.html:
   junk: 0
@@ -97,6 +110,7 @@ chrome_role_search_results.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_t1b_complementary_peripheral.html:
   junk: 0
@@ -104,6 +118,7 @@ chrome_t1b_complementary_peripheral.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_t1b_dialog_element.html:
   junk: 0
@@ -111,6 +126,7 @@ chrome_t1b_dialog_element.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 chrome_t1b_role_main_card_headers.html:
   junk: 0
@@ -118,6 +134,7 @@ chrome_t1b_role_main_card_headers.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 f3_recipe_tiles_with_people.html:
   junk: 0
@@ -125,6 +142,7 @@ f3_recipe_tiles_with_people.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 f5_encoded_non_article_paths.html:
   junk: 0
@@ -132,6 +150,7 @@ f5_encoded_non_article_paths.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 f6_find_out_more_links.html:
   junk: 0
@@ -139,6 +158,7 @@ f6_find_out_more_links.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 json_response_articles.json:
   junk: 0
@@ -146,6 +166,7 @@ json_response_articles.json:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: false
 json_response_menu.json:
   junk: 0
@@ -153,6 +174,7 @@ json_response_menu.json:
   expected: 0
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: false
 json_response_thin.json:
   junk: 0
@@ -160,6 +182,7 @@ json_response_thin.json:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: false
 json_state_comment_list.html:
   junk: 0
@@ -167,6 +190,7 @@ json_state_comment_list.html:
   expected: 3
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 json_state_competing_nodes.html:
   junk: 0
@@ -174,6 +198,7 @@ json_state_competing_nodes.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 json_state_entry_url.html:
   junk: 0
@@ -181,6 +206,7 @@ json_state_entry_url.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 json_state_envelope_links.html:
   junk: 0
@@ -188,6 +214,7 @@ json_state_envelope_links.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 json_state_kicker_fields.html:
   junk: 0
@@ -195,6 +222,7 @@ json_state_kicker_fields.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 json_state_menu_unrendered.html:
   junk: 0
@@ -202,6 +230,7 @@ json_state_menu_unrendered.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 json_state_wrapped_entries.html:
   junk: 0
@@ -209,6 +238,7 @@ json_state_wrapped_entries.html:
   expected: 12
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 kicker_heading_teaser.html:
   junk: 0
@@ -216,6 +246,23 @@ kicker_heading_teaser.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+media_audio_cards.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+media_video_cards.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 menu_cms_timestamped.html:
   junk: 0
@@ -223,6 +270,7 @@ menu_cms_timestamped.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 menu_icon.html:
   junk: 0
@@ -230,6 +278,7 @@ menu_icon.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 menu_mixed_top_level.html:
   junk: 0
@@ -237,6 +286,7 @@ menu_mixed_top_level.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 plain_listing.html:
   junk: 0
@@ -244,6 +294,7 @@ plain_listing.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 read_more_multilingual.html:
   junk: 0
@@ -251,6 +302,7 @@ read_more_multilingual.html:
   expected: 9
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 schema_footer_extras.html:
   junk: 0
@@ -258,6 +310,7 @@ schema_footer_extras.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_ad_label_card.html:
   junk: 0
@@ -265,6 +318,7 @@ sponsored_ad_label_card.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_container_and_attribution.html:
   junk: 1
@@ -272,6 +326,7 @@ sponsored_container_and_attribution.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_container_markers.html:
   junk: 0
@@ -279,6 +334,7 @@ sponsored_container_markers.html:
   expected: 9
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_empty_ad_slot_row.html:
   junk: 0
@@ -286,6 +342,7 @@ sponsored_empty_ad_slot_row.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_label_binding.html:
   junk: 0
@@ -293,6 +350,7 @@ sponsored_label_binding.html:
   expected: 10
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_label_precision.html:
   junk: 0
@@ -300,6 +358,7 @@ sponsored_label_precision.html:
   expected: 12
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_label_vocabulary.html:
   junk: 0
@@ -307,6 +366,7 @@ sponsored_label_vocabulary.html:
   expected: 10
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_label_vocabulary_languages.html:
   junk: 0
@@ -314,6 +374,7 @@ sponsored_label_vocabulary_languages.html:
   expected: 9
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_linked_labels.html:
   junk: 0
@@ -321,6 +382,7 @@ sponsored_linked_labels.html:
   expected: 7
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_native_ad_containers.html:
   junk: 0
@@ -328,6 +390,7 @@ sponsored_native_ad_containers.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_paywall_markers.html:
   junk: 0
@@ -335,6 +398,7 @@ sponsored_paywall_markers.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_per_card_keying.html:
   junk: 0
@@ -342,6 +406,7 @@ sponsored_per_card_keying.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_rel_link.html:
   junk: 0
@@ -349,6 +414,7 @@ sponsored_rel_link.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_section_headers.html:
   junk: 0
@@ -356,6 +422,7 @@ sponsored_section_headers.html:
   expected: 7
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_section_labels.html:
   junk: 0
@@ -363,6 +430,7 @@ sponsored_section_labels.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_section_negatives.html:
   junk: 0
@@ -370,6 +438,7 @@ sponsored_section_negatives.html:
   expected: 23
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_story_about_ads.html:
   junk: 0
@@ -377,6 +446,7 @@ sponsored_story_about_ads.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_structured_shared_url.html:
   junk: 0
@@ -384,6 +454,7 @@ sponsored_structured_shared_url.html:
   expected: 2
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 sponsored_wrapper_and_hidden_labels.html:
   junk: 0
@@ -391,6 +462,7 @@ sponsored_wrapper_and_hidden_labels.html:
   expected: 7
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 structured_small_merge.html:
   junk: 0
@@ -398,6 +470,7 @@ structured_small_merge.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 structured_tracked_urls.html:
   junk: 0
@@ -405,6 +478,7 @@ structured_tracked_urls.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t3_non_article_destinations.html:
   junk: 0
@@ -412,6 +486,7 @@ t3_non_article_destinations.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t3b_staff_profile_teasers.html:
   junk: 0
@@ -419,6 +494,7 @@ t3b_staff_profile_teasers.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t4_podcast_feed_enclosures.html:
   junk: 0
@@ -426,6 +502,7 @@ t4_podcast_feed_enclosures.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t6_feed_merge.html:
   junk: 0
@@ -433,6 +510,7 @@ t6_feed_merge.html:
   expected: 8
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t6_media_list_news.html:
   junk: 0
@@ -440,6 +518,7 @@ t6_media_list_news.html:
   expected: 10
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t6_media_minority_in_main.html:
   junk: 0
@@ -447,6 +526,7 @@ t6_media_minority_in_main.html:
   expected: 10
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t6_podcast_episode_page.html:
   junk: 0
@@ -454,6 +534,7 @@ t6_podcast_episode_page.html:
   expected: 30
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 t6_podcast_promos_above.html:
   junk: 0
@@ -461,6 +542,7 @@ t6_podcast_promos_above.html:
   expected: 30
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_clock_prefix.html:
   junk: 0
@@ -468,6 +550,7 @@ title_clock_prefix.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_date_chip_time_heading.html:
   junk: 0
@@ -475,6 +558,7 @@ title_date_chip_time_heading.html:
   expected: 3
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_date_elements_anywhere.html:
   junk: 0
@@ -482,6 +566,7 @@ title_date_elements_anywhere.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_date_touching_text.html:
   junk: 0
@@ -489,6 +574,7 @@ title_date_touching_text.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_heading_kicker_leaves.html:
   junk: 0
@@ -496,6 +582,7 @@ title_heading_kicker_leaves.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_headline_clock_opening.html:
   junk: 0
@@ -503,6 +590,7 @@ title_headline_clock_opening.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_headline_noise_placement.html:
   junk: 0
@@ -510,6 +598,7 @@ title_headline_noise_placement.html:
   expected: 14
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_hidden_text.html:
   junk: 0
@@ -517,6 +606,7 @@ title_hidden_text.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_inline_spaced_colon.html:
   junk: 0
@@ -524,6 +614,7 @@ title_inline_spaced_colon.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_inline_word_spacing.html:
   junk: 0
@@ -531,6 +622,7 @@ title_inline_word_spacing.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_invisible_characters.html:
   junk: 0
@@ -538,6 +630,7 @@ title_invisible_characters.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_japanese_bracket_labels.html:
   junk: 0
@@ -545,6 +638,7 @@ title_japanese_bracket_labels.html:
   expected: 8
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_kicker_colon_piece.html:
   junk: 0
@@ -552,6 +646,7 @@ title_kicker_colon_piece.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_kicker_selection.html:
   junk: 0
@@ -559,6 +654,7 @@ title_kicker_selection.html:
   expected: 17
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_kicker_separators.html:
   junk: 0
@@ -566,6 +662,7 @@ title_kicker_separators.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_kicker_wrapper.html:
   junk: 0
@@ -573,6 +670,7 @@ title_kicker_wrapper.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_localized_labels.html:
   junk: 0
@@ -580,6 +678,7 @@ title_localized_labels.html:
   expected: 6
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_localized_labels_more.html:
   junk: 0
@@ -587,6 +686,7 @@ title_localized_labels_more.html:
   expected: 10
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_newline_heading.html:
   junk: 0
@@ -594,6 +694,7 @@ title_newline_heading.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_offscreen_twin_anchor.html:
   junk: 0
@@ -601,6 +702,7 @@ title_offscreen_twin_anchor.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_separators_typography.html:
   junk: 0
@@ -608,6 +710,7 @@ title_separators_typography.html:
   expected: 17
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_spaced_colon_kicker.html:
   junk: 0
@@ -615,6 +718,7 @@ title_spaced_colon_kicker.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_teaser_lead_card.html:
   junk: 0
@@ -622,6 +726,7 @@ title_teaser_lead_card.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_terminal_punctuation_kicker.html:
   junk: 0
@@ -629,6 +734,7 @@ title_terminal_punctuation_kicker.html:
   expected: 5
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
 title_unspaced_cjk_floor.html:
   junk: 0
@@ -636,4 +742,5 @@ title_unspaced_cjk_floor.html:
   expected: 4
   title_misses: 0
   enclosure_misses: 0
+  image_misses: 0
   sst_built: true
