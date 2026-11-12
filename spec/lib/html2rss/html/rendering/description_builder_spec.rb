@@ -61,7 +61,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
 
       let(:base) { 'Caption' }
-      let(:enclosures) { [instance_double(Html2rss::Article::Enclosure, url: 'http://example.com/image.jpg', type: 'image/jpeg')] }
+      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/image.jpg'), type: 'image/jpeg')] }
 
       it 'renders <img> with attributes', :aggregate_failures do
         img = doc.at_css('img')
@@ -95,7 +95,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
 
       let(:base) { 'Watch this' }
-      let(:enclosures) { [instance_double(Html2rss::Article::Enclosure, url: 'http://example.com/video.mp4', type: 'video/mp4')] }
+      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/video.mp4'), type: 'video/mp4')] }
 
       it 'renders <video> and <source>', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         video = doc.at_css('video')
@@ -115,7 +115,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
 
       let(:base) { 'Listen to this' }
-      let(:enclosures) { [instance_double(Html2rss::Article::Enclosure, url: 'http://example.com/audio.mp3', type: 'audio/mpeg')] }
+      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/audio.mp3'), type: 'audio/mpeg')] }
 
       it 'renders <audio> and <source>', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         audio = doc.at_css('audio')
@@ -127,6 +127,28 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
     end
 
+    context 'when enclosure types are spelled in upper case or carry parameters' do
+      subject(:doc) do
+        html = described_class.new(base: 'Mixed', title: 'Sample instance', url: 'http://example.com', enclosures:,
+                                   image: nil).call
+        Nokogiri::HTML.fragment(html)
+      end
+
+      let(:enclosures) do
+        { 'audio.mp3' => 'Audio/MPEG', 'clip.webm' => 'Video/WebM; codecs=vp9', 'photo.jpg' => 'IMAGE/JPEG',
+          'doc.pdf' => 'Application/PDF' }.map do |file, type|
+          Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute("http://example.com/#{file}"), type:)
+        end
+      end
+
+      it 'renders each by its kind', :aggregate_failures do
+        expect(doc.at_css('audio source')['type']).to eq('Audio/MPEG')
+        expect(doc.at_css('video source')['src']).to eq('http://example.com/clip.webm')
+        expect(doc.at_css('img')['src']).to eq('http://example.com/photo.jpg')
+        expect(doc.at_css('iframe')['src']).to eq('http://example.com/doc.pdf')
+      end
+    end
+
     context 'when enclosure is a PDF' do
       subject(:doc) do
         html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
@@ -135,7 +157,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
 
       let(:base) { 'See this document' }
-      let(:enclosures) { [instance_double(Html2rss::Article::Enclosure, url: 'http://example.com/doc.pdf', type: 'application/pdf')] }
+      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/doc.pdf'), type: 'application/pdf')] }
 
       it 'renders <iframe>', :aggregate_failures do
         iframe = doc.at_css('iframe')
@@ -153,7 +175,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
 
       let(:base) { 'Some content' }
-      let(:enclosures) { [instance_double(Html2rss::Article::Enclosure, url: 'http://example.com/file.xyz', type: 'application/x-unknown')] }
+      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/file.xyz'), type: 'application/x-unknown')] }
 
       it 'returns the base description without raising' do
         expect(description).to eq('Some content')
@@ -167,7 +189,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
 
       let(:base) { 'Some content' }
-      let(:enclosures) { [instance_double(Html2rss::Article::Enclosure, url: 'http://example.com/file', type: nil)] }
+      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/file'), type: nil)] }
 
       it 'returns the base description without raising' do
         expect(description).to eq('Some content')
@@ -183,7 +205,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
 
       let(:base) { 'Some content' }
       let(:image) { 'http://example.com/fallback.jpg' }
-      let(:enclosures) { [instance_double(Html2rss::Article::Enclosure, url: 'http://example.com/file.xyz', type: 'application/x-unknown')] }
+      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/file.xyz'), type: 'application/x-unknown')] }
 
       it 'renders the fallback image' do
         img = doc.at_css('img')

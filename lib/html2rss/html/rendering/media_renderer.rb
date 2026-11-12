@@ -3,8 +3,12 @@
 module Html2rss
   module Html
     module Rendering
-      # Factory: picks the appropriate renderer for a given enclosure or fallback image.
+      # Factory: picks the appropriate renderer for a given enclosure or fallback image, by the enclosure's own
+      # kind predicates ({Article::Enclosure#image?}, +#video?+, +#audio?+).
       class MediaRenderer
+        # The MIME type rendered inline as a document.
+        PDF_TYPE = 'application/pdf'
+
         # @param enclosure [Html2rss::Article::Enclosure, nil]
         # @param image [String, Html2rss::Url, nil] Fallback image URL
         # @param title [String]
@@ -13,26 +17,22 @@ module Html2rss
           return ImageRenderer.new(url: image, title:) if enclosure.nil? && image
           return nil unless enclosure
 
-          create_renderer_for_type(enclosure.type, url: enclosure.url, title:)
+          renderer_for(enclosure, title:)
         end
 
-        # @private
-        # @param type [String, nil] enclosure MIME type
-        # @param url [String, Html2rss::Url] enclosure URL
+        # @param enclosure [Html2rss::Article::Enclosure]
         # @param title [String, nil] title used by image renderer
         # @return [ImageRenderer, VideoRenderer, AudioRenderer, PdfRenderer, nil]
-        def self.create_renderer_for_type(type, url:, title:)
-          case type
-          when %r{^image/}
-            ImageRenderer.new(url:, title:)
-          when %r{^video/}
-            VideoRenderer.new(url:, type:)
-          when %r{^audio/}
-            AudioRenderer.new(url:, type:)
-          when 'application/pdf'
-            PdfRenderer.new(url:)
+        def self.renderer_for(enclosure, title:)
+          url = enclosure.url
+          type = enclosure.type
+          if enclosure.image? then ImageRenderer.new(url:, title:)
+          elsif enclosure.video? then VideoRenderer.new(url:, type:)
+          elsif enclosure.audio? then AudioRenderer.new(url:, type:)
+          elsif type.casecmp?(PDF_TYPE) then PdfRenderer.new(url:)
           end
         end
+        private_class_method :renderer_for
       end
     end
   end

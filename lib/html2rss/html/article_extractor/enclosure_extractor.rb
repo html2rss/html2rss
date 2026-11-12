@@ -13,12 +13,15 @@ module Html2rss
 
         # @param article_tag [Nokogiri::XML::Element] article container node
         # @param base_url [String, Html2rss::Url] base URL for relative enclosure links
-        # @return [Array<Hash{Symbol => Object}>] normalized enclosure hashes in document order
+        # @return [Array<Hash{Symbol => Object}>] normalized enclosure hashes in document order, one per URL
         def self.call(article_tag, base_url)
-          article_tag.css(SELECTOR).filter_map do |element|
+          found = article_tag.css(SELECTOR).filter_map do |element|
             attrs = { src: element['src'], href: element['href'], type: element['type'] }
-            ArticleRules::Enclosure.from_element(element.name, base_url, **attrs) { element.ancestors(PLAYERS).any? }
+            ArticleRules::Enclosure.from_element(element.name, base_url, **attrs) do
+              element.ancestors(PLAYERS).first&.name
+            end
           end
+          ArticleRules::Enclosure.unique(found)
         end
       end
     end

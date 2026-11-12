@@ -23,8 +23,13 @@ module Html2rss
       DURATION = /\AP(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?\z/
       # A clock duration (+itunes:duration+, Media RSS): +HH:MM:SS+, +MM:SS+ or plain seconds.
       CLOCK = /\A(?:(?:(\d+):)?(\d+):)?(\d+(?:\.\d+)?)\z/
-      # Types of web pages (embed players, article pages), never a media file.
-      PAGE_TYPES = %w[application/xhtml+xml].freeze
+      # Types of web pages (embed players, article pages), never a media file: HTML, XHTML and the
+      # types MIME::Types guesses from server-page script extensions (+.php+, +.asp+, +.aspx+, +.jsp+,
+      # +.cgi+, +.cfm+). Other +text/*+ files (+.txt+, +.csv+, +.ics+, +.vtt+) are downloads.
+      PAGE_TYPES = %w[
+        text/html application/xhtml+xml text/x-php application/x-httpd-php text/asp text/aspdotnet text/x-jsp
+        text/x-cgi text/x-coldfusion
+      ].freeze
       # Types of stream playlists (HLS, DASH) and Flash players: played through a page or player, never
       # downloaded as a file.
       STREAM_TYPES = %w[
@@ -41,6 +46,10 @@ module Html2rss
         'm4a' => 'audio/mp4', 'mp3' => 'audio/mpeg', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg',
         'opus' => 'audio/opus', 'aac' => 'audio/aac', 'wav' => 'audio/wav', 'flac' => 'audio/flac'
       }.freeze
+      # The type of a file an audio or video player proves is media while its URL names no media type
+      # (no or an unknown extension, or a server page): the most widely played format of that kind, since
+      # an RSS enclosure needs a concrete type and +audio/*+ is none.
+      KIND_TYPES = { audio: 'audio/mpeg', video: 'video/mp4' }.freeze
 
       class << self
         ##
@@ -96,17 +105,21 @@ module Html2rss
       # @param type [String, nil] optional enclosure MIME type
       # @param bytes_length [Integer, nil] enclosure length in bytes; nil when unknown
       # @param duration [Integer, nil] playback length in seconds; nil (or not positive) when unknown
-      def initialize(url:, type: nil, bytes_length: nil, duration: nil)
+      # @param kind [Symbol, nil] +:audio+ or +:video+ when a player or media object proves the file's kind
+      #   ({KIND_TYPES}); nil when unknown
+      def initialize(url:, type: nil, bytes_length: nil, duration: nil, kind: nil)
         raise ArgumentError, 'An Enclosure requires an absolute URL' if !url || !url.absolute?
 
         @url = url
         @type = type
         @bytes_length = bytes_length || 0
         @duration = duration if duration.instance_of?(Integer) && duration.positive?
+        @kind_type = kind_type(kind)
       end
 
-      # @return [String] explicit MIME type or one inferred from URL extension
-      def type = @type || self.class.guess_content_type_from_url(url)
+      # @return [String] explicit MIME type, else one inferred from the URL extension; a file of a known kind whose
+      #   URL names no media type takes that kind's type ({KIND_TYPES}), also when it is declared {UNTYPED}
+      def type = (@type unless @kind_type && @type&.casecmp?(UNTYPED)) || guessed_type
 
       # @return [Integer] enclosure length in bytes; 0 when unknown
       attr_reader :bytes_length
@@ -117,17 +130,21 @@ module Html2rss
       # @return [Html2rss::Url] absolute enclosure URL
       attr_reader :url
 
+      # @return [Boolean] whether the file is audio
+      def audio? = mime.start_with?('audio/')
+
+      # @return [Boolean] whether the file is video
+      def video? = mime.start_with?('video/')
+
       # @return [Boolean] whether the file is audio or video
-      def media? = type.downcase.start_with?('audio/', 'video/')
+      def media? = audio? || video?
 
       # @return [Boolean] whether the file is an image
-      def image? = type.downcase.start_with?('image/')
+      def image? = mime.start_with?('image/')
 
-      # @return [Boolean] whether the URL is a web page (+text/*+, XHTML), such as an embed player
-      def page?
-        mime = type.downcase
-        mime.start_with?('text/') || PAGE_TYPES.include?(mime)
-      end
+      # @return [Boolean] whether the URL is a web page ({PAGE_TYPES}: HTML, XHTML, a server page), such as an
+      #   embed player
+      def page? = PAGE_TYPES.include?(mime)
 
       # @return [Boolean] whether the URL path ends in a file extension (+.pdf+), unlike a watch page (+/watch/42+)
       def file_extension? = !File.extname(url.path).empty?
@@ -139,14 +156,39 @@ module Html2rss
       #
       # @return [Boolean] whether the URL is a watch or player page rather than a file
       def player_page?
-        page? || (type.downcase == UNTYPED && !file_extension? && bytes_length.zero?)
+        page? || (mime == UNTYPED && !file_extension? && bytes_length.zero?)
       end
 
       # A downloadable document or archive (PDF, ZIP): no media file, image, stream playlist or Flash
       # player ({STREAM_TYPES}), and no watch or player page ({#player_page?}).
       #
       # @return [Boolean] whether the URL is a downloadable document or archive
-      def document? = !(media? || image? || STREAM_TYPES.include?(type.downcase) || player_page?)
+      def document? = !(media? || image? || STREAM_TYPES.include?(mime) || player_page?)
+
+      private
+
+      # @return [String] the lowercase MIME type without parameters (+audio/ogg; codecs=opus+ is +audio/ogg+)
+      def mime = type.downcase[/\A[^;\s]*/]
+
+      # @param kind [Symbol, nil]
+      # @return [String, nil] the type a file of that kind takes when its URL names none ({KIND_TYPES})
+      # @raise [ArgumentError] for a kind other than +:audio+ or +:video+
+      def kind_type(kind)
+        return unless kind
+
+        KIND_TYPES.fetch(kind) { raise ArgumentError, "Unknown enclosure kind: #{kind.inspect}" }
+      end
+
+      # The type guessed from the URL; a file of a known kind whose URL names no media type (untyped, or a
+      # server page) takes that kind's type ({KIND_TYPES}) instead.
+      #
+      # @return [String]
+      def guessed_type
+        guessed = self.class.guess_content_type_from_url(url)
+        return guessed unless @kind_type && (guessed == UNTYPED || PAGE_TYPES.include?(guessed))
+
+        @kind_type
+      end
     end
   end
 end

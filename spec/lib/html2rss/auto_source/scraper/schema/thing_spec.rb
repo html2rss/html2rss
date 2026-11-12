@@ -785,9 +785,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
     {
       'video with encodingFormat' => [{ video: { '@type': 'VideoObject', contentUrl: 'https://example.com/v.mp4',
                                                  encodingFormat: 'video/mp4' } },
-                                      [{ url: 'https://example.com/v.mp4', type: 'video/mp4' }]],
+                                      [{ url: 'https://example.com/v.mp4', type: 'video/mp4', kind: :video }]],
       'audio without encodingFormat' => [{ audio: { '@type': 'AudioObject', contentUrl: '/a.mp3' } },
-                                         [{ url: 'https://example.com/a.mp3' }]],
+                                         [{ url: 'https://example.com/a.mp3', kind: :audio }]],
       'video and audio lists' => [{ video: [{ contentUrl: 'https://example.com/1.mp4' }],
                                     audio: [{ contentUrl: 'https://example.com/2.mp3' }, 'junk'] },
                                   [{ url: 'https://example.com/1.mp4' }, { url: 'https://example.com/2.mp3' }]],
@@ -807,8 +807,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         [{ url: 'https://example.com/1.mp4' }, { url: 'https://example.com/2.mp3' },
          { url: 'https://example.com/3.mp3' }]
       ],
-      'a format name, not a MIME type' => [{ audio: { contentUrl: '/a.mp3', encodingFormat: 'mp3' } },
-                                           [{ url: 'https://example.com/a.mp3' }]],
+      'a media format name' => [{ audio: { contentUrl: '/a', encodingFormat: 'MP3' } },
+                                [{ url: 'https://example.com/a', type: 'audio/mpeg' }]],
+      'a dotted media format name' => [{ video: { contentUrl: '/v', encodingFormat: ' .webm ' } },
+                                       [{ url: 'https://example.com/v', type: 'video/webm' }]],
+      'an unknown format name' => [{ audio: { contentUrl: '/a.mp3', encodingFormat: 'stereo' } },
+                                   [{ url: 'https://example.com/a.mp3' }]],
       'a MIME type with parameters' => [{ audio: { contentUrl: '/a.mp3', encodingFormat: 'Audio/MPEG; rate=44100' } },
                                         [{ url: 'https://example.com/a.mp3', type: 'audio/mpeg' }]],
       'a non-String encodingFormat' => [{ audio: { contentUrl: '/a.mp3', encodingFormat: ['audio/mpeg'] } },
@@ -821,7 +825,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       ],
       'the media object itself' => [{ '@type': 'AudioObject', contentUrl: '/self.mp3', contentSize: '1 KiB',
                                       duration: 'PT1H' },
-                                    [{ url: 'https://example.com/self.mp3', bytes_length: 1024, duration: 3600 }]],
+                                    [{ url: 'https://example.com/self.mp3', bytes_length: 1024, duration: 3600,
+                                       kind: :audio }]],
+      'a media object among types' => [{ '@type': %w[CreativeWork Clip], contentUrl: '/c' },
+                                       [{ url: 'https://example.com/c', kind: :video }]],
+      'a javascript contentUrl' => [{ video: { contentUrl: 'javascript:void(0)' } }, nil],
+      'a blob contentUrl' => [{ video: { contentUrl: 'blob:https://example.com/x' } }, nil],
       'an unusable contentUrl' => [{ video: { contentUrl: 'http://' } }, nil],
       'an empty contentUrl' => [{ video: { contentUrl: '' } }, nil],
       'a non-String contentUrl' => [{ video: { contentUrl: 42 } }, nil],
@@ -831,6 +840,27 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
         let(:schema_object) { extra }
 
         it { is_expected.to eq(expected) }
+      end
+    end
+
+    {
+      'AudioObject' => 'audio/mpeg', 'PodcastEpisode' => 'audio/mpeg',
+      'VideoObject' => 'video/mp4', 'Clip' => 'video/mp4'
+    }.each do |type, mime|
+      context "with an untyped #{type} file without a media extension" do
+        let(:schema_object) { { '@type': type, url: 'https://example.com/ep/1', contentUrl: '/files/ep1' } }
+
+        it "ships it as #{mime}" do
+          expect(instance.call[:enclosures].map { Html2rss::Article::Enclosure.new(**_1).type }).to eq([mime])
+        end
+      end
+    end
+
+    context 'with a PodcastEpisode whose file names its own type' do
+      let(:schema_object) { { '@type': 'PodcastEpisode', url: 'https://example.com/ep/1', contentUrl: '/ep1.mp4' } }
+
+      it 'keeps the file type' do
+        expect(instance.call[:enclosures].map { Html2rss::Article::Enclosure.new(**_1).type }).to eq(['video/mp4'])
       end
     end
 

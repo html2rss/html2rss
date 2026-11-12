@@ -383,6 +383,27 @@ RSpec.describe Html2rss::Html::SstArticleExtractor do
     expect(article.image.to_s).to eq('https://example.com/posters/clip.jpg')
   end
 
+  it 'types untyped player files by their nearest player, once per URL, web URLs only' do # rubocop:disable RSpec/ExampleLength
+    html = <<~HTML
+      <html><body>
+        <article>
+          <h2><a href="/news/clip">Clip Story</a></h2>
+          <p>Useful context paragraph with enough words for description extraction.</p>
+          <video src="/stream/clip"><source src="/stream/clip" type="video/webm"></video>
+          <video><audio><source src="/stream/episode"></audio></video>
+          <audio src="javascript:void(0)"></audio>
+          <video src="blob:https://example.com/x"></video>
+        </article>
+      </body></html>
+    HTML
+
+    article = described_class.call(segment_for(html, href: '/news/clip'), base_url: 'https://example.com')
+
+    expect(article.enclosures.map { [_1.url.to_s, _1.type] }).to eq(
+      [%w[https://example.com/stream/clip video/webm], %w[https://example.com/stream/episode audio/mpeg]]
+    )
+  end
+
   it 'skips inline data posters and prefers a card image over a poster', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     card = lambda do |extra|
       html = <<~HTML

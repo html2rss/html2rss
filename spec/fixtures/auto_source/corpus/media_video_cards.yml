@@ -1,11 +1,13 @@
 ---
-case: Video story cards with HTML <video> players (own src, <source> children with and without a type) and one embed-only player card; each file-backed item ships its video as the RSS enclosure (typed as video from the extension when undeclared), the video poster is the item image only when the card has no other image, and the embed-only card stays an item without an enclosure.
+case: Video story cards with HTML <video> players (own src, <source> children with and without a type) and one embed-only player card; each file-backed item ships its video as the RSS enclosure (typed as video from the extension when undeclared), the video poster is the item image only when the card has no other image, the embed-only card stays an item without an enclosure, a player file with no type and no file extension is still video (video/mp4, the player proves the kind), and a player repeating its src in a typed source ships that file once, with the declared type.
 expected:
 - https://example.com/news/video/ferry-refit-timelapse
 - https://example.com/news/video/library-reopening-tour
 - https://example.com/news/video/river-drone-survey
 - https://example.com/news/video/council-budget-briefing
 - https://example.com/news/video/night-market-stage
+- https://example.com/news/video/harbor-lights-switch-on
+- https://example.com/news/video/ferry-night-crossing
 enclosures:
   https://example.com/news/video/ferry-refit-timelapse:
     url: https://example.com/media/video/ferry-refit-timelapse.mp4
@@ -20,6 +22,12 @@ enclosures:
   https://example.com/news/video/night-market-stage:
     url: https://example.com/media/video/night-market-stage.ogv
     type: video/ogg
+  https://example.com/news/video/harbor-lights-switch-on:
+    url: https://example.com/media/video/play/harbor-lights-switch-on
+    type: video/mp4
+  https://example.com/news/video/ferry-night-crossing:
+    url: https://example.com/media/video/play/ferry-night-crossing
+    type: video/webm
 images:
   https://example.com/news/video/ferry-refit-timelapse: https://example.com/media/posters/ferry-refit.jpg
   https://example.com/news/video/library-reopening-tour: https://example.com/media/posters/library-tour.jpg

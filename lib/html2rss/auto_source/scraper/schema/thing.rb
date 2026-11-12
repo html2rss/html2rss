@@ -19,9 +19,15 @@ module Html2rss
             ReviewNewsArticle SatiricalArticle ScholarlyArticle SocialMediaPosting TechArticle
           ].to_set.freeze
 
+          # Schema.org media types and the file kind each proves (`contentUrl` is the file, `embedUrl` the
+          # player), so an untyped `contentUrl` without a media extension is still audio or video.
+          MEDIA_KINDS = {
+            'AudioObject' => :audio, 'PodcastEpisode' => :audio, 'VideoObject' => :video, 'Clip' => :video
+          }.freeze
+
           # Schema.org media types: items wherever they appear (standalone, in `@graph` or an array, as ItemList
           # elements), marked `media: true`; their own `contentUrl` (when present) is a media enclosure.
-          MEDIA_TYPES = Set['VideoObject', 'AudioObject', 'PodcastEpisode', 'Clip'].freeze
+          MEDIA_TYPES = MEDIA_KINDS.keys.to_set.freeze
 
           # Types emitted as items wherever they appear: articles and media.
           ITEM_TYPES = (SUPPORTED_TYPES | MEDIA_TYPES).freeze
@@ -29,7 +35,8 @@ module Html2rss
           # Keys holding the media objects (object or array) whose `contentUrl` is an enclosure, in choice order.
           MEDIA_KEYS = %i[video audio associatedMedia].freeze
 
-          # A MIME type (`type/subtype`) at the start of `encodingFormat`; a bare format name such as `mp3` is none.
+          # A MIME type (`type/subtype`) at the start of `encodingFormat`; a bare format name such as `mp3` maps
+          # through {Article::Enclosure::MEDIA_TYPES}.
           MIME_TYPE = %r{\A[a-z]+/[a-z0-9][\w.+-]*}i
 
           # Schema.org entity types that describe who or what something is, never a piece of content; a
@@ -138,34 +145,33 @@ module Html2rss
           def own_media? = Schema.normalize_types(schema_object[:@type]).intersect?(MEDIA_TYPES)
 
           # @param node [Object] media object (VideoObject, AudioObject, MediaObject) or the media item itself
-          # @return [Hash{Symbol => Object}, nil] enclosure attributes, or nil without a usable absolute contentUrl
+          # @return [Hash{Symbol => Object}, nil] enclosure attributes, or nil without an http(s) contentUrl
           #   (an ImageObject is never one: images are {#image})
           def media_enclosure(node)
             return unless node.is_a?(Hash) && (src = first_scalar(node[:contentUrl])).is_a?(String)
-            return if Schema.normalize_types(node[:@type]).include?('ImageObject')
-            return unless (found = build_media_enclosure(src, mime_type(node[:encodingFormat])))
+            return if (types = Schema.normalize_types(node[:@type])).include?('ImageObject')
 
-            found.merge(bytes_length: Article::Enclosure.parse_size(node[:contentSize]), duration: media_duration(node))
+            kind = types.filter_map { MEDIA_KINDS[_1] }.first
+            type = mime_type(node[:encodingFormat])
+            Html2rss::Html::ArticleRules::Enclosure.from_media(src, type, base_url, kind:)&.merge(file_facts(node))
           end
 
           # @param node [Hash] media object
-          # @return [Integer, nil] its playback seconds, else those of the item itself (a PodcastEpisode's duration)
-          def media_duration(node)
-            Article::Enclosure.parse_duration(node[:duration]) || Article::Enclosure.parse_duration(schema_object[:duration])
+          # @return [Hash{Symbol => Integer, nil}] its byte length and playback seconds, the duration else that of
+          #   the item itself (a PodcastEpisode's duration)
+          def file_facts(node)
+            duration = Article::Enclosure.parse_duration(node[:duration]) ||
+                       Article::Enclosure.parse_duration(schema_object[:duration])
+            { bytes_length: Article::Enclosure.parse_size(node[:contentSize]), duration: }
           end
 
           # @param format [Object] encodingFormat
-          # @return [String, nil] its lowercase MIME type; nil for a format name (+mp3+), so the file name decides
-          def mime_type(format) = (format[MIME_TYPE]&.downcase if format.is_a?(String))
+          # @return [String, nil] its lowercase MIME type, or the playable type of a media format name (+mp3+,
+          #   +.m4a+); nil for any other name, so the file name decides
+          def mime_type(format)
+            return unless format.is_a?(String)
 
-          # @param src [String] contentUrl
-          # @param type [String, nil] MIME type
-          # @return [Hash{Symbol => Object}, nil] enclosure attributes with an absolute url
-          def build_media_enclosure(src, type)
-            found = ::Html2rss::Html::ArticleRules::Enclosure.from_media(src, type, base_url)
-            found if found&.dig(:url)&.absolute?
-          rescue Url::InvalidUrlError
-            nil
+            format[MIME_TYPE]&.downcase || Article::Enclosure::MEDIA_TYPES[format.strip.downcase.delete_prefix('.')]
           end
 
           # @param value [Object] url candidate

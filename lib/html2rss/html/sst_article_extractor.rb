@@ -239,17 +239,17 @@ module Html2rss
         ArticleRules::Date.earliest(datetimes, leftover_lines: lines, time_zone: @time_zone)
       end
 
-      def extract_enclosures = collect_enclosures(@root, false, [])
+      def extract_enclosures = ArticleRules::Enclosure.unique(collect_enclosures(@root, nil, []))
 
-      # Depth-first in document order, carrying whether an ancestor is a player for +source+ elements.
-      def collect_enclosures(node, in_player, found)
+      # Depth-first in document order, carrying the nearest player ancestor's name for +source+ elements.
+      def collect_enclosures(node, player, found)
         name = node.name.name
         attrs = node.attrs
         enclosure = ArticleRules::Enclosure.from_element(name, @base_url, src: attrs.src, href: attrs.href,
-                                                                          type: attrs.type) { in_player }
+                                                                          type: attrs.type) { player }
         found << enclosure if enclosure
-        in_player ||= ArticleRules::Enclosure::MEDIA_ELEMENTS.include?(name)
-        node.children.each { |child| collect_enclosures(child, in_player, found) }
+        player = name if ArticleRules::Enclosure::MEDIA_ELEMENTS.include?(name)
+        node.children.each { |child| collect_enclosures(child, player, found) }
         found
       end
 

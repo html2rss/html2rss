@@ -165,7 +165,7 @@ RSpec.describe Html2rss::Syndication::Parser do
       XML
 
       expect(described_class.parse(body).first[:enclosures])
-        .to eq([{ url: Html2rss::Url.from_absolute('https://example.com/stream/1'), type: 'audio/mpeg',
+        .to eq([{ url: Html2rss::Url.from_absolute('https://example.com/stream/1'), kind: :audio,
                   bytes_length: 1000, duration: 60 }])
     end
 

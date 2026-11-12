@@ -250,8 +250,8 @@ kicker_heading_teaser.html:
   sst_built: true
 media_audio_cards.html:
   junk: 0
-  real: 5
-  expected: 5
+  real: 6
+  expected: 6
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0
@@ -290,8 +290,8 @@ media_schema_standalone_video_list.html:
   sst_built: true
 media_video_cards.html:
   junk: 0
-  real: 5
-  expected: 5
+  real: 7
+  expected: 7
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0

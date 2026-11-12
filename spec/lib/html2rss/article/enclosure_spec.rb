@@ -118,22 +118,33 @@ RSpec.describe Html2rss::Article::Enclosure do
 
   describe 'media kind' do
     {
-      'audio/mpeg' => [true, false, false],
-      'VIDEO/MP4' => [true, false, false],
-      'image/jpeg' => [false, true, false],
-      'IMAGE/PNG' => [false, true, false],
-      'text/html' => [false, false, true],
-      'Text/HTML' => [false, false, true],
-      'text/x-php' => [false, false, true],
-      'application/xhtml+xml' => [false, false, true],
-      'Application/XHTML+XML' => [false, false, true],
-      'application/pdf' => [false, false, false],
-      'application/zip' => [false, false, false]
-    }.each_pair do |type, (media, image, page)|
-      it "classifies #{type} as media=#{media} image=#{image} page=#{page}", :aggregate_failures do
+      'audio/mpeg' => [true, false, false, false],
+      'Audio/MPEG' => [true, false, false, false],
+      'audio/ogg; codecs=opus' => [true, false, false, false],
+      'VIDEO/MP4' => [false, true, false, false],
+      'image/jpeg' => [false, false, true, false],
+      'IMAGE/PNG' => [false, false, true, false],
+      'text/html' => [false, false, false, true],
+      'Text/HTML; charset=utf-8' => [false, false, false, true],
+      'text/x-php' => [false, false, false, true],
+      'application/x-httpd-php' => [false, false, false, true],
+      'text/asp' => [false, false, false, true],
+      'text/aspdotnet' => [false, false, false, true],
+      'text/x-jsp' => [false, false, false, true],
+      'text/x-cgi' => [false, false, false, true],
+      'text/x-coldfusion' => [false, false, false, true],
+      'application/xhtml+xml' => [false, false, false, true],
+      'Application/XHTML+XML' => [false, false, false, true],
+      'text/plain' => [false, false, false, false],
+      'text/vtt' => [false, false, false, false],
+      'application/pdf' => [false, false, false, false],
+      'application/zip' => [false, false, false, false],
+      '' => [false, false, false, false]
+    }.each_pair do |type, (audio, video, image, page)|
+      it "classifies #{type} as audio=#{audio} video=#{video} image=#{image} page=#{page}", :aggregate_failures do
         enclosure = described_class.new(url: Html2rss::Url.from_absolute('https://example.com/file'), type:)
 
-        expect(enclosure.media?).to be(media)
+        expect([enclosure.audio?, enclosure.video?, enclosure.media?]).to eq([audio, video, audio || video])
         expect(enclosure.image?).to be(image)
         expect(enclosure.page?).to be(page)
       end
@@ -161,7 +172,14 @@ RSpec.describe Html2rss::Article::Enclosure do
       ['live/manifest.mpd', 'application/dash+xml'] => false,
       ['episode.mp3', 'audio/mpeg'] => false,
       ['cover.jpg', nil] => false,
-      ['embed/1', 'text/html'] => false
+      ['embed/1', 'text/html'] => false,
+      ['play.php', nil] => false,
+      ['page.aspx', nil] => false,
+      ['notes.txt', nil] => true,
+      ['data.csv', nil] => true,
+      ['event.ics', nil] => true,
+      ['captions.vtt', nil] => true,
+      ['data.csv', 'text/csv; charset=utf-8'] => true
     }.each_pair do |(path, type), document|
       it "classifies #{path} typed #{type.inspect} as document=#{document}" do
         enclosure = described_class.new(url: Html2rss::Url.from_absolute("https://example.com/#{path}"), type:)
@@ -244,6 +262,38 @@ RSpec.describe Html2rss::Article::Enclosure do
       it "keeps duration #{duration.inspect} as #{expected.inspect}" do
         expect(described_class.new(url:, duration:).duration).to eq(expected)
       end
+    end
+
+    {
+      ['https://example.com/stream/42', :audio] => 'audio/mpeg',
+      ['https://example.com/stream/42', :video] => 'video/mp4',
+      ['https://example.com/play.php?id=1', :audio] => 'audio/mpeg',
+      ['https://example.com/watch.aspx', :video] => 'video/mp4',
+      ['https://example.com/clip.webm', :audio] => 'video/webm',
+      ['https://example.com/live/index.m3u8', :video] => 'application/vnd.apple.mpegurl',
+      ['https://example.com/cover.jpg', :video] => 'image/jpeg',
+      ['https://example.com/stream/42', nil] => 'application/octet-stream',
+      ['https://example.com/play.php', nil] => 'text/x-php'
+    }.each_pair do |(file, kind), expected|
+      it "types #{file} of kind #{kind.inspect} as #{expected}" do
+        expect(described_class.new(url: Html2rss::Url.from_absolute(file), kind:).type).to eq(expected)
+      end
+    end
+
+    it 'keeps a declared type over the kind' do
+      expect(described_class.new(url:, type: 'audio/ogg', kind: :video).type).to eq('audio/ogg')
+    end
+
+    it 'treats a declared untyped type as none only for a file of a known kind', :aggregate_failures do
+      stream = Html2rss::Url.from_absolute('https://example.com/stream/42')
+      expect(described_class.new(url: stream, type: 'Application/Octet-Stream', kind: :audio).type).to eq('audio/mpeg')
+      expect(described_class.new(url:, type: 'application/octet-stream', kind: :video).type).to eq('image/jpeg')
+      expect(described_class.new(url: stream, type: 'Application/Octet-Stream').type).to eq('Application/Octet-Stream')
+    end
+
+    it 'rejects an unknown kind', :aggregate_failures do
+      expect { described_class.new(url:, kind: :image) }.to raise_error(ArgumentError, /Unknown enclosure kind: :image/)
+      expect { described_class.new(url:, kind: 'audio') }.to raise_error(ArgumentError, /kind/)
     end
 
     context 'when URL is nil' do

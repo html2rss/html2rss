@@ -151,8 +151,8 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
       end
 
       it 'drops each page (web page, or untyped without extension and size) whatever its medium' do
-        expect(enclosures).to eq([[{ url: 'https://example.com/stream/9', type: 'video/mp4' },
-                                   { url: 'https://example.com/player.swf' },
+        expect(enclosures).to eq([[{ url: 'https://example.com/stream/9', type: 'video/mp4', kind: :video },
+                                   { url: 'https://example.com/player.swf', kind: :video },
                                    { url: 'https://example.com/download/44', bytes_length: 2048 }]])
       end
     end
@@ -168,16 +168,23 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
               <media:content url="https://example.com/files/ep9.ogg" medium="video" fileSize="3000"/>
               <media:content url="https://example.com/files/ep10" medium="audio" type="audio/aac" fileSize="4000"/>
               <media:content url="https://example.com/files/ep11" medium="audio" type="Application/Octet-Stream"
-                             fileSize="5000"/></item>
+                             fileSize="5000"/>
+              <media:content url="https://example.com/files/ep12" type="audio/aac" fileSize="6000"/></item>
           </channel></rss>
         XML
       end
 
+      let(:files) do
+        media.first[:enclosures].map do |facts|
+          [facts[:url].to_s, Html2rss::Article::Enclosure.new(**facts).type, facts[:duration]]
+        end
+      end
+
       it 'types it by the medium, keeping a declared type or a known extension, and gives it the item duration' do
-        expect(enclosures.first.map { _1.values_at(:url, :type, :duration) }).to eq(
+        expect(files).to eq(
           [['https://example.com/files/ep7', 'audio/mpeg', 60], ['https://example.com/files/clip8', 'video/mp4', 90],
-           ['https://example.com/files/ep9.ogg', nil, 90], ['https://example.com/files/ep10', 'audio/aac', 90],
-           ['https://example.com/files/ep11', 'audio/mpeg', 90]]
+           ['https://example.com/files/ep9.ogg', 'audio/ogg', 90], ['https://example.com/files/ep10', 'audio/aac', 90],
+           ['https://example.com/files/ep11', 'audio/mpeg', 90], ['https://example.com/files/ep12', 'audio/aac', 90]]
         )
       end
     end

@@ -179,24 +179,16 @@ module Html2rss
         end
 
         # @param meta_data [Hash{Symbol => Object}] extracted OpenGraph meta tags
-        # @return [Array<Hash{Symbol => Object}>, nil] og:video / og:audio enclosures (page-type embeds skipped)
+        # @return [Array<Hash{Symbol => Object}>, nil] og:video / og:audio enclosures (page-type embeds skipped; no
+        #   kind, since an og:video is often a player page rather than a file)
         def media_enclosures(meta_data)
           found = %i[video audio].filter_map do |kind|
             type = meta_data[:"#{kind}_type"]
             next if type && !type.start_with?("#{kind}/")
 
-            media_enclosure(meta_data[kind], type)
+            Html2rss::Html::ArticleRules::Enclosure.from_media(meta_data[kind], type, url)
           end
           found unless found.empty?
-        end
-
-        # @param src [String, nil] raw media URL
-        # @param type [String, nil] declared MIME type
-        # @return [Hash{Symbol => Object}, nil] enclosure attributes
-        def media_enclosure(src, type)
-          ::Html2rss::Html::ArticleRules::Enclosure.from_media(src, type, url)
-        rescue Html2rss::Url::InvalidUrlError
-          nil
         end
 
         # @param raw_url [String, nil] raw relative or absolute URL string

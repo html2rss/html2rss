@@ -9,8 +9,9 @@ module Html2rss
     # Enclosures, in document order and once per URL: RSS 2.0 +enclosure+ (+url+, +type+, +length+),
     # Atom +link rel="enclosure"+ (+href+, +type+, +length+) and Media RSS +media:content+, also inside
     # +media:group+ (+url+, +type+, +fileSize+, +duration+). A Media RSS +medium+ is a kind hint, never a
-    # drop signal: +audio+ or +video+ types an untyped file ({MEDIUM_TYPES}), +image+ keeps an untyped file
-    # an image. A watch or player page ({Article::Enclosure#player_page?}) that is not declared an image is
+    # drop signal: +audio+ or +video+ is the file's kind, typing an untyped file
+    # ({Article::Enclosure::KIND_TYPES}), and +image+ keeps an untyped file an image. A watch or player
+    # page ({Article::Enclosure#player_page?}) that is not declared an image is
     # no enclosure. An item +itunes:duration+ is the duration of every audio or video file that declares
     # none. The item image is its +itunes:image+ (+href+, or the URL as its text), else its first
     # +media:thumbnail+ (also inside +media:group+), else its first image file (+medium="image"+ or an
@@ -38,8 +39,6 @@ module Html2rss
       # The item's iTunes image URL: its +href+, else the URL written as the element text.
       ITUNES_IMAGE = 'itunes:image/@href[normalize-space()] | ' \
                      'itunes:image[not(normalize-space(@href))][normalize-space()]'
-      # The type a Media RSS +medium+ gives an untyped file (no declared type, no known file extension).
-      MEDIUM_TYPES = { 'audio' => 'audio/mpeg', 'video' => 'video/mp4' }.freeze
 
       class << self
         ##
@@ -83,13 +82,14 @@ module Html2rss
           [facts(element, enclosure, item_duration), image]
         end
 
-        # The file's facts: its declared type, else the type its +medium+ gives an untyped file; its own
-        # duration, else the item's when it is audio or video.
+        # The file's facts: its declared type and its +medium+ as kind (+audio+, +video+), which types an
+        # untyped file; its own duration, else the item's when it is audio or video.
         def facts(element, enclosure, item_duration)
-          hint = MEDIUM_TYPES[element['medium']] if enclosure.type.downcase == Article::Enclosure::UNTYPED
+          kind = Article::Enclosure::KIND_TYPES.each_key.find { _1.name == element['medium'] }
+          file = Article::Enclosure.new(url: enclosure.url, type: attribute(element, 'type'), kind:)
           duration = Article::Enclosure.parse_duration(attribute(element, 'duration'))
-          { url: enclosure.url, type: hint || attribute(element, 'type'), bytes_length: enclosure.bytes_length.nonzero?,
-            duration: duration || (item_duration if hint || enclosure.media?) }.compact
+          { url: file.url, type: attribute(element, 'type'), kind:, bytes_length: enclosure.bytes_length.nonzero?,
+            duration: duration || (item_duration if file.media?) }.compact
         end
 
         def image(node, files)

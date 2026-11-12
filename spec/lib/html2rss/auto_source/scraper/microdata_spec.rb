@@ -557,8 +557,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::Microdata do
 
       it 'emits both audio enclosures, each with its own size and duration' do
         expect(articles.first[:enclosures].map { _1.merge(url: _1[:url].to_s) }).to eq(
-          [{ url: 'https://example.com/media/a.mp3', type: nil, bytes_length: nil, duration: nil },
-           { url: 'https://example.com/media/s.mp3', type: nil, bytes_length: 2_000_000, duration: 150 }]
+          [{ url: 'https://example.com/media/a.mp3', kind: :audio, bytes_length: nil, duration: nil },
+           { url: 'https://example.com/media/s.mp3', kind: :audio, bytes_length: 2_000_000, duration: 150 }]
         )
       end
     end
