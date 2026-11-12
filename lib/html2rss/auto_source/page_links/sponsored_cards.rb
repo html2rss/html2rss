@@ -17,16 +17,21 @@ module Html2rss
       #   {LinkDestination::Sponsorship::CARD_NAMES} element, itself included. That card marks its dominant
       #   destination: its only one, else its only headline destination (an anchor in or around a heading);
       #   a card with several headlines marks nothing, and so does a label outside every card.
-      # - A +:paid_label+ outside every anchor may also head a section ({#section?}): the nearest ancestor,
-      #   up to its card, that it opens (no anchor before it) and that holds at least two card units and no
-      #   heading outside them. Every destination of the section is marked. A section is never a page region
-      #   ({PAGE_REGIONS}), and a card that binds its dominant destination is no section.
+      # - A +:paid_label+ outside every anchor binds at its first ancestor holding a destination after it
+      #   (none before it) and climbs no further. When that ancestor is one card unit with a heading, the
+      #   label marks that card (a bare +div+ card included). When it holds at least two card units and no
+      #   heading outside them, the label heads a section ({#section?}) and every destination in it is
+      #   marked; such a label sits in a header, never in a card: beside card units, its wrapper holds nothing
+      #   but the label (an ad box holding a slot is no header). A section is never a page region
+      #   ({PAGE_REGIONS}).
       #
       # Marking is per card: a URL is sponsored only when every anchor to it sits in a marked card,
       # so a promo slot never hides the editorial card linking the same story.
       class SponsoredCards
         # Elements that hold a page, never a section: a section label stops below them.
         PAGE_REGIONS = Set[:html, :body, :main].freeze
+        # Text that holds a word.
+        WORD = /[[:alnum:]]/
 
         LinkedLabel = Data.define(:range, :headings)
         ##
@@ -129,24 +134,34 @@ module Html2rss
           nil
         end
 
-        # A section label stops at a bound card, at an anchor before it, at its section or at a boundary.
+        # A section label stops at a bound card, at an anchor before it, and at a card or page region holding
+        # no destination after it. At its first frame holding one it marks that card or section, then stops.
         def head(label, node, range, boundary:, bound:)
           return if bound || range.begin < label.before
+          return (label unless boundary) unless range.end > label.after
 
-          if range.end > label.after && section?(node, label.label)
-            @claims.claim(range)
-            return
-          end
-
-          label unless boundary
+          units = CardUnits.new(node, skip: label.label, claims: @claims)
+          @claims.claim(range) if units.card? || section?(node, label.label, units)
+          nil
         end
 
-        # Whether +node+ is a section: no page region, at least two card units and no heading outside them.
-        def section?(node, label)
+        # Whether +label+ heads +node+ as a section: no page region, at least two card units and no heading
+        # outside them, and the label in a header (holding only the label when card units sit beside it).
+        def section?(node, label, units)
           return false if node.find { PAGE_REGIONS.include?(_1.name) }
 
-          units = CardUnits.new(node, skip: label, claims: @claims)
-          units.cards >= 2 && units.stray.zero?
+          units.cards >= 2 && units.stray.zero? && (units.peers.zero? || alone?(node, label))
+        end
+
+        # Whether the child of +node+ around +label+ holds nothing but the label.
+        def alone?(node, label)
+          wrapper = node.children.find { SST::Index.descendant_or_self?(label, _1) }
+          until wrapper.equal?(label)
+            return false unless wrapper.children.one? && !wrapper.own_text.match?(WORD)
+
+            wrapper = wrapper.children.first
+          end
+          true
         end
 
         def bind(start)

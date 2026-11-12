@@ -206,8 +206,8 @@ sponsored_section_labels.html:
   sst_built: true
 sponsored_section_negatives.html:
   junk: 0
-  real: 10
-  expected: 10
+  real: 16
+  expected: 16
   title_misses: 0
   sst_built: true
 sponsored_story_about_ads.html:

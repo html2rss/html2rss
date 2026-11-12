@@ -533,10 +533,49 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
       end
 
-      it 'marks no section of one card, or with a heading outside its card units at any depth' do
-        paths = %w[/news/lone /news/topic-a /news/topic-b /news/after-a /news/after-b /news/aside-a /news/aside-b
+      it 'marks no section with a heading outside its card units at any depth' do
+        paths = %w[/news/topic-a /news/topic-b /news/after-a /news/after-b /news/aside-a /news/aside-b
                    /news/twice /news/twice-next]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'marks the one card unit of a bare wrapper the label opens' do
+        expect(sponsored['/news/lone']).to eq('/news/lone' => true)
+      end
+    end
+
+    context 'when a paid label sits in a bare div card or an ad box of a card row' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="row"><div class="c"><span>Sponsored</span><h3><a href="/news/promo">Promo</a></h3></div>
+              <div class="c"><h3><a href="/news/row-a">A</a></h3></div><div class="c"><h3><a href="/news/row-b">B</a></h3></div>
+              <div class="c"><h3><a href="/news/row-c">C</a></h3></div></div>
+            <div class="row"><div class="ad-box"><p>Sponsored</p><div class="slot"></div></div>
+              <div class="c"><h3><a href="/news/box-a">A</a></h3></div><div class="c"><h3><a href="/news/box-b">B</a></h3></div></div>
+            <div class="row"><div class="head"><div><p>Sponsored</p></div></div>
+              <div class="c"><h3><a href="/news/head-a">A</a></h3></div><div class="c"><h3><a href="/news/head-b">B</a></h3></div></div>
+            <div class="row"><div class="head">Note <p>Sponsored</p></div>
+              <div class="c"><h3><a href="/news/note-a">A</a></h3></div><div class="c"><h3><a href="/news/note-b">B</a></h3></div></div>
+          </main></body></html>
+        HTML
+      end
+
+      let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
+
+      it 'marks only the card that holds the label' do
+        paths = %w[/news/promo /news/row-a /news/row-b /news/row-c]
+        expect(sponsored[*paths]).to eq('/news/promo' => true, '/news/row-a' => false, '/news/row-b' => false,
+                                        '/news/row-c' => false)
+      end
+
+      it 'marks no card beside an ad box or a wrapper holding more than the label' do
+        paths = %w[/news/box-a /news/box-b /news/note-a /news/note-b]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'marks the cards beside a wrapper holding only the label' do
+        expect(sponsored['/news/head-a', '/news/head-b']).to eq('/news/head-a' => true, '/news/head-b' => true)
       end
     end
 

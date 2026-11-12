@@ -9,12 +9,12 @@ module Html2rss
       # heading holding a link is a headline, not a card). Headings outside every card unit are stray.
       # Bare +div+ cards count like +article+ or +li+ ones: the unit is read from structure, not tag names.
       class CardUnits
-        Unit = Data.define(:keys, :headings, :cards, :stray)
+        Unit = Data.define(:keys, :headings, :cards, :peers, :stray)
         ##
         # Destinations and headings of one subtree, and the card units and stray headings its children hold.
         class Unit
           # The empty unit (a left-out subtree).
-          NONE = new(keys: [].freeze, headings: 0, cards: 0, stray: 0)
+          NONE = new(keys: [].freeze, headings: 0, cards: 0, peers: 0, stray: 0)
 
           # @return [Boolean] whether the unit holds more than one card
           def crowded? = Html::CardWalk.crowded?(heading_count: headings, distinct_main_hrefs: keys.size)
@@ -35,6 +35,12 @@ module Html2rss
         # @return [Integer] card units below the root
         def cards = @unit.cards
 
+        # @return [Integer] card units that are children of the root
+        def peers = @unit.peers
+
+        # @return [Boolean] whether the root itself is one card unit holding a heading
+        def card? = !@unit.crowded? && @unit.keys.any? && @unit.headings == 1
+
         # @return [Integer] headings below the root outside every card unit
         def stray = @unit.stray
 
@@ -44,8 +50,8 @@ module Html2rss
           return Unit::NONE if node.equal?(@skip)
 
           units = node.children.map { survey(_1) }
-          cards, stray = split(node.children, units)
-          Unit.new(keys: keys(node, units), headings: headings(node, units), cards:, stray:)
+          cards, peers, stray = split(node.children, units)
+          Unit.new(keys: keys(node, units), headings: headings(node, units), cards:, peers:, stray:)
         end
 
         def keys(node, units)
@@ -57,11 +63,11 @@ module Html2rss
         def headings(node, units) = units.sum(&:headings) + (node.heading? ? 1 : 0)
 
         def split(children, units)
-          children.zip(units).reduce([0, 0]) do |(cards, stray), (child, unit)|
-            next [cards + unit.cards, stray + unit.stray] if unit.crowded?
-            next [cards + 1, stray] if unit.keys.any? && !child.heading?
+          children.zip(units).reduce([0, 0, 0]) do |(cards, peers, stray), (child, unit)|
+            next [cards + unit.cards, peers, stray + unit.stray] if unit.crowded?
+            next [cards + 1, peers + 1, stray] if unit.keys.any? && !child.heading?
 
-            [cards, stray + unit.headings]
+            [cards, peers, stray + unit.headings]
           end
         end
       end
