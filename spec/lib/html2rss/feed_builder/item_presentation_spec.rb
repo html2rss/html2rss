@@ -9,6 +9,30 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
 
       expect(described_class.description_for(article)).to include('By John Doe')
     end
+
+    # rubocop:disable-next RSpec/ExampleLength -- one article, both ends of its rendered body
+    it 'passes title, url and image through', :aggregate_failures do
+      article = Html2rss::Article.new(title: 'Harbor', url: 'https://example.com/posts/1',
+                                      description: 'Harbor <a href="/x">more</a>', image: 'https://example.com/i.jpg')
+      html = described_class.description_for(article)
+
+      expect(html).to start_with('<img src="https://example.com/i.jpg" alt="Harbor" title="Harbor"')
+      expect(html).to end_with("\n\n<a href=\"https://example.com/x\" rel=\"nofollow noopener noreferrer\" " \
+                               'target="_blank">more</a>')
+    end
+
+    it 'renders the RSS enclosure as the one media element when it is a player', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      article = Html2rss::Article.new(
+        title: 'T', url: 'https://example.com/p', image: 'https://example.com/cover.jpg',
+        enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/cover.jpg'), type: 'image/jpeg' },
+                     { url: Html2rss::Url.from_absolute('https://example.com/b.mp3'), type: 'audio/mpeg' },
+                     { url: Html2rss::Url.from_absolute('https://example.com/a.mp4'), type: 'video/mp4' }]
+      )
+      html = described_class.description_for(article)
+
+      expect(html.scan(/<(img|audio|video)\b/)).to eq([['audio']])
+      expect(html).to include('src="https://example.com/b.mp3"')
+    end
   end
 
   describe '.rss_enclosure_for' do

@@ -6,7 +6,7 @@ require 'nokogiri'
 RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
   describe '#call' do
     context 'when base is plain text' do
-      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil, image: nil).call }
+      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }
 
       let(:base) { 'By John Doe' }
 
@@ -17,7 +17,7 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
 
     context 'when base contains HTML' do
       subject(:description) do
-        described_class.new(base:, title: 'Sample instance', url:, enclosures: nil, image: nil).call
+        described_class.new(base:, title: 'Sample instance', url:, enclosure: nil, image: nil).call
       end
 
       let(:base) { '<b>Some bold text</b>' }
@@ -34,17 +34,25 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
     end
 
     context 'when base starts with the title' do
-      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil, image: nil).call }
+      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }
 
       let(:base) { 'Sample instance By John Doe' }
 
       it 'removes the title from the start' do
-        expect(description).to include('By John Doe')
+        expect(description).to eq('By John Doe')
+      end
+    end
+
+    context 'when base is nil' do
+      subject(:description) { described_class.new(base: nil, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }
+
+      it 'returns nil' do
+        expect(description).to be_nil
       end
     end
 
     context 'when base is empty' do
-      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil, image: nil).call }
+      subject(:description) { described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosure: nil, image: nil).call }
 
       let(:base) { '' }
 
@@ -52,164 +60,144 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
         expect(description).to be_nil
       end
     end
+  end
 
-    context 'when enclosure is an image' do
-      subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
-                                   image: nil).call
-        Nokogiri::HTML.fragment(html)
-      end
+  describe '#call media element' do
+    subject(:doc) { Nokogiri::HTML.fragment(html) }
 
-      let(:base) { 'Caption' }
-      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/image.jpg'), type: 'image/jpeg')] }
+    let(:enclosure_for) do
+      ->(file, type = nil) { Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute("http://example.com/#{file}"), type:) }
+    end
+    let(:base) { 'Caption' }
+    let(:image) { nil }
+    let(:enclosure) { nil }
+    let(:html) do
+      described_class.new(base:, title: 'Sample instance', url: 'http://example.com/post', enclosure:, image:).call
+    end
 
-      it 'renders <img> with attributes', :aggregate_failures do
+    context 'with the item image only' do
+      let(:image) { 'http://example.com/image.jpg' }
+
+      it 'renders one <img> before the text', :aggregate_failures do
         img = doc.at_css('img')
-        expect(img['src']).to eq('http://example.com/image.jpg')
-        expect(img['alt']).to eq('Sample instance')
-        expect(img['title']).to eq('Sample instance')
+        expect(doc.css('img, audio, video, iframe').size).to eq(1)
+        expect([img['src'], img['alt'], img['title']])
+          .to eq(['http://example.com/image.jpg', 'Sample instance', 'Sample instance'])
+        expect(html).to end_with("\n\nCaption")
       end
     end
 
-    context 'when fallback image is present (rendering)' do
-      subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures: nil,
-                                   image:).call
-        Nokogiri::HTML.fragment(html)
-      end
+    context 'with a video enclosure and an image' do
+      let(:enclosure) { enclosure_for.call('clip.webm', 'Video/WebM; codecs=vp9') }
+      let(:image) { 'http://example.com/poster.jpg' }
 
-      let(:base) { 'Something' }
-      let(:image) { 'http://example.com/fallback.jpg' }
-
-      it 'renders fallback <img>' do
-        img = doc.at_css('img')
-        expect(img['src']).to eq('http://example.com/fallback.jpg')
+      it 'renders only the <video> player', :aggregate_failures do
+        expect(doc.css('img, audio, video').map(&:name)).to eq(['video'])
+        expect(doc.at_css('video source').to_h.slice('src', 'type'))
+          .to eq('src' => 'http://example.com/clip.webm', 'type' => 'Video/WebM; codecs=vp9')
       end
     end
 
-    context 'when enclosure is a video' do
-      subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
-                                   image: nil).call
-        Nokogiri::HTML.fragment(html)
-      end
+    context 'with an audio enclosure and an image' do
+      let(:enclosure) { enclosure_for.call('episode.mp3', 'Audio/MPEG') }
+      let(:image) { 'http://example.com/cover.jpg' }
 
-      let(:base) { 'Watch this' }
-      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/video.mp4'), type: 'video/mp4')] }
-
-      it 'renders <video> and <source>', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        video = doc.at_css('video')
-        source = video.at_css('source')
-        expect(video).not_to be_nil
-        expect(source).not_to be_nil
-        expect(source['src']).to eq('http://example.com/video.mp4')
-        expect(source['type']).to eq('video/mp4')
+      it 'renders only the <audio> player', :aggregate_failures do
+        expect(doc.css('img, audio, video').map(&:name)).to eq(['audio'])
+        expect(doc.at_css('audio source').to_h.slice('src', 'type'))
+          .to eq('src' => 'http://example.com/episode.mp3', 'type' => 'Audio/MPEG')
       end
     end
 
-    context 'when enclosure is audio' do
-      subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
-                                   image: nil).call
-        Nokogiri::HTML.fragment(html)
-      end
+    context 'with a document enclosure (no player) and an image' do
+      let(:enclosure) { enclosure_for.call('report.pdf', 'application/pdf') }
+      let(:image) { 'http://example.com/cover.jpg' }
 
-      let(:base) { 'Listen to this' }
-      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/audio.mp3'), type: 'audio/mpeg')] }
-
-      it 'renders <audio> and <source>', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
-        audio = doc.at_css('audio')
-        source = audio.at_css('source')
-        expect(audio).not_to be_nil
-        expect(source).not_to be_nil
-        expect(source['src']).to eq('http://example.com/audio.mp3')
-        expect(source['type']).to eq('audio/mpeg')
+      it 'renders the image instead of the document' do
+        expect(doc.css('img, iframe').map { _1['src'] }).to eq(['http://example.com/cover.jpg'])
       end
     end
 
-    context 'when enclosure types are spelled in upper case or carry parameters' do
-      subject(:doc) do
-        html = described_class.new(base: 'Mixed', title: 'Sample instance', url: 'http://example.com', enclosures:,
-                                   image: nil).call
-        Nokogiri::HTML.fragment(html)
-      end
+    context 'with an image enclosure and no item image' do
+      let(:enclosure) { enclosure_for.call('photo.jpg', 'image/jpeg') }
 
-      let(:enclosures) do
-        { 'audio.mp3' => 'Audio/MPEG', 'clip.webm' => 'Video/WebM; codecs=vp9', 'photo.jpg' => 'IMAGE/JPEG',
-          'doc.pdf' => 'Application/PDF' }.map do |file, type|
-          Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute("http://example.com/#{file}"), type:)
+      it 'renders no media' do
+        expect(html).to eq('Caption')
+      end
+    end
+
+    context 'when the description already shows the image' do
+      {
+        'a relative src' => ['hero,1.jpg', '<p><img src="/a/hero,1.jpg"> Caption</p>'],
+        'a link to it' => ['hero,1.jpg', '<p><a href="HTTP://EXAMPLE.COM/a/hero,1.jpg">Caption</a></p>'],
+        'a relative srcset candidate' => ['hero.jpg',
+                                          '<img src="/a/s.jpg" srcset="s.jpg 1x, hero.jpg?x=1 2x,hero.jpg 3x">']
+      }.each_pair do |reference, (file, markup)|
+        it "renders no media element of its own with #{reference}" do
+          image = Html2rss::Url.from_absolute("http://example.com/a/#{file}")
+          html = described_class.new(base: markup, title: 'Harbor', url: 'http://example.com/a/post', enclosure:,
+                                     image:)
+
+          expect(Nokogiri::HTML.fragment(html.call).css('img[alt="Harbor"]')).to be_empty
         end
       end
+    end
 
-      it 'renders each by its kind', :aggregate_failures do
-        expect(doc.at_css('audio source')['type']).to eq('Audio/MPEG')
-        expect(doc.at_css('video source')['src']).to eq('http://example.com/clip.webm')
-        expect(doc.at_css('img')['src']).to eq('http://example.com/photo.jpg')
-        expect(doc.at_css('iframe')['src']).to eq('http://example.com/doc.pdf')
+    context 'when the description does not contain the file name' do
+      let(:image) { 'http://example.com/a/hero.jpg' }
+      let(:base) { '<p><a href="http://example.com/a/">Section</a> img <img src="/a/other.jpg"></p>' }
+
+      before { allow(Nokogiri::HTML).to receive(:fragment).and_call_original }
+
+      it 'renders the image without parsing the description', :aggregate_failures do
+        expect(doc.css('img').map { _1['src'] }).to eq(['http://example.com/a/hero.jpg', 'http://example.com/a/other.jpg'])
+        expect(Nokogiri::HTML).to have_received(:fragment).once
       end
     end
 
-    context 'when enclosure is a PDF' do
-      subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
-                                   image: nil).call
-        Nokogiri::HTML.fragment(html)
-      end
+    context 'with an empty description' do
+      let(:image) { 'http://example.com/hero.jpg' }
+      let(:base) { '' }
 
-      let(:base) { 'See this document' }
-      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/doc.pdf'), type: 'application/pdf')] }
-
-      it 'renders <iframe>', :aggregate_failures do
-        iframe = doc.at_css('iframe')
-        expect(iframe).not_to be_nil
-        expect(iframe['src']).to eq('http://example.com/doc.pdf')
-        expect(iframe['width']).to eq('100%')
-        expect(iframe['height']).to eq('75vh')
+      it 'renders the image alone' do
+        expect(html).to start_with('<img src="http://example.com/hero.jpg"').and end_with('>')
       end
     end
 
-    context 'when enclosure has an unknown MIME type' do
-      subject(:description) do
-        described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
-                            image: nil).call
-      end
+    context 'when the description only mentions the file name or links another URL with it' do
+      let(:image) { 'http://example.com/a/hero.jpg' }
+      let(:base) { '<p>See hero.jpg at <a href="/b/hero.jpg">b</a> or <img src="https://example.com/a/hero.jpg"></p>' }
 
-      let(:base) { 'Some content' }
-      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/file.xyz'), type: 'application/x-unknown')] }
-
-      it 'returns the base description without raising' do
-        expect(description).to eq('Some content')
+      it 'still renders the image first' do
+        expect(doc.css('img').map { _1['src'] }.first).to eq('http://example.com/a/hero.jpg')
       end
     end
 
-    context 'when enclosure has a nil type' do
-      subject(:description) do
-        described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
-                            image: nil).call
-      end
+    context 'when the description already embeds the audio file' do
+      let(:enclosure) { enclosure_for.call('episode.mp3', 'audio/mpeg') }
+      let(:image) { 'http://example.com/cover.jpg' }
+      let(:base) { '<p><a href="/episode.mp3">Download</a></p>' }
 
-      let(:base) { 'Some content' }
-      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/file'), type: nil)] }
-
-      it 'returns the base description without raising' do
-        expect(description).to eq('Some content')
+      it 'renders no media at all' do
+        expect(doc.css('img, audio, video')).to be_empty
       end
     end
 
-    context 'when enclosures all have unrenderable types and a fallback image is present' do
-      subject(:doc) do
-        html = described_class.new(base:, title: 'Sample instance', url: 'http://example.com', enclosures:,
-                                   image:).call
-        Nokogiri::HTML.fragment(html)
+    context 'when the file URL has no path segment' do
+      let(:image) { 'http://example.com/' }
+      let(:base) { '<a href="http://example.com">Home</a>' }
+
+      it 'matches it by host' do
+        expect(doc.css('img')).to be_empty
       end
+    end
 
-      let(:base) { 'Some content' }
-      let(:image) { 'http://example.com/fallback.jpg' }
-      let(:enclosures) { [Html2rss::Article::Enclosure.new(url: Html2rss::Url.from_absolute('http://example.com/file.xyz'), type: 'application/x-unknown')] }
+    context 'when the description holds an unparseable URL' do
+      let(:image) { 'http://example.com/hero.jpg' }
+      let(:base) { '<p>hero.jpg <img src="/x.jpg" srcset="http://a:b:c/ 1x"></p>' }
 
-      it 'renders the fallback image' do
-        img = doc.at_css('img')
-        expect(img['src']).to eq('http://example.com/fallback.jpg')
+      it 'ignores it' do
+        expect(doc.at_css('img')['src']).to eq('http://example.com/hero.jpg')
       end
     end
   end

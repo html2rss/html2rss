@@ -204,6 +204,26 @@ RSpec.describe Html2rss::Selectors do
         expect(article.enclosures.first.type).to eq('audio/mpeg')
       end
     end
+
+    context 'when an enhanced card yields several enclosures' do
+      let(:selectors) { { items: { selector: 'article', enhance: true }, title: { selector: 'h1' } } }
+      let(:body) do
+        <<~HTML
+          <html><body><article>
+            <h1>Episode with notes</h1><a href="/episodes/1">Read</a>
+            <img src="/media/cover.jpg"><audio src="/media/episode.mp3"></audio><a href="/media/notes.pdf">Notes</a>
+          </article></body></html>
+        HTML
+      end
+
+      it 'renders only the audio player in the description', :aggregate_failures do
+        article = instance.articles.first
+        description = Nokogiri::HTML.fragment(Html2rss::FeedBuilder::ItemPresentation.description_for(article))
+
+        expect(article.enclosures.size).to eq(3)
+        expect(description.css('img, audio, video, iframe').map(&:name)).to eq(['audio'])
+      end
+    end
   end
 
   describe 'configured titles' do

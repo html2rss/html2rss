@@ -11,6 +11,9 @@ module Html2rss
     module ItemPresentation
       class << self
         ##
+        # The item body: sanitized description text after at most one media element, the RSS enclosure
+        # ({.rss_enclosure_for}) when it is audio or video, else the item image ({Html::Rendering::DescriptionBuilder}).
+        #
         # @param article [Html2rss::Article]
         # @return [String, nil] sanitized description HTML/text for feed item bodies
         def description_for(article)
@@ -18,7 +21,7 @@ module Html2rss
             base: article.description,
             title: article.title,
             url: article.url,
-            enclosures: article.enclosures,
+            enclosure: rss_enclosure_for(article),
             image: article.image
           ).call
         end

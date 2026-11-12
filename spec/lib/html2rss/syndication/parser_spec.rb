@@ -40,6 +40,50 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(articles.first[:url].to_s).to eq('https://example.com/posts/1')
     end
 
+    it 'gives an item with several image sizes one image in its description', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+          <channel><title>Channel</title><link>https://example.com/</link><description>Desc</description>
+            <item>
+              <title>Harbor</title><link>https://example.com/posts/1</link><description>Hello</description>
+              <media:group>
+                <media:content url="https://example.com/i/s.jpg" medium="image"/>
+                <media:content url="https://example.com/i/m.jpg" medium="image"/>
+                <media:content url="https://example.com/i/l.jpg" medium="image"/>
+              </media:group>
+            </item>
+          </channel>
+        </rss>
+      XML
+
+      article = Html2rss::Article.new(**described_class.parse(body).first)
+      description = Nokogiri::HTML.fragment(Html2rss::FeedBuilder::ItemPresentation.description_for(article))
+
+      expect(article.enclosures.size).to eq(3)
+      expect(description.css('img').map { _1['src'] }).to eq(['https://example.com/i/s.jpg'])
+    end
+
+    it 'adds no image to a description that already embeds it' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+          <channel><title>Channel</title><link>https://example.com/</link><description>Desc</description>
+            <item>
+              <title>Harbor</title><link>https://example.com/posts/1</link>
+              <description><![CDATA[<p><img src="https://example.com/i/hero.jpg"> Hello</p>]]></description>
+              <media:content url="https://example.com/i/hero.jpg" medium="image"/>
+            </item>
+          </channel>
+        </rss>
+      XML
+
+      article = Html2rss::Article.new(**described_class.parse(body).first)
+      description = Html2rss::FeedBuilder::ItemPresentation.description_for(article)
+
+      expect(Nokogiri::HTML.fragment(description).css('img').size).to eq(1)
+    end
+
     it 'parses Atom entries into article hashes', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
