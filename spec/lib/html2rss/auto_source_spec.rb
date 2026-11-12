@@ -401,7 +401,7 @@ RSpec.describe Html2rss::AutoSource do
         let(:items) do
           [{ title: 'Headline one', kicker: 'Overline', url: 'https://example.com/a', id: 'a' },
            { title: 'Overline: Headline two', kicker: 'overline', url: 'https://example.com/b', id: 'b' },
-           { title: '10:00 Headline three', url: 'https://example.com/c', id: 'c' }]
+           { title: '– Headline three words', url: 'https://example.com/c', id: 'c' }]
         end
 
         before do
@@ -413,7 +413,7 @@ RSpec.describe Html2rss::AutoSource do
         it 'composes the kicker item and keeps the others verbatim' do
           titles = articles.select { _1.scraper == klass }.map(&:title)
 
-          expect(titles).to eq(['Overline: Headline one', 'Overline: Headline two', '10:00 Headline three'])
+          expect(titles).to eq(['Overline: Headline one', 'Overline: Headline two', '– Headline three words'])
         end
       end
 

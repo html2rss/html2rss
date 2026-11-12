@@ -40,6 +40,24 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
         end
       end
 
+      it 'reads a scalar kicker wrapped in a value object' do
+        result = described_class.normalise({ title: 'T', url: '/a', kicker: { text: ' Politics ' } }, base_url:)
+
+        expect(result[:kicker]).to eq('Politics')
+      end
+
+      it 'normalises a numeric headline to a string beside its kicker' do
+        result = described_class.normalise({ title: 2026, url: '/a', overline: 'Year' }, base_url:)
+
+        expect(result).to include(title: '2026', kicker: 'Year')
+      end
+
+      it 'normalises a numeric description to a string' do
+        result = described_class.normalise({ title: 'T', description: 7, url: '/a' }, base_url:)
+
+        expect(result).to include(description: '7')
+      end
+
       it 'omits the kicker when the entry has no kicker field' do
         expect(described_class.normalise({ title: 'T', url: '/a' }, base_url:)).not_to have_key(:kicker)
       end
