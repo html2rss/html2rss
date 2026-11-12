@@ -236,6 +236,8 @@ RSpec.describe Html2rss::SST::Normalizer do
             <nav aria-label="Page navigation"><a id="nav_page_nav" href="/h">H</a></nav>
             <ol aria-label="Pagination"><li><a id="list_pager" href="/i">I</a></li></ol>
             <ul><li><a id="list_rel" rel="next" href="/j">J</a></li></ul>
+            <nav class="gsc-pagination"><a id="class_pager" href="/k">K</a></nav>
+            <ul class="paginated-list"><li><a id="paginated_list" href="/l">L</a></li></ul>
           </main>
         </body></html>
       HTML
@@ -243,7 +245,8 @@ RSpec.describe Html2rss::SST::Normalizer do
 
       expect(chrome).to eq('role_nav' => true, 'role_dialog' => true, 'page_banner' => true, 'search' => false,
                            'main_nav' => false, 'main_contentinfo' => false, 'rel_pager' => true,
-                           'nav_page_nav' => true, 'list_pager' => true, 'list_rel' => false)
+                           'nav_page_nav' => true, 'list_pager' => true, 'list_rel' => false,
+                           'class_pager' => true, 'paginated_list' => false)
     end
   end
 

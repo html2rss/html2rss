@@ -34,22 +34,24 @@ module Html2rss
       CHROME_ROLES = Set['navigation', 'menu', 'menubar', 'dialog', 'alertdialog'].freeze
       # ARIA landmark roles that, like header/footer, are chrome only at page level.
       PAGE_CHROME_ROLES = Set['banner', 'contentinfo'].freeze
-      # A nav or list labelled as pagination is chrome in any scope.
+      # A nav or list labelled (aria-label) or classed as pagination is chrome in any scope.
       PAGER_NAMES = Set['nav', 'ul', 'ol'].freeze
       PAGER_LABEL = /pagin(?:at|ac|az|er|ier)|\bpager\b|\bpaging\b|\bpage navigation\b/i
+      # Whole class-token part (+pagination+, +gsc-pagination+, +pager__list+), not +paginated-list+.
+      PAGER_CLASS = /(?:\A|\s|[-_])(?:pagination|pager|paging)(?:\z|\s|[-_])/i
       # A nav linking rel=next/prev is a pager; lists are exempt (a feed list may end in a "more" link).
       PAGER_LINK_XPATH = %w[next prev previous].map { "contains(concat(' ', normalize-space(@rel), ' '), ' #{_1} ')" }
                                                .join(' or ').then { ".//a[#{_1}]" }.freeze
       private_constant :SCOPED_CHROME, :ALWAYS_CHROME, :SECTIONING, :CHROME_ROLES, :PAGE_CHROME_ROLES,
-                       :PAGER_NAMES, :PAGER_LABEL, :PAGER_LINK_XPATH
+                       :PAGER_NAMES, :PAGER_LABEL, :PAGER_CLASS, :PAGER_LINK_XPATH
 
       ##
       # The single chrome-scope rule, folded down the tree by both the SST normalizer
       # and the Nokogiri ancestor walk: +:chrome+ sticks; ARIA navigation, menu and dialog
       # roles are chrome; header/footer/nav and the banner/contentinfo roles are chrome only
       # at +:page+ level, so card headers and in-content nav lists inside
-      # article/section/aside/main stay content; a pager (a nav or list labelled as
-      # pagination, or a nav linking rel=next/prev) is chrome in any scope.
+      # article/section/aside/main stay content; a pager (a nav or list labelled or classed
+      # as pagination, or a nav linking rel=next/prev) is chrome in any scope.
       #
       # @param element [Nokogiri::XML::Element] element being entered
       # @param scope [Symbol] parent scope: +:page+, +:sectioned+, or +:chrome+
@@ -70,7 +72,7 @@ module Html2rss
 
       def self.pager?(element, tag)
         return false unless PAGER_NAMES.include?(tag)
-        return true if element['aria-label'].to_s.match?(PAGER_LABEL)
+        return true if element['aria-label'].to_s.match?(PAGER_LABEL) || element['class'].to_s.match?(PAGER_CLASS)
 
         tag == 'nav' && !element.at_xpath(PAGER_LINK_XPATH).nil?
       end
