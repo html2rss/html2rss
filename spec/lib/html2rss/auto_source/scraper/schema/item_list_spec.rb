@@ -165,6 +165,21 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::ItemList do
       end
     end
 
+    context 'when ListItem wraps editorial creative works or a mixed entity type' do
+      let(:schema_object) do
+        {
+          '@type': 'ItemList',
+          itemListElement: [%w[Recipe], %w[HowTo], %w[Review], %w[CreativeWork], %w[Person Article]].map do |type|
+            { '@type': 'ListItem', item: { '@type': type, name: "Entry #{type.join}", url: "https://www.example.com/#{type.join}" } }
+          end
+        }
+      end
+
+      it 'admits them' do
+        expect(call.size).to eq(5)
+      end
+    end
+
     context 'when ListItem wraps media objects' do
       let(:schema_object) do
         {

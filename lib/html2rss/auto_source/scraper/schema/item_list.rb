@@ -56,15 +56,13 @@ module Html2rss
 
           # @param object [Hash] candidate schema object
           # @param from_list_item [Boolean] whether object came from a ListItem unwrap
-          # @return [Boolean] whether to emit this object: articles, Event, JobPosting and media items; a ListItem
-          #   unwrap also admits untyped and page-like objects but drops other typed entities (Person, Product, ...)
+          # @return [Boolean] whether to emit this object: a ListItem unwrap admits everything except pure
+          #   entities ({Thing::ENTITY_TYPES}); a bare element must be an article, Event, JobPosting or media type
           def emit?(object, from_list_item:)
             types = Schema.normalize_types(object[:@type])
-            return true if from_list_item && types.empty?
+            return types.empty? || !types.subset?(Thing::ENTITY_TYPES) if from_list_item
 
-            admitted = Thing::SUPPORTED_TYPES | Thing::ITEM_LIST_TYPES
-            admitted |= Schema::DENIED_CONTAINER_TYPES | Set['ListItem'] if from_list_item
-            types.intersect?(admitted)
+            types.intersect?(Thing::SUPPORTED_TYPES | Thing::ITEM_LIST_TYPES)
           end
         end
       end
