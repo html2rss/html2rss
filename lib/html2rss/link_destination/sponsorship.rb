@@ -14,12 +14,12 @@ module Html2rss
     #   a promotion), so it counts only on a plain element: never on a heading or a topic chip (category, tag
     #   or kicker class), and it never heads a section.
     # - +:paid_label+: a standalone element whose whole text states paid content ({LabelText} paid
-    #   phrases: "Sponsored", "Contenus partenaires", "Materiał partnera", "提供：…"; paid attribution may
+    #   phrases: "Sponsored", "Contenus partenaires", "Materiał partnera", "タイアップ"; paid attribution may
     #   name the sponsor in up to five words). It also counts on a heading or a topic chip, and
     #   {AutoSource::PageLinks} lets it head a section.
     #
     # Both text vocabularies are one closed multilingual set (en, de, fr, es, it, nl, pl, sv, ja).
-    # Attribution alone ("Presented by", "In Kooperation mit", "proposé par", "In collaborazione con")
+    # Attribution alone ("Presented by", "In Kooperation mit", "proposé par", "In collaborazione con", "提供")
     # states no payment and is no label, nor is "Partners" (an editorial word).
     #
     # A class or text label counts only on a rendered element: neither it nor an ancestor inside its

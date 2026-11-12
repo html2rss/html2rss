@@ -2,6 +2,7 @@
 case: A paid label heads a section only from its header. A "Sponsored" caption in plain text before
   an ad iframe (stripped before reading) and three editorial div cards heads nothing, while a header
   element or a header box holding the label and a sponsor logo (an image or an svg) marks its cards.
+  A header box crediting a wire agency ("提供：…") over wire stories is attribution and marks nothing.
   Only the editorial stories are expected.
 expected:
 - https://example.com/news/2026/11/council-approves-budget
@@ -9,3 +10,5 @@ expected:
 - https://example.com/news/2026/11/ice-rink-opens
 - https://example.com/news/2026/11/bus-shelter-art
 - https://example.com/news/2026/11/harvest-fair-returns
+- https://example.com/news/2026/11/port-strike-ends
+- https://example.com/news/2026/11/rail-fares-frozen

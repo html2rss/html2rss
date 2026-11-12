@@ -16,7 +16,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
      'Contenido patrocinado', 'Publirreportaje', '· Sponsored story ·', 'Sponsorizzato',
      'Contenuto sponsorizzato', 'Informazione pubblicitaria', 'Pubbliredazionale', 'Gesponsord',
      'Gesponsorde inhoud', 'Sponsorowane', 'Materiał Partnera', 'MATERIAŁ PROMOCYJNY', 'Materiał partnerski',
-     'Materiały promocyjne', 'Artykuł sponsorowany', 'Sponsrat innehåll', 'Annonssamarbete', '提供',
+     'Materiały promocyjne', 'Artykuł sponsorowany', 'Sponsrat innehåll', 'Annonssamarbete',
      'タイアップ', 'スポンサーリンク', '広告企画', 'PR企画']
   end
 
@@ -153,7 +153,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     it 'marks paid attribution naming a sponsor in up to five words' do
       labels = ['Sponsored by Acme Heating', 'Gesponsert von Acme', 'Sponsorisé par Acme', 'Patrocinado por Acme Hogar',
                 'Sponsored by a b c d e', 'Sponsored by', 'Contenuto sponsorizzato a cura di Acme Studio',
-                'Sponsorizzato da Acme', 'Gesponsord door Acme', '提供：アクメ株式会社']
+                'Sponsorizzato da Acme', 'Gesponsord door Acme']
       expect(labels.reject { label[_1] == :paid_label }).to be_empty
     end
 
@@ -166,7 +166,8 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     end
 
     it 'ignores attribution that states no payment' do
-      rejected = ['Presented by Acme', 'Präsentiert von Acme', 'In Kooperation mit Acme', 'En partenariat avec Acme',
+      rejected = ['提供', '提供：アクメ通信', '【提供】', 'Presented by Acme', 'Präsentiert von Acme',
+                  'In Kooperation mit Acme', 'En partenariat avec Acme',
                   'In partnership with Acme', 'proposé par Acme', 'In collaborazione con Acme',
                   'In samenwerking met Acme', 'I samarbete med Acme', 'Partenaires', 'Partners']
       expect(rejected.filter_map { label[_1] }).to be_empty
@@ -220,7 +221,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
 
   describe '.paid_text?' do
     it 'is true only for a whole paid phrase', :aggregate_failures do
-      expect(['Materiał Partnera', ' Sponsored ', '提供：アクメ'].map { described_class.paid_text?(_1) }).to all(be(true))
+      expect(['Materiał Partnera', ' Sponsored ', 'タイアップ'].map { described_class.paid_text?(_1) }).to all(be(true))
       rejected = ['Werbung', 'Anzeige', 'Promoted', 'PR', 'Partners', 'Sponsored posts win', '', nil]
       expect(rejected.map { described_class.paid_text?(_1) }).to all(be(false))
     end

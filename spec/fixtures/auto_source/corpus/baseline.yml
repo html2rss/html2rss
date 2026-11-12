@@ -164,8 +164,8 @@ sponsored_label_vocabulary.html:
   sst_built: true
 sponsored_label_vocabulary_languages.html:
   junk: 0
-  real: 8
-  expected: 8
+  real: 9
+  expected: 9
   title_misses: 0
   sst_built: true
 sponsored_linked_labels.html:
@@ -200,8 +200,8 @@ sponsored_rel_link.html:
   sst_built: true
 sponsored_section_headers.html:
   junk: 0
-  real: 5
-  expected: 5
+  real: 7
+  expected: 7
   title_misses: 0
   sst_built: true
 sponsored_section_labels.html:
