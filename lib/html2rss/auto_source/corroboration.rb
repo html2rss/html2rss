@@ -59,6 +59,18 @@ module Html2rss
       end
 
       ##
+      # Whether the page is a media page (a podcast or video listing): more than half of the
+      # items read off the page ({Scraper::PAGE_SCRAPERS}) and shown in its content ({#shown?})
+      # are media items ({Html2rss::Article#media?}).
+      #
+      # @param articles [Array<Html2rss::Article>] admitted items
+      # @return [Boolean]
+      def media_page?(articles)
+        cards = articles.select { Scraper::PAGE_SCRAPERS.include?(_1.scraper) && shown?(_1) }
+        cards.count(&:media?) * 2 > cards.size
+      end
+
+      ##
       # The page's own form of a checked item's URL, when it differs only by scheme, tracking
       # params, trailing slash, or fragment from a rendered content anchor.
       #

@@ -372,6 +372,12 @@ t6_media_list_news.html:
   expected: 10
   title_misses: 0
   sst_built: true
+t6_podcast_episode_page.html:
+  junk: 0
+  real: 25
+  expected: 30
+  title_misses: 0
+  sst_built: true
 title_clock_prefix.html:
   junk: 0
   real: 5

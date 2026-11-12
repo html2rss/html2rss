@@ -428,6 +428,15 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'with a podcast page of episodes and promo cards' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_podcast_episode_page.html') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/podcasts/harbor-hour/') }
+
+      it 'counts the episodes and keeps the first ones in page order' do
+        expect(articles.map { _1.url.path }).to eq((1..25).map { "/podcasts/harbor-hour/episode-#{_1}" })
+      end
+    end
+
     context 'with a Schema audio list of the item limit beside a news list' do
       let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_media_list_news.html') }
       let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }

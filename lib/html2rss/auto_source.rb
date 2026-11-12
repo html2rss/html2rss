@@ -126,7 +126,7 @@ module Html2rss
     # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
     # SST is built at most once, lazily, by the first consumer: a heuristic tier or the
     # {Corroboration} page check of structured-tier items. Later tiers are skipped once
-    # +limit+ counting articles with url+title remain after Cleanup ({#counts?}); the result
+    # +limit+ counting articles with url+title remain after Cleanup ({#counting}); the result
     # is capped to +limit+, counting articles first. A native feed's items come first, and
     # Cleanup merges a page copy of the same article into them.
     # Html is skipped when earlier tiers already admitted at least one clean article
@@ -226,8 +226,8 @@ module Html2rss
       result = cleanup_result(articles)
       @admission_drops = result.drop_tallies
       log_admission_emptied(captured_count, result) if captured_count.positive? && result.articles.empty?
-      counting, rest = result.articles.partition { counts?(_1) }
-      (counting + rest).first(article_limit)
+      counting = counting(result.articles)
+      (counting + (result.articles - counting)).first(article_limit)
     end
 
     def log_admission_emptied(captured_count, result)
@@ -245,13 +245,15 @@ module Html2rss
     def enough_articles?(articles)
       return false if articles.size < article_limit
 
-      admitted_articles(articles).count { counts?(_1) } >= article_limit
+      counting(admitted_articles(articles)).size >= article_limit
     end
 
-    # An article counts toward +limit+ unless it is a media item (audio, video) or a structured
-    # item the page does not show in its content; both are still admitted, after counting ones.
-    def counts?(article)
-      !article.media? && corroboration.shown?(article)
+    # The articles that count toward +limit+, in order: those the page shows in its content
+    # ({Corroboration#shown?}), media items (audio, video) only on a media page
+    # ({Corroboration#media_page?}). The others stay admitted after the counting ones.
+    def counting(articles)
+      media_page = corroboration.media_page?(articles)
+      articles.select { (media_page || !_1.media?) && corroboration.shown?(_1) }
     end
 
     # Prefer fewer clean items over refilling +limit+ from the Html heuristic tier.

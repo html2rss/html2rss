@@ -1,5 +1,5 @@
 ---
-case: A Schema ItemList of 25 audio objects (the item limit) shown on the page beside ten news cards; the audio items must not stop the tiers before the news is read. Admitted audio items are allowed media.
+case: A Schema ItemList of 25 audio objects (the item limit) shown in an aside rail beside ten news cards (no media page); the audio items must not stop the tiers before the news is read. Admitted audio items are allowed media.
 expected:
 - https://example.com/news/2026/11/harbor-council-update-1
 - https://example.com/news/2026/11/library-council-update-2

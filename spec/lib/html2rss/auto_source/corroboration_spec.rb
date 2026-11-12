@@ -60,6 +60,37 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       expect(builds.size).to eq(1)
     end
 
+    describe '#media_page?' do
+      let(:media) { Array.new(3) { |index| build_article["/podcasts/episode-#{index}", media: true] } }
+      let(:stories) { Array.new(2) { |index| build_article["/news/story-#{index}"] } }
+
+      before { (media + stories).each { placements[_1.url.path] = :content } }
+
+      it 'is a media page when more than half of the shown page items are media' do
+        expect(corroboration.media_page?(media + stories)).to be(true)
+      end
+
+      it 'is no media page when media items are half of the shown page items or fewer', :aggregate_failures do
+        expect(corroboration.media_page?(media.first(2) + stories)).to be(false)
+        expect(corroboration.media_page?([])).to be(false)
+      end
+
+      it 'leaves out media items the page does not show in its content' do
+        media.each { placements[_1.url.path] = :peripheral }
+
+        expect(corroboration.media_page?(media + stories)).to be(false)
+      end
+
+      it 'leaves out items not read off the page' do
+        feed = Array.new(3) do |index|
+          Html2rss::Article.new(url: "https://example.com/feed-#{index}", title: 'Feed story', id: "f#{index}",
+                                scraper: Html2rss::AutoSource::Scraper::NativeFeed)
+        end
+
+        expect(corroboration.media_page?(media.first(2) + feed)).to be(true)
+      end
+    end
+
     describe '#shown?' do
       it 'shows a checked item rendered as a content anchor' do
         placements[article.url.path] = :content
