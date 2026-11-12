@@ -14,7 +14,7 @@ Entry: `FeedPipeline` → `AutoSource#articles` → `Scraper.build_instance` →
 2. **JSON document body** — When the response is a JSON media type (`Response#json_response?`), AutoSource runs `JsonDocument` only (no HTML tiers). Scalar JSON is `unsupported_surface`. Same-domain Cleanup stays on by default (`keep_different_domain: false`). If the scraper yielded items and Cleanup kept none, `Log.warn` emits `auto_source.admission_emptied` with drop tallies; a `different_domain` tally hints at `auto_source.cleanup.keep_different_domain: true` / `--keep-different-domain`, which lets the remote source control off-domain link targets (no affiliation or safety check); a `sponsored` tally hints at `auto_source.cleanup.keep_sponsored: true` / `--keep-sponsored`. Guidance stays in help/docs and that structured warning — stdout feed output stays composable.
 3. **Scraper tiers** (HTML only) — Enabled scrapers that claim the page (shallow `articles?` or instance `extractable?`) run in `Scraper::SCRAPER_TIERS` order. Merge within a tier, then stop when enough articles survive Cleanup:
 
-   0. Native feed: NativeFeed (head alternates + path discovery → RSS/Atom parse)
+   0. Native feed: NativeFeed (head alternates + path discovery → RSS/Atom/RDF parse)
    1. In-page structured: Schema, Microdata, Microformats2, JsonState, XhrArticles
    2. Follow-up IO: WordPress API, Sitemap, MetaOembed
    3. Heuristic: SemanticHtml

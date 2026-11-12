@@ -42,6 +42,12 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       expect(described_class.articles?(doc)).to be true
     end
 
+    it 'claims pages that advertise an RSS 1.0 (RDF) alternate' do
+      doc = Nokogiri::HTML('<html><head><link rel="alternate" type="application/rdf+xml" href="/x"></head></html>')
+
+      expect(described_class.articles?(doc)).to be true
+    end
+
     it 'does not claim pages without feed hints' do
       doc = Nokogiri::HTML('<html><body><p>No feeds</p></body></html>')
       expect(described_class.articles?(doc)).to be false
@@ -147,6 +153,23 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
       expect(articles.size).to eq(1)
       expect(articles.first[:title]).to eq('From feed')
       expect(articles.first[:url].to_s).to eq('https://example.com/posts/from-feed')
+    end
+
+    it 'yields articles from an RSS 1.0 (RDF) feed advertised by the page', :aggregate_failures do
+      page = Nokogiri::HTML(<<~HTML)
+        <html><head><link rel="alternate" type="application/rdf+xml" href="/feed.rdf"></head><body></body></html>
+      HTML
+      rdf_response = Html2rss::RequestService::Response.new(
+        body: File.read('spec/fixtures/syndication/rss1_dc_date.xml'),
+        headers: { 'content-type' => 'application/rdf+xml' },
+        url: Html2rss::Url.from_absolute('https://example.com/feed.rdf'),
+        status: 200
+      )
+      allow(session).to receive(:follow_up).and_return(rdf_response)
+
+      articles = described_class.new(page, url: page_url, request_session: session).to_a
+
+      expect(articles.map { |article| article[:title] }).to eq(['First RDF post', 'Second RDF post'])
     end
 
     it 'returns an enumerator without a block' do

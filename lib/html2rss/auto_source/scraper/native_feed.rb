@@ -31,11 +31,8 @@ module Html2rss
 
           parsed_body.css('head link[rel~="alternate"][href]').any? do |node|
             href = node['href'].to_s
-            ::Html2rss::Html::Probe.mime_match?(
-              node['type'],
-              ::Html2rss::Html::Probe::APPLICATION_RSS_XML,
-              ::Html2rss::Html::Probe::APPLICATION_ATOM_XML
-            ) || href.match?(/rss|atom|feed|\.xml/i)
+            ::Html2rss::Html::Probe.mime_match?(node['type'], *::Html2rss::Html::Probe::FEED_MIME_TYPES) ||
+              href.match?(/rss|atom|feed|\.xml/i)
           end
         end
 

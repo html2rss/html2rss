@@ -4,7 +4,7 @@ Contributor map for request, AutoSource, and selectors seams.
 
 ## Native feed preference
 
-Same-origin RSS/Atom preference for curation gates (Capture defer/`--force`, Recon `:defer`).
+Same-origin RSS/Atom/RDF preference for curation gates (Capture defer/`--force`, Recon `:defer`).
 Owned only by `Syndication::Discovery.best_feed_url` (head alternates + path probes via session).
 `PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second preference algorithm.
 

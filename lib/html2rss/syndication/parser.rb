@@ -5,7 +5,7 @@ require 'rss'
 module Html2rss
   module Syndication
     ##
-    # Parses RSS 2.0 and Atom documents into AutoSource article hashes.
+    # Parses RSS 2.0, RSS 1.0 (RDF), and Atom documents into AutoSource article hashes.
     module Parser
       class << self
         ##
@@ -19,7 +19,7 @@ module Html2rss
         end
 
         ##
-        # @param body [String] raw RSS/Atom document
+        # @param body [String] raw RSS/RDF/Atom document
         # @param base_url [String, Html2rss::Url, nil] fallback base for relative item links
         # @return [Array<Hash{Symbol => Object}>]
         def parse(body, base_url: nil)
@@ -39,7 +39,7 @@ module Html2rss
 
         def items_from(feed)
           case feed
-          when RSS::Rss then feed.items
+          when RSS::Rss, RSS::RDF then feed.items
           when RSS::Atom::Feed then feed.entries
           else []
           end
@@ -48,6 +48,7 @@ module Html2rss
         def article_hash(item, base_url:)
           case item
           when RSS::Rss::Channel::Item then rss_item_hash(item, base_url:)
+          when RSS::RDF::Item then rdf_item_hash(item, base_url:)
           when RSS::Atom::Feed::Entry then atom_entry_hash(item, base_url:)
           end
         end
@@ -64,6 +65,21 @@ module Html2rss
             published_at: item.pubDate,
             author: present(item.author),
             categories: item.categories.filter_map { |cat| present(cat.content) }
+          }.compact
+        end
+
+        def rdf_item_hash(item, base_url:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- RSS 1.0 item mapping
+          url = absolute_url(item.link, base_url:)
+          return unless url
+
+          {
+            id: present(item.about) || url.to_s,
+            title: present(item.title),
+            description: present(item.description),
+            url:,
+            published_at: item.dc_date,
+            author: present(item.dc_creator),
+            categories: item.dc_subjects.filter_map { |subject| present(subject.content) }
           }.compact
         end
 

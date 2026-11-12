@@ -14,6 +14,7 @@ RSpec.describe Html2rss::Html::FeedLink do
           <link rel="canonical" href="https://example.com/blog">
           <link rel="alternate" type="application/rss+xml" href="https://example.com/feed.xml" title="RSS">
           <link rel="alternate" type="application/atom+xml; charset=utf-8" href="/atom.xml" title="Atom">
+          <link rel="alternate" type="application/rdf+xml" href="/feed.rdf" title="RDF">
           <link rel="alternate" type="application/json+oembed" href="https://example.com/oembed.json">
           <link rel="alternate" type="application/rss+xml" href="   " title="empty href">
           <link rel="alternate stylesheet" type="text/css" href="/theme.css">
@@ -31,11 +32,12 @@ RSpec.describe Html2rss::Html::FeedLink do
     let(:expected) do
       [
         described_class.new(href: 'https://example.com/feed.xml', mime_type: 'application/rss+xml'),
-        described_class.new(href: '/atom.xml', mime_type: 'application/atom+xml')
+        described_class.new(href: '/atom.xml', mime_type: 'application/atom+xml'),
+        described_class.new(href: '/feed.rdf', mime_type: 'application/rdf+xml')
       ]
     end
 
-    it 'keeps head RSS/Atom alternates and ignores oembed, body links, and /feed guesses' do
+    it 'keeps head RSS/Atom/RDF alternates and ignores oembed, body links, and /feed guesses' do
       expect(feed_links).to eq(expected)
     end
 
@@ -47,6 +49,7 @@ RSpec.describe Html2rss::Html::FeedLink do
           <head>
             <link rel="alternate" type="APPLICATION/RSS+XML" href="https://example.com/feed.xml">
             <link rel="alternate" type="Application/Atom+xml" href="/atom.xml">
+            <link rel="alternate" type="Application/RDF+XML" href="/feed.rdf">
           </head>
           </html>
         HTML

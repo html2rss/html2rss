@@ -97,16 +97,30 @@ RSpec.describe Html2rss::Syndication::Parser do
       )
     end
 
-    it 'returns no articles for RSS 1.0 documents' do
+    it 'skips RSS 1.0 (RDF) items without a usable link' do
       body = <<~XML
         <?xml version="1.0"?>
         <rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-          <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link><description>d</description><items><rdf:Seq/></items></channel>
-          <item rdf:about="https://example.com/a"><title>A</title><link>https://example.com/a</link><description>x</description></item>
+          <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link><description>d</description></channel>
+          <item rdf:about="https://example.com/a"><title>A</title><link></link></item>
         </rdf:RDF>
       XML
 
       expect(described_class.parse(body)).to eq([])
+    end
+
+    it 'parses RSS 1.0 (RDF) items with Dublin Core fields', :aggregate_failures do
+      body = File.read('spec/fixtures/syndication/rss1_dc_date.xml')
+
+      articles = described_class.parse(body, base_url: 'https://example.com/')
+
+      expect(articles.map { |article| article[:title] }).to eq(['First RDF post', 'Second RDF post'])
+      expect(articles.first).to include(
+        id: 'https://example.com/posts/1', description: 'Hello RDF', author: 'Ada', categories: ['News'],
+        published_at: Time.utc(2024, 3, 1, 10)
+      )
+      expect(articles.last[:url].to_s).to eq('https://example.com/posts/2')
+      expect(articles.last.keys).to contain_exactly(:id, :title, :url, :published_at, :categories)
     end
 
     it 'resolves relative RSS item links against base_url', :aggregate_failures do
