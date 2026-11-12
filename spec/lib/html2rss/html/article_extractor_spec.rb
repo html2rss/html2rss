@@ -119,11 +119,11 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     let(:article_tag) { Nokogiri::HTML.fragment(html) }
     let(:details) do
-      { title: nil,
-        url: nil,
+      { title: 'FCK PTN',
+        url: be_a(Html2rss::Url),
         image: be_a(Html2rss::Url),
         description: 'Sample description',
-        id: nil,
+        id: 'fck-ptn',
         published_at: be_a(DateTime),
         categories: [],
         enclosures: [a_hash_including(
@@ -173,13 +173,12 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
   end
 
-  context 'when fallback_anchorless is true and selected_anchor is nil' do
+  context 'when selected_anchor is nil' do
     subject(:article_hash) do
       described_class.call(
         article_tag,
         base_url: 'https://example.com',
-        selected_anchor: nil,
-        fallback_anchorless: true
+        selected_anchor: nil
       )
     end
 
@@ -237,10 +236,10 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
                     .at_css('article')
     end
 
-    it 'uses no anchor, no anchorless fallback and UTC by default', :aggregate_failures do
+    it 'uses no anchor and UTC by default', :aggregate_failures do
       extracted = described_class.call(article_tag, base_url: 'https://example.com')
-      expect(extracted[:url]).to be_nil
-      expect(extracted[:title]).to be_nil
+      expect(extracted[:url].to_s).to eq('https://example.com/#feb-24')
+      expect(extracted[:title]).to eq('Feb 24')
       expect(extracted[:published_at].to_s).to eq('2024-02-24T12:00:00+00:00')
       expect(extracted[:description]).to eq('Body text')
     end
@@ -388,22 +387,17 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
   end
 
-  shared_examples 'anchorless url resolution' do
-    let(:anchorless_tag) { Nokogiri::HTML.fragment('<article><h2>Anchorless Story</h2></article>').at_css('article') }
+  shared_examples 'generated id url resolution' do
+    let(:story_tag) { Nokogiri::HTML.fragment('<article><h2>Plain Story</h2></article>').at_css('article') }
 
-    it 'returns no url without the anchorless fallback' do
-      expect(described_class.call(anchorless_tag, base_url: 'https://example.com')[:url]).to be_nil
-    end
-
-    it 'links to the generated id with the anchorless fallback' do
-      extracted = described_class.call(anchorless_tag, base_url: 'https://example.com', fallback_anchorless: true)
-      expect(extracted[:url].to_s).to eq('https://example.com/#anchorless-story')
+    it 'links to the generated id' do
+      extracted = described_class.call(story_tag, base_url: 'https://example.com')
+      expect(extracted[:url].to_s).to eq('https://example.com/#plain-story')
     end
 
     it 'returns no url when no id can be generated' do
       empty_tag = Nokogiri::HTML.fragment('<article><img src="x.jpg"></article>').at_css('article')
-      expect(described_class.call(empty_tag, base_url: 'https://example.com',
-                                             fallback_anchorless: true)[:url]).to be_nil
+      expect(described_class.call(empty_tag, base_url: 'https://example.com')[:url]).to be_nil
     end
   end
 
@@ -436,11 +430,6 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
   end
 
   shared_examples 'kicker title' do
-    it 'returns nil when there is no heading, anchor or fallback text' do
-      article_tag = Nokogiri::HTML.fragment('<article><span class="kicker">News</span></article>').at_css('article')
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to be_nil
-    end
-
     it 'returns the headline unchanged when there is no kicker' do
       article_tag = Nokogiri::HTML.fragment('<article><h3>Headline Text</h3></article>').at_css('article')
       expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to eq('Headline Text')
@@ -549,14 +538,13 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     let(:span_tag) { Nokogiri::HTML.fragment('<article><span>Alpha</span> Beta</article>').at_css('article') }
 
     it 'uses the first visible text node as the fallback title' do
-      extracted = described_class.call(span_tag, base_url: 'https://example.com', fallback_anchorless: true)
+      extracted = described_class.call(span_tag, base_url: 'https://example.com')
       expect(extracted[:title]).to eq('Alpha')
     end
 
     it 'derives no fallback title from an article without text' do
       empty_tag = Nokogiri::HTML.fragment('<article><img src="x.jpg"></article>').at_css('article')
-      expect(described_class.call(empty_tag, base_url: 'https://example.com',
-                                             fallback_anchorless: true)[:title]).to be_nil
+      expect(described_class.call(empty_tag, base_url: 'https://example.com')[:title]).to be_nil
     end
   end
 
@@ -670,8 +658,8 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it 'builds with the optional arguments defaulted', :aggregate_failures do
       extracted = described_class.new(article_tag, base_url: 'https://example.com').call
-      expect(extracted[:url]).to be_nil
-      expect(extracted[:description]).to eq('Body text')
+      expect(extracted[:url].to_s).to eq('https://example.com/#body-text')
+      expect(extracted[:title]).to eq('Body text')
     end
 
     it_behaves_like 'extractor defaults'
@@ -699,11 +687,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
   describe '#extract_url' do
     it_behaves_like 'anchor href resolution'
     it_behaves_like 'anchor href fragment'
-    it_behaves_like 'anchorless url resolution'
-  end
-
-  describe '#anchorless_url_fallback' do
-    it_behaves_like 'anchorless url resolution'
+    it_behaves_like 'generated id url resolution'
   end
 
   describe '#generate_id' do
@@ -720,9 +704,9 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
       expect(extracted[:id]).to eq('/article/42')
     end
 
-    it 'falls back to the first visible text when anchorless fallback is enabled' do
+    it 'falls back to the first visible text' do
       article_tag = Nokogiri::HTML.fragment("<article>\n  Some plain text description.\n</article>").at_css('article')
-      extracted = described_class.call(article_tag, base_url: 'https://example.com', fallback_anchorless: true)
+      extracted = described_class.call(article_tag, base_url: 'https://example.com')
       expect(extracted[:id]).to eq('some-plain-text-description')
     end
   end
@@ -750,7 +734,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
     end
   end
 
-  describe '#fallback_anchorless_title' do
+  describe '#first_text_title' do
     let(:article_tag) do
       Nokogiri::HTML.fragment("<article>\n  <span></span>Plain fallback words\n</article>")
                     .at_css('article')
@@ -758,23 +742,19 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it_behaves_like 'fallback span title'
 
-    it 'uses the first non-blank text node when the anchorless fallback is enabled' do
-      extracted = described_class.call(article_tag, base_url: 'https://example.com', fallback_anchorless: true)
+    it 'uses the first non-blank text node' do
+      extracted = described_class.call(article_tag, base_url: 'https://example.com')
       expect(extracted[:title]).to eq('Plain fallback words')
-    end
-
-    it 'does not derive a title from text without the anchorless fallback' do
-      expect(described_class.call(article_tag, base_url: 'https://example.com')[:title]).to be_nil
     end
   end
 
   describe '#heading' do
-    it 'uses the anchorless fallback heading when enabled' do # rubocop:disable RSpec/ExampleLength
+    it 'uses the fallback heading' do # rubocop:disable RSpec/ExampleLength
       tag = Nokogiri::HTML.fragment(
         '<article><strong class="title">Fallback Article Title</strong><p>Some body text.</p></article>'
       )
                           .at_css('article')
-      expect(described_class.call(tag, base_url: 'https://example.com', fallback_anchorless: true)[:title])
+      expect(described_class.call(tag, base_url: 'https://example.com')[:title])
         .to eq('Fallback Article Title')
     end
   end

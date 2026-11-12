@@ -211,7 +211,6 @@ module Html2rss
         article_tag,
         base_url: @url,
         selected_anchor:,
-        fallback_anchorless: true,
         time_zone: @time_zone
       )
       return article_hash unless extracted

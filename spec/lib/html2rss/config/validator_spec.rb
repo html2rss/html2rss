@@ -103,10 +103,6 @@ RSpec.describe Html2rss::Config::Validator do
         { request: { botasaurus: { bogus: 1 } } },
         [[%i[request botasaurus bogus], 'is not allowed']]
       ],
-      'stale scraper option' => [
-        { auto_source: { scraper: { semantic_html: { fallback_anchorless: true } } } },
-        [[%i[auto_source scraper semantic_html fallback_anchorless], 'is not allowed']]
-      ],
       'unknown scraper' => [
         { auto_source: { scraper: { bogus: { enabled: true } } } },
         [[%i[auto_source scraper bogus enabled], 'is not allowed']]

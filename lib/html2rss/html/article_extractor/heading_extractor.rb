@@ -12,10 +12,9 @@ module Html2rss
         class << self
           ##
           # @param article_tag [Nokogiri::XML::Element] container node
-          # @param fallback_anchorless [Boolean] whether to use fallback search
           # @param selected_anchor [Nokogiri::XML::Node, nil] anchor element
           # @return [Nokogiri::XML::Node, nil] the heading node, if found
-          def call(article_tag, fallback_anchorless:, selected_anchor:)
+          def call(article_tag, selected_anchor:)
             tags = article_tag.css(HEADING_TAGS.join(','))
             if tags.any?
               select_best_heading(tags)
@@ -23,7 +22,7 @@ module Html2rss
               labeled = heading_from_aria_or_title(article_tag)
               return labeled if labeled
 
-              fallback_heading(article_tag) if fallback_anchorless && selected_anchor.nil?
+              fallback_heading(article_tag) if selected_anchor.nil?
             end
           end
 

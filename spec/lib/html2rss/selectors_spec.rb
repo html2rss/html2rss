@@ -274,7 +274,7 @@ RSpec.describe Html2rss::Selectors do
         HTML
       end
 
-      it 'enhances the article_hash anchorlessly', :aggregate_failures do
+      it 'enhances a link-less item with its first text and a generated id url', :aggregate_failures do
         _baseline, enhanced, = instance.each_enhance_pair.first
         expect(enhanced[:title]).to eq('No Link Article')
         expect(enhanced[:url].to_s).to eq('http://example.com/#no-link-article')

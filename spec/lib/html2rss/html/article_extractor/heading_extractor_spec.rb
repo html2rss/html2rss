@@ -14,7 +14,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: false, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading.name).to eq('h1')
     end
@@ -29,7 +29,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: false, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading.text).to eq('This is the longer heading text')
     end
@@ -42,7 +42,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: true, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading['aria-label']).to eq('Breaking story headline')
     end
@@ -55,7 +55,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: true, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading['title']).to eq('Story from title attribute')
     end
@@ -63,8 +63,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
     it 'returns nil when no heading, label, or fallback candidate exists', :aggregate_failures do
       container = Nokogiri::HTML('<div class="card"><span>plain text</span></div>').at_css('.card')
 
-      expect(described_class.call(container, fallback_anchorless: true, selected_anchor: nil)).to be_nil
-      expect(described_class.call(container, fallback_anchorless: false, selected_anchor: nil)).to be_nil
+      expect(described_class.call(container, selected_anchor: nil)).to be_nil
     end
 
     it 'skips blank aria-label and title attributes', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -76,7 +75,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: true, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading['aria-label']).to eq('Labelled')
     end
@@ -89,7 +88,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: false, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading['title']).to eq('Title wins')
     end
@@ -104,7 +103,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: true, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading.text).to eq('Class based title')
     end
@@ -117,7 +116,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: true, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading.text).to eq('Semibold item')
     end
@@ -132,13 +131,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       container = Nokogiri::HTML(html).at_css('.card')
       anchor = container.at_css('a')
 
-      expect(described_class.call(container, fallback_anchorless: true, selected_anchor: anchor)).to be_nil
-    end
-
-    it 'skips the fallback search when anchorless fallback is disabled', :aggregate_failures do
-      container = Nokogiri::HTML('<div class="card"><strong>Bold text</strong></div>').at_css('.card')
-
-      expect(described_class.call(container, fallback_anchorless: false, selected_anchor: nil)).to be_nil
+      expect(described_class.call(container, selected_anchor: anchor)).to be_nil
     end
 
     it 'ranks equal-level headings by text length rather than document order', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
@@ -150,7 +143,7 @@ RSpec.describe Html2rss::Html::ArticleExtractor::HeadingExtractor do
       HTML
       container = Nokogiri::HTML(html).at_css('.card')
 
-      heading = described_class.call(container, fallback_anchorless: false, selected_anchor: nil)
+      heading = described_class.call(container, selected_anchor: nil)
 
       expect(heading.text).to eq('A considerably longer heading first')
     end
