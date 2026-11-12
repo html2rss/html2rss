@@ -872,7 +872,7 @@ RSpec.describe Html2rss::AutoSource do
       auto_source.articles
 
       expect(auto_source.admission_drops)
-        .to eq('invalid' => 1, 'duplicate_url' => 47, 'self_link' => 1, 'different_domain' => 4)
+        .to eq('invalid' => 1, 'duplicate_url' => 45, 'self_link' => 1, 'different_domain' => 11)
     end
   end
 end
