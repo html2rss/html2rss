@@ -183,6 +183,33 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       end
     end
 
+    context 'when the description already plays the video file' do
+      let(:enclosure) { enclosure_for.call('clip.mp4', 'video/mp4') }
+      let(:image) { 'http://example.com/poster.jpg' }
+
+      {
+        'its src' => '<p>Watch</p><video src="/clip.mp4"></video>',
+        'a source child' => '<p>Watch</p><video><source src="clip.mp4"></video>'
+      }.each_pair do |reference, markup|
+        it "keeps that one player with #{reference}", :aggregate_failures do
+          html = described_class.new(base: markup, title: 'Clip', url: 'http://example.com/post', enclosure:, image:)
+          players = Nokogiri::HTML.fragment(html.call).css('img, audio, video')
+
+          expect(players.map(&:name)).to eq(['video'])
+          expect(players.first.at_xpath('.//@src').value).to eq('http://example.com/clip.mp4')
+        end
+      end
+    end
+
+    context 'when the description embeds a player without a playable file' do
+      let(:enclosure) { enclosure_for.call('clip.mp4', 'video/mp4') }
+      let(:base) { '<p>Watch</p><video controls></video>' }
+
+      it 'renders only the enclosure player' do
+        expect(doc.css('video source').map { _1['src'] }).to eq(['http://example.com/clip.mp4'])
+      end
+    end
+
     context 'when the file URL has no path segment' do
       let(:image) { 'http://example.com/' }
       let(:base) { '<a href="http://example.com">Home</a>' }

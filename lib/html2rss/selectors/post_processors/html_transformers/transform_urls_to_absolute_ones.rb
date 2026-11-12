@@ -12,9 +12,7 @@ module Html2rss
           URL_ELEMENTS_WITH_URL_ATTRIBUTE = {
             'a' => :href, # Visible link
             'img' => :src, # Visible image
-            'iframe' => :src, # Embedded frame (visible content)
-            'audio' => :src, # Can show controls, so potentially visible
-            'video' => :src # Video player is visible
+            'iframe' => :src # Embedded frame (visible content)
           }.freeze
 
           # @param base_url [String, Html2rss::Url] base URL used to resolve relative links

@@ -17,6 +17,8 @@ module Html2rss
       # - `referrer-policy='no-referrer'` to <img> tags
       # - wraps all <img> tags, whose direct parent is not an <a>, into an <a>
       #   linking to the <img>'s `src`.
+      # - keeps <audio>, <video> and <source> with an absolute http(s) `src`; a player
+      #   without a playable `src` (its own or a <source>'s) is removed.
       #
       # Imagine this HTML structure:
       #
@@ -93,8 +95,18 @@ module Html2rss
           'audio' => {
             'referrerpolicy' => 'no-referrer',
             'crossorigin' => 'anonymous',
-            'preload' => 'none'
+            'preload' => 'none',
+            'controls' => 'true'
           }
+        }.freeze
+
+        # Media elements kept in descriptions and the attributes they keep besides the html2rss defaults
+        # ({TAG_ATTRIBUTES}); {HtmlTransformers::KeepPlayableMedia} keeps +src+ only as an absolute
+        # +http(s)+ URL and drops a player left without one.
+        MEDIA_ATTRIBUTES = {
+          'audio' => %w[src],
+          'video' => %w[src],
+          'source' => %w[src type]
         }.freeze
 
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
@@ -157,12 +169,15 @@ module Html2rss
                 lambda { |env|
                   HtmlTransformers::TransformUrlsToAbsoluteOnes.new(base_url).call(**env)
                 },
+                ->(env) { HtmlTransformers::KeepPlayableMedia.new(base_url).call(**env) },
                 ->(env) { HtmlTransformers::WrapImgInA.new.call(**env) }
               ]
             )
             config[:elements].delete('style')
             config.delete(:css)
-            config[:elements].push('audio', 'video', 'source')
+            config[:elements].push(*MEDIA_ATTRIBUTES.keys)
+            config[:attributes].merge!(MEDIA_ATTRIBUTES)
+            config[:protocols].merge!(MEDIA_ATTRIBUTES.keys.to_h { [_1, { 'src' => %w[http https] }] })
             config.freeze
           end
         end
