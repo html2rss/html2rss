@@ -72,9 +72,8 @@ module Html2rss
         def atom_entry_hash(entry, base_url:)
           article(
             atom_link(entry, base_url:),
-            id: entry.id&.content, title: entry.title&.content,
-            description: entry.content&.content || entry.summary&.content,
-            published_at: entry.published&.content || entry.updated&.content,
+            id: entry.id&.content, title: entry.title&.content, description: atom_text(entry.content, entry.summary),
+            published_at: atom_text(entry.published, entry.updated),
             author: atom_author(entry), categories: entry.categories.map(&:term)
           )
         end
@@ -94,6 +93,8 @@ module Html2rss
             categories: categories.filter_map { |category| present(category) }
           }.compact
         end
+
+        def atom_text(*nodes) = nodes.find { |node| node }&.content
 
         def atom_link(entry, base_url:)
           links = entry.links
