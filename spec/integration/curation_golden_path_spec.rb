@@ -153,7 +153,7 @@ RSpec.describe 'curation golden path (MCP policy)' do
         strategy_attempts: [],
         admission_drops: {},
         scrape_target: nil,
-        entry_resolution: nil
+        entry_resolution: nil, feed_channel: nil
       )
       pipeline = instance_double(Html2rss::FeedPipeline, to_outcome_and_result: [outcome, feed_result])
       allow(Html2rss::FeedPipeline).to receive(:new).and_return(pipeline)

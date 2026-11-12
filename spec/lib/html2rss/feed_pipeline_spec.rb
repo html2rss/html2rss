@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require_relative '../../support/auto_source_corpus'
 
 RSpec.describe Html2rss::FeedPipeline do
   let(:build_response) do
@@ -618,11 +619,12 @@ RSpec.describe Html2rss::FeedPipeline do
         build_response.call(
           body: <<~XML,
             <?xml version="1.0"?>
-            <rss version="2.0">
+            <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
               <channel>
                 <title>Feed</title>
                 <link>https://example.com/</link>
                 <description>d</description>
+                <itunes:author>Feed Author</itunes:author>
                 <item>
                   <title>Direct item</title>
                   <link>https://example.com/posts/1</link>
@@ -639,6 +641,52 @@ RSpec.describe Html2rss::FeedPipeline do
 
       it 'parses syndication items without HTML AutoSource' do
         expect(pipeline.to_result.to_rss.items.map(&:title)).to eq(['Direct item'])
+      end
+
+      it 'carries the feed author into the channel' do
+        expect(pipeline.to_result.to_json_feed[:authors]).to eq([{ name: 'Feed Author' }])
+      end
+    end
+
+    # The t4 corpus page names its hosting platform as meta author; its podcast feed states the show's.
+    context 'when a podcast page advertises its native feed' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:dir) { 'spec/fixtures/auto_source/corpus/t4_podcast_feed_enclosures' }
+      let(:responses) do
+        {
+          'https://example.com/news/' => AutoSourceCorpus.response(path: "#{dir}.html", url: 'https://example.com/news/'),
+          'https://example.com/news/podcast.xml' =>
+            AutoSourceCorpus.response(path: "#{dir}/podcast.xml", url: 'https://example.com/news/podcast.xml')
+        }
+      end
+      let(:channel_tag_for) do
+        lambda do |channel|
+          Nokogiri::XML(described_class.new({ channel:, auto_source: {} }).to_result.to_rss.to_s)
+                  .at_xpath('/rss/channel')
+        end
+      end
+      let(:channel_tag) { channel_tag_for.call({ url: 'https://example.com/news/' }) }
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+          ctx.budget.consume!
+          raise "Unexpected strategy #{strategy}" unless strategy == :default
+
+          responses.fetch(ctx.url.to_s) { raise Html2rss::RequestService::ConnectionFailed, ctx.url.to_s }
+        end
+      end
+
+      it 'takes the show author, categories and explicit flag from the feed', :aggregate_failures do
+        expect(channel_tag.at_xpath('itunes:author').text).to eq('Example Harbor Hour Team')
+        expect(channel_tag.xpath('itunes:category').map { _1['text'] }).to eq(['News', 'Society & Culture'])
+        expect(channel_tag.xpath('itunes:category/itunes:category').map { _1['text'] }).to eq(['Daily News'])
+        expect(channel_tag.at_xpath('itunes:explicit').text).to eq('false')
+        expect(channel_tag.xpath('managingEditor')).to be_empty
+      end
+
+      it 'keeps a configured channel author' do
+        configured = channel_tag_for.call({ url: 'https://example.com/news/', author: 'Configured Author' })
+
+        expect(configured.at_xpath('itunes:author').text).to eq('Configured Author')
       end
     end
   end

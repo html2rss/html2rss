@@ -288,6 +288,15 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
         expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.zero_items'))
         expect(Html2rss::Log).not_to have_received(:info).with(a_string_including('auto_fallback.selected'))
       end
+
+      it 'keeps the followed native feed channel facts of the positive hop' do
+        facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
+        allow(pipeline).to receive(:deduplicated_articles).and_wrap_original do |original, **kwargs|
+          [*original.call(**kwargs).first(3), facts]
+        end
+
+        expect(pipeline.to_outcome_and_result.first.feed_channel).to be(facts)
+      end
     end
 
     context 'when every hop extracts zero items with no terminal transport error' do # rubocop:disable RSpec/MultipleMemoizedHelpers

@@ -522,6 +522,12 @@ RSpec.describe Html2rss::AutoSource do
       let(:slugs) { articles.map { _1.url.path.delete_prefix('/news/2026/11/') } }
       let(:feed_items) { articles.select { _1.scraper == Html2rss::AutoSource::Scraper::NativeFeed } }
 
+      it 'keeps what the followed feed states about its channel', :aggregate_failures do
+        expect(auto_source.feed_channel).to be_nil
+        auto_source.articles
+        expect(auto_source.feed_channel).to eq(Html2rss::Syndication::ChannelFacts.new)
+      end
+
       it 'puts the feed items first and fills up with page items', :aggregate_failures do
         expect(slugs).to eq(%w[feed-only-council-vote harbor-ferry-schedule library-reading-week river-path-reopens
                                night-market-vendors school-garden-harvest bridge-paint-survey museum-late-opening])

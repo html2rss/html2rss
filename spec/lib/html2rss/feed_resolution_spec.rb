@@ -198,8 +198,9 @@ RSpec.describe Html2rss::FeedResolution do
         status: 200
       )
       article = instance_double(Html2rss::Article)
+      feed_channel = Html2rss::Syndication::ChannelFacts.new(author: 'Listing Feed Author')
       allow(session).to receive(:follow_up).and_return(listing)
-      allow(pipeline).to receive(:deduplicated_articles).and_return([[article], 0, {}])
+      allow(pipeline).to receive(:deduplicated_articles).and_return([[article], 0, {}, feed_channel])
 
       outcome = described_class.try_apply!(
         pipeline:, config:, response:, session:, strategy: :default, resources:,
@@ -209,6 +210,7 @@ RSpec.describe Html2rss::FeedResolution do
       expect(outcome).to have_attributes(status: :succeeded)
       expect(outcome.scrape_target.effective_url).to eq(listing_url)
       expect(state.result.articles).to eq([article])
+      expect(state.result.feed_channel).to eq(feed_channel)
       expect(state.result.scrape_target.effective_url).to eq(listing_url)
     end
 

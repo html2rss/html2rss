@@ -5,8 +5,9 @@ require 'rss'
 module Html2rss
   module Syndication
     ##
-    # Parses RSS 2.0, RSS 1.0 (RDF), and Atom documents into AutoSource article hashes, with the media
-    # files and image each item declares ({ItemMedia}).
+    # Parses RSS 2.0, RSS 1.0 (RDF), and Atom documents into a {Feed}: AutoSource article hashes, with
+    # the media files and image each item declares ({ItemMedia}), and what the feed states about its
+    # channel ({ChannelFacts}), read from the same parse.
     #
     # An Atom entry's URL is its +rel="alternate"+ link or a link without +rel+; an entry with neither
     # (only +enclosure+, +self+ or other links) has no URL and is skipped like any item without one.
@@ -14,7 +15,7 @@ module Html2rss
       class << self
         ##
         # @param response [Html2rss::RequestService::Response]
-        # @return [Array<Hash{Symbol => Object}>] article hashes (may be empty)
+        # @return [Feed]
         # @raise [ArgumentError] when the response is not a syndication feed
         def parse_response(response)
           raise ArgumentError, 'response is not a syndication feed' unless response.feed_response?
@@ -25,22 +26,27 @@ module Html2rss
         ##
         # @param body [String] raw RSS/RDF/Atom document
         # @param base_url [String, Html2rss::Url, nil] fallback base for relative item links
-        # @return [Array<Hash{Symbol => Object}>]
+        # @return [Feed] no articles and no channel facts when the document fails to parse
         def parse(body, base_url: nil)
-          items = items_from(RSS::Parser.parse(body.to_s, false))
-          media = ItemMedia.for_items(body, count: items.size, url: base_url) { |raw| absolute_url(raw, base_url:) }
-
-          items.zip(media).filter_map { |item, item_media| article_hash(item, item_media, base_url:) }
+          feed = RSS::Parser.parse(body.to_s, false)
+          Feed.new(articles: articles_from(feed, body, base_url:), channel: ChannelFacts.from(feed))
         rescue RSS::Error => error
           Log.warn({
             event_name: 'syndication.parse_failed',
             error_class: error.class.name,
             message: "Syndication::Parser: failed to parse feed (#{error.class}: #{error.message})"
           }.to_json)
-          []
+          Feed::NONE
         end
 
         private
+
+        def articles_from(feed, body, base_url:)
+          items = items_from(feed)
+          media = ItemMedia.for_items(body, count: items.size, url: base_url) { |raw| absolute_url(raw, base_url:) }
+
+          items.zip(media).filter_map { |item, item_media| article_hash(item, item_media, base_url:) }
+        end
 
         def items_from(feed)
           case feed

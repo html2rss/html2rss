@@ -96,7 +96,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
     end
   end
 
-  describe '#fetch_articles' do
+  describe '#fetch_feed' do
     let(:session) { instance_double(Html2rss::RequestSession) }
 
     it 'passes the session, body, url and request slots to discovery', :aggregate_failures do
@@ -114,6 +114,42 @@ RSpec.describe Html2rss::AutoSource::Scraper::NativeFeed do
 
       expect(described_class.new(parsed_body, url: page_url).to_a).to eq([])
       expect(Html2rss::Syndication::Discovery).not_to have_received(:best_feed_response)
+    end
+  end
+
+  describe '#channel' do
+    let(:session) { instance_double(Html2rss::RequestSession) }
+    let(:feed_response) do
+      Html2rss::RequestService::Response.new(
+        body: <<~XML,
+          <?xml version="1.0"?>
+          <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+            <channel><title>Show</title><link>https://example.com/</link><description>d</description>
+              <itunes:author>Show Host</itunes:author>
+              <item><title>Episode</title><link>https://example.com/posts/1</link></item>
+            </channel>
+          </rss>
+        XML
+        headers: { 'content-type' => 'application/rss+xml' },
+        url: Html2rss::Url.from_absolute('https://example.com/feed.xml'),
+        status: 200
+      )
+    end
+
+    it 'holds what the followed feed states once its items are read', :aggregate_failures do
+      allow(session).to receive(:follow_up).and_return(feed_response)
+      scraper = described_class.new(parsed_body, url: page_url, request_session: session)
+
+      expect(scraper.channel).to be_nil
+      scraper.to_a
+      expect(scraper.channel.author).to eq('Show Host')
+    end
+
+    it 'is nil when no feed was read' do
+      scraper = described_class.new(parsed_body, url: page_url)
+      scraper.to_a
+
+      expect(scraper.channel).to be_nil
     end
   end
 

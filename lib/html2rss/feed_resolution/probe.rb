@@ -39,7 +39,7 @@ module Html2rss
 
       def score_response(response) # rubocop:disable Metrics/MethodLength -- feed vs HTML branches
         if response.feed_response?
-          count = Syndication::Parser.parse_response(response).size
+          count = Syndication::Parser.parse_response(response).articles.size
           return Scored.new(
             url: response.url,
             score: Scorer.score_feed(articles_count: count),

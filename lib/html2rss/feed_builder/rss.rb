@@ -8,11 +8,17 @@ module Html2rss
     # Builds an RSS Feed by providing channel, articles and stylesheets.
     #
     # A media feed ({ItemPresentation.media_feed?}) also gets the podcast tags clients play from:
-    # channel +itunes:image+ and +itunes:author+, item +itunes:duration+ (+HH:MM:SS+) and
-    # +itunes:image+, each only when known. It never invents +itunes:explicit+ or a category.
-    class Rss
+    # channel +itunes:image+, +itunes:author+, +itunes:category+ (nesting its subcategories) and
+    # +itunes:explicit+ (+true+ or +false+), item +itunes:duration+ (+HH:MM:SS+) and +itunes:image+, each
+    # only when known; categories and the explicit flag only when the followed native feed states them.
+    #
+    # +managingEditor+ carries the channel author only when it is an RSS 2.0 email address
+    # (+editor@example.com+ or +editor@example.com (Name)+); a plain name is no managing editor.
+    class Rss # rubocop:disable Metrics/ClassLength -- channel, item and podcast projections stay co-located
       # First duration in seconds that +itunes:duration+ cannot spell as +HH:MM:SS+ (100 hours).
       MAX_CLOCK_DURATION = 100 * 3600
+      # An RSS 2.0 person: an email address, optionally followed by the name in parentheses.
+      EMAIL_PERSON = /\A[^\s@()]+@[^\s@()]+(?: \(.+\))?\z/
 
       class << self
         # @param article [Html2rss::Article] source article
@@ -106,8 +112,7 @@ module Html2rss
         channel_maker.description = channel.description
         channel_maker.ttl = channel.ttl
 
-        channel_maker.managingEditor = channel.author if channel.author
-        channel_maker.author = channel.author if channel.author
+        channel_maker.managingEditor = channel.author if EMAIL_PERSON.match?(channel.author)
         channel_maker.link = channel.url.to_s
         channel_maker.generator = generator
         channel_maker.updated = channel.last_build_date
@@ -119,6 +124,13 @@ module Html2rss
       def make_podcast_channel(channel_maker)
         channel_maker.itunes_image = channel.image
         channel_maker.itunes_author = channel.author
+        channel_maker.itunes_explicit = channel.explicit&.to_s
+        channel.categories.each { add_itunes_category(channel_maker, *_1) }
+      end
+
+      def add_itunes_category(channel_maker, name, *subcategories)
+        category = channel_maker.new_itunes_category(name)
+        subcategories.each { category.new_category.text = _1 }
       end
 
       def make_image(image_maker)

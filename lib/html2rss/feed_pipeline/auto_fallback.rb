@@ -114,10 +114,11 @@ module Html2rss
         # @param attempt_count [Integer] number of attempts recorded for this chain
         # @param admission_drops [Hash{String => Integer}] Cleanup drop tallies
         # @param scrape_target [Html2rss::ScrapeTarget]
+        # @param feed_channel [Html2rss::Syndication::ChannelFacts, nil] the followed native feed's channel facts
         # @return [void]
         # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- PipelineOutcome kwargs stay co-located
         def succeed!(response:, articles:, dedup_dropped:, selected_strategy:, attempt_count:,
-                     scrape_target:, admission_drops: {})
+                     scrape_target:, admission_drops: {}, feed_channel: nil)
           @result = PipelineOutcome.new(
             response:,
             articles:,
@@ -127,7 +128,8 @@ module Html2rss
             strategy_attempts: attempts,
             admission_drops:,
             scrape_target:,
-            entry_resolution:
+            entry_resolution:,
+            feed_channel:
           )
         end
 
@@ -222,7 +224,7 @@ module Html2rss
 
       # rubocop:disable-next Metrics/MethodLength, Metrics/AbcSize, Metrics/ParameterLists -- extract + resolution delegate
       def process_response(response:, strategy:, next_strategy:, request_session:, state:, elapsed_ms: nil)
-        articles, dedup_dropped, admission_drops = pipeline.deduplicated_articles(
+        articles, dedup_dropped, admission_drops, feed_channel = pipeline.deduplicated_articles(
           config:, response:, request_session:
         )
         state.remember_response(response)
@@ -242,7 +244,7 @@ module Html2rss
 
         if items_count.positive?
           return record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:,
-                                state:)
+                                feed_channel:, state:)
         end
 
         if DETERMINISTIC_HTTP_STATUSES.member?(response&.status)
@@ -255,11 +257,11 @@ module Html2rss
       end
 
       # rubocop:disable-next Metrics/ParameterLists, Metrics/MethodLength -- success kwargs + structured selected log
-      def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, state:)
+      def record_success(response:, strategy:, articles:, dedup_dropped:, admission_drops:, feed_channel:, state:)
         attempt_count = state.attempts.size
         state.succeed!(
           response:, articles:, dedup_dropped:, selected_strategy: strategy,
-          attempt_count:, admission_drops:,
+          attempt_count:, admission_drops:, feed_channel:,
           scrape_target:
         )
         return unless attempt_count > 1

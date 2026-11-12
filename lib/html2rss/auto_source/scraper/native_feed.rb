@@ -5,6 +5,7 @@ module Html2rss
     module Scraper
       ##
       # Promotes a page's native RSS/Atom feed via {Syndication::Discovery} + {Syndication::Parser}.
+      # After {#each}, {#channel} holds what that feed states about its channel.
       class NativeFeed
         include Enumerable
 
@@ -50,13 +51,18 @@ module Html2rss
         def extractable? = self.class.articles?(parsed_body)
 
         ##
+        # @return [Syndication::ChannelFacts, nil] what the followed feed states about its channel;
+        #   nil before {#each} or when no feed was read
+        def channel = @feed&.channel
+
+        ##
         # @yieldparam article [Hash{Symbol => Object}]
         # @return [Enumerator, void]
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured empty/items logs
         def each(&)
           return enum_for(:each) unless block_given?
 
-          articles = fetch_articles
+          articles = (@feed = fetch_feed).articles
           if articles.empty?
             Log.info({
               event_name: 'auto_source.native_feed.empty',
@@ -79,8 +85,8 @@ module Html2rss
         attr_reader :parsed_body, :url, :request_session
 
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- discovery + parse + structured warn
-        def fetch_articles
-          return [] unless request_session
+        def fetch_feed
+          return Syndication::Feed::NONE unless request_session
 
           response = Syndication::Discovery.best_feed_response(
             page_url: url,
@@ -88,7 +94,7 @@ module Html2rss
             parsed_body:,
             max_probes: self.class.request_slots
           )
-          return [] unless response
+          return Syndication::Feed::NONE unless response
 
           Syndication::Parser.parse_response(response)
         rescue Html2rss::Error => error
@@ -98,7 +104,7 @@ module Html2rss
             error_class: error.class.name,
             message: "#{self.class}: host=#{url.host} failed (#{error.class}: #{error.message})"
           }.to_json)
-          []
+          Syndication::Feed::NONE
         end
       end
     end

@@ -185,7 +185,7 @@ module Html2rss
           config, strategy:, resources:, scrape_url: effective.effective_url
         )
         retry_response = retry_session.fetch_initial_response
-        retry_articles, dedup_dropped, admission_drops = pipeline.deduplicated_articles(
+        retry_articles, dedup_dropped, admission_drops, feed_channel = pipeline.deduplicated_articles(
           config:, response: retry_response, request_session: retry_session
         )
         state.remember_response(retry_response)
@@ -196,7 +196,7 @@ module Html2rss
 
         state.succeed!(
           response: retry_response, articles: retry_articles, dedup_dropped:,
-          selected_strategy: strategy, attempt_count: state.attempts.size, admission_drops:,
+          selected_strategy: strategy, attempt_count: state.attempts.size, admission_drops:, feed_channel:,
           scrape_target: effective
         )
         true

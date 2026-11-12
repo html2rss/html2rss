@@ -276,6 +276,34 @@ RSpec.describe Html2rss::Channel do
         expect(instance.author).to be_nil
       end
     end
+
+    context 'with a followed native feed' do
+      let(:body) { build_html_with_meta.call(name: 'author', content: 'Hosting Platform Inc') }
+      let(:feed) { Html2rss::Syndication::ChannelFacts.new(author: 'Show Host') }
+      let(:with_feed) { ->(overrides) { described_class.from_response(response, overrides:, feed:).author } }
+
+      it 'prefers the config author, then the feed author, then the page meta author', :aggregate_failures do
+        expect(with_feed.call({ author: 'Config Author' })).to eq('Config Author')
+        expect(with_feed.call({})).to eq('Show Host')
+        expect(described_class.from_response(response, feed: Html2rss::Syndication::ChannelFacts.new).author)
+          .to eq('Hosting Platform Inc')
+      end
+    end
+  end
+
+  describe '#categories and #explicit' do
+    it 'are unstated without a followed native feed', :aggregate_failures do
+      expect(instance.categories).to eq([])
+      expect(instance.explicit).to be_nil
+    end
+
+    it 'carry what the followed native feed states', :aggregate_failures do
+      feed = Html2rss::Syndication::ChannelFacts.new(categories: [%w[Arts Books]], explicit: false)
+      channel = described_class.from_response(response, feed:)
+
+      expect(channel.categories).to eq([%w[Arts Books]])
+      expect(channel.explicit).to be(false)
+    end
   end
 
   describe 'immutability' do
@@ -285,6 +313,8 @@ RSpec.describe Html2rss::Channel do
       channel = described_class.from_response(response, overrides: { title: +'Mutable', image: })
 
       expect(channel.title).to be_frozen
+      expect(channel.categories).to be_frozen
+      expect(channel.with(categories: [[+'Arts']]).categories.first.first).to be_frozen
       expect(channel.image).to be_a(Html2rss::Url)
       expect(channel.last_build_date).to be_a(Time)
       expect { channel.title << 'X' }.to raise_error(FrozenError)
@@ -295,11 +325,14 @@ RSpec.describe Html2rss::Channel do
 
     # rubocop:disable-next RSpec/ExampleLength -- Marshal round-trip freeze contract
     it 're-freezes nested state after Marshal.round-trip', :aggregate_failures do
-      channel = described_class.from_response(response, overrides: { title: 'Cached' })
+      feed = Html2rss::Syndication::ChannelFacts.new(categories: [%w[Arts Books]], explicit: true)
+      channel = described_class.from_response(response, overrides: { title: 'Cached' }, feed:)
       restored = Marshal.load(Marshal.dump(channel))
 
+      expect(restored).to eq(channel)
       expect(restored).to be_frozen
       expect(restored.title).to be_frozen
+      expect(restored.categories.first).to be_frozen
       expect(restored.last_build_date).to be_a(Time)
       expect { restored.title << 'X' }.to raise_error(FrozenError)
     end

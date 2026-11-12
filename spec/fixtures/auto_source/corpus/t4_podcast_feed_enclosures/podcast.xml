@@ -4,6 +4,11 @@
     <title>Example Harbor Hour</title>
     <link>https://example.com/news/</link>
     <description>Synthetic saved podcast feed</description>
+    <managingEditor>editor@example.com (Example Editor)</managingEditor>
+    <itunes:author>Example Harbor Hour Team</itunes:author>
+    <itunes:category text="News"><itunes:category text="Daily News"/></itunes:category>
+    <itunes:category text="Society &amp; Culture"/>
+    <itunes:explicit>false</itunes:explicit>
     <x:item>An extension element named item, not a feed item</x:item>
     <item>
       <title>Harbor Hour 41: the winter ferry timetable</title>
