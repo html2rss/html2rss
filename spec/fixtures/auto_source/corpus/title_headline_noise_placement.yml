@@ -1,6 +1,7 @@
 ---
 case: 'A time element is dropped from the headline wherever it sits, unless it is part
-  of running text (a word right before and after it); a clock-only or label-only element
+  of running text (a word in the direct text right before or after it) and is no clock closing
+  the headline; a clock-only or label-only element
   is dropped only before the first word, and headline text is never noise-stripped. A screen-reader-only label ("Article:") is not seen, so it
   never reaches the title.'
 expected:

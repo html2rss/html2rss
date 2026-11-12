@@ -82,9 +82,9 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<span class="kicker">Weather</span><h2><a href="/news/story"><img src="/a.jpg" alt=""></a></h2>',
       'Weather'
     ],
-    'a dated time element in the headline' => [
+    'a dated time element touching the headline text' => [
       '<h2><a href="/news/story"><time datetime="2026-10-20">Oct 20</time> Tram line extends</a></h2>',
-      'Tram line extends'
+      'Oct 20 Tram line extends'
     ],
     'an icon leaf in the kicker' => [
       '<span class="kicker"><span class="kicker__icon" aria-hidden="true"></span>Transit</span>' \
@@ -111,7 +111,7 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<h2><a href="/news/story">Night train leaves at <strong>20:15</strong> from platform four</a></h2>',
       'Night train leaves at 20:15 from platform four'
     ],
-    'a time element ending the headline' => [
+    'a clock time element closing the headline text' => [
       '<h2><a href="/news/story">Budget vote passes late <time>22:10</time></a></h2>',
       'Budget vote passes late'
     ],
@@ -402,11 +402,11 @@ RSpec.shared_examples 'article extractor title pieces' do
     ],
     'a time after an element in the headline' => [
       '<h2><a href="/news/story">Council <b>meets</b><time>Friday</time> after the vote</a></h2>',
-      'Council meets after the vote'
+      'Council meets Friday after the vote'
     ],
     'a time before trailing blank text' => [
       '<h2><a href="/news/story">Council meets <time>Friday</time> </a></h2>',
-      'Council meets'
+      'Council meets Friday'
     ],
     'an empty tag piece closing the headline' => [
       '<h2><a href="/news/story">Tram line extends<span class="tag"></span></a></h2>',
@@ -441,11 +441,11 @@ RSpec.shared_examples 'article extractor title pieces' do
     ],
     'a time after blank text in the headline' => [
       '<h2><a href="/news/story">Council <b>meets</b> <time>Friday</time> after the vote</a></h2>',
-      'Council meets after the vote'
+      'Council meets Friday after the vote'
     ],
     'a time before an element in the headline' => [
       '<h2><a href="/news/story">Council meets <time>Friday</time><b>after</b> the vote</a></h2>',
-      'Council meets after the vote'
+      'Council meets Friday after the vote'
     ],
     'a piece before the box of the title piece' => [
       '<h2><span>Transit</span><span><span class="title">Tram line extends</span></span></h2>' \
@@ -466,9 +466,17 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<a href="/news/story"><span>Transit</span><i></i><span class="title">Tram line extends</span></a>',
       'Transit: Tram line extends'
     ],
+    'a time ending running headline text' => [
+      '<h2><a href="/news/story">Ceasefire talks resume on <time>Friday</time></a></h2>',
+      'Ceasefire talks resume on Friday'
+    ],
+    'a separate time element after the headline text' => [
+      '<h2><a href="/news/story"><span>Ceasefire talks resume</span> <time>Friday</time></a></h2>',
+      'Ceasefire talks resume'
+    ],
     'a time after more words in the headline' => [
       '<h2><a href="/news/story">Council <b>meets</b> again <time>Friday</time></a></h2>',
-      'Council meets again'
+      'Council meets again Friday'
     ],
     'a time and screen-reader text as the only headline words' => [
       '<h2><a href="/news/story"><time>08:10</time><span class="sr-only">Tram line extends</span></a></h2>',

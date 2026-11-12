@@ -16,9 +16,9 @@ module Html2rss
     #   lead paragraphs) are no part of the title.
     # - Headline text leaves out the kicker, concealed elements ({Visibility.concealed?}; they stay when they
     #   hold the only words, the accessible name of an otherwise empty link), date and time
-    #   elements ({#date_element?}) unless they sit inside running text, lead pieces ({LEAD_WORDS}), tag
-    #   pieces closing the text ({TAG_WORDS}), clock-only or label-only elements before its first word, and
-    #   date-only elements ({Article::Title.date_piece?}) closing it.
+    #   elements ({#date_element?}) unless direct text holding a word touches them, lead pieces
+    #   ({LEAD_WORDS}), tag pieces closing the text ({TAG_WORDS}), clock-only or label-only elements before
+    #   its first word, and date chips closing it ({#date_chip?}).
     # - A paid-content label ({LinkDestination::Sponsorship.paid_text?}) is item metadata, never title text:
     #   it is no kicker and leaves the headline text where it opens it, so a kept sponsored item (cleanup
     #   +keep_sponsored+) is titled by its headline alone. An ad word ("Anzeige", "Werbung") also names a
@@ -155,15 +155,21 @@ module Html2rss
         dropped
       end
 
-      # A date-only element ({Article::Title.date_piece?}) closing the text: the date chip of a teaser card.
+      # Date chips ({#date_chip?}) closing the text.
       def drop_closing_dates!(node, dropped)
         elements(node).reverse_each do |element|
-          next if within?(element, dropped) || !Article::Title.date_piece?(text(element))
+          next if within?(element, dropped) || !date_chip?(element)
           break unless closing?(node, dropped, element)
 
           dropped << element
         end
         dropped
+      end
+
+      # The date chip of a teaser card: a date-only element ({Article::Title.date_piece?}), or a date element
+      # holding only a clock time (+late <time>22:10</time>+, while +at <b>20:15</b>+ is headline text).
+      def date_chip?(element)
+        Article::Title.date_piece?(text(element)) || (date_element?(element) && Article::Title.clock_piece?(text(element)))
       end
 
       # Whether +element+ opens the text of +node+ left after +dropped+.
@@ -282,9 +288,9 @@ module Html2rss
       # A +time+ element or an element whose class marks a date, time or duration ({DATE_WORDS}).
       def date_element?(node) = TIME_NAMES.include?(node.name) || class_words(node).intersect?(DATE_WORDS)
 
-      # Date elements leave the headline unless they sit inside running text (+moved to <time>Friday</time>
-      # after+): a word in the direct text right before and right after them.
-      def dropped_date?(node) = date_element?(node) && !running_text?(node)
+      # Date elements leave the headline unless they sit in running text (+resume on <time>Friday</time>+):
+      # direct text holding a word right before or right after them.
+      def dropped_date?(node) = date_element?(node) && !touching?(node)
 
       # Whether a sighted reader does not see +node+ ({Visibility.concealed?}).
       def concealed?(node)
@@ -368,24 +374,24 @@ module Html2rss
         before
       end
 
-      # Whether +node+ sits inside running text: a word in the direct text right before and after it.
-      def running_text?(node)
-        @sst ? sst_running_text?(node) : nokogiri_running_text?(node)
+      # Whether direct text holding a word sits right before or right after +node+.
+      def touching?(node)
+        @sst ? sst_touching?(node) : nokogiri_touching?(node)
       end
 
-      def sst_running_text?(node)
+      def sst_touching?(node)
         up = parent(node)
         return false unless up
 
         index = up.children.index { _1.equal?(node) }
         before, after = [up.lead_text, *up.tails][index, 2]
-        before.match?(WORD) && after.match?(WORD)
+        before.match?(WORD) || after.match?(WORD)
       end
 
-      def nokogiri_running_text?(node)
+      def nokogiri_touching?(node)
         before = node.previous_sibling
         after = node.next_sibling
-        before&.text? && after&.text? && before.text.match?(WORD) && after.text.match?(WORD)
+        [before, after].any? { _1&.text? && _1.text.match?(WORD) }
       end
     end
   end

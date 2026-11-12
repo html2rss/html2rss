@@ -258,6 +258,12 @@ title_date_elements_anywhere.html:
   expected: 5
   title_misses: 0
   sst_built: true
+title_date_touching_text.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 title_heading_kicker_leaves.html:
   junk: 0
   real: 5

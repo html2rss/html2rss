@@ -1,0 +1,16 @@
+---
+case: A date element touched by direct headline text holding a word (before or after it) is running
+  text and stays in the title; a date element set apart from the headline words (in its own element or
+  across blank text) is a chip and leaves.
+expected:
+- https://example.com/news/2026/11/ceasefire-talks-resume
+- https://example.com/news/2026/11/ferry-strike-called
+- https://example.com/news/2026/11/market-opens
+- https://example.com/news/2026/11/library-hours
+- https://example.com/news/2026/11/tram-depot
+titles:
+  https://example.com/news/2026/11/ceasefire-talks-resume: Ceasefire talks resume on Friday
+  https://example.com/news/2026/11/ferry-strike-called: Ferry crews call a strike for 20 November
+  https://example.com/news/2026/11/market-opens: Thursday night market opens in the old square
+  https://example.com/news/2026/11/library-hours: Library extends its weekend hours
+  https://example.com/news/2026/11/tram-depot: Tram depot reopens after repairs
