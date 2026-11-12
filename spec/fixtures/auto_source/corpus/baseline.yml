@@ -372,6 +372,12 @@ t6_media_list_news.html:
   expected: 10
   title_misses: 0
   sst_built: true
+t6_media_minority_in_main.html:
+  junk: 0
+  real: 10
+  expected: 10
+  title_misses: 0
+  sst_built: true
 t6_podcast_episode_page.html:
   junk: 0
   real: 25

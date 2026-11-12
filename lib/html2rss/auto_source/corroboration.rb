@@ -79,9 +79,8 @@ module Html2rss
       # @param articles [Array<Html2rss::Article>]
       # @return [Array<Html2rss::Article>]
       def page_order(articles)
-        last = articles.size
-        articles.each_with_index.sort_by { |article, index| [page_links.content_position(article.url) || last, index] }
-                .map(&:first)
+        placed, unplaced = articles.partition { page_links.content_position(_1.url) }
+        placed.sort_by { page_links.content_position(_1.url) } + unplaced
       end
 
       ##

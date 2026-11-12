@@ -60,81 +60,6 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       expect(builds.size).to eq(1)
     end
 
-    describe '#page_order' do
-      before do
-        allow(page_links).to receive(:content_position) { |url| { '/b' => 0, '/a' => 1 }[url.path] }
-      end
-
-      it 'orders items by content position, unplaced items last in their given order' do
-        items = %w[/x /a /y /b].map { build_article[_1] }
-
-        expect(corroboration.page_order(items).map { _1.url.path }).to eq(%w[/b /a /x /y])
-      end
-    end
-
-    describe '#media_page?' do
-      let(:media) { Array.new(3) { |index| build_article["/podcasts/episode-#{index}", media: true] } }
-      let(:stories) { Array.new(2) { |index| build_article["/news/story-#{index}"] } }
-
-      before { (media + stories).each { placements[_1.url.path] = :content } }
-
-      it 'is a media page when more than half of the shown page items are media' do
-        expect(corroboration.media_page?(media + stories)).to be(true)
-      end
-
-      it 'is no media page when media items are half of the shown page items or fewer', :aggregate_failures do
-        expect(corroboration.media_page?(media.first(2) + stories)).to be(false)
-        expect(corroboration.media_page?([])).to be(false)
-      end
-
-      it 'counts a structured media item and the card rendering it once' do
-        cards = media.map { build_article[_1.url.path, scraper: Html2rss::AutoSource::Scraper::SemanticHtml] }
-        stories.concat(Array.new(2) { |index| build_article["/news/more-#{index}"] })
-        stories.each { placements[_1.url.path] = :content }
-
-        expect(corroboration.media_page?(media + cards + stories)).to be(false)
-      end
-
-      it 'leaves out media items the page does not show in its content' do
-        media.each { placements[_1.url.path] = :peripheral }
-
-        expect(corroboration.media_page?(media + stories)).to be(false)
-      end
-
-      it 'leaves out items not read off the page' do
-        feed = Array.new(3) do |index|
-          Html2rss::Article.new(url: "https://example.com/feed-#{index}", title: 'Feed story', id: "f#{index}",
-                                scraper: Html2rss::AutoSource::Scraper::NativeFeed)
-        end
-
-        expect(corroboration.media_page?(media.first(2) + feed)).to be(true)
-      end
-    end
-
-    describe '#shown?' do
-      it 'shows a checked item rendered as a content anchor' do
-        placements[article.url.path] = :content
-
-        expect(corroboration.shown?(article)).to be(true)
-      end
-
-      it 'does not show a checked item rendered only outside the content', :aggregate_failures do
-        %i[chrome peripheral absent].each do |placement|
-          placements[article.url.path] = placement
-
-          expect(corroboration.shown?(article)).to be(false)
-        end
-      end
-
-      it 'takes an exempt item as shown without building page links', :aggregate_failures do
-        feed_item = Html2rss::Article.new(url: 'https://example.com/x', title: 'T', id: 'x',
-                                          scraper: Html2rss::AutoSource::Scraper::NativeFeed)
-
-        expect(corroboration.shown?(feed_item)).to be(true)
-        expect(builds).to be_empty
-      end
-    end
-
     describe '#canonical_url' do
       let(:canonical) { Html2rss::Url.from_absolute('https://example.com/news/canonical') }
 
@@ -362,6 +287,79 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
 
         expect(menu.map { corroboration.verdict(_1, cohort: menu) }).to all(eq(:unlikely))
       end
+    end
+  end
+
+  describe '#page_order' do
+    before do
+      allow(page_links).to receive(:content_position) { |url| %w[/a /b /c /d /e /f].each_with_index.to_h[url.path] }
+    end
+
+    it 'orders items by content position, unplaced items last in their given order' do
+      items = %w[/x /c /a /y /f /b /e /d /z].map { build_article[_1] }
+
+      expect(corroboration.page_order(items).map { _1.url.path }).to eq(%w[/a /b /c /d /e /f /x /y /z])
+    end
+  end
+
+  describe '#media_page?' do
+    let(:media) { Array.new(3) { |index| build_article["/podcasts/episode-#{index}", media: true] } }
+    let(:stories) { Array.new(2) { |index| build_article["/news/story-#{index}"] } }
+
+    before { (media + stories).each { placements[_1.url.path] = :content } }
+
+    it 'is a media page when more than half of the shown page items are media' do
+      expect(corroboration.media_page?(media + stories)).to be(true)
+    end
+
+    it 'is no media page when media items are half of the shown page items or fewer', :aggregate_failures do
+      expect(corroboration.media_page?(media.first(2) + stories)).to be(false)
+      expect(corroboration.media_page?([])).to be(false)
+    end
+
+    it 'counts a structured media item and the card rendering it once' do
+      cards = media.map { build_article[_1.url.path, scraper: Html2rss::AutoSource::Scraper::SemanticHtml] }
+
+      expect(corroboration.media_page?(media + cards + stories)).to be(true)
+    end
+
+    it 'leaves out media items the page does not show in its content' do
+      media.each { placements[_1.url.path] = :peripheral }
+
+      expect(corroboration.media_page?(media + stories)).to be(false)
+    end
+
+    it 'leaves out items not read off the page' do
+      feed = Array.new(3) do |index|
+        Html2rss::Article.new(url: "https://example.com/feed-#{index}", title: 'Feed story', id: "f#{index}",
+                              scraper: Html2rss::AutoSource::Scraper::NativeFeed)
+      end
+
+      expect(corroboration.media_page?(media.first(2) + feed)).to be(true)
+    end
+  end
+
+  describe '#shown?' do
+    it 'shows a checked item rendered as a content anchor' do
+      placements[article.url.path] = :content
+
+      expect(corroboration.shown?(article)).to be(true)
+    end
+
+    it 'does not show a checked item rendered only outside the content', :aggregate_failures do
+      %i[chrome peripheral absent].each do |placement|
+        placements[article.url.path] = placement
+
+        expect(corroboration.shown?(article)).to be(false)
+      end
+    end
+
+    it 'takes an exempt item as shown without building page links', :aggregate_failures do
+      feed_item = Html2rss::Article.new(url: 'https://example.com/x', title: 'T', id: 'x',
+                                        scraper: Html2rss::AutoSource::Scraper::NativeFeed)
+
+      expect(corroboration.shown?(feed_item)).to be(true)
+      expect(builds).to be_empty
     end
   end
 end
