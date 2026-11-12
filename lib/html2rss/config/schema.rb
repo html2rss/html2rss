@@ -105,6 +105,17 @@ module Html2rss
           request[:botasaurus] = exported
         end
 
+        # Scraper options are splatted into scraper constructors, so the scraper map and each
+        # scraper object reject keys the contract does not name.
+        def auto_source_schema
+          schema = Html2rss::Config::AutoSourceContract.json_schema(loose: true)
+          scraper = Html2rss::Config::AutoSourceScraperContract.json_schema(loose: true).except(:$schema)
+          scraper[:additionalProperties] = false
+          scraper.fetch(:properties).each_value { |options| options[:additionalProperties] = false }
+          schema.fetch(:properties)[:scraper] = scraper
+          schema.merge(default: HashUtil.deep_stringify_keys(Html2rss::AutoSource::DEFAULT_CONFIG))
+        end
+
         # @return [Hash{Symbol => Hash}] catalog under $defs.post_processors / $defs.extractors
         def registry_catalog_defs
           {
@@ -176,9 +187,7 @@ module Html2rss
               description: 'Collection of stylesheets to attach to the RSS feed.',
               items: Html2rss::Config::Validator::StylesheetConfig.json_schema(loose: true)
             },
-            auto_source: Html2rss::Config::AutoSourceContract.json_schema(loose: true).merge(
-              default: HashUtil.deep_stringify_keys(Html2rss::AutoSource::DEFAULT_CONFIG)
-            ),
+            auto_source: auto_source_schema,
             selectors: {
               type: 'object',
               description: 'Selectors used to extract article attributes.',

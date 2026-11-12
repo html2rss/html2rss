@@ -196,7 +196,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "wordpress_api": {
               "type": "object",
@@ -208,7 +209,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "sitemap": {
               "type": "object",
@@ -220,7 +222,14 @@
                   }
                 },
                 "min_priority": {
-                  "type": "number",
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
                   "not": {
                     "type": "null"
                   }
@@ -233,7 +242,8 @@
                   "exclusiveMinimum": 0
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "schema": {
               "type": "object",
@@ -245,7 +255,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "microdata": {
               "type": "object",
@@ -257,7 +268,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "microformats2": {
               "type": "object",
@@ -269,7 +281,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "json_state": {
               "type": "object",
@@ -281,7 +294,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "json_document": {
               "type": "object",
@@ -293,7 +307,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "xhr_articles": {
               "type": "object",
@@ -305,7 +320,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "meta_oembed": {
               "type": "object",
@@ -317,7 +333,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "semantic_html": {
               "type": "object",
@@ -329,7 +346,8 @@
                   }
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             },
             "html": {
               "type": "object",
@@ -355,10 +373,12 @@
                   "exclusiveMinimum": 0
                 }
               },
-              "required": []
+              "required": [],
+              "additionalProperties": false
             }
           },
-          "required": []
+          "required": [],
+          "additionalProperties": false
         },
         "cleanup": {
           "type": "object",

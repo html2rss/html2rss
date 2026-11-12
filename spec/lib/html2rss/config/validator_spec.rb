@@ -103,6 +103,23 @@ RSpec.describe Html2rss::Config::Validator do
         { request: { botasaurus: { bogus: 1 } } },
         [[%i[request botasaurus bogus], 'is not allowed']]
       ],
+      'stale scraper option' => [
+        { auto_source: { scraper: { semantic_html: { fallback_anchorless: true } } } },
+        [[%i[auto_source scraper semantic_html fallback_anchorless], 'is not allowed']]
+      ],
+      'unknown scraper' => [
+        { auto_source: { scraper: { bogus: { enabled: true } } } },
+        [[%i[auto_source scraper bogus enabled], 'is not allowed']]
+      ],
+      'string scraper option value' => [
+        { auto_source: { scraper: { html: { minimum_selector_frequency: '2' } } } },
+        [[%i[auto_source scraper html minimum_selector_frequency], 'must be an integer']]
+      ],
+      'known scraper options' => [
+        { auto_source: { scraper: { sitemap: { enabled: true, min_priority: 1, max_age_days: 7 },
+                                    html: { minimum_selector_frequency: 2 } } } },
+        []
+      ],
       'non-string header value' => [{ headers: { 'X' => 1 } },
                                     [[[:headers, 'X'], 'must be a String, but got Integer']]],
       'invalid stylesheet type' => [

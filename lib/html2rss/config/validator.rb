@@ -153,6 +153,17 @@ module Html2rss
         end
       end
 
+      rule(auto_source: :scraper) do
+        next unless value
+
+        result = Config::AutoSourceScraperContract.call(value)
+        next if result.success?
+
+        result.errors.each do |error|
+          key([:auto_source, :scraper, *error.path]).failure(error.text)
+        end
+      end
+
       # URL validation delegated to Url class
       rule(:channel) do
         if (url_string = values.dig(:channel, :url)) && !url_string.empty?
