@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Example Daily</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic saved news feed</description>
+    <item>
+      <title>The new harbor crane arrives by barge</title>
+      <link>https://example.com/news/2026/11/harbor-crane-arrives</link>
+      <guid isPermaLink="false">story-1001</guid>
+      <pubDate>Tue, 10 Nov 2026 07:00:00 GMT</pubDate>
+      <description>The crane will load container ships from next spring.</description>
+      <media:content url="https://example.com/news/img/crane-1001.jpg" medium="image" type="image/jpeg" width="1200" height="675"/>
+    </item>
+    <item>
+      <title>The school choir wins the regional prize</title>
+      <link>https://example.com/news/2026/11/school-choir-wins-regional-prize</link>
+      <guid isPermaLink="false">story-1002</guid>
+      <pubDate>Mon, 09 Nov 2026 07:00:00 GMT</pubDate>
+      <description>Forty singers travelled to the final with their teachers.</description>
+      <media:content url="https://example.com/news/img/resize/choir-1002" medium="image" width="1200" height="675"/>
+    </item>
+    <item>
+      <title>Watch: the night ferry crossing in the first winter storm</title>
+      <link>https://example.com/news/2026/11/night-ferry-winter-storm</link>
+      <guid isPermaLink="false">story-1003</guid>
+      <pubDate>Sun, 08 Nov 2026 19:00:00 GMT</pubDate>
+      <description>Our reporter rode the last ferry of the night as the storm arrived.</description>
+      <media:content url="https://example.com/news/video/watch/1003" medium="video"/>
+      <media:content url="https://example.com/news/img/ferry-1003.jpg" medium="image" type="image/jpeg"/>
+    </item>
+    <item>
+      <title>The market hall reopens after repairs</title>
+      <link>https://example.com/news/2026/11/market-hall-reopens</link>
+      <guid isPermaLink="false">story-1004</guid>
+      <pubDate>Sat, 07 Nov 2026 07:00:00 GMT</pubDate>
+      <description>Traders return to the hall on Saturday morning.</description>
+      <media:content url="https://example.com/news/video/play/1004"/>
+    </item>
+  </channel>
+</rss>

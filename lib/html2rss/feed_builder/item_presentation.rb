@@ -24,15 +24,15 @@ module Html2rss
         end
 
         ##
-        # The one RSS +enclosure+ of an item: its first audio or video file, else its first other
-        # file (PDF, archive). Images stay on the description / JSON Feed, and web pages
-        # (+text/html+ embed players) are never an enclosure.
+        # The one RSS +enclosure+ of an item: its first audio or video file, else its first downloadable
+        # document or archive ({Article::Enclosure#document?}: PDF, ZIP). Images stay on the description /
+        # JSON Feed; web pages, stream playlists, Flash players and untyped watch pages are never one.
         #
         # @param article [Html2rss::Article]
         # @return [Html2rss::Article::Enclosure, nil]
         def rss_enclosure_for(article)
           enclosures = article.enclosures
-          enclosures.find(&:media?) || enclosures.find { |enc| !enc.image? && !enc.page? }
+          enclosures.find(&:media?) || enclosures.find(&:document?)
         end
 
         ##

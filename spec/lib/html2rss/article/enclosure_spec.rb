@@ -144,6 +144,42 @@ RSpec.describe Html2rss::Article::Enclosure do
 
       expect(enclosure.media?).to be(true)
     end
+
+    {
+      ['notes.pdf', 'application/pdf'] => true,
+      ['files.zip', nil] => true,
+      ['download.bin', 'application/octet-stream'] => true,
+      ['download.bin', nil] => true,
+      ['download/42', 'application/pdf'] => true,
+      ['watch/42', 'application/octet-stream'] => false,
+      ['watch/44', 'Application/Octet-Stream'] => false,
+      ['watch/42', nil] => false,
+      ['player.swf', 'application/x-shockwave-flash'] => false,
+      ['live/master.m3u8', nil] => false,
+      ['live/master', 'application/vnd.apple.mpegurl'] => false,
+      ['live/index.m3u8', 'Application/X-MPEGURL'] => false,
+      ['live/manifest.mpd', 'application/dash+xml'] => false,
+      ['episode.mp3', 'audio/mpeg'] => false,
+      ['cover.jpg', nil] => false,
+      ['embed/1', 'text/html'] => false
+    }.each_pair do |(path, type), document|
+      it "classifies #{path} typed #{type.inspect} as document=#{document}" do
+        enclosure = described_class.new(url: Html2rss::Url.from_absolute("https://example.com/#{path}"), type:)
+
+        expect(enclosure.document?).to be(document)
+      end
+    end
+
+    {
+      'https://example.com/notes.pdf' => true,
+      'https://example.com/watch/42' => false,
+      'https://example.com/watch?v=42.mp4' => false,
+      'https://example.com/' => false
+    }.each_pair do |url, extension|
+      it "sees a file extension in #{url}: #{extension}" do
+        expect(described_class.new(url: Html2rss::Url.from_absolute(url)).file_extension?).to be(extension)
+      end
+    end
   end
 
   describe '#initialize' do

@@ -560,6 +560,14 @@ t6_media_minority_in_main.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+t6_news_feed_image_media.html:
+  junk: 0
+  real: 4
+  expected: 4
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 t6_podcast_episode_page.html:
   junk: 0
   real: 25

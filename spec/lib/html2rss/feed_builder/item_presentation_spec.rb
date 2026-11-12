@@ -19,7 +19,10 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
         'audio' => ['episode.mp3', 'audio/mpeg'], 'video' => ['clip.webm', 'video/webm'],
         'pdf' => ['notes.pdf', 'application/pdf'], 'zip' => ['files.zip', 'application/zip'],
         'image' => ['cover.jpg', 'image/jpeg'], 'html' => ['embed/1', 'text/html'],
-        'xhtml' => ['embed/2', 'application/xhtml+xml']
+        'xhtml' => ['embed/2', 'application/xhtml+xml'], 'watch' => ['watch/42', nil],
+        'untyped' => ['watch/43', 'application/octet-stream'], 'flash' => ['player.swf', nil],
+        'hls' => ['live/master.m3u8', 'application/vnd.apple.mpegurl'],
+        'dash' => ['live/manifest.mpd', 'application/dash+xml']
       }
     end
 
@@ -61,7 +64,10 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
       'a pdf after an embed page' => [%w[html pdf], 'pdf'],
       'the first of two other files' => [%w[image zip pdf], 'zip'],
       'nothing for an embed page alone' => [%w[html], nil],
-      'nothing for an xhtml page' => [%w[xhtml image], nil]
+      'nothing for an xhtml page' => [%w[xhtml image], nil],
+      'nothing for untyped watch pages' => [%w[watch untyped image], nil],
+      'nothing for a flash player or stream playlists' => [%w[flash hls dash], nil],
+      'a pdf after a watch page and a playlist' => [%w[watch hls pdf], 'pdf']
     }.each_pair do |label, (kinds, chosen)|
       it "chooses #{label}" do
         enclosures = kinds.map do |kind|
@@ -69,7 +75,7 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
         end
         enclosure = described_class.rss_enclosure_for(Html2rss::Article.new(enclosures:))
 
-        expect(enclosure&.type).to eq(chosen && files[chosen][1])
+        expect(enclosure&.url&.to_s).to eq(chosen && "https://example.com/#{files[chosen][0]}")
       end
     end
   end

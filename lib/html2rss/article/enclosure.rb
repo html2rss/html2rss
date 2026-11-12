@@ -25,6 +25,13 @@ module Html2rss
       CLOCK = /\A(?:(?:(\d+):)?(\d+):)?(\d+(?:\.\d+)?)\z/
       # Types of web pages (embed players, article pages), never a media file.
       PAGE_TYPES = %w[application/xhtml+xml].freeze
+      # Types of stream playlists (HLS, DASH) and Flash players: played through a page or player, never
+      # downloaded as a file.
+      STREAM_TYPES = %w[
+        application/vnd.apple.mpegurl application/x-mpegurl application/dash+xml application/x-shockwave-flash
+      ].freeze
+      # The type of a URL that declares none and has no known extension.
+      UNTYPED = 'application/octet-stream'
       # Playable audio/video types by file extension. MIME::Types lists these extensions under
       # several types and puts a non-playable or codec-level one first (+.mp4+ as +application/mp4+,
       # +.ogg+ as +audio/vorbis+, +.m4v+ without +video/mp4+), so media extensions are looked up here first.
@@ -43,7 +50,7 @@ module Html2rss
         # @param url [Html2rss::Url]
         # @param default [String] default content type
         # @return [String] guessed content type, or default
-        def guess_content_type_from_url(url, default: 'application/octet-stream')
+        def guess_content_type_from_url(url, default: UNTYPED)
           return default unless url
 
           path = url.path
@@ -120,6 +127,21 @@ module Html2rss
       def page?
         mime = type.downcase
         mime.start_with?('text/') || PAGE_TYPES.include?(mime)
+      end
+
+      # @return [Boolean] whether the URL path ends in a file extension (+.pdf+), unlike a watch page (+/watch/42+)
+      def file_extension? = !File.extname(url.path).empty?
+
+      # A downloadable document or archive (PDF, ZIP): no media file, image or web page, no stream
+      # playlist or Flash player ({STREAM_TYPES}), and no untyped URL without a file extension, which
+      # is a watch or player page served as untyped media.
+      #
+      # @return [Boolean] whether the URL is a downloadable document or archive
+      def document?
+        mime = type.downcase
+        return false if media? || image? || page? || STREAM_TYPES.include?(mime)
+
+        mime != UNTYPED || file_extension?
       end
     end
   end

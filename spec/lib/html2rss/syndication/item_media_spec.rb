@@ -136,6 +136,49 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
       end
     end
 
+    context 'with media:content declaring a playable medium' do
+      let(:body) do
+        <<~XML
+          <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>C</title>
+            <item><media:content url="https://example.com/watch/42" medium="video"/>
+              <media:content url="https://example.com/listen/7" medium="audio" type="text/html"/>
+              <media:content url="https://example.com/stream/9" medium="video" type="video/mp4"/>
+              <media:content url="https://example.com/player.swf" medium="video"/>
+              <media:content url="https://example.com/watch/43"/></item>
+          </channel></rss>
+        XML
+      end
+
+      it 'drops a watch or player page (no media file, no file extension) and keeps the rest' do
+        expect(enclosures).to eq([[{ url: 'https://example.com/stream/9', type: 'video/mp4' },
+                                   { url: 'https://example.com/player.swf' }, { url: 'https://example.com/watch/43' }]])
+      end
+    end
+
+    context 'with image files and no declared item image' do
+      let(:count) { 4 }
+      let(:body) do
+        <<~XML
+          <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"
+               xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>C</title>
+            <item><media:content url="https://example.com/a.mp4" medium="video"/>
+              <media:content url="https://example.com/img/1" medium="image"/><media:content url="https://example.com/2.jpg"/></item>
+            <item><enclosure url="https://example.com/3.png" type="image/png"/><media:content url="https://example.com/4.jpg"/></item>
+            <item><media:content url="https://example.com/5.jpg"/><media:thumbnail url="https://example.com/t.jpg"/></item>
+            <item><media:content url="https://example.com/6.jpg"/><itunes:image href="https://example.com/i.jpg"/>
+              <media:thumbnail url="https://example.com/t2.jpg"/></item>
+          </channel></rss>
+        XML
+      end
+
+      it 'takes the first image file, after itunes:image and media:thumbnail', :aggregate_failures do
+        expect(media.map { _1[:image]&.to_s }).to eq(%w[https://example.com/img/1 https://example.com/3.png
+                                                        https://example.com/t.jpg https://example.com/i.jpg])
+        expect(enclosures.first.map { _1[:url] }).to eq(%w[https://example.com/a.mp4 https://example.com/img/1
+                                                           https://example.com/2.jpg])
+      end
+    end
+
     context 'when the item elements do not number the parsed items' do
       let(:count) { 2 }
       let(:body) { '<rss version="2.0"><channel><item><enclosure url="https://example.com/1.mp3"/></item></channel></rss>' }
