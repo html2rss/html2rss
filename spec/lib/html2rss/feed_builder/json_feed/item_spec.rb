@@ -134,6 +134,17 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed::Item do
     end
   end
 
+  context 'with a watch page and a stream playlist beside a file' do
+    let(:attributes) do
+      files = %w[watch/42 live.m3u8 a.mp3].map { { url: Html2rss::Url.from_absolute("https://example.com/#{_1}") } }
+      super().merge(enclosures: files)
+    end
+
+    it 'attaches only the file' do
+      expect(item_hash[:attachments]).to eq([{ url: 'https://example.com/a.mp3', mime_type: 'audio/mpeg' }])
+    end
+  end
+
   context 'with categories' do
     let(:attributes) { super().merge(categories: ['News', ' Tech ']) }
 

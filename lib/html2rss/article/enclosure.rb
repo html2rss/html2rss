@@ -46,10 +46,10 @@ module Html2rss
         'm4a' => 'audio/mp4', 'mp3' => 'audio/mpeg', 'ogg' => 'audio/ogg', 'oga' => 'audio/ogg',
         'opus' => 'audio/opus', 'aac' => 'audio/aac', 'wav' => 'audio/wav', 'flac' => 'audio/flac'
       }.freeze
-      # The type of a file an audio or video player proves is media while its URL names no media type
-      # (no or an unknown extension, or a server page): the most widely played format of that kind, since
-      # an RSS enclosure needs a concrete type and +audio/*+ is none.
-      KIND_TYPES = { audio: 'audio/mpeg', video: 'video/mp4' }.freeze
+      # The type of a file whose source proves its kind (an audio or video player, a Schema.org media object,
+      # a Media RSS +medium+) while its URL names no type (no or an unknown extension, or a server page): the
+      # most widely used format of that kind, since an RSS enclosure needs a concrete type and +audio/*+ is none.
+      KIND_TYPES = { audio: 'audio/mpeg', video: 'video/mp4', image: 'image/jpeg' }.freeze
 
       class << self
         ##
@@ -104,27 +104,28 @@ module Html2rss
       # @param url [Html2rss::Url] absolute enclosure URL
       # @param type [String, nil] optional enclosure MIME type
       # @param bytes_length [Integer, nil] enclosure length in bytes; nil when unknown
-      # @param duration [Integer, nil] playback length in seconds; nil (or not positive) when unknown
-      # @param kind [Symbol, nil] +:audio+ or +:video+ when a player or media object proves the file's kind
+      # @param duration [Integer, nil] playback length in seconds, kept only for an audio or video file ({#media?});
+      #   nil (or not positive) when unknown
+      # @param kind [Symbol, nil] +:audio+, +:video+ or +:image+ when its source proves the file's kind
       #   ({KIND_TYPES}); nil when unknown
       def initialize(url:, type: nil, bytes_length: nil, duration: nil, kind: nil)
         raise ArgumentError, 'An Enclosure requires an absolute URL' if !url || !url.absolute?
 
         @url = url
-        @type = type
         @bytes_length = bytes_length || 0
-        @duration = duration if duration.instance_of?(Integer) && duration.positive?
-        @kind_type = kind_type(kind)
+        @type = resolved_type(type, kind_type(kind))
+        @mime = @type.downcase[/\A[^;\s]*/]
+        @duration = duration if duration.instance_of?(Integer) && duration.positive? && media?
       end
 
       # @return [String] explicit MIME type, else one inferred from the URL extension; a file of a known kind whose
       #   URL names no media type takes that kind's type ({KIND_TYPES}), also when it is declared {UNTYPED}
-      def type = (@type unless @kind_type && @type&.casecmp?(UNTYPED)) || guessed_type
+      attr_reader :type
 
       # @return [Integer] enclosure length in bytes; 0 when unknown
       attr_reader :bytes_length
 
-      # @return [Integer, nil] playback length in seconds
+      # @return [Integer, nil] playback length in seconds of an audio or video file; nil for any other file
       attr_reader :duration
 
       # @return [Html2rss::Url] absolute enclosure URL
@@ -159,35 +160,42 @@ module Html2rss
         page? || (mime == UNTYPED && !file_extension? && bytes_length.zero?)
       end
 
-      # A downloadable document or archive (PDF, ZIP): no media file, image, stream playlist or Flash
-      # player ({STREAM_TYPES}), and no watch or player page ({#player_page?}).
+      # A file a feed reader can download: no stream playlist or Flash player ({STREAM_TYPES}), and no watch
+      # or player page ({#player_page?}). {Article#enclosures} keeps only files, so no feed format ships the rest.
+      #
+      # @return [Boolean] whether the URL is a downloadable file
+      def file? = !(STREAM_TYPES.include?(mime) || player_page?)
+
+      # A downloadable document or archive (PDF, ZIP): a file ({#file?}) that is no media file or image.
       #
       # @return [Boolean] whether the URL is a downloadable document or archive
-      def document? = !(media? || image? || STREAM_TYPES.include?(mime) || player_page?)
+      def document? = file? && !media? && !image?
 
       private
 
       # @return [String] the lowercase MIME type without parameters (+audio/ogg; codecs=opus+ is +audio/ogg+)
-      def mime = type.downcase[/\A[^;\s]*/]
+      attr_reader :mime
 
       # @param kind [Symbol, nil]
       # @return [String, nil] the type a file of that kind takes when its URL names none ({KIND_TYPES})
-      # @raise [ArgumentError] for a kind other than +:audio+ or +:video+
+      # @raise [ArgumentError] for a kind other than +:audio+, +:video+ or +:image+
       def kind_type(kind)
         return unless kind
 
         KIND_TYPES.fetch(kind) { raise ArgumentError, "Unknown enclosure kind: #{kind.inspect}" }
       end
 
-      # The type guessed from the URL; a file of a known kind whose URL names no media type (untyped, or a
-      # server page) takes that kind's type ({KIND_TYPES}) instead.
+      # The declared type, else the type guessed from the URL; a file of a known kind whose URL names no type
+      # (declared {UNTYPED}, or guessed untyped or a server page) takes that kind's type ({KIND_TYPES}) instead.
       #
+      # @param declared [String, nil]
+      # @param kind_type [String, nil]
       # @return [String]
-      def guessed_type
-        guessed = self.class.guess_content_type_from_url(url)
-        return guessed unless @kind_type && (guessed == UNTYPED || PAGE_TYPES.include?(guessed))
+      def resolved_type(declared, kind_type)
+        return declared if declared && !(kind_type && declared.casecmp?(UNTYPED))
 
-        @kind_type
+        guessed = self.class.guess_content_type_from_url(url)
+        kind_type && (guessed == UNTYPED || PAGE_TYPES.include?(guessed)) ? kind_type : guessed
       end
     end
   end

@@ -189,6 +189,23 @@ RSpec.describe Html2rss::Article::Enclosure do
     end
 
     {
+      ['episode.mp3', nil] => true,
+      ['cover.jpg', nil] => true,
+      ['notes.pdf', nil] => true,
+      ['download/42', nil] => false,
+      ['embed/1', 'text/html'] => false,
+      ['player.swf', nil] => false,
+      ['live/index.m3u8', nil] => false,
+      ['live/manifest.mpd', 'application/dash+xml'] => false
+    }.each_pair do |(path, type), file|
+      it "classifies #{path} typed #{type.inspect} as file=#{file}" do
+        enclosure = described_class.new(url: Html2rss::Url.from_absolute("https://example.com/#{path}"), type:)
+
+        expect(enclosure.file?).to be(file)
+      end
+    end
+
+    {
       'https://example.com/notes.pdf' => true,
       'https://example.com/watch/42' => false,
       'https://example.com/watch?v=42.mp4' => false,
@@ -260,11 +277,34 @@ RSpec.describe Html2rss::Article::Enclosure do
       nil => nil
     }.each_pair do |duration, expected|
       it "keeps duration #{duration.inspect} as #{expected.inspect}" do
-        expect(described_class.new(url:, duration:).duration).to eq(expected)
+        episode = Html2rss::Url.from_absolute('https://example.com/episode.mp3')
+
+        expect(described_class.new(url: episode, duration:).duration).to eq(expected)
       end
     end
 
     {
+      ['episode', 'audio/mpeg', nil] => 60,
+      ['clip.webm', nil, nil] => 60,
+      ['stream/42', nil, :video] => 60,
+      ['transcript.pdf', nil, nil] => nil,
+      ['cover.jpg', nil, nil] => nil,
+      ['photo/42', nil, :image] => nil,
+      ['live/index.m3u8', nil, :video] => nil,
+      ['watch/42', nil, nil] => nil
+    }.each_pair do |(path, type, kind), expected|
+      it "keeps a duration on #{path} typed #{type.inspect} of kind #{kind.inspect} as #{expected.inspect}" do
+        file = Html2rss::Url.from_absolute("https://example.com/#{path}")
+
+        expect(described_class.new(url: file, type:, kind:, duration: 60).duration).to eq(expected)
+      end
+    end
+
+    {
+      ['https://example.com/photo/42', :image] => 'image/jpeg',
+      ['https://example.com/thumb.php?id=1', :image] => 'image/jpeg',
+      ['https://example.com/cover.png', :image] => 'image/png',
+      ['https://example.com/clip.mp4', :image] => 'video/mp4',
       ['https://example.com/stream/42', :audio] => 'audio/mpeg',
       ['https://example.com/stream/42', :video] => 'video/mp4',
       ['https://example.com/play.php?id=1', :audio] => 'audio/mpeg',
@@ -280,6 +320,12 @@ RSpec.describe Html2rss::Article::Enclosure do
       end
     end
 
+    it 'reads the declared type case-insensitively and without parameters', :aggregate_failures do
+      expect(described_class.new(url:, type: 'Audio/MPEG; codecs=mp3', duration: 60).duration).to eq(60)
+      expect(described_class.new(url:, type: 'text/html; charset=utf-8').file?).to be(false)
+      expect(described_class.new(url:, type: '', duration: 60).duration).to be_nil
+    end
+
     it 'keeps a declared type over the kind' do
       expect(described_class.new(url:, type: 'audio/ogg', kind: :video).type).to eq('audio/ogg')
     end
@@ -292,7 +338,7 @@ RSpec.describe Html2rss::Article::Enclosure do
     end
 
     it 'rejects an unknown kind', :aggregate_failures do
-      expect { described_class.new(url:, kind: :image) }.to raise_error(ArgumentError, /Unknown enclosure kind: :image/)
+      expect { described_class.new(url:, kind: :page) }.to raise_error(ArgumentError, /Unknown enclosure kind: :page/)
       expect { described_class.new(url:, kind: 'audio') }.to raise_error(ArgumentError, /kind/)
     end
 

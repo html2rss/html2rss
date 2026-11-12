@@ -8,6 +8,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
   let(:scraper_class) { Html2rss::AutoSource::Scraper::SemanticHtml }
   let(:root_node) { Html2rss::SST::Node.build(name: :article) }
   let(:story_url) { Html2rss::Url.from_relative('/news/story', 'https://example.com') }
+  let(:episode_url) { Html2rss::Url.from_relative('/news/story.mp3', 'https://example.com') }
 
   let(:build_ranked) do
     lambda do |href: '/news/story', final: 65.0, quality: 75.0, position: 0|
@@ -72,7 +73,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
     it 'prefers an image over categories and enclosures', :aggregate_failures do
       with_image = entry.call(article: build_article.call(image: 'https://example.com/a.png'), position: 1)
       rich_lists = entry.call(
-        article: build_article.call(categories: %w[a b c d e], enclosures: Array.new(3) { { url: story_url } }),
+        article: build_article.call(categories: %w[a b c d e], enclosures: Array.new(3) { { url: episode_url } }),
         position: 0
       )
 
@@ -82,15 +83,15 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml::EntryDeduplicator do
 
     it 'prefers more categories over more enclosures', :aggregate_failures do
       categorized = entry.call(article: build_article.call(categories: %w[a b]), position: 1)
-      enclosed = entry.call(article: build_article.call(enclosures: Array.new(3) { { url: story_url } }), position: 0)
+      enclosed = entry.call(article: build_article.call(enclosures: Array.new(3) { { url: episode_url } }), position: 0)
 
       expect(deduplicator.stronger_entry?(categorized, enclosed)).to be(true)
       expect(deduplicator.stronger_entry?(enclosed, categorized)).to be(false)
     end
 
     it 'prefers more enclosures when everything else in the payload ties', :aggregate_failures do
-      two = entry.call(article: build_article.call(enclosures: Array.new(2) { { url: story_url } }), position: 1)
-      one = entry.call(article: build_article.call(enclosures: [{ url: story_url }]), position: 0)
+      two = entry.call(article: build_article.call(enclosures: Array.new(2) { { url: episode_url } }), position: 1)
+      one = entry.call(article: build_article.call(enclosures: [{ url: episode_url }]), position: 0)
 
       expect(deduplicator.stronger_entry?(two, one)).to be(true)
       expect(deduplicator.stronger_entry?(one, two)).to be(false)

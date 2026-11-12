@@ -145,14 +145,16 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
               <media:content url="https://example.com/stream/9" medium="video" type="video/mp4"/>
               <media:content url="https://example.com/player.swf" medium="video"/>
               <media:content url="https://example.com/watch/43"/>
+              <media:content url="https://example.com/photo/45" medium="image"/>
               <enclosure url="https://example.com/download/44" length="2048"/></item>
           </channel></rss>
         XML
       end
 
-      it 'drops each page (web page, or untyped without extension and size) whatever its medium' do
+      it 'drops each page (web page, or untyped without extension and size) unless its medium is image' do
         expect(enclosures).to eq([[{ url: 'https://example.com/stream/9', type: 'video/mp4', kind: :video },
                                    { url: 'https://example.com/player.swf', kind: :video },
+                                   { url: 'https://example.com/photo/45', kind: :image },
                                    { url: 'https://example.com/download/44', bytes_length: 2048 }]])
       end
     end
@@ -202,11 +204,11 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
         XML
       end
 
-      it 'gives the item duration only to audio and video files' do
-        expect(enclosures).to eq([[{ url: 'https://example.com/a.mp3', duration: 2700 },
-                                   { url: 'https://example.com/a.jpg' },
-                                   { url: 'https://example.com/a.pdf', type: 'application/pdf' },
-                                   { url: 'https://example.com/b.pdf', duration: 30 }]])
+      it 'keeps the item duration only on audio and video files' do
+        durations = media.first[:enclosures].map { [_1[:url].to_s, Html2rss::Article::Enclosure.new(**_1).duration] }
+
+        expect(durations).to eq([['https://example.com/a.mp3', 2700], ['https://example.com/a.jpg', nil],
+                                 ['https://example.com/a.pdf', nil], ['https://example.com/b.pdf', nil]])
       end
     end
 
@@ -226,14 +228,14 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
         XML
       end
 
-      it 'takes an image file only medium marks, after itunes:image and media:thumbnail', :aggregate_failures do
-        expect(media.map { _1[:image]&.to_s }).to eq(['https://example.com/img/1', nil, 'https://example.com/t.jpg',
-                                                      'https://example.com/i.jpg'])
-        expect(enclosures.first.map { _1[:url] }).to eq(%w[https://example.com/a.mp4 https://example.com/img/1
-                                                           https://example.com/2.jpg])
+      it 'names only itunes:image or media:thumbnail and keeps every image file an enclosure', :aggregate_failures do
+        expect(media.map { _1[:image]&.to_s }).to eq([nil, nil, 'https://example.com/t.jpg', 'https://example.com/i.jpg'])
+        expect(enclosures.first).to eq([{ url: 'https://example.com/a.mp4', kind: :video },
+                                        { url: 'https://example.com/img/1', kind: :image },
+                                        { url: 'https://example.com/2.jpg' }])
       end
 
-      it 'leaves a typed image file to the article, which makes it the item image' do
+      it 'leaves image files to the article, which makes the first one the item image' do
         images = media.map { Html2rss::Article.new(url: 'https://example.com/p', **_1).image.to_s }
 
         expect(images).to eq(%w[https://example.com/img/1 https://example.com/3.png https://example.com/t.jpg

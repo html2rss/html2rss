@@ -759,7 +759,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
       'explicit url over fallbacks' => [{ url: 'https://example.com/u#frag', mainEntityOfPage: 'https://e.com/m' },
                                         'https://example.com/u#frag'],
       'non-http mainEntityOfPage' => [{ mainEntityOfPage: 'urn:uuid:1', '@id': 'ftp://example.com/x' }, nil],
-      'embedUrl as the last resort' => [{ embedUrl: 'https://example.com/embed/1#t' }, 'https://example.com/embed/1'],
+      'embedUrl never' => [{ embedUrl: 'https://example.com/embed/1#t' }, nil],
       '@id over embedUrl' => [{ '@id': 'https://example.com/i', embedUrl: 'https://example.com/embed/1' },
                               'https://example.com/i'],
       'page url over embedUrl' => [{ url: 'https://example.com/v/1', embedUrl: 'https://example.com/embed/1' },
@@ -861,6 +861,21 @@ RSpec.describe Html2rss::AutoSource::Scraper::Schema::Thing do
 
       it 'keeps the file type' do
         expect(instance.call[:enclosures].map { Html2rss::Article::Enclosure.new(**_1).type }).to eq(['video/mp4'])
+      end
+    end
+
+    context 'with a PodcastEpisode duration beside a transcript' do
+      let(:schema_object) do
+        { '@type': 'PodcastEpisode', url: 'https://example.com/ep/1', duration: 'PT30M',
+          associatedMedia: [{ '@type': 'MediaObject', contentUrl: '/ep1.mp3' },
+                            { '@type': 'MediaObject', contentUrl: '/ep1-transcript.pdf' }] }
+      end
+
+      it 'times only the audio file' do
+        files = Html2rss::Article.new(**instance.call).enclosures
+
+        expect(files.map { [_1.url.to_s, _1.duration] })
+          .to eq([['https://example.com/ep1.mp3', 1800], ['https://example.com/ep1-transcript.pdf', nil]])
       end
     end
 

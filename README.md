@@ -29,7 +29,7 @@ Cloud development: [Open in GitHub Codespaces](https://github.com/codespaces/new
 2. **RequestService** — fetches pages (`default` (HTTPX), `botasaurus`, or `local_file`)
 3. **Selectors** — extracts content via CSS selectors with extractors/post-processors
 4. **AutoSource** — auto-detects content (Schema.org, JSON state, semantic HTML, structural patterns); a card's `<audio>`/`<video>` file becomes its enclosure (an embedded `iframe` player never does)
-5. **FeedBuilder** — assembles Article objects and renders feeds (RSS 2.0 / JSON Feed 1.1); an item's RSS enclosure is its audio or video file, else a downloadable document (never an image, watch page, stream playlist or Flash player); a feed where most items carry audio or video gets podcast (`itunes:`) tags; an item description shows at most one media element (its audio or video player, else its image), none when its text already shows that file
+5. **FeedBuilder** — assembles Article objects and renders feeds (RSS 2.0 / JSON Feed 1.1); an item's RSS enclosure is its audio or video file, else a downloadable document (never an image); a watch page, stream playlist or Flash player is never an enclosure or JSON Feed attachment; a feed where most items carry audio or video gets podcast (`itunes:`) tags; an item description shows at most one media element (its audio or video player, else its image), none when its text already shows that file
 
 ```text
 Config -> Request -> Extraction -> Processing -> Building -> Output

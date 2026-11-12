@@ -36,6 +36,27 @@ RSpec.describe Html2rss::Article do
         expect(described_class.new(enclosures: [file.call('a.mp3'), file.call('n.pdf')]).image).to be_nil
       end
 
+      it 'keeps only downloadable files, never a watch page, stream playlist or Flash player' do
+        article = described_class.new(enclosures: %w[watch/42 a.mp3 live/index.m3u8 player.swf b.jpg n.pdf].map(&file))
+
+        expect(article.enclosures.map { _1.url.to_s })
+          .to eq(%w[https://example.com/a.mp3 https://example.com/b.jpg https://example.com/n.pdf])
+      end
+
+      it 'builds the enclosures once, frozen, and none without any', :aggregate_failures do
+        article = described_class.new(enclosures: [file.call('a.mp3')])
+
+        expect(article.enclosures).to be(article.enclosures).and be_frozen
+        expect(described_class.new.enclosures).to eq([])
+      end
+
+      it 'takes a file whose kind alone marks it an image' do
+        photo = { url: Html2rss::Url.from_absolute('https://example.com/photo/42'), kind: :image }
+
+        expect(described_class.new(enclosures: [file.call('a.mp3'), photo, file.call('b.jpg')]).image.to_s)
+          .to eq('https://example.com/photo/42')
+      end
+
       it 'survives a merge with a page copy carrying another image' do
         feed_item = described_class.new(url: 'https://example.com/a', enclosures: [file.call('feed.jpg')])
         page_copy = described_class.new(url: 'https://example.com/a', image: 'https://example.com/card-large.jpg')

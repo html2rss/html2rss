@@ -8,15 +8,13 @@ module Html2rss
     #
     # Enclosures, in document order and once per URL: RSS 2.0 +enclosure+ (+url+, +type+, +length+),
     # Atom +link rel="enclosure"+ (+href+, +type+, +length+) and Media RSS +media:content+, also inside
-    # +media:group+ (+url+, +type+, +fileSize+, +duration+). A Media RSS +medium+ is a kind hint, never a
-    # drop signal: +audio+ or +video+ is the file's kind, typing an untyped file
-    # ({Article::Enclosure::KIND_TYPES}), and +image+ keeps an untyped file an image. A watch or player
-    # page ({Article::Enclosure#player_page?}) that is not declared an image is
-    # no enclosure. An item +itunes:duration+ is the duration of every audio or video file that declares
-    # none. The item image is its +itunes:image+ (+href+, or the URL as its text), else its first
-    # +media:thumbnail+ (also inside +media:group+), else its first image file when only +medium="image"+
-    # marks it (a file typed as an image becomes the item image through {Article}). Sizes, durations and
-    # kinds come from {Article::Enclosure}. Items match by namespace
+    # +media:group+ (+url+, +type+, +fileSize+, +duration+). A Media RSS +medium+ (+audio+, +video+, +image+)
+    # is the file's kind, typing an untyped file ({Article::Enclosure::KIND_TYPES}); it never makes a watch or
+    # player page ({Article::Enclosure#player_page?}, judged without it) a file, except that +image+ keeps one.
+    # An item +itunes:duration+ is the duration of every file that declares none ({Article::Enclosure} keeps it
+    # only on audio and video). The item image is its +itunes:image+ (+href+, or the URL as its text), else its
+    # first +media:thumbnail+ (also inside +media:group+); without either, {Article} makes its first image file
+    # the item image. Sizes, durations and kinds come from {Article::Enclosure}. Items match by namespace
     # ({ITEMS}); a document without any media marker ({MEDIA_MARKERS}) is not parsed a second time.
     module ItemMedia
       # Namespace prefixes the item queries bind.
@@ -66,45 +64,25 @@ module Html2rss
         def item_media(node, &resolve)
           duration = Article::Enclosure.parse_duration(node.at_xpath('itunes:duration', NAMESPACES)&.text)
           files = node.xpath(ENCLOSURES, NAMESPACES).filter_map { file(_1, duration, &resolve) }
-          { enclosures: files.map(&:first).uniq { _1[:url].to_s }, image: image(node, files, &resolve) }
+          declared = node.at_xpath(ITUNES_IMAGE, NAMESPACES) || node.at_xpath(THUMBNAILS, NAMESPACES)
+          { enclosures: files.uniq { _1[:url].to_s }, image: declared && yield(declared.content) }
             .reject { |_, value| value.nil? || value == [] }
         end
 
-        # @return [Array(Hash{Symbol => Object}, Boolean), nil] the file's facts and whether it is an image;
-        #   nil without a URL or for a watch or player page
+        # The file's facts: its declared type, its +medium+ as kind, its byte length and its own duration, else
+        # the item's.
+        #
+        # @return [Hash{Symbol => Object}, nil] nil without a URL or for a watch or player page not marked an image
         def file(element, item_duration)
           return unless (url = yield(attribute(element, 'url', 'href')))
 
+          type = attribute(element, 'type')
           bytes_length = Article::Enclosure.parse_size(attribute(element, 'length', 'fileSize'))
-          enclosure = Article::Enclosure.new(url:, type: attribute(element, 'type'), bytes_length:)
-          image = element['medium'] == 'image' || enclosure.image?
-          return if enclosure.player_page? && !image
-
-          [facts(element, enclosure, item_duration), image]
-        end
-
-        # The file's facts: its declared type and its +medium+ as kind (+audio+, +video+), which types an
-        # untyped file; its own duration, else the item's when it is audio or video.
-        def facts(element, enclosure, item_duration)
           kind = Article::Enclosure::KIND_TYPES.each_key.find { _1.name == element['medium'] }
-          file = Article::Enclosure.new(url: enclosure.url, type: attribute(element, 'type'), kind:)
-          duration = Article::Enclosure.parse_duration(attribute(element, 'duration'))
-          { url: file.url, type: attribute(element, 'type'), kind:, bytes_length: enclosure.bytes_length.nonzero?,
-            duration: duration || (item_duration if file.media?) }.compact
-        end
+          return if kind != :image && Article::Enclosure.new(url:, type:, bytes_length:).player_page?
 
-        def image(node, files)
-          declared = node.at_xpath(ITUNES_IMAGE, NAMESPACES) || node.at_xpath(THUMBNAILS, NAMESPACES)
-          (declared && yield(declared.content)) || hinted_image(files.find { |_facts, image| image }&.first)
-        end
-
-        # The first image file when only its +medium="image"+ makes it one; a file typed as an image becomes
-        # the item image through {Article#initialize}, the owner of that fallback.
-        def hinted_image(facts)
-          return unless facts
-
-          file = Article::Enclosure.new(**facts)
-          file.url unless file.image?
+          duration = Article::Enclosure.parse_duration(attribute(element, 'duration')) || item_duration
+          { url:, type:, kind:, bytes_length:, duration: }.compact
         end
 
         def attribute(element, *names)

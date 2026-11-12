@@ -19,8 +19,9 @@ module Html2rss
             ReviewNewsArticle SatiricalArticle ScholarlyArticle SocialMediaPosting TechArticle
           ].to_set.freeze
 
-          # Schema.org media types and the file kind each proves (`contentUrl` is the file, `embedUrl` the
-          # player), so an untyped `contentUrl` without a media extension is still audio or video.
+          # Schema.org media types and the file kind each proves (`contentUrl` is the file; `embedUrl`, the player,
+          # is never an enclosure nor the item URL), so an untyped `contentUrl` without a media extension is still
+          # audio or video.
           MEDIA_KINDS = {
             'AudioObject' => :audio, 'PodcastEpisode' => :audio, 'VideoObject' => :video, 'Clip' => :video
           }.freeze
@@ -186,12 +187,12 @@ module Html2rss
             nil
           end
 
-          # @return [Html2rss::Url, nil] first absolute http(s) mainEntityOfPage, @id or embedUrl (a player page,
-          #   last), without fragment; never `contentUrl`, which is a file
+          # @return [Html2rss::Url, nil] first absolute http(s) mainEntityOfPage or @id, without fragment; never
+          #   `contentUrl` (a file) or `embedUrl` (a player page)
           def fallback_url
             main = schema_object[:mainEntityOfPage]
             candidates = main.is_a?(Hash) ? [main[:@id], main[:url]] : [main]
-            (candidates + schema_object.values_at(:@id, :embedUrl)).lazy.filter_map { web_url(_1) }.first
+            (candidates << schema_object[:@id]).filter_map { web_url(_1) }.first
           end
 
           # @param value [Object] url candidate

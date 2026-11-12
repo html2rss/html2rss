@@ -116,12 +116,16 @@ module Html2rss
       dedup_from_url || dedup_from_id || dedup_from_guid || hash
     end
 
+    # The item's downloadable files ({Enclosure#file?}): a watch or player page, stream playlist or Flash player
+    # is never an enclosure, so neither feed format ships one.
+    #
     # @return [Array<Html2rss::Article::Enclosure>] normalized enclosure objects
     def enclosures
       return @enclosures unless @enclosures == NOT_SET
 
       @enclosures = Array(@to_h[:enclosures])
                     .map { |enclosure| Enclosure.new(**enclosure) }
+                    .select(&:file?)
                     .freeze
     end
 

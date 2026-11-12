@@ -1,0 +1,16 @@
+---
+case: "Standalone Schema VideoObjects naming only a player (embedUrl, no url, mainEntityOfPage, @id or contentUrl) beside HTML cards linking each watch page: the cards are the items, one per video; a player page is never an item URL, so no embed URL appears."
+expected:
+- https://example.com/videos/watch/harbor-tug-race-highlights
+- https://example.com/videos/watch/old-town-walking-tour
+- https://example.com/videos/watch/winter-swim-at-the-pier
+- https://example.com/videos/watch/lighthouse-keeper-interview
+- https://example.com/videos/watch/ferry-captain-last-voyage
+- https://example.com/videos/watch/rowing-club-spring-regatta
+enclosures:
+  https://example.com/videos/watch/harbor-tug-race-highlights: ~
+  https://example.com/videos/watch/old-town-walking-tour: ~
+  https://example.com/videos/watch/winter-swim-at-the-pier: ~
+  https://example.com/videos/watch/lighthouse-keeper-interview: ~
+  https://example.com/videos/watch/ferry-captain-last-voyage: ~
+  https://example.com/videos/watch/rowing-club-spring-regatta: ~
