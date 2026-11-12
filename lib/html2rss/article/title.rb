@@ -109,7 +109,9 @@ module Html2rss
         # @return [String, nil] +text+ without {INVISIBLE} characters, whitespace runs (newlines included)
         #   collapsed and trimmed, or nil when blank
         def collapse(text)
-          collapsed = text.to_s.gsub(INVISIBLE, '').gsub(/[[:space:]]+/, ' ').strip
+          collapsed = text.to_s
+          collapsed = collapsed.gsub(INVISIBLE, '') if collapsed.match?(INVISIBLE)
+          collapsed = collapsed.gsub(/[[:space:]]+/, ' ').strip
           collapsed unless collapsed.empty?
         end
 
