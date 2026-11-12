@@ -136,7 +136,7 @@ module Html2rss
       end
 
       if result.native_feed? && !options[:force]
-        $stderr.puts "First-party RSS/Atom feed detected at #{result.native_feed}. Use --force to capture anyway." # rubocop:disable Style/StderrPuts
+        $stderr.puts "First-party RSS/Atom/RDF feed detected at #{result.native_feed}. Use --force to capture anyway." # rubocop:disable Style/StderrPuts
         exit(3)
       end
 

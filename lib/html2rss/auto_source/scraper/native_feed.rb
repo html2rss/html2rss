@@ -8,6 +8,10 @@ module Html2rss
       class NativeFeed
         include Enumerable
 
+        # Href shapes that Discovery's path probing can still resolve when the link type is not a feed MIME type.
+        FEEDISH_HREF = /rss|atom|feed|\.xml/i
+        private_constant :FEEDISH_HREF
+
         # @return [Symbol] scraper config key
         def self.options_key = :native_feed
 
@@ -27,13 +31,9 @@ module Html2rss
         def self.articles?(parsed_body)
           return false unless parsed_body.is_a?(Nokogiri::HTML::Document)
 
-          return true if ::Html2rss::Html::FeedLink.from_document(parsed_body).any?
+          return true if Html2rss::Html::FeedLink.from_document(parsed_body).any?
 
-          parsed_body.css('head link[rel~="alternate"][href]').any? do |node|
-            href = node['href'].to_s
-            ::Html2rss::Html::Probe.mime_match?(node['type'], *::Html2rss::Html::Probe::FEED_MIME_TYPES) ||
-              href.match?(/rss|atom|feed|\.xml/i)
-          end
+          parsed_body.css('head link[rel~="alternate"][href]').any? { |node| node['href'].match?(FEEDISH_HREF) }
         end
 
         ##

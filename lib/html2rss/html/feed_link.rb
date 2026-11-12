@@ -21,9 +21,9 @@ module Html2rss
         private
 
         def from_node(node)
-          href = node['href']&.strip
+          href = node['href'].strip # the head selector guarantees an href attribute
           mime_type = feed_mime_type(node['type'])
-          new(href:, mime_type:) unless href.nil? || href.empty? || mime_type.nil?
+          new(href:, mime_type:) unless href.empty? || mime_type.nil?
         end
 
         def feed_mime_type(type)

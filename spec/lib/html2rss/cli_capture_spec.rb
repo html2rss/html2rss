@@ -90,7 +90,7 @@ RSpec.describe Html2rss::CLI, '#capture' do
 
     it 'warns and exits with status 3 without --force', :aggregate_failures do
       expect { run_capture.call(['https://example.com']) }
-        .to output('First-party RSS/Atom feed detected at https://example.com/feed.xml. ' \
+        .to output('First-party RSS/Atom/RDF feed detected at https://example.com/feed.xml. ' \
                    "Use --force to capture anyway.\n").to_stderr
         .and raise_error(SystemExit) { |error| expect(error.status).to eq(3) }
     end

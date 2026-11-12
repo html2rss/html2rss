@@ -172,7 +172,7 @@ module Html2rss
 
       def feed_content_type?
         ct = content_type.downcase
-        return false if ct.empty? || ct.include?('html') || ct.include?('json')
+        return false if ct.include?('html') || ct.include?('json')
 
         # Substring match against Content-Type (not Array#intersect? on a String).
         FEED_CT_MARKERS.any? { |marker| ct.include?(marker) }

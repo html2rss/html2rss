@@ -14,7 +14,7 @@ RSpec.describe Html2rss::Html::FeedLink do
           <link rel="canonical" href="https://example.com/blog">
           <link rel="alternate" type="application/rss+xml" href="https://example.com/feed.xml" title="RSS">
           <link rel="alternate" type="application/atom+xml; charset=utf-8" href="/atom.xml" title="Atom">
-          <link rel="alternate" type="application/rdf+xml" href="/feed.rdf" title="RDF">
+          <link rel="alternate" type="application/rdf+xml" href="  /feed.rdf  " title="RDF">
           <link rel="alternate" type="application/json+oembed" href="https://example.com/oembed.json">
           <link rel="alternate" type="application/rss+xml" href="   " title="empty href">
           <link rel="alternate stylesheet" type="text/css" href="/theme.css">

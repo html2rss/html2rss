@@ -53,48 +53,45 @@ module Html2rss
           end
         end
 
-        def rss_item_hash(item, base_url:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- RSS item mapping
-          url = absolute_url(item.link, base_url:)
-          return unless url
-
-          {
-            id: present(item.guid&.content) || url.to_s,
-            title: present(item.title),
-            description: present(item.description),
-            url:,
-            published_at: item.pubDate,
-            author: present(item.author),
-            categories: item.categories.filter_map { |cat| present(cat.content) }
-          }.compact
+        def rss_item_hash(item, base_url:)
+          article(
+            absolute_url(item.link, base_url:),
+            id: item.guid&.content, title: item.title, description: item.description,
+            published_at: item.pubDate, author: item.author, categories: item.categories.map(&:content)
+          )
         end
 
-        def rdf_item_hash(item, base_url:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- RSS 1.0 item mapping
-          url = absolute_url(item.link, base_url:)
-          return unless url
-
-          {
-            id: present(item.about) || url.to_s,
-            title: present(item.title),
-            description: present(item.description),
-            url:,
-            published_at: item.dc_date,
-            author: present(item.dc_creator),
-            categories: item.dc_subjects.filter_map { |subject| present(subject.content) }
-          }.compact
+        def rdf_item_hash(item, base_url:)
+          article(
+            absolute_url(item.link, base_url:),
+            id: item.about, title: item.title, description: item.description,
+            published_at: item.dc_date, author: item.dc_creator, categories: item.dc_subjects.map(&:content)
+          )
         end
 
-        def atom_entry_hash(entry, base_url:) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity -- Atom entry mapping
-          url = atom_link(entry, base_url:)
-          return unless url
-
-          {
-            id: present(entry.id&.content) || url.to_s,
-            title: present(entry.title&.content),
-            description: present(entry.content&.content || entry.summary&.content),
-            url:,
+        def atom_entry_hash(entry, base_url:)
+          article(
+            atom_link(entry, base_url:),
+            id: entry.id&.content, title: entry.title&.content,
+            description: entry.content&.content || entry.summary&.content,
             published_at: entry.published&.content || entry.updated&.content,
-            author: atom_author(entry),
-            categories: entry.categories.filter_map { |cat| present(cat.term) }
+            author: atom_author(entry), categories: entry.categories.map(&:term)
+          )
+        end
+
+        ##
+        # Single owner of the article hash shape: blank text becomes absent, +id+ falls back to the url.
+        def article(url, id:, title:, description:, published_at:, author:, categories:) # rubocop:disable Metrics/ParameterLists -- the article shape
+          return unless url
+
+          {
+            id: present(id) || url.to_s,
+            title: present(title),
+            description: present(description),
+            url:,
+            published_at:,
+            author: present(author),
+            categories: categories.filter_map { |category| present(category) }
           }.compact
         end
 
@@ -116,11 +113,11 @@ module Html2rss
           return unless value
 
           if base_url
-            Html2rss::Url.from_relative(value, base_url)
+            Url.from_relative(value, base_url)
           else
-            Html2rss::Url.from_absolute(value)
+            Url.from_absolute(value)
           end
-        rescue Html2rss::Url::InvalidUrlError
+        rescue Url::InvalidUrlError
           nil
         end
 

@@ -70,6 +70,23 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(articles.first[:url].to_s).to eq('https://example.com/e/1')
     end
 
+    it 'omits the author of an Atom entry whose name and email are blank' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Feed</title>
+          <entry>
+            <id>urn:example:1</id>
+            <title>Entry</title>
+            <link href="https://example.com/e/1"/>
+            <author><name> </name><email> </email></author>
+          </entry>
+        </feed>
+      XML
+
+      expect(described_class.parse(body).first).not_to have_key(:author)
+    end
+
     it 'returns an empty array for unparseable bodies' do
       expect(described_class.parse('not xml at all <<<')).to eq([])
     end
