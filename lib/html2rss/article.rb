@@ -159,7 +159,7 @@ module Html2rss
 
     def present?(value)
       case value
-      when String, Array, Hash then !value.empty?
+      when String, Array then !value.empty?
       else !value.nil?
       end
     end

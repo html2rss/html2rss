@@ -369,6 +369,26 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'when structured items of the limit are kept by score but not shown on the page' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 3) }
+      let(:body) do
+        items = Array.new(3) do |index|
+          { '@type' => 'NewsArticle', 'headline' => "Archive story number #{index}", 'datePublished' => '2026-11-01',
+            'image' => "https://example.com/img/#{index}.jpg", 'description' => 'Archive summary.',
+            'url' => "https://example.com/news/2026/11/archive-story-#{index}" }
+        end
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => items }
+        cards = Array.new(3) do |index|
+          %(<article><h2><a href="/news/2026/11/page-story-#{index}">Page story number #{index}</a></h2></article>)
+        end
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{cards.join}</main></body></html>)
+      end
+
+      it 'reads the page tiers and puts the shown items first' do
+        expect(articles.map { _1.url.path }).to eq(Array.new(3) { "/news/2026/11/page-story-#{_1}" })
+      end
+    end
+
     context 'with a Schema audio list of the item limit beside a news list' do
       let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_media_list_news.html') }
       let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
