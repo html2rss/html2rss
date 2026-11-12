@@ -292,8 +292,9 @@ module Html2rss
           end
         end
 
-        # A followed feed's item may link to the feed's domain or be its own audio/video file; a link-less
-        # episode takes that file as its URL ({Syndication::Parser#article}).
+        # A followed feed's item is exempt when it links to the feed's domain, or when its URL is its own
+        # audio/video file on any domain, whether the feed linked that file or the item is a link-less episode
+        # that took the file as its URL ({Syndication::Parser#article}).
         def followed_feed_exempt?(article, feed_url)
           return false unless feed_url && article.scraper == Scraper::NativeFeed
 
