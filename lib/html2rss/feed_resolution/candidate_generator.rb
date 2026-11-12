@@ -47,7 +47,7 @@ module Html2rss
       def listing_cap = max > 1 ? max - 1 : 0
 
       # First eligible Discovery candidate: an alternate on another domain (Discovery ranks
-      # audio-hinted ones first) must not displace a same-domain feed or path guess.
+      # audio-hinted ones first on a podcast page) must not displace a same-domain feed or path guess.
       def feed_slot
         return unless parsed_html
 

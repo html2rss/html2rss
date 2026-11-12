@@ -48,6 +48,7 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     let(:html) do
       <<~HTML
         <html><head>
+          <title>Example Podcast</title>
           <link rel="alternate" type="application/rss+xml" title="Site feed" href="/feed.xml">
           <link rel="alternate" type="application/rss+xml" title="Podcast" href="https://feeds.example.net/show.xml">
         </head><body></body></html>

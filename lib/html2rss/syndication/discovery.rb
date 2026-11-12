@@ -6,15 +6,27 @@ module Html2rss
     # Finds an RSS/Atom URL for a page via head alternates and same-origin path guesses.
     #
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
-    # Head alternates go first, those whose title or URL hints audio ({AUDIO_HINT}) ahead of
-    # the rest; they are fetched as +:advertised_feed+ with the page's
-    # {RequestService::FeedAdvertisement}, so a feed the page advertises on another host is
-    # followed (see {RequestService::Policy}). Path guesses stay same-origin.
+    # Head alternates go first, in document order. On a page that shows podcast signals
+    # ({PODCAST_PAGE_HINT} in its URL path or +<title>+, an +og:type+ matching {MEDIA_OG_TYPE},
+    # or a {PODCAST_SCHEMA_TYPE} in its JSON-LD) those whose title or URL hints audio
+    # ({AUDIO_HINT}) go ahead of the rest. Alternates are fetched as +:advertised_feed+ with the
+    # page's {RequestService::FeedAdvertisement}, so a feed the page advertises on another host
+    # is followed (see {RequestService::Policy}). Path guesses stay same-origin.
     module Discovery
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
+      # Words marking a podcast page in its URL path or title; {AUDIO_HINT} adds audio file formats.
+      PODCAST_WORDS = %w[podcast episode audio].freeze
+      # Word-ish podcast hint in a page's URL path or +<title>+ (plural allowed, case-insensitive).
+      PODCAST_PAGE_HINT = /(?<![[:alpha:]])(?:#{PODCAST_WORDS.join('|')})s?(?![[:alpha:]])/i
       # Word-ish audio hint in an alternate's title or URL (Podlove-style per-format podcast feeds).
-      AUDIO_HINT = /(?<![[:alpha:]])(?:podcast|audio|mp3|m4a|aac|opus|episode)s?(?![[:alpha:]])/i
+      AUDIO_HINT = /(?<![[:alpha:]])(?:#{(PODCAST_WORDS + %w[mp3 m4a aac opus]).join('|')})s?(?![[:alpha:]])/i
+      # +og:type+ values (+music.song+, +video.episode+, ...) marking a podcast or media page.
+      MEDIA_OG_TYPE = /\A\s*(?:music|video)\./i
+      # A JSON-LD +@type+ naming podcast content (short name or schema.org URL, alone or in an
+      # array), matched on the script text anywhere in the page without parsing the JSON.
+      PODCAST_SCHEMA_TYPE = %r{"@type"\s*:\s*(?:\[\s*(?:"[^"]*"\s*,\s*)*)?
+                               "(?:https?://schema\.org/)?(?:PodcastSeries|PodcastEpisode|AudioObject)"}ix
 
       class << self
         ##
@@ -49,11 +61,10 @@ module Html2rss
         def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
                                max_probes: nil)
           page = Html2rss::Url.from_absolute(page_url)
-          advertisement = advertisement_for(parsed_body, page)
-          candidates = candidates(page, advertisement, html:, extra_paths:)
-          Log.debug(
-            "Syndication::Discovery: host=#{page.host} candidate_count=#{candidates.size}"
-          )
+          doc = document(parsed_body)
+          advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page)
+          candidates = candidates(page, advertisement, doc:, html:, extra_paths:)
+          Log.debug("Syndication::Discovery: host=#{page.host} candidate_count=#{candidates.size}")
 
           first_feedish_response(
             candidates, request_session:, origin_url: page, advertisement:, max_probes:
@@ -78,7 +89,9 @@ module Html2rss
         # @return [Array<Html2rss::Url>]
         def candidate_urls(page_url:, parsed_body: nil, html: nil, extra_paths: [])
           page = Html2rss::Url.from_absolute(page_url)
-          candidates(page, advertisement_for(parsed_body, page), html:, extra_paths:)
+          doc = document(parsed_body)
+          advertisement = RequestService::FeedAdvertisement.from_document(doc, page_url: page)
+          candidates(page, advertisement, doc:, html:, extra_paths:)
         end
 
         ##
@@ -130,22 +143,29 @@ module Html2rss
           nil
         end
 
-        def candidates(page, advertisement, html:, extra_paths:)
-          (alternate_feed_urls(page, advertisement, html:) + path_guess_urls(page, extra_paths:)).uniq
+        def candidates(page, advertisement, doc:, html:, extra_paths:)
+          (alternate_feed_urls(page, advertisement, doc:, html:) + path_guess_urls(page, extra_paths:)).uniq
         end
 
         # An HTML page without a parsed document still gets an (empty) advertisement.
-        def advertisement_for(parsed_body, page)
-          doc = parsed_body.is_a?(Nokogiri::HTML::Document) ? parsed_body : Nokogiri::HTML::Document.new
-          RequestService::FeedAdvertisement.from_document(doc, page_url: page)
+        def document(parsed_body)
+          parsed_body.is_a?(Nokogiri::HTML::Document) ? parsed_body : Nokogiri::HTML::Document.new
         end
 
-        def alternate_feed_urls(page, advertisement, html:)
+        def alternate_feed_urls(page, advertisement, doc:, html:)
           feeds = advertisement.feeds
-          return AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) }.uniq if feeds.empty?
+          return AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) } if feeds.empty?
+          return feeds.keys unless podcast_page?(doc, page)
 
           audio, other = feeds.keys.partition { |url| AUDIO_HINT.match?("#{feeds.fetch(url)} #{url}") }
           audio + other
+        end
+
+        # The page itself looks like a podcast page: cheap signals only (no request, no JSON parse).
+        def podcast_page?(doc, page)
+          PODCAST_PAGE_HINT.match?(page.path) || PODCAST_PAGE_HINT.match?(doc.title) ||
+            MEDIA_OG_TYPE.match?(doc.at_css('meta[property="og:type"]')&.[]('content')) ||
+            Html::Probe.scripts(doc, Html::Probe::APPLICATION_LD_JSON).any? { PODCAST_SCHEMA_TYPE.match?(_1.text) }
         end
 
         def path_guess_urls(page, extra_paths:)

@@ -47,9 +47,10 @@ RSpec.describe Html2rss::Syndication::Discovery do
       expect(urls.map(&:to_s)).to include('https://example.com/feed')
     end
 
-    it 'prefers an alternate whose title or URL hints audio over the first one', :aggregate_failures do
+    it 'prefers an alternate whose title or URL hints audio on a podcast page', :aggregate_failures do
       doc = Nokogiri::HTML(<<~HTML)
         <html><head>
+          <title>Example Show Podcast</title>
           <link rel="alternate" type="application/rss+xml" title="Example &raquo; Feed" href="/feed/">
           <link rel="alternate" type="application/rss+xml" title="Example &raquo; Comments" href="/comments/feed/">
           <link rel="alternate" type="application/rss+xml" title="Show (MP3 Audio)" href="/feed/a/">
@@ -61,6 +62,72 @@ RSpec.describe Html2rss::Syndication::Discovery do
 
       expect(urls.first(4)).to eq(%w[https://example.com/feed/a/ https://example.com/feed/m4a/
                                      https://example.com/feed/ https://example.com/comments/feed/])
+    end
+
+    it 'keeps the first alternate on a news page that also advertises a podcast feed' do
+      doc = Nokogiri::HTML(<<~HTML)
+        <html><head>
+          <title>Example Daily: local news</title>
+          <meta property="og:type" content="website">
+          <link rel="alternate" type="application/rss+xml" title="News" href="/news.xml">
+          <link rel="alternate" type="application/rss+xml" title="Morning Podcast" href="/podcast.xml">
+          <script type="application/ld+json">{"@type": "NewsArticle", "audio": {"name": "AudioObject"}}</script>
+        </head></html>
+      HTML
+
+      urls = described_class.candidate_urls(page_url: 'https://example.com/news/', parsed_body: doc).map(&:to_s)
+
+      expect(urls.first(2)).to eq(%w[https://example.com/news.xml https://example.com/podcast.xml])
+    end
+
+    {
+      'its URL path' => ['https://example.com/episodes/42', ''],
+      'its title' => ['https://example.com/', '<title>Example AUDIO Archive</title>'],
+      'an og:type of music.*' => ['https://example.com/', '<meta property="og:type" content=" Music.Song">'],
+      'an og:type of video.*' => ['https://example.com/', '<meta property="og:type" content="video.episode">'],
+      'a Schema PodcastSeries' =>
+        ['https://example.com/', '<script type="application/ld+json">{"@type": "PodcastSeries"}</script>'],
+      'a nested Schema PodcastEpisode URL type' =>
+        ['https://example.com/', '<script type="application/ld+json">{"@graph": [{"@type" : ' \
+                                 '["WebPage", "https://schema.org/PodcastEpisode"]}]}</script>'],
+      'a Schema AudioObject' =>
+        ['https://example.com/', '<script type="application/ld+json">{"@type":"audioobject"}</script>']
+    }.each do |signal, (page_url, head)|
+      it "prefers the audio-hinted alternate on a podcast page shown by #{signal}" do
+        doc = Nokogiri::HTML(<<~HTML)
+          <html><head>#{head}
+            <link rel="alternate" type="application/rss+xml" title="News" href="/news.xml">
+            <link rel="alternate" type="application/rss+xml" title="Show" href="/feed/mp3/">
+          </head></html>
+        HTML
+
+        urls = described_class.candidate_urls(page_url:, parsed_body: doc).map(&:to_s)
+
+        expect(urls.first(2)).to eq(%w[https://example.com/feed/mp3/ https://example.com/news.xml])
+      end
+    end
+
+    it 'ignores podcast words outside the page path and non-media og:types', :aggregate_failures do
+      doc = Nokogiri::HTML(<<~HTML)
+        <html><head>
+          <meta property="og:type" content="article.music">
+          <script type="text/plain">{"@type": "PodcastSeries"}</script>
+          <link rel="alternate" type="application/rss+xml" title="News" href="/news.xml">
+          <link rel="alternate" type="application/rss+xml" title="Podcast" href="/podcast.xml">
+        </head></html>
+      HTML
+
+      urls = described_class.candidate_urls(page_url: 'https://example.com/news?type=podcast', parsed_body: doc)
+
+      expect(urls.first.to_s).to eq('https://example.com/news.xml')
+    end
+
+    it 'matches podcast page hints word-ish and case-insensitively', :aggregate_failures do
+      hinted = ['Podcasts', '/episode-12/', 'Example AUDIO']
+      unhinted = ['Audiobooks', 'Podcasting tips', '/mp3/', 'News']
+
+      expect(hinted.grep(described_class::PODCAST_PAGE_HINT)).to eq(hinted)
+      expect(unhinted.grep(described_class::PODCAST_PAGE_HINT)).to be_empty
     end
 
     it 'matches audio hints word-ish and case-insensitively', :aggregate_failures do
@@ -143,6 +210,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
           page_url: 'https://example.com/', html:, extra_paths: ['ht tp://x', '/kept']
         )
       end.not_to raise_error
+      expect(urls).to all(be_a(Html2rss::Url))
       expect(urls.map(&:to_s)).to include('https://example.com/kept')
       expect(urls.map(&:to_s)).not_to include(a_string_including('exa mple'), a_string_including('ht tp'))
     end

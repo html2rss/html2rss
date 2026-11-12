@@ -1,0 +1,6 @@
+---
+case: A news front page advertising its news feed first and a podcast feed second, with no podcast signal on the page itself (URL path, title, og:type or Schema type). Discovery keeps document order, so the news feed's items ship rather than the podcast episodes.
+responses: t7c_news_podcast_alternates
+expected:
+- https://example.com/news/2026/11/river-bridge
+- https://example.com/news/2026/11/winter-market

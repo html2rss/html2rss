@@ -24,7 +24,7 @@ tournament on item count (feed-as-means) — intentional.
 
 ### CandidateGenerator mix
 
-- **Feed slot:** first same-domain `Syndication::Discovery.candidate_urls` entry (alternates, audio-hinted first, precede path guesses); an alternate on another domain is skipped, never left to empty the slot.
+- **Feed slot:** first same-domain `Syndication::Discovery.candidate_urls` entry (alternates, audio-hinted first on a podcast page, precede path guesses); an alternate on another domain is skipped, never left to empty the slot.
 - **Listing fill** (cap = `max - 1` when `max > 1`; `max == 1` → feed only): nav (`taxonomy_path +3`, `content_path +1`) → segment first-wins (`:list` → `:cluster` → `:semantic`, ≥2 same-origin primary links) → `LISTING_PATHS`.
 - Same-page / same-registrable-domain filters; feed never pads into listing slots.
 
