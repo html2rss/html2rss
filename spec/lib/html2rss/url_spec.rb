@@ -532,6 +532,32 @@ RSpec.describe Html2rss::Url do
     end
   end
 
+  describe '.resolve_web' do
+    it 'resolves a reference, padded or relative, to its absolute http(s) URL', :aggregate_failures do
+      expect(described_class.resolve_web(' /a.mp3 ', 'https://example.com/feed/').to_s).to eq('https://example.com/a.mp3')
+      expect(described_class.resolve_web('//cdn.example.net/a.mp3', 'https://example.com/').to_s)
+        .to eq('https://cdn.example.net/a.mp3')
+      expect(described_class.resolve_web('http://example.net/a.mp3').to_s).to eq('http://example.net/a.mp3')
+    end
+
+    it 'is nil for a blank, unparseable, base-less relative or non-http(s) reference', :aggregate_failures do
+      [nil, '', ' ', 'a.mp3', 'javascript:alert(1)//a.mp3', 'data:audio/mpeg;base64,AAAA', 'ftp://example.com/a.mp3',
+       'mailto:a@example.com'].each { expect(described_class.resolve_web(_1)).to be_nil }
+      expect([nil, '', ' '].map { described_class.resolve_web(_1, 'https://example.com/') }).to eq([nil, nil, nil])
+      expect(described_class.resolve_web('javascript:alert(1)', 'https://example.com/')).to be_nil
+      expect(described_class.resolve_web('http://exa mple.com/', 'https://example.com/')).to be_nil
+    end
+  end
+
+  describe '#web?' do
+    it 'is true only for http and https' do
+      web = %w[http://example.com/ https://example.com/ ftp://example.com/ mailto:a@example.com]
+            .map { described_class.from_absolute(_1).web? }
+
+      expect(web).to eq([true, true, false, false])
+    end
+  end
+
   describe '.for_channel' do
     context 'with valid absolute URLs' do
       {

@@ -36,6 +36,17 @@ RSpec.describe Html2rss::Article do
         expect(described_class.new(enclosures: [file.call('a.mp3'), file.call('n.pdf')]).image).to be_nil
       end
 
+      it 'has no image that is no http(s) URL', :aggregate_failures do
+        expect(described_class.new(image: 'ftp://example.com/d.jpg').image).to be_nil
+        expect(described_class.new(image: 'mailto:a@example.com').image).to be_nil
+      end
+
+      it 'memoizes the image' do
+        article = described_class.new(image: ' https://example.com/d.jpg ')
+
+        expect(article.image).to equal(article.image)
+      end
+
       it 'keeps only downloadable files, never a watch page, stream playlist or Flash player' do
         article = described_class.new(enclosures: %w[watch/42 a.mp3 live/index.m3u8 player.swf b.jpg n.pdf].map(&file))
 

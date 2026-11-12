@@ -14,7 +14,9 @@ module Html2rss
     # An item +itunes:duration+ is the duration of every file that declares none ({Article::Enclosure} keeps it
     # only on audio and video). The item image is its +itunes:image+ (+href+, or the URL as its text), else its
     # first +media:thumbnail+ (also inside +media:group+); without either, {Article} makes its first image file
-    # the item image. Sizes, durations and kinds come from {Article::Enclosure}. Items match by namespace
+    # the item image. Every declared URL resolves against the feed URL through {Url.resolve_web}, so a
+    # +javascript:+, +data:+ or +ftp:+ file or image is dropped, never shipped nor made an item URL ({Parser}).
+    # Sizes, durations and kinds come from {Article::Enclosure}. Items match by namespace
     # ({ITEMS}); a document without any media marker ({MEDIA_MARKERS}) is not parsed a second time.
     module ItemMedia
       # Namespace prefixes the item queries bind.
@@ -43,17 +45,16 @@ module Html2rss
         ##
         # @param body [String] the feed document
         # @param count [Integer] items the +rss+ library read from +body+
-        # @param url [String, Html2rss::Url, nil] the feed URL, for the log when items cannot be matched
-        # @yieldparam raw [String, nil] a declared URL, possibly padded with whitespace
-        # @yieldreturn [Html2rss::Url, nil] that URL made absolute, or nil when unusable
+        # @param url [String, Html2rss::Url, nil] the feed URL (nil when unknown): the base of relative file and
+        #   image URLs, and named in the log when items cannot be matched
         # @return [Array<Hash{Symbol => Object}>] per item, in document order, its +enclosures+ and +image+
         #   when present; all empty when the document declares no media or its item elements do not
         #   number +count+ (logged)
-        def for_items(body, count:, url: nil, &)
+        def for_items(body, count:, url:)
           return Array.new(count) { {} } unless MEDIA_MARKERS.match?(body)
 
           nodes = Nokogiri::XML(body).xpath(ITEMS, NAMESPACES)
-          return nodes.map { |node| item_media(node, &) } if nodes.size == count
+          return nodes.map { |node| item_media(node, url) } if nodes.size == count
 
           warn_mismatch(nodes.size, count, url)
           Array.new(count) { {} }
@@ -61,20 +62,21 @@ module Html2rss
 
         private
 
-        def item_media(node, &resolve)
+        def item_media(node, feed_url)
           duration = Article::Enclosure.parse_duration(node.at_xpath('itunes:duration', NAMESPACES)&.text)
-          files = node.xpath(ENCLOSURES, NAMESPACES).filter_map { file(_1, duration, &resolve) }
+          files = node.xpath(ENCLOSURES, NAMESPACES).filter_map { file(_1, duration, feed_url) }
           declared = node.at_xpath(ITUNES_IMAGE, NAMESPACES) || node.at_xpath(THUMBNAILS, NAMESPACES)
-          { enclosures: files.uniq { _1[:url].to_s }, image: declared && yield(declared.content) }
+          { enclosures: files.uniq { _1[:url].to_s }, image: declared && Url.resolve_web(declared.content, feed_url) }
             .reject { |_, value| value.nil? || value == [] }
         end
 
         # The file's facts: its declared type, its +medium+ as kind, its byte length and its own duration, else
         # the item's.
         #
-        # @return [Hash{Symbol => Object}, nil] nil without a URL or for a watch or player page not marked an image
-        def file(element, item_duration)
-          return unless (url = yield(attribute(element, 'url', 'href')))
+        # @return [Hash{Symbol => Object}, nil] nil without an http(s) URL or for a watch or player page not marked
+        #   an image
+        def file(element, item_duration, feed_url)
+          return unless (url = Url.resolve_web(attribute(element, 'url', 'href'), feed_url))
 
           type = attribute(element, 'type')
           bytes_length = Article::Enclosure.parse_size(attribute(element, 'length', 'fileSize'))

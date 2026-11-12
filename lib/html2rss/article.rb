@@ -90,11 +90,14 @@ module Html2rss
       @url = http_url(@to_h[:url]) || Url.sanitize(@to_h[:url])
     end
 
+    # The item image a feed reader and the description's +img+ load: an http(s) URL ({Url#web?}), never an
+    # +ftp:+ or +mailto:+ one.
+    #
     # @return [Url, nil]
     def image
       return @image unless @image == NOT_SET
 
-      @image = Url.sanitize(@to_h[:image])
+      @image = Url.sanitize(@to_h[:image]).then { _1 if _1&.web? }
     end
 
     # @return [String, nil]
@@ -181,7 +184,7 @@ module Html2rss
 
     # A {Url} is always normalized; http(s) ones need no re-parse. Others go through +Url.sanitize+.
     def http_url(value)
-      value if value.is_a?(Url) && Url::SUPPORTED_SCHEMES.include?(value.scheme)
+      value if value.is_a?(Url) && value.web?
     end
 
     ##

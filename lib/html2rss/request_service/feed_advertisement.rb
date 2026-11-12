@@ -34,12 +34,9 @@ module Html2rss
       end
 
       def self.feed_url(href, page)
-        url = Url.from_relative(href, page)
-        return unless Url::SUPPORTED_SCHEMES.include?(url.scheme)
+        return unless (url = Url.resolve_web(href, page))
 
         Policy.same_origin?(url, page) ? url : url.with_scheme('https')
-      rescue Url::InvalidUrlError
-        nil
       end
       private_class_method :feed_url
 

@@ -256,11 +256,12 @@ RSpec.describe Html2rss::Article::Enclosure do
       it { expect(subject.bytes_length).to eq 0 }
     end
 
-    it 'rejects a missing or relative URL', :aggregate_failures do
-      relative = instance_double(Html2rss::Url, absolute?: false)
-
-      expect { described_class.new(url: nil) }.to raise_error(ArgumentError, /absolute URL/)
-      expect { described_class.new(url: relative) }.to raise_error(ArgumentError, /absolute URL/)
+    it 'rejects a missing, relative or non-http(s) URL', :aggregate_failures do
+      expect { described_class.new(url: nil) }.to raise_error(ArgumentError, /absolute http\(s\) URL/)
+      ['a.mp3', 'javascript:alert(1)//a.mp3', 'data:audio/mpeg;base64,AAAA', 'ftp://example.com/a.mp3'].each do |ref|
+        expect { described_class.new(url: Html2rss::Url.from_relative(ref, '')) }
+          .to raise_error(ArgumentError, /absolute http\(s\) URL/)
+      end
     end
 
     it 'defaults the byte length to 0' do
@@ -345,7 +346,7 @@ RSpec.describe Html2rss::Article::Enclosure do
     context 'when URL is nil' do
       let(:url) { nil }
 
-      it { expect { subject }.to raise_error(ArgumentError, 'An Enclosure requires an absolute URL') }
+      it { expect { subject }.to raise_error(ArgumentError, 'An Enclosure requires an absolute http(s) URL') }
     end
 
     context 'when URL is relative' do

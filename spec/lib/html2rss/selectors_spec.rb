@@ -592,6 +592,23 @@ RSpec.describe Html2rss::Selectors do
 
         expect(value).to be_nil
       end
+
+      it 'returns nil when the enclosure value is no http(s) URL', :aggregate_failures do
+        ['javascript:alert(1)//a.mp3', 'data:audio/mpeg;base64,AAAA', 'ftp://example.com/a.mp3'].each do |static|
+          selectors[:enclosure] = { extractor: 'static', static:, content_type: 'audio/mpeg' }
+
+          expect(described_class.new(response, selectors:, time_zone: 'UTC').select(:enclosure, item)).to be_nil
+        end
+      end
+
+      it 'keeps a non-web href out of the article and its description', :aggregate_failures do
+        page = Html2rss::RequestService::Response.new(url: response.url, headers: response.headers,
+                                                      body: body.sub('/a.mp3', 'javascript:alert(1)//a.mp3'))
+        article = described_class.new(page, selectors:, time_zone: 'UTC').articles.first
+
+        expect(article.enclosures).to eq([])
+        expect(Html2rss::FeedBuilder::ItemPresentation.description_for(article).to_s).not_to include('javascript:')
+      end
     end
   end
 

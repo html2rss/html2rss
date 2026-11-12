@@ -33,6 +33,13 @@ RSpec.describe Html2rss::FeedBuilder::ItemPresentation do
       expect(html.scan(/<(img|audio|video)\b/)).to eq([['audio']])
       expect(html).to include('src="https://example.com/b.mp3"')
     end
+
+    it 'renders no media element whose source is no http(s) URL' do
+      article = Html2rss::Article.new(title: 'T', url: 'https://example.com/p', description: 'Body',
+                                      image: 'ftp://example.com/cover.jpg')
+
+      expect(described_class.description_for(article)).to eq('Body')
+    end
   end
 
   describe '.rss_enclosure_for' do

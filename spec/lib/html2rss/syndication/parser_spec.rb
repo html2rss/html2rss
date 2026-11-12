@@ -183,6 +183,19 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(described_class.parse(body).articles.first[:id]).to eq('https://example.com/a')
     end
 
+    it 'resolves a relative RSS 1.0 (RDF) item link against the feed URL' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+          <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link><description>d</description></channel>
+          <item><title>A</title><link>/posts/a</link></item>
+        </rdf:RDF>
+      XML
+
+      expect(described_class.parse(body, base_url: 'https://example.com/feed.rdf').articles.first[:url].to_s)
+        .to eq('https://example.com/posts/a')
+    end
+
     it 'carries RSS 1.0 (RDF) item media files' do
       body = <<~XML
         <?xml version="1.0"?>
@@ -480,6 +493,26 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(articles.map { _1[:url].to_s }).to eq(%w[https://podhost.example.net/show/ep5
                                                       https://feeds.example.net/media/4.mp4])
       expect(articles.map { _1[:id] }).to eq(%w[https://podhost.example.net/show/ep5 show-ep4])
+    end
+
+    it 'takes no link, file or image that is no http(s) URL, so it never makes the item URL', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>Show</title>
+          <item><title>Script link</title><link>javascript:alert(1)</link><guid isPermaLink="false">e1</guid>
+            <enclosure url="javascript:alert(1)//a.mp3" type="audio/mpeg"/>
+            <media:content url="data:audio/mpeg;base64,AAAA" medium="audio"/>
+            <media:content url="ftp://example.com/a.mp3" medium="audio"/>
+            <enclosure url="https://media.example.net/1.mp3" type="audio/mpeg"/></item>
+          <item><title>Ftp file</title><guid isPermaLink="false">e2</guid>
+            <enclosure url="ftp://example.com/2.mp3" type="audio/mpeg"/></item>
+        </channel></rss>
+      XML
+
+      articles = described_class.parse(body, base_url: 'https://feeds.example.net/show.xml').articles
+
+      expect(articles.map { _1[:url].to_s }).to eq(%w[https://media.example.net/1.mp3])
+      expect(articles.first[:enclosures].map { _1[:url].to_s }).to eq(%w[https://media.example.net/1.mp3])
     end
 
     it 'takes an Atom enclosure link as the URL only of an entry without another link', :aggregate_failures do

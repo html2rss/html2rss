@@ -663,6 +663,74 @@ RSpec.describe Html2rss::FeedPipeline do
       end
     end
 
+    # A feed's files are untrusted: only an http(s) one becomes an enclosure, player, attachment or item URL.
+    feed_entries = { 'a direct feed URL' => 'https://example.com/news/feed.xml',
+                     'the page following its native feed' => 'https://example.com/news/' }
+    {
+      'RSS enclosure and media:content' => <<~XML,
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>Feed</title>
+          <link>https://example.com/</link><description>d</description>
+          <item><title>Harbor council approves the new ferry schedule</title><link>https://example.com/posts/1</link>
+            <enclosure url="javascript:alert(1)//a.mp3" type="audio/mpeg" length="5"/>
+            <media:content url="data:audio/mpeg;base64,AAAA" medium="audio"/></item>
+          <item><title>Harbor council episode without a page</title><guid isPermaLink="false">e2</guid>
+            <enclosure url="ftp://example.com/a.mp3" type="audio/mpeg" length="5"/></item>
+        </channel></rss>
+      XML
+      'Atom enclosure link' => <<~XML
+        <?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom"><title>Feed</title><id>https://example.com/</id>
+          <updated>2026-01-01T00:00:00Z</updated>
+          <entry><title>Harbor council approves the new ferry schedule</title><id>tag:example.com,2026:1</id><updated>2026-01-01T00:00:00Z</updated>
+            <link href="https://example.com/posts/1"/>
+            <link rel="enclosure" href="javascript:alert(1)//a.mp3" type="audio/mpeg" length="5"/></entry>
+          <entry><title>Harbor council episode without a page</title><id>tag:example.com,2026:2</id><updated>2026-01-01T00:00:00Z</updated>
+            <link rel="enclosure" href="data:audio/mpeg;base64,AAAA" type="audio/mpeg" length="5"/></entry>
+        </feed>
+      XML
+    }.each do |declared, feed_body|
+      context "when a feed declares only non-web files as #{declared}" do # rubocop:disable RSpec/MultipleMemoizedHelpers
+        let(:feed_type) { feed_body.include?('<rss') ? 'application/rss+xml' : 'application/atom+xml' }
+        let(:page_body) do
+          '<html><head><title>News</title>' \
+            "<link rel=\"alternate\" type=\"#{feed_type}\" href=\"/news/feed.xml\"></head>" \
+            '<body><a href="/posts/1">Harbor council approves the new ferry schedule</a></body></html>'
+        end
+        let(:responses) do
+          {
+            'https://example.com/news/' => build_response.call(body: page_body, url: 'https://example.com/news/'),
+            'https://example.com/news/feed.xml' =>
+              build_response.call(body: feed_body, url: 'https://example.com/news/feed.xml',
+                                  headers: { 'content-type' => feed_type })
+          }
+        end
+        let(:result_for) do
+          ->(url) { described_class.new({ strategy: :default, channel: { url: }, auto_source: {} }).to_result }
+        end
+
+        before do
+          allow(Html2rss::RequestService).to receive(:execute) do |ctx, strategy:|
+            ctx.budget.consume!
+            raise "Unexpected strategy #{strategy}" unless strategy == :default
+
+            responses.fetch(ctx.url.to_s) { raise Html2rss::RequestService::ConnectionFailed, ctx.url.to_s }
+          end
+        end
+
+        feed_entries.each do |entry, entry_url|
+          it "ships no such file, player or item from #{entry}", :aggregate_failures do
+            result = result_for.call(entry_url)
+            rss = result.to_rss
+
+            expect(rss.items.map(&:link)).to eq(['https://example.com/posts/1'])
+            expect(rss.to_s).not_to match(/<enclosure|&lt;(?:audio|video)|javascript:|data:audio|ftp:/)
+            expect(result.to_json_feed[:items].map { _1[:attachments] }).to eq([nil])
+          end
+        end
+      end
+    end
+
     # The t4 corpus page names its hosting platform as meta author; its podcast feed states the show's.
     context 'when a podcast page advertises its native feed' do # rubocop:disable RSpec/MultipleMemoizedHelpers
       let(:dir) { 'spec/fixtures/auto_source/corpus/t4_podcast_feed_enclosures' }

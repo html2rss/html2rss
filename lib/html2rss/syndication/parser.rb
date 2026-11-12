@@ -12,7 +12,8 @@ module Html2rss
     # An item's URL is its link (an Atom entry's +rel="alternate"+ link or a link without +rel+). A
     # link-less item (a podcast episode on a hosting platform) takes its guid, Atom +id+ or RDF +about+
     # when that is an absolute http(s) URL, else its first audio or video file; an item with none of
-    # these has no URL and is skipped.
+    # these has no URL and is skipped. Links and files resolve against the feed URL through
+    # {Url.resolve_web}: a +javascript:+, +data:+ or +ftp:+ one counts as absent, so no item URL is one.
     module Parser
       class << self
         ##
@@ -45,7 +46,7 @@ module Html2rss
 
         def articles_from(feed, body, base_url:)
           items = items_from(feed)
-          media = ItemMedia.for_items(body, count: items.size, url: base_url) { |raw| absolute_url(raw, base_url:) }
+          media = ItemMedia.for_items(body, count: items.size, url: base_url)
 
           items.zip(media).filter_map { |item, item_media| article_hash(item, item_media, base_url:) }
         end
@@ -68,7 +69,7 @@ module Html2rss
 
         def rss_item_hash(item, media, base_url:)
           article(
-            absolute_url(item.link, base_url:), media,
+            Url.resolve_web(item.link, base_url), media,
             id: item.guid&.content, title: item.title, description: item.description,
             published_at: item.pubDate, author: item.author, categories: item.categories.map(&:content)
           )
@@ -76,7 +77,7 @@ module Html2rss
 
         def rdf_item_hash(item, media, base_url:)
           article(
-            absolute_url(item.link, base_url:), media,
+            Url.resolve_web(item.link, base_url), media,
             id: item.about, title: item.title, description: item.description,
             published_at: item.dc_date, author: item.dc_creator, categories: item.dc_subjects.map(&:content)
           )
@@ -93,10 +94,12 @@ module Html2rss
 
         ##
         # Single owner of the article hash shape: blank text becomes absent, +id+ falls back to the url,
-        # +media+ adds the item's +enclosures+ and +image+. The url is the item's link, else its id when
-        # that is an absolute http(s) URL ({#web_url}), else its first audio or video file.
+        # +media+ adds the item's +enclosures+ and +image+. The url is the item's http(s) link, else its id
+        # when that is an absolute http(s) URL, whatever +isPermaLink+ says (+false+ only denies a guaranteed
+        # permalink, and such a guid is mostly the item's page on the publisher or its host; a relative, +urn:+
+        # or +tag:+ id names no page), else its first audio or video file.
         def article(link, media, id:, title:, description:, published_at:, author:, categories:) # rubocop:disable Metrics/ParameterLists -- the article shape
-          return unless (url = link || web_url(id) || media_url(media))
+          return unless (url = link || Url.resolve_web(id) || media_url(media))
 
           {
             id: present(id) || url.to_s,
@@ -109,15 +112,6 @@ module Html2rss
           }.compact
         end
 
-        # A link-less item's guid (Atom +id+, RDF +about+) when it is an absolute http(s) URL, whatever
-        # +isPermaLink+ says: +false+ only denies a guaranteed permalink, and such a guid is mostly the
-        # item's page on the publisher or its host. A relative, +urn:+ or +tag:+ id names no page.
-        def web_url(id)
-          Url.from_absolute_web(id)
-        rescue Url::InvalidUrlError
-          nil
-        end
-
         def media_url(media)
           media.fetch(:enclosures, []).find { |facts| Article::Enclosure.new(**facts).media? }&.fetch(:url)
         end
@@ -126,7 +120,7 @@ module Html2rss
 
         def atom_link(entry, base_url:)
           link = entry.links.find { |node| node.rel.nil? || node.rel == 'alternate' }
-          absolute_url(link&.href, base_url:)
+          Url.resolve_web(link&.href, base_url)
         end
 
         def atom_author(entry)
@@ -134,15 +128,6 @@ module Html2rss
           return unless author
 
           present(author.name&.content) || present(author.email&.content)
-        end
-
-        def absolute_url(raw, base_url:)
-          value = present(raw)
-          return unless value
-
-          base_url ? Url.from_relative(value, base_url) : Url.from_absolute(value)
-        rescue Url::InvalidUrlError
-          nil
         end
 
         def present(value)

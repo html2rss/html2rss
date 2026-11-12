@@ -59,9 +59,9 @@ module Html2rss
           # @param type [String, nil] declared MIME type; nil lets {Article::Enclosure#type} guess it
           # @param base_url [String, Html2rss::Url, nil]
           # @param kind [Symbol, nil] +:audio+ or +:video+ when the source proves the file's kind
-          # @return [Hash{Symbol => Object}, nil] nil unless +src+ resolves to an http(s) URL
+          # @return [Hash{Symbol => Object}, nil] nil unless +src+ resolves to an http(s) URL ({Url.resolve_web})
           def from_media(src, type, base_url, kind: nil)
-            return unless (url = web_url(src, base_url))
+            return unless (url = Url.resolve_web(src, base_url))
 
             { url:, type:, kind: }.compact
           end
@@ -79,7 +79,7 @@ module Html2rss
           private
 
           def from_image(src, base_url)
-            return unless (url = web_url(src, base_url))
+            return unless (url = Url.resolve_web(src, base_url))
 
             { url:, type: Article::Enclosure.guess_content_type_from_url(url, default: 'image/jpeg') }
           end
@@ -89,19 +89,9 @@ module Html2rss
           end
 
           def from_anchor(href, base_url)
-            return unless file_link?(href) && (url = web_url(href, base_url))
+            return unless file_link?(href) && (url = Url.resolve_web(href, base_url))
 
             { url: }
-          end
-
-          # @return [Html2rss::Url, nil] the absolute URL of +ref+ when it is http(s)
-          def web_url(ref, base_url)
-            return unless ref.to_s.match?(/\S/)
-
-            url = Url.from_relative(ref, base_url)
-            url if Url::SUPPORTED_SCHEMES.include?(url.scheme)
-          rescue Url::InvalidUrlError
-            nil
           end
         end
       end

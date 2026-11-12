@@ -29,7 +29,8 @@ module Html2rss
               node.unlink unless absolutize_src(node)
             elsif PLAYERS.include?(node_name)
               # Children are transformed after their parent, so child sources are only checked here.
-              node.unlink unless absolutize_src(node) || node.css('source').any? { playable_url(_1['src']) }
+              playable = absolutize_src(node) || node.css('source').any? { Url.resolve_web(_1['src'], @base_url) }
+              node.unlink unless playable
             end
           end
 
@@ -38,18 +39,9 @@ module Html2rss
           # Rewrites +src+ to its absolute playable URL (Nokogiri stores its +to_s+) or removes it;
           # returns the URL kept, if any.
           def absolutize_src(node)
-            url = playable_url(node['src'])
+            url = Url.resolve_web(node['src'], @base_url)
             url ? node['src'] = url : node.remove_attribute('src')
             url
-          end
-
-          def playable_url(src)
-            return unless /\S/.match?(src)
-
-            url = Url.from_relative(src, @base_url)
-            url if Url::SUPPORTED_SCHEMES.include?(url.scheme)
-          rescue Url::InvalidUrlError
-            nil
           end
         end
       end

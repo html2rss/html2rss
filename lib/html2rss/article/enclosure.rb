@@ -101,7 +101,8 @@ module Html2rss
         end
       end
 
-      # @param url [Html2rss::Url] absolute enclosure URL
+      # @param url [Html2rss::Url] absolute http(s) enclosure URL ({Url#web?}); sources resolve declared references
+      #   with {Url.resolve_web} and drop the rest, so no feed format ships a +javascript:+, +data:+ or +ftp:+ file
       # @param type [String, nil] optional enclosure MIME type
       # @param bytes_length [Integer, nil] enclosure length in bytes; nil when unknown
       # @param duration [Integer, nil] playback length in seconds, kept only for an audio or video file ({#media?});
@@ -109,7 +110,7 @@ module Html2rss
       # @param kind [Symbol, nil] +:audio+, +:video+ or +:image+ when its source proves the file's kind
       #   ({KIND_TYPES}); nil when unknown
       def initialize(url:, type: nil, bytes_length: nil, duration: nil, kind: nil)
-        raise ArgumentError, 'An Enclosure requires an absolute URL' if !url || !url.absolute?
+        raise ArgumentError, 'An Enclosure requires an absolute http(s) URL' unless url&.web?
 
         @url = url
         @bytes_length = bytes_length || 0
@@ -128,7 +129,7 @@ module Html2rss
       # @return [Integer, nil] playback length in seconds of an audio or video file; nil for any other file
       attr_reader :duration
 
-      # @return [Html2rss::Url] absolute enclosure URL
+      # @return [Html2rss::Url] absolute http(s) enclosure URL
       attr_reader :url
 
       # @return [Boolean] whether the file is audio

@@ -4,11 +4,7 @@ require 'spec_helper'
 
 RSpec.describe Html2rss::Syndication::ItemMedia do
   describe '.for_items' do
-    subject(:media) do
-      described_class.for_items(body, count:) do |raw|
-        Html2rss::Url.from_relative(raw, 'https://example.com/feed/') if raw in String
-      end
-    end
+    subject(:media) { described_class.for_items(body, count:, url: 'https://example.com/feed/') }
 
     let(:count) { 1 }
     let(:enclosures) do
@@ -81,6 +77,28 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
 
       it 'skips files without a URL and omits a blank type, a zero size and an unknown duration' do
         expect(enclosures).to eq([[{ url: 'https://example.com/b.mp3' }]])
+      end
+    end
+
+    context 'with files and images that are no web URL' do
+      let(:count) { 2 }
+      let(:body) do
+        <<~XML
+          <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"
+               xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>C</title>
+            <item><enclosure url="javascript:alert(1)//a.mp3" type="audio/mpeg" length="5"/>
+              <media:content url="data:audio/mpeg;base64,AAAA" medium="audio"/>
+              <media:group><media:content url="ftp://example.com/g.mp3" medium="audio"/></media:group>
+              <itunes:image href="javascript:alert(1)//i.jpg"/></item>
+            <item><enclosure url="//cdn.example.net/a.mp3" type="audio/mpeg"/>
+              <media:thumbnail url="data:image/png;base64,AAAA"/></item>
+          </channel></rss>
+        XML
+      end
+
+      it 'keeps only http(s) files and images' do
+        expect(media).to eq([{}, { enclosures: [{ url: Html2rss::Url.from_absolute('https://cdn.example.net/a.mp3'),
+                                                  type: 'audio/mpeg' }] }])
       end
     end
 
