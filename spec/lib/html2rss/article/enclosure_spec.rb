@@ -11,7 +11,7 @@ RSpec.describe Html2rss::Article::Enclosure do
       'https://example.com/image.svg' => 'image/svg+xml',
       'https://example.com/image.webp' => 'image/webp',
       'https://example.com/image' => 'application/octet-stream',
-      'https://api.PAGE.com/wp-content/photo.jpg?quality=85&w=925&h=617&crop=1&resize=925,617' => 'image/jpeg'
+      'https://img.example.net/wp-content/photo.jpg?quality=85&w=925&h=617&crop=1&resize=925,617' => 'image/jpeg'
     }.each_pair do |url, expected|
       it { expect(described_class.guess_content_type_from_url(Html2rss::Url.from_relative(url, 'https://example.com'))).to eq expected }
     end

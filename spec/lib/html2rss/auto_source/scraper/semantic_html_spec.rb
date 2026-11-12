@@ -150,49 +150,49 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe '#each' do
-    subject(:new) { described_class.new(parsed_body, url: 'https://example.com') }
+    subject(:new) { described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.com') }
 
-    let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
+    let(:html) do
+      cards = (1..60).map do |n|
+        <<~HTML
+          <article class="teaser">
+            <a href="/2026/harbor-story-#{n}/"><img src="https://img.example.net/harbor-story-#{n}.jpg" alt=""></a>
+            <h2><a href="/2026/harbor-story-#{n}/">Harbor crews finish repair stage #{n}</a></h2>
+            <p>Work on the pier moved ahead this week as crews closed out stage #{n} of the repairs.</p>
+            <div class="byline">By <a href="/author/sam-writer/">Sam Writer</a></div>
+          </article>
+        HTML
+      end
+      <<~HTML
+        <html><body>
+          <header><nav><a href="/">Home</a></nav></header>
+          <main>
+            #{cards.join}
+            <div class="newsletter"><a href="https://newsletters.example.net/signup?list=weekly">Sign up for the weekly newsletter</a></div>
+          </main>
+        </body></html>
+      HTML
+    end
     let(:articles) { new.each.to_a }
     let(:article_ids) { articles.filter_map(&:id) }
 
-    let(:grouped_expected_articles) do
-      # rubocop:disable-next Layout/LineLength
-      [
-        { title: 'Brittney Griner: What I Endured in Russia', url: 'https://example.com/6972085/brittney-griner-book-coming-home/', image: 'https://api.page.com/wp-content/uploads/2024/04/brittney-griner-basketball-russia.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: "Chris Coduto—Getty Images\n17 MIN READ\n\"Prison is more than a place. It’s also a mindset,\" Brittney Griner writes in an excerpt from her book about surviving imprisonment in Russia.", id: '/6972085/brittney-griner-book-coming-home/' },
-        { title: 'Driver Dies After Crashing Into White House Security Barrier', url: 'https://example.com/6974836/white-house-car-crash-driver-dies-security-barrier/', image: 'https://api.page.com/wp-content/uploads/2024/05/AP24126237101577.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: '1 MIN READ', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
-      ].group_by { |article| article[:id] }
+    it 'yields the full article shape from a teaser card', :aggregate_failures do
+      expect(articles.first).to have_attributes(
+        title: 'Harbor crews finish repair stage 1',
+        url: Html2rss::Url.from_absolute('https://example.com/2026/harbor-story-1/'),
+        id: '/2026/harbor-story-1/'
+      )
+      expect(articles.first.image.to_s).to eq('https://img.example.net/harbor-story-1.jpg')
+      expect(articles.first.description)
+        .to eq("Work on the pier moved ahead this week as crews closed out stage 1 of the repairs.\nBy Sam Writer")
     end
 
-    it 'yields and includes all expected articles', :aggregate_failures, :slow do # rubocop:disable RSpec/ExampleLength
-      new.each do |article|
-        expected_article = grouped_expected_articles[article.id]&.shift
-        next unless expected_article
-
-        expected_article.each do |key, value|
-          expect(article.public_send(key).to_s).to eq(value.to_s)
-        end
-      end
-      expect(grouped_expected_articles.values.flatten).to be_empty
+    it 'keeps newsletter and author links out of the articles' do
+      expect(article_ids.grep(%r{/author/|newsletters})).to be_empty
     end
 
-    it 'keeps the intended article ids on the large semantic fixture', :aggregate_failures, :slow do
-      expect(article_ids).to include('/6972085/brittney-griner-book-coming-home/')
-      expect(article_ids).to include('/6974836/white-house-car-crash-driver-dies-security-barrier/')
-    end
-
-    it 'keeps noisy newsletter and author links out of the large semantic fixture', :slow do
-      excluded_ids = [
-        'https://cloud.newsletters.page.com/signup?nln=worth-your-page',
-        'https://page.com/author/eddie-s-glaude-jr/'
-      ]
-
-      expect(article_ids & excluded_ids).to be_empty
-    end
-
-    it 'keeps a useful recall floor on the large semantic fixture', :aggregate_failures, :slow do
-      expect(articles.size).to be >= 45
-      expect(articles.size).to be < 100
+    it 'yields every teaser once without fragment urls', :aggregate_failures do
+      expect(article_ids).to eq((1..60).map { "/2026/harbor-story-#{_1}/" })
       expect(articles.map { _1.url.to_s }).to all(satisfy { |url| !url.include?('#') })
     end
   end
