@@ -58,10 +58,15 @@ module Html2rss
       # @return [Symbol] scope the element's subtree inherits
       def self.chrome_scope(element, scope)
         tag = Html::Probe.tag(element)
-        return :chrome if scope == :chrome || ALWAYS_CHROME.include?(tag) || chrome_role?(element['role'], scope)
-        return :chrome if (scope == :page && SCOPED_CHROME.include?(tag)) || pager?(element, tag)
+        return :chrome if scope == :chrome || chrome?(element, tag, scope)
 
         SECTIONING.include?(tag) ? :sectioned : scope
+      end
+
+      def self.chrome?(element, tag, scope)
+        return true if ALWAYS_CHROME.include?(tag) || chrome_role?(element['role'], scope)
+
+        (scope == :page && SCOPED_CHROME.include?(tag)) || pager?(element, tag)
       end
 
       def self.chrome_role?(role, scope)
@@ -76,7 +81,7 @@ module Html2rss
 
         tag == 'nav' && !element.at_xpath(PAGER_LINK_XPATH).nil?
       end
-      private_class_method :chrome_role?, :pager?
+      private_class_method :chrome?, :chrome_role?, :pager?
     end
   end
 end
