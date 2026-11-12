@@ -213,13 +213,37 @@ RSpec.describe Html2rss::SST::Normalizer do
       expect(doc.index.ignored_chrome?(doc.root.find { _1.name == :footer })).to be(true)
     end
 
-    it 'keeps chrome for headers under nav or a page-level footer', :aggregate_failures do
-      doc = described_class.call('<html><body><article><nav><header id="n">N</header></nav></article><footer>' \
+    it 'keeps chrome for headers under a page-level nav or footer', :aggregate_failures do
+      doc = described_class.call('<html><body><div><nav><header id="n">N</header></nav></div><footer>' \
                                  '<article><header id="f"><a href="/f">F</a></header></article></footer></body></html>')
       chrome = %w[n f].map { |id| doc.index.ignored_chrome?(doc.root.find { _1.attrs.id == id }) }
 
       expect(chrome).to eq([true, true])
       expect(doc.index.ignored_chrome?(doc.root.find(&:link?))).to be(true)
+    end
+
+    it 'scopes nav and ARIA roles like header/footer, keeping pagers chrome' do # rubocop:disable RSpec/ExampleLength
+      doc = described_class.call(<<~HTML)
+        <html><body>
+          <div role="navigation"><a id="role_nav" href="/a">A</a></div>
+          <div role="Dialog Alert"><a id="role_dialog" href="/b">B</a></div>
+          <div role="banner"><a id="page_banner" href="/c">C</a></div>
+          <div role="search"><a id="search" href="/d">D</a></div>
+          <main>
+            <nav aria-label="Latest"><a id="main_nav" href="/e">E</a></nav>
+            <div role="contentinfo"><a id="main_contentinfo" href="/f">F</a></div>
+            <nav><a id="rel_pager" rel="prev" href="/g">G</a></nav>
+            <nav aria-label="Page navigation"><a id="nav_page_nav" href="/h">H</a></nav>
+            <ol aria-label="Pagination"><li><a id="list_pager" href="/i">I</a></li></ol>
+            <ul><li><a id="list_rel" rel="next" href="/j">J</a></li></ul>
+          </main>
+        </body></html>
+      HTML
+      chrome = doc.root.find_all(&:link?).to_h { [_1.attrs.id, doc.index.ignored_chrome?(_1)] }
+
+      expect(chrome).to eq('role_nav' => true, 'role_dialog' => true, 'page_banner' => true, 'search' => false,
+                           'main_nav' => false, 'main_contentinfo' => false, 'rel_pager' => true,
+                           'nav_page_nav' => true, 'list_pager' => true, 'list_rel' => false)
     end
   end
 
@@ -247,14 +271,17 @@ RSpec.describe Html2rss::SST::Normalizer do
       %w[header page] => :chrome,
       %w[footer page] => :chrome,
       %w[nav page] => :chrome,
-      %w[nav sectioned] => :chrome,
+      %w[nav sectioned] => :sectioned,
       %w[header sectioned] => :sectioned,
       %w[section page] => :sectioned,
       %w[article chrome] => :chrome,
-      %w[div sectioned] => :sectioned
+      %w[div sectioned] => :sectioned,
+      %w[svg sectioned] => :chrome
     }.each do |(tag, scope), expected|
       it "maps #{tag} under #{scope} to #{expected}" do
-        expect(Html2rss::SST::Tags.chrome_scope(tag, scope.to_sym)).to eq(expected)
+        element = Nokogiri::HTML::DocumentFragment.parse("<#{tag}></#{tag}>").child
+
+        expect(Html2rss::SST::Tags.chrome_scope(element, scope.to_sym)).to eq(expected)
       end
     end
   end

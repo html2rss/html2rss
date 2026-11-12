@@ -165,10 +165,15 @@ RSpec.describe Html2rss::Html::Navigator do
         '<body><header id="page"></header>' \
           '<section><header id="sectioned"></header></section>' \
           '<nav><section><header id="inherited"></header></section></nav>' \
-          '<footer><article><footer id="in_footer"></footer></article></footer></body>'
+          '<footer><article><footer id="in_footer"></footer></article></footer>' \
+          '<div role="navigation"><section><header id="role_nav"></header></section></div>' \
+          '<main><nav><header id="main_nav"></header></nav></main></body>'
       end
-      let(:ids) { %w[page sectioned inherited in_footer] }
-      let(:expected) { { 'page' => false, 'sectioned' => true, 'inherited' => false, 'in_footer' => false } }
+      let(:ids) { %w[page sectioned inherited in_footer role_nav main_nav] }
+      let(:expected) do
+        { 'page' => false, 'sectioned' => true, 'inherited' => false, 'in_footer' => false,
+          'role_nav' => false, 'main_nav' => true }
+      end
 
       let(:document) { Nokogiri::HTML(html) }
       let(:sst_root) { Html2rss::SST::Normalizer.call(html).root }

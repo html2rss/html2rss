@@ -1,0 +1,9 @@
+---
+case: The only article list is a labelled nav inside main; a nav in sectioning content takes its parent's scope, so the list is content.
+expected:
+- https://example.com/releases/2026/10/harbor-ferry-route-returns
+- https://example.com/releases/2026/10/library-extends-weekend-hours
+- https://example.com/releases/2026/10/river-cleanup-volunteers-record
+- https://example.com/releases/2026/10/school-board-approves-budget
+- https://example.com/releases/2026/10/night-market-opens-downtown
+- https://example.com/releases/2026/10/bike-lane-pilot-expands

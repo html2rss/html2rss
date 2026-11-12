@@ -1,0 +1,8 @@
+---
+case: A release list in a labelled nav inside main, followed by two in-main pagers (one with rel=prev/next links, one labelled as pagination); the list is content, the pagers stay chrome.
+expected:
+- https://example.com/releases/2026/10/harbor-ferry-route-returns
+- https://example.com/releases/2026/10/library-extends-weekend-hours
+- https://example.com/releases/2026/10/river-cleanup-volunteers-record
+- https://example.com/releases/2026/10/school-board-approves-budget
+- https://example.com/releases/2026/10/night-market-opens-downtown

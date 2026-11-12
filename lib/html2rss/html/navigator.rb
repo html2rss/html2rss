@@ -156,7 +156,7 @@ module Html2rss
         # @param node [Nokogiri::XML::Node]
         # @return [Symbol] +:page+, +:sectioned+, or +:chrome+
         def nokogiri_chrome_scope(node)
-          (node.ancestors.reverse << node).reduce(:page) { |scope, el| SST::Tags.chrome_scope(Probe.tag(el), scope) }
+          (node.ancestors.reverse << node).reduce(:page) { |scope, el| el.element? ? SST::Tags.chrome_scope(el, scope) : scope }
         end
       end
     end

@@ -26,25 +26,55 @@ module Html2rss
       # Layout-ish names used when resolving nested wrapper groups.
       LAYOUT_NAMES = Set[:div, :section, :article, :li, :ul, :ol].freeze
 
-      ALWAYS_CHROME = (IGNORED_CONTAINER_NAMES - PAGE_CHROME_NAMES).to_set(&:to_s).freeze
-      PAGE_CHROME = PAGE_CHROME_NAMES.to_set(&:to_s).freeze
+      # header/footer/nav: chrome at page level, their parent's scope inside sectioning content.
+      SCOPED_CHROME = (PAGE_CHROME_NAMES | Set[:nav]).to_set(&:to_s).freeze
+      ALWAYS_CHROME = IGNORED_CONTAINER_NAMES.to_set(&:to_s).freeze - SCOPED_CHROME
       SECTIONING = SECTIONING_NAMES.to_set(&:to_s).freeze
-      private_constant :ALWAYS_CHROME, :PAGE_CHROME, :SECTIONING
+      # ARIA roles whose subtree is chrome anywhere (+search+ is not: it may wrap the result list).
+      CHROME_ROLES = Set['navigation', 'menu', 'menubar', 'dialog', 'alertdialog'].freeze
+      # ARIA landmark roles that, like header/footer, are chrome only at page level.
+      PAGE_CHROME_ROLES = Set['banner', 'contentinfo'].freeze
+      # A nav or list labelled as pagination is chrome in any scope.
+      PAGER_NAMES = Set['nav', 'ul', 'ol'].freeze
+      PAGER_LABEL = /pagin(?:at|ac|az|er|ier)|\bpager\b|\bpaging\b|\bpage navigation\b/i
+      # A nav linking rel=next/prev is a pager; lists are exempt (a feed list may end in a "more" link).
+      PAGER_LINK_XPATH = %w[next prev previous].map { "contains(concat(' ', normalize-space(@rel), ' '), ' #{_1} ')" }
+                                               .join(' or ').then { ".//a[#{_1}]" }.freeze
+      private_constant :SCOPED_CHROME, :ALWAYS_CHROME, :SECTIONING, :CHROME_ROLES, :PAGE_CHROME_ROLES,
+                       :PAGER_NAMES, :PAGER_LABEL, :PAGER_LINK_XPATH
 
       ##
       # The single chrome-scope rule, folded down the tree by both the SST normalizer
-      # and the Nokogiri ancestor walk: +:chrome+ sticks; header/footer are chrome only
-      # at +:page+ level, so card headers inside article/section/aside/main stay content.
+      # and the Nokogiri ancestor walk: +:chrome+ sticks; ARIA navigation, menu and dialog
+      # roles are chrome; header/footer/nav and the banner/contentinfo roles are chrome only
+      # at +:page+ level, so card headers and in-content nav lists inside
+      # article/section/aside/main stay content; a pager (a nav or list labelled as
+      # pagination, or a nav linking rel=next/prev) is chrome in any scope.
       #
-      # @param tag [String] folded tag name
+      # @param element [Nokogiri::XML::Element] element being entered
       # @param scope [Symbol] parent scope: +:page+, +:sectioned+, or +:chrome+
       # @return [Symbol] scope the element's subtree inherits
-      def self.chrome_scope(tag, scope)
-        return :chrome if scope == :chrome || ALWAYS_CHROME.include?(tag)
-        return :chrome if scope == :page && PAGE_CHROME.include?(tag)
+      def self.chrome_scope(element, scope)
+        tag = Html::Probe.tag(element)
+        return :chrome if scope == :chrome || ALWAYS_CHROME.include?(tag) || chrome_role?(element['role'], scope)
+        return :chrome if (scope == :page && SCOPED_CHROME.include?(tag)) || pager?(element, tag)
 
         SECTIONING.include?(tag) ? :sectioned : scope
       end
+
+      def self.chrome_role?(role, scope)
+        role.to_s.downcase.split.any? do |token|
+          CHROME_ROLES.include?(token) || (scope == :page && PAGE_CHROME_ROLES.include?(token))
+        end
+      end
+
+      def self.pager?(element, tag)
+        return false unless PAGER_NAMES.include?(tag)
+        return true if element['aria-label'].to_s.match?(PAGER_LABEL)
+
+        tag == 'nav' && !element.at_xpath(PAGER_LINK_XPATH).nil?
+      end
+      private_class_method :chrome_role?, :pager?
     end
   end
 end

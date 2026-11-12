@@ -166,7 +166,7 @@ module Html2rss
         @node_count += 1
         tag_path = "#{path}/#{tag}"
         attrs = extract_attrs(nk_node)
-        scope_here = Tags.chrome_scope(tag, scope)
+        scope_here = Tags.chrome_scope(nk_node, scope)
 
         children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, scope: scope_here)
 

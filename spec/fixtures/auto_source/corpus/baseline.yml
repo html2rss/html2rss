@@ -24,6 +24,36 @@ card_header_time_kicker.html:
   expected: 5
   title_misses: 0
   sst_built: true
+chrome_role_consent_dialog.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_role_div_menu.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_role_main_nav_list.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  sst_built: true
+chrome_role_main_pager.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
+chrome_role_search_results.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 json_response_articles.json:
   junk: 0
   real: 4
