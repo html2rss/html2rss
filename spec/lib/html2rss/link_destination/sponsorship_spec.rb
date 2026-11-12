@@ -12,7 +12,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
   let(:block) { node[name: :div, text: ''] }
   let(:paid_phrases) do
     ['Gesponsert', 'Sponsored content', 'Paid post', 'Paid content', 'Partner content', 'Advertorial',
-     'Promoted', 'Contenu sponsorisé', 'Publireportage', 'Contenus partenaires', 'Contenu partenaire',
+     'Contenu sponsorisé', 'Publireportage', 'Contenus partenaires', 'Contenu partenaire',
      'Contenido patrocinado', 'Publirreportaje', '· Sponsored story ·', 'Sponsorizzato',
      'Contenuto sponsorizzato', 'Informazione pubblicitaria', 'Pubbliredazionale', 'Gesponsord',
      'Gesponsorde inhoud', 'Sponsorowane', 'Materiał Partnera', 'MATERIAŁ PROMOCYJNY', 'Materiał partnerski',
@@ -108,6 +108,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
       expect(label['Sponsored content', name: :h2]).to eq(:paid_label)
       expect(label['Anzeige', name: :h4]).to be_nil
       expect(label['Werbung', name: :h2]).to be_nil
+      expect(label['Promoted', name: :h3]).to be_nil
     end
 
     it 'ignores text labels on unrendered elements', :aggregate_failures do
@@ -139,8 +140,8 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
     end
 
     it 'marks the closed multilingual ad words with surrounding punctuation or separators' do
-      labels = ['Anzeige', 'Ad', 'AD:', 'Advertisement', 'Publicité:', 'Publicidad', 'Pubblicità', 'Advertentie',
-                'Reclame', 'Reklama', 'REKLAMA', 'Annons', 'Reklam', '広告', '【広告】', 'スポンサー', 'Anzeige |',
+      labels = ['Anzeige', 'Ad', 'AD:', 'Advertisement', 'Promoted', 'Publicité:', 'Publicidad', 'Pubblicità',
+                'Advertentie', 'Reclame', 'Reklama', 'REKLAMA', 'Annons', 'Reklam', '広告', '【広告】', 'スポンサー', 'Anzeige |',
                 'Anzeige ·', 'Anzeige •', 'Anzeige /', "Anzeige\u00A0|"]
       expect(labels.reject { label[_1] == :label }).to be_empty
     end
@@ -220,7 +221,7 @@ RSpec.describe Html2rss::LinkDestination::Sponsorship do
   describe '.paid_text?' do
     it 'is true only for a whole paid phrase', :aggregate_failures do
       expect(['Materiał Partnera', ' Sponsored ', '提供：アクメ'].map { described_class.paid_text?(_1) }).to all(be(true))
-      rejected = ['Werbung', 'Anzeige', 'PR', 'Partners', 'Sponsored posts win', '', nil]
+      rejected = ['Werbung', 'Anzeige', 'Promoted', 'PR', 'Partners', 'Sponsored posts win', '', nil]
       expect(rejected.map { described_class.paid_text?(_1) }).to all(be(false))
     end
   end

@@ -9,9 +9,10 @@ module Html2rss
     #   +data-advertorial+, a sponsored, advertorial or native-advertising class token (BEM variants
     #   included), or an ARIA label that is an ad label. The publisher states that the element is paid content.
     # - +:label+: an ad-label class token (+ad-label+, +ad-badge__item+), or a standalone element whose whole
-    #   text is an ad word ({LabelText} ad words: "Anzeige", "Publicité", "Reklama", "広告", or "PR"
-    #   as an uppercase element text). An ad word also names the advertising trade, so it
-    #   counts only on a plain element: never on a heading or a topic chip (category, tag or kicker class).
+    #   text is an ad word ({LabelText} ad words: "Anzeige", "Publicité", "Promoted", "Reklama", "広告", or
+    #   "PR" as an uppercase element text). An ad word also names something editorial (the advertising trade,
+    #   a promotion), so it counts only on a plain element: never on a heading or a topic chip (category, tag
+    #   or kicker class), and it never heads a section.
     # - +:paid_label+: a standalone element whose whole text states paid content ({LabelText} paid
     #   phrases: "Sponsored", "Contenus partenaires", "Materiał partnera", "提供：…"; paid attribution may
     #   name the sponsor in up to five words). It also counts on a heading or a topic chip, and

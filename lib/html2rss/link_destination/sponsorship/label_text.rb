@@ -5,8 +5,9 @@ module Html2rss
     module Sponsorship
       ##
       # The closed multilingual vocabulary of sponsorship label text (en, de, fr, es, it, nl, pl, sv, ja), in
-      # two kinds: a paid phrase states paid content; an ad word names an ad and also the advertising
-      # trade. Only whole texts match; {Sponsorship} decides where a text is read.
+      # two kinds: a paid phrase states paid content; an ad word names an ad and also something editorial
+      # (the advertising trade; "Promoted" a team or a person moving up). Only whole texts match; {Sponsorship}
+      # decides where a text is read.
       module LabelText
         # A whole label, optionally wrapped in punctuation or separators ("Anzeige |", "[Sponsored]",
         # "Publicité:", "【広告】"), in two groups. +paid+ states paid content; +ad+ is an ad word, which also
@@ -15,7 +16,7 @@ module Html2rss
         LABEL_PATTERN = /
           \A[\s\u00A0\p{P}|]*(?:(?<paid>
             # English
-            sponsored(?:\s+(?:content|post|story))?|advertorial|(?:paid|partner)\s+content|paid\s+post|promoted|
+            sponsored(?:\s+(?:content|post|story))?|advertorial|(?:paid|partner)\s+content|paid\s+post|
             sponsored\s+by(?:\s+\S+){0,5}|
             # German
             gesponsert(?:\s+von(?:\s+\S+){0,5})?|
@@ -36,7 +37,8 @@ module Html2rss
             # Japanese
             提供(?:\s*[:：]\s*\S+(?:\s+\S+){0,4})?|タイアップ(?:広告|企画)?|スポンサー(?:リンク|コンテンツ)|広告企画|PR企画
           )|(?<ad>
-            ad|advertisement|anzeige|werbung|publicit[eé]|publicidad|pubblicit[àa]|advertentie|reclame|reklama|annons|
+            ad|advertisement|promoted|
+            anzeige|werbung|publicit[eé]|publicidad|pubblicit[àa]|advertentie|reclame|reklama|annons|
             reklam|広告|スポンサー
           ))[\s\u00A0\p{P}|]*\z
         /ix
