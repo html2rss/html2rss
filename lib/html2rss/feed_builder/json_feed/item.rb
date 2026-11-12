@@ -103,7 +103,8 @@ module Html2rss
           {
             url: enclosure.url.to_s,
             mime_type: enclosure.type,
-            size_in_bytes: size&.positive? ? size : nil
+            size_in_bytes: (size if size.positive?),
+            duration_in_seconds: enclosure.duration
           }.compact
         end
       end

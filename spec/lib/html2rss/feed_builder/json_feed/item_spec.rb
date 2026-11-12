@@ -74,6 +74,20 @@ RSpec.describe Html2rss::FeedBuilder::JsonFeed::Item do
     end
   end
 
+  context 'with an enclosure that has a duration' do
+    let(:attributes) do
+      super().merge(
+        enclosures: [{ url: Html2rss::Url.sanitize('https://example.com/audio.mp3'), bytes_length: 123,
+                       type: 'audio/mpeg', duration: 3723 }]
+      )
+    end
+
+    it 'adds duration_in_seconds' do
+      expect(item_hash[:attachments]).to eq([{ url: 'https://example.com/audio.mp3', mime_type: 'audio/mpeg',
+                                               size_in_bytes: 123, duration_in_seconds: 3723 }])
+    end
+  end
+
   context 'with an enclosure that has no positive size' do
     let(:attributes) do
       super().merge(

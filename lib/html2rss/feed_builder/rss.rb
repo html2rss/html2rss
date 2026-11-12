@@ -6,7 +6,14 @@ module Html2rss
   module FeedBuilder
     ##
     # Builds an RSS Feed by providing channel, articles and stylesheets.
+    #
+    # A media feed ({ItemPresentation.media_feed?}) also gets the podcast tags clients play from:
+    # channel +itunes:image+ and +itunes:author+, item +itunes:duration+ (+HH:MM:SS+) and
+    # +itunes:image+, each only when known. It never invents +itunes:explicit+ or a category.
     class Rss
+      # First duration in seconds that +itunes:duration+ cannot spell as +HH:MM:SS+ (100 hours).
+      MAX_CLOCK_DURATION = 100 * 3600
+
       class << self
         # @param article [Html2rss::Article] source article
         # @param item_maker [RSS::Maker::RSS20::ItemsBase::ItemBase] RSS item builder
@@ -66,6 +73,7 @@ module Html2rss
         @articles = articles
         @stylesheets = stylesheets
         @generator = generator
+        @media_feed = ItemPresentation.media_feed?(articles)
       end
 
       # @return [RSS::Rss] RSS 2.0 document instance
@@ -80,7 +88,7 @@ module Html2rss
 
       private
 
-      attr_reader :channel, :articles, :generator
+      attr_reader :channel, :articles, :generator, :media_feed
 
       def blank_string?(value)
         !value.is_a?(String) || value.strip.empty?
@@ -105,6 +113,12 @@ module Html2rss
         channel_maker.updated = channel.last_build_date
 
         make_image(maker.image) if channel.image
+        make_podcast_channel(channel_maker) if media_feed
+      end
+
+      def make_podcast_channel(channel_maker)
+        channel_maker.itunes_image = channel.image
+        channel_maker.itunes_author = channel.author
       end
 
       def make_image(image_maker)
@@ -114,8 +128,25 @@ module Html2rss
 
       def make_items(maker)
         articles.each do |article|
-          maker.items.new_item { |item_maker| self.class.add_item(article, item_maker) }
+          maker.items.new_item do |item_maker|
+            self.class.add_item(article, item_maker)
+            make_podcast_item(article, item_maker) if media_feed
+          end
         end
+      end
+
+      def make_podcast_item(article, item_maker)
+        duration = ItemPresentation.rss_enclosure_for(article)&.duration
+        item_maker.itunes_duration = format_duration(duration) if duration
+        item_maker.itunes_image = article.image
+      end
+
+      # +HH:MM:SS+; plain seconds from 100 hours on, which +HH+ cannot spell.
+      def format_duration(seconds)
+        return seconds.to_s if seconds >= MAX_CLOCK_DURATION
+
+        format('%<hours>02d:%<minutes>02d:%<seconds>02d',
+               hours: seconds / 3600, minutes: seconds % 3600 / 60, seconds: seconds % 60)
       end
     end
   end

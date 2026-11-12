@@ -8,7 +8,7 @@ module Html2rss
   # FeedResult; +feed_url+ is a render-time JSON Feed-only option.
   #
   # Channel field projection:
-  # - Rss: language, title, description, ttl, link, updated
+  # - Rss: language, title, description, ttl, link, updated (+ itunes:image, itunes:author on a media feed)
   # - JsonFeed: title, home_page_url, description, language, icon, authors (+ feed_url)
   module FeedBuilder
   end
