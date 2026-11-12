@@ -32,14 +32,12 @@ module Html2rss
         # @param url [String, Html2rss::Url] base url
         # @param document [SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
-        # @param opts [Hash] scraper-specific options
-        # @option opts [Boolean] :fallback_anchorless whether to keep containers without a primary anchor
-        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **opts)
+        # @param _opts [Hash] scraper options (none are read)
+        def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **_opts)
           @parsed_body = parsed_body
           @provided_document = document
           @provided_link_resolver = link_resolver
           @url = url
-          @permit_unanchored = opts.fetch(:fallback_anchorless, false)
         end
 
         ##
@@ -76,7 +74,6 @@ module Html2rss
             document,
             base_url: @url,
             strategy: :semantic,
-            permit_unanchored: @permit_unanchored,
             link_resolver:
           )
           Scoring::Engine.new(link_resolver:).rank_top(segments, limit: TOP_K)

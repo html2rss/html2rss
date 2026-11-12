@@ -338,15 +338,13 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       expect(described_class.new(Nokogiri::HTML.parse(html), url: 'http://example.com')).to be_extractable
     end
 
-    it 'is false for anchorless cards unless fallback_anchorless is requested', :aggregate_failures do
+    it 'is false for anchorless cards' do
       expect(described_class.new(anchorless_html, url: 'https://page.com')).not_to be_extractable
-      expect(described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true))
-        .to be_extractable
     end
   end
 
   describe '#initialize' do
-    it 'drops anchorless cards by default' do
+    it 'emits no page-fragment items for anchorless cards' do
       expect(described_class.new(anchorless_html, url: 'https://page.com').to_a).to eq([])
     end
 
@@ -390,12 +388,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
 
       expect(articles).not_to be_empty
       expect(articles.map(&:scraper).uniq).to eq([described_class])
-    end
-
-    it 'emits no page-fragment items for anchorless cards under fallback_anchorless' do
-      articles = described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a
-
-      expect(articles).to be_empty
     end
   end
 

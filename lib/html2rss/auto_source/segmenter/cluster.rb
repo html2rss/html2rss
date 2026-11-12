@@ -15,7 +15,7 @@ module Html2rss
           nodes = best_group_nodes(segmenter)
           nodes.each_with_index.filter_map do |node, position|
             link = primary.select(node)
-            next unless link || segmenter.permit_unanchored
+            next unless link
 
             Segment.build(root_node: node, primary_link: link, strategy: :cluster, position:)
           end

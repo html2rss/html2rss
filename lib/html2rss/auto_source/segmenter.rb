@@ -14,11 +14,10 @@ module Html2rss
       # @param base_url [String, Html2rss::Url]
       # @param strategy [Symbol]
       # @param opts [Hash] segmentation options
-      # @option opts [Boolean] :permit_unanchored keep containers without a primary link
       # @option opts [Integer] :minimum_selector_frequency list strategy frequency floor
       # @option opts [Integer] :use_top_selectors list strategy selector budget
       # @option opts [Scoring::LinkResolver, nil] :link_resolver page-scoped destination facts cache
-      # @return [Array<Segment>]
+      # @return [Array<Segment>] linked segments only
       # rubocop:disable-next Style/ArgumentsForwarding -- keep named opts for YARD @option
       def self.call(document, base_url:, strategy:, **opts)
         new(document, base_url:, strategy:, **opts).call
@@ -28,7 +27,6 @@ module Html2rss
       # @param base_url [String, Html2rss::Url]
       # @param strategy [Symbol]
       # @param opts [Hash] segmentation options
-      # @option opts [Boolean] :permit_unanchored keep containers without a primary link
       # @option opts [Integer] :minimum_selector_frequency list strategy frequency floor
       # @option opts [Integer] :use_top_selectors list strategy selector budget
       # @option opts [Scoring::LinkResolver, nil] :link_resolver page-scoped destination facts cache
@@ -39,7 +37,6 @@ module Html2rss
         @document = document
         @base_url = base_url
         @strategy = strategy
-        @permit_unanchored = opts.fetch(:permit_unanchored, false)
         @minimum_selector_frequency = opts.fetch(:minimum_selector_frequency, 2)
         @use_top_selectors = opts.fetch(:use_top_selectors, 5)
         @link_resolver = opts[:link_resolver] || Scoring::LinkResolver.new(base_url)
@@ -55,7 +52,7 @@ module Html2rss
         end
       end
 
-      attr_reader :document, :base_url, :permit_unanchored, :minimum_selector_frequency,
+      attr_reader :document, :base_url, :minimum_selector_frequency,
                   :use_top_selectors, :link_resolver, :noise_policy
 
       # @return [SST::Index]

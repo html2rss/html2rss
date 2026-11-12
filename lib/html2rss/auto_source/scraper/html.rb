@@ -6,6 +6,7 @@ module Html2rss
       ##
       # Fallback HTML list/cluster scraper via SST pipeline
       # (Normalizer → Segmenter → Scoring::Engine → Html::SstArticleExtractor).
+      # Linked list cards first; linked cluster cards only when no list card qualifies.
       class Html
         include Enumerable
 
@@ -41,7 +42,6 @@ module Html2rss
         # @param document [SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
         # @param opts [Hash]
-        # @option opts [Boolean] :fallback_anchorless keep anchorless cluster cards
         # @option opts [Integer] :minimum_selector_frequency list frequency floor
         # @option opts [Integer] :use_top_selectors list selector budget
         def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **opts)
@@ -50,7 +50,6 @@ module Html2rss
           @provided_link_resolver = link_resolver
           @url = url
           @opts = opts
-          @fallback_anchorless = opts.fetch(:fallback_anchorless, false)
         end
 
         ##
@@ -76,26 +75,18 @@ module Html2rss
 
         def ranked_segments
           @ranked_segments ||= begin
-            ranked = list_ranked
-            ranked = cluster_ranked if @fallback_anchorless && ranked.empty?
-            ranked
+            list = rank_strategy(:list)
+            list.empty? ? rank_strategy(:cluster) : list
           end
         end
 
-        def list_ranked
-          @list_ranked ||= document ? rank_strategy(:list, permit_unanchored: false) : []
-        end
+        def rank_strategy(strategy)
+          return [] unless document
 
-        def cluster_ranked
-          @cluster_ranked ||= document ? rank_strategy(:cluster, permit_unanchored: true) : []
-        end
-
-        def rank_strategy(strategy, permit_unanchored:)
           segments = Segmenter.call(
             document,
             base_url: @url,
             strategy:,
-            permit_unanchored:,
             minimum_selector_frequency:,
             use_top_selectors:,
             link_resolver:

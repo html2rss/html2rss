@@ -54,7 +54,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect { described_class.new(parsed_body, url: 'https://example.com') }.not_to raise_error
     end
 
-    it 'drops anchorless containers unless fallback_anchorless is requested' do
+    it 'emits no page-fragment items for containers without a link' do
       anchorless = Nokogiri::HTML.parse <<~HTML
         <html><body><article><h2>No Link Article</h2><p>Description text</p></article></body></html>
       HTML
@@ -150,7 +150,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe '#each' do
-    subject(:new) { described_class.new(parsed_body, url: 'https://page.com', fallback_anchorless: true) }
+    subject(:new) { described_class.new(parsed_body, url: 'https://page.com') }
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
     let(:articles) { new.each.to_a }
@@ -194,31 +194,6 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       expect(articles.size).to be >= 45
       expect(articles.size).to be < 100
       expect(articles.map { _1.url.to_s }).to all(satisfy { |url| !url.include?('#') })
-    end
-
-    context 'when fallback_anchorless is true and page has no anchors' do
-      subject(:new) { described_class.new(parsed_body, url: 'https://page.com', fallback_anchorless: true) }
-
-      let(:parsed_body) do
-        Nokogiri::HTML.parse <<~HTML
-          <html>
-            <body>
-              <article>
-                <h2>No Link Article 1</h2>
-                <p>Description text 1</p>
-              </article>
-              <article>
-                <h2>No Link Article 2</h2>
-                <p>Description text 2</p>
-              </article>
-            </body>
-          </html>
-        HTML
-      end
-
-      it 'emits no page-fragment items for cards without a link' do
-        expect(articles).to be_empty
-      end
     end
   end
 end

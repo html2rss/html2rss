@@ -71,14 +71,12 @@ module Html2rss
           enabled: true
         },
         semantic_html: {
-          enabled: true,
-          fallback_anchorless: true
+          enabled: true
         },
         html: {
           enabled: true,
           minimum_selector_frequency: Scraper::Html::DEFAULT_MINIMUM_SELECTOR_FREQUENCY,
-          use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS,
-          fallback_anchorless: true
+          use_top_selectors: Scraper::Html::DEFAULT_USE_TOP_SELECTORS
         }
       },
       cleanup: Cleanup::DEFAULT_CONFIG

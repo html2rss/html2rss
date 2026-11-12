@@ -18,7 +18,7 @@ module Html2rss
 
           containers.each_with_index.filter_map do |container, position|
             link = primary.select(container)
-            next unless link || segmenter.permit_unanchored
+            next unless link
 
             Segment.build(root_node: container, primary_link: link, strategy: :semantic, position:)
           end

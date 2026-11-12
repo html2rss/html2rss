@@ -47,13 +47,11 @@ module Html2rss
         end
         optional(:semantic_html).hash do
           optional(:enabled).filled(:bool)
-          optional(:fallback_anchorless).filled(:bool)
         end
         optional(:html).hash do
           optional(:enabled).filled(:bool)
           optional(:minimum_selector_frequency).filled(:integer, gt?: 0)
           optional(:use_top_selectors).filled(:integer, gt?: 0)
-          optional(:fallback_anchorless).filled(:bool)
         end
       end
 

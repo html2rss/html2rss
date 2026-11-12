@@ -327,12 +327,6 @@
                   "not": {
                     "type": "null"
                   }
-                },
-                "fallback_anchorless": {
-                  "type": "boolean",
-                  "not": {
-                    "type": "null"
-                  }
                 }
               },
               "required": []
@@ -359,12 +353,6 @@
                     "type": "null"
                   },
                   "exclusiveMinimum": 0
-                },
-                "fallback_anchorless": {
-                  "type": "boolean",
-                  "not": {
-                    "type": "null"
-                  }
                 }
               },
               "required": []
@@ -432,14 +420,12 @@
             "enabled": true
           },
           "semantic_html": {
-            "enabled": true,
-            "fallback_anchorless": true
+            "enabled": true
           },
           "html": {
             "enabled": true,
             "minimum_selector_frequency": 2,
-            "use_top_selectors": 5,
-            "fallback_anchorless": true
+            "use_top_selectors": 5
           }
         },
         "cleanup": {

@@ -444,13 +444,11 @@ RSpec.describe Html2rss::AutoSource do
           limit: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
-                                                              semantic_html: { enabled: true,
-                                                                               fallback_anchorless: true },
+                                                              semantic_html: { enabled: true },
                                                               html: {
                                                                 enabled: true,
                                                                 minimum_selector_frequency: 2,
-                                                                use_top_selectors: 5,
-                                                                fallback_anchorless: true
+                                                                use_top_selectors: 5
                                                               }
                                                             )
         )
@@ -487,13 +485,11 @@ RSpec.describe Html2rss::AutoSource do
           limit: 10,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
-                                                              semantic_html: { enabled: true,
-                                                                               fallback_anchorless: true },
+                                                              semantic_html: { enabled: true },
                                                               html: {
                                                                 enabled: true,
                                                                 minimum_selector_frequency: 2,
-                                                                use_top_selectors: 10,
-                                                                fallback_anchorless: true
+                                                                use_top_selectors: 10
                                                               }
                                                             )
         )
@@ -530,13 +526,11 @@ RSpec.describe Html2rss::AutoSource do
           limit: 5,
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
-                                                              semantic_html: { enabled: true,
-                                                                               fallback_anchorless: true },
+                                                              semantic_html: { enabled: true },
                                                               html: {
                                                                 enabled: true,
                                                                 minimum_selector_frequency: 1,
-                                                                use_top_selectors: 5,
-                                                                fallback_anchorless: true
+                                                                use_top_selectors: 5
                                                               }
                                                             )
         )
@@ -624,10 +618,7 @@ RSpec.describe Html2rss::AutoSource do
           scraper: described_class::DEFAULT_CONFIG[:scraper].transform_values { |cfg| cfg.merge(enabled: false) }
                                                             .merge(
                                                               schema: { enabled: true },
-                                                              semantic_html: {
-                                                                enabled: true,
-                                                                fallback_anchorless: true
-                                                              }
+                                                              semantic_html: { enabled: true }
                                                             )
         )
       end
