@@ -257,8 +257,7 @@ RSpec.describe Html2rss::SST::Normalizer do
       '<ol aria-label="Paginación"><li><a rel="Prev" href="/a">Atrás</a></li></ol>' => true,
       '<ul class="pagination"><li><a href="/a">Story one</a></li><li><a href="/b">Story two</a></li></ul>' => false,
       '<ul class="pagination"></ul>' => false,
-      '<ul class="pagination"><li><a href="/a">2</a></li><li><a href="/b">B b</a></li><li><a href="/c">C c</a></li></ul>' =>
-        false,
+      '<ul class="pagination"><li><a href="/a">2</a></li><li><a>B</a></li><li><a>C</a></li></ul>' => false,
       '<ul class="pagination"><li><a href="/a"> 2 </a></li><li><a>Story</a></li></ul>' => true,
       '<ul class="pagination"><li><a href="/a" data-next="/page/3">Story</a></li></ul>' => false,
       '<nav><a href="/a">The pager returns</a></nav>' => false,
