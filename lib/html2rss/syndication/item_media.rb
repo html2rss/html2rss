@@ -8,84 +8,104 @@ module Html2rss
     #
     # Enclosures, in document order and once per URL: RSS 2.0 +enclosure+ (+url+, +type+, +length+),
     # Atom +link rel="enclosure"+ (+href+, +type+, +length+) and Media RSS +media:content+, also inside
-    # +media:group+ (+url+, +type+, +fileSize+, +duration+). An item +itunes:duration+ is the duration of
-    # every enclosure that declares none. A file declaring an audio or video +medium+ that is no media file
-    # and has no file extension is a watch or player page and no enclosure. The item image is its
-    # +itunes:image+, else its first +media:thumbnail+ (also inside +media:group+), else its first image
-    # file (+medium="image"+ or an image type). Sizes, durations and kinds come from {Article::Enclosure}.
+    # +media:group+ (+url+, +type+, +fileSize+, +duration+). A Media RSS +medium+ is a kind hint, never a
+    # drop signal: +audio+ or +video+ types an untyped file ({MEDIUM_TYPES}), +image+ keeps an untyped file
+    # an image. A watch or player page ({Article::Enclosure#player_page?}) that is not declared an image is
+    # no enclosure. An item +itunes:duration+ is the duration of every audio or video file that declares
+    # none. The item image is its +itunes:image+ (+href+, or the URL as its text), else its first
+    # +media:thumbnail+ (also inside +media:group+), else its first image file (+medium="image"+ or an
+    # image type). Sizes, durations and kinds come from {Article::Enclosure}. Items match by namespace
+    # ({ITEMS}); a document without any media marker ({MEDIA_MARKERS}) is not parsed a second time.
     module ItemMedia
       # Namespace prefixes the item queries bind.
       NAMESPACES = {
+        'rss1' => 'http://purl.org/rss/1.0/',
+        'rdf' => 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
         'atom' => 'http://www.w3.org/2005/Atom',
         'media' => 'http://search.yahoo.com/mrss/',
         'itunes' => 'http://www.itunes.com/dtds/podcast-1.0.dtd'
       }.freeze
-      # Item elements in document order: RSS 2.0 +rss/channel/item+, RSS 1.0 +rdf:RDF/item+, Atom +feed/entry+.
-      ITEMS = "/*/*[local-name()='item' or local-name()='entry'] | /*/*/*[local-name()='item']"
+      # Item elements in document order, by format: RSS 2.0 +item+ (no namespace) under +rss/channel+,
+      # RSS 1.0 +item+ under +rdf:RDF+, Atom +entry+ under +feed+. Extension elements named +item+ never count.
+      ITEMS = '/rss/channel/item | /rdf:RDF/rss1:item | /atom:feed/atom:entry'
+      # Text only a document declaring item media contains: an RSS 2.0 enclosure, an Atom enclosure link,
+      # or the Media RSS or iTunes namespace. Any other document is not parsed a second time.
+      MEDIA_MARKERS = Regexp.union('<enclosure', /rel=["']enclosure["']/, NAMESPACES['media'], NAMESPACES['itunes'])
       # Enclosure elements of one item, in document order.
       ENCLOSURES = "enclosure | atom:link[@rel='enclosure'] | media:content | media:group/media:content"
       # Thumbnail URLs of one item, in document order (blank ones skipped, like a blank iTunes image).
       THUMBNAILS = 'media:thumbnail/@url[normalize-space()] | media:group/media:thumbnail/@url[normalize-space()]'
-      # The item's iTunes image URL.
-      ITUNES_IMAGE = 'itunes:image/@href[normalize-space()]'
-      # Media RSS +medium+ values of a playable file; such an entry that is no media file is a player page.
-      PLAYABLE_MEDIUMS = %w[audio video].freeze
+      # The item's iTunes image URL: its +href+, else the URL written as the element text.
+      ITUNES_IMAGE = 'itunes:image/@href[normalize-space()] | ' \
+                     'itunes:image[not(normalize-space(@href))][normalize-space()]'
+      # The type a Media RSS +medium+ gives an untyped file (no declared type, no known file extension).
+      MEDIUM_TYPES = { 'audio' => 'audio/mpeg', 'video' => 'video/mp4' }.freeze
 
       class << self
         ##
         # @param body [String] the feed document
         # @param count [Integer] items the +rss+ library read from +body+
-        # @yieldparam raw [String, nil] a declared URL
+        # @param url [String, Html2rss::Url, nil] the feed URL, for the log when items cannot be matched
+        # @yieldparam raw [String, nil] a declared URL, possibly padded with whitespace
         # @yieldreturn [Html2rss::Url, nil] that URL made absolute, or nil when unusable
         # @return [Array<Hash{Symbol => Object}>] per item, in document order, its +enclosures+ and +image+
-        #   when present; all empty when the document's item elements do not number +count+
-        def for_items(body, count:, &)
-          nodes = Nokogiri::XML(body).xpath(ITEMS)
-          return Array.new(count) { {} } unless nodes.size == count
+        #   when present; all empty when the document declares no media or its item elements do not
+        #   number +count+ (logged)
+        def for_items(body, count:, url: nil, &)
+          return Array.new(count) { {} } unless MEDIA_MARKERS.match?(body)
 
-          nodes.map { |node| item_media(node, &) }
+          nodes = Nokogiri::XML(body).xpath(ITEMS, NAMESPACES)
+          return nodes.map { |node| item_media(node, &) } if nodes.size == count
+
+          warn_mismatch(nodes.size, count, url)
+          Array.new(count) { {} }
         end
 
         private
 
         def item_media(node, &resolve)
-          duration = node.at_xpath('itunes:duration', NAMESPACES)&.text
-          files = node.xpath(ENCLOSURES, NAMESPACES).filter_map { file(_1, &resolve) }
-          enclosures = files.map { |element, enclosure| facts(element, enclosure, duration) }
-          { enclosures: enclosures.uniq { _1[:url].to_s }, image: image(node, files, &resolve) }
+          duration = Article::Enclosure.parse_duration(node.at_xpath('itunes:duration', NAMESPACES)&.text)
+          files = node.xpath(ENCLOSURES, NAMESPACES).filter_map { file(_1, duration, &resolve) }
+          { enclosures: files.map(&:first).uniq { _1[:url].to_s }, image: image(node, files, &resolve) }
             .reject { |_, value| value.nil? || value == [] }
         end
 
-        # @return [Array(Nokogiri::XML::Element, Article::Enclosure), nil] the element and its file;
+        # @return [Array(Hash{Symbol => Object}, Boolean), nil] the file's facts and whether it is an image;
         #   nil without a URL or for a watch or player page
-        def file(element)
+        def file(element, item_duration)
           return unless (url = yield(attribute(element, 'url', 'href')))
 
-          enclosure = Article::Enclosure.new(url:, type: attribute(element, 'type'))
-          [element, enclosure] unless player_page?(element, enclosure)
+          bytes_length = Article::Enclosure.parse_size(attribute(element, 'length', 'fileSize'))
+          enclosure = Article::Enclosure.new(url:, type: attribute(element, 'type'), bytes_length:)
+          image = element['medium'] == 'image' || enclosure.image?
+          return if enclosure.player_page? && !image
+
+          [facts(element, enclosure, item_duration), image]
         end
 
-        def player_page?(element, enclosure)
-          PLAYABLE_MEDIUMS.include?(element['medium']) && !enclosure.media? && !enclosure.file_extension?
-        end
-
+        # The file's facts: its declared type, else the type its +medium+ gives an untyped file; its own
+        # duration, else the item's when it is audio or video.
         def facts(element, enclosure, item_duration)
-          { url: enclosure.url, type: attribute(element, 'type'),
-            bytes_length: Article::Enclosure.parse_size(attribute(element, 'length', 'fileSize')),
-            duration: Article::Enclosure.parse_duration(attribute(element, 'duration') || item_duration) }.compact
+          hint = MEDIUM_TYPES[element['medium']] if enclosure.type.downcase == Article::Enclosure::UNTYPED
+          duration = Article::Enclosure.parse_duration(attribute(element, 'duration'))
+          { url: enclosure.url, type: hint || attribute(element, 'type'), bytes_length: enclosure.bytes_length.nonzero?,
+            duration: duration || (item_duration if hint || enclosure.media?) }.compact
         end
 
         def image(node, files)
           declared = node.at_xpath(ITUNES_IMAGE, NAMESPACES) || node.at_xpath(THUMBNAILS, NAMESPACES)
-          (declared && yield(declared.value)) || first_image_file(files)
-        end
-
-        def first_image_file(files)
-          files.find { |element, enclosure| element['medium'] == 'image' || enclosure.image? }&.last&.url
+          (declared && yield(declared.content)) || files.find { |_facts, image| image }&.first&.fetch(:url)
         end
 
         def attribute(element, *names)
           names.filter_map { element[_1]&.strip }.find { !_1.empty? }
+        end
+
+        def warn_mismatch(elements, count, url)
+          Log.warn({
+            event_name: 'syndication.item_media_mismatch', feed_url: url,
+            message: "Syndication::ItemMedia: #{elements} item elements for #{count} parsed items; no item media read"
+          }.to_json)
         end
       end
     end

@@ -28,7 +28,7 @@ module Html2rss
         # @return [Array<Hash{Symbol => Object}>]
         def parse(body, base_url: nil)
           items = items_from(RSS::Parser.parse(body.to_s, false))
-          media = ItemMedia.for_items(body, count: items.size) { |raw| absolute_url(raw, base_url:) }
+          media = ItemMedia.for_items(body, count: items.size, url: base_url) { |raw| absolute_url(raw, base_url:) }
 
           items.zip(media).filter_map { |item, item_media| article_hash(item, item_media, base_url:) }
         rescue RSS::Error => error

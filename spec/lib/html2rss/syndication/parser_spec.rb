@@ -154,6 +154,31 @@ RSpec.describe Html2rss::Syndication::Parser do
         .to eq([{ url: Html2rss::Url.from_absolute('https://example.com/r/1.mp3'), type: 'audio/mpeg' }])
     end
 
+    it 'carries RSS 2.0 item media beside a channel extension element named item' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0" xmlns:x="urn:example:x" xmlns:media="http://search.yahoo.com/mrss/"><channel>
+          <title>C</title><link>https://example.com/</link><description>d</description><x:item>meta</x:item>
+          <item><title>A</title><link>https://example.com/a</link>
+            <media:content url="https://example.com/stream/1" medium="audio" fileSize="1000" duration="60"/></item>
+        </channel></rss>
+      XML
+
+      expect(described_class.parse(body).first[:enclosures])
+        .to eq([{ url: Html2rss::Url.from_absolute('https://example.com/stream/1'), type: 'audio/mpeg',
+                  bytes_length: 1000, duration: 60 }])
+    end
+
+    it 'hands the feed URL to the item media reader for its log' do
+      allow(Html2rss::Syndication::ItemMedia).to receive(:for_items).and_call_original
+      body = '<rss version="2.0"><channel><title>C</title><item><link>https://example.com/a</link></item></channel></rss>'
+
+      described_class.parse(body, base_url: 'https://example.com/feed.xml')
+
+      expect(Html2rss::Syndication::ItemMedia).to have_received(:for_items)
+        .with(body, count: 1, url: 'https://example.com/feed.xml')
+    end
+
     it 'parses RSS 1.0 (RDF) items with Dublin Core fields', :aggregate_failures do
       body = File.read('spec/fixtures/syndication/rss1_dc_date.xml')
 

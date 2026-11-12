@@ -26,7 +26,8 @@ module Html2rss
         ##
         # The one RSS +enclosure+ of an item: its first audio or video file, else its first downloadable
         # document or archive ({Article::Enclosure#document?}: PDF, ZIP). Images stay on the description /
-        # JSON Feed; web pages, stream playlists, Flash players and untyped watch pages are never one.
+        # JSON Feed; stream playlists, Flash players and watch or player pages ({Article::Enclosure#player_page?})
+        # are never one.
         #
         # @param article [Html2rss::Article]
         # @return [Html2rss::Article::Enclosure, nil]

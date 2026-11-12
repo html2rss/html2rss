@@ -136,7 +136,7 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
       end
     end
 
-    context 'with media:content declaring a playable medium' do
+    context 'with watch or player pages among the files' do
       let(:body) do
         <<~XML
           <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>C</title>
@@ -144,14 +144,62 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
               <media:content url="https://example.com/listen/7" medium="audio" type="text/html"/>
               <media:content url="https://example.com/stream/9" medium="video" type="video/mp4"/>
               <media:content url="https://example.com/player.swf" medium="video"/>
-              <media:content url="https://example.com/watch/43"/></item>
+              <media:content url="https://example.com/watch/43"/>
+              <enclosure url="https://example.com/download/44" length="2048"/></item>
           </channel></rss>
         XML
       end
 
-      it 'drops a watch or player page (no media file, no file extension) and keeps the rest' do
+      it 'drops each page (web page, or untyped without extension and size) whatever its medium' do
         expect(enclosures).to eq([[{ url: 'https://example.com/stream/9', type: 'video/mp4' },
-                                   { url: 'https://example.com/player.swf' }, { url: 'https://example.com/watch/43' }]])
+                                   { url: 'https://example.com/player.swf' },
+                                   { url: 'https://example.com/download/44', bytes_length: 2048 }]])
+      end
+    end
+
+    context 'with an untyped file declaring an audio or video medium' do
+      let(:body) do
+        <<~XML
+          <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"
+               xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>C</title>
+            <item><itunes:duration>90</itunes:duration>
+              <media:content url="https://example.com/files/ep7" medium="audio" fileSize="1000" duration="60"/>
+              <media:content url="https://example.com/files/clip8" medium="video" fileSize="2000"/>
+              <media:content url="https://example.com/files/ep9.ogg" medium="video" fileSize="3000"/>
+              <media:content url="https://example.com/files/ep10" medium="audio" type="audio/aac" fileSize="4000"/>
+              <media:content url="https://example.com/files/ep11" medium="audio" type="Application/Octet-Stream"
+                             fileSize="5000"/></item>
+          </channel></rss>
+        XML
+      end
+
+      it 'types it by the medium, keeping a declared type or a known extension, and gives it the item duration' do
+        expect(enclosures.first.map { _1.values_at(:url, :type, :duration) }).to eq(
+          [['https://example.com/files/ep7', 'audio/mpeg', 60], ['https://example.com/files/clip8', 'video/mp4', 90],
+           ['https://example.com/files/ep9.ogg', nil, 90], ['https://example.com/files/ep10', 'audio/aac', 90],
+           ['https://example.com/files/ep11', 'audio/mpeg', 90]]
+        )
+      end
+    end
+
+    context 'with an item itunes:duration beside images and documents' do
+      let(:body) do
+        <<~XML
+          <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"
+               xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>C</title>
+            <item><itunes:duration>45:00</itunes:duration><enclosure url="https://example.com/a.mp3"/>
+              <media:content url="https://example.com/a.jpg" medium="image"/>
+              <media:content url="https://example.com/a.pdf" type="application/pdf"/>
+              <media:content url="https://example.com/b.pdf" duration="30"/></item>
+          </channel></rss>
+        XML
+      end
+
+      it 'gives the item duration only to audio and video files' do
+        expect(enclosures).to eq([[{ url: 'https://example.com/a.mp3', duration: 2700 },
+                                   { url: 'https://example.com/a.jpg' },
+                                   { url: 'https://example.com/a.pdf', type: 'application/pdf' },
+                                   { url: 'https://example.com/b.pdf', duration: 30 }]])
       end
     end
 
@@ -179,12 +227,82 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
       end
     end
 
-    context 'when the item elements do not number the parsed items' do
+    context 'with extension elements named item' do
+      let(:body) do
+        <<~XML
+          <rss version="2.0" xmlns:x="urn:example:x" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>C</title>
+            <x:item>extension</x:item><item><media:content url="https://example.com/1.mp3"/><x:item/></item>
+          </channel><x:item/></rss>
+        XML
+      end
+
+      it 'reads only the RSS 2.0 items' do
+        expect(enclosures).to eq([[{ url: 'https://example.com/1.mp3' }]])
+      end
+    end
+
+    context 'with Atom entries outside the Atom namespace' do
+      let(:body) do
+        <<~XML
+          <feed xmlns="http://www.w3.org/2005/Atom" xmlns:x="urn:example:x"><x:entry/>
+            <entry><link rel='enclosure' href="https://example.com/e/1.ogg"/></entry></feed>
+        XML
+      end
+
+      it 'reads only the Atom entries, finding a single-quoted enclosure link' do
+        expect(enclosures).to eq([[{ url: 'https://example.com/e/1.ogg' }]])
+      end
+    end
+
+    context 'with an iTunes image written as element text' do
       let(:count) { 2 }
+      let(:body) do
+        <<~XML
+          <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>C</title>
+            <item><itunes:image> https://example.com/text.jpg </itunes:image></item>
+            <item><itunes:image href="https://example.com/href.jpg">https://example.com/text.jpg</itunes:image></item>
+          </channel></rss>
+        XML
+      end
+
+      it 'takes the text URL, and the href when both are present' do
+        expect(media.map { _1[:image].to_s }).to eq(%w[https://example.com/text.jpg https://example.com/href.jpg])
+      end
+    end
+
+    context 'when the document declares no media' do
+      let(:count) { 2 }
+      let(:body) do
+        <<~XML
+          <rss version="2.0"><channel><title>C</title>
+            <item><link>https://example.com/1</link></item><item><link>https://example.com/2</link></item>
+          </channel></rss>
+        XML
+      end
+
+      before { allow(Nokogiri).to receive(:XML).and_call_original }
+
+      it 'gives every item no media without parsing the document again', :aggregate_failures do
+        expect(media).to eq([{}, {}])
+        expect(Nokogiri).not_to have_received(:XML)
+      end
+    end
+
+    context 'when the item elements do not number the parsed items' do
+      subject(:media) do
+        described_class.for_items(body, count: 2, url: Html2rss::Url.from_absolute('https://example.com/feed.xml')) { nil }
+      end
+
       let(:body) { '<rss version="2.0"><channel><item><enclosure url="https://example.com/1.mp3"/></item></channel></rss>' }
 
-      it 'gives every item no media' do
+      before { allow(Html2rss::Log).to receive(:warn) }
+
+      it 'gives every item no media and logs the mismatch with the feed URL', :aggregate_failures do
         expect(media).to eq([{}, {}])
+        expect(Html2rss::Log).to have_received(:warn).with(
+          { event_name: 'syndication.item_media_mismatch', feed_url: 'https://example.com/feed.xml',
+            message: 'Syndication::ItemMedia: 1 item elements for 2 parsed items; no item media read' }.to_json
+        )
       end
     end
   end

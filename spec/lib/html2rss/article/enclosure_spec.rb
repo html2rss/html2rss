@@ -180,6 +180,27 @@ RSpec.describe Html2rss::Article::Enclosure do
         expect(described_class.new(url: Html2rss::Url.from_absolute(url)).file_extension?).to be(extension)
       end
     end
+
+    {
+      ['watch/42', nil, nil] => [true, false],
+      ['watch/42', 'Application/Octet-Stream', nil] => [true, false],
+      ['embed/1', 'text/html', 2048] => [true, false],
+      ['story.html', nil, nil] => [true, false],
+      ['download/42', nil, 2048] => [false, true],
+      ['download/42', 'audio/mpeg', nil] => [false, false],
+      ['download.bin', nil, nil] => [false, true],
+      ['cover.jpg', nil, nil] => [false, false]
+    }.each_pair do |(path, type, bytes_length), (player_page, document)|
+      it "classifies #{path} typed #{type.inspect} of #{bytes_length.inspect} bytes as " \
+         "player_page=#{player_page} document=#{document}",
+         :aggregate_failures do
+        enclosure = described_class.new(url: Html2rss::Url.from_absolute("https://example.com/#{path}"), type:,
+                                        bytes_length:)
+
+        expect(enclosure.player_page?).to be(player_page)
+        expect(enclosure.document?).to be(document)
+      end
+    end
   end
 
   describe '#initialize' do

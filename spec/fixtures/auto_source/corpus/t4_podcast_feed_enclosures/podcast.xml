@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:media="http://search.yahoo.com/mrss/">
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:media="http://search.yahoo.com/mrss/" xmlns:x="urn:example:extension">
   <channel>
     <title>Example Harbor Hour</title>
     <link>https://example.com/news/</link>
     <description>Synthetic saved podcast feed</description>
+    <x:item>An extension element named item, not a feed item</x:item>
     <item>
       <title>Harbor Hour 41: the winter ferry timetable</title>
       <link>https://example.com/news/episodes/41-winter-ferry-timetable</link>
@@ -43,6 +44,14 @@
       <description>Twelve new vendors on their first month.</description>
       <itunes:duration>2280</itunes:duration>
       <enclosure url="https://example.com/news/audio/harbor-hour-38.mp3" type="audio/mpeg" length="36480000"/>
+    </item>
+    <item>
+      <title>Harbor Hour 37: the lighthouse keeper's last shift</title>
+      <link>https://example.com/news/episodes/37-lighthouse-keeper</link>
+      <guid isPermaLink="false">harbor-hour-37</guid>
+      <pubDate>Mon, 05 Oct 2026 08:00:00 GMT</pubDate>
+      <description>The last keeper locks the lighthouse door.</description>
+      <media:content url="https://example.com/news/audio/files/harbor-hour-37" medium="audio" fileSize="33600000" duration="2100"/>
     </item>
   </channel>
 </rss>

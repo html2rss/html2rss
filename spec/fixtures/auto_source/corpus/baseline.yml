@@ -530,8 +530,8 @@ t3b_staff_profile_teasers.html:
   sst_built: true
 t4_podcast_feed_enclosures.html:
   junk: 0
-  real: 4
-  expected: 4
+  real: 5
+  expected: 5
   title_misses: 0
   enclosure_misses: 0
   image_misses: 0

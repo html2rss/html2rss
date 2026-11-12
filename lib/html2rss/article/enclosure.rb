@@ -132,17 +132,21 @@ module Html2rss
       # @return [Boolean] whether the URL path ends in a file extension (+.pdf+), unlike a watch page (+/watch/42+)
       def file_extension? = !File.extname(url.path).empty?
 
-      # A downloadable document or archive (PDF, ZIP): no media file, image or web page, no stream
-      # playlist or Flash player ({STREAM_TYPES}), and no untyped URL without a file extension, which
-      # is a watch or player page served as untyped media.
+      # A watch or player page (+/watch/42+) declared as a file: a web page ({#page?}), or an untyped URL
+      # ({UNTYPED}: no declared type and no known file extension) with no file extension and no declared
+      # byte length. A declared length makes an extensionless URL a file (+/download/42+), since only a
+      # file has one.
+      #
+      # @return [Boolean] whether the URL is a watch or player page rather than a file
+      def player_page?
+        page? || (type.downcase == UNTYPED && !file_extension? && bytes_length.zero?)
+      end
+
+      # A downloadable document or archive (PDF, ZIP): no media file, image, stream playlist or Flash
+      # player ({STREAM_TYPES}), and no watch or player page ({#player_page?}).
       #
       # @return [Boolean] whether the URL is a downloadable document or archive
-      def document?
-        mime = type.downcase
-        return false if media? || image? || page? || STREAM_TYPES.include?(mime)
-
-        mime != UNTYPED || file_extension?
-      end
+      def document? = !(media? || image? || STREAM_TYPES.include?(type.downcase) || player_page?)
     end
   end
 end
