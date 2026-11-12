@@ -31,9 +31,7 @@ module Html2rss
 
         # @param parsed_body [Hash, Array, Object] parsed JSON document (or HTML when misrouted)
         # @param url [String, Html2rss::Url] base URL for relative link resolution
-        # @param _opts [Hash] scraper-specific options
-        # @option _opts [Object] :_reserved reserved for future scraper-specific options
-        def initialize(parsed_body, url:, **_opts)
+        def initialize(parsed_body, url:)
           @parsed_body = parsed_body
           @url = url
         end

@@ -43,8 +43,9 @@ module Html2rss
         # @param url [String, Html2rss::Url] canonical page URL
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
         # @param body [String, nil] raw response body for direct sitemap XML parsing
-        # @option _opts [Float] :min_priority minimum priority score (default: 0.3)
-        # @option _opts [Integer] :max_age_days maximum entry age in days (default: 30)
+        # @param opts [Hash] sitemap options
+        # @option opts [Float] :min_priority minimum priority score (default: 0.3)
+        # @option opts [Integer] :max_age_days maximum entry age in days (default: 30)
         def initialize(parsed_body, url:, request_session: nil, body: nil, **opts)
           @parsed_body = parsed_body
           @body = body

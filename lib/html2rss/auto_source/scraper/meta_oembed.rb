@@ -60,10 +60,8 @@ module Html2rss
         # @param parsed_body [Nokogiri::HTML::Document] parsed HTML document
         # @param url [String, Html2rss::Url] base page URL
         # @param request_session [Html2rss::RequestSession, nil] shared request session for follow-up fetches
-        # @param _opts [Hash] unused scraper-specific options
-        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         # @return [void]
-        def initialize(parsed_body, url:, request_session: nil, **_opts)
+        def initialize(parsed_body, url:, request_session: nil)
           @parsed_body = parsed_body
           @url = Html2rss::Url.from_absolute(url)
           @request_session = request_session

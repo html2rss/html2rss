@@ -63,9 +63,7 @@ module Html2rss
 
         # @param parsed_body [Nokogiri::HTML::Document, nil] parsed HTML document
         # @param url [String, Html2rss::Url] page URL used to resolve relative links
-        # @param _opts [Hash] scraper-specific options
-        # @option _opts [Object] :_reserved reserved for future scraper-specific options
-        def initialize(parsed_body, url:, **_opts)
+        def initialize(parsed_body, url:)
           @parsed_body = parsed_body
           @url = url
         end
