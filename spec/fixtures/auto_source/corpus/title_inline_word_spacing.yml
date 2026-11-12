@@ -1,0 +1,16 @@
+---
+case: >-
+  An inline element inside one word (a hyphenation span, bold initial) keeps the word whole; whitespace
+  in the source still separates.
+expected:
+- https://example.com/news/2026/11/tax-class-reform
+- https://example.com/news/2026/11/harbor-bridge-closure
+- https://example.com/news/2026/11/library-night-hours
+- https://example.com/news/2026/11/council-budget-vote
+- https://example.com/news/2026/11/river-park-opening
+titles:
+  https://example.com/news/2026/11/tax-class-reform: What the tax-class reform-proposal means for couples
+  https://example.com/news/2026/11/harbor-bridge-closure: The harbor bridge closes for the weekend
+  https://example.com/news/2026/11/library-night-hours: Library adds late night hours
+  https://example.com/news/2026/11/council-budget-vote: Council budget vote postponed again
+  https://example.com/news/2026/11/river-park-opening: River park opens its new playground today

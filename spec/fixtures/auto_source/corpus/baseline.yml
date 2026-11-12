@@ -234,6 +234,12 @@ title_inline_spaced_colon.html:
   expected: 5
   title_misses: 0
   sst_built: true
+title_inline_word_spacing.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 title_invisible_characters.html:
   junk: 0
   real: 5

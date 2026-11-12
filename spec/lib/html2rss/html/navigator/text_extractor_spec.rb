@@ -25,6 +25,47 @@ RSpec.describe Html2rss::Html::Navigator::TextExtractor do
       expect(described_class.call(div)).to eq("x\na\nb\nc")
     end
 
+    it 'keeps direct text touching an inline element in one word', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      word = Nokogiri::HTML.fragment('<h3>Was die <span>Straßenbah</span>n <b>f</b>ür <i>uns</i></h3>').at_css('h3')
+      label = Nokogiri::HTML.fragment('<h3><span>Live</span>Headline</h3>').at_css('h3')
+      spans = Nokogiri::HTML.fragment('<h3><span>Kicker</span><span>Headline</span></h3>').at_css('h3')
+      spaced = Nokogiri::HTML.fragment('<h3>a <span>x</span> b</h3>').at_css('h3')
+      broken = Nokogiri::HTML.fragment('<h3>A<script>x</script><span>B</span></h3>').at_css('h3')
+
+      expect(described_class.call(word)).to eq('Was die Straßenbahn für uns')
+      expect(described_class.call(label)).to eq('Live Headline')
+      expect(described_class.call(spans)).to eq('Kicker Headline')
+      expect(described_class.call(spaced)).to eq('a x b')
+      expect(described_class.call(broken)).to eq('A B')
+    end
+
+    {
+      'a<b>b</b>c' => 'abc',
+      'a <b>b</b> c' => 'a b c',
+      'a<b>b</b> c' => 'ab c',
+      'a <b>b</b>c' => 'a bc',
+      'a<b>b </b>c' => 'ab c',
+      'a<b> b</b>c' => 'a bc',
+      'a<b><i>b</i></b>c' => 'abc',
+      '<b>a</b>b' => 'a b',
+      'a<b>b</b>' => 'a b',
+      '<b>a</b>b<i>c</i>' => 'a b c',
+      'a<b>b</b><i>c</i>d' => 'a b c d',
+      'a<b>b</b><script>x</script>c' => 'a b c',
+      'a<b>b</b><i> </i>c' => 'a b c'
+    }.each do |html, text|
+      it "reads #{html} as #{text.inspect}" do
+        expect(described_class.call(Nokogiri::HTML.fragment("<h3>#{html}</h3>").at_css('h3'))).to eq(text)
+      end
+    end
+
+    it 'keeps a block break across a hidden piece', :aggregate_failures do
+      div = Nokogiri::HTML.fragment('<div><p>One</p><script>x</script>Two</div>').at_css('div')
+
+      expect(described_class.call(div)).to eq("One\nTwo")
+      expect(described_class.call(div, separator: '|')).to eq('One|Two')
+    end
+
     it 'prefixes list items with a dash' do
       ul = Nokogiri::HTML.fragment('<ul><li>one</li><li>two</li></ul>').at_css('ul')
 
