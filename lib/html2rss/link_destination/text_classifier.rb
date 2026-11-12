@@ -99,12 +99,13 @@ module Html2rss
         o|na\s+temat|om|av)
       /ix
       # A read-more label as a whole text, optionally wrapped in punctuation or arrows. The topic after a
-      # lead-in ("More about «X»") spans at most eight words, so a headline that merely opens with one is
-      # not caught; Japanese topic forms put the topic first.
+      # lead-in counts only when quoted ("More about «X»", „X“, "X", 'X', 「X」), so a headline that merely
+      # opens with one ("Mehr über die Zukunft der Rente") stays a headline; Japanese topic forms put the
+      # topic first.
       READ_MORE_PATTERN = /
         \A[\s\p{P}\p{S}]*(?:
           (?:#{READ_MORE_PHRASE.source})|
-          (?:#{READ_MORE_TOPIC_LEAD.source})(?:\s+\S+){1,8}|
+          (?:#{READ_MORE_TOPIC_LEAD.source})\s*[«„"“”'‘’‹「].+[»"“”'’›」]|
           \S{1,40}(?:の続きを読む|をもっと読む|について詳しく(?:はこちら)?|の詳細(?:を見る|はこちら))
         )[\s\p{P}\p{S}]*\z
       /ix

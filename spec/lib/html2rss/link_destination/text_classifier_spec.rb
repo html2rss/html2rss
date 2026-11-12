@@ -83,8 +83,9 @@ RSpec.describe Html2rss::LinkDestination::TextClassifier do
 
   describe '#read_more?' do
     [
-      'Read more', 'Continue reading »', 'Learn more', 'More about «Harbor ferry»', 'Read more about the mayor',
-      'Weiterlesen', 'Mehr zu «Hafen»', 'MEHR ÜBER den Hafen', 'Lire la suite', 'En savoir plus sur «Port»',
+      'Read more', 'Continue reading »', 'Learn more', 'More about «Harbor ferry»',
+      'More about „Hafen“', 'Mehr über "Hafen"', "More about 'Harbor'", 'More about “Harbor”', 'Mehr über 「港」',
+      'Weiterlesen', 'Mehr zu «Hafen»', 'MEHR ÜBER «Hafen»', 'Lire la suite', 'En savoir plus sur «Port»',
       'Leer más', 'Más sobre «Puerto»', 'Leggi tutto', 'Altro su «Porto»', 'Lees meer', 'Meer over «Haven»',
       'Czytaj więcej', 'Więcej o «Porcie»', 'Läs mer', 'Mer om «Hamnen»', '続きを読む', '「港」の続きを読む',
       '港について詳しく', "Leggi l'articolo", "  \u2192 Read more  "
