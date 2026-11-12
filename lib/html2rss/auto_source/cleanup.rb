@@ -14,7 +14,7 @@ module Html2rss
         keep_sponsored: false
       }.freeze
 
-      # Minimum alphanumeric word count for present titles.
+      # Minimum word count ({WordCount}) for present titles.
       MIN_WORDS = 3
 
       # Allowed URL schemes for article filtering.
@@ -192,7 +192,7 @@ module Html2rss
           if reason
             metrics[:junk_title_count] += 1
             violations[reason] += 1
-          elsif !word_count_at_least?(title, MIN_WORDS)
+          elsif !WordCount.at_least?(title, MIN_WORDS)
             metrics[:low_word_count] += 1
             violations[:low_word_count] += 1
           end
@@ -304,7 +304,7 @@ module Html2rss
           if title.nil?
             'blank_title' if Scraper::PAGE_SCRAPERS.include?(article.scraper)
           else
-            junk_reason(title)&.to_s || ('low_word_count' unless word_count_at_least?(title, MIN_WORDS))
+            junk_reason(title)&.to_s || ('low_word_count' unless WordCount.at_least?(title, MIN_WORDS))
           end
         end
 
@@ -336,14 +336,6 @@ module Html2rss
           title.to_s.strip.gsub(/\s+/, ' ')
         end
 
-        def word_count_at_least?(str, min_words)
-          count = 0
-          str.to_s.scan(/\p{Alnum}+/) do
-            count += 1
-            return true if count >= min_words
-          end
-          false
-        end
       end
     end
   end
