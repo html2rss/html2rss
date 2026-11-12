@@ -150,7 +150,7 @@ module Html2rss
         def section?(node, label, units)
           return false if node.find { PAGE_REGIONS.include?(_1.name) }
 
-          units.cards >= 2 && units.stray.zero? && (units.peers.zero? || alone?(node, label))
+          units.cards >= 2 && !units.stray? && (!units.peers? || alone?(node, label))
         end
 
         # Whether the child of +node+ around +label+ holds nothing but the label.

@@ -553,10 +553,16 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
               <div class="c"><h3><a href="/news/row-c">C</a></h3></div></div>
             <div class="row"><div class="ad-box"><p>Sponsored</p><div class="slot"></div></div>
               <div class="c"><h3><a href="/news/box-a">A</a></h3></div><div class="c"><h3><a href="/news/box-b">B</a></h3></div></div>
+            <div class="row"><div class="ad-box"><p>Sponsored</p><div class="slot"></div></div>
+              <div class="c"><h3><a href="/news/trail-a">A</a></h3></div><div class="c"><h3><a href="/news/trail-b">B</a></h3></div>
+              <p>More</p><div><div class="c"><h3><a href="/news/trail-c">C</a></h3></div>
+                <div class="c"><h3><a href="/news/trail-d">D</a></h3></div></div></div>
             <div class="row"><div class="head"><div><p>Sponsored</p></div></div>
               <div class="c"><h3><a href="/news/head-a">A</a></h3></div><div class="c"><h3><a href="/news/head-b">B</a></h3></div></div>
             <div class="row"><div class="head">Note <p>Sponsored</p></div>
               <div class="c"><h3><a href="/news/note-a">A</a></h3></div><div class="c"><h3><a href="/news/note-b">B</a></h3></div></div>
+            <div class="row"><div class="head">Note <div><p>Sponsored</p></div></div>
+              <div class="c"><h3><a href="/news/nest-a">A</a></h3></div><div class="c"><h3><a href="/news/nest-b">B</a></h3></div></div>
           </main></body></html>
         HTML
       end
@@ -570,12 +576,55 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       end
 
       it 'marks no card beside an ad box or a wrapper holding more than the label' do
-        paths = %w[/news/box-a /news/box-b /news/note-a /news/note-b]
+        paths = %w[/news/box-a /news/box-b /news/trail-a /news/trail-b /news/trail-c /news/trail-d /news/note-a
+                   /news/note-b /news/nest-a /news/nest-b]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
       end
 
       it 'marks the cards beside a wrapper holding only the label' do
         expect(sponsored['/news/head-a', '/news/head-b']).to eq('/news/head-a' => true, '/news/head-b' => true)
+      end
+    end
+
+    context 'when a paid label binds at its first frame holding a destination' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="promo"><p>Sponsored</p><a href="/news/bare-link">Bare link</a></div>
+            <div class="promo"><p>Sponsored</p><h3><a href="/news/dual-a">Dual A</a></h3><a href="/news/dual-b">Dual B</a></div>
+            <section><header><span>Sponsored</span><p>Partner picks</p></header>
+              <ul><li><h3><a href="/news/list-a">List A</a></h3></li><li><h3><a href="/news/list-b">List B</a></h3></li></ul></section>
+            <div class="row"><p>Sponsored</p><h4>Topic</h4><div><article><h3><a href="/news/split-a">A</a></h3></article>
+              <article><h3><a href="/news/split-b">B</a></h3></article><h4>Aside</h4></div></div>
+            <div class="row"><article><p>Sponsored</p></article>
+              <article><h3><a href="/news/past-a">A</a></h3></article><article><h3><a href="/news/past-b">B</a></h3></article></div>
+            <div class="row"><img src="/logo.png" alt=""><div><p>Sponsored</p></div>
+              <div class="c"><h3><a href="/news/later-a">A</a></h3></div><div class="c"><h3><a href="/news/later-b">B</a></h3></div></div>
+          </main></body></html>
+        HTML
+      end
+
+      let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
+
+      it 'marks no lone link without a heading and no card holding two destinations' do
+        paths = %w[/news/bare-link /news/dual-a /news/dual-b]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'marks nested card units under a header that holds more than the label' do
+        expect(sponsored['/news/list-a', '/news/list-b']).to eq('/news/list-a' => true, '/news/list-b' => true)
+      end
+
+      it 'marks no section with headings outside its card units on two levels' do
+        expect(sponsored['/news/split-a', '/news/split-b']).to eq('/news/split-a' => false, '/news/split-b' => false)
+      end
+
+      it 'stops a label at the card holding it when no destination follows inside that card' do
+        expect(sponsored['/news/past-a', '/news/past-b']).to eq('/news/past-a' => false, '/news/past-b' => false)
+      end
+
+      it 'finds the wrapper around the label behind an earlier child' do
+        expect(sponsored['/news/later-a', '/news/later-b']).to eq('/news/later-a' => true, '/news/later-b' => true)
       end
     end
 
