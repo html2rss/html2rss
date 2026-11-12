@@ -348,7 +348,8 @@ module Html2rss
     end
     private_class_method :url_mismatch?
 
-    # The page the pipeline fetched is the page probed, as in Recon and Capture: no extra page fetch.
+    # The page the pipeline fetched (where any redirect landed) is the page probed, as in Recon and Capture: no
+    # extra page fetch.
     def self.probe_native_feed_url(channel_url, config, response)
       return nil if channel_url.to_s.empty?
 
@@ -357,7 +358,7 @@ module Html2rss
       session = RequestSession.build(
         config:, strategy:, budget: resources.budget, policy: resources.policy
       )
-      Syndication::Discovery.native_feed_url(page_url: channel_url, response:, request_session: session)
+      Syndication::Discovery.native_feed_url(response:, request_session: session)
     rescue Html2rss::Error
       nil
     end

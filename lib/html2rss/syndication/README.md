@@ -7,7 +7,7 @@ Native RSS/Atom/RDF discovery and parse for auto-source promotion and direct fee
 | Concern                                                          | Owner                                                                                              |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Head `rel=alternate` (audio-hinted first on a podcast page, last elsewhere) + common path probes + status-gated feedish | `Syndication::Discovery`                                      |
-| Native feed of a fetched page for Recon, Capture and Test        | `Syndication::Discovery.native_feed_url` (one entry point: the page response they already hold)  |
+| Native feed of a fetched page for Recon, Capture and Test        | `Syndication::Discovery.native_feed_url` (one entry point: the page response they already hold, at the URL a redirect landed on) |
 | Cross-origin permission for a page's advertised feed             | `RequestService::Policy` (proof: `RequestService::FeedAdvertisement`)                              |
 | RSS 2.0 / RSS 1.0 (RDF) / Atom → `Syndication::Feed` (article hashes + channel facts); item URL: an http(s) link, else an http(s) guid, else the first audio/video file | `Syndication::Parser` |
 | Item media files and image (enclosure, Media RSS, iTunes) → item | `Syndication::ItemMedia` (called by `Parser`; http(s) only via `Url.resolve_web`; sizes, durations and player pages via `Article::Enclosure`) |

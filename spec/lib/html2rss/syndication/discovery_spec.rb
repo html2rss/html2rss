@@ -293,7 +293,7 @@ RSpec.describe Html2rss::Syndication::Discovery do
     it 'follows the fetched page\'s advertised feed on another host first', :aggregate_failures do
       allow(session).to receive(:follow_up).and_return(hit)
 
-      expect(described_class.native_feed_url(page_url:, response: page, request_session: session).to_s)
+      expect(described_class.native_feed_url(response: page, request_session: session).to_s)
         .to eq('https://feeds.example.net/show.xml')
       expect(session).to have_received(:follow_up).once.with(
         url: Html2rss::Url.from_absolute('https://feeds.example.net/show.xml'), relation: :advertised_feed,
@@ -306,10 +306,24 @@ RSpec.describe Html2rss::Syndication::Discovery do
       plain = feed_response(body:, content_type: 'text/plain', url: page_url.to_s)
       allow(session).to receive(:follow_up).and_return(hit)
 
-      described_class.native_feed_url(page_url:, response: plain, request_session: session)
+      described_class.native_feed_url(response: plain, request_session: session)
 
       expect(session).to have_received(:follow_up).once.with(
         url: Html2rss::Url.from_absolute('https://example.com/alt.xml'), relation: :auto_source, origin_url: page_url
+      )
+    end
+
+    it 'resolves a relative alternate against the page a redirect landed on', :aggregate_failures do
+      body = '<head><link rel="alternate" type="application/rss+xml" href="feed.xml"></head>'
+      landed = feed_response(body:, content_type: 'text/html', url: 'https://www.example.com/blog/')
+      allow(session).to receive(:follow_up).and_return(hit)
+
+      described_class.native_feed_url(response: landed, request_session: session)
+
+      expect(session).to have_received(:follow_up).once.with(
+        url: Html2rss::Url.from_absolute('https://www.example.com/blog/feed.xml'), relation: :advertised_feed,
+        origin_url: Html2rss::Url.from_absolute('https://www.example.com/blog/'),
+        advertisement: kind_of(Html2rss::RequestService::FeedAdvertisement)
       )
     end
   end

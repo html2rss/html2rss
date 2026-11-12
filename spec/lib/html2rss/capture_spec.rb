@@ -343,7 +343,7 @@ RSpec.describe Html2rss::Capture do
       expect(result.native_feed).to eq(feed.to_s)
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
         hash_including(
-          page_url: url,
+          page_url: response.url,
           request_session: kind_of(Html2rss::RequestSession)
         )
       )
@@ -424,7 +424,7 @@ RSpec.describe Html2rss::Capture do
         result
 
         expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: url, request_session: kind_of(Html2rss::RequestSession),
+          page_url: Html2rss::Url.from_absolute(url), request_session: kind_of(Html2rss::RequestSession),
           parsed_body: kind_of(Nokogiri::HTML::Document), html: a_string_including('Page Title')
         )
       end
@@ -489,6 +489,17 @@ RSpec.describe Html2rss::Capture do
 
         expect(result.native_feed).to be_nil
         expect(result.native_feed?).to be(false)
+      end
+    end
+
+    context 'when native feed discovery finds none' do
+      before do
+        stub_outcome(html_response('<html></html>'), articles: [])
+        allow(Html2rss::Syndication::Discovery).to receive(:best_feed_url).and_return(nil)
+      end
+
+      it 'has no native feed' do
+        expect(described_class.new(url).build.native_feed).to be_nil
       end
     end
 

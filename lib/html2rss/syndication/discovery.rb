@@ -50,16 +50,17 @@ module Html2rss
         ##
         # The native feed of a page already fetched: the one entry point for the curation gates
         # (Recon, Capture, Test), so each reads the page's head alternates (cross-origin only
-        # through its {RequestService::FeedAdvertisement}) before same-origin path guesses.
+        # through its {RequestService::FeedAdvertisement}) before same-origin path guesses. The page
+        # is the response's own URL, where a redirect landed, so relative alternates and the origin of
+        # the follow-ups are the fetched page's, never the entry URL's.
         #
-        # @param page_url [String, Html2rss::Url] page URL (origin of the follow-ups)
         # @param response [Html2rss::RequestService::Response] the fetched page; a non-HTML
         #   response contributes its raw body only
         # @param request_session [Html2rss::RequestSession] session for the probes
         # @return [Html2rss::Url, nil]
-        def native_feed_url(page_url:, response:, request_session:)
+        def native_feed_url(response:, request_session:)
           parsed_body = response.parsed_body if response.html_response?
-          best_feed_url(page_url:, request_session:, parsed_body:, html: response.body)
+          best_feed_url(page_url: response.url, request_session:, parsed_body:, html: response.body)
         end
 
         ##
