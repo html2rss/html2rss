@@ -335,7 +335,6 @@ module Html2rss
         def normalize_title(title)
           title.to_s.strip.gsub(/\s+/, ' ')
         end
-
       end
     end
   end

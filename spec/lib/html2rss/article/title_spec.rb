@@ -87,6 +87,24 @@ RSpec.describe Html2rss::Article::Title do
       [" \n ", 'Rubrik: Weather :'] => 'Weather',
       ['19:47', 'Weather'] => 'Weather: 19:47',
       [nil, 'Video'] => nil,
+      ['【速報】政府、冬の除雪支援に3200億円支出へ', nil] => '政府、冬の除雪支援に3200億円支出へ',
+      ['＜速報＞ 青空文化賞、第一回の受賞は画家の森野遥', nil] => '青空文化賞、第一回の受賞は画家の森野遥',
+      ['【独自】新庁舎の案内動画、公開延期', nil] => '新庁舎の案内動画、公開延期',
+      ['【動画】仮設宿泊施設', nil] => '仮設宿泊施設',
+      ['【LIVE】首相会見', nil] => '首相会見',
+      ['【市長外交】視察、短い日程と多い訪問先', nil] => '市長外交: 視察、短い日程と多い訪問先',
+      ['＜下＞ 連載の最終回', nil] => '下: 連載の最終回',
+      ['【速報】政府が発表', '経済'] => '経済: 政府が発表',
+      ['【市長外交】視察の日程', '政治'] => '政治: 【市長外交】視察の日程',
+      ['【速報】', nil] => '【速報】',
+      ['「速報」政府が発表', nil] => '「速報」政府が発表',
+      ['首相会見【速報】', nil] => '首相会見【速報】',
+      ['Pressemitteilung', '【速報】'] => 'Pressemitteilung',
+      ['Il sindaco apre il museo', 'Diretta streaming'] => 'Il sindaco apre il museo',
+      ['De burgemeester opent het museum', 'Persbericht'] => 'De burgemeester opent het museum',
+      ['Premier otwiera muzeum', 'Relacja na żywo'] => 'Premier otwiera muzeum',
+      ['Statsministern öppnar museet', 'Liverapport'] => 'Statsministern öppnar museet',
+      ['Sezione: Il sindaco apre il museo', 'Cultura'] => 'Cultura: Sezione: Il sindaco apre il museo',
       [nil, '09:05'] => nil,
       [nil, nil] => nil
     }.each do |(headline, kicker), expected|
@@ -168,7 +186,11 @@ RSpec.describe Html2rss::Article::Title do
   describe '.headline_noise_piece?' do
     {
       '19:47' => true, '10:00 Uhr' => true, ' Section: ' => true, 'Rubrique :' => true, 'Article type: Video' => true,
-      'Artikeltyp:' => true, 'Thema:' => true, 'Video' => false, 'Conflict:' => false, 'Section: Harbor' => false,
+      'Artikeltyp:' => true, 'Thema:' => true, 'Sezione:' => true, 'Onderwerp :' => true, 'Dział:' => true,
+      'Ämne:' => true, 'カテゴリー：' => true, 'Tipo di articolo: Video' => true, 'Artikeltype: Persbericht' => true,
+      'Typ artykułu: Galeria' => true, 'Innehållstyp: Bildspel' => true, '記事の種類：動画' => true,
+      '11月12日 16:42' => true, '2026年11月12日' => true, '11月12日' => true, '11月12日の会見' => false,
+      'Video' => false, 'Conflict:' => false, 'Section: Harbor' => false,
       '10:00 Budget vote' => false, '' => false, nil => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do
@@ -177,10 +199,23 @@ RSpec.describe Html2rss::Article::Title do
     end
   end
 
+  describe '.date_piece?' do
+    {
+      '11月12日 16:42' => true, '2026年11月12日' => true, ' 11月9日 ' => true, '11月12日 政府' => false,
+      '16:42' => false, 'November 12' => false, nil => false
+    }.each do |text, expected|
+      it "is #{expected} for #{text.inspect}" do
+        expect(described_class.date_piece?(text)).to be(expected)
+      end
+    end
+  end
+
   describe '.noise_piece?' do
     {
       'Thema:' => true, 'Thème :' => true, 'Tema:' => true, 'Topic:' => true, ' Section: ' => true, '19:47' => true,
-      'Video' => true, 'Live Blog' => true, ' ' => true, nil => true, 'Verkehr' => false, 'Conflict:' => false,
+      'Video' => true, 'Live Blog' => true, 'Diretta streaming' => true, 'Persbericht' => true,
+      'Na żywo' => true, 'Liverapport' => true, '速報' => true, 'プレスリリース' => true, 'Sezione:' => true,
+      'Ämne:' => true, 'セクション：' => true, ' ' => true, nil => true, 'Verkehr' => false, 'Conflict:' => false,
       'Hafen-Streit:' => false, 'Thema: Verkehr' => false, '28:25' => false, 'Video tour' => false
     }.each do |text, expected|
       it "is #{expected} for #{text.inspect}" do

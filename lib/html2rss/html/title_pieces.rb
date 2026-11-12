@@ -17,7 +17,8 @@ module Html2rss
     # - Headline text leaves out the kicker, concealed elements ({Visibility.concealed?}; they stay when they
     #   hold the only words, the accessible name of an otherwise empty link), date and time
     #   elements ({#date_element?}) unless they sit inside running text, lead pieces ({LEAD_WORDS}), tag
-    #   pieces closing the text ({TAG_WORDS}), and clock-only or label-only elements before its first word.
+    #   pieces closing the text ({TAG_WORDS}), clock-only or label-only elements before its first word, and
+    #   date-only elements ({Article::Title.date_piece?}) closing it.
     # - Kicker, first match: the outermost kicker-marked element beside the headline ({KICKER_CLASS},
     #   {KICKER_ATTRIBUTE}) holding no word besides its noise and kicker-marked parts; else a label leaf
     #   ({LABEL_WORDS}) opening the heading or anchor text; else the piece right before the headline piece.
@@ -122,6 +123,7 @@ module Html2rss
         drop_pieces!(node, dropped, LEAD_WORDS) { |rest, _| rest.match?(WORD) }
         drop_pieces!(node, dropped, TAG_WORDS) { |rest, piece| rest.match?(WORD) && closing?(node, dropped, piece) }
         drop_opening_noise!(node, dropped)
+        drop_closing_dates!(node, dropped)
       end
 
       # Concealed elements leave unless they hold the only words (the name of an otherwise empty link).
@@ -143,6 +145,17 @@ module Html2rss
         elements(node).each do |element|
           next if dropped.include?(element) || !Article::Title.headline_noise_piece?(text(element))
           break unless opening?(node, dropped, element)
+
+          dropped << element
+        end
+        dropped
+      end
+
+      # A date-only element ({Article::Title.date_piece?}) closing the text: the date chip of a teaser card.
+      def drop_closing_dates!(node, dropped)
+        elements(node).reverse_each do |element|
+          next if dropped.include?(element) || !Article::Title.date_piece?(text(element))
+          break unless closing?(node, dropped, element)
 
           dropped << element
         end
