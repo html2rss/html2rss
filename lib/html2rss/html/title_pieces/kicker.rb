@@ -5,7 +5,7 @@ module Html2rss
     class TitlePieces
       ##
       # The kicker of one card, first match: the outermost kicker-marked element beside the headline
-      # ({KICKER_CLASS}, {KICKER_ATTRIBUTE}) holding no word besides its noise and kicker-marked parts; else
+      # ({KICKER_WORDS}, {KICKER_ATTRIBUTE}) holding no word besides its noise and kicker-marked parts; else
       # a label leaf ({LABEL_WORDS}) opening the heading or anchor text; else the piece right before the
       # headline piece. A paid-content label is never a kicker.
       class Kicker
@@ -46,7 +46,9 @@ module Html2rss
           kickers.find { @nodes.inside?(_1, @source) } || kickers.first
         end
 
-        def marked?(node) = @nodes.attribute(node, KICKER_ATTRIBUTE) || @nodes.class_names(node).any?(KICKER_CLASS)
+        def marked?(node)
+          @nodes.attribute(node, KICKER_ATTRIBUTE) || @nodes.class_words(node).intersect?(KICKER_WORDS)
+        end
 
         # A label leaf opening the source text, with headline text after it.
         def label

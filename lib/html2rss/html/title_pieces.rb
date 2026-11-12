@@ -25,8 +25,9 @@ module Html2rss
     #   topic and stays a kicker.
     # - Kicker: {Kicker}.
     class TitlePieces
-      # Class-token marks of kicker / eyebrow text anywhere in the card.
-      KICKER_CLASS = /kicker|eyebrow|pre-title|pretitle|overline|topline/i
+      # Class words (tokens split on +-+, +_+ and camelCase, neighbours joined) marking kicker / eyebrow
+      # text anywhere in the card.
+      KICKER_WORDS = Set['kicker', 'eyebrow', 'pretitle', 'overline', 'topline'].freeze
       # Attribute marking kicker text.
       KICKER_ATTRIBUTE = 'data-tb-kicker'
       # Attribute holding the publisher's clean title on the heading or anchor.
@@ -35,8 +36,7 @@ module Html2rss
       # +sub-title+ are not one.
       HEADLINE_WORDS = Set['title', 'headline', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].freeze
       # Class words of a label leaf that is a kicker when it opens the heading or anchor text.
-      LABEL_WORDS = Set['kicker', 'eyebrow', 'overline', 'pretitle', 'topline', 'prefix', 'label', 'alert', 'alerte',
-                        'live', 'regionname'].freeze
+      LABEL_WORDS = (KICKER_WORDS | Set['prefix', 'label', 'alert', 'alerte', 'live', 'regionname']).freeze
       # Class words of date, time and duration elements.
       DATE_WORDS = Set['date', 'time', 'duration', 'timestamp', 'datetime'].freeze
       # Class words of a teaser lead or summary, never part of the title.
