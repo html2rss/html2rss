@@ -118,6 +118,7 @@ module Html2rss
       @captured_responses = response.captured_responses
       @opts = opts
       @request_session = request_session
+      @cards_read = false
     end
 
     ##
@@ -170,6 +171,7 @@ module Html2rss
         break if enough_articles?(articles)
         break if skip_html_padding?(tier, articles)
 
+        @cards_read = true if Scraper.heuristic_tier?(tier)
         tier.each do |scraper_class|
           instance = Scraper.build_instance(
             scraper_class,
@@ -250,9 +252,11 @@ module Html2rss
 
     # The articles that count toward +limit+, in order: those the page shows in its content
     # ({Corroboration#shown?}), media items (audio, video) only on a media page
-    # ({Corroboration#media_page?}). The others stay admitted after the counting ones.
+    # ({Corroboration#media_page?}). The others stay admitted after the counting ones. A page is
+    # judged a media page only once a heuristic tier has read its cards: structured items alone
+    # cannot tell a podcast page from a news page with an audio list.
     def counting(articles)
-      media_page = corroboration.media_page?(articles)
+      media_page = @cards_read && corroboration.media_page?(articles)
       articles.select { (media_page || !_1.media?) && corroboration.shown?(_1) }
     end
 

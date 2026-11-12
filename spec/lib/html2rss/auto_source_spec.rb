@@ -428,6 +428,27 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'with a few audio items shown among more news cards' do
+      let(:config) { described_class::DEFAULT_CONFIG.merge(limit: 3) }
+      let(:body) do
+        audio = Array.new(3) do |index|
+          { '@type' => 'ListItem', 'item' => { '@type' => 'AudioObject', 'name' => "Audio briefing number #{index}",
+                                               'url' => "https://example.com/audio/briefing-#{index}" } }
+        end
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => audio }
+        links = audio.map { %(<li><a href="#{_1['item']['url']}">#{_1['item']['name']}</a></li>) }.join
+        cards = Array.new(4) do |index|
+          %(<article><h2><a href="/news/2026/11/story-#{index}">News story number #{index}</a></h2></article>)
+        end
+        script = %(<script type="application/ld+json">#{ld.to_json}</script>)
+        %(<html><body>#{script}<main><ul>#{links}</ul>#{cards.join}</main></body></html>)
+      end
+
+      it 'is no media page: the audio items do not stop the tiers and the news comes first' do
+        expect(articles.map { _1.url.path }).to eq(Array.new(3) { "/news/2026/11/story-#{_1}" })
+      end
+    end
+
     context 'with a podcast page of episodes and promo cards' do
       let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_podcast_episode_page.html') }
       let(:url) { Html2rss::Url.from_absolute('https://example.com/podcasts/harbor-hour/') }
