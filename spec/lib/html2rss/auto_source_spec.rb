@@ -2,6 +2,8 @@
 
 # rubocop:disable RSpec/MultipleMemoizedHelpers
 
+require_relative '../../support/saved_responses'
+
 RSpec.describe Html2rss::AutoSource do
   subject(:auto_source) { described_class.new(response, config, request_session:) }
 
@@ -358,12 +360,55 @@ RSpec.describe Html2rss::AutoSource do
         expect(counts).to eq(sst: 1, resolver: 1)
       end
 
-      it 'builds no SST when an exempt native feed already fills the limit', :aggregate_failures do
+      it 'builds the SST once to check a native feed that fills the limit for sponsorship', :aggregate_failures do
         allow(Html2rss::AutoSource::Scraper::NativeFeed).to receive(:new).and_return(native_feed)
         limited = described_class.new(response, described_class::DEFAULT_CONFIG.merge(limit: 1)).articles
 
         expect(limited.map { _1.url.path }).to eq(['/news/feed-1'])
-        expect(counts[:sst]).to eq(0)
+        expect(counts[:sst]).to eq(1)
+      end
+    end
+
+    context 'with a Schema audio list of the item limit beside a news list' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/t6_media_list_news.html') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+
+      it 'reads the news before the media items, which fill the rest of the limit', :aggregate_failures do
+        news, media = articles.partition { _1.url.path.start_with?('/news/2026/') }
+
+        expect(articles.size).to eq(described_class::DEFAULT_LIMIT)
+        expect(news.size).to eq(10)
+        expect(articles.first(10)).to eq(news)
+        expect(media).to all(be_media)
+      end
+    end
+
+    context 'with a native feed and a page of cards' do
+      let(:dir) { 'spec/fixtures/auto_source/corpus/t6_feed_merge' }
+      let(:body) { File.read(File.join(dir, 'page.html')) }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+      let(:request_session) { SavedResponses.new(File.join(dir, 'responses')) }
+      let(:slugs) { articles.map { _1.url.path.delete_prefix('/news/2026/11/') } }
+      let(:feed_items) { articles.select { _1.scraper == Html2rss::AutoSource::Scraper::NativeFeed } }
+
+      it 'puts the feed items first and fills up with page items', :aggregate_failures do
+        expect(slugs).to eq(%w[feed-only-council-vote harbor-ferry-schedule library-reading-week river-path-reopens
+                               night-market-vendors school-garden-harvest bridge-paint-survey museum-late-opening])
+        expect(feed_items.size).to eq(4)
+      end
+
+      it 'drops the sponsored feed item', :aggregate_failures do
+        expect(slugs).not_to include('partner-energy-savings')
+        expect(auto_source.admission_drops).to include('sponsored' => 1, 'duplicate_url' => 4)
+      end
+
+      it 'merges each article in both into one feed item carrying the page image', :aggregate_failures do
+        merged = feed_items.drop(1)
+
+        expect(merged.map(&:title)).to all(end_with('(publisher title)'))
+        slugs = %w[harbor-ferry-schedule library-reading-week river-path-reopens]
+        expect(merged.map { _1.image&.path }).to eq(slugs.map { "/img/#{_1}.jpg" })
+        expect(feed_items.first.image).to be_nil
       end
     end
 

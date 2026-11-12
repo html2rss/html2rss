@@ -48,6 +48,17 @@ module Html2rss
       end
 
       ##
+      # Whether the page shows an item in its content. Only checked items can fail: one kept by
+      # score (rendered in chrome, a peripheral landmark, or nowhere) is not shown. Exempt items
+      # (publisher-declared, or read off the page by a heuristic tier) are taken as shown.
+      #
+      # @param article [Html2rss::Article] admitted item
+      # @return [Boolean]
+      def shown?(article)
+        !Scraper::CORROBORATED_SCRAPERS.include?(article.scraper) || page_links.placement(article.url) == :content
+      end
+
+      ##
       # The page's own form of a checked item's URL, when it differs only by scheme, tracking
       # params, trailing slash, or fragment from a rendered content anchor.
       #

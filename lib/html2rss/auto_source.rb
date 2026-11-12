@@ -126,7 +126,9 @@ module Html2rss
     # Tiers: in-page structured → follow-up IO → SemanticHtml → Html.
     # SST is built at most once, lazily, by the first consumer: a heuristic tier or the
     # {Corroboration} page check of structured-tier items. Later tiers are skipped once
-    # +limit+ articles with url+title remain after Cleanup; the result is capped to +limit+.
+    # +limit+ counting articles with url+title remain after Cleanup ({#counts?}); the result
+    # is capped to +limit+, counting articles first. A native feed's items come first, and
+    # Cleanup merges a page copy of the same article into them.
     # Html is skipped when earlier tiers already admitted at least one clean article
     # below +limit+ — quality over padding with weaker heuristic junk.
     #
@@ -224,7 +226,8 @@ module Html2rss
       result = cleanup_result(articles)
       @admission_drops = result.drop_tallies
       log_admission_emptied(captured_count, result) if captured_count.positive? && result.articles.empty?
-      result.articles.first(article_limit)
+      counting, rest = result.articles.partition { counts?(_1) }
+      (counting + rest).first(article_limit)
     end
 
     def log_admission_emptied(captured_count, result)
@@ -242,7 +245,13 @@ module Html2rss
     def enough_articles?(articles)
       return false if articles.size < article_limit
 
-      admitted_articles(articles).size >= article_limit
+      admitted_articles(articles).count { counts?(_1) } >= article_limit
+    end
+
+    # An article counts toward +limit+ unless it is a media item (audio, video) or a structured
+    # item the page does not show in its content; both are still admitted, after counting ones.
+    def counts?(article)
+      !article.media? && corroboration.shown?(article)
     end
 
     # Prefer fewer clean items over refilling +limit+ from the Html heuristic tier.

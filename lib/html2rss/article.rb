@@ -57,6 +57,16 @@ module Html2rss
     # @return [Article] a copy of this article carrying +new_url+
     def with_url(new_url) = self.class.new(**@to_h, url: new_url)
 
+    # Folds a later copy of the same article into this one: every field this copy carries wins
+    # (title, date, guid, description, scraper), and the other copy fills only the fields it lacks.
+    #
+    # @param other [Article] another copy of this article (same {Url#article_identity})
+    # @return [Article] self when +other+ adds nothing, else a copy carrying the filled fields
+    def merge(other)
+      filled = other.provided.reject { |key, _| present?(@to_h[key]) }
+      filled.empty? ? self : self.class.new(**@to_h, **filled)
+    end
+
     # @return [String, nil] stable article identifier
     def id = blank_string_to_nil(@to_h[:id])
 
@@ -140,7 +150,19 @@ module Html2rss
       @to_h[:scraper]
     end
 
+    protected
+
+    # @return [Hash{Symbol => Object}] the constructor payload, for {#merge}
+    def provided = @to_h
+
     private
+
+    def present?(value)
+      case value
+      when String, Array, Hash then !value.empty?
+      else !value.nil?
+      end
+    end
 
     # A {Url} is always normalized; http(s) ones need no re-parse. Others go through +Url.sanitize+.
     def http_url(value)

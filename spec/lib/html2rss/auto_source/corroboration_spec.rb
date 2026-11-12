@@ -60,6 +60,30 @@ RSpec.describe Html2rss::AutoSource::Corroboration do
       expect(builds.size).to eq(1)
     end
 
+    describe '#shown?' do
+      it 'shows a checked item rendered as a content anchor' do
+        placements[article.url.path] = :content
+
+        expect(corroboration.shown?(article)).to be(true)
+      end
+
+      it 'does not show a checked item rendered only outside the content', :aggregate_failures do
+        %i[chrome peripheral absent].each do |placement|
+          placements[article.url.path] = placement
+
+          expect(corroboration.shown?(article)).to be(false)
+        end
+      end
+
+      it 'takes an exempt item as shown without building page links', :aggregate_failures do
+        feed_item = Html2rss::Article.new(url: 'https://example.com/x', title: 'T', id: 'x',
+                                          scraper: Html2rss::AutoSource::Scraper::NativeFeed)
+
+        expect(corroboration.shown?(feed_item)).to be(true)
+        expect(builds).to be_empty
+      end
+    end
+
     describe '#canonical_url' do
       let(:canonical) { Html2rss::Url.from_absolute('https://example.com/news/canonical') }
 

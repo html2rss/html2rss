@@ -115,6 +115,29 @@ RSpec.describe Html2rss::Article do
     end
   end
 
+  describe '#merge' do
+    let(:options) do
+      { id: 'feed-1', title: 'Publisher headline', url: 'https://example.com/a', guid: 'g-1', categories: [],
+        published_at: '2026-11-02T08:00:00Z', scraper: Object }
+    end
+    let(:page_copy) do
+      described_class.new(id: 'card-1', title: 'Kicker: Card headline', url: 'https://example.com/a/',
+                          image: 'https://example.com/a.jpg', categories: ['City'], description: 'Card teaser.',
+                          published_at: '2026-11-10', scraper: String)
+    end
+
+    it 'keeps every field it carries and fills the fields it lacks from the other copy', :aggregate_failures do
+      expect(instance.merge(page_copy)).to have_attributes(
+        id: 'feed-1', title: 'Publisher headline', guid: instance.guid, published_at: instance.published_at,
+        scraper: Object, description: 'Card teaser.', categories: ['City'], url: instance.url, image: page_copy.image
+      )
+    end
+
+    it 'returns itself when the other copy adds nothing' do
+      expect(instance.merge(described_class.new(id: 'x', title: 'Other', url: 'https://example.com/a'))).to be(instance)
+    end
+  end
+
   describe '#description' do
     it 'returns the raw extracted description without DescriptionBuilder', :aggregate_failures do
       allow(Html2rss::Html::Rendering::DescriptionBuilder).to receive(:new)

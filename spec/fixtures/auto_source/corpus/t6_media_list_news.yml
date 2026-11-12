@@ -1,0 +1,13 @@
+---
+case: A Schema ItemList of 25 audio objects (the item limit) shown on the page beside ten news cards; the audio items must not stop the tiers before the news is read. Audio URLs are not expected, so they count as junk.
+expected:
+- https://example.com/news/2026/11/harbor-council-update-1
+- https://example.com/news/2026/11/library-council-update-2
+- https://example.com/news/2026/11/river-council-update-3
+- https://example.com/news/2026/11/school-council-update-4
+- https://example.com/news/2026/11/market-council-update-5
+- https://example.com/news/2026/11/bridge-council-update-6
+- https://example.com/news/2026/11/museum-council-update-7
+- https://example.com/news/2026/11/garden-council-update-8
+- https://example.com/news/2026/11/station-council-update-9
+- https://example.com/news/2026/11/festival-council-update-10
