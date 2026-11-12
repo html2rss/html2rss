@@ -5,8 +5,9 @@ module Html2rss
     ##
     # Owns article title composition and the one title-noise vocabulary.
     #
-    # Whitespace collapse ({.collapse}) is universal. Composition ({.compose}) is opt-in per caller
-    # (see {Article#initialize}): configured selector titles and publisher feed titles stay verbatim.
+    # Whitespace collapse ({.collapse}) is universal and also drops invisible characters ({INVISIBLE}).
+    # Composition ({.compose}) is opt-in per caller (see {Article#initialize}): configured selector titles
+    # and publisher feed titles stay verbatim.
     #
     # A composed title takes the form +Kicker: Headline+ (or just +Headline+, or the kicker alone when
     # the headline is blank). Both parts are whitespace-collapsed and trimmed of stray separators
@@ -22,6 +23,9 @@ module Html2rss
     module Title
       # Joins a kicker to its headline.
       SEPARATOR = ': '
+      # Characters that render nothing inside a word: soft hyphen, zero-width space / non-joiner / joiner,
+      # word joiner and byte-order mark. Every title drops them, verbatim publisher titles included.
+      INVISIBLE = /[\u00AD\u200B-\u200D\u2060\uFEFF]/
       # Clock time of day (24h, or 12h with AM/PM). Description chip peeling reuses it. Case-sensitive:
       # a spaced lowercase +am+ is the German preposition (+9:15 am Bahnhof+), so only +9:15am+ takes it.
       CLOCK = /(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?:\s*(?:AM|PM)|am|pm)?/
@@ -77,9 +81,10 @@ module Html2rss
       class << self
         ##
         # @param text [String, nil] title text as extracted
-        # @return [String, nil] +text+ with whitespace runs (newlines included) collapsed and trimmed, or nil when blank
+        # @return [String, nil] +text+ without {INVISIBLE} characters, whitespace runs (newlines included)
+        #   collapsed and trimmed, or nil when blank
         def collapse(text)
-          collapsed = text.to_s.gsub(/[[:space:]]+/, ' ').strip
+          collapsed = text.to_s.gsub(INVISIBLE, '').gsub(/[[:space:]]+/, ' ').strip
           collapsed unless collapsed.empty?
         end
 

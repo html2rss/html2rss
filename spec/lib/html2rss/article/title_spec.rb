@@ -6,6 +6,9 @@ RSpec.describe Html2rss::Article::Title do
       "  Tram line\n extends\t" => 'Tram line extends',
       '10:00 Budget vote' => '10:00 Budget vote',
       'Video: Harbor tour' => 'Video: Harbor tour',
+      "Straßen\u00ADbahn" => 'Straßenbahn',
+      "Zero\u200Bwidth\u200C non\u200Djoiner\u2060 mark\uFEFF" => 'Zerowidth nonjoiner mark',
+      "\uFEFF \u00AD " => nil,
       "  \n " => nil,
       nil => nil
     }.each do |text, expected|
