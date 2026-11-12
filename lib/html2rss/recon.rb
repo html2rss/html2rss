@@ -165,12 +165,7 @@ module Html2rss
     # @param response [Html2rss::RequestService::Response]
     # @return [Array(Html2rss::Url, nil), String, nil)] feed URL and optional discovery error note
     def self.find_native_feed(url_obj, session, response)
-      feed = Syndication::Discovery.best_feed_url(
-        page_url: url_obj,
-        request_session: session,
-        parsed_body: (response.parsed_body if response.html_response?),
-        html: response.body
-      )
+      feed = Syndication::Discovery.native_feed_url(page_url: url_obj, response:, request_session: session)
       [feed, nil]
     rescue Html2rss::Error => error
       [nil, "discovery_error=#{error.class}: #{error.message}"]

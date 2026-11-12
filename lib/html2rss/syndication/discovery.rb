@@ -50,6 +50,21 @@ module Html2rss
         end
 
         ##
+        # The native feed of a page already fetched: the one entry point for the curation gates
+        # (Recon, Capture, Test), so each reads the page's head alternates (cross-origin only
+        # through its {RequestService::FeedAdvertisement}) before same-origin path guesses.
+        #
+        # @param page_url [String, Html2rss::Url] page URL (origin of the follow-ups)
+        # @param response [Html2rss::RequestService::Response] the fetched page; a non-HTML
+        #   response contributes its raw body only
+        # @param request_session [Html2rss::RequestSession] session for the probes
+        # @return [Html2rss::Url, nil]
+        def native_feed_url(page_url:, response:, request_session:)
+          parsed_body = response.parsed_body if response.html_response?
+          best_feed_url(page_url:, request_session:, parsed_body:, html: response.body)
+        end
+
+        ##
         # Like {#best_feed_url} but returns the validated syndication response for parsing.
         #
         # @param page_url [String, Html2rss::Url]

@@ -335,13 +335,14 @@ RSpec.describe Html2rss::Test do
         })
       end
 
-      it 'probes for a native feed at channel.url using a diagnostic request session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      it 'probes the fetched channel page for a native feed with a diagnostic request session', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
         allow(Html2rss::RequestSession).to receive(:build).and_call_original
         described_class.call(valid_config.merge(strategy: :default))
 
         expect(Html2rss::RequestSession).to have_received(:build).with(hash_including(strategy: :default))
         expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-          page_url: 'https://example.com/news', request_session: kind_of(Html2rss::RequestSession)
+          page_url: 'https://example.com/news', request_session: kind_of(Html2rss::RequestSession),
+          parsed_body: kind_of(Nokogiri::HTML::Document), html: '<html></html>'
         )
       end
 
