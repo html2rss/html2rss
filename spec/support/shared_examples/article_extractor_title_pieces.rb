@@ -124,6 +124,26 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<div class="item-duration">0:52</div><span class="newsBlock-date">November 10, 2026</span></a></h2>',
       'Tram line extends'
     ],
+    'a Japanese date chip closing the headline without a date class' => [
+      '<h2><a href="/news/story"><div><span>市が補修費を支出へ</span></div><span class="stamp">11月12日 16:42</span></a></h2>',
+      '市が補修費を支出へ'
+    ],
+    'two Japanese date chips closing the headline' => [
+      '<h2><a href="/news/story"><span>市が補修費を支出へ</span><span>11月12日</span><span>11月13日 9:05</span></a></h2>',
+      '市が補修費を支出へ'
+    ],
+    'a Japanese date chip before a dated element closing the headline' => [
+      '<h2><a href="/news/story"><span>市が補修費を支出へ</span><span>11月12日</span><span class="date">11月13日</span></a></h2>',
+      '市が補修費を支出へ'
+    ],
+    'a Japanese date chip opening the headline without a date class' => [
+      '<h2><a href="/news/story"><span class="stamp">11月12日</span><span>市が補修費を支出へ</span></a></h2>',
+      '市が補修費を支出へ'
+    ],
+    'a Japanese date inside the headline text' => [
+      '<h2><a href="/news/story"><span>政府は</span> <span>11月12日</span> <span>に支出へ</span></a></h2>',
+      '政府は 11月12日 に支出へ'
+    ],
     'an update or candidate class that only contains a date word' => [
       '<h2><a href="/news/story"><span class="update-note">Tram</span> <span class="candidates">line</span></a></h2>',
       'Tram line'

@@ -81,7 +81,7 @@ module Html2rss
       # Leading separators of a headline (+Kicker</span> – Headline+ leaves +– Headline+).
       LEADING_SEPARATORS = /\A(?:[[:space:]]|#{SEPARATOR_MARK})+/
       # A leading Japanese bracket (+【…】+ or +＜…＞+) of one to thirty characters, with headline text after it.
-      LEADING_BRACKET = /\A[【＜]([^】＞]{1,30})[】＞][[:space:]]*(?=\S)/
+      LEADING_BRACKET = /\A[【＜][[:space:]]*([^】＞]{1,30}?)[[:space:]]*[】＞][[:space:]]*(?=\S)/
       # A bracket naming a content type (+【速報】+): noise as a kicker.
       BRACKET_LABEL = /[【＜][[:space:]]*(?:#{MARKER_ALTERNATION})[[:space:]]*[】＞]/i
       # Leading kicker noise, repeated: separators, separated clocks, labels.
@@ -178,10 +178,10 @@ module Html2rss
         # unless the source already gave one (then the headline stays whole).
         def peel_bracket(head, top)
           return [head, top] unless (bracket = head&.match(LEADING_BRACKET))
-          return [bracket.post_match, top] if TYPE_MARKERS.include?(bracket[1].strip.downcase)
+          return [bracket.post_match, top] if TYPE_MARKERS.include?(bracket[1].downcase)
           return [head, top] if top
 
-          [bracket.post_match, bracket[1].strip]
+          [bracket.post_match, bracket[1]]
         end
 
         def noise_kicker?(kicker) = TYPE_MARKERS.include?(kicker.downcase)

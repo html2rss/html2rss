@@ -20,11 +20,23 @@ RSpec.describe Html2rss::WordCount do
     it 'stops at the ceiling' do
       expect(described_class.count('one two three four five', ceiling: 3)).to eq(3)
     end
+
+    it 'stops at the ceiling a chunk overshoots' do
+      expect(described_class.count('日本語のニュース記事です もう一つ', ceiling: 1)).to eq(2)
+    end
   end
 
   describe '.at_least?' do
     it 'reads unspaced Japanese by character chunks' do
       expect(described_class.at_least?('アクメ 会員の登録情報およそ4万2千件が外部へ', 3)).to be(true)
+    end
+
+    it 'stops counting at the limit' do
+      expect(described_class.at_least?('one two three', 2)).to be(true)
+    end
+
+    it 'is true for exactly the limit' do
+      expect(described_class.at_least?('one two', 2)).to be(true)
     end
 
     it 'is false below the limit' do
