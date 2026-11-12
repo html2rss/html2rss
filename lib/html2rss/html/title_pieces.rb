@@ -19,6 +19,10 @@ module Html2rss
     #   elements ({#date_element?}) unless they sit inside running text, lead pieces ({LEAD_WORDS}), tag
     #   pieces closing the text ({TAG_WORDS}), clock-only or label-only elements before its first word, and
     #   date-only elements ({Article::Title.date_piece?}) closing it.
+    # - A paid-content label ({LinkDestination::Sponsorship.paid_text?}) is item metadata, never title text:
+    #   it is no kicker and leaves the headline text where it opens it, so a kept sponsored item (cleanup
+    #   +keep_sponsored+) is titled by its headline alone. An ad word ("Anzeige", "Werbung") also names a
+    #   topic and stays a kicker.
     # - Kicker, first match: the outermost kicker-marked element beside the headline ({KICKER_CLASS},
     #   {KICKER_ATTRIBUTE}) holding no word besides its noise and kicker-marked parts; else a label leaf
     #   ({LABEL_WORDS}) opening the heading or anchor text; else the piece right before the headline piece.
@@ -143,7 +147,7 @@ module Html2rss
 
       def drop_opening_noise!(node, dropped)
         elements(node).each do |element|
-          next if dropped.include?(element) || !Article::Title.headline_noise_piece?(text(element))
+          next if dropped.include?(element) || !noise_text?(text(element))
           break unless opening?(node, dropped, element)
 
           dropped << element
@@ -181,10 +185,15 @@ module Html2rss
       # A label leaf opening the source text, with headline text after it.
       def label_kicker
         rest = text(@source, unseen(@source)).to_s
-        elements(@source).find do |element|
-          class_words(element).intersect?(LABEL_WORDS) && rest.start_with?(text(element).to_s) &&
-            text(@source, unseen(@source) + [element]).to_s.match?(WORD)
-        end
+        elements(@source).find { label_leaf?(_1) && opening_kicker?(_1, rest) }
+      end
+
+      # A label-marked element that is no paid-content label.
+      def label_leaf?(element) = class_words(element).intersect?(LABEL_WORDS) && !paid_label?(element)
+
+      # Whether +element+ opens +rest+, the source text, with headline words after it.
+      def opening_kicker?(element, rest)
+        rest.start_with?(text(element).to_s) && text(@source, unseen(@source) + [element]).to_s.match?(WORD)
       end
 
       # The nearest worded piece before the source's headline piece, when it is a kicker-shaped leaf.
@@ -235,10 +244,17 @@ module Html2rss
       # Kicker pieces that are noise on their own: date and time elements, concealed elements and
       # {Article::Title.noise_piece?}.
       def kicker_noise(node)
-        elements(node).select { date_element?(_1) || concealed?(_1) || Article::Title.noise_piece?(text(_1)) }
+        elements(node).select { date_element?(_1) || concealed?(_1) || paid_label?(_1) || Article::Title.noise_piece?(text(_1)) }
       end
 
-      def noise_element?(node) = date_element?(node) || Article::Title.headline_noise_piece?(text(node))
+      def noise_element?(node) = date_element?(node) || noise_text?(text(node))
+
+      # Headline noise ({Article::Title.headline_noise_piece?}) or a paid-content label.
+      def noise_text?(text)
+        Article::Title.headline_noise_piece?(text) || LinkDestination::Sponsorship.paid_text?(text)
+      end
+
+      def paid_label?(node) = LinkDestination::Sponsorship.paid_text?(text(node))
 
       def beside_headline?(node)
         return true unless @source

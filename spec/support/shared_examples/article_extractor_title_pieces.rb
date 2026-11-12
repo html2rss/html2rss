@@ -477,6 +477,24 @@ RSpec.shared_examples 'article extractor title pieces' do
     'a time and a lead piece as the only headline words' => [
       '<h2><a href="/news/story"><time>08:10</time><span class="lead">Tram line extends</span></a></h2>',
       'Tram line extends'
+    ],
+    'a paid label in a marked kicker link beside the title link' => [
+      '<div><a href="/news/story"><span class="category overline">Materiał Partnera</span></a>' \
+      '<a href="/news/story"><h3>Office space for small firms</h3></a></div>',
+      'Office space for small firms'
+    ],
+    'a paid label opening the link text' => [
+      '<h2><a href="/news/story"><span class="label">Sponsored</span> Heat pumps for every budget</a></h2>',
+      'Heat pumps for every budget'
+    ],
+    'a marked paid label before a marked topic' => [
+      '<span class="kicker">Sponsored content</span><span class="kicker">Energy</span>' \
+      '<h2><a href="/news/story">Heat pumps for every budget</a></h2>',
+      'Energy: Heat pumps for every budget'
+    ],
+    'an ad word as a topic kicker' => [
+      '<span class="kicker">Werbung</span><h2><a href="/news/story">New rules for posters</a></h2>',
+      'Werbung: New rules for posters'
     ]
   }.each do |shape, (card, title)|
     it "titles a card with #{shape} as #{title.inspect}" do
