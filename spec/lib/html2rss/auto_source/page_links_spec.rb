@@ -428,6 +428,134 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       end
     end
 
+    context 'when a label sits inside a card link' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <ul>
+              <li><a href="/news/teaser-ad"><div><span>Annons</span></div><h2>Teaser ad</h2></a></li>
+              <li><a href="/news/teaser-plain"><h2>Teaser plain</h2></a></li>
+              <li><a href="/news/teaser-paid"><div><span>Annons</span></div><h2>Teaser paid</h2></a></li>
+            </ul>
+            <div class="grid">
+              <div><a href="/news/kicker-ad"><img src="/k.jpg"></a>
+                <div><a href="/news/kicker-ad"><span class="category">Materiał Partnera</span></a>
+                  <a href="/news/kicker-ad"><h3>Kicker ad</h3></a></div></div>
+              <div><a href="/topics/politics/"><span class="category">Politics</span></a>
+                <a href="/news/kicker-plain"><h3>Kicker plain</h3></a></div>
+            </div>
+            <div><a href="/news/headingless"><span>Sponsored</span><span>No heading</span></a></div>
+            <div><a href="/news/ad-chip"><span class="category">Werbung</span><h3>Ad chip</h3></a></div>
+            <div><a href="/news/wrapped-twice"><span>Anzeige</span><h3>One</h3></a><h3>Two</h3></div>
+            <p><a href="/news/teaser-ad">Teaser ad, again</a></p>
+          </main><footer><ul><li><a href="/mediadaten/"><span>Werbung</span></a></li></ul></footer></body></html>
+        HTML
+      end
+
+      let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
+
+      it 'marks the link destination across its one-card unit when that unit holds a heading' do
+        expect(sponsored['/news/kicker-ad', '/news/wrapped-twice', '/news/teaser-paid', '/news/kicker-plain',
+                         '/topics/politics/']).to eq(
+                           '/news/kicker-ad' => true, '/news/wrapped-twice' => true, '/news/teaser-paid' => true,
+                           '/news/kicker-plain' => false, '/topics/politics/' => false
+                         )
+      end
+
+      it 'binds nothing without a heading, for an ad word on a chip, or in a footer link' do
+        paths = %w[/news/headingless /news/ad-chip /mediadaten/ /news/teaser-plain]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'releases a linked destination also rendered outside every marked card' do
+        expect(page_links.sponsored?(url_at['/news/teaser-ad'])).to be(false)
+      end
+    end
+
+    context 'when a linked label sits in the only card of a page' do
+      let(:html) do
+        '<html><body><div><a href="/news/only"><span>Annons</span><h2>Only story</h2></a></div></body></html>'
+      end
+
+      it 'binds the unit at the root' do
+        expect(page_links.sponsored?(url_at['/news/only'])).to be(true)
+      end
+    end
+
+    context 'when a paid label heads a section' do
+      let(:html) do
+        <<~HTML
+          <html><body><main>
+            <div class="module"><div class="module__head ad-label"><p>Contenus partenaires</p></div>
+              <ul><li><a href="/news/pub-one"><div>Pub one</div></a></li><li><a href="/news/pub-two"><div>Pub two</div></a></li>
+                <li><a href="/news/pub-three"><div>Pub three</div></a></li></ul></div>
+            <section><h2>Sponsored content</h2>
+              <article><h3><a href="/news/rail-one">Rail one</a></h3></article>
+              <article><h3><a href="/news/rail-two">Rail two</a></h3></article></section>
+            <div class="strip"><span>Materiał partnera</span>
+              <div><a href="/news/strip-one"><img src="/1.jpg"></a><h3><a href="/news/strip-one">Strip one</a></h3>
+                <a href="mailto:ads@example.com">Mail</a></div>
+              <div><a href="/news/strip-two"><img src="/2.jpg"></a><h3><a href="/news/strip-two">Strip two</a></h3></div></div>
+            <section><header><span>Sponsored</span><h2>Politics</h2></header>
+              <article><h3><a href="/news/desk-one">Desk one</a></h3></article>
+              <article><h3><a href="/news/desk-two">Desk two</a></h3></article></section>
+            <div class="row"><article><h3><a href="/news/row-one">Row one</a></h3></article>
+              <div><p>Sponsored</p></div><article><h3><a href="/news/row-two">Row two</a></h3></article></div>
+            <div class="row"><div><span>Anzeige</span></div>
+              <article><h3><a href="/news/slot-one">Slot one</a></h3></article>
+              <article><h3><a href="/news/slot-two">Slot two</a></h3></article></div>
+            <div><article><span>Sponsored</span><h3><a href="/news/heads-one">One</a></h3><h3><a href="/news/heads-two">Two</a></h3></article>
+              <article><h3><a href="/news/heads-next">Next</a></h3></article></div>
+            <div><p>Sponsored</p><article><h3><a href="/news/lone">Lone</a></h3></article></div>
+            <div><p>Sponsored</p><h3>Topic</h3><div><article><h3><a href="/news/topic-a">A</a></h3></article>
+              <article><h3><a href="/news/topic-b">B</a></h3></article></div></div>
+            <div><p>Sponsored</p><div><article><h3><a href="/news/after-a">A</a></h3></article>
+              <article><h3><a href="/news/after-b">B</a></h3></article></div><h3>Topic</h3><p>More</p></div>
+            <div><p>Sponsored</p><div><article><h3><a href="/news/aside-a">A</a></h3></article><h4>Aside</h4></div>
+              <article><h3><a href="/news/aside-b">B</a></h3></article></div>
+            <div><p>Sponsored</p><article><h3><a href="/news/twice">Twice</a></h3><h3><a href="/news/twice">Again</a></h3></article>
+              <article><h3><a href="/news/twice-next">Next</a></h3></article></div>
+          </main></body></html>
+        HTML
+      end
+
+      let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
+
+      it 'marks every card unit of a section the label opens' do
+        paths = %w[/news/pub-one /news/pub-two /news/pub-three /news/rail-one /news/rail-two /news/strip-one
+                   /news/strip-two]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, true] })
+      end
+
+      it 'marks no section with its own heading, an anchor before the label, an ad word, or headings as cards' do
+        paths = %w[/news/desk-one /news/desk-two /news/row-one /news/row-two /news/slot-one /news/slot-two
+                   /news/heads-one /news/heads-two /news/heads-next]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'marks no section of one card, or with a heading outside its card units at any depth' do
+        paths = %w[/news/lone /news/topic-a /news/topic-b /news/after-a /news/after-b /news/aside-a /news/aside-b
+                   /news/twice /news/twice-next]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+    end
+
+    context 'when a paid label opens a page region' do
+      let(:html) do
+        <<~HTML
+          <html><body><p>Sponsored</p><main>
+            <article><h3><a href="/news/page-one">One</a></h3></article>
+            <article><h3><a href="/news/page-two">Two</a></h3></article>
+          </main></body></html>
+        HTML
+      end
+
+      it 'marks nothing', :aggregate_failures do
+        expect(page_links.sponsored?(url_at['/news/page-one'])).to be(false)
+        expect(page_links.sponsored?(url_at['/news/page-two'])).to be(false)
+      end
+    end
+
     context 'when wrappers contain or hide markers' do
       let(:html) do
         <<~HTML
