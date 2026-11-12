@@ -78,8 +78,10 @@ module RevisionComparison
     #
     # @param pages [Array<Page>]
     # @param dir [String] pages directory
+    # @param responses [#follow_up, nil] session serving saved follow-up responses (see SavedResponses);
+    #   nil runs with no request session, so follow-up tiers are skipped
     # @return [Array<Run>] one per page, in order
-    def measure(pages, dir) = pages.map { measure_page(_1, dir) }
+    def measure(pages, dir, responses: nil) = pages.map { measure_page(_1, dir, responses) }
 
     # @param pages [Array<Page>]
     # @param base_runs [Array<Run>]
@@ -102,16 +104,16 @@ module RevisionComparison
 
     private
 
-    def measure_page(page, dir)
+    def measure_page(page, dir, responses)
       started = now
-      items, drops = extract(page, dir)
+      items, drops = extract(page, dir, responses)
       Run.new(items:, drops:, wall_ms: ((now - started) * 1000).round(2), error: nil)
     rescue StandardError => error
       Run.new(items: {}, drops: {}, wall_ms: 0.0, error: "#{error.class}: #{error.message}")
     end
 
-    def extract(page, dir)
-      source = AutoSourceCorpus.auto_source(path: File.join(dir, page.file), url: page.url)
+    def extract(page, dir, responses)
+      source = AutoSourceCorpus.auto_source(path: File.join(dir, page.file), url: page.url, request_session: responses)
       [source.articles.to_h { [_1.url.to_s, _1.title.to_s] }, source.admission_drops]
     end
 
