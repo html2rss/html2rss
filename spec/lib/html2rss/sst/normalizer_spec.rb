@@ -234,7 +234,7 @@ RSpec.describe Html2rss::SST::Normalizer do
             <div role="contentinfo"><a id="main_contentinfo" href="/f">F</a></div>
             <nav><a id="rel_pager" rel="prev" href="/g">G</a></nav>
             <nav aria-label="Page navigation"><a id="nav_page_nav" href="/h">H</a></nav>
-            <ol aria-label="Pagination"><li><a id="list_pager" href="/i">I</a></li></ol>
+            <ol aria-label="Pagination"><li><a id="list_pager" href="/i">2</a></li></ol>
             <ul><li><a id="list_rel" rel="next" href="/j">J</a></li></ul>
             <nav class="gsc-pagination"><a id="class_pager" href="/k">K</a></nav>
             <ul class="paginated-list"><li><a id="paginated_list" href="/l">L</a></li></ul>
@@ -248,6 +248,29 @@ RSpec.describe Html2rss::SST::Normalizer do
                            'main_nav' => false, 'main_contentinfo' => false, 'rel_pager' => true,
                            'nav_page_nav' => true, 'list_pager' => true, 'list_rel' => false,
                            'class_pager' => true, 'paginated_list' => false, 'div_pager' => false)
+    end
+
+    {
+      '<ul class="pagination"><li><a href="/news/?page=2">Older</a></li></ul>' => true,
+      '<ul class="Pager"><li><a href="/s">Story one</a></li><li><a href="/news/page/3">More</a></li></ul>' => true,
+      '<ul class="paging"><li><a href="/a">Next</a></li><li><a href="/b">«</a></li></ul>' => true,
+      '<ol aria-label="Paginación"><li><a rel="Prev" href="/a">Atrás</a></li></ol>' => true,
+      '<ul class="pagination"><li><a href="/a">Story one</a></li><li><a href="/b">Story two</a></li></ul>' => false,
+      '<ul class="pagination"></ul>' => false,
+      '<ul aria-label="Paginated list of articles"><li><a href="/news/?page=2">2</a></li></ul>' => false,
+      '<ul class="teaser-list js-pagination-container"><li><a href="/x?page=2">2</a></li></ul>' => false,
+      '<ol class="list paging-container"><li><a href="/x?page=2">2</a></li></ol>' => false,
+      '<ul class="list infinite-pager"><li><a href="/x?page=2">2</a></li></ul>' => false,
+      '<ul><li><a href="/x?page=2">2</a></li></ul>' => false,
+      '<nav aria-label="Paginated list of articles"><a href="/a">A</a></nav>' => false,
+      '<nav class="gsc-pagination" aria-label="Select a page"><a href="/a">A</a></nav>' => true
+    }.each do |markup, chrome|
+      it "treats #{markup[0, 60]}... inside main as chrome: #{chrome}" do
+        doc = described_class.call("<html><body><main>#{markup}</main></body></html>")
+        list = doc.root.find { _1.name == :main }.children.first
+
+        expect(doc.index.ignored_chrome?(list)).to be(chrome)
+      end
     end
 
     it 'records peripheral scope for utility landmarks that are not chrome' do # rubocop:disable RSpec/ExampleLength

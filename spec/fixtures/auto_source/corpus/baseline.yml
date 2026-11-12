@@ -48,6 +48,12 @@ cardlink_whole_card_anchor.html:
   expected: 6
   title_misses: 0
   sst_built: true
+chrome_f2_teaser_lists_named_like_pagers.html:
+  junk: 0
+  real: 25
+  expected: 32
+  title_misses: 0
+  sst_built: true
 chrome_role_consent_dialog.html:
   junk: 0
   real: 5

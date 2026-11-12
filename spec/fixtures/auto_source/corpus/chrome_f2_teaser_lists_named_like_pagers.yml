@@ -1,0 +1,35 @@
+---
+case: Four article teaser lists in main whose label or class only resembles pagination (a "paginated" label, an infinite-scroll pagination container, paging and pager parts of class tokens); none links like page navigation, so all stay content.
+expected:
+- https://example.com/news/2026/10/council-approves-riverside-plan
+- https://example.com/news/2026/10/library-extends-weekend-hours
+- https://example.com/news/2026/10/night-market-opens-downtown
+- https://example.com/news/2026/10/river-cleanup-volunteers-record
+- https://example.com/news/2026/10/harbor-ferry-route-returns
+- https://example.com/news/2026/10/bike-lane-pilot-expands
+- https://example.com/news/2026/10/old-mill-bridge-reopens
+- https://example.com/news/2026/10/tram-depot-expansion-approved
+- https://example.com/news/2026/10/school-board-approves-budget
+- https://example.com/news/2026/10/reading-specialists-hired
+- https://example.com/news/2026/10/school-roofs-repaired
+- https://example.com/news/2026/10/science-fair-record-entries
+- https://example.com/news/2026/10/school-bus-routes-change
+- https://example.com/news/2026/10/teachers-union-agreement
+- https://example.com/news/2026/10/after-school-clubs-expand
+- https://example.com/news/2026/10/school-lunch-menu-update
+- https://example.com/news/2026/10/harbor-crane-replaced
+- https://example.com/news/2026/10/fishing-fleet-returns-early
+- https://example.com/news/2026/10/harbor-museum-new-wing
+- https://example.com/news/2026/10/cargo-volumes-rise
+- https://example.com/news/2026/10/pier-lighting-upgrade
+- https://example.com/news/2026/10/harbor-pilot-training-center
+- https://example.com/news/2026/10/seawall-repairs-funded
+- https://example.com/news/2026/10/harbor-festival-dates-set
+- https://example.com/news/2026/10/park-playground-rebuilt
+- https://example.com/news/2026/10/community-garden-plots
+- https://example.com/news/2026/10/trail-network-extended
+- https://example.com/news/2026/10/tree-planting-drive
+- https://example.com/news/2026/10/dog-park-opens-east-side
+- https://example.com/news/2026/10/pond-restoration-complete
+- https://example.com/news/2026/10/skate-park-lighting
+- https://example.com/news/2026/10/park-cafe-reopens

@@ -39,22 +39,31 @@ module Html2rss
       UTILITY_ROLES = (CHROME_ROLES | Set['complementary']).freeze
       # A nav or list labelled (aria-label) or classed as pagination is chrome in any scope.
       PAGER_NAMES = Set['nav', 'ul', 'ol'].freeze
-      PAGER_LABEL = /pagin(?:at|ac|az|er|ier)|\bpager\b|\bpaging\b|\bpage navigation\b/i
-      # Whole class-token part (+pagination+, +gsc-pagination+, +pager__list+), not +paginated-list+.
+      # Pagination nouns ("Results pagination", "paginación"), never +paginated+.
+      PAGER_LABEL = /\bpagina(?:tion|tie|ción|cion|zione|cja|ção|cao)(?!\p{L})|\bpaginering\b|\bpaginierung\b|
+                     \bpager\b|\bpaging\b|\bpage\snavigation\b/ix
+      # nav: a class-token part (+pagination+, +gsc-pagination+, +pager__list+), not +paginated-list+.
       PAGER_CLASS = /(?:\A|\s|[-_])(?:pagination|pager|paging)(?:\z|\s|[-_])/i
-      # A nav linking rel=next/prev is a pager; lists are exempt (a feed list may end in a "more" link).
-      PAGER_LINK_XPATH = %w[next prev previous].map { "contains(concat(' ', normalize-space(@rel), ' '), ' #{_1} ')" }
-                                               .join(' or ').then { ".//a[#{_1}]" }.freeze
+      # ul/ol: only a whole class token (+infinite-pager+ or +js-pagination-container+ is a feed list).
+      PAGER_TOKENS = Set['pagination', 'pager', 'paging'].freeze
+      PAGER_RELS = Set['next', 'prev', 'previous'].freeze
+      # A nav linking rel=next/prev is a pager.
+      PAGER_LINK_XPATH = PAGER_RELS.map { "contains(concat(' ', normalize-space(@rel), ' '), ' #{_1} ')" }
+                                   .join(' or ').then { ".//a[#{_1}]" }.freeze
+      # Page-navigation link shapes: a page number, an arrow, prev/next wording, or a page query/path.
+      PAGE_LINK_TEXT = /\A(?:\d{1,4}|[«‹›»←→<>]+|\W*(?:prev(?:ious)?|next|older|newer|first|last)\b.*)\z/im
+      PAGE_LINK_HREF = %r{[?&](?:page|paged|pg|p)=\d+|/page/\d+}i
       private_constant :PAGE_CHROME, :ALWAYS_CHROME, :UTILITY_LANDMARK, :SECTIONING, :CHROME_ROLES,
                        :PAGE_CHROME_ROLES, :UTILITY_ROLES, :PAGER_NAMES, :PAGER_LABEL, :PAGER_CLASS,
-                       :PAGER_LINK_XPATH
+                       :PAGER_TOKENS, :PAGER_RELS, :PAGER_LINK_XPATH, :PAGE_LINK_TEXT, :PAGE_LINK_HREF
 
       ##
       # The single chrome-scope rule, folded down the tree by both the SST normalizer
       # and the Nokogiri ancestor walk. +:chrome+ sticks: dialog and the ARIA navigation,
       # menu and dialog roles are chrome; header/footer/nav and the banner/contentinfo roles
-      # are chrome only at +:page+ level; a pager (a nav or list labelled or classed as
-      # pagination, or a nav linking rel=next/prev) is chrome in any scope. Otherwise a
+      # are chrome only at +:page+ level; a pager (a nav labelled or classed as pagination or
+      # linking rel=next/prev, or a list labelled or whole-token classed as pagination whose
+      # links mostly look like page navigation) is chrome in any scope. Otherwise a
       # utility landmark ({.utility_landmark?}) opens a sticky +:peripheral+ scope, and
       # article/section/main (or role=main) open +:sectioned+, so card headers and in-content
       # nav lists stay out of chrome.
@@ -102,11 +111,26 @@ module Html2rss
 
       def self.pager?(element, tag)
         return false unless PAGER_NAMES.include?(tag)
+        return list_pager?(element) unless tag == 'nav'
         return true if element['aria-label'].to_s.match?(PAGER_LABEL) || element['class'].to_s.match?(PAGER_CLASS)
 
-        tag == 'nav' && !element.at_xpath(PAGER_LINK_XPATH).nil?
+        !element.at_xpath(PAGER_LINK_XPATH).nil?
       end
-      private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?
+
+      # A list is a pager only when labelled or whole-token classed as one and at least
+      # half of its links look like page navigation.
+      def self.list_pager?(element)
+        named = element['aria-label'].to_s.match?(PAGER_LABEL) ||
+                element['class'].to_s.downcase.split.any? { PAGER_TOKENS.include?(_1) }
+        links = named ? element.css('a') : []
+        !links.empty? && links.count { page_link?(_1) } * 2 >= links.size
+      end
+
+      def self.page_link?(link)
+        link['rel'].to_s.downcase.split.any? { PAGER_RELS.include?(_1) } ||
+          link['href'].to_s.match?(PAGE_LINK_HREF) || link.text.strip.match?(PAGE_LINK_TEXT)
+      end
+      private_class_method :role_tokens, :utility?, :page_level?, :chrome?, :pager?, :list_pager?, :page_link?
     end
   end
 end
