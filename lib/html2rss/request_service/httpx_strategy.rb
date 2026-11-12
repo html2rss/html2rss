@@ -154,7 +154,7 @@ module Html2rss
       end
 
       def begin_terminal_url_request!(terminal_url)
-        ctx.policy.validate_request!(url: terminal_url, origin_url: ctx.origin_url, relation: ctx.relation)
+        validate_redirect!(terminal_url)
         @request_url_override = terminal_url
         @last_redirect_to = nil
         @current_url = terminal_url
@@ -213,12 +213,16 @@ module Html2rss
       def redirect_callback
         lambda do |redirect_uri|
           to_url = normalize_url(redirect_uri)
-          from_url = @current_url
           @last_redirect_to = to_url
-          ctx.policy.validate_redirect!(from_url:, to_url:, origin_url: ctx.origin_url, relation: ctx.relation)
+          validate_redirect!(to_url)
           @current_url = to_url
           true
         end
+      end
+
+      def validate_redirect!(to_url)
+        ctx.policy.validate_redirect!(from_url: @current_url, to_url:, origin_url: ctx.origin_url,
+                                      relation: ctx.relation, advertisement: ctx.advertisement)
       end
 
       def build_response(response)

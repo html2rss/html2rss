@@ -4,8 +4,9 @@ Contributor map for request, AutoSource, and selectors seams.
 
 ## Native feed preference
 
-Same-origin RSS/Atom/RDF preference for curation gates (Capture defer/`--force`, Recon `:defer`).
-Owned only by `Syndication::Discovery.best_feed_url` (head alternates + path probes via session).
+RSS/Atom/RDF preference for curation gates (Capture defer/`--force`, Recon `:defer`) and the NativeFeed scraper.
+Owned only by `Syndication::Discovery.best_feed_url` (head alternates, audio-hinted ones first — `Discovery::AUDIO_HINT` on title or URL, no extra fetch to compare — then same-origin path probes via session).
+A head alternate on another host is followed as an advertised feed (§ Advertised feed follow-ups).
 `PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second preference algorithm.
 
 ## Frozen contract
@@ -129,6 +130,10 @@ Typed `auto_source.entry_resolution` expansion. Owned by `FeedResolution::Option
 ## Pipeline outcome URLs
 
 `FeedPipeline::PipelineOutcome` carries `ScrapeTarget` plus optional `FeedResolution::Diag`. `Status.build` maps to wire `entry_url` / `scrape_url` / `entry_resolution` Hash. `Diag.applied: true` means the tournament picked a winner; it does not mean wire `scrape_url` changed. Only `Status` `scrape_url` / `ScrapeTarget.effective_url` reflect a sticky rewrite after a successful retry.
+
+## Advertised feed follow-ups
+
+Whether a follow-up may leave the page origin. Owned by `RequestService::Policy`: every follow-up stays same-origin (scheme, host, port) unless its relation is `:advertised_feed` and the page's `RequestService::FeedAdvertisement` lists the URL. That proof is built only from the parsed head's typed alternates (`Html::FeedLink`); an off-origin `http:` alternate is recorded as `https:`, so it is fetched over https or skipped, never over plain http. Redirects from an advertised feed may change host over https. Every other guard applies unchanged to these requests and each hop: request budget, private/loopback/link-local denial (preflight DNS, every redirect hop, HTTPX `ssrf_filter` at connect), no https→http downgrade, response size cap. Slot accounting is unchanged: NativeFeed reserves one slot and the advertised fetch consumes it. Offline, `SavedResponses` (spec support) applies the loaded revision's Policy origin rules, so corpus and `bin/compare-revisions` runs refuse what a live session refuses.
 
 ## Request Budget
 

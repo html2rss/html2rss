@@ -99,6 +99,22 @@ RSpec.describe Html2rss::RequestService::Context do
       end
     end
 
+    context 'with a feed advertisement' do
+      subject(:instance) { described_class.new(url:, budget:, relation: :advertised_feed, advertisement:) }
+
+      let(:advertisement) do
+        Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML('<head></head>'), page_url: url)
+      end
+
+      it 'keeps the advertisement' do
+        expect(instance.advertisement).to equal(advertisement)
+      end
+    end
+
+    it 'carries no advertisement by default' do
+      expect(instance.advertisement).to be_nil
+    end
+
     context 'with a request that has non-string keys' do
       let(:request) { { 1 => 'x' } }
 
@@ -158,6 +174,25 @@ RSpec.describe Html2rss::RequestService::Context do
       expect(follow_up.request).to eq(instance.request)
       expect(follow_up.relation).to eq(:pagination)
       expect(follow_up.headers).to eq(instance.headers)
+    end
+
+    it 'carries no advertisement unless one is given' do
+      expect(follow_up.advertisement).to be_nil
+    end
+
+    context 'when the page advertisement is supplied' do
+      subject(:follow_up) do
+        instance.follow_up(url: 'https://feeds.example.net/show.xml', relation: :advertised_feed, advertisement:)
+      end
+
+      let(:advertisement) do
+        Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML('<head></head>'),
+                                                                  page_url: instance.url)
+      end
+
+      it 'passes it to the derived context' do
+        expect(follow_up.advertisement).to equal(advertisement)
+      end
     end
 
     context 'when an effective origin override is supplied' do

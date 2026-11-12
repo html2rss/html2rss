@@ -3,12 +3,18 @@
 module Html2rss
   module Syndication
     ##
-    # Finds a same-origin RSS/Atom URL for a page via head alternates and path guesses.
+    # Finds an RSS/Atom URL for a page via head alternates and same-origin path guesses.
     #
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
+    # Head alternates go first, those whose title or URL hints audio ({AUDIO_HINT}) ahead of
+    # the rest; they are fetched as +:advertised_feed+ with the page's
+    # {RequestService::FeedAdvertisement}, so a feed the page advertises on another host is
+    # followed (see {RequestService::Policy}). Path guesses stay same-origin.
     module Discovery
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
+      # Word-ish audio hint in an alternate's title or URL (Podlove-style per-format podcast feeds).
+      AUDIO_HINT = /(?<![[:alpha:]])(?:podcast|audio|mp3|m4a|aac|opus|episode)s?(?![[:alpha:]])/i
 
       class << self
         ##
@@ -43,13 +49,14 @@ module Html2rss
         def best_feed_response(page_url:, request_session:, parsed_body: nil, html: nil, extra_paths: [],
                                max_probes: nil)
           page = Html2rss::Url.from_absolute(page_url)
-          candidates = candidate_urls(page_url: page, parsed_body:, html:, extra_paths:)
+          advertisement = advertisement_for(parsed_body, page)
+          candidates = candidates(page, advertisement, html:, extra_paths:)
           Log.debug(
             "Syndication::Discovery: host=#{page.host} candidate_count=#{candidates.size}"
           )
 
           first_feedish_response(
-            candidates, request_session:, origin_url: page, max_probes:
+            candidates, request_session:, origin_url: page, advertisement:, max_probes:
           ).tap do |response|
             next unless response
 
@@ -71,8 +78,7 @@ module Html2rss
         # @return [Array<Html2rss::Url>]
         def candidate_urls(page_url:, parsed_body: nil, html: nil, extra_paths: [])
           page = Html2rss::Url.from_absolute(page_url)
-          (alternate_feed_urls(page, parsed_body:, html:) +
-            path_guess_urls(page, extra_paths:)).uniq
+          candidates(page, advertisement_for(parsed_body, page), html:, extra_paths:)
         end
 
         ##
@@ -105,32 +111,41 @@ module Html2rss
           status.nil? || status.between?(200, 299)
         end
 
-        def first_feedish_response(urls, request_session:, origin_url:, max_probes: nil)
+        def first_feedish_response(urls, request_session:, origin_url:, advertisement:, max_probes: nil)
           scoped = max_probes.nil? ? urls.lazy : urls.lazy.take(max_probes)
           scoped.filter_map do |url|
-            response = probe(url, request_session:, origin_url:)
+            response = probe(url, request_session:, origin_url:, advertisement:)
             response if feedish?(response)
           end.first
         end
 
-        def probe(url, request_session:, origin_url:)
-          request_session.follow_up(url:, relation: :auto_source, origin_url:)
+        def probe(url, request_session:, origin_url:, advertisement:)
+          if advertisement.advertises?(url)
+            request_session.follow_up(url:, relation: :advertised_feed, origin_url:, advertisement:)
+          else
+            request_session.follow_up(url:, relation: :auto_source, origin_url:)
+          end
         rescue Html2rss::Error => error
           Log.debug("Syndication::Discovery: probe skipped host=#{origin_url.host} (#{error.class})")
           nil
         end
 
-        def alternate_feed_urls(page, parsed_body:, html:)
-          from_document = feed_links_from_document(parsed_body, page)
-          return from_document if from_document.any?
-
-          AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) }.uniq
+        def candidates(page, advertisement, html:, extra_paths:)
+          (alternate_feed_urls(page, advertisement, html:) + path_guess_urls(page, extra_paths:)).uniq
         end
 
-        def feed_links_from_document(parsed_body, page)
-          return [] unless parsed_body.is_a?(Nokogiri::HTML::Document)
+        # An HTML page without a parsed document still gets an (empty) advertisement.
+        def advertisement_for(parsed_body, page)
+          doc = parsed_body.is_a?(Nokogiri::HTML::Document) ? parsed_body : Nokogiri::HTML::Document.new
+          RequestService::FeedAdvertisement.from_document(doc, page_url: page)
+        end
 
-          Html::FeedLink.from_document(parsed_body).filter_map { |link| absolute_url(page, link.href) }
+        def alternate_feed_urls(page, advertisement, html:)
+          feeds = advertisement.feeds
+          return AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) }.uniq if feeds.empty?
+
+          audio, other = feeds.keys.partition { |url| AUDIO_HINT.match?("#{feeds.fetch(url)} #{url}") }
+          audio + other
         end
 
         def path_guess_urls(page, extra_paths:)

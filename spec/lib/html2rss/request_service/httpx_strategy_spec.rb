@@ -53,7 +53,8 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
     expect(policy).to have_received(:validate_request!).with(
       url: ctx.url,
       origin_url: ctx.origin_url,
-      relation: :initial
+      relation: :initial,
+      advertisement: nil
     )
     expect(result).to be_a(Html2rss::RequestService::Response)
     expect(result.body).to eq('<html>hello</html>')
@@ -124,11 +125,27 @@ RSpec.describe Html2rss::RequestService::HttpxStrategy do
         from_url: ctx.url,
         to_url: Html2rss::Url.from_absolute('https://example.com/final'),
         origin_url: ctx.origin_url,
-        relation: :initial
+        relation: :initial,
+        advertisement: nil
       )
       expect(result.status).to eq(200)
       expect(result.body).to eq('<html>final</html>')
       expect(result.url.to_s).to eq('https://example.com/final')
+    end
+
+    it 'validates hops of an advertised feed with the page advertisement' do # rubocop:disable RSpec/ExampleLength -- redirect verification
+      advertisement = Html2rss::RequestService::FeedAdvertisement.from_document(
+        Nokogiri::HTML('<head></head>'), page_url: 'https://example.com/'
+      )
+      ctx = Html2rss::RequestService::Context.new(url: 'https://example.com', policy:, budget:,
+                                                  relation: :advertised_feed, advertisement:)
+      stub_request(:get, 'https://example.com').to_return(status: 301,
+                                                          headers: { 'Location' => 'https://example.net/f' })
+      stub_request(:get, 'https://example.net/f').to_return(status: 200, body: '<rss></rss>')
+
+      described_class.new(ctx).execute
+
+      expect(policy).to have_received(:validate_redirect!).with(hash_including(advertisement:))
     end
 
     it 'raises when redirect limit is reached and cannot be retried' do # rubocop:disable RSpec/ExampleLength -- multi-hop redirect limit

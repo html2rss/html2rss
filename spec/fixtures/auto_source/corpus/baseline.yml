@@ -592,6 +592,22 @@ t6_podcast_promos_above.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+t7_cross_origin_podcast_feed.html:
+  junk: 0
+  real: 3
+  expected: 3
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
+t7_podlove_alternates.html:
+  junk: 0
+  real: 2
+  expected: 2
+  title_misses: 0
+  enclosure_misses: 0
+  image_misses: 0
+  sst_built: true
 title_clock_prefix.html:
   junk: 0
   real: 5

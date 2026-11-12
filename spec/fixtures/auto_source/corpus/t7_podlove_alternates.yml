@@ -1,0 +1,13 @@
+---
+case: A Podlove-style podcast site advertising its blog feed first, then a comments feed, then per-format podcast feeds. Discovery must prefer the alternate whose title hints audio (the MP3 podcast feed) over the first one (the blog feed without audio), with no extra fetch to compare, so every episode ships its audio as the RSS enclosure and no blog post is admitted.
+responses: t7_podlove_alternates
+expected:
+- https://example.com/news/es031-pulsar-dish
+- https://example.com/news/es030-fast-radio-bursts
+enclosures:
+  https://example.com/news/es031-pulsar-dish:
+    url: https://example.com/news/podlove/file/31/s/feed/c/mp3/es031.mp3
+    type: audio/mpeg
+  https://example.com/news/es030-fast-radio-bursts:
+    url: https://example.com/news/podlove/file/30/s/feed/c/mp3/es030.mp3
+    type: audio/mpeg

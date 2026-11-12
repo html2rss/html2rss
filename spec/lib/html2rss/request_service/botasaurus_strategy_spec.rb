@@ -97,7 +97,8 @@ RSpec.describe Html2rss::RequestService::BotasaurusStrategy do
       expect(policy).to have_received(:validate_request!).with(
         url: ctx.url,
         origin_url: ctx.origin_url,
-        relation: :initial
+        relation: :initial,
+        advertisement: nil
       )
       path, body, headers = captured_post_args.first
       expect(path).to eq('/scrape')

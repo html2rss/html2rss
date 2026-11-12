@@ -411,7 +411,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
   end
 
-  describe '#validate_redirect!' do
+  describe '#validate_redirect!' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
     subject(:validate_redirect!) { policy.validate_redirect!(from_url:, to_url:, origin_url:, relation:) }
 
     let(:from_url) { Html2rss::Url.from_absolute('https://example.com/feed') }
@@ -458,6 +458,193 @@ RSpec.describe Html2rss::RequestService::Policy do
       it 'rejects the redirect' do
         expect { validate_redirect! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied,
                                                      /other\.example\.com/)
+      end
+    end
+  end
+
+  shared_context 'with a page advertising feeds' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    let(:origin_url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+    let(:relation) { :advertised_feed }
+    let(:page_url) { origin_url }
+    let(:head) do
+      <<~HTML
+        <head>
+          <link rel="alternate" type="application/rss+xml" href="https://feeds.example.net/show.xml">
+          <link rel="alternate" type="application/rss+xml" href="http://feeds.example.net/plain.xml">
+          <link rel="alternate" type="application/rss+xml" href="https://127.0.0.1/feed.xml">
+          <link rel="alternate" type="application/rss+xml" href="https://metadata.google.internal/feed.xml">
+        </head>
+      HTML
+    end
+    let(:advertisement) do
+      Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML(head), page_url:)
+    end
+    let(:resolved_ip) { '93.184.216.34' }
+
+    before do
+      allow(resolver).to receive(:each_address) { |_host, &block| block.call(resolved_ip) }
+    end
+  end
+
+  describe '#validate_request!' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
+    subject(:validate_request!) { policy.validate_request!(url:, origin_url:, relation:, advertisement:) }
+
+    include_context 'with a page advertising feeds'
+
+    let(:url) { Html2rss::Url.from_absolute('https://feeds.example.net/show.xml') }
+
+    it 'allows a feed the page advertises on another host' do
+      expect { validate_request! }.not_to raise_error
+    end
+
+    it 'fetches an advertised http feed as its https upgrade only', :aggregate_failures do
+      upgraded = Html2rss::Url.from_absolute('https://feeds.example.net/plain.xml')
+      plain = Html2rss::Url.from_absolute('http://feeds.example.net/plain.xml')
+
+      expect { policy.validate_request!(url: upgraded, origin_url:, relation:, advertisement:) }.not_to raise_error
+      expect { policy.validate_request!(url: plain, origin_url:, relation:, advertisement:) }
+        .to raise_error(Html2rss::RequestService::UnsupportedUrlScheme)
+    end
+
+    context 'when the URL is not among the advertised feeds' do
+      let(:url) { Html2rss::Url.from_absolute('https://feeds.example.net/other.xml') }
+
+      it 'denies the cross-origin follow-up' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied, /other\.xml/)
+      end
+    end
+
+    context 'when the relation is not :advertised_feed' do
+      let(:relation) { :auto_source }
+
+      it 'ignores the proof and denies the cross-origin follow-up' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
+    context 'when the proof is not a FeedAdvertisement' do
+      let(:advertisement) { double(page_url: origin_url, advertises?: true) }
+
+      it 'denies the cross-origin follow-up' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
+    context 'when no advertisement proves the URL' do
+      let(:advertisement) { nil }
+
+      it 'denies the cross-origin follow-up' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
+    context 'when the advertisement belongs to another page origin' do
+      let(:page_url) { Html2rss::Url.from_absolute('https://example.org/news/') }
+
+      it 'denies the cross-origin follow-up' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
+    context 'when the advertised host resolves to a private address' do
+      let(:resolved_ip) { '10.0.0.7' }
+
+      it 'denies the request' do
+        expect do
+          validate_request!
+        end.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /feeds\.example\.net/)
+      end
+    end
+
+    context 'when the advertised feed is a loopback literal' do
+      let(:url) { Html2rss::Url.from_absolute('https://127.0.0.1/feed.xml') }
+
+      it 'denies the request' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+      end
+    end
+
+    context 'when the advertised feed is a denylisted metadata host' do
+      let(:url) { Html2rss::Url.from_absolute('https://metadata.google.internal/feed.xml') }
+
+      it 'denies the request before DNS' do
+        expect { validate_request! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+      end
+    end
+  end
+
+  describe '#validate_redirect!' do # rubocop:disable RSpec/RepeatedExampleGroupDescription
+    subject(:validate_redirect!) do
+      policy.validate_redirect!(from_url: url, to_url:, origin_url:, relation:, advertisement:)
+    end
+
+    include_context 'with a page advertising feeds'
+
+    let(:url) { Html2rss::Url.from_absolute('https://feeds.example.net/show.xml') }
+    let(:to_url) { Html2rss::Url.from_absolute('https://cdn.example.net/show.xml') }
+
+    it 'follows a hop to another public https host' do
+      expect { validate_redirect! }.not_to raise_error
+    end
+
+    context 'when the hop resolves to a private address' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:resolved_ip) { '192.168.1.10' }
+
+      it 'denies the hop' do
+        expect do
+          validate_redirect!
+        end.to raise_error(Html2rss::RequestService::PrivateNetworkDenied, /cdn\.example\.net/)
+      end
+    end
+
+    context 'when the hop targets localhost' do
+      let(:to_url) { Html2rss::Url.from_absolute('https://localhost/feed.xml') }
+
+      it 'denies the hop' do
+        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+      end
+    end
+
+    context 'when the hop downgrades to http' do
+      let(:to_url) { Html2rss::Url.from_absolute('http://cdn.example.net/show.xml') }
+
+      it 'denies the hop' do
+        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::UnsupportedUrlScheme)
+      end
+    end
+
+    context 'when an http page feed chain hops to another host over http' do
+      let(:origin_url) { Html2rss::Url.from_absolute('http://example.com/') }
+      let(:url) { Html2rss::Url.from_absolute('http://example.com/feed.xml') }
+      let(:to_url) { Html2rss::Url.from_absolute('http://cdn.example.net/show.xml') }
+
+      it 'denies the plain-http cross-origin hop' do
+        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
+    context 'when an http page feed chain hops to another host over https' do
+      let(:origin_url) { Html2rss::Url.from_absolute('http://example.com/') }
+      let(:url) { Html2rss::Url.from_absolute('http://example.com/feed.xml') }
+
+      it 'follows the hop' do
+        expect { validate_redirect! }.not_to raise_error
+      end
+    end
+
+    context 'when the relation is not :advertised_feed' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:relation) { :auto_source }
+
+      it 'denies the cross-origin hop' do
+        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+    end
+
+    context 'when the advertisement belongs to another page origin' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:page_url) { Html2rss::Url.from_absolute('https://example.org/news/') }
+
+      it 'denies the cross-origin hop' do
+        expect { validate_redirect! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
       end
     end
   end

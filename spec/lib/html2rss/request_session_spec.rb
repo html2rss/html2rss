@@ -195,6 +195,78 @@ RSpec.describe Html2rss::RequestSession do
       expect(session.visited?('https://redirected.example.com/news?page=2')).to be(true)
       expect(session.visited?('https://example.com/news')).to be(false)
     end
+
+    context 'with a feed the page advertises on another host (real policy and budget)' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:page_url) { Html2rss::Url.from_absolute('https://example.com/news') }
+      let(:feed_url) { Html2rss::Url.from_absolute('https://feeds.example.net/show.xml') }
+      let(:resolver) { instance_double(Resolv) }
+      let(:policy) { Html2rss::RequestService::Policy.new(max_requests: 2, resolver:) }
+      let(:budget) { Html2rss::RequestService::Budget.new(max_requests: 2) }
+      let(:context) { Html2rss::RequestService::Context.new(url: page_url, policy:, budget:) }
+      let(:advertisement) do
+        Html2rss::RequestService::FeedAdvertisement.from_document(
+          Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="http://feeds.example.net/show.xml"></head>'),
+          page_url:
+        )
+      end
+      let(:feed_body) { '<rss version="2.0"><channel></channel></rss>' }
+
+      before do
+        allow(Html2rss::RequestService).to receive(:execute).and_call_original
+        allow(resolver).to receive(:each_address) do |host, &block|
+          block.call(host.start_with?('internal.') ? '10.0.0.9' : '93.184.216.34')
+        end
+        stub_request(:get, page_url.to_s).to_return(status: 200, body: '<html></html>',
+                                                    headers: { 'Content-Type' => 'text/html' })
+        stub_request(:get, feed_url.to_s).to_return(status: 200, body: feed_body,
+                                                    headers: { 'Content-Type' => 'application/rss+xml' })
+      end
+
+      it 'fetches the advertised feed over https from one request slot', :aggregate_failures do
+        session.fetch_initial_response
+
+        response = session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
+
+        expect(response.body).to eq(feed_body)
+        expect(budget.remaining_requests).to eq(0)
+        expect(a_request(:get, 'http://feeds.example.net/show.xml')).not_to have_been_made
+      end
+
+      it 'respects the request budget' do
+        session.fetch_initial_response
+        session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
+
+        expect { session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:) }
+          .to raise_error(Html2rss::RequestService::RequestBudgetExceeded)
+      end
+
+      it 'denies a non-advertised URL on the same feed host' do
+        expect do
+          session.follow_up(url: 'https://feeds.example.net/other.xml', relation: :advertised_feed,
+                            origin_url: page_url, advertisement:)
+        end.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)
+      end
+
+      it 'denies a redirect from the advertised feed to a private address', :aggregate_failures do # rubocop:disable RSpec/ExampleLength -- redirect stub + assertions
+        stub_request(:get, feed_url.to_s).to_return(status: 302,
+                                                    headers: { 'Location' => 'https://internal.example.net/x' })
+        internal = stub_request(:get, 'https://internal.example.net/x')
+
+        expect { session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:) }
+          .to raise_error(Html2rss::RequestService::PrivateNetworkDenied)
+        expect(internal).not_to have_been_requested
+      end
+
+      it 'follows a redirect from the advertised feed to another public https host' do
+        stub_request(:get, feed_url.to_s).to_return(status: 301,
+                                                    headers: { 'Location' => 'https://cdn.example.net/show.xml' })
+        stub_request(:get, 'https://cdn.example.net/show.xml').to_return(status: 200, body: feed_body)
+
+        response = session.follow_up(url: feed_url, relation: :advertised_feed, origin_url: page_url, advertisement:)
+
+        expect(response.url.to_s).to eq('https://cdn.example.net/show.xml')
+      end
+    end
   end
 
   describe '#effective_page_budget' do

@@ -47,6 +47,51 @@ RSpec.describe Html2rss::Syndication::Discovery do
       expect(urls.map(&:to_s)).to include('https://example.com/feed')
     end
 
+    it 'prefers an alternate whose title or URL hints audio over the first one', :aggregate_failures do
+      doc = Nokogiri::HTML(<<~HTML)
+        <html><head>
+          <link rel="alternate" type="application/rss+xml" title="Example &raquo; Feed" href="/feed/">
+          <link rel="alternate" type="application/rss+xml" title="Example &raquo; Comments" href="/comments/feed/">
+          <link rel="alternate" type="application/rss+xml" title="Show (MP3 Audio)" href="/feed/a/">
+          <link rel="alternate" type="application/rss+xml" title="Show" href="/feed/m4a/">
+        </head></html>
+      HTML
+
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+
+      expect(urls.first(4)).to eq(%w[https://example.com/feed/a/ https://example.com/feed/m4a/
+                                     https://example.com/feed/ https://example.com/comments/feed/])
+    end
+
+    it 'matches audio hints word-ish and case-insensitively', :aggregate_failures do
+      hinted = ['Podcast Feed', 'EPISODES', 'Audio', '/feed/opus/', '/podcast09/x.xml', '/aac.xml', '/podcasts/']
+      unhinted = ['Audiobooks', 'Podcasting tips', '/feed/mp3x', 'aacounty', 'News feed']
+
+      expect(hinted.grep(described_class::AUDIO_HINT)).to eq(hinted)
+      expect(unhinted.grep(described_class::AUDIO_HINT)).to be_empty
+    end
+
+    it 'reads head alternates from any HTML document subclass' do
+      doc = Nokogiri::HTML5('<head><link rel="alternate" type="application/rss+xml" href="/h5.xml"></head>')
+
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc)
+
+      expect(urls.first.to_s).to eq('https://example.com/h5.xml')
+    end
+
+    it 'keeps document order when no alternate hints audio' do
+      doc = Nokogiri::HTML(<<~HTML)
+        <html><head>
+          <link rel="alternate" type="application/rss+xml" title="News" href="/news.xml">
+          <link rel="alternate" type="application/atom+xml" title="Comments" href="/comments.xml">
+        </head></html>
+      HTML
+
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+
+      expect(urls.first(2)).to eq(%w[https://example.com/news.xml https://example.com/comments.xml])
+    end
+
     it 'falls back to string HTML alternate scanning when no document is given' do
       html = '<link rel="alternate" type="application/atom+xml" href="/atom.xml">'
       urls = described_class.candidate_urls(page_url: 'https://example.com/', html:)
@@ -262,15 +307,56 @@ RSpec.describe Html2rss::Syndication::Discovery do
       )
     end
 
-    it 'considers parsed-document alternates before path guesses' do
+    it 'fetches parsed-document alternates first, as advertised feeds carrying the page proof' do
       allow(session).to receive(:follow_up).and_return(hit)
       doc = Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="/doc.xml"></head>')
 
       described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc)
 
       expect(session).to have_received(:follow_up).with(
-        url: having_attributes(to_s: 'https://example.com/doc.xml'), relation: :auto_source,
-        origin_url: having_attributes(host: 'example.com')
+        url: having_attributes(to_s: 'https://example.com/doc.xml'), relation: :advertised_feed,
+        origin_url: page_url,
+        advertisement: having_attributes(
+          page_url:, feeds: { Html2rss::Url.from_absolute('https://example.com/doc.xml') => '' }
+        )
+      )
+    end
+
+    it 'fetches an advertised feed on another host as an advertised feed of the page' do
+      allow(session).to receive(:follow_up).and_return(hit)
+      doc = Nokogiri::HTML(
+        '<head><link rel="alternate" type="application/rss+xml" href="https://feeds.example.net/show.xml"></head>'
+      )
+
+      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 1)
+
+      expect(session).to have_received(:follow_up).once.with(
+        url: Html2rss::Url.from_absolute('https://feeds.example.net/show.xml'), relation: :advertised_feed,
+        origin_url: page_url, advertisement: kind_of(Html2rss::RequestService::FeedAdvertisement)
+      )
+    end
+
+    it 'fetches an advertised http feed on another host as https only', :aggregate_failures do
+      allow(session).to receive(:follow_up).and_raise(Html2rss::RequestService::ConnectionFailed, 'refused')
+      doc = Nokogiri::HTML(
+        '<head><link rel="alternate" type="application/rss+xml" href="http://feeds.example.net/show.xml"></head>'
+      )
+
+      selected = described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 1)
+
+      expect(selected).to be_nil
+      expect(session).to have_received(:follow_up).once
+      expect(session).to have_received(:follow_up).with(hash_including(url: having_attributes(scheme: 'https')))
+    end
+
+    it 'probes path guesses as same-origin auto-source follow-ups even when the page advertises feeds' do
+      allow(session).to receive(:follow_up).and_invoke(->(**) { miss }, ->(**) { miss })
+      doc = Nokogiri::HTML('<head><link rel="alternate" type="application/rss+xml" href="/doc.xml"></head>')
+
+      described_class.best_feed_url(page_url:, request_session: session, parsed_body: doc, max_probes: 2)
+
+      expect(session).to have_received(:follow_up).with(
+        url: having_attributes(to_s: 'https://example.com/news/feed'), relation: :auto_source, origin_url: page_url
       )
     end
 

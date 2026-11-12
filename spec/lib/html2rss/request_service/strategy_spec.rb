@@ -29,6 +29,7 @@ RSpec.describe Html2rss::RequestService::Strategy do
       url:,
       origin_url: url,
       relation: :channel,
+      advertisement: nil,
       policy:,
       budget:
     )
@@ -63,7 +64,18 @@ RSpec.describe Html2rss::RequestService::Strategy do
       execute
 
       expect(budget).to have_received(:consume!)
-      expect(policy).to have_received(:validate_request!).with(url:, origin_url: url, relation: :channel)
+      expect(policy).to have_received(:validate_request!).with(url:, origin_url: url, relation: :channel,
+                                                               advertisement: nil)
+    end
+
+    it 'hands the context feed advertisement to policy validation' do
+      advertisement = Html2rss::RequestService::FeedAdvertisement.from_document(Nokogiri::HTML('<head></head>'),
+                                                                                page_url: url)
+      allow(ctx).to receive(:advertisement).and_return(advertisement)
+
+      execute
+
+      expect(policy).to have_received(:validate_request!).with(hash_including(advertisement:))
     end
 
     it 'runs ResponseGuard postflight on the fetched body' do
