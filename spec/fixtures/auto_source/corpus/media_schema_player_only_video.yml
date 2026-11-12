@@ -1,0 +1,24 @@
+---
+case: "Standalone Schema VideoObjects, four player-only (embedUrl, no contentUrl) and two with a file: every video is an item at its page url; a player-only video has no enclosure (embedUrl is never one), a video with contentUrl gets it."
+expected:
+- https://example.com/videos/watch/harbor-tug-race-highlights
+- https://example.com/videos/watch/old-town-walking-tour
+- https://example.com/videos/watch/winter-swim-at-the-pier
+- https://example.com/videos/watch/lighthouse-keeper-interview
+- https://example.com/videos/watch/ferry-captain-last-voyage
+- https://example.com/videos/watch/rowing-club-spring-regatta
+enclosures:
+  https://example.com/videos/watch/harbor-tug-race-highlights: ~
+  https://example.com/videos/watch/old-town-walking-tour: ~
+  https://example.com/videos/watch/winter-swim-at-the-pier: ~
+  https://example.com/videos/watch/lighthouse-keeper-interview: ~
+  https://example.com/videos/watch/ferry-captain-last-voyage:
+    url: https://example.com/media/watch/watch-5.mp4
+    type: video/mp4
+    length: 0
+    duration: 240
+  https://example.com/videos/watch/rowing-club-spring-regatta:
+    url: https://example.com/media/watch/watch-6.mp4
+    type: video/mp4
+    length: 0
+    duration: 240

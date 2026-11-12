@@ -256,6 +256,38 @@ media_audio_cards.html:
   enclosure_misses: 0
   image_misses: 0
   sst_built: true
+media_schema_article_associated_video.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 2
+  image_misses: 0
+  sst_built: true
+media_schema_graph_podcast_episodes.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 6
+  image_misses: 0
+  sst_built: true
+media_schema_player_only_video.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 2
+  image_misses: 0
+  sst_built: true
+media_schema_standalone_video_list.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  enclosure_misses: 6
+  image_misses: 0
+  sst_built: true
 media_video_cards.html:
   junk: 0
   real: 5

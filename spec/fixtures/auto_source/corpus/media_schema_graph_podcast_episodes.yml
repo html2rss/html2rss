@@ -1,0 +1,40 @@
+---
+case: "A podcast page whose JSON-LD @graph holds standalone PodcastEpisodes; each file comes from associatedMedia (MediaObject or AudioObject), the duration from the episode or its media object, the size from contentSize; a non-MIME encodingFormat (\"mp3\") leaves the type to the file name."
+expected:
+- https://example.com/podcasts/tide-tables/episode-1
+- https://example.com/podcasts/tide-tables/episode-2
+- https://example.com/podcasts/tide-tables/episode-3
+- https://example.com/podcasts/tide-tables/episode-4
+- https://example.com/podcasts/tide-tables/episode-5
+- https://example.com/podcasts/tide-tables/episode-6
+enclosures:
+  https://example.com/podcasts/tide-tables/episode-1:
+    url: https://example.com/audio/tide-tables-1.mp3
+    type: audio/mpeg
+    length: 31000000
+    duration: 2470
+  https://example.com/podcasts/tide-tables/episode-2:
+    url: https://example.com/audio/tide-tables-2.mp3
+    type: audio/mpeg
+    length: 32000000
+    duration: 2530
+  https://example.com/podcasts/tide-tables/episode-3:
+    url: https://example.com/audio/tide-tables-3.mp3
+    type: audio/mpeg
+    length: 33000000
+    duration: 2590
+  https://example.com/podcasts/tide-tables/episode-4:
+    url: https://example.com/audio/tide-tables-4.mp3
+    type: audio/mpeg
+    length: 34000000
+    duration: 2650
+  https://example.com/podcasts/tide-tables/episode-5:
+    url: https://example.com/audio/tide-tables-5.m4a
+    type: audio/mp4
+    length: 67108864
+    duration: 3900
+  https://example.com/podcasts/tide-tables/episode-6:
+    url: https://example.com/audio/tide-tables-6.mp3
+    type: audio/mpeg
+    length: 36000000
+    duration: 2770
