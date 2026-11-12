@@ -124,6 +124,11 @@ RSpec.describe Html2rss::FeedResolution do
     end
     let(:budget) { instance_double(Html2rss::RequestService::Budget, remaining_requests: 10) }
     let(:active_budget) { budget }
+    let(:one_article_extraction) do
+      Html2rss::FeedPipeline::Extraction.new(
+        articles: [instance_double(Html2rss::Article)], dedup_dropped: 0, admission_drops: {}, feed_channel: nil
+      )
+    end
     let(:state) { Html2rss::FeedPipeline::AutoFallback::AttemptState.new }
     let(:scrape_target) { Html2rss::ScrapeTarget.from_config(config) }
     let(:applied_resolution) do
@@ -146,7 +151,7 @@ RSpec.describe Html2rss::FeedResolution do
     before do
       allow(pipeline).to receive_messages(
         request_session_for: retry_session,
-        deduplicated_articles: [[], 0, {}]
+        extract: Html2rss::FeedPipeline::Extraction.new(articles: [], dedup_dropped: 0, admission_drops: {}, feed_channel: nil)
       )
       allow(retry_session).to receive(:fetch_initial_response).and_return(
         Html2rss::RequestService::Response.new(
@@ -200,7 +205,8 @@ RSpec.describe Html2rss::FeedResolution do
       article = instance_double(Html2rss::Article)
       feed_channel = Html2rss::Syndication::ChannelFacts.new(author: 'Listing Feed Author')
       allow(session).to receive(:follow_up).and_return(listing)
-      allow(pipeline).to receive(:deduplicated_articles).and_return([[article], 0, {}, feed_channel])
+      allow(pipeline).to receive(:extract)
+        .and_return(Html2rss::FeedPipeline::Extraction.new(articles: [article], dedup_dropped: 1, admission_drops: { 'sponsored' => 2 }, feed_channel:))
 
       outcome = described_class.try_apply!(
         pipeline:, config:, response:, session:, strategy: :default, resources:,
@@ -210,7 +216,7 @@ RSpec.describe Html2rss::FeedResolution do
       expect(outcome).to have_attributes(status: :succeeded)
       expect(outcome.scrape_target.effective_url).to eq(listing_url)
       expect(state.result.articles).to eq([article])
-      expect(state.result.feed_channel).to eq(feed_channel)
+      expect(state.result).to have_attributes(feed_channel:, dedup_dropped: 1, admission_drops: { 'sponsored' => 2 })
       expect(state.result.scrape_target.effective_url).to eq(listing_url)
     end
 
@@ -253,7 +259,7 @@ RSpec.describe Html2rss::FeedResolution do
       )
       allow(Html2rss::PageRecon).to receive(:assess).and_return(assessment)
       allow(described_class).to receive(:call).and_return(applied_resolution)
-      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+      allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 
       outcome = described_class.try_apply!(
         pipeline:, config:, response:, session:, strategy: :default, resources:,
@@ -267,7 +273,7 @@ RSpec.describe Html2rss::FeedResolution do
     it 'returns nil when resolution already ran' do
       state.mark_resolution_tried!
       allow(described_class).to receive(:call).and_return(applied_resolution)
-      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+      allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 
       expect(apply_outcome).to be_nil
     end
@@ -279,7 +285,7 @@ RSpec.describe Html2rss::FeedResolution do
       )
       allow(Html2rss::PageRecon).to receive(:assess).and_return(assessment)
       allow(described_class).to receive(:call).and_return(applied_resolution)
-      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+      allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 
       outcome = described_class.try_apply!(
         pipeline:, config:, response: feed, session:, strategy: :default, resources:,
@@ -291,7 +297,7 @@ RSpec.describe Html2rss::FeedResolution do
 
     it 'does not succeed when the tournament does not apply' do
       allow(described_class).to receive(:call).and_return(skipped_resolution)
-      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+      allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 
       expect(apply_outcome).to be_nil
     end
@@ -299,7 +305,7 @@ RSpec.describe Html2rss::FeedResolution do
     it 'returns nil when fewer than three requests remain' do
       low_budget = instance_double(Html2rss::RequestService::Budget, remaining_requests: 2)
       allow(described_class).to receive(:call).and_return(applied_resolution)
-      allow(pipeline).to receive(:deduplicated_articles).and_return([[instance_double(Html2rss::Article)], 0, {}])
+      allow(pipeline).to receive(:extract).and_return(one_article_extraction)
 
       outcome = described_class.try_apply!(
         pipeline:, config:, response:, session:, strategy: :default, resources:,

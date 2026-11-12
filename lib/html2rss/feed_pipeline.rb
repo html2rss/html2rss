@@ -16,6 +16,13 @@ module Html2rss
       :admission_drops, :scrape_target, :entry_resolution, :feed_channel
     )
 
+    # What one response yields after extraction and dedup ({#extract}); its fields are the
+    # {PipelineOutcome} fields of the same names.
+    # articles: unique articles. dedup_dropped: articles removed by deduplication.
+    # admission_drops: Cleanup drop tallies. feed_channel: the followed native feed's channel facts
+    # ({Syndication::ChannelFacts}); nil without one.
+    Extraction = Data.define(:articles, :dedup_dropped, :admission_drops, :feed_channel)
+
     ##
     # @param raw_config [Hash{Symbol => Object}] user-provided feed config
     def initialize(raw_config)
@@ -72,12 +79,11 @@ module Html2rss
     # @param config [Html2rss::Config]
     # @param response [Html2rss::RequestService::Response]
     # @param request_session [Html2rss::RequestSession]
-    # @return [Array(Array<Html2rss::Article>, Integer, Hash, Html2rss::Syndication::ChannelFacts)] unique
-    #   articles, dedup drops, admission drops, and the followed native feed's channel facts (nil without one)
-    def deduplicated_articles(config:, response:, request_session:)
+    # @return [Extraction] unique articles with their dedup and admission drops and feed channel facts
+    def extract(config:, response:, request_session:)
       collected, admission_drops, feed_channel = collect_articles(config:, response:, request_session:)
       unique = Article::Deduplicator.new(collected).call
-      [unique, collected.size - unique.size, admission_drops, feed_channel]
+      Extraction.new(articles: unique, dedup_dropped: collected.size - unique.size, admission_drops:, feed_channel:)
     end
 
     private
@@ -97,14 +103,12 @@ module Html2rss
     def run_pipeline_for_strategy(config, strategy:, resources:)
       request_session = request_session_for(config, strategy:, resources:)
       response = request_session.fetch_initial_response
-      articles, dedup_dropped, admission_drops, feed_channel =
-        deduplicated_articles(config:, response:, request_session:)
-      raise_empty_auto_source!(strategy:, response:) if config.auto_source && articles.empty?
+      extraction = extract(config:, response:, request_session:)
+      raise_empty_auto_source!(strategy:, response:) if config.auto_source && extraction.articles.empty?
 
       PipelineOutcome.new(
-        response:, articles:, dedup_dropped:, selected_strategy: nil, attempt_count: 0,
-        strategy_attempts: [], admission_drops:,
-        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil, feed_channel:
+        **extraction.to_h, response:, selected_strategy: nil, attempt_count: 0, strategy_attempts: [],
+        scrape_target: ScrapeTarget.from_config(config), entry_resolution: nil
       )
     end
 

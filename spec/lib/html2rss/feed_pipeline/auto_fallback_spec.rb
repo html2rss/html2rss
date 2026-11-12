@@ -291,8 +291,8 @@ RSpec.describe Html2rss::FeedPipeline::AutoFallback do
 
       it 'keeps the followed native feed channel facts of the positive hop' do
         facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
-        allow(pipeline).to receive(:deduplicated_articles).and_wrap_original do |original, **kwargs|
-          [*original.call(**kwargs).first(3), facts]
+        allow(pipeline).to receive(:extract).and_wrap_original do |original, **kwargs|
+          original.call(**kwargs).with(feed_channel: facts)
         end
 
         expect(pipeline.to_outcome_and_result.first.feed_channel).to be(facts)
