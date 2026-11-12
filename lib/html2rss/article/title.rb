@@ -65,17 +65,19 @@ module Html2rss
       # a comparison before a number (+> 50 Prozent+).
       SEPARATOR_MARK = %r{(?:[:|•·–—/»›→-]|>(?![[:space:]]*\d))(?=[[:space:]]|\z)}
       # Screen-reader field labels (+Section:+, +Artikel:+) and type labels with their marker
-      # (+Article type: Video+). Each field label needs its colon: a bare +Article+ is a word.
+      # (+Article type: Video+). Each field label needs its colon: a bare +Article+ is a word. A letter with
+      # an accented variant is an alternation, not a class: with +/i+, Ruby on Linux does not fold an
+      # uppercase accented letter (+Ä+) against a class that also holds its ASCII base (+[äa]+).
       LABEL = /
-        (?:section|category|topic|rubrik|ressort|kategorie|thema|rubrique|cat[ée]gorie|th[èe]me|secci[óo]n
-          |categor[íi]a|tema|sezione|categoria|argomento|rubrica|sectie|categorie|onderwerp|rubriek
-          |sekcja|kategoria|temat|dzia[łl]|sektion|kategori|[äa]mne
-          |article|artikel|art[íi]culo|articolo|artyku[łl]
+        (?:section|category|topic|rubrik|ressort|kategorie|thema|rubrique|cat(?:é|e)gorie|th(?:è|e)me|secci(?:ó|o)n
+          |categor(?:í|i)a|tema|sezione|categoria|argomento|rubrica|sectie|categorie|onderwerp|rubriek
+          |sekcja|kategoria|temat|dzia(?:ł|l)|sektion|kategori|(?:ä|a)mne
+          |article|artikel|art(?:í|i)culo|articolo|artyku(?:ł|l)
           |セクション|カテゴリー?|ジャンル|分類|記事)\s*[:：]
         | (?:article\s+type|content\s+type|artikeltyp|beitragstyp|inhaltstyp|type\s+d['’]article
-            |type\s+de\s+contenu|tipo\s+de\s+art[íi]culo|tipo\s+de\s+contenido
+            |type\s+de\s+contenu|tipo\s+de\s+art(?:í|i)culo|tipo\s+de\s+contenido
             |tipo\s+di\s+articolo|tipo\s+di\s+contenuto|artikeltype|inhoudstype|soort\s+artikel
-            |typ\s+artyku[łl]u|typ\s+tre[śs]ci|rodzaj\s+tre[śs]ci|innehållstyp
+            |typ\s+artyku(?:ł|l)u|typ\s+tre(?:ś|s)ci|rodzaj\s+tre(?:ś|s)ci|innehållstyp
             |記事の種類|記事タイプ|コンテンツの種類)\s*[:：]
           (?:\s*(?:#{MARKER_ALTERNATION})(?![[:alnum:]]))?
       /ix
@@ -108,10 +110,10 @@ module Html2rss
       class << self
         ##
         # @param text [String, nil] title text as extracted
-        # @return [String, nil] +text+ without {INVISIBLE} characters, whitespace runs (newlines included)
-        #   collapsed and trimmed, or nil when blank
+        # @return [String, nil] +text+ in NFC (a composed and a decomposed +Ä+ are one title) without
+        #   {INVISIBLE} characters, whitespace runs (newlines included) collapsed and trimmed, or nil when blank
         def collapse(text)
-          collapsed = text.to_s
+          collapsed = text.to_s.unicode_normalize
           collapsed = collapsed.gsub(INVISIBLE, '') if collapsed.match?(INVISIBLE)
           collapsed = collapsed.gsub(/[[:space:]]+/, ' ').strip
           collapsed unless collapsed.empty?

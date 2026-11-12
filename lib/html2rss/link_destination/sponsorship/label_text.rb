@@ -10,6 +10,10 @@ module Html2rss
       # is in neither: it also credits wire and content partners. Only whole texts match; {Sponsorship}
       # decides where a text is read.
       module LabelText
+        # Letters with an accented variant are alternations, not classes: with +/i+, Ruby on Linux does not
+        # fold an uppercase accented letter against a class that also holds its ASCII base. Texts are read in
+        # NFC, so a decomposed accent matches too.
+        #
         # A whole label, optionally wrapped in punctuation or separators ("Anzeige |", "[Sponsored]",
         # "Publicité:", "【広告】"), in two groups. +paid+ states paid content; +ad+ is an ad word, which also
         # names the advertising trade. Paid attribution ("Sponsored by …") may name the sponsor in up to five
@@ -22,7 +26,7 @@ module Html2rss
             # German
             gesponsert(?:\s+von(?:\s+\S+){0,5})?|
             # French
-            (?:contenu\s+)?sponsoris[eé](?:\s+par(?:\s+\S+){0,5})?|publireportage|contenus?\s+partenaires?|
+            (?:contenu\s+)?sponsoris(?:e|é)(?:\s+par(?:\s+\S+){0,5})?|publireportage|contenus?\s+partenaires?|
             # Spanish
             (?:contenido\s+)?patrocinado(?:\s+por(?:\s+\S+){0,5})?|publirreportaje|
             # Italian
@@ -31,15 +35,15 @@ module Html2rss
             # Dutch
             gesponsord(?:e\s+(?:inhoud|content))?(?:\s+door(?:\s+\S+){0,5})?|
             # Polish
-            sponsorowane|materia[łl]\s+(?:sponsorowany|partnera|partnerski|promocyjny|reklamowy)|
-            materia[łl]y\s+(?:sponsorowane|partnera|partnerskie|promocyjne|reklamowe)|artyku[łl]\s+sponsorowany|
+            sponsorowane|materia(?:ł|l)\s+(?:sponsorowany|partnera|partnerski|promocyjny|reklamowy)|
+            materia(?:ł|l)y\s+(?:sponsorowane|partnera|partnerskie|promocyjne|reklamowe)|artyku(?:ł|l)\s+sponsorowany|
             # Swedish
-            sponsrad|sponsrat(?:\s+inneh[åa]ll)?|annonssamarbete|
+            sponsrad|sponsrat(?:\s+inneh(?:å|a)ll)?|annonssamarbete|
             # Japanese
             タイアップ(?:広告|企画)?|スポンサー(?:リンク|コンテンツ)|広告企画|PR企画
           )|(?<ad>
             ad|advertisement|promoted|
-            anzeige|werbung|publicit[eé]|publicidad|pubblicit[àa]|advertentie|reclame|reklama|annons|
+            anzeige|werbung|publicit(?:e|é)|publicidad|pubblicit(?:à|a)|advertentie|reclame|reklama|annons|
             reklam|広告|スポンサー
           ))[\s\u00A0\p{P}|]*\z
         /ix
@@ -54,6 +58,8 @@ module Html2rss
           # @return [Symbol, nil] +:paid_label+ for a paid phrase, +:label+ for an ad word, else nil
           def kind(text, element: true)
             return if text.nil?
+
+            text = text.unicode_normalize
             return :label if element && text.match?(ELEMENT_LABEL)
 
             match = LABEL_PATTERN.match(text)
@@ -65,7 +71,10 @@ module Html2rss
           #
           # @param text [String]
           # @return [Boolean]
-          def candidate?(text) = text.match?(LABEL_PATTERN) || text.include?('PR')
+          def candidate?(text)
+            text = text.unicode_normalize
+            text.match?(LABEL_PATTERN) || text.include?('PR')
+          end
         end
       end
     end

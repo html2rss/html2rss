@@ -2,6 +2,10 @@
 
 RSpec.describe Html2rss::Article::Title do
   describe '.collapse' do
+    it 'returns the title in NFC' do
+      expect(described_class.collapse("Stra\u0308ße")).to eq("Str\u00E4ße")
+    end
+
     {
       "  Tram line\n extends\t" => 'Tram line extends',
       '10:00 Budget vote' => '10:00 Budget vote',
@@ -215,6 +219,29 @@ RSpec.describe Html2rss::Article::Title do
       it "is #{expected} for #{text.inspect}" do
         expect(described_class.date_piece?(text)).to be(expected)
       end
+    end
+  end
+
+  describe '.headline_noise_piece? with accented labels in any case and Unicode form' do
+    labels = ['Ämne:', 'ÄMNE:', 'CATÉGORIE :', 'THÈME:', 'SECCIÓN:', 'CATEGORÍA:', 'DZIAŁ:', 'ARTYKUŁ:',
+              'TIPO DE ARTÍCULO: Video', 'TYP TREŚCI: Galeria', 'ARTÍCULO:']
+
+    forms = %i[nfc nfd]
+
+    labels.each do |label|
+      forms.each do |form|
+        it "treats #{label.inspect} in #{form} as a label piece" do
+          text = label.unicode_normalize(form)
+
+          expect([described_class.headline_noise_piece?(text), described_class.noise_piece?(text)]).to eq([true, true])
+        end
+      end
+    end
+
+    it 'composes the same title from a decomposed and a composed kicker label' do
+      decomposed = described_class.compose('Hafen', kicker: "A\u0308mne: Verkehr")
+
+      expect(decomposed).to eq(described_class.compose('Hafen', kicker: "\u00C4mne: Verkehr"))
     end
   end
 
