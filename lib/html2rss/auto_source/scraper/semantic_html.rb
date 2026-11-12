@@ -32,7 +32,8 @@ module Html2rss
         # @param url [String, Html2rss::Url] base url
         # @param document [SST::Document, nil] memoized SST document from AutoSource
         # @param link_resolver [Scoring::LinkResolver, nil] shared page-scoped resolver
-        # @param _opts [Hash] scraper options (none are read)
+        # @param _opts [Hash] scraper-specific options
+        # @option _opts [Object] :_reserved reserved for future scraper-specific options
         def initialize(parsed_body = nil, url:, document: nil, link_resolver: nil, **_opts)
           @parsed_body = parsed_body
           @provided_document = document
