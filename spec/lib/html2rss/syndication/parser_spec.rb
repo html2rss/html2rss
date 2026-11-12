@@ -128,7 +128,7 @@ RSpec.describe Html2rss::Syndication::Parser do
 
       expect(articles.map { |article| article[:title] }).to eq(['First RDF post', 'Second RDF post'])
       expect(articles.first).to include(
-        id: 'https://example.com/posts/1', description: 'Hello RDF', author: 'Ada', categories: ['News'],
+        id: 'https://example.com/posts/1#item', description: 'Hello RDF', author: 'Ada', categories: ['News'],
         published_at: Time.utc(2024, 3, 1, 10)
       )
       expect(articles.last[:url].to_s).to eq('https://example.com/posts/2')
