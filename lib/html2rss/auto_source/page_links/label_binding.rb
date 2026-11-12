@@ -68,17 +68,16 @@ module Html2rss
           child = @label
           until child.equal?(@node)
             parent = index.parent_of(child)
-            return true if slot_beside?(parent, child)
+            return true if slot_beside?(parent)
 
             child = parent
           end
           false
         end
 
-        def slot_beside?(parent, child)
-          run = parent.children.take_while { |sibling| sibling.equal?(child) || !sibling.find(&:link?) }
-          run.any? { |sibling| !sibling.equal?(child) && slot?(sibling) }
-        end
+        # The label and its wrappers below the frame hold no destination and no slot, so the run of
+        # children before the first one holding a destination is the label's neighbourhood at that level.
+        def slot_beside?(parent) = parent.children.take_while { !_1.find(&:link?) }.any? { slot?(_1) }
 
         # An empty box: a layout or +ins+ element holding no words, no link and no media.
         def slot?(node)

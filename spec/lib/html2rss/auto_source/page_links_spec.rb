@@ -643,7 +643,12 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
             <div class="row"><div class="ad"><div class="slot"><div></div></div><span>Sponsored</span></div>
               <article><h3><a href="/news/below-a">A</a></h3></article><article><h3><a href="/news/below-b">B</a></h3></article></div>
             <div class="module"><div class="module__head"><span>Sponsored</span><div class="logo"><img src="/l.png" alt=""></div></div>
-              <ul><li><h3><a href="/news/paid-a">A</a></h3></li><li><h3><a href="/news/paid-b">B</a></h3></li></ul></div>
+              <ul><li><h3><a href="/news/paid-a">A</a></h3></li><li><h3><a href="/news/paid-b">B</a></h3></li></ul>
+              <div class="clear"></div></div>
+            <div class="module"><div class="module__head"><span>Sponsored</span><div class="name">Partner picks</div></div>
+              <ul><li><h3><a href="/news/named-a">A</a></h3></li><li><h3><a href="/news/named-b">B</a></h3></li></ul></div>
+            <div class="row"><div class="head"><span>Sponsored</span><p>Partner picks</p></div>
+              <div class="c"><h3><a href="/news/fuller-a">A</a></h3></div><div class="c"><h3><a href="/news/fuller-b">B</a></h3></div></div>
             <div class="module"><div class="module__head"><span>Sponsored</span><i class="info"></i></div>
               <ul><li><h3><a href="/news/icon-a">A</a></h3></li><li><h3><a href="/news/icon-b">B</a></h3></li></ul></div>
           </main></body></html>
@@ -652,14 +657,14 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
 
       let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
 
-      it 'marks no card after an empty slot beside the label or its wrapper' do
+      it 'marks no card after an empty slot beside the label or its wrapper, nor beside a fuller header' do
         paths = %w[/news/cap-a /news/cap-b /news/cap-c /news/list-a /news/list-b /news/list-c /news/one
-                   /news/below-a /news/below-b]
+                   /news/below-a /news/below-b /news/fuller-a /news/fuller-b]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
       end
 
-      it 'marks the cards under a header holding a sponsor logo or an icon beside the label' do
-        paths = %w[/news/paid-a /news/paid-b /news/icon-a /news/icon-b]
+      it 'marks cards under a header with a logo, a name or an icon by the label, ahead of an empty box' do
+        paths = %w[/news/paid-a /news/paid-b /news/named-a /news/named-b /news/icon-a /news/icon-b]
         expect(sponsored[*paths]).to eq(paths.to_h { [_1, true] })
       end
     end
