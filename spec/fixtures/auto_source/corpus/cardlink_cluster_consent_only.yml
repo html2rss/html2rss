@@ -1,0 +1,5 @@
+---
+case: A press page whose list loads by script; the only repeated, linked blocks are
+  consent boxes outside main. The Html scraper has no list cards and takes nothing
+  from class clusters, so no item is emitted.
+expected: []

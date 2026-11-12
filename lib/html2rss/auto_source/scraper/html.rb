@@ -4,9 +4,8 @@ module Html2rss
   class AutoSource
     module Scraper
       ##
-      # Fallback HTML list/cluster scraper via SST pipeline
+      # Fallback HTML list scraper via SST pipeline
       # (Normalizer → Segmenter → Scoring::Engine → Html::SstArticleExtractor).
-      # Linked list cards first; linked cluster cards only when no list card qualifies.
       class Html
         include Enumerable
 
@@ -74,24 +73,13 @@ module Html2rss
         end
 
         def ranked_segments
-          @ranked_segments ||= begin
-            list = rank_strategy(:list)
-            list.empty? ? rank_strategy(:cluster) : list
-          end
-        end
-
-        def rank_strategy(strategy)
-          return [] unless document
-
-          segments = Segmenter.call(
-            document,
-            base_url: @url,
-            strategy:,
-            minimum_selector_frequency:,
-            use_top_selectors:,
-            link_resolver:
-          )
-          engine.select_eligible(segments, limit: TOP_K)
+          @ranked_segments ||= if document
+                                 segments = Segmenter.call(document, base_url: @url, strategy: :list, link_resolver:,
+                                                                     minimum_selector_frequency:, use_top_selectors:)
+                                 engine.select_eligible(segments, limit: TOP_K)
+                               else
+                                 []
+                               end
         end
 
         def materialize(ranked)
