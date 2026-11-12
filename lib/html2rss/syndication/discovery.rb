@@ -8,7 +8,7 @@ module Html2rss
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
     # Head alternates keep document order within two groups: those whose title or URL
     # hints audio ({AUDIO_HINT}) and the rest. On a page that shows podcast signals
-    # ({PODCAST_PAGE_HINT} in its URL path or +<title>+, an +og:type+ matching {MEDIA_OG_TYPE},
+    # ({PODCAST_PAGE_HINT} in its URL host, path or +<title>+, an +og:type+ matching {MEDIA_OG_TYPE},
     # or a {PODCAST_SCHEMA_TYPE} in its JSON-LD) the order is audio-hinted alternates, other
     # alternates, path guesses. On any other page it is other alternates, path guesses, then the
     # audio-hinted alternates, so a news page that advertises only a podcast feed does not become
@@ -19,9 +19,9 @@ module Html2rss
     module Discovery
       # Common feed path suffixes probed after head +rel=alternate+ hints.
       DEFAULT_PATHS = CandidateCatalog::FEED_PATHS
-      # Words marking a podcast page in its URL path or title; {AUDIO_HINT} adds audio file formats.
+      # Words marking a podcast page in its URL host, path or title; {AUDIO_HINT} adds audio file formats.
       PODCAST_WORDS = %w[podcast episode audio].freeze
-      # Word-ish podcast hint in a page's URL path or +<title>+ (plural allowed, case-insensitive).
+      # Word-ish podcast hint in a page's URL host, path or +<title>+ (plural allowed, case-insensitive).
       PODCAST_PAGE_HINT = /(?<![[:alpha:]])(?:#{PODCAST_WORDS.join('|')})s?(?![[:alpha:]])/i
       # Word-ish audio hint in an alternate's title or URL (Podlove-style per-format podcast feeds).
       AUDIO_HINT = /(?<![[:alpha:]])(?:#{(PODCAST_WORDS + %w[mp3 m4a aac opus]).join('|')})s?(?![[:alpha:]])/i
@@ -180,7 +180,7 @@ module Html2rss
 
         # The page itself looks like a podcast page: cheap signals only (no request, no JSON parse).
         def podcast_page?(doc, page)
-          PODCAST_PAGE_HINT.match?(page.path) || PODCAST_PAGE_HINT.match?(doc.title) ||
+          PODCAST_PAGE_HINT.match?("#{page.host}#{page.path}") || PODCAST_PAGE_HINT.match?(doc.title) ||
             MEDIA_OG_TYPE.match?(doc.at_css('meta[property="og:type"]')&.[]('content')) ||
             Html::Probe.scripts(doc, Html::Probe::APPLICATION_LD_JSON).any? { PODCAST_SCHEMA_TYPE.match?(_1.text) }
         end

@@ -137,6 +137,19 @@ RSpec.describe Html2rss::Syndication::Discovery do
       end
     end
 
+    it 'keeps the alternates ahead of the guesses on a page whose host carries a podcast word' do
+      doc = Nokogiri::HTML(<<~HTML)
+        <html><head>
+          <link rel="alternate" type="application/rss+xml" title="News" href="/news.xml">
+          <link rel="alternate" type="application/rss+xml" title="Show" href="/feed/mp3/">
+        </head></html>
+      HTML
+
+      urls = described_class.candidate_urls(page_url: 'https://show-podcast.example.com/', parsed_body: doc).map(&:to_s)
+
+      expect(urls.first(2)).to eq(%w[https://show-podcast.example.com/news.xml https://show-podcast.example.com/feed/mp3/])
+    end
+
     it 'ignores podcast words outside the page path and non-media og:types', :aggregate_failures do
       doc = Nokogiri::HTML(<<~HTML)
         <html><head>
