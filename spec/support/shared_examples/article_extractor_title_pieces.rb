@@ -500,6 +500,28 @@ RSpec.shared_examples 'article extractor title pieces' do
       '<h2><a href="/news/story">Heat pumps for every budget</a></h2>',
       'Energy: Heat pumps for every budget'
     ],
+    'a kicker element with two class tokens' => [
+      '<span class="teaser kicker">Transit</span><h2><a href="/news/story">Tram line extends</a></h2>',
+      'Transit: Tram line extends'
+    ],
+    'a class token that only contains a kicker word' => [
+      '<span class="kickerless">Transit</span><h2><a href="/news/story">Tram line extends</a></h2>',
+      'Tram line extends'
+    ],
+    'a concealed piece and a paid label inside a marked kicker' => [
+      '<span class="kicker"><span class="visually-hidden">Topic</span><span>Sponsored</span> Energy</span>' \
+      '<h2><a href="/news/story">Heat pumps for every budget</a></h2>',
+      'Energy: Heat pumps for every budget'
+    ],
+    'style words in an attribute and in headline text' => [
+      '<h2><a href="/news/story">Why <code data-css="display: none">display: none</code> hides menus</a></h2>',
+      'Why display: none hides menus'
+    ],
+    'a date element between pieces with words only further on' => [
+      '<h2><a href="/news/story"><span>Tram line extends</span><time>Oct 20</time><img src="/i.png" alt=""> ' \
+      'today</a></h2>',
+      'Tram line extends today'
+    ],
     'an ad word as a topic kicker' => [
       '<span class="kicker">Werbung</span><h2><a href="/news/story">New rules for posters</a></h2>',
       'Werbung: New rules for posters'

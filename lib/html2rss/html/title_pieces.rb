@@ -137,7 +137,6 @@ module Html2rss
 
           dropped << element
         end
-        dropped
       end
 
       # Date chips ({#date_chip?}) closing the text.
@@ -161,7 +160,7 @@ module Html2rss
       def opening?(node, dropped, element) = @nodes.text(node, dropped).to_s.start_with?(@nodes.text(element))
 
       # Whether +element+ closes the text of +node+ left after +dropped+.
-      def closing?(node, dropped, element) = @nodes.text(node, dropped).to_s.end_with?(@nodes.text(element).to_s)
+      def closing?(node, dropped, element) = @nodes.text(node, dropped).end_with?(@nodes.text(element).to_s)
 
       # Whether +element+ is or sits inside a dropped element.
       def within?(element, dropped) = dropped.any? { @nodes.inside?(element, _1) }

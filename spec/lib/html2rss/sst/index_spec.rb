@@ -125,8 +125,10 @@ RSpec.describe Html2rss::SST::Index do
       expect(parsed.index.memo_run_count(paragraph)).to eq(0)
     end
 
-    it 'returns the same count on repeated calls' do
+    it 'counts each node once', :aggregate_failures do
+      allow(Html2rss::WordCount).to receive(:runs).and_call_original
       expect([index.memo_run_count(nav_link), index.memo_run_count(nav_link)]).to eq([1, 1])
+      expect(Html2rss::WordCount).to have_received(:runs).once
     end
   end
 

@@ -26,6 +26,21 @@ RSpec.describe Html2rss::WordCount do
     end
   end
 
+  describe '.runs' do
+    {
+      'Platform-launch, notes!' => 3, 'one 42 three' => 3, '会員の登録情報およそ' => 1, '' => 0, nil => 0
+    }.each do |text, expected|
+      it "counts #{expected} letter/digit runs in #{text.inspect}" do
+        expect(described_class.runs(text)).to eq(expected)
+      end
+    end
+
+    it 'stops at the ceiling', :aggregate_failures do
+      expect(described_class.runs('one two three four', ceiling: 2)).to eq(2)
+      expect(described_class.runs('one two', ceiling: 3)).to eq(2)
+    end
+  end
+
   describe '.at_least?' do
     it 'reads unspaced Japanese by character chunks' do
       expect(described_class.at_least?('アクメ 会員の登録情報およそ4万2千件が外部へ', 3)).to be(true)

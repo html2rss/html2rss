@@ -192,6 +192,11 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
 
       expect(assessor.call(seven_long_words, nil, destination_facts: nil).descriptive_context).to be(false)
     end
+
+    it 'reads eight or more words of context as descriptive', :aggregate_failures do
+      contexts = [8, 12].map { build_node(name: :p, text: Array.new(_1, 'abcdefgh').join(' ')) }
+      expect(contexts.map { assessor.call(_1, nil, destination_facts: nil).descriptive_context }).to eq([true, true])
+    end
   end
 
   describe 'title runs' do

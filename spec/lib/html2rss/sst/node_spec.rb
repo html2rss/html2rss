@@ -133,6 +133,12 @@ RSpec.describe Html2rss::SST::Node do
       expect(div.text_density).to eq(2.0)
     end
 
+    it 'reads run counts through the document index' do
+      allow(Html2rss::WordCount).to receive(:runs).and_call_original
+      2.times { div.run_count }
+      expect(Html2rss::WordCount).to have_received(:runs).once
+    end
+
     it 'computes the same metrics for nodes built without an index', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       node = described_class.build(
         name: :div,
@@ -141,7 +147,7 @@ RSpec.describe Html2rss::SST::Node do
 
       expect(node.visible_text).to eq("one\ntwo")
       expect(node.run_count).to eq(2)
-      expect(described_class.build(name: :span, own_text: 'one two three').text_density).to eq(3.0)
+      expect(described_class.build(name: :span, own_text: 'one two three').text_density).to be(3.0)
     end
   end
 end

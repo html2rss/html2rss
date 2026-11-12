@@ -92,7 +92,10 @@ module Html2rss
         # Descends into the last worded child of a piece made only of elements: the leaf next to the
         # headline (a topic span after a badge in one box).
         def nearest_leaf(node)
-          while !@nodes.own_words?(node) && (child = node.children.reverse.find { !skipped?(_1) })
+          until @nodes.own_words?(node)
+            child = node.children.reverse.find { !skipped?(_1) }
+            return node unless child
+
             node = child
           end
           node
