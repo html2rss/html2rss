@@ -11,7 +11,7 @@ module Html2rss
       # Hard ceiling for SST node allocations; beyond this we degrade.
       MAX_NODES = 5_000
 
-      # Tags stripped entirely from the SST.
+      # Tags stripped entirely from the SST; a +noscript+ keeps only its file links (see {#child_nodes}).
       STRIPPED_TAGS = Set['script', 'style', 'noscript', 'iframe', 'svg', 'template'].freeze
 
       # Kept when MAX_NODES forces semantic-tag-only degrade.
@@ -151,7 +151,7 @@ module Html2rss
         return unless nk_node.element?
 
         tag = Html::Probe.tag(nk_node)
-        return if STRIPPED_TAGS.include?(tag)
+        return unless (nk_children = child_nodes(nk_node, tag))
 
         if @node_count >= MAX_NODES && !@degraded
           @degraded = true
@@ -169,7 +169,7 @@ module Html2rss
         attrs = extract_attrs(nk_node)
         scope_here = Tags.chrome_scope(nk_node, scope)
 
-        children, lead, tails = normalize_children(nk_node, depth:, path: tag_path, scope: scope_here)
+        children, lead, tails = normalize_children(nk_children, depth:, path: tag_path, scope: scope_here)
 
         node = Node.build(name: tag, attrs:, own_text: [lead, *tails].join, children:, tag_path:, tails:)
         @depths[node] = depth
@@ -177,6 +177,18 @@ module Html2rss
         children.each { |child| @parents[child] = node }
 
         node
+      end
+
+      # The Nokogiri children to normalize, or nil for a stripped tag. A +noscript+ is kept only for the
+      # file links inside it ({Html::ArticleRules::Enclosure.file_link?}), as its only children, so a
+      # card's no-script download link still names its enclosure; its text stays invisible
+      # ({Tags::INVISIBLE_NAMES}) and a +noscript+ without one is stripped.
+      def child_nodes(nk_node, tag)
+        return nk_node.children unless STRIPPED_TAGS.include?(tag)
+        return unless tag == 'noscript'
+
+        links = nk_node.xpath('.//a[@href]').select { Html::ArticleRules::Enclosure.file_link?(_1['href']) }
+        links unless links.empty?
       end
 
       def extract_attrs(nk_node) # rubocop:disable Metrics/MethodLength
@@ -206,10 +218,10 @@ module Html2rss
 
       # Walks child nodes once, keeping direct text in the slot of the preceding kept child
       # (slot 0 is the lead text) so text order survives the element-only tree.
-      def normalize_children(nk_node, depth:, path:, scope:)
+      def normalize_children(nk_children, depth:, path:, scope:)
         children = []
         slots = [+'']
-        nk_node.children.each do |child|
+        nk_children.each do |child|
           next slots.last << child.text if child.text?
 
           node = normalize_element(child, depth: depth + 1, path:, scope:)

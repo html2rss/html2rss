@@ -12,9 +12,14 @@ module Html2rss
       # its +type+, and file links ({FILE_LINK}) qualify; an +iframe+ (embed player page) never does,
       # and only an http(s) URL is one (no +data:+, +blob:+, +javascript:+ or +mailto:+).
       module Enclosure
-        # A link to a downloadable document or archive: its path (before any query or fragment) ends in
-        # +.pdf+, +.zip+, +.tar.gz+ or +.tgz+, in any case.
-        FILE_LINK = /\A[^?#]*\.(?:pdf|zip|tar\.gz|tgz)(?:[?#]|\z)/i
+        # A link to a file: its path (before any query or fragment) ends, in any case, in a downloadable
+        # document or archive extension (+.pdf+, +.zip+, +.tar.gz+, +.tgz+) or an audio or video one
+        # ({Article::Enclosure::MEDIA_TYPES}, which also types it), such as an episode's download link.
+        FILE_LINK = /
+          \A[^?\#]*\.
+          (?:pdf|zip|tar\.gz|tgz|#{Regexp.union(Article::Enclosure::MEDIA_TYPES.keys).source})
+          (?:[?\#]|\z)
+        /ix
         # Element names that may carry an enclosure.
         ELEMENT_NAMES = %w[img audio video source a].freeze
         # Players whose own +src+ and inner +source+ elements name a media file.
@@ -43,6 +48,11 @@ module Html2rss
             when 'a' then from_anchor(href, base_url)
             end
           end
+
+          ##
+          # @param href [String, nil] an anchor's +href+
+          # @return [Boolean] whether it names a file {.from_element} turns into an enclosure ({FILE_LINK})
+          def file_link?(href) = href.to_s.match?(FILE_LINK)
 
           ##
           # @param src [String, nil]
@@ -79,7 +89,7 @@ module Html2rss
           end
 
           def from_anchor(href, base_url)
-            return unless href&.match?(FILE_LINK) && (url = web_url(href, base_url))
+            return unless file_link?(href) && (url = web_url(href, base_url))
 
             { url: }
           end

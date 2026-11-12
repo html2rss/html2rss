@@ -147,6 +147,29 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
 
       expect(articles.map { _1.url.to_s }).to eq(['https://example.com/news/dup'])
     end
+
+    it 'ships each card its own episode file links, in noscript too, and never the navigation livestream' do
+      episodes = Nokogiri::HTML.parse <<~HTML
+        <html><body>
+          <header><nav><a href="/live/radio.mp3">Listen live</a><a href="/podcasts/">All podcasts</a></nav></header>
+          <main>
+            <article><h2><a href="/podcasts/one">Episode one of the harbor show</a></h2>
+              <p>Useful context paragraph for listeners this week.</p>
+              <a href="/audio/one.MP3?src=list" download>Download</a></article>
+            <article><h2><a href="/podcasts/two">Episode two of the harbor show</a></h2>
+              <p>Useful context paragraph for listeners next week.</p>
+              <noscript><p><a href="/audio/two.m4a">Download episode</a></p></noscript></article>
+          </main>
+        </body></html>
+      HTML
+
+      articles = described_class.new(episodes, url: 'https://example.com').to_a
+
+      expect(articles.to_h { [_1.url.to_s, _1.enclosures.map { |e| [e.url.to_s, e.type] }] }).to eq(
+        'https://example.com/podcasts/one' => [%w[https://example.com/audio/one.MP3?src=list audio/mpeg]],
+        'https://example.com/podcasts/two' => [%w[https://example.com/audio/two.m4a audio/mp4]]
+      )
+    end
   end
 
   describe '#each' do

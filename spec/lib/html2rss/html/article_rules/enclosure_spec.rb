@@ -51,12 +51,36 @@ RSpec.describe Html2rss::Html::ArticleRules::Enclosure do
       expect(enclosure_for.call('a', href: '/read?file=a.pdf')).to be_nil
     end
 
+    it 'turns audio and video file links into enclosures typed by their extension' do # rubocop:disable RSpec/ExampleLength
+      typed = lambda do |href|
+        enclosure = Html2rss::Article::Enclosure.new(**described_class.from_element('a', base_url, src: nil, href:,
+                                                                                                   type: nil))
+        [enclosure.url.path, enclosure.type]
+      end
+      expect(%w[/ep.mp3 /ep.m4a /clip.mp4 /EP.MP3 /ep.M4A?token=1 /ep.opus#t=10].map(&typed))
+        .to eq([%w[/ep.mp3 audio/mpeg], %w[/ep.m4a audio/mp4], %w[/clip.mp4 video/mp4], %w[/EP.MP3 audio/mpeg],
+                %w[/ep.M4A audio/mp4], %w[/ep.opus audio/opus]])
+    end
+
+    it 'ignores media names outside the path end and stream playlists', :aggregate_failures do
+      %w[/play?file=ep.mp3 /ep.mp3x /ep.mp3/page /live.m3u8 /mp3].each do |href|
+        expect(enclosure_for.call('a', href:)).to be_nil
+      end
+    end
+
     it 'ignores links to pages, non-web links, embed frames and other elements', :aggregate_failures do
       expect(enclosure_for.call('a', href: '/news/story')).to be_nil
       expect(enclosure_for.call('a', href: 'mailto:a@example.com?subject=a.pdf')).to be_nil
       expect(enclosure_for.call('a')).to be_nil
       expect(enclosure_for.call('iframe', src: '/embed/player')).to be_nil
       expect(enclosure_for.call('embed', src: '/a.mp3')).to be_nil
+    end
+  end
+
+  describe '.file_link?' do
+    it 'accepts document, archive and media file paths only', :aggregate_failures do
+      expect(%w[/a.pdf /a.ZIP /a.tgz /a.mp3 /a.WEBM?x=1].map { described_class.file_link?(_1) }).to all(be(true))
+      expect(['/a', '/a.html', '/a.jpg', '/?a.mp3', '', nil].map { described_class.file_link?(_1) }).to all(be(false))
     end
   end
 
@@ -89,6 +113,15 @@ RSpec.describe Html2rss::Html::ArticleRules::Enclosure do
                { url:, type: 'video/mp4' }]
       expect(described_class.unique(found)).to eq([{ url:, type: 'video/webm', kind: :video }, { url: other }])
       expect(described_class.unique([{ url: }, { url:, kind: :video }])).to eq([{ url: }])
+    end
+
+    it 'ships a download link and a player naming the same file once, at the first, typed by the player' do # rubocop:disable RSpec/ExampleLength
+      found = [['a', { href: '/ep.mp3' }], ['img', { src: '/w.jpg' }],
+               ['audio', { src: '/ep.mp3', type: 'audio/mpeg' }], ['a', { href: '/ep.mp3' }]].map do |name, attrs|
+        described_class.from_element(name, base_url, src: nil, href: nil, type: nil, **attrs) { nil }
+      end
+      expect(described_class.unique(found).map { [_1[:url].path, _1[:type]] })
+        .to eq([%w[/ep.mp3 audio/mpeg], %w[/w.jpg image/jpeg]])
     end
   end
 end

@@ -265,5 +265,22 @@ RSpec.describe Html2rss::Html::ArticleExtractor::EnclosureExtractor do
         expect(enclosures).to eq(expected_enclosures)
       end
     end
+
+    context 'when article_tag links its episode files, in noscript too, beside a player' do
+      let(:article_tag) do
+        article_tag_from.call(<<~HTML)
+          <article>
+            <a href="/audio/ep.MP3?src=list" download>Download</a>
+            <noscript><p><a href="/video/ep.mp4">Watch offline</a></p></noscript>
+            <audio src="/audio/ep.MP3?src=list" type="audio/mpeg"></audio>
+          </article>
+        HTML
+      end
+
+      it 'ships each file once, typed by its extension or declared type, in document order' do
+        expect(enclosures).to eq([expected_enclosure.call('/audio/ep.MP3?src=list', 'audio/mpeg'),
+                                  expected_enclosure.call('/video/ep.mp4', 'video/mp4')])
+      end
+    end
   end
 end
