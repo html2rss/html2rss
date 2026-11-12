@@ -1,4 +1,0 @@
----
-case: Repeated notice cards with headings and no links at all; no card has a URL of its
-  own, so none is emitted (no page#fragment items) and the run does not fail.
-expected: []

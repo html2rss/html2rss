@@ -72,9 +72,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
       let(:provided_document) { Html2rss::SST::Normalizer.call(Nokogiri::HTML.parse(story_html)) }
 
       it 'resolves relative links against the given url' do
-        articles = described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://page.example/').to_a
+        articles = described_class.new(Nokogiri::HTML.parse(story_html), url: 'https://example.net/').to_a
 
-        expect(articles.map { _1.url.to_s }).to eq(['https://page.example/news/relative'])
+        expect(articles.map { _1.url.to_s }).to eq(['https://example.net/news/relative'])
       end
 
       it 'uses a provided SST document even without a parsed body' do
@@ -150,7 +150,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
   end
 
   describe '#each' do
-    subject(:new) { described_class.new(parsed_body, url: 'https://page.com') }
+    subject(:new) { described_class.new(parsed_body, url: 'https://example.com') }
 
     let(:parsed_body) { Nokogiri::HTML.parse(File.read('spec/fixtures/page_1.html')) }
     let(:articles) { new.each.to_a }
@@ -159,8 +159,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     let(:grouped_expected_articles) do
       # rubocop:disable-next Layout/LineLength
       [
-        { title: 'Brittney Griner: What I Endured in Russia', url: 'https://page.com/6972085/brittney-griner-book-coming-home/', image: 'https://api.page.com/wp-content/uploads/2024/04/brittney-griner-basketball-russia.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: "Chris Coduto—Getty Images\n17 MIN READ\n\"Prison is more than a place. It’s also a mindset,\" Brittney Griner writes in an excerpt from her book about surviving imprisonment in Russia.", id: '/6972085/brittney-griner-book-coming-home/' },
-        { title: 'Driver Dies After Crashing Into White House Security Barrier', url: 'https://page.com/6974836/white-house-car-crash-driver-dies-security-barrier/', image: 'https://api.page.com/wp-content/uploads/2024/05/AP24126237101577.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: '1 MIN READ', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
+        { title: 'Brittney Griner: What I Endured in Russia', url: 'https://example.com/6972085/brittney-griner-book-coming-home/', image: 'https://api.page.com/wp-content/uploads/2024/04/brittney-griner-basketball-russia.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: "Chris Coduto—Getty Images\n17 MIN READ\n\"Prison is more than a place. It’s also a mindset,\" Brittney Griner writes in an excerpt from her book about surviving imprisonment in Russia.", id: '/6972085/brittney-griner-book-coming-home/' },
+        { title: 'Driver Dies After Crashing Into White House Security Barrier', url: 'https://example.com/6974836/white-house-car-crash-driver-dies-security-barrier/', image: 'https://api.page.com/wp-content/uploads/2024/05/AP24126237101577.jpg?quality=85&w=925&h=617&crop=1&resize=925,617', description: '1 MIN READ', id: '/6974836/white-house-car-crash-driver-dies-security-barrier/' }
       ].group_by { |article| article[:id] }
     end
 

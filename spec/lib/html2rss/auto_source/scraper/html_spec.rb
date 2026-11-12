@@ -125,7 +125,7 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
           <ul>
             <li>
               <a href="?ts=deadh0rse">[Plonk]</a>
-              <a href="https://www.tagesschau.de/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html">Bla bla bla</a>
+              <a href="https://www.example.net/wirtschaft/verbraucher/kosten-autos-deutsche-hersteller-100.html">Bla bla bla</a>
           </ul>
           </html>
         HTML
@@ -339,19 +339,19 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
     end
 
     it 'is false for anchorless cards' do
-      expect(described_class.new(anchorless_html, url: 'https://page.com')).not_to be_extractable
+      expect(described_class.new(anchorless_html, url: 'https://example.com')).not_to be_extractable
     end
   end
 
   describe '#initialize' do
     it 'emits no page-fragment items for anchorless cards' do
-      expect(described_class.new(anchorless_html, url: 'https://page.com').to_a).to eq([])
+      expect(described_class.new(anchorless_html, url: 'https://example.com').to_a).to eq([])
     end
 
     it 'resolves relative article links against the given url' do
-      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://page.example/').to_a
+      articles = described_class.new(Nokogiri::HTML.parse(html), url: 'https://example.net/').to_a
 
-      expect(articles.map { _1.url.to_s }).to include('https://page.example/article1/')
+      expect(articles.map { _1.url.to_s }).to include('https://example.net/article1/')
     end
   end
 

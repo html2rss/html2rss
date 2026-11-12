@@ -235,6 +235,41 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         expect(segments).to be_empty
       end
     end
+
+    context 'when one link wraps a card of several leaf divs' do
+      let(:html) do
+        <<~HTML
+          <html><body><a class="clip" href="/play/clips/harbor-ferry-returns">
+            <div class="media"><img src="/img/ferry.jpg" alt=""></div>
+            <div class="title"><h3>Harbor ferry returns</h3></div>
+            <div class="lead"><p>The crossing resumes after weeks of repairs.</p></div>
+            <div class="note"><p>Captions are available for this clip.</p></div>
+          </a></body></html>
+        HTML
+      end
+
+      it 'roots one segment at the link', :aggregate_failures do
+        expect(hrefs).to eq(%w[/play/clips/harbor-ferry-returns])
+        expect(segments.first.root_node).to equal(segments.first.primary_link)
+      end
+    end
+
+    context 'when a list item holds a whole-card link of several leaf divs' do
+      let(:html) do
+        <<~HTML
+          <html><body><ul><li><a class="clip" href="/play/clips/harbor-ferry-returns">
+            <div class="title"><h3>Harbor ferry returns</h3></div>
+            <div class="lead"><p>The crossing resumes after weeks of repairs.</p></div>
+            <div class="note"><p>Captions are available for this clip.</p></div>
+          </a></li></ul></body></html>
+        HTML
+      end
+
+      it 'keeps only the list item segment', :aggregate_failures do
+        expect(hrefs).to eq(%w[/play/clips/harbor-ferry-returns])
+        expect(segments.first.root_node.name).to eq(:li)
+      end
+    end
   end
 
   describe Html2rss::AutoSource::Segmenter::PrimaryLink do

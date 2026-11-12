@@ -999,8 +999,10 @@ RSpec.describe Html2rss::AutoSource do
     it 'keeps drop tallies stable', :aggregate_failures do
       auto_source.articles
 
+      # One segment per whole-card link frees top-K slots for the fixture's absolute-host
+      # footer links, which Cleanup drops as different_domain.
       expect(auto_source.admission_drops)
-        .to eq('invalid' => 1, 'different_domain' => 3)
+        .to eq('invalid' => 1, 'different_domain' => 35, 'low_word_count' => 1)
     end
   end
 end
