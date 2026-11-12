@@ -44,6 +44,31 @@ RSpec.describe Html2rss::FeedResolution::CandidateGenerator do
     expect(urls).to eq(['https://example.com/feed.xml'])
   end
 
+  context 'when an audio-hinted alternate on another domain ranks before the site feed' do
+    let(:html) do
+      <<~HTML
+        <html><head>
+          <link rel="alternate" type="application/rss+xml" title="Site feed" href="/feed.xml">
+          <link rel="alternate" type="application/rss+xml" title="Podcast" href="https://feeds.example.net/show.xml">
+        </head><body></body></html>
+      HTML
+    end
+
+    it 'fills the feed slot with the first same-domain candidate' do
+      expect(described_class.call(entry_url:, response:, max: 1).map(&:to_s)).to eq(['https://example.com/feed.xml'])
+    end
+  end
+
+  context 'when the only alternate is on another domain' do
+    let(:html) do
+      '<html><head><link rel="alternate" type="application/rss+xml" href="https://feeds.example.net/x.xml"></head></html>'
+    end
+
+    it 'falls back to the first same-domain path guess' do
+      expect(described_class.call(entry_url:, response:, max: 1).map(&:to_s)).to eq(['https://example.com/feed'])
+    end
+  end
+
   it 'uses cluster primary links when list cannot group isolated class cards', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
     html = <<~HTML
       <!DOCTYPE html>

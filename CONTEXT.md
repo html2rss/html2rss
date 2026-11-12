@@ -7,6 +7,7 @@ Contributor map for request, AutoSource, and selectors seams.
 RSS/Atom/RDF preference for curation gates (Capture defer/`--force`, Recon `:defer`) and the NativeFeed scraper.
 Owned only by `Syndication::Discovery.best_feed_url` (head alternates, audio-hinted ones first — `Discovery::AUDIO_HINT` on title or URL, no extra fetch to compare — then same-origin path probes via session).
 A head alternate on another host is followed as an advertised feed (§ Advertised feed follow-ups).
+Per consumer: Recon, Capture and NativeFeed pass the fetched page document, so a feed the page advertises on another host counts as native (cross-origin only through that head proof). Test probes `channel.url` with no page document, so it sees same-origin path guesses only (no proof, no cross-origin, no extra page fetch). The entry-resolution feed slot keeps only a same-domain candidate (§ Feed resolution candidates).
 `PageRecon` may still expose `alternate_feeds` for Inspect diagnostics — that list is not a second preference algorithm.
 
 ## Frozen contract
@@ -113,7 +114,7 @@ Whether the entry URL tournament runs. Owned by `FeedResolution::Policy` — req
 
 ## Feed resolution candidates
 
-Same-origin probe URL mix for the tournament. Owned by `FeedResolution::CandidateGenerator`: one Discovery feed slot + up to `max - 1` listing URLs (taxonomy-first nav → segment first-wins `:list` → `:cluster` → `:semantic` → `LISTING_PATHS`). Listing seeds stay in that mix; a concatenated list truncated with `.first(max)` drops them.
+Same-origin probe URL mix for the tournament. Owned by `FeedResolution::CandidateGenerator`: one Discovery feed slot (first same-domain candidate) + up to `max - 1` listing URLs (taxonomy-first nav → segment first-wins `:list` → `:cluster` → `:semantic` → `LISTING_PATHS`). Listing seeds stay in that mix; a concatenated list truncated with `.first(max)` drops them.
 
 ## Feed resolution scoring
 

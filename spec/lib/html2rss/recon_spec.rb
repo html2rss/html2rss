@@ -64,7 +64,8 @@ RSpec.describe Html2rss::Recon do
         kind_of(Html2rss::Url), hash_including(strategy: :auto)
       )
       expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
-        hash_including(request_session: fake_session, page_url: kind_of(Html2rss::Url))
+        hash_including(request_session: fake_session, page_url: kind_of(Html2rss::Url),
+                       parsed_body: kind_of(Nokogiri::HTML::Document))
       )
     end
 

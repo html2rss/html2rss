@@ -46,13 +46,12 @@ module Html2rss
 
       def listing_cap = max > 1 ? max - 1 : 0
 
+      # First eligible Discovery candidate: an alternate on another domain (Discovery ranks
+      # audio-hinted ones first) must not displace a same-domain feed or path guess.
       def feed_slot
         return unless parsed_html
 
-        url = Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).first
-        return unless eligible_url?(url)
-
-        url
+        Syndication::Discovery.candidate_urls(page_url: entry_url, parsed_body: parsed_html).find { eligible_url?(_1) }
       end
 
       def listing_urls
