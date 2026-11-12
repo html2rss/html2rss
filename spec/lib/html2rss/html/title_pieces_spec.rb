@@ -19,6 +19,12 @@ RSpec.describe Html2rss::Html::TitlePieces do
 
     it_behaves_like 'article extractor title pieces'
 
+    it 'reads no headline from a heading holding only a date chip inside a time element' do
+      pieces, _, source = pieces_for.call(%(<article><h3><time datetime="2026-11-12"><span>11月12日</span></time></h3>) +
+                                          %(<a href="/s">Tram line extends</a></article>))
+      expect(pieces.headline_text(source)).to be_nil
+    end
+
     it 'returns the kicker element and memoizes a missing one', :aggregate_failures do
       pieces, root, = pieces_for.call('<article><b class="kicker">Transit</b><h2><a href="/s">Tram</a></h2></article>')
       expect(pieces.kicker).to equal(root.at_css('b'))
@@ -76,6 +82,12 @@ RSpec.describe Html2rss::Html::TitlePieces do
     end
 
     it_behaves_like 'article extractor title pieces'
+
+    it 'reads no headline from a heading holding only a date chip inside a time element' do
+      pieces, _, source = pieces_for.call(%(<article><h3><time datetime="2026-11-12"><span>11月12日</span></time></h3>) +
+                                          %(<a href="/s">Tram line extends</a></article>))
+      expect(pieces.headline_text(source)).to be_nil
+    end
 
     it 'takes a data-tb-kicker element as the kicker' do
       pieces, = pieces_for.call('<article><b data-tb-kicker="">Transit</b><h2><a href="/s">Tram</a></h2></article>')

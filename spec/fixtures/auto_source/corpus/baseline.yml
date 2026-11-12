@@ -246,6 +246,12 @@ title_clock_prefix.html:
   expected: 5
   title_misses: 0
   sst_built: true
+title_date_chip_time_heading.html:
+  junk: 0
+  real: 3
+  expected: 3
+  title_misses: 0
+  sst_built: true
 title_date_elements_anywhere.html:
   junk: 0
   real: 5

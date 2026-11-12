@@ -1,0 +1,11 @@
+---
+case: A heading holding only a date chip inside a time element (the date span sits inside the dropped
+  time) reads no headline and never fails; each card is titled by its anchor.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-schedule
+- https://example.com/news/2026/11/library-opening-hours
+- https://example.com/news/2026/11/school-bus-routes
+titles:
+  https://example.com/news/2026/11/harbor-ferry-schedule: Harbor ferry adds an early morning crossing
+  https://example.com/news/2026/11/library-opening-hours: City library extends its weekend opening hours
+  https://example.com/news/2026/11/school-bus-routes: School bus routes change after the holidays

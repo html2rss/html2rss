@@ -123,7 +123,7 @@ module Html2rss
 
       # Elements left out of the headline text of +node+, in rule order.
       def headline_drops(node)
-        dropped = drop_concealed!(node, [kicker, *elements(node).select { dropped_date?(_1) }])
+        dropped = drop_concealed!(node, [kicker, *elements(node).select { dropped_date?(_1) }].compact)
         drop_pieces!(node, dropped, LEAD_WORDS) { |rest, _| rest.match?(WORD) }
         drop_pieces!(node, dropped, TAG_WORDS) { |rest, piece| rest.match?(WORD) && closing?(node, dropped, piece) }
         drop_opening_noise!(node, dropped)
@@ -147,7 +147,7 @@ module Html2rss
 
       def drop_opening_noise!(node, dropped)
         elements(node).each do |element|
-          next if dropped.include?(element) || !noise_text?(text(element))
+          next if within?(element, dropped) || !noise_text?(text(element))
           break unless opening?(node, dropped, element)
 
           dropped << element
@@ -158,7 +158,7 @@ module Html2rss
       # A date-only element ({Article::Title.date_piece?}) closing the text: the date chip of a teaser card.
       def drop_closing_dates!(node, dropped)
         elements(node).reverse_each do |element|
-          next if dropped.include?(element) || !Article::Title.date_piece?(text(element))
+          next if within?(element, dropped) || !Article::Title.date_piece?(text(element))
           break unless closing?(node, dropped, element)
 
           dropped << element
@@ -170,7 +170,10 @@ module Html2rss
       def opening?(node, dropped, element) = text(node, dropped).to_s.start_with?(text(element))
 
       # Whether +element+ closes the text of +node+ left after +dropped+.
-      def closing?(node, dropped, element) = text(node, dropped).end_with?(text(element).to_s)
+      def closing?(node, dropped, element) = text(node, dropped).to_s.end_with?(text(element).to_s)
+
+      # Whether +element+ is or sits inside a dropped element.
+      def within?(element, dropped) = dropped.any? { inside?(element, _1) }
 
       # --- Kicker --------------------------------------------------------------------------------------
 
