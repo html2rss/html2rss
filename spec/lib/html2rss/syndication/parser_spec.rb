@@ -109,6 +109,18 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(described_class.parse(body)).to eq([])
     end
 
+    it 'falls back to the link as id for RSS 1.0 (RDF) items without rdf:about' do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+          <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link><description>d</description></channel>
+          <item><title>A</title><link>https://example.com/a</link></item>
+        </rdf:RDF>
+      XML
+
+      expect(described_class.parse(body).first[:id]).to eq('https://example.com/a')
+    end
+
     it 'parses RSS 1.0 (RDF) items with Dublin Core fields', :aggregate_failures do
       body = File.read('spec/fixtures/syndication/rss1_dc_date.xml')
 
