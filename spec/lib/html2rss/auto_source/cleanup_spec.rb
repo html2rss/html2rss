@@ -367,6 +367,27 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       end
     end
 
+    context 'with a followed native feed on another domain' do
+      subject(:result) { described_class.call(articles, url:, feed_url:) }
+
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/show') }
+      let(:feed_url) { Html2rss::Url.from_absolute('https://feeds.example.net/show.xml') }
+      let(:articles) do
+        { 'https://podhost.example.net/show/ep2' => Html2rss::AutoSource::Scraper::NativeFeed,
+          'https://example.com/show/ep1' => Html2rss::AutoSource::Scraper::NativeFeed,
+          'https://podhost.example.net/show/ep3' => Html2rss::AutoSource::Scraper::SemanticHtml,
+          'https://example.org/show/ep4' => Html2rss::AutoSource::Scraper::NativeFeed }.map do |link, scraper|
+          Html2rss::Article.new(id: link, title: "Episode at #{link}", url: link, scraper:)
+        end
+      end
+
+      it "keeps the feed's items linking to the page's or the feed's domain only", :aggregate_failures do
+        expect(result.articles.map { _1.url.to_s }).to eq(%w[https://podhost.example.net/show/ep2
+                                                             https://example.com/show/ep1])
+        expect(result.drop_tallies).to eq('different_domain' => 2)
+      end
+    end
+
     context 'when keep_different_domain is true' do
       let(:keep_different_domain) { true }
 

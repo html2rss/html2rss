@@ -9,8 +9,10 @@ module Html2rss
     # the media files and image each item declares ({ItemMedia}), and what the feed states about its
     # channel ({ChannelFacts}), read from the same parse.
     #
-    # An Atom entry's URL is its +rel="alternate"+ link or a link without +rel+; an entry with neither
-    # (only +enclosure+, +self+ or other links) has no URL and is skipped like any item without one.
+    # An item's URL is its link (an Atom entry's +rel="alternate"+ link or a link without +rel+). A
+    # link-less item (a podcast episode on a hosting platform) takes its guid, Atom +id+ or RDF +about+
+    # when that is an absolute http(s) URL, else its first audio or video file; an item with none of
+    # these has no URL and is skipped.
     module Parser
       class << self
         ##
@@ -91,9 +93,10 @@ module Html2rss
 
         ##
         # Single owner of the article hash shape: blank text becomes absent, +id+ falls back to the url,
-        # +media+ adds the item's +enclosures+ and +image+.
-        def article(url, media, id:, title:, description:, published_at:, author:, categories:) # rubocop:disable Metrics/ParameterLists -- the article shape
-          return unless url
+        # +media+ adds the item's +enclosures+ and +image+. The url is the item's link, else its id when
+        # that is an absolute http(s) URL ({#web_url}), else its first audio or video file.
+        def article(link, media, id:, title:, description:, published_at:, author:, categories:) # rubocop:disable Metrics/ParameterLists -- the article shape
+          return unless (url = link || web_url(id) || media_url(media))
 
           {
             id: present(id) || url.to_s,
@@ -106,11 +109,23 @@ module Html2rss
           }.compact
         end
 
+        # A link-less item's guid (Atom +id+, RDF +about+) when it is an absolute http(s) URL, whatever
+        # +isPermaLink+ says: +false+ only denies a guaranteed permalink, and such a guid is mostly the
+        # item's page on the publisher or its host. A relative, +urn:+ or +tag:+ id names no page.
+        def web_url(id)
+          Url.from_absolute_web(id)
+        rescue Url::InvalidUrlError
+          nil
+        end
+
+        def media_url(media)
+          media.fetch(:enclosures, []).find { |facts| Article::Enclosure.new(**facts).media? }&.fetch(:url)
+        end
+
         def atom_text(*nodes) = nodes.find { |node| node }&.content
 
         def atom_link(entry, base_url:)
-          links = entry.links
-          link = links.find { |node| node.rel.nil? || node.rel == 'alternate' }
+          link = entry.links.find { |node| node.rel.nil? || node.rel == 'alternate' }
           absolute_url(link&.href, base_url:)
         end
 
@@ -125,11 +140,7 @@ module Html2rss
           value = present(raw)
           return unless value
 
-          if base_url
-            Url.from_relative(value, base_url)
-          else
-            Url.from_absolute(value)
-          end
+          base_url ? Url.from_relative(value, base_url) : Url.from_absolute(value)
         rescue Url::InvalidUrlError
           nil
         end

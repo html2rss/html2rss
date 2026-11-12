@@ -160,7 +160,7 @@ module Html2rss
     # nil until {#articles} runs, or when no feed was read.
     #
     # @return [Html2rss::Syndication::ChannelFacts, nil]
-    attr_reader :feed_channel
+    def feed_channel = @native_feed&.channel
 
     private
 
@@ -196,7 +196,7 @@ module Html2rss
 
           matched = true
           articles.concat(run_scraper(instance))
-          @feed_channel = instance.channel if instance.is_a?(Scraper::NativeFeed)
+          @native_feed = instance if instance.is_a?(Scraper::NativeFeed)
         end
       end
 
@@ -284,7 +284,8 @@ module Html2rss
     def cleanup_result(articles)
       return @cleanup_memo.last if @cleanup_memo&.first == articles.size
 
-      Cleanup.call(articles.dup, url:, corroboration:, page_links: -> { page_links }, **cleanup_options)
+      Cleanup.call(articles.dup, url:, corroboration:, page_links: -> { page_links },
+                                 feed_url: @native_feed&.feed_url, **cleanup_options)
              .tap { @cleanup_memo = [articles.size, _1] }
     end
 

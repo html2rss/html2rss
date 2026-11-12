@@ -80,6 +80,23 @@ RSpec.describe Html2rss::Syndication::Discovery do
       expect(urls.first(2)).to eq(%w[https://example.com/news.xml https://example.com/podcast.xml])
     end
 
+    it 'ranks audio-hinted alternates last, in document order, on a page without podcast signals' do
+      doc = Nokogiri::HTML(<<~HTML)
+        <html><head>
+          <title>Example Daily: local news</title>
+          <link rel="alternate" type="application/rss+xml" title="Tide Talk podcast" href="https://feeds.example.net/tide-talk/rss">
+          <link rel="alternate" type="application/rss+xml" title="Example Daily news" href="https://example.com/feed.xml">
+          <link rel="alternate" type="application/rss+xml" title="Show" href="/feed/mp3/">
+          <link rel="alternate" type="application/rss+xml" title="Comments" href="/comments.xml">
+        </head></html>
+      HTML
+
+      urls = described_class.candidate_urls(page_url: 'https://example.com/', parsed_body: doc).map(&:to_s)
+
+      expect(urls.first(4)).to eq(%w[https://example.com/feed.xml https://example.com/comments.xml
+                                     https://feeds.example.net/tide-talk/rss https://example.com/feed/mp3/])
+    end
+
     {
       'its URL path' => ['https://example.com/episodes/42', ''],
       'its title' => ['https://example.com/', '<title>Example AUDIO Archive</title>'],

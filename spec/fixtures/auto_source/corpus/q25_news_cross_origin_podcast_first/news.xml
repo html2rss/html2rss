@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example Daily</title>
+    <link>https://example.com/news/</link>
+    <description>Synthetic news feed</description>
+    <item>
+      <title>Council approves the new river bridge</title>
+      <link>https://example.com/news/2026/11/river-bridge</link>
+      <guid isPermaLink="false">news-river-bridge</guid>
+      <pubDate>Tue, 10 Nov 2026 07:00:00 GMT</pubDate>
+      <description>Construction of the footbridge starts next spring.</description>
+    </item>
+    <item>
+      <title>Farmers market moves indoors for winter</title>
+      <link>https://example.com/news/2026/11/winter-market</link>
+      <guid isPermaLink="false">news-winter-market</guid>
+      <pubDate>Mon, 09 Nov 2026 07:00:00 GMT</pubDate>
+      <description>The market opens in the old train hall from December.</description>
+    </item>
+  </channel>
+</rss>

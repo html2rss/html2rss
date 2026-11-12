@@ -158,16 +158,17 @@ RSpec.describe Html2rss::Syndication::Parser do
       )
     end
 
-    it 'skips RSS 1.0 (RDF) items without a usable link' do
+    it 'takes an http(s) rdf:about as the URL of an RSS 1.0 (RDF) item without a usable link' do
       body = <<~XML
         <?xml version="1.0"?>
         <rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
           <channel rdf:about="https://example.com/"><title>C</title><link>https://example.com/</link><description>d</description></channel>
           <item rdf:about="https://example.com/a"><title>A</title><link></link></item>
+          <item rdf:about="urn:example:b"><title>B</title><link></link></item>
         </rdf:RDF>
       XML
 
-      expect(described_class.parse(body).articles).to eq([])
+      expect(described_class.parse(body).articles.map { _1[:url].to_s }).to eq(%w[https://example.com/a])
     end
 
     it 'falls back to the link as id for RSS 1.0 (RDF) items without rdf:about' do
@@ -445,19 +446,43 @@ RSpec.describe Html2rss::Syndication::Parser do
       expect(authors).to eq(['Ada', nil, nil])
     end
 
-    it 'drops Atom entries that carry no link', :aggregate_failures do
+    it 'drops Atom entries that carry no link, no http(s) id and no media file', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
           <title>Feed</title>
           <entry><id>urn:example:nolink</id><title>No link</title></entry>
+          <entry><id>tag:example.com,2026:2</id><title>Image only</title>
+            <link rel="enclosure" type="image/jpeg" href="https://example.com/img/2.jpg"/></entry>
+          <entry><id>https://example.com/entries/3</id><title>Id link</title></entry>
         </feed>
       XML
 
-      expect(described_class.parse(body).articles).to eq([])
+      expect(described_class.parse(body).articles.map { _1[:url].to_s }).to eq(%w[https://example.com/entries/3])
     end
 
-    it 'never takes an Atom enclosure link as the entry URL', :aggregate_failures do
+    it 'gives a link-less RSS item its http(s) guid, else its first audio or video file', :aggregate_failures do
+      body = <<~XML
+        <?xml version="1.0"?>
+        <rss version="2.0"><channel><title>Show</title>
+          <item><title>Guid</title><guid isPermaLink="false"> https://podhost.example.net/show/ep5 </guid>
+            <enclosure url="https://media.example.net/5.mp3" type="audio/mpeg"/></item>
+          <item><title>File</title><guid isPermaLink="false">show-ep4</guid>
+            <enclosure url="https://media.example.net/4.jpg" type="image/jpeg"/>
+            <enclosure url="media/4.mp4" type="video/mp4"/></item>
+          <item><title>Ftp guid</title><guid>ftp://example.net/3</guid></item>
+          <item><title>Relative guid</title><guid>ep2</guid></item>
+        </channel></rss>
+      XML
+
+      articles = described_class.parse(body, base_url: 'https://feeds.example.net/show.xml').articles
+
+      expect(articles.map { _1[:url].to_s }).to eq(%w[https://podhost.example.net/show/ep5
+                                                      https://feeds.example.net/media/4.mp4])
+      expect(articles.map { _1[:id] }).to eq(%w[https://podhost.example.net/show/ep5 show-ep4])
+    end
+
+    it 'takes an Atom enclosure link as the URL only of an entry without another link', :aggregate_failures do
       body = <<~XML
         <?xml version="1.0"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
@@ -472,7 +497,8 @@ RSpec.describe Html2rss::Syndication::Parser do
 
       articles = described_class.parse(body).articles
 
-      expect(articles.map { |article| article[:url].to_s }).to eq(%w[https://example.com/episodes/1])
+      expect(articles.map { |article| article[:url].to_s }).to eq(%w[https://example.com/episodes/1
+                                                                     https://example.com/media/file.mp3])
       expect(articles.first[:enclosures]).to eq([{ url: Html2rss::Url.from_absolute('https://example.com/media/episode.mp3'),
                                                    type: 'audio/mpeg', bytes_length: 12_345 }])
     end

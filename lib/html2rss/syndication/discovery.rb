@@ -6,10 +6,12 @@ module Html2rss
     # Finds an RSS/Atom URL for a page via head alternates and same-origin path guesses.
     #
     # Ports configs +probe_rss+ path/alternate logic onto {RequestSession#follow_up}.
-    # Head alternates go first, in document order. On a page that shows podcast signals
+    # Head alternates go first, in document order within two groups: those whose title or URL
+    # hints audio ({AUDIO_HINT}) and the rest. On a page that shows podcast signals
     # ({PODCAST_PAGE_HINT} in its URL path or +<title>+, an +og:type+ matching {MEDIA_OG_TYPE},
-    # or a {PODCAST_SCHEMA_TYPE} in its JSON-LD) those whose title or URL hints audio
-    # ({AUDIO_HINT}) go ahead of the rest. Alternates are fetched as +:advertised_feed+ with the
+    # or a {PODCAST_SCHEMA_TYPE} in its JSON-LD) the audio-hinted ones go first; on any other
+    # page they go last, so a news page that advertises its podcast first still yields its news
+    # feed. Alternates are fetched as +:advertised_feed+ with the
     # page's {RequestService::FeedAdvertisement}, so a feed the page advertises on another host
     # is followed (see {RequestService::Policy}). Path guesses stay same-origin.
     module Discovery
@@ -155,10 +157,9 @@ module Html2rss
         def alternate_feed_urls(page, advertisement, doc:, html:)
           feeds = advertisement.feeds
           return AlternateLinks.hrefs(html.to_s).filter_map { |href| absolute_url(page, href) } if feeds.empty?
-          return feeds.keys unless podcast_page?(doc, page)
 
           audio, other = feeds.keys.partition { |url| AUDIO_HINT.match?("#{feeds.fetch(url)} #{url}") }
-          audio + other
+          podcast_page?(doc, page) ? audio + other : other + audio
         end
 
         # The page itself looks like a podcast page: cheap signals only (no request, no JSON parse).

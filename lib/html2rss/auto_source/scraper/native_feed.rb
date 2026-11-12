@@ -5,7 +5,8 @@ module Html2rss
     module Scraper
       ##
       # Promotes a page's native RSS/Atom feed via {Syndication::Discovery} + {Syndication::Parser}.
-      # After {#each}, {#channel} holds what that feed states about its channel.
+      # After {#each}, {#channel} holds what that feed states about its channel and {#feed_url} where
+      # it was read, the provenance {Cleanup} admits the feed's own domain by.
       class NativeFeed
         include Enumerable
 
@@ -56,6 +57,11 @@ module Html2rss
         def channel = @feed&.channel
 
         ##
+        # @return [Html2rss::Url, nil] URL of the feed read (after redirects); nil before {#each} or
+        #   when no feed was read
+        attr_reader :feed_url
+
+        ##
         # @yieldparam article [Hash{Symbol => Object}]
         # @return [Enumerator, void]
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength -- structured empty/items logs
@@ -96,6 +102,7 @@ module Html2rss
           )
           return Syndication::Feed::NONE unless response
 
+          @feed_url = response.url
           Syndication::Parser.parse_response(response)
         rescue Html2rss::Error => error
           Log.warn({

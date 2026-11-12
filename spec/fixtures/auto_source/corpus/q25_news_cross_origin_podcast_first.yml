@@ -1,0 +1,6 @@
+---
+case: A news front page advertising a podcast feed on the hosting platform (another origin) first and its own news feed second, with no podcast signal on the page itself. On a page that is not a podcast page an audio-hinted alternate ranks last, so the news feed's items ship rather than the podcast episodes.
+responses: q25_news_cross_origin_podcast_first
+expected:
+- https://example.com/news/2026/11/river-bridge
+- https://example.com/news/2026/11/winter-market

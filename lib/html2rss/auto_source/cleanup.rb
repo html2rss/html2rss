@@ -95,6 +95,8 @@ module Html2rss
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
         # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
         #   different domain than +url+ (source-controlled off-domain links; default false)
+        # @param feed_url [Html2rss::Url, nil] the native feed the page advertises and that was read
+        #   ({Scraper::NativeFeed#feed_url}); that feed's own items may also link to its domain
         # @param keep_sponsored [Boolean] when true, keep items the page marks as sponsored
         #   (default false)
         # @param corroboration [Corroboration, nil] page check for structured-tier items, run
@@ -104,7 +106,8 @@ module Html2rss
         # @return [Result] cleaned articles and frozen drop tallies
         # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
         def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
-                 keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil)
+                 keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil,
+                 feed_url: nil)
           Log.debug "Cleanup: start with #{articles.size} articles"
           tallies = Hash.new(0)
 
@@ -117,7 +120,7 @@ module Html2rss
           reject_sponsored!(articles, page_links, tallies) unless keep_sponsored
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies)
-          reject_different_domain!(articles, url, tallies) unless keep_different_domain
+          reject_different_domain!(articles, url, feed_url, tallies) unless keep_different_domain
           reject_excluded_destinations!(articles, tallies)
           reject_low_quality_titles!(articles, tallies)
 
@@ -278,10 +281,14 @@ module Html2rss
           end
         end
 
-        def reject_different_domain!(articles, base_url, tallies)
-          base_domain = base_url.domain
+        # Items link to the page's domain; a followed native feed's own items may also link to the
+        # feed's domain (a podcast platform's episode pages, a link-less episode's audio file there).
+        def reject_different_domain!(articles, base_url, feed_url, tallies)
+          page_domain = base_url.domain
+          feed_domain = feed_url&.domain
           tally_reject!(articles, tallies, 'different_domain') do |article|
-            article.url&.domain != base_domain
+            domain = article.url.domain
+            domain != page_domain && (domain != feed_domain || article.scraper != Scraper::NativeFeed)
           end
         end
 

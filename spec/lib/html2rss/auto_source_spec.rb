@@ -549,6 +549,21 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'with a podcast feed followed on the hosting platform' do
+      let(:dir) { 'spec/fixtures/auto_source/corpus/q24_followed_feed_platform_links' }
+      let(:body) { File.read("#{dir}.html") }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/news/') }
+      let(:request_session) { SavedResponses.new(dir) }
+
+      it "keeps the feed's episodes linking to the platform, their guid or their audio file", :aggregate_failures do
+        expect(articles.map { _1.url.to_s }).to eq(%w[https://podhost.example.net/harbour-hour/episodes/7-ferry-timetable
+                                                      https://podhost.example.net/harbour-hour/episodes/6-lighthouse-keepers
+                                                      https://podhost.example.net/harbour-hour/episodes/5-fish-auction
+                                                      https://media.example.net/harbour-hour/4.mp3])
+        expect(auto_source.admission_drops).to be_empty
+      end
+    end
+
     context 'when titles carry leading noise' do
       let(:feed_item) do
         { title: '10:00 Video: Native feed story title', url: 'https://example.com/news/feed-1', id: 'feed-1' }
