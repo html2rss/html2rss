@@ -9,8 +9,8 @@ module Html2rss
       #
       # - the label of one card: the frame is one card unit with a heading ({CardUnits#card?}) and the label
       #   sits in it alone ({#alone?}), not in a box beside the card that holds more (an ad slot); or
-      # - the header of a section ({#header?}): the frame is no page region and holds at least two card units
-      #   and no heading outside them.
+      # - the header of a section ({#header?}): the frame is no page region and holds no heading outside its
+      #   card units.
       #
       # A label in plain text before cards (an ad caption over an empty or stripped slot) heads nothing.
       class LabelBinding
@@ -44,7 +44,7 @@ module Html2rss
         def section?(units)
           return false if @node.find { PAGE_REGIONS.include?(_1.name) }
 
-          units.cards >= 2 && !units.stray? && header?
+          !units.stray? && header?
         end
 
         # Whether the label heads the frame: it sits in the frame's first child holding words, and it or a

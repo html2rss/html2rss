@@ -596,12 +596,20 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
         <<~HTML
           <html><body><main>
             <div class="promo"><p>Sponsored</p><a href="/news/bare-link">Bare link</a></div>
+            <div class="row"><div class="head"><a href="/news/head-link">Partner home</a><span>Sponsored</span></div>
+              <div class="c"><h3><a href="/news/linked-a">A</a></h3></div><div class="c"><h3><a href="/news/linked-b">B</a></h3></div></div>
+            <div class="row"><p>Partner picks for the weekend</p><div class="head"><span>Sponsored</span></div>
+              <div class="c"><h3><a href="/news/intro-a">A</a></h3></div><div class="c"><h3><a href="/news/intro-b">B</a></h3></div></div>
+            <article><div class="head"><span>Sponsored</span></div><div class="c"><h3><a href="/news/bound-head">H</a></h3></div>
+              <div class="c"><a href="/news/bound-more">More from the partner</a></div></article>
+            <div class="row"><div class="Promo-Head"><span>Sponsored</span><img src="/p.png" alt=""></div>
+              <div class="c"><h3><a href="/news/single">Single</a></h3></div></div>
             <div class="promo"><p>Sponsored</p><h3><a href="/news/dual-a">Dual A</a></h3><a href="/news/dual-b">Dual B</a></div>
             <section><header><span>Sponsored</span><p>Partner picks</p></header>
               <ul><li><h3><a href="/news/list-a">List A</a></h3></li><li><h3><a href="/news/list-b">List B</a></h3></li></ul></section>
             <div class="row"><p>Sponsored</p><h4>Topic</h4><div><article><h3><a href="/news/split-a">A</a></h3></article>
               <article><h3><a href="/news/split-b">B</a></h3></article><h4>Aside</h4></div></div>
-            <div class="row"><article><p>Sponsored</p></article>
+            <div class="row"><article><div class="head"><span>Sponsored</span></div></article>
               <article><h3><a href="/news/past-a">A</a></h3></article><article><h3><a href="/news/past-b">B</a></h3></article></div>
             <div class="row"><img src="/logo.png" alt=""><div class="head"><p>Sponsored</p></div>
               <div class="c"><h3><a href="/news/later-a">A</a></h3></div><div class="c"><h3><a href="/news/later-b">B</a></h3></div></div>
@@ -610,6 +618,20 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
       end
 
       let(:sponsored) { ->(*paths) { paths.to_h { [_1, page_links.sponsored?(url_at[_1])] } } }
+
+      it 'marks nothing after an anchor in the header or a worded child before it' do
+        paths = %w[/news/linked-a /news/linked-b /news/intro-a /news/intro-b]
+        expect(sponsored[*paths]).to eq(paths.to_h { [_1, false] })
+      end
+
+      it 'climbs no further from a card that bound its headline' do
+        expect(sponsored['/news/bound-head',
+                         '/news/bound-more']).to eq('/news/bound-head' => true, '/news/bound-more' => false)
+      end
+
+      it 'marks a single card under a header box' do
+        expect(sponsored['/news/single']).to eq('/news/single' => true)
+      end
 
       it 'marks no lone link without a heading and no card holding two destinations' do
         paths = %w[/news/bare-link /news/dual-a /news/dual-b]
@@ -685,7 +707,7 @@ RSpec.describe Html2rss::AutoSource::PageLinks do
     context 'when a paid label opens a page region' do
       let(:html) do
         <<~HTML
-          <html><body><p>Sponsored</p><main>
+          <html><body><div class="promo-head"><span>Sponsored</span></div><main>
             <article><h3><a href="/news/page-one">One</a></h3></article>
             <article><h3><a href="/news/page-two">Two</a></h3></article>
           </main></body></html>
