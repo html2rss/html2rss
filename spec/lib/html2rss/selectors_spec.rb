@@ -205,6 +205,23 @@ RSpec.describe Html2rss::Selectors do
       end
     end
 
+    context 'when the enclosure selector picks an image and no image selector is configured' do
+      let(:selectors) do
+        { items: { selector: 'article', enhance: false }, title: { selector: 'h1' },
+          enclosure: { selector: 'img', extractor: 'attribute', attribute: 'src' } }
+      end
+      let(:body) { '<html><body><article><h1>Harbor</h1><img src="/media/harbor.jpg"></article></body></html>' }
+
+      it 'makes that image the item image, shown in the description, never the RSS enclosure', :aggregate_failures do
+        article = instance.articles.first
+        description = Html2rss::FeedBuilder::ItemPresentation.description_for(article)
+
+        expect(article.image.to_s).to eq('http://example.com/media/harbor.jpg')
+        expect(description).to start_with('<img src="http://example.com/media/harbor.jpg"')
+        expect(Html2rss::FeedBuilder::ItemPresentation.rss_enclosure_for(article)).to be_nil
+      end
+    end
+
     context 'when an enhanced card yields several enclosures' do
       let(:selectors) { { items: { selector: 'article', enhance: true }, title: { selector: 'h1' } } }
       let(:body) do

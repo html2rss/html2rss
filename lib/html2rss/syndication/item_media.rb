@@ -14,8 +14,9 @@ module Html2rss
     # page ({Article::Enclosure#player_page?}) that is not declared an image is
     # no enclosure. An item +itunes:duration+ is the duration of every audio or video file that declares
     # none. The item image is its +itunes:image+ (+href+, or the URL as its text), else its first
-    # +media:thumbnail+ (also inside +media:group+), else its first image file (+medium="image"+ or an
-    # image type). Sizes, durations and kinds come from {Article::Enclosure}. Items match by namespace
+    # +media:thumbnail+ (also inside +media:group+), else its first image file when only +medium="image"+
+    # marks it (a file typed as an image becomes the item image through {Article}). Sizes, durations and
+    # kinds come from {Article::Enclosure}. Items match by namespace
     # ({ITEMS}); a document without any media marker ({MEDIA_MARKERS}) is not parsed a second time.
     module ItemMedia
       # Namespace prefixes the item queries bind.
@@ -94,7 +95,16 @@ module Html2rss
 
         def image(node, files)
           declared = node.at_xpath(ITUNES_IMAGE, NAMESPACES) || node.at_xpath(THUMBNAILS, NAMESPACES)
-          (declared && yield(declared.content)) || files.find { |_facts, image| image }&.first&.fetch(:url)
+          (declared && yield(declared.content)) || hinted_image(files.find { |_facts, image| image }&.first)
+        end
+
+        # The first image file when only its +medium="image"+ makes it one; a file typed as an image becomes
+        # the item image through {Article#initialize}, the owner of that fallback.
+        def hinted_image(facts)
+          return unless facts
+
+          file = Article::Enclosure.new(**facts)
+          file.url unless file.image?
         end
 
         def attribute(element, *names)

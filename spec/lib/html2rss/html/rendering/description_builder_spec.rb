@@ -244,5 +244,30 @@ RSpec.describe Html2rss::Html::Rendering::DescriptionBuilder do
       sanitized_text = described_class.remove_pattern_from_start(original_text, pattern)
       expect(sanitized_text).to eq('Repeat  and again pattern in text.')
     end
+
+    {
+      '<a href="HTTP://example.com/T">T: the harbor reopens today</a>' =>
+        '<a href="HTTP://example.com/T">: the harbor reopens today</a>',
+      '<b title="T.">T.</b> The harbor reopens today after a long winter' =>
+        '<b title="T.">.</b> The harbor reopens today after a long winter',
+      '5 < 6 T and the rest of a long enough sentence' => '5 < 6 T and the rest of a long enough sentence'
+    }.each_pair do |text, expected|
+      it "removes the pattern only from text content in #{text.inspect}" do
+        expect(described_class.remove_pattern_from_start(text, 'T')).to eq(expected)
+      end
+    end
+
+    it 'removes the pattern up to half the text by default', :aggregate_failures do
+      expect(described_class.remove_pattern_from_start('abcTef', 'T')).to eq('abcef')
+      expect(described_class.remove_pattern_from_start('abcdTf', 'T')).to eq('abcdTf')
+    end
+
+    it 'returns the text unchanged without a pattern' do
+      expect(described_class.remove_pattern_from_start('Some text', nil)).to eq('Some text')
+    end
+
+    it 'removes a pattern written with regexp characters literally' do
+      expect(described_class.remove_pattern_from_start('a.c (1) abc tail text', '(1)')).to eq('a.c  abc tail text')
+    end
   end
 end

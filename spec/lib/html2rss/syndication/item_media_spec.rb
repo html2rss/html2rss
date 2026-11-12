@@ -226,11 +226,18 @@ RSpec.describe Html2rss::Syndication::ItemMedia do
         XML
       end
 
-      it 'takes the first image file, after itunes:image and media:thumbnail', :aggregate_failures do
-        expect(media.map { _1[:image]&.to_s }).to eq(%w[https://example.com/img/1 https://example.com/3.png
-                                                        https://example.com/t.jpg https://example.com/i.jpg])
+      it 'takes an image file only medium marks, after itunes:image and media:thumbnail', :aggregate_failures do
+        expect(media.map { _1[:image]&.to_s }).to eq(['https://example.com/img/1', nil, 'https://example.com/t.jpg',
+                                                      'https://example.com/i.jpg'])
         expect(enclosures.first.map { _1[:url] }).to eq(%w[https://example.com/a.mp4 https://example.com/img/1
                                                            https://example.com/2.jpg])
+      end
+
+      it 'leaves a typed image file to the article, which makes it the item image' do
+        images = media.map { Html2rss::Article.new(url: 'https://example.com/p', **_1).image.to_s }
+
+        expect(images).to eq(%w[https://example.com/img/1 https://example.com/3.png https://example.com/t.jpg
+                                https://example.com/i.jpg])
       end
     end
 

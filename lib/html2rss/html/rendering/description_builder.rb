@@ -24,17 +24,17 @@ module Html2rss
         # XPath of the attributes whose URLs count as the description already showing a file.
         URL_ATTRIBUTES = './/@src|.//@href|.//@srcset'
 
-        # Removes the specified pattern from the beginning of the text
-        # within a given range if the pattern occurs before the range's end.
+        # Removes the first occurrence of the pattern in the text content (never inside a tag or attribute)
+        # if it starts before the range's end. Text after a stray +<+ that opens no tag is left alone.
         #
         # @param text [String]
-        # @param pattern [String]
+        # @param pattern [String, nil] nothing is removed without one
         # @param end_of_range [Integer] Optional, defaults to half the text length
         # @return [String]
-        def self.remove_pattern_from_start(text, pattern, end_of_range: (text.size * 0.5).to_i)
-          return text unless text.is_a?(String) && pattern.is_a?(String) && !pattern.empty?
+        def self.remove_pattern_from_start(text, pattern, end_of_range: text.size / 2)
+          return text unless pattern
 
-          index = text.index(pattern)
+          index = text.index(/\A(?:<[^>]*>|[^<])*?\K#{Regexp.escape(pattern)}/)
           return text if index.nil? || index > end_of_range
 
           "#{text[0, index]}#{text[(index + pattern.size)..]}"
