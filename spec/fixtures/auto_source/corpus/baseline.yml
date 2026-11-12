@@ -66,6 +66,12 @@ json_state_envelope_links.html:
   expected: 4
   title_misses: 0
   sst_built: true
+json_state_kicker_fields.html:
+  junk: 0
+  real: 6
+  expected: 6
+  title_misses: 0
+  sst_built: true
 json_state_menu_unrendered.html:
   junk: 0
   real: 5

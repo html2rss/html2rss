@@ -36,9 +36,9 @@ module Html2rss
       # Content-type markers (lowercase). Description drops them as whole leftover lines.
       TYPE_MARKERS = Set[
         'news', 'news article', 'press release', 'video', 'audio', 'podcast', 'gallery', 'live', 'live blog',
-        'bildergalerie', 'fotostrecke', 'liveticker', 'pressemitteilung',
-        'vidéo', 'diaporama', 'en direct', 'communiqué de presse',
-        'vídeo', 'galería', 'en directo', 'nota de prensa'
+        'full episode', 'bildergalerie', 'fotostrecke', 'liveticker', 'pressemitteilung', 'ganze folge',
+        'vidéo', 'diaporama', 'en direct', 'communiqué de presse', 'épisode complet',
+        'vídeo', 'galería', 'en directo', 'nota de prensa', 'episodio completo'
       ].freeze
       # One separator between a kicker and its headline: +: | • · – — - / > » › →+, each only when
       # followed by whitespace, so a sign (+–5 Grad+), a path (+/e/+) or a German »quote« is not one, nor

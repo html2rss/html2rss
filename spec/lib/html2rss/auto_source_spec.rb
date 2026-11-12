@@ -396,6 +396,27 @@ RSpec.describe Html2rss::AutoSource do
         expect(schema_titles).to eq(['10:00 Schema story one words', '10:00 Schema story two words'])
       end
 
+      context 'with structured items that carry a kicker' do # rubocop:disable RSpec/NestedGroups -- shares the leading-noise page
+        let(:klass) { Html2rss::AutoSource::Scraper::NativeFeed }
+        let(:items) do
+          [{ title: 'Headline one', kicker: 'Overline', url: 'https://example.com/a', id: 'a' },
+           { title: 'Overline: Headline two', kicker: 'overline', url: 'https://example.com/b', id: 'b' },
+           { title: '10:00 Headline three', url: 'https://example.com/c', id: 'c' }]
+        end
+
+        before do
+          scraper = instance_double(klass, extractable?: true, class: klass)
+          allow(scraper).to receive(:map) { |&block| items.map(&block) }
+          allow(klass).to receive(:new).and_return(scraper)
+        end
+
+        it 'composes the kicker item and keeps the others verbatim' do
+          titles = articles.select { _1.scraper == klass }.map(&:title)
+
+          expect(titles).to eq(['Overline: Headline one', 'Overline: Headline two', '10:00 Headline three'])
+        end
+      end
+
       %w[NativeFeed WordpressApi Sitemap MetaOembed].each do |name|
         it "keeps a #{name} title verbatim" do
           klass = Html2rss::AutoSource::Scraper.const_get(name)

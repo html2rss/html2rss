@@ -31,6 +31,26 @@ RSpec.describe Html2rss::AutoSource::Scraper::JsonState::ArticleNormalizer do
       expect(result[:title]).to eq('T')
     end
 
+    describe 'kicker' do
+      %i[overline kicker kickerText topline dachzeile eyebrow].each do |key|
+        it "reads the #{key} field beside the headline" do
+          result = described_class.normalise({ title: 'T', url: '/a', key => 'Politics' }, base_url:)
+
+          expect(result[:kicker]).to eq('Politics')
+        end
+      end
+
+      it 'omits the kicker when the entry has no kicker field' do
+        expect(described_class.normalise({ title: 'T', url: '/a' }, base_url:)).not_to have_key(:kicker)
+      end
+
+      it 'omits the kicker of a description-only entry so it never becomes the title' do
+        result = described_class.normalise({ description: 'D', url: '/a', overline: 'Politics' }, base_url:)
+
+        expect(result).not_to have_key(:kicker)
+      end
+    end
+
     it 'returns the normalised fields for a complete entry', :aggregate_failures do
       entry = { title: 'T', description: 'D', url: '/a', image: '/i.jpg', publishedAt: '2026-01-01',
                 tags: ['x'], id: '42' }
