@@ -1,0 +1,13 @@
+---
+case: A paid label inside a card link marks that link's destination across its card (a teaser
+  link holding an "Annons" bar; a kicker link holding "Materiał Partnera" beside the title and
+  image links to the same story). An ad word on a topic chip inside an editorial card link, a
+  label word inside running link text, and a footer "Werbung" link mark nothing.
+expected:
+- https://example.com/news/2026/11/snow-warning-north
+- https://example.com/news/2026/11/budget-winners-and-losers
+- https://example.com/news/2026/11/polls-favour-opposition
+- https://example.com/news/2026/11/court-ruling-appeal
+- https://example.com/news/2026/11/ad-market-recovers
+- https://example.com/news/2026/11/poster-rules-schools
+- https://example.com/news/2026/11/scooter-rules

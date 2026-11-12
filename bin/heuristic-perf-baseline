@@ -2,12 +2,13 @@
 # frozen_string_literal: true
 
 # Captures wall time + allocation baseline for auto-source paths.
-# Usage: mise exec -- bin/heuristic-perf-baseline [--write PATH]
+# Budget rule: bin/lib/perf_baseline.rb.
+# Usage: mise exec -- bin/heuristic-perf-baseline [--write PATH] [--check PATH]
 
 require 'bundler/setup'
 require 'nokogiri'
-require 'optparse'
 require_relative '../lib/html2rss'
+require_relative 'lib/perf_baseline'
 
 FIXTURES = [
   'spec/fixtures/page_1.html',
@@ -18,8 +19,6 @@ FIXTURES = [
   'spec/fixtures/auto_source/corpus/structured_small_merge.html'
 ].freeze
 
-WARMUP = 1
-RUNS = 5
 BASE_URL = 'https://example.com/'
 
 def run_heuristics(parsed_body) # rubocop:disable Metrics/MethodLength
@@ -47,71 +46,19 @@ def run_auto_source(parsed_body, body)
   Html2rss::AutoSource.new(response).articles.size
 end
 
-def measure(parsed_bodies, bodies)
-  GC.start
-  before_alloc = GC.stat[:total_allocated_objects]
-  started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  heuristic_counts = parsed_bodies.map { run_heuristics(_1) }
-  auto_counts = parsed_bodies.zip(bodies).map { |doc, body| run_auto_source(doc, body) }
-  wall = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-  allocs = GC.stat[:total_allocated_objects] - before_alloc
-  [wall, allocs, heuristic_counts, auto_counts]
-end
-
-options = { write: nil }
-OptionParser.new do |opts|
-  opts.on('--write PATH', 'Write markdown baseline to PATH') { |path| options[:write] = path }
-end.parse!
-
 root = File.expand_path('..', __dir__)
 bodies = FIXTURES.map { |rel| File.read(File.join(root, rel)) }
 parsed_bodies = bodies.map { Nokogiri::HTML(_1) }
 
-WARMUP.times { measure(parsed_bodies, bodies) }
-
-walls = []
-allocs = []
-heuristic_counts = nil
-auto_counts = nil
-RUNS.times do
-  wall, alloc, h_counts, a_counts = measure(parsed_bodies, bodies)
-  walls << wall
-  allocs << alloc
-  heuristic_counts = h_counts
-  auto_counts = a_counts
-end
-
-median = ->(arr) { arr.sort[arr.size / 2] }
-wall_med = median.call(walls)
-alloc_med = median.call(allocs)
-
-lines = []
-lines << '# Auto-source performance baseline'
-lines << ''
-lines << "Captured: #{Time.now.utc.iso8601}"
-lines << "Ruby: #{RUBY_VERSION}"
-lines << "Fixtures: #{FIXTURES.join(', ')}"
-lines << "Warmup runs: #{WARMUP}; measured runs: #{RUNS} (median reported)"
-lines << ''
-lines << '| Metric | Value |'
-lines << '| --- | --- |'
-lines << "| wall_time_s (median) | #{format('%.6f', wall_med)} |"
-lines << "| allocations (median) | #{alloc_med} |"
-lines << "| wall_budget_1_1x | #{format('%.6f', wall_med * 1.1)} |"
-lines << "| alloc_budget_1_15x | #{(alloc_med * 1.15).ceil} |"
-lines << ''
-lines << 'Article counts per fixture (semantic, html | AutoSource#articles):'
-FIXTURES.each_with_index do |fixture, idx|
-  semantic_n, html_n = heuristic_counts[idx]
-  lines << "- #{fixture}: semantic=#{semantic_n}, html=#{html_n}, auto_source=#{auto_counts[idx]}"
-end
-lines << ''
-
-report = lines.join("\n")
-puts report
-
-if options[:write]
-  path = File.expand_path(options[:write], root)
-  File.write(path, report)
-  warn "Wrote #{path}"
+PerfBaseline.run(
+  title: 'Auto-source performance baseline',
+  subject: "Fixtures: #{FIXTURES.join(', ')}",
+  summary: 'Article counts per fixture (semantic, html | AutoSource#articles)',
+  root:
+) do
+  heuristic_counts = parsed_bodies.map { run_heuristics(_1) }
+  auto_counts = parsed_bodies.zip(bodies).map { |doc, body| run_auto_source(doc, body) }
+  FIXTURES.zip(heuristic_counts, auto_counts).to_h do |fixture, (semantic, html), auto|
+    [fixture, "semantic=#{semantic}, html=#{html}, auto_source=#{auto}"]
+  end
 end

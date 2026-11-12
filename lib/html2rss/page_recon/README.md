@@ -10,7 +10,7 @@
 | `final_url`        | URL after redirects (may differ from requested)                             |
 | `status`           | HTTP status of the **final** response                                       |
 | `scheme_downgrade` | `true` when HTTPS entry landed on HTTP                                      |
-| `alternate_feeds`  | `rel=alternate` RSS/Atom links found in HTML                                |
+| `alternate_feeds`  | `rel=alternate` RSS/Atom/RDF links found in HTML                                |
 | `surface_category` | AutoSource surface class (`high_entropy_surface`, `unsupported_surface`, …) |
 | `articles_count`   | Cheap AutoSource extract (limit 10) — diagnostic only, not ship quality     |
 | `strategy`         | Concrete transport used (`inspect` maps `auto` → default (HTTPX))           |

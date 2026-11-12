@@ -7,7 +7,7 @@ require 'fileutils'
 module Html2rss
   ##
   # Service that runs reconnaissance on a URL to discover redirect chains,
-  # native RSS/Atom feeds, surface categorization, and emit an actionable verdict.
+  # native RSS/Atom/RDF feeds, surface categorization, and emit an actionable verdict.
   module Recon # rubocop:disable Metrics/ModuleLength
     Verdict = Data.define(:name)
 

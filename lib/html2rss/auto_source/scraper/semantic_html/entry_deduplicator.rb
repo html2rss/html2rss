@@ -83,9 +83,7 @@ module Html2rss
             ]
           end
 
-          def word_count(text)
-            (@word_counts ||= {})[text] ||= text.to_s.scan(/\p{Alnum}+/).size
-          end
+          def word_count(text) = (@word_counts ||= {})[text] ||= WordCount.count(text)
         end
       end
     end

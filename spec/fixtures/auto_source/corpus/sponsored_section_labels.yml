@@ -1,0 +1,10 @@
+---
+case: A paid label that opens a section heading two or more cards marks every card in it, with
+  bare-div cards read from structure ("Contenus partenaires" over list items, "Contenuto
+  sponsorizzato a cura di" in a header over articles, "Materiał partnera" over div cards, a
+  "Sponsored content" heading over articles). Only the editorial cards are expected.
+expected:
+- https://example.com/news/2026/11/harbor-bridge-reopens
+- https://example.com/news/2026/11/council-budget-passes
+- https://example.com/news/2026/11/tram-line-extended
+- https://example.com/news/2026/11/museum-night-returns

@@ -313,9 +313,10 @@ module Html2rss
       when Article
         item
       when Hash
-        # Hash items carry publisher-declared or structured titles: verbatim (collapse only).
-        # Heuristic scrapers yield Articles composed by Html::SstArticleExtractor.
-        Article.new(**item, scraper: instance.class)
+        # Hash items carry publisher-declared or structured titles: verbatim (collapse only), except an item
+        # with an explicit +kicker+, which composes +Kicker: Headline+. Heuristic scrapers yield Articles
+        # composed by Html::SstArticleExtractor.
+        Article.new(**item, compose_title: item.key?(:kicker), scraper: instance.class)
       else
         raise TypeError, "#{instance.class} yielded #{item.class}; expected Article or Hash"
       end

@@ -1,0 +1,17 @@
+---
+case: >-
+  Date, time and duration elements leave the headline wherever they sit (before or after it), except a
+  time element inside running text; the rule reads elements, never wording.
+expected:
+- https://example.com/news/2026/11/night-train-platform
+- https://example.com/news/2026/11/council-meeting-moved
+- https://example.com/news/2026/11/harbor-audio-briefing
+- https://example.com/news/2026/11/library-hours-change
+- https://example.com/news/2026/11/river-cleanup-day
+titles:
+  https://example.com/news/2026/11/night-train-platform: Night train service returns to the coast line
+  https://example.com/news/2026/11/council-meeting-moved: Council meeting moved to Friday after budget
+    row
+  https://example.com/news/2026/11/harbor-audio-briefing: Harbor workers vote on the new contract
+  https://example.com/news/2026/11/library-hours-change: Library opening hours change for the holidays
+  https://example.com/news/2026/11/river-cleanup-day: River cleanup day draws record crowds

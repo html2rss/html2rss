@@ -1,0 +1,16 @@
+---
+case: 'App-state entries with an explicit kicker field (overline, kickerText, dachzeile) compose Kicker: Headline; an entry without one stays verbatim; a kicker that already opens the headline does not repeat.'
+expected:
+- https://example.com/news/2026/11/harbor-ferry-route-returns
+- https://example.com/news/2026/11/tram-line-adds-late-service
+- https://example.com/news/2026/11/library-extends-weekend-hours
+- https://example.com/news/2026/11/school-board-approves-budget
+- https://example.com/news/2026/11/museum-reopens-east-wing
+- https://example.com/news/2026/11/bike-lane-pilot-expands
+titles:
+  https://example.com/news/2026/11/harbor-ferry-route-returns: 'Local: Harbor ferry route returns after repairs'
+  https://example.com/news/2026/11/tram-line-adds-late-service: 'Transport: Tram line adds late night service'
+  https://example.com/news/2026/11/library-extends-weekend-hours: 'City library extends its weekend hours'
+  https://example.com/news/2026/11/school-board-approves-budget: 'Budget vote: school board approves the plan'
+  https://example.com/news/2026/11/museum-reopens-east-wing: 'Culture: Museum reopens its restored east wing'
+  https://example.com/news/2026/11/bike-lane-pilot-expands: 'Sport: Bike lane pilot expands to two more streets'

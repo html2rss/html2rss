@@ -1,0 +1,12 @@
+---
+case: Unspaced Japanese headlines of a few words reach the title word floor, counted in chunks of up to six characters.
+expected:
+- https://example.com/news/2026/11/mail-addresses-leaked
+- https://example.com/news/2026/11/rate-hike-postponed
+- https://example.com/news/2026/11/winter-subsidy
+- https://example.com/news/2026/11/prefecture-search
+titles:
+  https://example.com/news/2026/11/mail-addresses-leaked: 会員の登録情報およそ4万2千件が外部へ
+  https://example.com/news/2026/11/rate-hike-postponed: 年度内の路線バス増便を正式に決定
+  https://example.com/news/2026/11/winter-subsidy: 冬の水道料金支援を決定し予算を支出
+  https://example.com/news/2026/11/prefecture-search: 県警が北部の倉庫を立ち入り調査

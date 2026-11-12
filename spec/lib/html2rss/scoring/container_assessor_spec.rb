@@ -31,7 +31,7 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
 
     it 'assesses a rich article container against its destination facts', :aggregate_failures do
       expect(assessor.call(article, anchor, destination_facts: news_facts)).to have_attributes(
-        title_word_count: 5, path_length: news_href.length, content_path: true, publish_marker: true,
+        title_runs: 5, path_length: news_href.length, content_path: true, publish_marker: true,
         descriptive_context: true, article_container: true, content_tokens: true, junk_tokens: false,
         utility_prefix_title: false, recommended_title: false, utility_path: false, strong_post_suffix: true,
         shallow: false, high_confidence_junk_path: false, high_confidence_utility_destination: false,
@@ -44,7 +44,7 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
       subscribe = build_node(name: :a, href: '/subscribe', text: 'Subscribe to newsletter')
 
       expect(assessor.call(root, subscribe, destination_facts: nil)).to have_attributes(
-        title_word_count: 3, path_length: 0, content_path: nil, publish_marker: false, descriptive_context: false,
+        title_runs: 3, path_length: 0, content_path: nil, publish_marker: false, descriptive_context: false,
         article_container: false, content_tokens: false, junk_tokens: true, utility_prefix_title: true,
         recommended_title: false, utility_path: nil, strong_post_suffix: nil, shallow: nil,
         high_confidence_junk_path: nil, high_confidence_utility_destination: nil, selected_anchor_present: true
@@ -54,7 +54,7 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
     it 'reports no selected anchor and an empty title when the container has no heading or anchor',
        :aggregate_failures do
       expect(assessor.call(build_node(name: :div), nil, destination_facts: nil)).to have_attributes(
-        title_word_count: 0, selected_anchor_present: false, article_container: false
+        title_runs: 0, selected_anchor_present: false, article_container: false
       )
     end
 
@@ -118,20 +118,20 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
 
   describe '#entry_title' do
     it 'prefers the heading over the selected anchor for the title' do
-      expect(assessor.call(article, anchor, destination_facts: nil).title_word_count).to eq(5)
+      expect(assessor.call(article, anchor, destination_facts: nil).title_runs).to eq(5)
     end
 
     it 'falls back to the selected anchor text when there is no heading' do
       root = build_node(name: :div, children: [build_node(name: :p, text: 'Only paragraph text')])
 
-      expect(assessor.call(root, anchor, destination_facts: nil).title_word_count).to eq(3)
+      expect(assessor.call(root, anchor, destination_facts: nil).title_runs).to eq(3)
     end
 
     it 'uses an empty title when neither a heading nor an anchor is present', :aggregate_failures do
       root = build_node(name: :div, children: [build_node(name: :p, text: 'Only paragraph text')])
 
-      expect(assessor.call(root, nil, destination_facts: nil).title_word_count).to eq(0)
-      expect(assessor.call(build_node(name: :div), nil, destination_facts: nil).title_word_count).to eq(0)
+      expect(assessor.call(root, nil, destination_facts: nil).title_runs).to eq(0)
+      expect(assessor.call(build_node(name: :div), nil, destination_facts: nil).title_runs).to eq(0)
     end
   end
 
@@ -192,13 +192,18 @@ RSpec.describe Html2rss::Scoring::ContainerAssessor do
 
       expect(assessor.call(seven_long_words, nil, destination_facts: nil).descriptive_context).to be(false)
     end
+
+    it 'reads eight or more words of context as descriptive', :aggregate_failures do
+      contexts = [8, 12].map { build_node(name: :p, text: Array.new(_1, 'abcdefgh').join(' ')) }
+      expect(contexts.map { assessor.call(_1, nil, destination_facts: nil).descriptive_context }).to eq([true, true])
+    end
   end
 
-  describe '#word_count' do
+  describe 'title runs' do
     it 'counts alphanumeric words and ignores punctuation' do
       heading_with_punctuation = build_node(name: :h2, text: 'Platform-launch, notes!')
 
-      expect(assessor.call(heading_with_punctuation, nil, destination_facts: nil).title_word_count).to eq(3)
+      expect(assessor.call(heading_with_punctuation, nil, destination_facts: nil).title_runs).to eq(3)
     end
   end
 end

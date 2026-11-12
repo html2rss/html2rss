@@ -10,6 +10,9 @@ module Html2rss
           TITLE_KEYS = %i[title headline name text].freeze
           # Title keys that mark an article; a bare +name+ also labels people and other entities.
           ARTICLE_TITLE_KEYS = (TITLE_KEYS - %i[name]).freeze
+          # Explicit kicker field names (app-state +overline+/+kickerText+, German CMS +topline+/+dachzeile+) that
+          # sit beside a headline. The one closed list: no standard Schema/JSON-LD field exists, so none is guessed.
+          KICKER_KEYS = %i[overline kicker kickerText topline dachzeile eyebrow].freeze
           # Preferred keys when extracting URL-like values from state payloads.
           URL_KEYS = %i[url link href permalink slug path canonicalUrl shortUrl alias self links].freeze
           # URL keys an entry itself can own; +links+ is an envelope sibling of the node, never the entry's own URL.
@@ -42,6 +45,7 @@ module Html2rss
             def normalise(entry, base_url:)
               sources = article_sources(entry) # nil (skipped entry) yields no URL below
               title = string(ValueFinder.fetch(sources, TITLE_KEYS))
+              kicker = title && string(ValueFinder.fetch(sources, KICKER_KEYS))
               description = string(ValueFinder.fetch(sources, DESCRIPTION_KEYS))
               article_url = resolve_link(sources, keys: URL_KEYS, base_url:,
                                                   log_key: 'JsonState: invalid URL encountered')
@@ -50,6 +54,7 @@ module Html2rss
 
               {
                 title:,
+                kicker:,
                 description:,
                 url: article_url,
                 image: resolve_link(sources, keys: IMAGE_KEYS, base_url:,

@@ -4,13 +4,13 @@ module Html2rss
   module Html
     FeedLink = Data.define(:href, :mime_type)
 
-    # A native RSS/Atom hint from a document head +link[rel=alternate]+.
+    # A native RSS/Atom/RDF hint from a document head +link[rel=alternate]+.
     #
     # Does not guess +/feed+ or +/rss.xml+ paths — that stays in configs +probe_rss+.
     class FeedLink
       class << self
         ##
-        # Collects RSS/Atom +rel=alternate+ links from +doc+'s +head+.
+        # Collects RSS/Atom/RDF +rel=alternate+ links from +doc+'s +head+.
         #
         # @param doc [Nokogiri::XML::Node] parsed HTML document
         # @return [Array<FeedLink>] native feed hints, omitting blanks and non-feed types
@@ -21,16 +21,13 @@ module Html2rss
         private
 
         def from_node(node)
-          href = node['href']&.strip
+          href = node['href'].strip # the head selector guarantees an href attribute
           mime_type = feed_mime_type(node['type'])
-          new(href:, mime_type:) unless href.nil? || href.empty? || mime_type.nil?
+          new(href:, mime_type:) unless href.empty? || mime_type.nil?
         end
 
         def feed_mime_type(type)
-          return Probe::APPLICATION_RSS_XML if Probe.mime_match?(type, Probe::APPLICATION_RSS_XML)
-          return Probe::APPLICATION_ATOM_XML if Probe.mime_match?(type, Probe::APPLICATION_ATOM_XML)
-
-          nil
+          Probe::FEED_MIME_TYPES.find { |mime| Probe.mime_match?(type, mime) }
         end
       end
     end

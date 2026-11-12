@@ -1,0 +1,24 @@
+---
+case: Italian, Dutch, Polish and Swedish screen-reader section labels, article-type markers and live or press-release kickers; titles must keep only the topic kicker and headline.
+expected:
+- https://example.com/news/2026/11/tram-verso-est
+- https://example.com/news/2026/11/tramlijn-naar-het-oosten
+- https://example.com/news/2026/11/linia-tramwajowa-na-wschod
+- https://example.com/news/2026/11/spårvagnslinjen-österut
+- https://example.com/news/2026/11/il-museo-riapre
+- https://example.com/news/2026/11/het-museum-heropent
+- https://example.com/news/2026/11/muzeum-otwiera-skrzydlo
+- https://example.com/news/2026/11/museet-oppnar-norra-flygeln
+- https://example.com/news/2026/11/il-sindaco-incontra-i-cittadini
+- https://example.com/news/2026/11/snöfallet-når-staden
+titles:
+  https://example.com/news/2026/11/tram-verso-est: 'Trasporti: La linea del tram viene estesa verso est'
+  https://example.com/news/2026/11/tramlijn-naar-het-oosten: 'Verkeer: De tramlijn wordt verlengd naar het oosten'
+  https://example.com/news/2026/11/linia-tramwajowa-na-wschod: 'Transport: Linia tramwajowa zostanie przedłużona na wschód'
+  https://example.com/news/2026/11/spårvagnslinjen-österut: 'Trafik: Spårvagnslinjen förlängs österut'
+  https://example.com/news/2026/11/il-museo-riapre: Il museo riapre la sua ala nord
+  https://example.com/news/2026/11/het-museum-heropent: Het museum heropent zijn noordvleugel
+  https://example.com/news/2026/11/muzeum-otwiera-skrzydlo: Muzeum otwiera ponownie północne skrzydło
+  https://example.com/news/2026/11/museet-oppnar-norra-flygeln: Museet öppnar sin norra flygel igen
+  https://example.com/news/2026/11/il-sindaco-incontra-i-cittadini: Il sindaco incontra i cittadini al mercato
+  https://example.com/news/2026/11/snöfallet-når-staden: Snöfallet når staden under natten

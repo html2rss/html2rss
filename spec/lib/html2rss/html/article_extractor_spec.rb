@@ -687,7 +687,11 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it_behaves_like 'article extractor title pieces' do
       let(:title_for) do
-        ->(html) { described_class.call(Nokogiri::HTML.fragment(html).at_css('article'), base_url: 'https://example.com')[:title] }
+        lambda do |html|
+          tag = Nokogiri::HTML.fragment(html).at_css('article')
+          selected_anchor = Html2rss::Html::Navigator.main_anchor_for(tag)
+          described_class.call(tag, base_url: 'https://example.com', selected_anchor:)[:title]
+        end
       end
     end
   end
@@ -730,7 +734,11 @@ RSpec.describe Html2rss::Html::ArticleExtractor do
 
     it_behaves_like 'article extractor title pieces' do
       let(:title_for) do
-        ->(html) { described_class.call(Nokogiri::HTML.fragment(html).at_css('article'), base_url: 'https://example.com')[:title] }
+        lambda do |html|
+          tag = Nokogiri::HTML.fragment(html).at_css('article')
+          selected_anchor = Html2rss::Html::Navigator.main_anchor_for(tag)
+          described_class.call(tag, base_url: 'https://example.com', selected_anchor:)[:title]
+        end
       end
     end
 

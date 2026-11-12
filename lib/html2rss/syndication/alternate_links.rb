@@ -31,7 +31,7 @@ module Html2rss
         end
 
         def syndication_type?(type)
-          type.to_s.downcase.match?(/rss|atom/)
+          type.to_s.downcase.match?(/rss|atom|rdf/)
         end
       end
     end

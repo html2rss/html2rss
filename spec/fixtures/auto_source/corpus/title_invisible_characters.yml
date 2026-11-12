@@ -1,0 +1,15 @@
+---
+case: >-
+  Soft hyphens and zero-width characters inside headline words render nothing and never reach the title.
+expected:
+- https://example.com/news/2026/11/harbor-ferry-timetable
+- https://example.com/news/2026/11/library-reading-room
+- https://example.com/news/2026/11/council-tax-relief
+- https://example.com/news/2026/11/tram-line-extension
+- https://example.com/news/2026/11/river-festival-returns
+titles:
+  https://example.com/news/2026/11/harbor-ferry-timetable: Harbor ferry timetable changes for the winter
+  https://example.com/news/2026/11/library-reading-room: Library readingroom reopens after renovation
+  https://example.com/news/2026/11/council-tax-relief: Council approves tax relief for small shops
+  https://example.com/news/2026/11/tram-line-extension: Tram line extension wins over residents
+  https://example.com/news/2026/11/river-festival-returns: River festival returns with night concerts

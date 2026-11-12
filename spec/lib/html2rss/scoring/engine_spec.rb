@@ -56,7 +56,7 @@ RSpec.describe Html2rss::Scoring::Engine do
   shared_context 'with a stubbed container assessor' do
     let(:blank_observation) do
       {
-        title_word_count: 0, path_length: 0, content_path: false, publish_marker: false,
+        title_runs: 0, path_length: 0, content_path: false, publish_marker: false,
         descriptive_context: false, article_container: false, content_tokens: false, junk_tokens: false,
         utility_prefix_title: false, recommended_title: false, utility_path: false, strong_post_suffix: false,
         shallow: false, high_confidence_junk_path: false, high_confidence_utility_destination: false,
@@ -78,7 +78,7 @@ RSpec.describe Html2rss::Scoring::Engine do
     include_context 'with a stubbed container assessor'
 
     it 'orders by composite score, then discovery position' do
-      strong = observation.call(title_word_count: 3, article_container: true)
+      strong = observation.call(title_runs: 3, article_container: true)
       weak = observation.call
       segments = [3, 0, 1].map { |position| article_segment(href: '/news/story', title: 'Story', position:) }
       allow(assessor).to receive(:call).and_return(strong, weak, strong)
@@ -88,7 +88,7 @@ RSpec.describe Html2rss::Scoring::Engine do
 
     it 'computes composite as quality minus junk', :aggregate_failures do
       allow(assessor).to receive(:call)
-        .and_return(observation.call(title_word_count: 3, article_container: true, shallow: true))
+        .and_return(observation.call(title_runs: 3, article_container: true, shallow: true))
 
       expect(engine.rank([segment]).first.score)
         .to have_attributes(composite: 30.0, quality: 50.0, junk: 20.0)
@@ -105,7 +105,7 @@ RSpec.describe Html2rss::Scoring::Engine do
     include_context 'with a stubbed container assessor'
 
     it 'keeps segments scoring above the floor' do
-      allow(assessor).to receive(:call).and_return(observation.call(title_word_count: 3, article_container: true))
+      allow(assessor).to receive(:call).and_return(observation.call(title_runs: 3, article_container: true))
 
       expect(engine.rank_top([segment]).size).to eq(1)
     end
@@ -200,7 +200,7 @@ RSpec.describe Html2rss::Scoring::Engine do
 
     it 'builds float composite, quality, and junk scores', :aggregate_failures do
       allow(assessor).to receive(:call)
-        .and_return(observation.call(title_word_count: 3, article_container: true, shallow: true))
+        .and_return(observation.call(title_runs: 3, article_container: true, shallow: true))
       score = engine.rank([segment]).first.score
 
       expect(score).to have_attributes(composite: 30.0, quality: 50.0, junk: 20.0)
@@ -209,10 +209,10 @@ RSpec.describe Html2rss::Scoring::Engine do
 
     it 'exposes the quality and junk breakdown as a frozen hash', :aggregate_failures do
       allow(assessor).to receive(:call)
-        .and_return(observation.call(title_word_count: 3, article_container: true, shallow: true))
+        .and_return(observation.call(title_runs: 3, article_container: true, shallow: true))
       breakdown = engine.rank([segment]).first.score.breakdown
 
-      expect(breakdown).to eq(title_word_count_ge3: 40, article_container: 10, shallow: 10, weak_container: 10)
+      expect(breakdown).to eq(title_runs_ge3: 40, article_container: 10, shallow: 10, weak_container: 10)
       expect(breakdown).to be_frozen
     end
 
@@ -242,8 +242,8 @@ RSpec.describe Html2rss::Scoring::Engine do
 
     it 'scores each quality feature when its predicate holds', :aggregate_failures do
       {
-        title_word_count_ge3: [{ title_word_count: 3 }, 40],
-        title_word_count_ge7: [{ title_word_count: 7 }, 15],
+        title_runs_ge3: [{ title_runs: 3 }, 40],
+        title_runs_ge7: [{ title_runs: 7 }, 15],
         path_length_gt6: [{ path_length: 7 }, 20],
         content_path: [{ content_path: true }, 15],
         publish_marker: [{ publish_marker: true }, 15],
@@ -258,7 +258,7 @@ RSpec.describe Html2rss::Scoring::Engine do
     it 'scores each junk feature when its predicate holds', :aggregate_failures do
       {
         non_content_utility_path: [{ utility_path: true }, 25],
-        utility_prefix_title_short: [{ utility_prefix_title: true, title_word_count: 6 }, 15],
+        utility_prefix_title_short: [{ utility_prefix_title: true, title_runs: 6 }, 15],
         shallow: [{ shallow: true }, 10],
         weak_container: [{}, 10],
         recommended_title_non_content: [{ recommended_title: true }, 10],
@@ -270,8 +270,8 @@ RSpec.describe Html2rss::Scoring::Engine do
     end
 
     it 'does not score quality features at their boundaries' do
-      expect(breakdown_for.call(title_word_count: 2, path_length: 6))
-        .not_to include(:title_word_count_ge3, :title_word_count_ge7, :path_length_gt6)
+      expect(breakdown_for.call(title_runs: 2, path_length: 6))
+        .not_to include(:title_runs_ge3, :title_runs_ge7, :path_length_gt6)
     end
 
     it 'does not score utility paths that are content or post-suffixed', :aggregate_failures do
@@ -282,7 +282,7 @@ RSpec.describe Html2rss::Scoring::Engine do
     end
 
     it 'does not score short utility titles beyond six words' do
-      expect(breakdown_for.call(utility_prefix_title: true, title_word_count: 7))
+      expect(breakdown_for.call(utility_prefix_title: true, title_runs: 7))
         .not_to include(:utility_prefix_title_short)
     end
 

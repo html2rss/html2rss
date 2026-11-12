@@ -1,0 +1,16 @@
+---
+case: >-
+  An off-screen accessibility twin link (h-offscreen) beside each teaser link is never the item; the visible
+  teaser link is.
+expected:
+- https://example.com/listen/episode?id=harbor-ferry-strike
+- https://example.com/listen/episode?id=library-budget-cut
+- https://example.com/listen/episode?id=tram-depot-fire
+- https://example.com/listen/episode?id=council-housing-plan
+- https://example.com/listen/episode?id=river-flood-warning
+titles:
+  https://example.com/listen/episode?id=harbor-ferry-strike: Harbor ferry crews call a one-day strike
+  https://example.com/listen/episode?id=library-budget-cut: Library budget cut draws protest
+  https://example.com/listen/episode?id=tram-depot-fire: Fire at the tram depot halts two lines
+  https://example.com/listen/episode?id=council-housing-plan: Council unveils its housing plan
+  https://example.com/listen/episode?id=river-flood-warning: Flood warning issued for the river towns

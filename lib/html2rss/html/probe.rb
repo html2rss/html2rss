@@ -15,6 +15,10 @@ module Html2rss
       APPLICATION_RSS_XML = 'application/rss+xml'
       # @see #mime_match?
       APPLICATION_ATOM_XML = 'application/atom+xml'
+      # @see #mime_match?
+      APPLICATION_RDF_XML = 'application/rdf+xml'
+      # Every syndication format advertised by +link[rel=alternate]+ (RSS 2.0, Atom, RSS 1.0 / RDF).
+      FEED_MIME_TYPES = [APPLICATION_RSS_XML, APPLICATION_ATOM_XML, APPLICATION_RDF_XML].freeze
 
       class << self
         ##

@@ -29,6 +29,9 @@ module Html2rss
     # Closed set of query params that carry campaign or referrer data, never page identity.
     TRACKING_PARAM = /\A(?:utm_.*|fbclid|gclid|msclkid|mc_cid|mc_eid|ref|ref_src)\z/i
 
+    NO_PARAMS = [].freeze
+    private_constant :NO_PARAMS
+
     # Raised when a string cannot be parsed or resolved to a valid URL.
     class InvalidUrlError < Html2rss::Error
       # @return [Symbol]
@@ -369,9 +372,7 @@ module Html2rss
     # feed-item dedupe, unlike {#same_document?}, which stays scheme- and query-exact.
     #
     # @return [Array] equal for URLs naming the same article
-    def article_identity
-      [host, port, path.chomp('/'), query_params.reject { tracking_param?(_1) }.sort]
-    end
+    def article_identity = [host, port, path.chomp('/'), article_params]
 
     protected
 
@@ -386,7 +387,10 @@ module Html2rss
     private
 
     # @return [Array<String>] raw +key=value+ query pairs, in source order
-    def query_params = query.to_s.split('&')
+    def query_params = query ? query.split('&') : NO_PARAMS
+
+    # @return [Array<String>] sorted non-tracking query pairs; the shared empty list without a query
+    def article_params = query ? query_params.reject { tracking_param?(_1) }.sort : NO_PARAMS
 
     def tracking_param?(pair) = TRACKING_PARAM.match?(pair.partition('=').first)
 

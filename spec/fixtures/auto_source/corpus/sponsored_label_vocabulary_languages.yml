@@ -1,0 +1,17 @@
+---
+case: The closed paid-label set covers it, nl, pl, sv and ja ("Pubblicità", "Materiał partnerski",
+  "Reklama", "Annonssamarbete", "Gesponsord", "Advertentie", "広告", "Informazione
+  pubblicitaria"), and a bare "PR" counts only as a whole uppercase label element. Unpaid
+  attribution ("In collaborazione con", "proposé par", "In samenwerking met", "I samarbete med", "提供：…"),
+  "Partenaires", "PR" in a headline or on a topic chip, and an ad word on a topic chip mark nothing.
+  Only the editorial cards are expected.
+expected:
+- https://example.com/news/2026/11/mostra-fotografica
+- https://example.com/news/2026/11/marche-de-noel
+- https://example.com/news/2026/11/museumnacht
+- https://example.com/news/2026/11/skolmat-pris
+- https://example.com/news/2026/11/sommet-partenaires
+- https://example.com/news/2026/11/pr-team-hired
+- https://example.com/news/2026/11/press-office-moves
+- https://example.com/news/2026/11/rynek-reklamy
+- https://example.com/news/2026/11/shinsei-hin

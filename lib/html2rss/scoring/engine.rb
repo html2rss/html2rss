@@ -11,7 +11,7 @@ module Html2rss
       SCORE_FLOOR = 0.0
 
       FEATURE_IDS = Set[
-        :title_word_count_ge3, :title_word_count_ge7, :path_length_gt6, :content_path,
+        :title_runs_ge3, :title_runs_ge7, :path_length_gt6, :content_path,
         :publish_marker, :descriptive_context, :article_container, :content_tokens,
         :non_content_utility_path, :utility_prefix_title_short, :shallow, :weak_container,
         :recommended_title_non_content, :high_confidence_junk_path, :junk_tokens,
@@ -22,8 +22,8 @@ module Html2rss
 
       # Quality feature triples: [feature_id, predicate, weight].
       QUALITY_RULES = [
-        [:title_word_count_ge3, ->(o) { o.title_word_count >= 3 }, 40],
-        [:title_word_count_ge7, ->(o) { o.title_word_count >= 7 }, 15],
+        [:title_runs_ge3, ->(o) { o.title_runs >= 3 }, 40],
+        [:title_runs_ge7, ->(o) { o.title_runs >= 7 }, 15],
         [:path_length_gt6, ->(o) { o.path_length > 6 }, 20],
         [:content_path, lambda(&:content_path), 15],
         [:publish_marker, lambda(&:publish_marker), 15],
@@ -35,7 +35,7 @@ module Html2rss
       # Junk feature triples: [feature_id, predicate, weight].
       JUNK_RULES = [
         [:non_content_utility_path, ->(o) { o.utility_path && !o.content_path && !o.strong_post_suffix }, 25],
-        [:utility_prefix_title_short, ->(o) { o.utility_prefix_title && o.title_word_count <= 6 }, 15],
+        [:utility_prefix_title_short, ->(o) { o.utility_prefix_title && o.title_runs <= 6 }, 15],
         [:shallow, lambda(&:shallow), 10],
         [:weak_container, ->(o) { !o.publish_marker && !o.descriptive_context }, 10],
         [:recommended_title_non_content, ->(o) { o.recommended_title && !o.content_path }, 10],

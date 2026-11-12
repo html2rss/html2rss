@@ -1,0 +1,20 @@
+---
+case: Japanese headlines with a leading bracket label from the closed list (breaking, exclusive, video) lose it, any other leading bracket text becomes the kicker, a quote bracket stays, and a date chip closing the headline leaves.
+expected:
+- https://example.com/news/2026/11/budget-winter-support
+- https://example.com/news/2026/11/campaign-video-delayed
+- https://example.com/news/2026/11/award-winner-named
+- https://example.com/news/2026/11/container-housing-ready
+- https://example.com/news/2026/11/diplomacy-days-short
+- https://example.com/news/2026/11/interview-overseas-squad
+- https://example.com/news/2026/11/quoted-speech-kept
+- https://example.com/news/2026/11/support-package-approved
+titles:
+  https://example.com/news/2026/11/budget-winter-support: 政府、冬の除雪支援に3200億円支出へ
+  https://example.com/news/2026/11/campaign-video-delayed: 新庁舎の案内動画、公開延期
+  https://example.com/news/2026/11/award-winner-named: 青空文化賞、第一回の受賞は画家の森野遥
+  https://example.com/news/2026/11/container-housing-ready: 市民大会の仮設宿泊施設３０戸、北部の被災地へ
+  https://example.com/news/2026/11/diplomacy-days-short: '市長外交: 視察、短い日程と多い訪問先 交流は観光ほど話題にならず？'
+  https://example.com/news/2026/11/interview-overseas-squad: '山川一郎×森田次郎: 「若手を起用する意味は理解できる」遠征の展望'
+  https://example.com/news/2026/11/quoted-speech-kept: 「守備から入る意識を全員で共有」 市民クラブの主将
+  https://example.com/news/2026/11/support-package-approved: 冬の水道・バス運賃の補助など 予算およそ800億円支出へ 政府

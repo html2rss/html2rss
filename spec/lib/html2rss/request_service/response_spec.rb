@@ -322,7 +322,8 @@ RSpec.describe Html2rss::RequestService::Response do
   describe '#feed_content_type?' do
     {
       'application/rss+xml' => true, 'application/atom+xml' => true, 'application/rss' => true,
-      'application/atom' => true, 'APPLICATION/RSS+XML; charset=utf-8' => true, 'text/xml' => false,
+      'application/atom' => true, 'application/rdf+xml' => true,
+      'APPLICATION/RSS+XML; charset=utf-8' => true, 'text/xml' => false,
       'application/xml' => false, 'text/html; x=rss' => false, 'application/json; x=rss' => false, '' => false
     }.each do |type, expected|
       it "makes feed_response? #{expected} for header #{type.inspect} with an empty body" do
@@ -334,7 +335,8 @@ RSpec.describe Html2rss::RequestService::Response do
   describe '#feed_looking_body?' do
     {
       '<rss version="2.0">' => true, '<feed xmlns="x">' => true, '<feed version="1">' => true,
-      '<RSS>' => true, "#{' ' * 790}<rss" => true, "#{' ' * 800}<rss" => false,
+      '<RSS>' => true, '<?xml version="1.0"?><rdf:RDF xmlns:rdf="x">' => true, '<RDF:RDF>' => true,
+      "#{' ' * 790}<rss" => true, "#{' ' * 800}<rss" => false,
       '<feed>' => false, 'plain text' => false, '<!DOCTYPE html><rss>' => false, "<html>\n<feed xmlns" => false,
       "#{' ' * 796}<rss" => true, "#{' ' * 797}<rss" => false
     }.each do |body, expected|

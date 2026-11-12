@@ -325,7 +325,7 @@ RSpec.describe Html2rss::CLI do
       allow(Html2rss::Capture).to receive(:build).and_return(feed_capture_result)
 
       expect { cli.capture('https://example.com') }
-        .to output(%r{First-party RSS/Atom feed detected}).to_stderr
+        .to output(%r{First-party RSS/Atom/RDF feed detected}).to_stderr
         .and raise_error(SystemExit) do |exit_err|
           expect(exit_err.status).to eq(3)
         end

@@ -16,10 +16,10 @@ module Html2rss
 
       # Bodies that look like HTML even when Content-Type is missing, empty, or wrong.
       HTML_BODY_SNIFF = /\A\s*(?:<!DOCTYPE\s+html|<html)/i
-      # Content-Type markers for RSS/Atom syndication responses.
-      FEED_CT_MARKERS = %w[rss+xml atom+xml rss atom].freeze
+      # Content-Type markers for RSS/Atom/RDF syndication responses.
+      FEED_CT_MARKERS = %w[rss+xml atom+xml rdf+xml rss atom].freeze
       # Body sniff for unlabeled syndication (first 800 bytes, downcased).
-      FEED_BODY_MARKERS = ['<rss', '<feed xmlns', '<feed '].freeze
+      FEED_BODY_MARKERS = ['<rss', '<feed xmlns', '<feed ', '<rdf:rdf'].freeze
       # Charset from Content-Type or a leading <meta charset>.
       CHARSET_PARAMETER = /charset\s*=\s*["']?([\w.:-]+)/i
       # Bytes scanned for a meta charset hint (HTML spec looks at the first 1024).
@@ -94,7 +94,7 @@ module Html2rss
         content_type.include?('text/html') || (!json_response? && !feed_response? && html_looking_body?)
       end
 
-      # @return [Boolean] whether response content is RSS/Atom (header or sniffed body)
+      # @return [Boolean] whether response content is RSS/Atom/RDF (header or sniffed body)
       def feed_response?
         return @feed_response if defined?(@feed_response)
 
@@ -172,7 +172,7 @@ module Html2rss
 
       def feed_content_type?
         ct = content_type.downcase
-        return false if ct.empty? || ct.include?('html') || ct.include?('json')
+        return false if ct.include?('html') || ct.include?('json')
 
         # Substring match against Content-Type (not Array#intersect? on a String).
         FEED_CT_MARKERS.any? { |marker| ct.include?(marker) }

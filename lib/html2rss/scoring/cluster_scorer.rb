@@ -72,7 +72,7 @@ module Html2rss
       end
 
       def text_words(node)
-        @text_words[node] ||= node.word_count
+        @text_words[node] ||= node.run_count
       end
 
       def date?(node)

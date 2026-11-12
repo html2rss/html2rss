@@ -31,7 +31,7 @@ RSpec.describe Html2rss::SST::Text do
     link = Html2rss::SST::Node.build(name: :a, attrs: Html2rss::SST::Attrs.build(href: '/p'), own_text: 'Keep')
     drop = Html2rss::SST::Node.build(name: :span, own_text: 'Drop')
     stay = Html2rss::SST::Node.build(name: :span, own_text: 'Stay')
-    headed = Html2rss::SST::Node.build(name: :div, own_text: 'Head', children: [shown])
+    headed = Html2rss::SST::Node.build(name: :div, own_text: 'Head ', tails: [''], children: [shown])
 
     expect { extract.call(nil) }.to raise_error(ArgumentError, 'node is required')
     expect(extract.call(leaf)).to eq('hello world')
@@ -69,6 +69,70 @@ RSpec.describe Html2rss::SST::Text do
 
     expect(extract.call(Html2rss::SST::Node.build(name: :div, children: [inline, block]))).to eq("a\nb")
     expect(extract.call(Html2rss::SST::Node.build(name: :div, children: [block, inline]))).to eq("b\na")
+  end
+
+  it 'keeps direct text touching an inline element in one word', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+    span = ->(text) { Html2rss::SST::Node.build(name: :span, own_text: text) }
+    word = Html2rss::SST::Node.build(name: :span, own_text: 'Was die n f uns', tails: ['n f', ' uns'],
+                                     children: [span.call('Straßenbah'), span.call('ür')])
+    spaced = Html2rss::SST::Node.build(name: :span, own_text: 'a  b', tails: [' b'], children: [span.call('x')])
+    hidden = Html2rss::SST::Node.build(name: :script, own_text: 'x')
+    broken = Html2rss::SST::Node.build(name: :div, children: [span.call('A'), hidden, span.call('B')])
+    label = Html2rss::SST::Node.build(name: :h3, own_text: 'Headline', tails: ['Headline'],
+                                      children: [span.call('Live')])
+
+    expect(extract.call(word)).to eq('Was die Straßenbahn für uns')
+    expect(extract.call(spaced)).to eq('a x b')
+    expect(extract.call(Html2rss::SST::Node.build(name: :div, children: [span.call('A'), span.call('B')]))).to eq('A B')
+    expect(extract.call(broken)).to eq('A B')
+    expect(extract.call(label)).to eq('Live Headline')
+  end
+
+  {
+    'a<b>b</b>c' => 'abc',
+    'a <b>b</b> c' => 'a b c',
+    'a<b>b</b> c' => 'ab c',
+    'a <b>b</b>c' => 'a bc',
+    'a<b>b </b>c' => 'ab c',
+    'a<b> b</b>c' => 'a bc',
+    'a<b><i>b</i></b>c' => 'abc',
+    'a<b>x<i>b</i></b>c' => 'ax bc',
+    'a<b><i>b</i>x</b>c' => 'ab xc',
+    '<b>a</b>b' => 'a b',
+    'a<b>b</b>' => 'a b',
+    'a<b>b</b><i>c</i>d' => 'a b c d',
+    'a<b>b</b><img src="/x.png">c' => 'a b c',
+    'a<img src="/x.png">b' => 'a b',
+    'a<b><i> x</i>y</b>c' => 'a x yc',
+    '<ul><li></li><li>x</li></ul>' => '- x',
+    '<ul><li><b></b></li><li>x</li></ul>' => '- x',
+    'a<b>b</b><a href="#top">x</a>c' => 'a b c',
+    'a<b>x<i>y</i> </b>c' => 'axy c',
+    'a<b> <i>x</i>y</b>c' => 'a xyc',
+    'a<b>x<i>y </i></b>c' => 'ax y c',
+    'a<b><i>x</i><i>y </i></b>c' => 'ax y c',
+    '<span>a<b>b</b></span>c' => 'a b c'
+  }.each do |html, text|
+    it "reads #{html.inspect} as #{text.inspect}" do
+      node = Html2rss::SST::Normalizer.call("<html><body><h3>#{html}</h3></body></html>").root.find { _1.name == :h3 }
+
+      expect(extract.call(node)).to eq(text)
+    end
+  end
+
+  it 'reads direct text of a node built without tails' do
+    bold = Html2rss::SST::Node.build(name: :b, own_text: 'big')
+
+    expect(extract.call(Html2rss::SST::Node.build(name: :p, own_text: 'Lead', children: [bold]))).to eq('Lead big')
+  end
+
+  it 'passes the separator and exclusions down to nested children', :aggregate_failures do
+    html = '<html><body><div><section><p>One</p><p>Two</p><p id="x">Drop</p></section></div></body></html>'
+    root = Html2rss::SST::Normalizer.call(html).root
+    div = root.find { _1.name == :div }
+
+    expect(extract.call(div, separator: ' | ')).to eq('One | Two | Drop')
+    expect(extract.call(div, exclude: [root.find { _1.attrs.id == 'x' }])).to eq("One\nTwo")
   end
 
   it 'prefixes list items with a dash' do

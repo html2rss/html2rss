@@ -153,23 +153,18 @@ module Html2rss
       end
 
       ##
-      # @return [Integer] alphanumeric word count of visible text
-      def word_count
-        if (index = Index.for_node(self))
-          return index.memo_word_count(self)
-        end
-
-        count = 0
-        visible_text.to_s.scan(/\p{Alnum}+/) { count += 1 }
-        count
+      # @return [Integer] letter/digit runs of visible text ({WordCount.runs})
+      def run_count
+        index = Index.for_node(self)
+        index ? index.memo_run_count(self) : WordCount.runs(visible_text)
       end
 
       ##
-      # @return [Float] words per descendant link
+      # @return [Float] letter/digit runs per descendant link
       def text_density
-        words = word_count
+        runs = run_count
         links = count_descendants(&:link?)
-        links.zero? ? words.to_f : words.to_f / links
+        links.zero? ? runs.to_f : runs.to_f / links
       end
 
       protected

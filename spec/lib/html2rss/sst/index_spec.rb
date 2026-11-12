@@ -106,27 +106,29 @@ RSpec.describe Html2rss::SST::Index do
     end
   end
 
-  describe '#memo_word_count' do
+  describe '#memo_run_count' do
     it 'counts alphanumeric words in the visible text' do
-      expect(index.memo_word_count(nav_link)).to eq(1)
+      expect(index.memo_run_count(nav_link)).to eq(1)
     end
 
     it 'ignores punctuation and counts numbers as words' do
       parsed = Html2rss::SST::Normalizer.call('<html><body><p>Hello, 42 world!</p></body></html>')
       paragraph = parsed.root.find { |node| node.name == :p }
 
-      expect(parsed.index.memo_word_count(paragraph)).to eq(3)
+      expect(parsed.index.memo_run_count(paragraph)).to eq(3)
     end
 
     it 'counts zero words for a node without visible text' do
       parsed = Html2rss::SST::Normalizer.call('<html><body><p></p></body></html>')
       paragraph = parsed.root.find { |node| node.name == :p }
 
-      expect(parsed.index.memo_word_count(paragraph)).to eq(0)
+      expect(parsed.index.memo_run_count(paragraph)).to eq(0)
     end
 
-    it 'returns the same count on repeated calls' do
-      expect([index.memo_word_count(nav_link), index.memo_word_count(nav_link)]).to eq([1, 1])
+    it 'counts each node once', :aggregate_failures do
+      allow(Html2rss::WordCount).to receive(:runs).and_call_original
+      expect([index.memo_run_count(nav_link), index.memo_run_count(nav_link)]).to eq([1, 1])
+      expect(Html2rss::WordCount).to have_received(:runs).once
     end
   end
 

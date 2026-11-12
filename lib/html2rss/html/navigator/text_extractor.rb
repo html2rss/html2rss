@@ -5,7 +5,9 @@ module Html2rss
     class Navigator
       ##
       # TextExtractor extracts visible text from DOM elements, preserving lists
-      # and block spacing while sanitizing white spaces.
+      # and block spacing while sanitizing white spaces. Same joining rule as {SST::Text}: an inline element
+      # embedded in direct text and touching it stays in its word (+Straßenbah<span>n</span> für+), while two
+      # adjacent elements and an element opening or closing its parent's text always separate.
       class TextExtractor
         # HTML block elements that trigger line breaks or special formatting.
         BLOCK_TAGS = %w[p div li ul ol h1 h2 h3 h4 h5 h6 tr br].to_set.freeze
@@ -29,18 +31,20 @@ module Html2rss
 
           private
 
+          # +last+ is [node, block?] of the previous piece with text.
           def iterate_children(tag, separator, exclude_nodes)
-            last = false
-            tag.children.each_with_object([]) do |c, p|
-              next if exclude_nodes&.include?(c) || !visible_child?(c)
+            last = nil
+            tag.children.each_with_object([]) do |c, parts|
+              text, block = process_child_node(c, separator, exclude_nodes) if shown?(c, exclude_nodes)
+              next if text.to_s.empty?
 
-              text, block = process_child_node(c, separator, exclude_nodes)
-              next if text.empty?
-
-              append_separator!(p, separator, block, last)
-              (p << text) && (last = block)
+              parts << gap(separator, block, last, c) if last
+              parts << text
+              last = [c, block]
             end
           end
+
+          def shown?(child, exclude_nodes) = !exclude_nodes&.include?(child) && visible_child?(child)
 
           def process_child_node(child, separator, exclude_nodes)
             child_text = get_child_text(child, separator, exclude_nodes)
@@ -58,15 +62,21 @@ module Html2rss
             end
           end
 
-          def append_separator!(parts, separator, is_block, last_was_block)
-            return if parts.empty?
+          def gap(separator, is_block, last, child)
+            return (separator == ' ' ? "\n" : separator) if is_block || last.last
 
-            parts << if is_block || last_was_block
-                       (separator == ' ' ? "\n" : separator)
-                     else
-                       ' '
-                     end
+            touching?(last.first, child) ? '' : ' '
           end
+
+          # Whether direct text and an inline element meet as adjacent siblings with no whitespace between
+          # them. Only an element embedded in direct text (a text sibling on both sides) touches it.
+          def touching?(before, after)
+            element = before.element? ? before : after
+            before.next_sibling == after && embedded?(element) &&
+              !before.text.match?(/\s\z/) && !after.text.match?(/\A\s/)
+          end
+
+          def embedded?(element) = element.previous_sibling&.text? && element.next_sibling&.text?
 
           def visible_child?(node)
             !INVISIBLE_CONTENT_TAGS.include?(node.name) &&
