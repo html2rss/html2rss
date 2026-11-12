@@ -84,5 +84,35 @@ RSpec.describe Html2rss::LinkDestination::DestinationFacts do
         expect(facts.high_confidence_utility_destination).to be(true)
       end
     end
+
+    {
+      'https://example.com/ニュース' => true,
+      'https://example.com/記事/特集' => false,
+      'https://example.com/著者/山田-太郎' => true,
+      'https://example.com/訃報' => true,
+      'https://example.com/ゲーム/今日のパズル' => true,
+      'https://example.com/news/aktualności' => true,
+      'https://example.com/kreuzworträtsel/heute-leicht' => true,
+      'https://example.com/rédaction/jean-dupont' => true,
+      'https://example.com/dödsannonser/maria-minns-av-vänner' => true,
+      'https://example.com/författare/anna-lindström' => true,
+      'https://example.com/auteur/jérôme-dupont' => true,
+      'https://example.com/football/players/striker-signs-new-deal-1' => false,
+      'https://example.com/football/players/jan-kowalski' => true,
+      'https://example.com/opinion/contributors/why-cities-fail' => false,
+      'https://example.com/opinion/contributors/jane-doe' => true,
+      'https://example.com/redaktion/in-eigener-sache' => false
+    }.each do |address, junk|
+      it "classifies #{address} as junk=#{junk} from its percent-encoded path" do
+        expect(described_class.build(Html2rss::Url.from_absolute(address)).high_confidence_junk_path).to be(junk)
+      end
+    end
+
+    it 'exposes decoded NFC segments', :aggregate_failures do
+      facts = described_class.build(Html2rss::Url.from_absolute('https://example.com/dödsannonser/x'))
+
+      expect(facts.url.path_segments.first).to include('%')
+      expect(facts.segments.first).to eq('dödsannonser'.unicode_normalize(:nfc))
+    end
   end
 end

@@ -192,7 +192,9 @@ RSpec.describe Html2rss::LinkDestination::PathClassifier do
     [
       %w[news staff 2026 10 new-hires-announced], %w[sport team-staff-changes-before-derby],
       %w[news author maria-keller story-of-the-week-here], %w[team maria-keller], %w[people maria-keller],
-      %w[news staff harbor-ferry-route-returns-after-repairs], %w[news staff 2026-10-hires]
+      %w[news staff harbor-ferry-route-returns-after-repairs], %w[news staff 2026-10-hires],
+      %w[football players striker-signs-new-deal-1], %w[opinion contributors why-cities-fail],
+      %w[redaktion in-eigener-sache]
     ].each do |segments|
       it "keeps /#{segments.join('/')} as content" do
         expect(classifier_for(*segments).non_article_path?).to be(false)

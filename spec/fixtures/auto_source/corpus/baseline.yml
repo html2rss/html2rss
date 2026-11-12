@@ -102,6 +102,12 @@ f3_recipe_tiles_with_people.html:
   expected: 4
   title_misses: 0
   sst_built: true
+f5_encoded_non_article_paths.html:
+  junk: 0
+  real: 5
+  expected: 5
+  title_misses: 0
+  sst_built: true
 f6_find_out_more_links.html:
   junk: 0
   real: 6

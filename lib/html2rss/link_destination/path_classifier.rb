@@ -32,12 +32,18 @@ module Html2rss
         # People pages. `team` and `people` are left out on purpose: they name sports teams and
         # newsmakers in article paths. The words below are unambiguous byline/staff words.
         profile = Set[
-          'author', 'authors', 'staff', 'journalist', 'journalists', 'contributor', 'contributors',
-          'autor', 'autoren', 'redaktion', 'redakteure', 'autores', 'redaccion', 'redacción', 'periodista',
-          'periodistas', 'auteur', 'auteurs', 'redaction', 'rédaction', 'journaliste', 'journalistes',
-          'autore', 'autori', 'redazione', 'giornalista', 'giornalisti', 'redactie', 'journalisten',
-          'autorzy', 'redakcja', 'dziennikarz', 'dziennikarze', 'skribent', 'skribenter', 'forfattare',
-          'författare', '著者', '執筆者', '記者', '編集部', 'ライター'
+          'author', 'authors', 'staff', 'journalist', 'journalists', 'players',
+          'autor', 'autoren', 'redakteure', 'autores', 'periodista',
+          'periodistas', 'auteur', 'auteurs', 'journaliste', 'journalistes',
+          'autore', 'autori', 'giornalista', 'giornalisti', 'journalisten',
+          'autorzy', 'dziennikarz', 'dziennikarze', 'skribent', 'skribenter', 'forfattare',
+          'författare', '著者', '執筆者', '記者', 'ライター'
+        ].freeze
+        # Editorial-office and contributor words: their child pages are often editorial notes with a
+        # three-word slug, so only a one- or two-word name slug marks a profile.
+        office = Set[
+          'contributor', 'contributors', 'redaktion', 'redaccion', 'redacción', 'redaction', 'rédaction',
+          'redazione', 'redactie', 'redakcja', '編集部'
         ].freeze
         # Destinations that are never articles: games, horoscopes, quizzes, obituaries, livestreams, players.
         non_article = Set[
@@ -50,7 +56,7 @@ module Html2rss
           'nécrologie', 'necrologio', 'necrologi', 'esquelas', 'obituarios', 'overlijdensberichten', 'nekrolog',
           'nekrologi', 'dodsannonser', 'dödsannonser', '訃報', 'おくやみ',
           'livestream', 'livestreams', 'endirect', 'envivo', 'indiretta', 'nazywo', 'ライブ配信',
-          'player', 'players'
+          'player'
         ].freeze
         taxonomy = Set[
           'category', 'categories', 'tag', 'tags', 'topic', 'topics',
@@ -93,6 +99,8 @@ module Html2rss
           taxonomy:,
           non_article:,
           profile:,
+          office:,
+          people_index: (profile | office).freeze,
           vanity:,
           deep_post_context: Set['press', 'newsroom', 'presse', 'pressemitteilungen', 'prensa'].freeze
         }.freeze
@@ -107,8 +115,12 @@ module Html2rss
       # Common file-extension suffixes excluded from host-shaped junk matching.
       FILE_EXTENSION_SEGMENT = /\.(?:pdf|jpe?g|png|gif|svg|webp|css|js|mjs|html?|xml|json|mp4|webm|zip|gz)\z/i
 
-      # A single person-name slug: letters only, up to three words (dated and id slugs carry digits).
+      # A single person-name slug: letters only (dated and id slugs carry digits), up to three words.
       NAME_SLUG = /\A\p{L}+(?:-\p{L}+){0,2}\z/
+      # Name slug of at most two words, for office/contributor sections whose notes carry longer slugs.
+      SHORT_NAME_SLUG = /\A\p{L}+(?:-\p{L}+)?\z/
+      # Name-slug shape that marks a profile page, by the word set of its parent segment.
+      NAME_SLUG_BY_OWNER = { profile: NAME_SLUG, office: SHORT_NAME_SLUG }.freeze
 
       # Pop-up / embedded player segments such as `popup-audio-player` (hyphens removed before matching).
       PLAYER_SEGMENT = /\A(?:(?:pop(?:up|out)|embed|audio|video|media)\w*)?player\z/
@@ -210,10 +222,15 @@ module Html2rss
 
       # A people word that ends the path (an index) or is followed by one name slug (a profile page).
       def profile_route?
-        profile = SEGMENT_SETS[:profile]
-        last = segments.size - 1
-        profile.include?(@lexicon[last]) ||
-          (last.positive? && profile.include?(@lexicon[last - 1]) && segments[last].match?(NAME_SLUG))
+        return false if segments.empty?
+
+        SEGMENT_SETS[:people_index].include?(@lexicon.last) || profile_page?
+      end
+
+      def profile_page?
+        return false if segments.size < 2
+
+        NAME_SLUG_BY_OWNER.any? { |set, slug| SEGMENT_SETS[set].include?(@lexicon[-2]) && segments.last.match?(slug) }
       end
 
       # A path ending in a section word (no slug) lists articles instead of being one.

@@ -41,9 +41,18 @@ module Html2rss
       # @param url [Html2rss::Url]
       # @return [PathClassifier] path classifier that also sees the first host label (an obituary subdomain)
       def self.classifier_for(url)
-        PathClassifier.new(url.path_segments, host_label: url.host.to_s.split('.').first, query: !url.query.nil?)
+        PathClassifier.new(url.path_segments.map { decode_segment(_1) },
+                           host_label: url.host.to_s.split('.').first, query: !url.query.nil?)
       end
       private_class_method :classifier_for
+
+      # Url keeps path segments percent-encoded; classification words are plain NFC text.
+      # @param segment [String] percent-encoded path segment
+      # @return [String] decoded, NFC-normalized segment
+      def self.decode_segment(segment)
+        Addressable::URI.unencode_component(segment).force_encoding(Encoding::UTF_8).scrub.unicode_normalize(:nfc)
+      end
+      private_class_method :decode_segment
     end
   end
 end
