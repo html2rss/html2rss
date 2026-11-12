@@ -61,6 +61,7 @@ RSpec.describe Html2rss::FeedPipeline do
         outcome, result = pipeline.to_outcome_and_result
 
         expect(outcome.articles.map(&:title)).to eq(['default'])
+        expect(outcome.scrape_target).to eq(Html2rss::ScrapeTarget.from_config(Html2rss::Config.from_hash(config)))
         expect(result.to_rss.items.map(&:title)).to eq(['default'])
       end
 
@@ -539,6 +540,19 @@ RSpec.describe Html2rss::FeedPipeline do
       # rubocop:enable RSpec/ExampleLength
     end
 
+    it 'extracts the AutoSource admission drops and feed channel facts with the articles' do # rubocop:disable RSpec/ExampleLength
+      facts = Html2rss::Syndication::ChannelFacts.new(author: 'Feed Author')
+      source = instance_double(Html2rss::AutoSource, articles: [], admission_drops: { 'sponsored' => 1 },
+                                                     feed_channel: facts)
+      allow(Html2rss::AutoSource).to receive(:new).and_return(source)
+      config = Html2rss::Config.from_hash({ channel: { url: 'https://example.com/news' }, auto_source: {} })
+
+      expect(described_class.new({}).extract(config:, response: build_response.call(body: '<html></html>'),
+                                             request_session: instance_double(Html2rss::RequestSession)))
+        .to eq(Html2rss::FeedPipeline::Extraction.new(articles: [], dedup_dropped: 0,
+                                                      admission_drops: { 'sponsored' => 1 }, feed_channel: facts))
+    end
+
     # rubocop:disable-next RSpec/ExampleLength -- inline config + duplicate HTML fixture
     it 'reports dedup_dropped on status after pipeline deduplication', :aggregate_failures do
       config = base_config.merge(
@@ -553,6 +567,7 @@ RSpec.describe Html2rss::FeedPipeline do
           <html><body>
             <article><a href="https://example.com/news/dup"><h1>First</h1></a></article>
             <article><a href="https://example.com/news/dup"><h1>Second</h1></a></article>
+            <article><a href="https://example.com/news/dup"><h1>Third</h1></a></article>
           </body></html>
         HTML
         url: 'https://example.com/news'
@@ -561,7 +576,7 @@ RSpec.describe Html2rss::FeedPipeline do
 
       result = described_class.new(config).to_result
 
-      expect(result.status.dedup_dropped).to eq(1)
+      expect(result.status.dedup_dropped).to eq(2)
       expect(result.status.selected_strategy).to be_nil
       expect(result.status.attempt_count).to eq(0)
       expect(result.to_rss.items.size).to eq(1)

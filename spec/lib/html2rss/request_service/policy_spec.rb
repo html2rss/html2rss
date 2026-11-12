@@ -523,7 +523,7 @@ RSpec.describe Html2rss::RequestService::Policy do
     end
 
     context 'when the proof is not a FeedAdvertisement' do
-      let(:advertisement) { double(page_url: origin_url, advertises?: true) }
+      let(:advertisement) { Data.define(:page_url).new(page_url: origin_url) }
 
       it 'denies the cross-origin follow-up' do
         expect { validate_request! }.to raise_error(Html2rss::RequestService::CrossOriginFollowUpDenied)

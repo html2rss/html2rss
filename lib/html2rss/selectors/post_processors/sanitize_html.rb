@@ -109,9 +109,6 @@ module Html2rss
           'source' => %w[src type]
         }.freeze
 
-        # The only +src+ schemes media keeps (after {HtmlTransformers::KeepPlayableMedia} absolutizes it).
-        MEDIA_PROTOCOLS = MEDIA_ATTRIBUTES.keys.to_h { [_1, { 'src' => %w[http https] }] }.freeze
-
         # @return [Hash{Symbol => Object}] JSON Schema fragment for this post-processor
         def self.schema_export = SchemaExport.for_post_processor(name: :sanitize_html, klass: self)
 
@@ -167,7 +164,6 @@ module Html2rss
             config = Sanitize::Config.merge(
               Sanitize::Config::RELAXED,
               attributes: { all: %w[dir lang alt title translate], **MEDIA_ATTRIBUTES },
-              protocols: MEDIA_PROTOCOLS,
               add_attributes: TAG_ATTRIBUTES,
               transformers: [
                 lambda { |env|

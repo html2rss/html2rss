@@ -648,6 +648,19 @@ RSpec.describe Html2rss::Test do
       end
     end
 
+    context 'when the fetched page names no native feed' do
+      it 'probes that page and reports no native feed', :aggregate_failures do
+        result = described_class.quality_report_for(fake_rss_items, channel_url:, config:, feed_result:,
+                                                                    pipeline_outcome:)
+
+        expect(result).to have_attributes(native_feed: nil, defer_reason: nil)
+        expect(Html2rss::Syndication::Discovery).to have_received(:best_feed_url).with(
+          page_url: channel_url, request_session: kind_of(Html2rss::RequestSession),
+          parsed_body: kind_of(Nokogiri::HTML::Document), html: '<html></html>'
+        )
+      end
+    end
+
     context 'when the channel url is empty' do
       let(:channel_url) { '' }
 

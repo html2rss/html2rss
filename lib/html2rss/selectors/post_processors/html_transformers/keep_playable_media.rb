@@ -23,7 +23,7 @@ module Html2rss
           # @param node [Nokogiri::XML::Node] node currently being transformed
           # @param _env [Hash] transformer context
           # @option _env [Object] :_reserved reserved for transformer pipeline context
-          # @return [nil]
+          # @return [void]
           def call(node_name:, node:, **_env)
             if node_name == 'source'
               node.unlink unless absolutize_src(node)
@@ -31,12 +31,12 @@ module Html2rss
               # Children are transformed after their parent, so child sources are only checked here.
               node.unlink unless absolutize_src(node) || node.css('source').any? { playable_url(_1['src']) }
             end
-            nil
           end
 
           private
 
-          # Rewrites +src+ to its absolute playable URL or removes it; returns the URL kept, if any.
+          # Rewrites +src+ to its absolute playable URL (Nokogiri stores its +to_s+) or removes it;
+          # returns the URL kept, if any.
           def absolutize_src(node)
             url = playable_url(node['src'])
             url ? node['src'] = url : node.remove_attribute('src')
@@ -44,10 +44,10 @@ module Html2rss
           end
 
           def playable_url(src)
-            return if src.to_s.strip.empty?
+            return unless /\S/.match?(src)
 
             url = Url.from_relative(src, @base_url)
-            url.to_s if Url::SUPPORTED_SCHEMES.include?(url.scheme)
+            url if Url::SUPPORTED_SCHEMES.include?(url.scheme)
           rescue Url::InvalidUrlError
             nil
           end

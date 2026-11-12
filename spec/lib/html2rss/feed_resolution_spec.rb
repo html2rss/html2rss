@@ -224,6 +224,28 @@ RSpec.describe Html2rss::FeedResolution do
       expect(state.result.scrape_target.effective_url).to eq(listing_url)
     end
 
+    it 'extracts the resolved page through a session for it and records that hop', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      retry_response = retry_session.fetch_initial_response
+      allow(session).to receive(:follow_up).and_return(retry_response)
+      allow(Html2rss::PageRecon).to receive(:assess).and_return(
+        Html2rss::PageRecon::Assessment.new(surface_category: :listing, articles_count: 0, admission_drops: {},
+                                            html_response: true)
+      )
+      allow(described_class).to receive(:call).and_return(applied_resolution)
+      allow(pipeline).to receive(:extract).and_return(one_article_extraction)
+
+      apply_outcome
+
+      expect(pipeline).to have_received(:request_session_for)
+        .with(config, strategy: :default, resources:, scrape_url: listing_url)
+      expect(pipeline).to have_received(:extract).with(config:, response: retry_response,
+                                                       request_session: retry_session)
+      expect(state.attempts).to eq([{ strategy: :default, items_count: 1, error_class: nil }])
+      expect(state.result).to have_attributes(response: retry_response, selected_strategy: :default, attempt_count: 1,
+                                              entry_resolution: state.entry_resolution)
+      expect(state.entry_resolution).to have_attributes(applied: true)
+    end
+
     it 're-raises non-fallback errors from the retry' do
       allow(described_class).to receive(:call).and_return(applied_resolution)
       allow(retry_session).to receive(:fetch_initial_response).and_raise(Html2rss::RequestService::InvalidUrl)
