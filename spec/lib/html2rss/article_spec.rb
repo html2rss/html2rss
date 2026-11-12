@@ -17,6 +17,48 @@ RSpec.describe Html2rss::Article do
       expect { described_class.new(**attrs) }.not_to raise_error
     end
 
+    it 'composes the kicker and headline into the title when the caller opts in' do
+      article = described_class.new(title: "Ferry\nreturns", kicker: 'Harbor :', compose_title: true)
+
+      expect(article.title).to eq('Harbor: Ferry returns')
+    end
+
+    it 'keeps the title verbatim apart from whitespace by default', :aggregate_failures do
+      expect(described_class.new(title: '10:00 Budget vote').title).to eq('10:00 Budget vote')
+      expect(described_class.new(title: 'Video: Harbor tour').title).to eq('Video: Harbor tour')
+      expect(described_class.new(title: "  Ferry\n returns ", kicker: 'Harbor').title).to eq('Ferry returns')
+    end
+
+    it 'keeps the composed title across copies and Marshal round-trips', :aggregate_failures do
+      article = described_class.new(title: '– Ferry returns', kicker: 'Harbor -', url: 'https://example.com/a',
+                                    compose_title: true)
+
+      expect(article.with_url('https://example.com/b').title).to eq('Harbor: Ferry returns')
+      expect(Marshal.load(Marshal.dump(article)).title).to eq('Harbor: Ferry returns')
+    end
+
+    it 'leaves the title nil when only a kicker is given' do
+      expect(described_class.new(kicker: 'Harbor', url: 'https://example.com/a').title).to be_nil
+    end
+
+    # rubocop:disable-next RSpec/ExampleLength -- one constructor input per reader
+    it 'stores a frozen copy of every non-title input', :aggregate_failures do
+      author = +'Ann'
+      article = described_class.new(
+        id: 'i', author:, description: 'D', url: 'https://example.com/a', image: 'https://example.com/i.jpg',
+        guid: ['g'], published_at: '2026-01-02', categories: ['C'], scraper: Html2rss::Selectors,
+        enclosures: [{ url: Html2rss::Url.from_absolute('https://example.com/a.mp3') }]
+      )
+      author << 'e'
+
+      expect(article).to have_attributes(id: 'i', author: 'Ann', description: 'D', categories: ['C'])
+      expect(article.scraper).to equal(Html2rss::Selectors)
+      expect([article.url, article.image].map(&:to_s)).to eq(%w[https://example.com/a https://example.com/i.jpg])
+      expect(article.guid).to eq(Zlib.crc32('g').to_s(36))
+      expect(article.published_at.to_s).to start_with('2026-01-02')
+      expect(article.enclosures.map { _1.url.to_s }).to eq(['https://example.com/a.mp3'])
+    end
+
     it 'rejects unknown keys' do
       expect { described_class.new(title: 'Sample', unknown_key: 'value') }.to raise_error(ArgumentError)
     end

@@ -1,0 +1,105 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Compares auto-source results of two git revisions on saved pages kept outside the repo.
+#
+# DIR holds the saved pages plus a manifest.tsv of "<file><TAB><base url>" lines. Each
+# revision is checked out as a detached temporary worktree (removed on exit), every page
+# runs offline in both, and per page the report shows item counts, items gained or lost,
+# title changes, Cleanup drop tallies and wall time. Pages that errored in either revision
+# count as errored in the TOTAL line, not as lost or gained items. Nothing is written into the repo.
+# Needs the gems the revisions' Gemfile.lock pins (set BUNDLE_PATH when the bundle is not
+# under ./vendor/bundle).
+#
+# Usage: mise exec -- bin/compare-revisions BASE HEAD --pages DIR [--limit N]
+#   --limit N  compare only the first N manifest entries
+
+# The worker pins the revision's gems before anything else loads (json is a default gem).
+require 'bundler/setup' if ARGV.include?('--worker')
+require 'json'
+require 'open3'
+require 'optparse'
+require 'rbconfig'
+require 'tmpdir'
+require_relative '../spec/support/revision_comparison'
+
+REPO_ROOT = File.expand_path('..', __dir__)
+
+# Worker mode (internal): runs inside a revision's worktree so that revision's lib/ is loaded.
+def run_worker(dir, out, limit)
+  ENV['LOG_LEVEL'] ||= 'error'
+  require 'html2rss'
+  runs = RevisionComparison.measure(RevisionComparison.load_pages(dir, limit:), dir)
+  File.write(out, JSON.generate(runs.map(&:to_h)))
+end
+
+def git(*args)
+  out, err, status = Open3.capture3('git', '-C', REPO_ROOT, *args)
+  abort "git #{args.join(' ')}: #{err}" unless status.success?
+  out.strip
+end
+
+def with_worktrees(shas)
+  Dir.mktmpdir('compare-revisions-') do |tmp|
+    trees = []
+    shas.each_with_index { |sha, index| trees << add_worktree(sha, File.join(tmp, "rev#{index}")) }
+    yield trees
+  ensure
+    trees&.each { remove_worktree(_1) }
+    system('git', '-C', REPO_ROOT, 'worktree', 'prune', exception: false)
+  end
+end
+
+# Cleanup never aborts: each worktree is removed on its own, then `git worktree prune` drops leftovers.
+def remove_worktree(path)
+  _, err, status = Open3.capture3('git', '-C', REPO_ROOT, 'worktree', 'remove', '--force', path)
+  warn "git worktree remove #{path}: #{err}" unless status.success?
+end
+
+def add_worktree(sha, path)
+  git('worktree', 'add', '--detach', '--quiet', path, sha)
+  path
+end
+
+def worker_env(tree)
+  env = { 'BUNDLE_GEMFILE' => File.join(tree, 'Gemfile'), 'LOG_LEVEL' => 'error' }
+  bundle = File.join(REPO_ROOT, 'vendor', 'bundle')
+  env['BUNDLE_PATH'] = bundle if !ENV.key?('BUNDLE_PATH') && Dir.exist?(bundle)
+  env
+end
+
+def measure_revision(tree, dir, limit)
+  out = "#{tree}.json"
+  command = [RbConfig.ruby, File.expand_path(__FILE__), '--pages', dir, '--worker', out]
+  command.push('--limit', limit.to_s) if limit
+  _, err, status = Open3.capture3(worker_env(tree), *command, chdir: tree)
+  abort "worker failed in #{tree}:\n#{err}" unless status.success?
+  JSON.parse(File.read(out)).map { RevisionComparison::Run.from_h(_1) }
+end
+
+def parse_options
+  options = {}
+  OptionParser.new do |opts|
+    opts.banner = 'Usage: bin/compare-revisions BASE HEAD --pages DIR [--limit N]'
+    opts.on('--pages DIR', 'directory of saved pages with manifest.tsv') { options[:pages] = File.expand_path(_1) }
+    opts.on('--limit N', Integer, 'compare only the first N manifest entries') { options[:limit] = _1 }
+    opts.on('--worker OUT', 'internal: measure pages in this process') { options[:worker] = _1 }
+  end.parse!
+  options
+end
+
+def compare(revisions, dir, limit)
+  shas = revisions.map { git('rev-parse', '--verify', '--quiet', "#{_1}^{commit}") }
+  runs = with_worktrees(shas) { |trees| trees.map { measure_revision(_1, dir, limit) } }
+  pages = RevisionComparison.load_pages(dir, limit:)
+  puts RevisionComparison.report(RevisionComparison.diffs(pages, *runs), shas.map { _1[0, 10] })
+end
+
+options = parse_options
+if options[:worker]
+  run_worker(options.fetch(:pages), options[:worker], options[:limit])
+else
+  abort 'Usage: bin/compare-revisions BASE HEAD --pages DIR [--limit N]' unless ARGV.size == 2 && options[:pages]
+
+  compare(ARGV, options[:pages], options[:limit])
+end

@@ -1,0 +1,14 @@
+---
+case: 'Cards whose kicker already ends in a question mark, exclamation mark or ellipsis; the kicker joins the headline with a single space, never a glued colon.'
+expected:
+- https://example.com/news/2026/11/tram-line-extends-east
+- https://example.com/news/2026/11/museum-reopens-north-wing
+- https://example.com/news/2026/11/school-lunch-program-expands
+- https://example.com/news/2026/11/park-planting-volunteers
+- https://example.com/news/2026/11/council-approves-housing-plan
+titles:
+  https://example.com/news/2026/11/tram-line-extends-east: 'Late again? Tram line extends to the eastern districts'
+  https://example.com/news/2026/11/museum-reopens-north-wing: 'Finally open! Museum reopens its restored north wing'
+  https://example.com/news/2026/11/school-lunch-program-expands: 'Who pays… School lunch program expands to every district'
+  https://example.com/news/2026/11/park-planting-volunteers: 'Parks: Park planting day draws hundreds of volunteers'
+  https://example.com/news/2026/11/council-approves-housing-plan: 'Housing?! Council approves the new housing plan'

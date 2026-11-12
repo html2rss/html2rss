@@ -38,11 +38,16 @@ module Html2rss
       # Flat ordered list (request slot accounting, detection helpers).
       SCRAPERS = (DOCUMENT_SCRAPERS + SCRAPER_TIERS.flatten).freeze
 
-      # Heuristic scrapers that share one memoized SST::Document per page.
+      # Heuristic scrapers that share one memoized SST::Document per page. The only titles composed
+      # (+Kicker: Headline+, noise stripped): their cards are read by Html::SstArticleExtractor. Every
+      # other scraper yields publisher-declared or structured headlines, kept verbatim (collapse only).
       HEURISTIC_SCRAPERS = Set[SemanticHtml, Html].freeze
       # In-page structured scrapers whose items {Corroboration} checks against the rendered page.
       # Publisher-declared sources (NativeFeed, WordpressApi, Sitemap, MetaOembed) stay exempt.
       CORROBORATED_SCRAPERS = Set[Schema, Microdata, Microformats2, JsonState, XhrArticles, JsonDocument].freeze
+      # Scrapers whose items are read off the rendered page (sponsorship markers visible).
+      # Every other scraper is publisher-declared: sponsorship does not apply.
+      PAGE_SCRAPERS = (CORROBORATED_SCRAPERS | HEURISTIC_SCRAPERS).freeze
       # Scrapers that accept a shared follow-up +request_session+.
       REQUEST_SESSION_SCRAPERS = Set[NativeFeed, WordpressApi, Sitemap, MetaOembed].freeze
       # Scrapers that consume browser-captured XHR/fetch JSON bodies.

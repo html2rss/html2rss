@@ -302,6 +302,26 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
+    context 'with ad-labelled cards' do
+      let(:body) { File.read('spec/fixtures/auto_source/corpus/sponsored_ad_label_card.html') }
+      let(:sponsored_paths) do
+        %w[mattress-sale-ends-friday smart-thermostat-bundle-offer].map { "/news/2026/11/#{_1}" }
+      end
+
+      it 'drops the sponsored items and tallies them', :aggregate_failures do
+        expect(articles.map { _1.url.path }).not_to include(*sponsored_paths)
+        expect(articles.size).to eq(4)
+        expect(auto_source.admission_drops).to include('sponsored' => 2)
+      end
+
+      it 'admits the sponsored items when cleanup keeps them', :aggregate_failures do
+        kept = described_class.new(response, described_class::DEFAULT_CONFIG.merge(cleanup: { keep_sponsored: true }))
+
+        expect(kept.articles.map { _1.url.path }).to include(*sponsored_paths)
+        expect(kept.admission_drops).not_to have_key('sponsored')
+      end
+    end
+
     context 'when structured items and a heuristic tier share one page' do
       let(:counts) { Hash.new(0) }
       let(:native_feed) do
@@ -344,6 +364,45 @@ RSpec.describe Html2rss::AutoSource do
 
         expect(limited.map { _1.url.path }).to eq(['/news/feed-1'])
         expect(counts[:sst]).to eq(0)
+      end
+    end
+
+    context 'when titles carry leading noise' do
+      let(:feed_item) do
+        { title: '10:00 Video: Native feed story title', url: 'https://example.com/news/feed-1', id: 'feed-1' }
+      end
+      let(:body) do
+        ld = { '@context' => 'https://schema.org', '@type' => 'ItemList', 'itemListElement' => [
+          { '@type' => 'NewsArticle', 'headline' => '10:00 Schema story one words', 'url' => '/news/s-1' },
+          { '@type' => 'NewsArticle', 'headline' => '10:00 Schema story two words', 'url' => '/news/s-2' }
+        ] }
+        cards = %w[1 2].map do |index|
+          %(<article><h2><a href="/news/s-#{index}">Schema story #{index} words</a></h2></article>)
+        end
+        %(<html><body><script type="application/ld+json">#{ld.to_json}</script><main>#{cards.join}</main></body></html>)
+      end
+
+      let(:declared_scraper) do
+        lambda do |klass|
+          instance_double(klass, extractable?: true, class: klass).tap do |scraper|
+            allow(scraper).to receive(:map) { |&block| [feed_item].map(&block) }
+          end
+        end
+      end
+
+      it 'keeps a publisher-declared structured headline verbatim' do
+        schema_titles = articles.select { _1.scraper == Html2rss::AutoSource::Scraper::Schema }.map(&:title)
+
+        expect(schema_titles).to eq(['10:00 Schema story one words', '10:00 Schema story two words'])
+      end
+
+      %w[NativeFeed WordpressApi Sitemap MetaOembed].each do |name|
+        it "keeps a #{name} title verbatim" do
+          klass = Html2rss::AutoSource::Scraper.const_get(name)
+          allow(klass).to receive(:new).and_return(declared_scraper.call(klass))
+
+          expect(articles.find { _1.scraper == klass }.title).to eq('10:00 Video: Native feed story title')
+        end
       end
     end
 
@@ -570,7 +629,7 @@ RSpec.describe Html2rss::AutoSource do
       end
     end
 
-    context 'when a scraper raises an unexpected error' do
+    shared_context 'with a lone Schema scraper' do
       let(:body) do
         ld = {
           '@context' => 'https://schema.org',
@@ -596,23 +655,40 @@ RSpec.describe Html2rss::AutoSource do
           instance = method.call(scraper_class, *args, **kwargs)
           next instance unless scraper_class == Html2rss::AutoSource::Scraper::Schema && instance
 
-          allow(instance).to receive(:each).and_raise(StandardError, 'boom')
+          allow(instance).to receive(:each, &schema_each)
           instance
         end
       end
+    end
+
+    context 'when a scraper raises an unexpected error' do
+      include_context 'with a lone Schema scraper'
+
+      let(:schema_each) { proc { raise StandardError, 'boom' } }
 
       it 'propagates StandardError instead of quarantining it' do
         expect { articles }.to raise_error(StandardError, 'boom')
       end
     end
 
-    context 'when the listing is wrapping a.card links (ISS Africa shape)' do
-      let(:url) { Html2rss::Url.from_absolute('https://issafrica.org/iss-today') }
+    context 'when a scraper yields an item that is neither Article nor Hash' do
+      include_context 'with a lone Schema scraper'
+
+      let(:schema_each) { proc { |&block| block.call('not an item') } }
+
+      it 'raises a TypeError naming the scraper' do
+        expect { articles }
+          .to raise_error(TypeError, 'Html2rss::AutoSource::Scraper::Schema yielded String; expected Article or Hash')
+      end
+    end
+
+    context 'when the listing is wrapping a.card links (synthetic news shape)' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/daily-briefing') }
       let(:body) do
         cards = [
-          ['/iss-today/sahel-conflict-needs-more-attention', 'Sahel conflict needs more attention today'],
-          ['/iss-today/west-africa-coup-watch-briefing', 'West Africa coup watch briefing today'],
-          ['/iss-today/sudan-peace-talks-stall-again', 'Sudan peace talks stall again this week']
+          ['/daily-briefing/harbor-project-needs-more-attention', 'Harbor project needs more attention today'],
+          ['/daily-briefing/northern-region-weather-watch-briefing', 'Northern region weather watch briefing today'],
+          ['/daily-briefing/river-council-talks-stall-again', 'River council talks stall again this week']
         ]
         items = cards.map do |href, title|
           <<~CARD
@@ -620,7 +696,7 @@ RSpec.describe Html2rss::AutoSource do
               <div class="card__image"><img src="/img/#{href.split('/').last}.jpg" alt=""></div>
               <div class="card__content">
                 <h3>#{title}</h3>
-                <p>Teaser line for the ISS Today briefing.</p>
+                <p>Teaser line for the daily briefing.</p>
               </div>
             </a>
           CARD
@@ -630,13 +706,13 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'admits at least one article from the wrapping cards', :aggregate_failures do
         expect(articles.size).to be >= 1
-        expect(articles.map { |article| article.url.to_s }).to all(include('/iss-today/'))
+        expect(articles.map { |article| article.url.to_s }).to all(include('/daily-briefing/'))
         expect(articles.map(&:title)).to all(match(/\A\S+(?:\s+\S+){2,}/))
       end
     end
 
-    context 'with a JSON document listing (indieappsales slice)' do
-      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+    context 'with a JSON document listing (app list slice)' do
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/banner/app-list.json') }
       let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
       let(:response) do
         Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
@@ -660,7 +736,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     context 'with a JSON document listing keeping different domains' do
-      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/banner/app-list.json') }
       let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
       let(:response) do
         Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)
@@ -671,13 +747,13 @@ RSpec.describe Html2rss::AutoSource do
 
       it 'keeps the long-named off-domain item', :aggregate_failures do
         expect(articles.map(&:title)).to eq(['Long Enough App Name'])
-        expect(articles.first.url.to_s).to eq('https://apps.apple.com/app/id1234567890')
+        expect(articles.first.url.to_s).to eq('https://apps.example.net/app/id1234567890')
         expect(articles.first.scraper).to eq(Html2rss::AutoSource::Scraper::JsonDocument)
       end
     end
 
     context 'with json_document disabled on a JSON listing' do
-      let(:url) { Html2rss::Url.from_absolute('https://indieappsales.com/indieappsales/banner/app-list.json') }
+      let(:url) { Html2rss::Url.from_absolute('https://example.com/banner/app-list.json') }
       let(:body) { File.read('spec/fixtures/auto_source/json_document/app_list_slice.json') }
       let(:response) do
         Html2rss::RequestService::Response.new(body:, headers: { 'content-type' => 'text/json' }, url:)

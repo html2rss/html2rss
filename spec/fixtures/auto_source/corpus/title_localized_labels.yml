@@ -1,0 +1,16 @@
+---
+case: German, French and Spanish screen-reader section labels and article-type markers; titles must keep only the kicker and headline.
+expected:
+- https://example.com/news/2026/11/strassenbahnlinie-nach-osten
+- https://example.com/news/2026/11/ligne-de-tramway-vers-lest
+- https://example.com/news/2026/11/linea-de-tranvia-al-este
+- https://example.com/news/2026/11/museum-oeffnet-nordfluegel
+- https://example.com/news/2026/11/le-musee-rouvre-son-aile-nord
+- https://example.com/news/2026/11/el-museo-reabre-el-ala-norte
+titles:
+  https://example.com/news/2026/11/strassenbahnlinie-nach-osten: 'Verkehr: Straßenbahnlinie wird nach Osten verlängert'
+  https://example.com/news/2026/11/ligne-de-tramway-vers-lest: 'Transports: La ligne de tramway est prolongée vers l''est'
+  https://example.com/news/2026/11/linea-de-tranvia-al-este: 'Transporte: La línea de tranvía se amplía hacia el este'
+  https://example.com/news/2026/11/museum-oeffnet-nordfluegel: Museum öffnet seinen Nordflügel wieder
+  https://example.com/news/2026/11/le-musee-rouvre-son-aile-nord: Le musée rouvre son aile nord
+  https://example.com/news/2026/11/el-museo-reabre-el-ala-norte: El museo reabre su ala norte

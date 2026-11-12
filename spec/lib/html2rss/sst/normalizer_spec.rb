@@ -35,6 +35,20 @@ RSpec.describe Html2rss::SST::Normalizer do
       )
     end
 
+    it 'keeps hidden and aria-hidden for sponsorship markers but no attribute that only starts with hidden' do
+      html = '<html><body><span class="ad-label" hidden aria-hidden="true" hiddenx="1">q</span></body></html>'
+      span = described_class.call(html).root.find { |n| n.name == :span }
+
+      expect(span.attrs.raw).to eq('hidden' => '', 'aria-hidden' => 'true')
+    end
+
+    it 'keeps rel for sponsorship markers but no attribute that only starts with rel' do
+      html = '<html><body><a href="/x" rel="sponsored nofollow" release="1">q</a></body></html>'
+      link = described_class.call(html).root.find { |n| n.name == :a }
+
+      expect(link.attrs.raw).to eq('rel' => 'sponsored nofollow')
+    end
+
     it 'maps href and src onto typed attrs', :aggregate_failures do
       doc = described_class.call('<html><body><a href="/post">Post</a><img src="/cover.png"></body></html>')
 

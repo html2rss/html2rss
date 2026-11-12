@@ -65,6 +65,8 @@ html2rss scrape https://example.com/news --format jsonfeed --explain
 # Off-domain item URLs are dropped by default. --keep-different-domain opts in
 # and lets the remote source control published links to unrelated domains.
 html2rss scrape https://example.com/app-list.json --keep-different-domain
+# Items the page marks as sponsored are dropped by default. --keep-sponsored opts in.
+html2rss scrape https://example.com/news --keep-sponsored
 
 # Durable config workflow
 html2rss capture https://example.com/news --write feed.yml

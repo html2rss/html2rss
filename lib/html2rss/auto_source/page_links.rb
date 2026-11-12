@@ -3,14 +3,22 @@
 module Html2rss
   class AutoSource
     ##
-    # Where each URL is rendered on the page, from one pass over the SST anchors.
+    # Where each URL is rendered on the page, and which URLs the page marks as sponsored.
     #
     # Keys are {Html2rss::Url#article_identity}, so scheme, tracking query params, trailing
     # slashes and fragments do not split a URL; other query params stay significant. Chrome
     # comes from the SST chrome flag ({SST::Normalizer}); utility landmarks that are not chrome
     # (+aside+, +menu+, sectioned +footer+) are peripheral.
-    # A URL rendered several times keeps its strongest placement. PageLinks owns no keep
-    # or drop rule; {Corroboration} reads it.
+    # A URL rendered several times keeps its strongest placement.
+    #
+    # Each {LinkDestination::Sponsorship} marker is scoped to its card ({SponsoredCards}): a
+    # container marks every destination inside it, a label only the dominant destination of the
+    # +article+, +section+, +aside+ or +li+ it sits in. PageLinks owns no keep or drop rule;
+    # {Corroboration} and {Cleanup} read it.
+    #
+    # Both facts are walked lazily, once, on first use: a sponsorship check walks markers and
+    # resolves only the anchors of marked cards; placement, canonical and sparse checks resolve
+    # every anchor.
     class PageLinks
       # Placement strength, strongest first; a URL missing from the page is +:absent+.
       RANKS = { content: 0, peripheral: 1, chrome: 2 }.freeze
@@ -30,12 +38,9 @@ module Html2rss
       # @param document [SST::Document, nil]
       # @param link_resolver [Scoring::LinkResolver, nil]
       def initialize(document, link_resolver)
-        @placements = {}
-        @hrefs = {}
-        @index = document&.index
+        @document = document
         @link_resolver = link_resolver
-        walk(document.root, false) if document
-        @sparse = document.nil? || document.degraded || content_link_count <= SPARSE_MAX_CONTENT_LINKS
+        @walks = {}
         freeze
       end
 
@@ -45,7 +50,7 @@ module Html2rss
       def placement(url)
         return :absent unless url
 
-        @placements.fetch(url.article_identity, :absent)
+        placements.placement(url.article_identity)
       end
 
       ##
@@ -56,7 +61,7 @@ module Html2rss
       # @param url [Html2rss::Url, nil] candidate item URL
       # @return [Html2rss::Url, nil] nil unless +url+ is placed as +:content+
       def canonical_url(url)
-        anchor = @hrefs[url&.article_identity]&.without_tracking_params
+        anchor = url && placements.content_url(url.article_identity)&.without_tracking_params
         return anchor unless anchor && url.scheme == 'https'
 
         anchor.with_scheme('https')
@@ -67,38 +72,180 @@ module Html2rss
       # or at most {SPARSE_MAX_CONTENT_LINKS} distinct content URLs.
       #
       # @return [Boolean]
-      def sparse? = @sparse
+      def sparse? = placements.sparse?
+
+      ##
+      # True when +url+ is rendered inside a card carrying a sponsorship marker.
+      #
+      # @param url [Html2rss::Url, nil] candidate item URL
+      # @return [Boolean]
+      def sponsored?(url)
+        return false unless url
+
+        sponsored_cards.include?(url.article_identity)
+      end
 
       private
 
-      def walk(node, peripheral)
-        peripheral ||= node.utility_landmark?
-        record(node, peripheral) if node.link?
-        node.children.each { walk(_1, peripheral) }
+      # The +@walks+ memo is the explicit lazy holder: the frozen PageLinks fills each walk once.
+      def placements = @walks[:placements] ||= Placements.new(@document, @link_resolver)
+
+      def sponsored_cards = @walks[:sponsored_cards] ||= SponsoredCards.new(@document, @link_resolver)
+
+      ##
+      # Strongest placement and content anchor URL per article identity, from one walk that
+      # resolves every SST anchor.
+      class Placements
+        # @param document [SST::Document, nil]
+        # @param link_resolver [Scoring::LinkResolver, nil]
+        def initialize(document, link_resolver)
+          @by_key = {}
+          @content_urls = {}
+          @index = document&.index
+          @link_resolver = link_resolver
+          walk(document.root, false) if document
+          @sparse = document.nil? || document.degraded || content_link_count <= SPARSE_MAX_CONTENT_LINKS
+          freeze
+        end
+
+        # @param key [String] article identity
+        # @return [Symbol] placement, or +:absent+
+        def placement(key) = @by_key.fetch(key, :absent)
+
+        # @param key [String] article identity
+        # @return [Html2rss::Url, nil] the content anchor URL for +key+
+        def content_url(key) = @content_urls[key]
+
+        # @return [Boolean]
+        def sparse? = @sparse
+
+        private
+
+        def walk(node, peripheral)
+          peripheral ||= node.utility_landmark?
+          record(node, peripheral) if node.link?
+          node.children.each { walk(_1, peripheral) }
+        end
+
+        def record(anchor, peripheral)
+          url = @link_resolver.destination_facts(anchor)&.url
+          return unless url
+
+          key = url.article_identity
+          placement = anchor_placement(anchor, peripheral)
+          current = @by_key[key]
+          return unless current.nil? || RANKS.fetch(placement) < RANKS.fetch(current)
+
+          @by_key[key] = placement
+          @content_urls[key] = url if placement == :content
+        end
+
+        def anchor_placement(anchor, peripheral)
+          return :chrome if @index.ignored_chrome?(anchor)
+
+          peripheral ? :peripheral : :content
+        end
+
+        def content_link_count = @by_key.count { |_key, placement| placement == :content }
       end
+      private_constant :Placements
 
-      def record(anchor, peripheral)
-        url = @link_resolver.destination_facts(anchor)&.url
-        return unless url
+      ##
+      # Article identities of sponsored cards, from one marker walk. Anchors are resolved only once
+      # a marker binds; a page without markers resolves nothing.
+      #
+      # A +:container+ marker holding anchors marks every destination inside it. A +:label+ (or an
+      # anchorless container marker) marks the card it sits in: its nearest
+      # {LinkDestination::Sponsorship::CARD_NAMES} element, itself included. That card marks its
+      # dominant destination: its only one, else its only headline destination (an anchor in or
+      # around a heading); a card with several headlines marks nothing, and so does a label outside
+      # every card (bare +div+ layouts).
+      #
+      # Marking is per card: a URL is sponsored only when every anchor to it sits in a marked card,
+      # so a promo slot never hides the editorial card linking the same story.
+      class SponsoredCards
+        # @param document [SST::Document, nil]
+        # @param link_resolver [Scoring::LinkResolver, nil]
+        def initialize(document, link_resolver)
+          @keys = Set.new
+          @link_resolver = link_resolver
+          @anchors = []
+          @headline = []
+          @claimed = []
+          @ancestors = []
+          @labelled = []
+          walk(document.root) if document
+          release_unclaimed_keys unless @keys.empty?
+          freeze
+        end
 
-        key = url.article_identity
-        placement = anchor_placement(anchor, peripheral)
-        current = @placements[key]
-        return unless current.nil? || RANKS.fetch(placement) < RANKS.fetch(current)
+        # @param key [Array] article identity
+        # @return [Boolean]
+        def include?(key) = @keys.include?(key)
 
-        @placements[key] = placement
-        @hrefs[key] = url if placement == :content
+        private
+
+        # +@labelled+ holds one flag per open card, innermost last.
+        def walk(node)
+          start = @anchors.size
+          card = LinkDestination::Sponsorship::CARD_NAMES.include?(node.name)
+          @labelled << false if card
+          descend(node)
+          mark(node, start)
+          bind(start) if card && @labelled.pop
+        end
+
+        def descend(node)
+          record(node) if node.link?
+          @ancestors << node
+          node.children.each { walk(_1) }
+          @ancestors.pop
+        end
+
+        def record(anchor)
+          @anchors << anchor
+          @headline << @ancestors.any?(&:heading?)
+        end
+
+        def mark(node, start)
+          marker = LinkDestination::Sponsorship.marker(node, @ancestors)
+          return unless marker
+          return claim(start, card_keys(start...@anchors.size)) if marker == :container && @anchors.size > start
+
+          @labelled[-1] = true unless @labelled.empty?
+        end
+
+        def bind(start)
+          indexes = start...@anchors.size
+          keys = card_keys(indexes)
+          key = keys.one? ? keys.first : headline_key(indexes)
+          claim(start, [key]) if key
+        end
+
+        def headline_key(indexes)
+          keys = card_keys(indexes.select { headline?(_1) })
+          keys.first if keys.one?
+        end
+
+        # An anchor inside a heading, or wrapping one.
+        def headline?(index) = @headline.fetch(index) || @anchors.fetch(index).children.any? { _1.find(&:heading?) }
+
+        def card_keys(indexes) = indexes.filter_map { key_at(_1) }.uniq
+
+        def key_at(index) = @link_resolver.destination_facts(@anchors.fetch(index))&.url&.article_identity
+
+        # Marks +keys+ and every anchor from +start+ as inside a marked card.
+        def claim(start, keys)
+          @keys.merge(keys)
+          @claimed.fill(true, start...@anchors.size)
+        end
+
+        # A URL also rendered outside every marked card is editorial there.
+        def release_unclaimed_keys
+          @anchors.each_index { @keys.delete(key_at(_1)) unless @claimed[_1] }
+        end
       end
-
-      def anchor_placement(anchor, peripheral)
-        return :chrome if @index.ignored_chrome?(anchor)
-
-        peripheral ? :peripheral : :content
-      end
-
-      def content_link_count
-        @placements.count { |_key, placement| placement == :content }
-      end
+      private_constant :SponsoredCards
     end
   end
 end

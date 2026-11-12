@@ -1,0 +1,16 @@
+---
+case: 'Headline text that opens with a clock-like number is a real headline and stays verbatim; only a time element before it is teaser noise.'
+expected:
+- https://example.com/news/2026/11/widescreen-laptops-return
+- https://example.com/news/2026/11/handball-overtime-win
+- https://example.com/news/2026/11/evening-crime-drama
+- https://example.com/news/2026/11/phone-ad-clock
+- https://example.com/news/2026/11/noon-deadline-passes
+- https://example.com/news/2026/11/ferry-late-service
+titles:
+  https://example.com/news/2026/11/widescreen-laptops-return: '16:10 laptops are back as makers drop widescreen panels'
+  https://example.com/news/2026/11/handball-overtime-win: '23:21 – Handball women beat the champions in overtime'
+  https://example.com/news/2026/11/evening-crime-drama: '20:15 Uhr: Neuer Krimi aus der Hafenstadt am Abend'
+  https://example.com/news/2026/11/phone-ad-clock: '9:41 is the time on every phone ad, here is why'
+  https://example.com/news/2026/11/noon-deadline-passes: '12:00 noon deadline passes without a deal'
+  https://example.com/news/2026/11/ferry-late-service: 'Harbor ferry adds a late night service'

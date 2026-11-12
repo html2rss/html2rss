@@ -1,0 +1,53 @@
+---
+case: 'A leading separator (- – — / > » | · • › →) is one only when whitespace follows,
+  so a sign, a path or a comparison before a number stays; kicker separators and French
+  and Spanish punctuation compose to "Kicker: Headline". Known gaps kept out of titles:
+  soft hyphen and zero-width characters stay in the title.'
+expected:
+- https://example.com/news/2026/11/night-frost-expected
+- https://example.com/news/2026/11/dialect-vowels
+- https://example.com/news/2026/11/gas-heating-share
+- https://example.com/news/2026/11/tax-reform-angle
+- https://example.com/news/2026/11/cup-final-arrow
+- https://example.com/news/2026/11/coast-storm-warning
+- https://example.com/news/2026/11/museum-guillemet
+- https://example.com/news/2026/11/school-trailing-hyphen
+- https://example.com/news/2026/11/energy-prices-exclusive
+- https://example.com/news/2026/11/rents-rise-centre
+- https://example.com/news/2026/11/mayor-resigns-exclusive
+- https://example.com/news/2026/11/film-of-the-year
+- https://example.com/news/2026/11/interview-trailing-dash
+- https://example.com/news/2026/11/lights-out-old-town
+- https://example.com/news/2026/11/city-hall-plan-ready
+- https://example.com/news/2026/11/rent-brake-law
+- https://example.com/news/2026/11/zero-width-headline
+titles:
+  https://example.com/news/2026/11/night-frost-expected: "–5 Grad: Nachtfrost im ganzen
+    Land erwartet"
+  https://example.com/news/2026/11/dialect-vowels: "/e/ und /ə/: Warum Dialekte Vokale
+    verschlucken"
+  https://example.com/news/2026/11/gas-heating-share: "> 50 Prozent der Haushalte
+    heizen noch mit Gas"
+  https://example.com/news/2026/11/tax-reform-angle: 'Politik: Regierung plant neue
+    Steuerreform für Familien'
+  https://example.com/news/2026/11/cup-final-arrow: 'Sport: Verein gewinnt das Pokalfinale
+    nach Verlängerung'
+  https://example.com/news/2026/11/coast-storm-warning: 'Wetter: Sturmwarnung für
+    die gesamte Küste ausgegeben'
+  https://example.com/news/2026/11/museum-guillemet: 'Kultur: Museum öffnet den restaurierten
+    Nordflügel wieder'
+  https://example.com/news/2026/11/school-trailing-hyphen: 'Bildung: Neue Schule öffnet
+    im nördlichen Vorort'
+  https://example.com/news/2026/11/energy-prices-exclusive: "« Exclusif »: Les prix
+    de l’énergie baissent enfin"
+  https://example.com/news/2026/11/rents-rise-centre: 'Vivienda: ¿Por qué suben los
+    alquileres en el centro?'
+  https://example.com/news/2026/11/mayor-resigns-exclusive: "¡Exclusiva! El alcalde
+    dimite tras la polémica del presupuesto"
+  https://example.com/news/2026/11/film-of-the-year: 'Cinéma: « Le film de l’année
+    » sort enfin en salles'
+  https://example.com/news/2026/11/interview-trailing-dash: Interview with the mayor
+  https://example.com/news/2026/11/lights-out-old-town: "... and then the lights went
+    out in the old town"
+  https://example.com/news/2026/11/city-hall-plan-ready: 'City Hall: Mayor: the plan
+    is finally ready for the vote'

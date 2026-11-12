@@ -10,7 +10,8 @@ module Html2rss
     class Cleanup # rubocop:disable Metrics/ClassLength -- reject steps + tallies stay co-located
       # Default cleanup behavior for auto-sourced article lists.
       DEFAULT_CONFIG = {
-        keep_different_domain: false
+        keep_different_domain: false,
+        keep_sponsored: false
       }.freeze
 
       # Minimum alphanumeric word count for present titles.
@@ -69,28 +70,39 @@ module Html2rss
         'auto_source.cleanup.keep_different_domain: true (or --keep-different-domain); ' \
         'allows published items to link to any domain supplied by the source'
 
+      # Config key / CLI flag named when sponsored drops emptied admission.
+      SPONSORED_HINT =
+        'auto_source.cleanup.keep_sponsored: true (or --keep-sponsored); ' \
+        'keeps items the page marks as sponsored'
+
+      ADMISSION_HINTS = { 'different_domain' => DIFFERENT_DOMAIN_HINT, 'sponsored' => SPONSORED_HINT }.freeze
+      private_constant :ADMISSION_HINTS
+
       class << self
-        # Mitigating config hint when admission drops emptied a non-empty capture.
+        # Mitigating config hints when admission drops emptied a non-empty capture.
         # Other drop reasons remain counts only.
         #
         # @param drop_tallies [Hash{String => Integer}]
         # @return [String, nil]
         def admission_hint(drop_tallies)
-          return unless drop_tallies.fetch('different_domain', 0).positive?
-
-          DIFFERENT_DOMAIN_HINT
+          hints = ADMISSION_HINTS.select { |reason, _| drop_tallies.fetch(reason, 0).positive? }.values
+          hints.join(' | ') unless hints.empty?
         end
 
         # @param articles [Array<Article>] extracted article candidates
         # @param url [Html2rss::Url] feed source URL used for same-host filtering
         # @param keep_different_domain [Boolean] when true, keep items whose URLs are on a
         #   different domain than +url+ (source-controlled off-domain links; default false)
+        # @param keep_sponsored [Boolean] when true, keep items the page marks as sponsored
+        #   (default false)
         # @param corroboration [Corroboration, nil] page check for structured-tier items, run
         #   before dedupe so a dropped structured copy leaves the URL to a later tier
+        # @param page_links [#call, nil] lazy source of the page's {PageLinks}; called only when
+        #   a page-derived item is checked for sponsorship
         # @return [Result] cleaned articles and frozen drop tallies
-        # rubocop:disable-next Metrics/MethodLength -- ordered reject pipeline
+        # rubocop:disable-next Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists -- ordered reject pipeline
         def call(articles, url:, keep_different_domain: DEFAULT_CONFIG.fetch(:keep_different_domain),
-                 corroboration: nil)
+                 keep_sponsored: DEFAULT_CONFIG.fetch(:keep_sponsored), corroboration: nil, page_links: nil)
           Log.debug "Cleanup: start with #{articles.size} articles"
           tallies = Hash.new(0)
 
@@ -100,6 +112,7 @@ module Html2rss
             canonicalize_urls!(articles, corroboration)
           end
           deduplicate_by_url!(articles, tallies)
+          reject_sponsored!(articles, page_links, tallies) unless keep_sponsored
           keep_only_http_urls!(articles, tallies)
           reject_self_links!(articles, url, tallies)
           reject_different_domain!(articles, url, tallies) unless keep_different_domain
@@ -231,6 +244,15 @@ module Html2rss
           tally_reject!(articles, tallies, 'duplicate_url') { |article| seen.add?(article.url.article_identity).nil? }
         end
 
+        # Explicitly sponsored items ({PageLinks#sponsored?}); item text and URL paths are never read.
+        def reject_sponsored!(articles, page_links, tallies)
+          return unless page_links
+
+          tally_reject!(articles, tallies, 'sponsored') do |article|
+            Scraper::PAGE_SCRAPERS.include?(article.scraper) && page_links.call.sponsored?(article.url)
+          end
+        end
+
         def keep_only_http_urls!(articles, tallies)
           tally_reject!(articles, tallies, 'bad_scheme') do |article|
             !VALID_SCHEMES.include?(article.url&.scheme)
@@ -266,23 +288,23 @@ module Html2rss
           facts.utility_path && !facts.content_path && !facts.strong_post_suffix
         end
 
-        # Keep missing titles (nil provenance). Drop present junk/unnatural titles —
-        # blanking them would hide bad extraction as "unknown" and inflate empty items.
-        def reject_low_quality_titles!(articles, tallies) # rubocop:disable Metrics/MethodLength -- junk vs word-count reasons
+        # Drops untitled page-derived items and junk/unnatural titles — blanking a bad title would
+        # hide bad extraction as "unknown" and admit empty items. A publisher-declared item may be
+        # untitled (microblog feed posts) and is kept. {Article} collapses a blank title to nil.
+        def reject_low_quality_titles!(articles, tallies)
           articles.reject! do |article|
-            title = article.title
-            next false if title.nil?
+            reason = title_reject_reason(article)
+            tallies[reason] += 1 if reason
+            reason
+          end
+        end
 
-            reason = junk_reason(title)
-            if reason
-              tallies[reason.to_s] += 1
-              next true
-            end
-
-            next false if word_count_at_least?(title, MIN_WORDS)
-
-            tallies['low_word_count'] += 1
-            true
+        def title_reject_reason(article)
+          title = article.title
+          if title.nil?
+            'blank_title' if Scraper::PAGE_SCRAPERS.include?(article.scraper)
+          else
+            junk_reason(title)&.to_s || ('low_word_count' unless word_count_at_least?(title, MIN_WORDS))
           end
         end
 

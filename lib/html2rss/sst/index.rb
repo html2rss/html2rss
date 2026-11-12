@@ -15,6 +15,20 @@ module Html2rss
       def self.for_node(node) = NODE_BINDINGS[node]
 
       ##
+      # Whether +node+ is +ancestor+ or inside it: parent pointers when +node+ is indexed, else a
+      # scan of +ancestor+'s subtree.
+      #
+      # @param node [Node]
+      # @param ancestor [Node]
+      # @return [Boolean]
+      def self.descendant_or_self?(node, ancestor)
+        return true if node.equal?(ancestor)
+
+        index = for_node(node)
+        index ? index.descendant_of?(node, ancestor) : !ancestor.find { _1.equal?(node) }.nil?
+      end
+
+      ##
       # @param root [Node]
       # @param parents [Hash{Node => Node, nil}]
       # @param depths [Hash{Node => Integer}]

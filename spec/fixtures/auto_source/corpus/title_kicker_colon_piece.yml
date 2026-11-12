@@ -1,0 +1,20 @@
+---
+case: 'A kicker piece ending in a colon is kicker text unless it is a closed field
+  label (Thema:, Thème :, Tema:); the composed title keeps one colon.'
+expected:
+- https://example.com/news/2026/11/ceasefire-talks-resume
+- https://example.com/news/2026/11/rail-strike-ends
+- https://example.com/news/2026/11/housing-plan-vote
+- https://example.com/news/2026/11/festival-lineup-out
+- https://example.com/news/2026/11/harbor-tax-debate
+titles:
+  https://example.com/news/2026/11/ceasefire-talks-resume: 'Conflict: Ceasefire talks
+    resume after a week of shelling'
+  https://example.com/news/2026/11/rail-strike-ends: 'Transport: Rail strike ends after
+    a late night deal'
+  https://example.com/news/2026/11/housing-plan-vote: 'Housing: Council votes on the
+    new housing plan today'
+  https://example.com/news/2026/11/festival-lineup-out: 'Music: Festival lineup out
+    with three surprise acts'
+  https://example.com/news/2026/11/harbor-tax-debate: 'Port: Harbor tax debate returns
+    to the council floor'

@@ -358,6 +358,13 @@ RSpec.describe Html2rss::Config do
         expect(config[:auto_source].except(:cleanup)).to eq(defaults.except(:cleanup))
       end
     end
+
+    it 'overrides cleanup.keep_sponsored alone, keeping the other cleanup default', :aggregate_failures do
+      config = described_class.auto_source_config(url: 'https://example.com', keep_sponsored: true)
+
+      expect(config[:auto_source][:cleanup]).to eq(keep_different_domain: false, keep_sponsored: true)
+      expect(Html2rss::AutoSource::DEFAULT_CONFIG[:cleanup].values).to all(be(false))
+    end
   end
 
   describe '.prepare_defaults' do
@@ -962,7 +969,8 @@ RSpec.describe Html2rss::Config do
             wordpress_api: { enabled: true } # wasn't explicitly set -> default
           },
           cleanup: {
-            keep_different_domain: false # wasn't explicitly set -> default
+            keep_different_domain: false, # wasn't explicitly set -> default
+            keep_sponsored: false # wasn't explicitly set -> default
           }
         }
       end

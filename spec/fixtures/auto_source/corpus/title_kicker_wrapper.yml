@@ -1,0 +1,14 @@
+---
+case: 'Kicker-marked wrappers (kicker-group, a has-kicker modifier, a with-kicker card) that also hold the headline; none of them is the kicker, so each title is exactly "Kicker: Headline" or the headline.'
+expected:
+- https://example.com/news/2026/11/budget-vote-delayed
+- https://example.com/news/2026/11/tram-line-extends-east
+- https://example.com/news/2026/11/museum-reopens-north-wing
+- https://example.com/news/2026/11/library-extends-hours
+- https://example.com/news/2026/11/council-approves-housing-plan
+titles:
+  https://example.com/news/2026/11/budget-vote-delayed: 'Politik: Budget vote delayed again by the council'
+  https://example.com/news/2026/11/tram-line-extends-east: 'Transit: Tram line extends to the eastern districts'
+  https://example.com/news/2026/11/museum-reopens-north-wing: 'Museum reopens its restored north wing'
+  https://example.com/news/2026/11/library-extends-hours: 'Library extends opening hours for exam season'
+  https://example.com/news/2026/11/council-approves-housing-plan: 'Council approves the new housing plan for the river district'

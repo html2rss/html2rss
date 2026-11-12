@@ -1,0 +1,58 @@
+---
+case: 'The kicker is the outermost kicker-marked element beside the headline that
+  carries kicker text: icon, clock and time leaves are skipped, kicker parts (topic
+  and sub) are joined, a status beside the kicker and wrappers or modifiers holding
+  the headline are not the kicker.'
+expected:
+- https://example.com/news/2026/11/tax-reform-families
+- https://example.com/news/2026/11/cup-final-overtime
+- https://example.com/news/2026/11/museum-north-wing
+- https://example.com/news/2026/11/budget-federal-draft
+- https://example.com/news/2026/11/station-cost-papers
+- https://example.com/news/2026/11/library-exam-hours
+- https://example.com/news/2026/11/harbor-ferry-night
+- https://example.com/news/2026/11/property-tax-tenants
+- https://example.com/news/2026/11/tram-east-stops
+- https://example.com/news/2026/11/ring-road-witnesses
+- https://example.com/news/2026/11/district-heating-prices
+- https://example.com/news/2026/11/night-bus-network
+- https://example.com/news/2026/11/harbor-talks-resume
+- https://example.com/news/2026/11/analysis-committee
+- https://example.com/news/2026/11/election-night-results
+- https://example.com/news/2026/11/bridge-repairs-march
+- https://example.com/news/2026/11/mayor-budget-interview
+titles:
+  https://example.com/news/2026/11/tax-reform-families: 'Politik: Regierung plant
+    neue Steuerreform für Familien'
+  https://example.com/news/2026/11/cup-final-overtime: 'Sport: Verein gewinnt das
+    Pokalfinale nach Verlängerung'
+  https://example.com/news/2026/11/museum-north-wing: 'Kultur: Museum öffnet den restaurierten
+    Nordflügel wieder'
+  https://example.com/news/2026/11/budget-federal-draft: 'Politik Bund: Haushaltsentwurf
+    geht in die zweite Lesung'
+  https://example.com/news/2026/11/station-cost-papers: 'Exklusiv: Interne Papiere
+    zeigen Kostenexplosion beim Bahnhof'
+  https://example.com/news/2026/11/library-exam-hours: Bibliothek verlängert die Öffnungszeiten
+    zur Prüfungszeit
+  https://example.com/news/2026/11/harbor-ferry-night: 'Hafen: Fähre fährt am Wochenende
+    auch nachts'
+  https://example.com/news/2026/11/property-tax-tenants: '3 Fragen: Was die neue Grundsteuer
+    für Mieter bedeutet'
+  https://example.com/news/2026/11/tram-east-stops: 'Verkehr: Straßenbahn bekommt
+    vier neue Haltestellen im Osten'
+  https://example.com/news/2026/11/ring-road-witnesses: 'Blaulicht: Polizei sucht
+    Zeugen nach Unfall auf der Ringstraße'
+  https://example.com/news/2026/11/district-heating-prices: 'Wirtschaft: Stadtwerke
+    erhöhen die Preise für Fernwärme'
+  https://example.com/news/2026/11/night-bus-network: 'Verkehr: Nachtbusnetz wächst
+    um drei Linien'
+  https://example.com/news/2026/11/harbor-talks-resume: 'Harbor: talks resume after
+    the summer break in the capital'
+  https://example.com/news/2026/11/analysis-committee: Analysis paralysis hits the
+    planning committee again
+  https://example.com/news/2026/11/election-night-results: "\U0001F534 Live: Election
+    results come in from every district tonight"
+  https://example.com/news/2026/11/bridge-repairs-march: 'Update: Bridge closes for
+    repairs until March'
+  https://example.com/news/2026/11/mayor-budget-interview: Interview mit der Bürgermeisterin
+    über den Haushalt

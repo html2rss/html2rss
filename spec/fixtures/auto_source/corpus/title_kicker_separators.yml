@@ -1,0 +1,16 @@
+---
+case: 'A separator between kicker and headline (in the heading, or ending the kicker) is consumed; each title is exactly "Kicker: Headline".'
+expected:
+- https://example.com/news/2026/11/tax-reform-families
+- https://example.com/news/2026/11/cup-final-overtime
+- https://example.com/news/2026/11/museum-north-wing
+- https://example.com/news/2026/11/storm-warning-coast
+- https://example.com/news/2026/11/rent-cap-extended
+- https://example.com/news/2026/11/school-lunch-expands
+titles:
+  https://example.com/news/2026/11/tax-reform-families: 'Politik: Regierung plant neue Steuerreform für Familien'
+  https://example.com/news/2026/11/cup-final-overtime: 'Sport: Verein gewinnt das Pokalfinale nach Verlängerung'
+  https://example.com/news/2026/11/museum-north-wing: 'Kultur: Museum öffnet den restaurierten Nordflügel wieder'
+  https://example.com/news/2026/11/storm-warning-coast: 'Wetter: Sturmwarnung für die gesamte Küste ausgegeben'
+  https://example.com/news/2026/11/rent-cap-extended: 'Wohnen: Mietpreisbremse wird um zwei Jahre verlängert'
+  https://example.com/news/2026/11/school-lunch-expands: 'Schule: Schulessen wird in allen Bezirken kostenlos'

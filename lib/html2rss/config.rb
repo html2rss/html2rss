@@ -126,17 +126,15 @@ module Html2rss
       # @param request_controls [Html2rss::Config::RequestControls, nil] explicit request controls to write
       # @param limit [Integer, nil] max articles to keep in the auto-sourced feed
       # @param keep_different_domain [Boolean, nil] when set, overrides cleanup.keep_different_domain
+      # @param keep_sponsored [Boolean, nil] when set, overrides cleanup.keep_sponsored
       # @return [Hash{Symbol => Object}] feed config hash ready for {from_hash}
-      # rubocop:disable-next Metrics/MethodLength -- keep_different_domain override stays co-located
+      # rubocop:disable-next Metrics/MethodLength, Metrics/ParameterLists -- cleanup overrides stay co-located
       def auto_source_config(url:, items_selector: nil, request_controls: nil, limit: nil,
-                             keep_different_domain: nil)
+                             keep_different_domain: nil, keep_sponsored: nil)
         auto_source = AutoSource::DEFAULT_CONFIG
         auto_source = auto_source.merge(limit: Option.integer(:limit, limit, min: 1)) unless limit.nil?
-        unless keep_different_domain.nil?
-          auto_source = auto_source.merge(
-            cleanup: auto_source[:cleanup].merge(keep_different_domain:)
-          )
-        end
+        cleanup = { keep_different_domain:, keep_sponsored: }.compact
+        auto_source = auto_source.merge(cleanup: auto_source[:cleanup].merge(cleanup)) unless cleanup.empty?
 
         config = {
           channel: default_config[:channel].merge(url:),

@@ -1,0 +1,14 @@
+---
+case: Editorial stories about advertising and sponsorship with no sponsorship marker; every item must be kept.
+expected:
+- https://example.com/news/2026/11/watchdog-fines-misleading-adverts
+- https://example.com/news/2026/11/sponsored-content-rules-tighten
+- https://example.com/news/2026/11/billboard-ban-near-schools
+- https://example.com/news/2026/11/ad-spending-falls-third-quarter
+- https://example.com/news/2026/11/sponsorship-deal-saves-youth-league
+titles:
+  https://example.com/news/2026/11/watchdog-fines-misleading-adverts: 'Advertising: Watchdog fines the regional broadcaster over misleading adverts'
+  https://example.com/news/2026/11/sponsored-content-rules-tighten: 'Media: Sponsored content rules tighten for local newsletters'
+  https://example.com/news/2026/11/billboard-ban-near-schools: 'Politics: Council debates a billboard ban near schools'
+  https://example.com/news/2026/11/ad-spending-falls-third-quarter: 'Business: Local ad spending falls for a third quarter'
+  https://example.com/news/2026/11/sponsorship-deal-saves-youth-league: 'Sport: Sponsorship deal saves the youth football league'

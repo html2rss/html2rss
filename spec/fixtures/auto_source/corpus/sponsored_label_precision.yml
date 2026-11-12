@@ -1,0 +1,15 @@
+---
+case: Label words inside editorial text (category chip, meta line, emphasis or kicker in a headline, bold lead-in), switched-off sponsorship attributes, empty or hidden ad-label slots (a display:none style or a hidden attribute), and a promo slot linking an editorial story are no sponsorship markers; every card is expected.
+expected:
+- https://example.com/news/2026/11/agencies-win-retail-accounts
+- https://example.com/news/2026/11/cinema-spots-return
+- https://example.com/news/2026/11/feeds-full-of-paid-posts
+- https://example.com/news/2026/11/poster-rules-for-schools
+- https://example.com/news/2026/11/influencer-labelling-rules
+- https://example.com/news/2026/11/cycle-lanes-approved
+- https://example.com/news/2026/11/library-hours-extended
+- https://example.com/news/2026/11/water-prices-rise
+- https://example.com/news/2026/11/northern-school-opens
+- https://example.com/news/2026/11/ferry-late-service
+- https://example.com/news/2026/11/tram-stops-renamed
+- https://example.com/news/2026/11/climate-podcast-launches

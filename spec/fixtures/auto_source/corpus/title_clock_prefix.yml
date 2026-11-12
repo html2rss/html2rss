@@ -1,0 +1,14 @@
+---
+case: Cards whose kicker or heading opens with a teaser clock element (time or clock-only span); titles must carry no time of day.
+expected:
+- https://example.com/news/2026/11/tram-line-extends-east
+- https://example.com/news/2026/11/museum-reopens-north-wing
+- https://example.com/news/2026/11/school-lunch-program-expands
+- https://example.com/news/2026/11/park-planting-volunteers
+- https://example.com/news/2026/11/council-approves-housing-plan
+titles:
+  https://example.com/news/2026/11/tram-line-extends-east: 'Transit: Tram line extends to the eastern districts'
+  https://example.com/news/2026/11/museum-reopens-north-wing: 'Culture: Museum reopens its restored north wing'
+  https://example.com/news/2026/11/school-lunch-program-expands: 'Schools: School lunch program expands to every district'
+  https://example.com/news/2026/11/park-planting-volunteers: Park planting day draws hundreds of volunteers
+  https://example.com/news/2026/11/council-approves-housing-plan: Council approves the new housing plan

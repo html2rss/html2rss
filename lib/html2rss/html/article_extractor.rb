@@ -40,12 +40,14 @@ module Html2rss
 
       # @return [Hash{Symbol => Object}] extracted article attributes
       def call # rubocop:disable Metrics/MethodLength
-        title = extract_title
+        title = extract_headline
         lines = leftover_lines
         published_at = extract_published_at(lines)
         source, lines, published_at = parent_card_fields(title, lines, published_at)
         {
-          title:,
+          # Composed here, not passed as a +kicker:+ key: Selectors' enhance merges keys one by one,
+          # so a separate kicker would prefix an explicitly selected title.
+          title: Article::Title.compose(title, kicker: title_pieces.kicker_text),
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
@@ -79,15 +81,14 @@ module Html2rss
         Url.from_relative("##{id}", base_url) if id
       end
 
-      # rubocop:disable-next Metrics/CyclomaticComplexity
-      def extract_title
-        source = heading || selected_anchor
-        title_text = source ? Navigator.extract_visible_text(source) : fallback_anchorless_title
-        return unless title_text
+      def extract_headline
+        return fallback_anchorless_title unless headline_source
 
-        kicker = kicker_node ? Navigator.extract_visible_text(kicker_node).to_s.strip : nil
-        kicker && !kicker.empty? && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
+        title_pieces.headline_text(headline_source)
       end
+
+      # Kicker and headline text ({TitlePieces}) of this card.
+      def title_pieces = @title_pieces ||= TitlePieces.new(article_tag, headline_source)
 
       def fallback_anchorless_title
         return unless @fallback_anchorless && selected_anchor.nil?
@@ -104,14 +105,7 @@ module Html2rss
         )
       end
 
-      def kicker_node
-        @kicker_node ||= begin
-          selector = '[data-tb-kicker], [class*="kicker"], [class*="eyebrow"], ' \
-                     '[class*="pre-title"], [class*="pretitle"], [class*="overline"]'
-          node = article_tag.at_css(selector)
-          node && heading && (node == heading || Navigator.descendant_of?(node, heading)) ? nil : node
-        end
-      end
+      def headline_source = heading || selected_anchor
 
       def leftover_lines
         leftover_lines_from(article_tag)
@@ -124,7 +118,7 @@ module Html2rss
       end
 
       def leftover_exclude_nodes_for(node)
-        [heading, selected_anchor, kicker_node, *node.css('time')].compact
+        [heading, selected_anchor, title_pieces.kicker, *node.css('time')].compact
       end
 
       def heading_or_anchor_item?

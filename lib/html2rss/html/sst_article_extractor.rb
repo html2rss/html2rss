@@ -9,8 +9,6 @@ module Html2rss
     # Port of Html::ArticleExtractor field logic onto SST::Node.
     # rubocop:disable-next Metrics/ClassLength -- SST field extractors colocated for parity with ArticleExtractor
     class SstArticleExtractor
-      # CSS class tokens that mark kicker / eyebrow text (excluded from titles).
-      KICKER_CLASS_PATTERN = /kicker|eyebrow|pre-title|pretitle|overline/i
       # CSS class tokens that mark title-like nodes. Broad on purpose: also shared with
       # {Html2rss::SelectorCandidates}, which owns no copy of it.
       TITLE_CLASS_PATTERN = /title|font-bold|font-semibold/
@@ -57,12 +55,13 @@ module Html2rss
       ##
       # @return [Html2rss::Article, nil]
       def call # rubocop:disable Metrics/MethodLength
-        title = extract_title
+        title = title_from_in_card_sources
         lines = leftover_lines
         published_at = extract_published_at(lines)
         root, lines, published_at = parent_card_fields(title, lines, published_at)
         attrs = {
           title:,
+          kicker: title_pieces.kicker_text,
           url: extract_url,
           image: extract_image,
           description: ArticleRules::Description.from_lines(lines, title:),
@@ -70,7 +69,8 @@ module Html2rss
           published_at:,
           enclosures: extract_enclosures,
           categories: extract_categories(title, root:),
-          scraper: @scraper
+          scraper: @scraper,
+          compose_title: true
         }
         article = Article.new(**attrs)
         article.valid? ? article : nil
@@ -96,33 +96,12 @@ module Html2rss
         Url.from_relative("##{id}", @base_url) if id
       end
 
-      def extract_title
-        title_text = title_from_in_card_sources
-        return unless title_text
+      # Kicker and headline text ({TitlePieces}) of this card.
+      def title_pieces = @title_pieces ||= TitlePieces.new(@root, heading || @selected_anchor)
 
-        kicker = kicker_text
-        kicker && !title_text.include?(kicker) ? "#{kicker}: #{title_text}" : title_text
-      end
-
-      # Kicker text without its time/clock pieces and field labels (e.g. a screen-reader
-      # "Section:" prefix), so only the topic prefixes the title.
-      #
-      # @return [String, nil]
-      def kicker_text
-        return unless kicker_node
-
-        kicker_node.visible_text(exclude: kicker_node.descendants.select { |node| kicker_noise?(node) })
-      end
-
-      def kicker_noise?(node)
-        text = node.visible_text.to_s
-        node.name == :time || text.match?(ArticleRules::Description::CLOCK_ZONE) ||
-          !ArticleRules::Description.keep?(text)
-      end
-
-      # Prefer a non-junk title. Credit-only cards may blank to nil (description can carry
-      # the item). Other junk shapes must stay present so Cleanup can hard-reject them —
-      # blanking slug/CMS/template text would admit titleless cards.
+      # Prefer a non-junk headline ({Article} composes it with {#kicker_text}). A credit-only card
+      # blanks to nil, and Cleanup drops the untitled item as +blank_title+. Other junk shapes stay
+      # present so Cleanup rejects them under their own reason (slug, CMS, template).
       #
       # @return [String, nil]
       def title_from_in_card_sources
@@ -137,7 +116,7 @@ module Html2rss
       def title_candidates
         [].tap do |candidates|
           add_title_candidate!(candidates, heading_title_text)
-          add_title_candidate!(candidates, @selected_anchor&.visible_text)
+          add_title_candidate!(candidates, title_pieces.headline_text(@selected_anchor))
           next unless candidates.empty? && @fallback_anchorless && @selected_anchor.nil?
 
           add_title_candidate!(candidates, first_nonempty_own_text)
@@ -155,9 +134,7 @@ module Html2rss
       end
 
       # @return [String, nil] the title child's text when the heading splits kicker and title, else the whole heading
-      def heading_title_text
-        (title_child_of_heading || heading)&.visible_text
-      end
+      def heading_title_text = title_pieces.headline_text(title_child_of_heading || heading)
 
       # A heading made only of child elements (no stray text) where exactly one carries a title
       # class (and no kicker class) is a kicker-plus-title split; that child alone is the title.
@@ -172,7 +149,7 @@ module Html2rss
 
       def title_token_child?(child)
         classes = child.attrs.class_names
-        classes.any?(HEADING_TITLE_TOKEN_PATTERN) && classes.none?(KICKER_CLASS_PATTERN)
+        classes.any?(HEADING_TITLE_TOKEN_PATTERN) && classes.none?(TitlePieces::KICKER_CLASS)
       end
 
       def heading
@@ -208,33 +185,13 @@ module Html2rss
         end
       end
 
-      def kicker_node # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        @kicker_node ||= begin
-          node = @root.find do |n|
-            n.attrs.raw.key?('data-tb-kicker') ||
-              n.attrs.class_names.any? { |c| c.match?(KICKER_CLASS_PATTERN) }
-          end
-          node && heading && (node.equal?(heading) || descendant_of?(node, heading)) ? nil : node
-        end
-      end
-
-      def descendant_of?(child, ancestor)
-        return true if child.equal?(ancestor)
-
-        if (index = SST::Index.for_node(child))
-          return index.descendant_of?(child, ancestor)
-        end
-
-        !ancestor.find { |d| d.equal?(child) }.nil?
-      end
-
       def leftover_lines
         leftover_lines_from(@root)
       end
 
       def leftover_lines_from(node)
         times = node.find_all { |n| n.name == :time }
-        exclude = [heading, @selected_anchor, kicker_node, *times].compact
+        exclude = [heading, @selected_anchor, title_pieces.kicker, *times].compact
         ArticleRules::Description.lines_from(node.visible_text(exclude:))
       end
 
@@ -278,7 +235,7 @@ module Html2rss
         CardWalk.thin_wrapper?(
           children: node.children,
           item: @root,
-          descendant_of: ->(item, child) { descendant_of?(item, child) }
+          descendant_of: ->(item, child) { SST::Index.descendant_or_self?(item, child) }
         )
       end
 

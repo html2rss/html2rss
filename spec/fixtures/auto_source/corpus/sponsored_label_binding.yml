@@ -1,0 +1,17 @@
+---
+case: 'An ad label marks only the card (article, section, aside or li) it sits in,
+  at any depth, with secondary image, tag and fragment links: labelled cards, a promo
+  carousel slide and a sponsored ticker entry are dropped. An ad slot or label beside
+  a teaser in a bare div row, or between links of a div module, marks nothing (Q1:
+  no label climbing); every editorial story is expected.'
+expected:
+- https://example.com/news/2026/11/council-cycle-lanes
+- https://example.com/news/2026/11/tram-line-east
+- https://example.com/news/2026/11/housing-plan-downtown
+- https://example.com/news/2026/11/library-exam-hours
+- https://example.com/news/2026/11/water-prices-rise
+- https://example.com/news/2026/11/northern-school-opens
+- https://example.com/news/2026/11/bridge-repairs-early
+- https://example.com/news/2026/11/river-cleanup-tonnes
+- https://example.com/news/2026/11/river-district-homes
+- https://example.com/news/2026/11/harbor-ferry-night

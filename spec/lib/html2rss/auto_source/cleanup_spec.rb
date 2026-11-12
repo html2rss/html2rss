@@ -35,6 +35,10 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
     it 'denies off-domain article URLs by default' do
       expect(described_class::DEFAULT_CONFIG.fetch(:keep_different_domain)).to be(false)
     end
+
+    it 'drops sponsored items by default' do
+      expect(described_class::DEFAULT_CONFIG.fetch(:keep_sponsored)).to be(false)
+    end
   end
 
   describe '.admission_hint' do
@@ -45,6 +49,15 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
       expect(hint).to eq(described_class::DIFFERENT_DOMAIN_HINT)
       expect(hint).to include('keep_different_domain')
       expect(hint).to include('any domain supplied by the source')
+    end
+
+    it 'names keep_sponsored when sponsored drops emptied admission' do
+      expect(described_class.admission_hint('sponsored' => 1)).to eq(described_class::SPONSORED_HINT)
+    end
+
+    it 'names both flags when both reasons dropped items' do
+      expect(described_class.admission_hint('sponsored' => 1, 'different_domain' => 1))
+        .to include('--keep-different-domain').and include('--keep-sponsored')
     end
 
     it 'returns nil when different_domain was not the emptying reason' do
@@ -136,6 +149,56 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         expect(corroboration).to have_received(:verdict).exactly(6).times
         expect(corroboration).to have_received(:verdict).with(given[1], cohort: given.first(5))
         expect(corroboration).to have_received(:verdict).with(given[5], cohort: [given[5]])
+      end
+    end
+
+    # rubocop:disable-next RSpec/MultipleMemoizedHelpers -- page links stub + scraper articles
+    context 'with sponsored items on the page' do
+      subject(:result) { described_class.call(articles, url:, keep_sponsored:, page_links: -> { page_links }) }
+
+      let(:keep_sponsored) { false }
+      let(:page_links) { instance_double(Html2rss::AutoSource::PageLinks) }
+      let(:sponsored_paths) { %w[/paid-one /paid-two /paid-feed] }
+      let(:articles) do
+        [
+          ['/story-one', Html2rss::AutoSource::Scraper::SemanticHtml], ['/paid-one', Html2rss::AutoSource::Scraper::Html],
+          ['/paid-two', Html2rss::AutoSource::Scraper::Schema], ['/paid-feed', Html2rss::AutoSource::Scraper::NativeFeed]
+        ].map do |path, scraper|
+          instance_double(Html2rss::Article, valid?: true, scraper:, title: "Story title for #{path}",
+                                             url: Html2rss::Url.from_absolute("http://example.com#{path}"))
+        end
+      end
+
+      before do
+        allow(page_links).to receive(:sponsored?) { sponsored_paths.include?(_1.path) }
+      end
+
+      it 'drops page-derived sponsored items under the sponsored tally', :aggregate_failures do
+        expect(result.articles.map { _1.url.path }).to eq(%w[/story-one /paid-feed])
+        expect(result.drop_tallies).to eq('sponsored' => 2)
+      end
+
+      it 'never asks the page about publisher-declared items' do
+        result
+        expect(page_links).not_to have_received(:sponsored?).with(articles.last.url)
+      end
+
+      it 'admits sponsored items unchanged when keep_sponsored is on, without reading the page',
+         :aggregate_failures do
+        kept = described_class.call(articles, url:, keep_sponsored: true, page_links: -> { page_links })
+
+        expect(kept.articles.map { _1.url.path }).to eq(%w[/story-one /paid-one /paid-two /paid-feed])
+        expect(kept.drop_tallies).to be_empty
+        expect(page_links).not_to have_received(:sponsored?)
+      end
+
+      it 'drops sponsored items when keep_sponsored is omitted' do
+        omitted = described_class.call(articles, url:, page_links: -> { page_links })
+        expect(omitted.drop_tallies).to eq('sponsored' => 2)
+      end
+
+      it 'admits every item without page links' do
+        expect(described_class.call(articles, url:).articles.size).to eq(4)
       end
     end
 
@@ -332,6 +395,12 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
     context 'with junk and acceptable titles' do
       let(:url) { Html2rss::Url.from_absolute('http://example.com/list') }
+      let(:untitled) do
+        [nil, '', " \n "].each_with_index.map do |title, index|
+          Html2rss::Article.new(id: "u#{index}", title:, description: 'Card text', scraper: Html2rss::AutoSource::Scraper::Html,
+                                url: Html2rss::Url.from_absolute("http://example.com/u#{index}"))
+        end
+      end
 
       # Table-driven keep/reject via public junk_reason + Cleanup.call (not private send).
       [
@@ -340,7 +409,6 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
         { title: 'Photo: Reuters', reason: :credit },
         { title: 'lucy.smith.token', reason: :cms_token },
         { title: 'methode-article-slug', reason: :cms_token },
-        { title: nil, reason: nil },
         { title: 'Reuters reports major breakthrough today', reason: nil },
         { title: 'Courtesy Casie Ellison via pool camera', reason: :credit },
         { title: 'Courtesy Call Yields Breakthrough Deal', reason: nil },
@@ -378,6 +446,28 @@ RSpec.describe Html2rss::AutoSource::Cleanup do
 
           expect(call_result.drop_tallies[example[:reason].to_s]).to eq(1)
         end
+      end
+
+      it 'has no junk reason for a missing title' do
+        expect(described_class.junk_reason(nil)).to be_nil
+      end
+
+      it 'drops untitled page-derived items as blank_title', :aggregate_failures do
+        call_result = described_class.call(untitled, url:)
+        expect(call_result.articles).to be_empty
+        expect(call_result.drop_tallies['blank_title']).to eq(3)
+      end
+
+      # rubocop:disable-next RSpec/ExampleLength -- one untitled item per source kind + tally
+      it 'keeps an untitled publisher feed item and drops an untitled heuristic one', :aggregate_failures do
+        scraper = Html2rss::AutoSource::Scraper
+        feed_post, card = { 'feed-post' => scraper::NativeFeed, 'card' => scraper::SemanticHtml }.map do |id, source|
+          Html2rss::Article.new(id:, description: 'A short microblog post body', scraper: source,
+                                url: Html2rss::Url.from_absolute("http://example.com/#{id}"))
+        end
+        call_result = described_class.call([feed_post, card], url:)
+        expect(call_result.articles).to eq([feed_post])
+        expect(call_result.drop_tallies).to eq('blank_title' => 1)
       end
     end
 

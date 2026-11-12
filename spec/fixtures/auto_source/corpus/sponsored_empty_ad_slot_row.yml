@@ -1,0 +1,9 @@
+---
+case: An ad label in an empty ad slot, or a bare ad-label paragraph, beside a single editorial teaser in a row marks nothing; only the card holding its own sponsored label is dropped.
+expected:
+- https://example.com/news/2026/11/bridge-repairs-finish-early
+- https://example.com/news/2026/11/library-extends-weekend-hours
+- https://example.com/news/2026/11/river-cleanup-collects-tonnes
+- https://example.com/news/2026/11/market-square-gets-new-trees
+- https://example.com/news/2026/11/night-buses-return
+- https://example.com/news/2026/11/school-garden-wins-award
