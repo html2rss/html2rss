@@ -863,7 +863,7 @@ RSpec.describe Html2rss::AutoSource do
     end
 
     it 'normalizes each URL once and reuses one Cleanup result', :aggregate_failures do
-      expect(auto_source.articles.size).to eq(13)
+      expect(auto_source.articles.size).to eq(25)
       expect(counts[:cleanup]).to eq(1)
       expect(counts[:normalize]).to be <= 260 # master: 358
     end
@@ -872,7 +872,7 @@ RSpec.describe Html2rss::AutoSource do
       auto_source.articles
 
       expect(auto_source.admission_drops)
-        .to eq('invalid' => 1, 'duplicate_url' => 45, 'self_link' => 1, 'different_domain' => 11)
+        .to eq('invalid' => 1, 'different_domain' => 3)
     end
   end
 end

@@ -392,26 +392,10 @@ RSpec.describe Html2rss::AutoSource::Scraper::Html do
       expect(articles.map(&:scraper).uniq).to eq([described_class])
     end
 
-    it 'keeps anchorless cards only when fallback_anchorless is requested' do
+    it 'emits no page-fragment items for anchorless cards under fallback_anchorless' do
       articles = described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a
 
-      expect(articles.map(&:title)).to eq(['No Link One', 'No Link Two'])
-    end
-  end
-
-  describe '#materialize' do
-    it 'stamps the scraper class on fallback anchorless articles' do
-      articles = described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a
-
-      expect(articles.map(&:scraper).uniq).to eq([described_class])
-    end
-  end
-
-  describe '#cluster_ranked' do
-    it 'only supplies anchorless clusters when fallback_anchorless is requested', :aggregate_failures do
-      expect(described_class.new(anchorless_html, url: 'https://page.com').to_a).to be_empty
-      expect(described_class.new(anchorless_html, url: 'https://page.com', fallback_anchorless: true).to_a.size)
-        .to eq(2)
+      expect(articles).to be_empty
     end
   end
 

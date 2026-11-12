@@ -306,6 +306,81 @@ RSpec.describe Html2rss::AutoSource::Segmenter do
         expect(picked).to be_nil
       end
     end
+
+    context 'when an empty overlay link sits beside the heading wrapper' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <a class="overlay" href="/local/harbor-ferry-returns"></a>
+            <div class="text"><h2>Harbor ferry returns</h2></div>
+            <a href="/local/ferry-schedule-archive">Ferry schedule archive</a>
+          </article></body></html>
+        HTML
+      end
+
+      it 'selects the overlay link as the heading link' do
+        expect(picked.attrs.href).to eq('/local/harbor-ferry-returns')
+      end
+    end
+
+    context 'when an empty link sits in a sub-block apart from the heading' do
+      let(:html) do
+        <<~HTML
+          <html><body><article>
+            <h2>Harbor ferry returns</h2>
+            <div class="share"><a href="/local/harbor-ferry-returns"></a></div>
+          </article></body></html>
+        HTML
+      end
+
+      it 'returns nil' do
+        expect(picked).to be_nil
+      end
+    end
+
+    context 'when one anchor wraps the whole card' do
+      let(:html) do
+        <<~HTML
+          <html><body><a class="teaser" href="/local/harbor-ferry-returns">
+            <article><h2>Harbor ferry returns</h2><p>The crossing resumes.</p></article>
+          </a></body></html>
+        HTML
+      end
+
+      it 'selects the wrapping anchor' do
+        expect(picked.attrs.href).to eq('/local/harbor-ferry-returns')
+      end
+    end
+
+    context 'when an unclosed anchor spans a region holding other links' do
+      let(:document) { document_for(Nokogiri::HTML.parse(html)) }
+      let(:html) do
+        <<~HTML
+          <html><body><a class="teaser" href="/local/harbor-ferry-returns">
+            <article><h2>Video highlights</h2><p>Now playing</p></article>
+            <div><a href="/local/river-cleanup-record">River cleanup draws a record turnout</a></div>
+          </a></body></html>
+        HTML
+      end
+
+      it 'does not take the region anchor' do
+        expect(picked).to be_nil
+      end
+    end
+
+    context 'when an anchor without a heading wraps one live-blog entry' do
+      let(:html) do
+        <<~HTML
+          <html><body><a href="/local/harbor-ferry-returns/#entry-2">
+            <article><time datetime="2026-11-10T09:10:00Z">40 minutes ago</time><p>The vessel passed inspection.</p></article>
+          </a></body></html>
+        HTML
+      end
+
+      it 'does not take the entry anchor' do
+        expect(picked).to be_nil
+      end
+    end
   end
 
   describe Html2rss::AutoSource::Segmenter::PrimaryLink, 'scoring and ordering' do

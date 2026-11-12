@@ -191,8 +191,9 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
     end
 
     it 'keeps a useful recall floor on the large semantic fixture', :aggregate_failures, :slow do
-      expect(articles.size).to be >= 60
+      expect(articles.size).to be >= 45
       expect(articles.size).to be < 100
+      expect(articles.map { _1.url.to_s }).to all(satisfy { |url| !url.include?('#') })
     end
 
     context 'when fallback_anchorless is true and page has no anchors' do
@@ -215,12 +216,8 @@ RSpec.describe Html2rss::AutoSource::Scraper::SemanticHtml do
         HTML
       end
 
-      it 'extracts semantic articles anchorlessly', :aggregate_failures do
-        expect(articles.size).to eq(2)
-        expect(articles.first.title).to eq('No Link Article 1')
-        expect(articles.first.url.to_s).to eq('https://page.com/#no-link-article-1')
-        expect(articles.last.title).to eq('No Link Article 2')
-        expect(articles.last.url.to_s).to eq('https://page.com/#no-link-article-2')
+      it 'emits no page-fragment items for cards without a link' do
+        expect(articles).to be_empty
       end
     end
   end

@@ -71,14 +71,7 @@ module Html2rss
         private
 
         def articles
-          @articles ||= begin
-            ranked = list_ranked
-            if ranked.empty? && @fallback_anchorless
-              materialize(cluster_ranked, fallback_anchorless: true)
-            else
-              materialize(ranked)
-            end
-          end
+          @articles ||= materialize(ranked_segments)
         end
 
         def ranked_segments
@@ -110,9 +103,9 @@ module Html2rss
           engine.select_eligible(segments, limit: TOP_K)
         end
 
-        def materialize(ranked, fallback_anchorless: false)
+        def materialize(ranked)
           ranked.filter_map do |entry|
-            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class, fallback_anchorless:)
+            ::Html2rss::Html::SstArticleExtractor.call(entry, base_url: @url, scraper: self.class)
           end
         end
 
